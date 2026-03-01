@@ -113,6 +113,6 @@ Re-invoke `planning-dependency-grapher` with all original inputs PLUS:
 
 The agent will clear all existing graph data and re-analyze from scratch. Present the revised analysis in full. Ask the same choice again. Repeat until approved.
 
-#### If approved
+#### If `approved`
 
 Commit: `planning({topic}): analyze task dependencies and priorities`

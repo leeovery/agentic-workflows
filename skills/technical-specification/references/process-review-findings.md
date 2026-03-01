@@ -117,7 +117,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specifi
 
 Incorporate feedback and re-present the proposed content **in full**. Update the tracking file with the revised content. Then ask the same choice again. Repeat until approved or skipped.
 
-#### If approved
+#### If `approved`
 
 1. Log the content to the specification verbatim
 2. Update the tracking file: set resolution to "Approved", add any discussion notes
@@ -141,7 +141,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 
 → After all processed, proceed to **C. After All Findings Processed**.
 
-#### If skipped
+#### If `skipped`
 
 1. Update the tracking file: set resolution to "Skipped", note the reason
 2. Commit — ensures progress survives context refresh

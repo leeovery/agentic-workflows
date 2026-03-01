@@ -61,6 +61,6 @@ Present a summary of the dependency state: what was documented, what was resolve
 
 Incorporate feedback, re-present the updated dependency state, and ask again. Repeat until approved.
 
-#### If approved
+#### If `approved`
 
 Commit: `planning({topic}): resolve external dependencies`

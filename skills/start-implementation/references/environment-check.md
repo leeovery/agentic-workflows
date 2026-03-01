@@ -8,7 +8,7 @@
 
 Use the `environment` section from the discovery output:
 
-#### If setup_file_exists is true and requires_setup is false
+#### If `setup_file_exists` is true and `requires_setup` is false
 
 > *Output the next fenced block as a code block:*
 
@@ -18,7 +18,7 @@ Environment: No special setup required.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If setup_file_exists is true and requires_setup is true
+#### If `setup_file_exists` is true and `requires_setup` is true
 
 > *Output the next fenced block as a code block:*
 
@@ -28,7 +28,7 @@ Environment setup file found: .workflows/environment-setup.md
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If setup_file_exists is false or requires_setup is unknown
+#### If `setup_file_exists` is false or `requires_setup` is unknown
 
 > *Output the next fenced block as a code block:*
 

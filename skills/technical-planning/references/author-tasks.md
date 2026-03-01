@@ -42,11 +42,11 @@ The agent writes all tasks to the scratch file and returns.
 
 Read the scratch file and count tasks. Verify task count matches the task table in the Plan Index File for this phase.
 
-#### If mismatch
+#### If `mismatch`
 
 Re-invoke the agent with the same inputs.
 
-#### If valid
+#### If `valid`
 
 → Proceed to **D. Check Gate Mode**.
 

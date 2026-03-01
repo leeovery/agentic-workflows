@@ -46,11 +46,11 @@ of functionality to build."}
 
 **STOP.** Wait for user response.
 
-#### If comment
+#### If `comment`
 
 Discuss the user's suggested classification, re-assess, and re-present the assessment display and prompt above.
 
-#### If yes
+#### If `yes`
 
 → Proceed to **B. Verify Tracking Files Complete**.
 
@@ -82,11 +82,11 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 **STOP.** Wait for user response.
 
-#### If comment
+#### If `comment`
 
 Discuss the user's context, apply any changes, then re-present the sign-off prompt above.
 
-#### If yes
+#### If `yes`
 
 → Proceed to **D. Update Frontmatter and Conclude**.
 
@@ -138,7 +138,7 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 Check the specification frontmatter for `work_type`.
 
-#### If work_type is set (feature, bugfix, or greenfield)
+#### If `work_type` is set (`feature`, `bugfix`, or `greenfield`)
 
 This specification is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
@@ -150,7 +150,7 @@ Completed phase: specification
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
 
-#### If work_type is not set
+#### If `work_type` is not set
 
 > *Output the next fenced block as a code block:*
 

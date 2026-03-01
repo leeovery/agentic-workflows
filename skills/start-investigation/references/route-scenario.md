@@ -44,13 +44,13 @@ What would you like to do?
 
 **STOP.** Wait for user response.
 
-#### If resuming
+#### If `resuming`
 
 Set source="continue".
 
 → Return to **[the skill](../SKILL.md)** for **Step 6** with that topic.
 
-#### If new
+#### If `new`
 
 Set source="fresh".
 

@@ -244,11 +244,11 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 **STOP.** Wait for user response.
 
-#### If comment
+#### If `comment`
 
 Discuss the user's context. If additional work is needed, route back to **Step 6** or **Step 7** as appropriate. Otherwise, re-present the sign-off prompt above.
 
-#### If yes
+#### If `yes`
 
 1. **Update plan status** — Set `status: concluded` in the Plan Index File frontmatter
 2. **Final commit** — Commit the concluded plan: `planning({topic}): conclude plan`

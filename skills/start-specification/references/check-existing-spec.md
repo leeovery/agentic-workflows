@@ -33,11 +33,11 @@ A specification for "{topic:(titlecase)}" already exists and is in progress.
 
 **STOP.** Wait for user response.
 
-#### If resume
+#### If `resume`
 
 → Return to **[the skill](../SKILL.md)** with verb="Continuing".
 
-#### If start-fresh
+#### If `start-fresh`
 
 Archive the existing spec.
 

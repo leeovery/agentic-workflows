@@ -95,11 +95,11 @@ with fresh context — 2-3 cycles typically surface anything cascading.
 
 **STOP.** Wait for user response.
 
-#### If reanalyse
+#### If `reanalyse`
 
 → Return to **A. Cycle Management** to begin a fresh cycle.
 
-#### If proceed
+#### If `proceed`
 
 → Proceed to **E. Completion**.
 

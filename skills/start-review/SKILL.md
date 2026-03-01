@@ -100,11 +100,11 @@ Parse the discovery output to understand:
 
 Check for arguments: work_type = `$0`, topic = `$1`
 
-#### If work_type and topic are both provided
+#### If `work_type` and `topic` are both provided
 
 → Proceed to **Step 3**.
 
-#### If work_type is provided without topic
+#### If `work_type` is provided without `topic`
 
 Store work_type for the handoff.
 

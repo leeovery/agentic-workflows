@@ -33,11 +33,11 @@ Ready to start a new feature.
 
 **STOP.** Wait for user response.
 
-#### If yes
+#### If `yes`
 
 Invoke `start-feature`. It will set `work_type: feature` automatically.
 
-#### If no
+#### If `no`
 
 → Return to **[the skill](../SKILL.md)** for **Step 2** (work type selection).
 

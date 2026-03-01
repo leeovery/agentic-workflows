@@ -17,11 +17,11 @@ When the user indicates they want to conclude:
 
 **STOP.** Wait for user response.
 
-#### If comment
+#### If `comment`
 
 Incorporate the user's context into the discussion, commit, then re-present the sign-off prompt above.
 
-#### If yes
+#### If `yes`
 
 1. Update frontmatter `status: concluded`
 2. Final commit

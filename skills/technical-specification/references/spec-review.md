@@ -152,11 +152,11 @@ Auto-review has not converged after 5 cycles — escalating for human review.
 
 **STOP.** Wait for user response.
 
-#### If reanalyse
+#### If `reanalyse`
 
 → Return to **A. Cycle Management** to begin a fresh cycle.
 
-#### If proceed
+#### If `proceed`
 
 → Proceed to **E. Completion**.
 

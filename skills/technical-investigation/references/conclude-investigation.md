@@ -20,17 +20,17 @@ Investigation complete. Ready to conclude?
 
 **STOP.** Wait for user response.
 
-#### If reopen
+#### If `reopen`
 
 Ask what aspects need more analysis.
 
 → Return to **[the skill](../SKILL.md)** for **Step 3**.
 
-#### If Comment
+#### If `comment`
 
 Incorporate the user's context into the investigation file and commit. Re-present the same conclusion prompt.
 
-#### If yes
+#### If `yes`
 
 1. Update frontmatter `status: concluded`
 2. Final commit

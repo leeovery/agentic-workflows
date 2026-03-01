@@ -49,7 +49,7 @@ Address their concerns directly. Re-trace code paths if needed. Provide supporti
 
 Re-present findings using the same format above.
 
-#### If yes
+#### If `yes`
 
 → Proceed to **B. Fix Direction Discussion**.
 
@@ -88,7 +88,7 @@ Engage collaboratively. Stay bounded — focus on:
 
 Do not go into implementation detail — that belongs in the specification. When discussion reaches a natural decision point, summarize the agreed direction and present for confirmation.
 
-#### If yes
+#### If `yes`
 
 Document the Fix Direction section in the investigation file:
 

@@ -88,7 +88,7 @@ Re-invoke `planning-phase-designer` with all original inputs PLUS:
 
 Update the Plan Index File with the revised output, re-present, and ask again. Repeat until approved.
 
-#### If approved
+#### If `approved`
 
 **If the phase structure is new or was amended:**
 

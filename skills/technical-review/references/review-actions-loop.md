@@ -80,11 +80,11 @@ Proceed with synthesis?
 
 **STOP.** Wait for user response.
 
-#### If yes
+#### If `yes`
 
 → Proceed to **B. Dispatch Review Synthesizer**.
 
-#### If no
+#### If `no`
 
 User has chosen to skip synthesis. This is a terminal condition, but check for pipeline continuation first.
 
@@ -130,11 +130,11 @@ Synthesize non-blocking findings?
 
 **STOP.** Wait for user response.
 
-#### If yes
+#### If `yes`
 
 → Proceed to **B. Dispatch Review Synthesizer**.
 
-#### If no
+#### If `no`
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -250,7 +250,7 @@ Update `status: skipped` in the staging file.
 
 → Present the next pending task, or proceed to routing below if all tasks processed.
 
-#### If comment
+#### If `comment`
 
 Revise the task content in the staging file based on the user's feedback. Re-present this task.
 

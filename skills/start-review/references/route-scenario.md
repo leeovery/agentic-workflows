@@ -26,7 +26,7 @@ to build it.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If all_reviewed is true
+#### If `all_reviewed` is true
 
 All implemented plans have been reviewed.
 
