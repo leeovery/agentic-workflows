@@ -6,7 +6,7 @@
 
 This step only applies for `single`, `multi`, or `all` scope chosen in Step 6.
 
-#### If scope is "analysis"
+#### If scope is `analysis`
 
 Select which reviews to analyze.
 
@@ -37,13 +37,13 @@ Automatically proceed with the only available review.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If scope is "all"
+#### If scope is `all`
 
 All reviewable plans are included. No selection needed. Each plan will be reviewed independently.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If scope is "single"
+#### If scope is `single`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -57,7 +57,7 @@ Which plan would you like to review? (Enter a number from Step 6)
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If scope is "multi"
+#### If scope is `multi`
 
 > *Output the next fenced block as markdown (not a code block):*
 

@@ -6,7 +6,7 @@
 
 Check if source material exists and is ready.
 
-#### If work_type is feature
+#### If `work_type` is `feature`
 
 Check if discussion exists and is concluded:
 
@@ -48,7 +48,7 @@ Run /start-discussion feature {topic} to continue.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If work_type is bugfix
+#### If `work_type` is `bugfix`
 
 Check if investigation exists and is concluded:
 

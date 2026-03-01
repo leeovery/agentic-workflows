@@ -10,11 +10,11 @@ Based on discovery state, load exactly ONE reference file:
 
 → Load **[display-single.md](display-single.md)** and follow its instructions.
 
-#### If cache status is "valid"
+#### If cache status is `valid`
 
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions.
 
-#### If spec_count == 0 and cache is "none" or "stale"
+#### If spec_count == 0 and cache is `none` or `stale`
 
 → Load **[display-analyze.md](display-analyze.md)** and follow its instructions.
 

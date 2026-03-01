@@ -136,7 +136,7 @@ Recreate with actual topics and states from discovery. Only include options that
 
 ## C. Route Selection
 
-#### If user chose "Stop here"
+#### If user chose `Stop here`
 
 > *Output the next fenced block as a code block:*
 

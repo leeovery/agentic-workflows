@@ -29,7 +29,7 @@ Invoke the [technical-specification](../../technical-specification/SKILL.md) ski
 
 Construct the handoff based on the work type and verb.
 
-#### If work_type is feature
+#### If `work_type` is `feature`
 
 ```
 Specification session for: {topic}
@@ -51,7 +51,7 @@ The specification frontmatter should include:
 Invoke the technical-specification skill.
 ```
 
-#### If work_type is bugfix
+#### If `work_type` is `bugfix`
 
 ```
 Specification session for: {topic}

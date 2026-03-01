@@ -158,7 +158,7 @@ Every meta option (Unify, Re-analyze) MUST include its description lines.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions.
 
-#### If user picks "Unify all"
+#### If user picks `Unify all`
 
 Update the cache: rewrite `.workflows/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all concluded discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`
 
@@ -166,7 +166,7 @@ Spec name: "Unified". Sources: all concluded discussions.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions.
 
-#### If user picks "Re-analyze"
+#### If user picks `Re-analyze`
 
 Delete the cache:
 ```bash

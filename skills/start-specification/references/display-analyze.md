@@ -39,7 +39,7 @@ before they can be included in a specification.
 
 No `---` separator before these messages.
 
-#### If cache status is "none"
+#### If cache status is `none`
 
 > *Output the next fenced block as a code block:*
 
@@ -59,7 +59,7 @@ Proceed with analysis?
 · · · · · · · · · · · ·
 ```
 
-#### If cache status is "stale"
+#### If cache status is `stale`
 
 > *Output the next fenced block as a code block:*
 

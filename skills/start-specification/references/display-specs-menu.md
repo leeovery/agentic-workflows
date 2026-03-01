@@ -83,7 +83,7 @@ Key:
 
 No `---` separator before these messages.
 
-#### If cache status is "none"
+#### If cache status is `none`
 
 > *Output the next fenced block as a code block:*
 
@@ -91,7 +91,7 @@ No `---` separator before these messages.
 No grouping analysis exists.
 ```
 
-#### If cache status is "stale"
+#### If cache status is `stale`
 
 > *Output the next fenced block as a code block:*
 
@@ -135,7 +135,7 @@ Menu descriptions are wrapped in backticks to visually distinguish them from the
 
 **STOP.** Wait for user response.
 
-#### If user picks "Analyze for groupings"
+#### If user picks `Analyze for groupings`
 
 If cache is stale, delete it first:
 ```bash
@@ -144,7 +144,7 @@ rm .workflows/.state/discussion-consolidation-analysis.md
 
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions.
 
-#### If user picks "Continue" or "Refine" for a spec
+#### If user picks `Continue` or `Refine` for a spec
 
 The selected spec and its sources become the context for confirmation.
 

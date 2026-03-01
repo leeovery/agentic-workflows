@@ -8,7 +8,7 @@ This step only runs when research files exist.
 
 Use `cache.status` from discovery to determine the approach:
 
-#### If cache.status is "valid"
+#### If `cache.status` is `valid`
 
 ```
 Using cached research analysis (unchanged since {cache.generated})
@@ -16,7 +16,7 @@ Using cached research analysis (unchanged since {cache.generated})
 
 Load the topics from `.workflows/.state/research-analysis.md` and proceed.
 
-#### If cache.status is "stale" or "none"
+#### If `cache.status` is `stale` or `none`
 
 ```
 Analyzing research documents...

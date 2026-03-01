@@ -6,7 +6,7 @@
 
 Route based on the `source` variable set in earlier steps.
 
-#### If source is "bridge"
+#### If source is `bridge`
 
 Bridge mode: topic and work_type were provided by the caller.
 
@@ -50,7 +50,7 @@ What would you like to discuss? Provide some initial context:
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If source is "research"
+#### If source is `research`
 
 Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions.
 
@@ -58,7 +58,7 @@ Load **[gather-context-research.md](gather-context-research.md)** and follow its
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If source is "fresh"
+#### If source is `fresh`
 
 Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions.
 
@@ -66,7 +66,7 @@ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instr
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If source is "continue"
+#### If source is `continue`
 
 Load **[gather-context-continue.md](gather-context-continue.md)** and follow its instructions.
 

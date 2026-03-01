@@ -8,7 +8,7 @@ Discovery mode — use the discovery output from Step 1.
 
 Use `state.scenario` from the discovery output to determine the path:
 
-#### If scenario is "no_plans"
+#### If scenario is `no_plans`
 
 No plans exist yet.
 
@@ -67,7 +67,7 @@ Select an option:
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-#### If scenario is "single_plan" or "multiple_plans"
+#### If scenario is `single_plan` or `multiple_plans`
 
 Plans exist (some may have reviews, some may not).
 

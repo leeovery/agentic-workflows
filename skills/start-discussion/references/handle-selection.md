@@ -6,7 +6,7 @@
 
 Route based on the user's choice from the options display.
 
-#### If user chose "From research"
+#### If user chose `From research`
 
 User chose to start from research (e.g., "research 1", "1", "from research", or a topic name).
 
@@ -27,7 +27,7 @@ Which research topic would you like to discuss? (Enter a number or topic name)
 
 **STOP.** Wait for response.
 
-#### If user chose "Continue discussion"
+#### If user chose `Continue discussion`
 
 User chose to continue a discussion (e.g., "continue auth-flow" or "continue discussion").
 
@@ -48,7 +48,7 @@ Which discussion would you like to continue?
 
 **STOP.** Wait for response.
 
-#### If user chose "Fresh topic"
+#### If user chose `Fresh topic`
 
 User wants to start a fresh discussion.
 
@@ -56,7 +56,7 @@ Set source="fresh".
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If user chose "refresh"
+#### If user chose `refresh`
 
 > *Output the next fenced block as a code block:*
 

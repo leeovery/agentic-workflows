@@ -100,7 +100,7 @@ Complete ALL setup steps before proceeding.
 
 Load **[environment-setup.md](references/environment-setup.md)** and follow its instructions.
 
-#### If `.workflows/environment-setup.md` states "No special setup required"
+#### If `.workflows/environment-setup.md` states `No special setup required`
 
 → Proceed to **Step 2**.
 

@@ -14,7 +14,7 @@ ls .workflows/investigation/
 
 Read `.workflows/investigation/{topic}/investigation.md` frontmatter to check status.
 
-#### If status is "in-progress"
+#### If status is `in-progress`
 
 > *Output the next fenced block as a code block:*
 
@@ -26,7 +26,7 @@ Set source="continue".
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-#### If status is "concluded"
+#### If status is `concluded`
 
 > *Output the next fenced block as a code block:*
 

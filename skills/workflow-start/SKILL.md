@@ -84,14 +84,14 @@ The reference will present the current state and ask the user which work type th
 
 Based on the selected work type, load the appropriate routing reference:
 
-#### If work type is "greenfield"
+#### If work type is `greenfield`
 
 Load **[greenfield-routing.md](references/greenfield-routing.md)** and follow its instructions.
 
-#### If work type is "feature"
+#### If work type is `feature`
 
 Load **[feature-routing.md](references/feature-routing.md)** and follow its instructions.
 
-#### If work type is "bugfix"
+#### If work type is `bugfix`
 
 Load **[bugfix-routing.md](references/bugfix-routing.md)** and follow its instructions.

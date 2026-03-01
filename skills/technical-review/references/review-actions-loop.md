@@ -22,7 +22,7 @@ E. Re-open implementation + plan mode handoff
 
 Check the verdict(s) from the review(s) being analyzed.
 
-#### If all verdicts are "Approve" with no required changes
+#### If all verdicts are `Approve` with no required changes
 
 > *Output the next fenced block as a code block:*
 
@@ -56,7 +56,7 @@ All checks passed. The implementation has been validated.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If any verdict is "Request Changes"
+#### If any verdict is `Request Changes`
 
 Blocking issues exist. Synthesis is strongly recommended.
 
@@ -106,7 +106,7 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If verdict is "Comments Only"
+#### If verdict is `Comments Only`
 
 Non-blocking improvements only. Synthesis is optional.
 
@@ -146,7 +146,7 @@ Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow
 
 **STOP.** Do not proceed until the synthesizer has returned.
 
-#### If STATUS is "clean"
+#### If `STATUS` is `clean`
 
 > *Output the next fenced block as a code block:*
 
@@ -156,7 +156,7 @@ No actionable tasks synthesized.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If STATUS is "tasks_proposed"
+#### If `STATUS` is `tasks_proposed`
 
 → Proceed to **C. Approval Gate**.
 
@@ -201,7 +201,7 @@ Sources: {sources}
 {tests}
 ```
 
-#### If gate_mode is "gated"
+#### If `gate_mode` is `gated`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -218,7 +218,7 @@ Approve this task?
 
 **STOP.** Wait for user input.
 
-#### If gate_mode is "auto"
+#### If `gate_mode` is `auto`
 
 > *Output the next fenced block as a code block:*
 

@@ -109,11 +109,11 @@ Load **[process-review-findings.md](process-review-findings.md)** and follow its
 
 ## D. Re-Loop Prompt
 
-#### If `phase_1_status` is "clean" and `phase_2_status` is "clean"
+#### If `phase_1_status` is `clean` and `phase_2_status` is `clean`
 
 → Proceed to **E. Completion** (nothing to re-analyse).
 
-#### If either status is "findings"
+#### If either status is `findings`
 
 Check `finding_gate_mode` and `review_cycle` in the specification frontmatter.
 

@@ -45,7 +45,7 @@ Run /start-implementation {work_type} {topic} to start one.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If implementation status is not "completed"
+#### If implementation status is not `completed`
 
 > *Output the next fenced block as a code block:*
 

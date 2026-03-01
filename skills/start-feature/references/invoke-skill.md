@@ -12,7 +12,7 @@ Save a session bookmark for compaction recovery, then invoke the appropriate pro
 Saving session state for compaction recovery.
 ```
 
-#### If phase is research
+#### If `phase` is `research`
 
 ```bash
 .claude/hooks/workflows/write-session-state.sh \
@@ -23,7 +23,7 @@ Saving session state for compaction recovery.
 
 → Load **[invoke-research.md](invoke-research.md)** and follow its instructions.
 
-#### If phase is discussion
+#### If `phase` is `discussion`
 
 ```bash
 .claude/hooks/workflows/write-session-state.sh \

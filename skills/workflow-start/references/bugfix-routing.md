@@ -85,7 +85,7 @@ Recreate with actual topics and `phase_label` values from discovery.
 
 Parse the user's selection, then follow the instructions below.
 
-#### If "start new bugfix"
+#### If `start new bugfix`
 
 Invoke `/start-bugfix`. It will set `work_type: bugfix` and begin the investigation phase.
 

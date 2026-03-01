@@ -85,7 +85,7 @@ Recreate with actual topics and `phase_label` values from discovery.
 
 Parse the user's selection, then follow the instructions below.
 
-#### If "start new feature"
+#### If `start new feature`
 
 Invoke `/start-feature`. It will set `work_type: feature` automatically.
 

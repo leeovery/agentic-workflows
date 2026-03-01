@@ -6,19 +6,19 @@
 
 Use `state.scenario` from the discovery output to determine the path.
 
-#### If scenario is "research_only" or "research_and_discussions"
+#### If scenario is `research_only` or `research_and_discussions`
 
 Research exists and may need analysis.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
-#### If scenario is "discussions_only"
+#### If scenario is `discussions_only`
 
 No research exists, but discussions do. Skip research analysis.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-#### If scenario is "fresh"
+#### If scenario is `fresh`
 
 No research or discussions exist yet.
 

@@ -27,7 +27,7 @@ Run /start-specification {work_type} {topic} to create one.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If specification exists but status is "in-progress"
+#### If specification exists but status is `in-progress`
 
 > *Output the next fenced block as a code block:*
 
@@ -40,7 +40,7 @@ Run /start-specification {work_type} {topic} to continue.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If specification exists and status is "concluded"
+#### If specification exists and status is `concluded`
 
 Parse cross-cutting specs from `specifications.crosscutting` in the discovery output.
 

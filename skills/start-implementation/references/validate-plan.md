@@ -27,7 +27,7 @@ Run /start-planning {work_type} {topic} to create one.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists but status is not "concluded"
+#### If plan exists but status is not `concluded`
 
 > *Output the next fenced block as a code block:*
 
@@ -40,6 +40,6 @@ Run /start-planning {work_type} {topic} to continue.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists and status is "concluded"
+#### If plan exists and status is `concluded`
 
 → Return to **[the skill](../SKILL.md)**.

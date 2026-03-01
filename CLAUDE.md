@@ -561,7 +561,7 @@ Rules:
 - Never use else-if chains — each condition gets its own `#### If` heading
 - Lowercase after "If" (e.g., `#### If concluded_count == 1`)
 - Use `#### Otherwise` for else branches
-- No backtick-wrapped code in H4 headings — write conditions as plain text
+- Use backticks around specific values, variables, and statuses in H4 headings (e.g., `` #### If `STATUS` is `clean` ``, `` #### If work type is `feature` ``). Natural language conditions stay plain text (e.g., `#### If no plan provided`)
 - Use "and" between conditions, not commas
 - Drop implied conditions (e.g., if Step 2 already gates on `concluded_count >= 1`, Step 3 doesn't need to repeat it on every branch)
 - H4 for top-level conditionals, bold text for nested — never use H5/H6 for conditional nesting

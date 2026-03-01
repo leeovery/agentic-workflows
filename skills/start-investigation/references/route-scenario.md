@@ -6,7 +6,7 @@
 
 Use `state.scenario` from the discovery output to determine the path.
 
-#### If scenario is "has_investigations"
+#### If scenario is `has_investigations`
 
 > *Output the next fenced block as a code block:*
 
@@ -56,7 +56,7 @@ Set source="fresh".
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
-#### If scenario is "fresh"
+#### If scenario is `fresh`
 
 Set source="fresh".
 

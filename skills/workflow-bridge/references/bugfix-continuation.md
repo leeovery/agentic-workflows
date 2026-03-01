@@ -23,7 +23,7 @@ Use `next_phase` from discovery output to determine the target skill:
 
 ## Generate Plan Mode Content
 
-#### If next_phase is "done"
+#### If `next_phase` is `done`
 
 > *Output the next fenced block as a code block:*
 

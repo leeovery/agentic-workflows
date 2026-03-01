@@ -31,15 +31,15 @@ If the above shows a script invocation rather than YAML output, the dynamic cont
 
 The output contains three sections: `features:`, `bugfixes:`, and `greenfield:`. Use the known work type and topic from the calling context to extract the relevant data:
 
-#### If work type is "feature"
+#### If work type is `feature`
 
 Find the topic entry under `features: > topics:` and extract its `next_phase`.
 
-#### If work type is "bugfix"
+#### If work type is `bugfix`
 
 Find the topic entry under `bugfixes: > topics:` and extract its `next_phase`.
 
-#### If work type is "greenfield"
+#### If work type is `greenfield`
 
 Parse the `greenfield:` section for phase-centric state:
 - `state`: Counts of artifacts across all phases
@@ -53,15 +53,15 @@ Parse the `greenfield:` section for phase-centric state:
 
 Based on work type, load the appropriate continuation reference:
 
-#### If work type is "feature"
+#### If work type is `feature`
 
 Load **[feature-continuation.md](references/feature-continuation.md)** and follow its instructions as written.
 
-#### If work type is "bugfix"
+#### If work type is `bugfix`
 
 Load **[bugfix-continuation.md](references/bugfix-continuation.md)** and follow its instructions as written.
 
-#### If work type is "greenfield"
+#### If work type is `greenfield`
 
 Load **[greenfield-continuation.md](references/greenfield-continuation.md)** and follow its instructions as written.
 

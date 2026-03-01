@@ -13,18 +13,18 @@
 
 ## Route
 
-#### If selection is "Unify all"
+#### If selection is `Unify all`
 
 → Load **[confirm-unify.md](confirm-unify.md)** and follow its instructions.
 
-#### If verb is "Creating"
+#### If verb is `Creating`
 
 → Load **[confirm-create.md](confirm-create.md)** and follow its instructions.
 
-#### If verb is "Continuing"
+#### If verb is `Continuing`
 
 → Load **[confirm-continue.md](confirm-continue.md)** and follow its instructions.
 
-#### If verb is "Refining"
+#### If verb is `Refining`
 
 → Load **[confirm-refine.md](confirm-refine.md)** and follow its instructions.
