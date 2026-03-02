@@ -299,15 +299,20 @@ while IFS= read -r name; do
         disc_file=$(_016_fetch "disc" "$name")
         if [ -n "$disc_file" ] && [ -f "$disc_file" ]; then
             mkdir -p ".workflows/$name/discussion"
-            mv "$disc_file" ".workflows/$name/discussion/discussion.md"
-            report_update "$disc_file" "moved to .workflows/$name/discussion/discussion.md"
+            mv "$disc_file" ".workflows/$name/discussion/${name}.md"
+            report_update "$disc_file" "moved to .workflows/$name/discussion/${name}.md"
         fi
     fi
 
-    # Move investigation
+    # Move investigation (flat file: investigation.md → {name}.md)
     inv_dir=$(_016_fetch "inv" "$name")
     if [ -n "$inv_dir" ] && [ -d "$inv_dir" ]; then
         mkdir -p ".workflows/$name/investigation"
+        if [ -f "${inv_dir}investigation.md" ]; then
+            mv "${inv_dir}investigation.md" ".workflows/$name/investigation/${name}.md"
+            report_update "${inv_dir}investigation.md" "moved to .workflows/$name/investigation/${name}.md"
+        fi
+        # Move any remaining files
         for ifile in "$inv_dir"*; do
             [ -e "$ifile" ] || continue
             bname=$(basename "$ifile")
@@ -315,68 +320,67 @@ while IFS= read -r name; do
                 mv "$ifile" ".workflows/$name/investigation/"
             fi
         done
-        report_update "$inv_dir" "moved to .workflows/$name/investigation/"
     fi
 
-    # Move specification
+    # Move specification (topic subdir: specification/{name}/)
     spec_dir=$(_016_fetch "spec" "$name")
     if [ -n "$spec_dir" ] && [ -d "$spec_dir" ]; then
-        mkdir -p ".workflows/$name/specification"
+        mkdir -p ".workflows/$name/specification/$name"
         for sfile in "$spec_dir"*; do
             [ -e "$sfile" ] || continue
-            mv "$sfile" ".workflows/$name/specification/"
+            mv "$sfile" ".workflows/$name/specification/$name/"
         done
-        report_update "$spec_dir" "moved to .workflows/$name/specification/"
+        report_update "$spec_dir" "moved to .workflows/$name/specification/$name/"
     fi
 
-    # Move planning (plan.md → planning.md)
+    # Move planning (plan.md → planning.md, topic subdir: planning/{name}/)
     plan_dir=$(_016_fetch "plan" "$name")
     if [ -n "$plan_dir" ] && [ -d "$plan_dir" ]; then
-        mkdir -p ".workflows/$name/planning"
+        mkdir -p ".workflows/$name/planning/$name"
         if [ -f "${plan_dir}plan.md" ]; then
-            mv "${plan_dir}plan.md" ".workflows/$name/planning/planning.md"
-            report_update "${plan_dir}plan.md" "moved and renamed to planning.md"
+            mv "${plan_dir}plan.md" ".workflows/$name/planning/$name/planning.md"
+            report_update "${plan_dir}plan.md" "moved and renamed to planning/$name/planning.md"
         fi
         if [ -d "${plan_dir}tasks" ]; then
-            mv "${plan_dir}tasks" ".workflows/$name/planning/tasks"
-            report_update "${plan_dir}tasks/" "moved to .workflows/$name/planning/tasks/"
+            mv "${plan_dir}tasks" ".workflows/$name/planning/$name/tasks"
+            report_update "${plan_dir}tasks/" "moved to .workflows/$name/planning/$name/tasks/"
         fi
         # Move remaining files
         for pfile in "$plan_dir"*; do
             [ -e "$pfile" ] || continue
             bname=$(basename "$pfile")
-            if [ ! -e ".workflows/$name/planning/$bname" ]; then
-                mv "$pfile" ".workflows/$name/planning/"
+            if [ ! -e ".workflows/$name/planning/$name/$bname" ]; then
+                mv "$pfile" ".workflows/$name/planning/$name/"
             fi
         done
     fi
 
-    # Move implementation (tracking.md → implementation.md)
+    # Move implementation (tracking.md → implementation.md, topic subdir: implementation/{name}/)
     impl_dir=$(_016_fetch "impl" "$name")
     if [ -n "$impl_dir" ] && [ -d "$impl_dir" ]; then
-        mkdir -p ".workflows/$name/implementation"
+        mkdir -p ".workflows/$name/implementation/$name"
         if [ -f "${impl_dir}tracking.md" ]; then
-            mv "${impl_dir}tracking.md" ".workflows/$name/implementation/implementation.md"
-            report_update "${impl_dir}tracking.md" "moved and renamed to implementation.md"
+            mv "${impl_dir}tracking.md" ".workflows/$name/implementation/$name/implementation.md"
+            report_update "${impl_dir}tracking.md" "moved and renamed to implementation/$name/implementation.md"
         fi
         for imfile in "$impl_dir"*; do
             [ -e "$imfile" ] || continue
             bname=$(basename "$imfile")
-            if [ ! -e ".workflows/$name/implementation/$bname" ]; then
-                mv "$imfile" ".workflows/$name/implementation/"
+            if [ ! -e ".workflows/$name/implementation/$name/$bname" ]; then
+                mv "$imfile" ".workflows/$name/implementation/$name/"
             fi
         done
     fi
 
-    # Move review
+    # Move review (topic subdir: review/{name}/)
     review_dir=$(_016_fetch "review" "$name")
     if [ -n "$review_dir" ] && [ -d "$review_dir" ]; then
-        mkdir -p ".workflows/$name/review"
+        mkdir -p ".workflows/$name/review/$name"
         for ritem in "$review_dir"*; do
             [ -e "$ritem" ] || continue
-            mv "$ritem" ".workflows/$name/review/"
+            mv "$ritem" ".workflows/$name/review/$name/"
         done
-        report_update "$review_dir" "moved to .workflows/$name/review/"
+        report_update "$review_dir" "moved to .workflows/$name/review/$name/"
     fi
 
     # Move research (for v1 epic)
@@ -393,11 +397,11 @@ while IFS= read -r name; do
         fi
     fi
 
-    # Move research analysis cache
+    # Move research analysis to per-work-unit state dir
     if [ -f ".workflows/.state/research-analysis.md" ] && [ "$name" = "v1" ]; then
-        mkdir -p ".workflows/$name/.cache"
-        mv ".workflows/.state/research-analysis.md" ".workflows/$name/.cache/research-analysis.md"
-        report_update ".workflows/.state/research-analysis.md" "moved to .workflows/$name/.cache/"
+        mkdir -p ".workflows/$name/.state"
+        mv ".workflows/.state/research-analysis.md" ".workflows/$name/.state/research-analysis.md"
+        report_update ".workflows/.state/research-analysis.md" "moved to .workflows/$name/.state/"
     fi
 
     # ------------------------------------------------------------------
@@ -443,8 +447,8 @@ while IFS= read -r name; do
             phases: {}
         };
 
-        // Discussion (feature/bugfix — single file)
-        var discFile = path.join(workDir, 'discussion', 'discussion.md');
+        // Discussion (feature/bugfix — single file: {name}.md)
+        var discFile = path.join(workDir, 'discussion', name + '.md');
         if (fs.existsSync(discFile)) {
             var fm = extractFrontmatter(discFile);
             manifest.phases.discussion = { status: fm.status || 'in-progress' };
@@ -469,16 +473,16 @@ while IFS= read -r name; do
             }
         }
 
-        // Investigation
-        var invFile = path.join(workDir, 'investigation', 'investigation.md');
+        // Investigation (flat file: {name}.md)
+        var invFile = path.join(workDir, 'investigation', name + '.md');
         if (fs.existsSync(invFile)) {
             var fm = extractFrontmatter(invFile);
             manifest.phases.investigation = { status: fm.status || 'in-progress' };
             if (fm.date && !manifest.created) manifest.created = fm.date;
         }
 
-        // Specification
-        var specFile = path.join(workDir, 'specification', 'specification.md');
+        // Specification (topic subdir: specification/{name}/)
+        var specFile = path.join(workDir, 'specification', name, 'specification.md');
         if (fs.existsSync(specFile)) {
             var fm = extractFrontmatter(specFile);
             var spec = { status: fm.status || 'in-progress' };
@@ -488,8 +492,8 @@ while IFS= read -r name; do
             manifest.phases.specification = spec;
         }
 
-        // Planning
-        var planFile = path.join(workDir, 'planning', 'planning.md');
+        // Planning (topic subdir: planning/{name}/)
+        var planFile = path.join(workDir, 'planning', name, 'planning.md');
         if (fs.existsSync(planFile)) {
             var fm = extractFrontmatter(planFile);
             var plan = { status: fm.status || 'in-progress' };
@@ -503,8 +507,8 @@ while IFS= read -r name; do
             manifest.phases.planning = plan;
         }
 
-        // Implementation
-        var implFile = path.join(workDir, 'implementation', 'implementation.md');
+        // Implementation (topic subdir: implementation/{name}/)
+        var implFile = path.join(workDir, 'implementation', name, 'implementation.md');
         if (fs.existsSync(implFile)) {
             var fm = extractFrontmatter(implFile);
             var impl = { status: fm.status || 'in-progress' };
