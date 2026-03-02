@@ -69,7 +69,7 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if `.workflows/discussion/{topic}.md` already exists.
+Check if the discussion file already exists. For feature/bugfix: `.workflows/{work-unit}/discussion/discussion.md`. For epic: `.workflows/{work-unit}/discussion/{topic}.md`.
 
 #### If the file exists
 
@@ -85,10 +85,17 @@ Read it. Announce the current state of the discussion (questions answered, quest
 
 ## Step 1: Initialize Discussion
 
-1. Ensure the discussion directory exists: `.workflows/discussion/`
-2. Load **[template.md](references/template.md)** — use it to create `.workflows/discussion/{topic}.md`
-3. Fill frontmatter: topic, `status: in-progress`, today's date, and `research_source` if provided in handoff
-4. Populate Context section and initial Questions list
+1. Ensure the discussion directory exists: `.workflows/{work-unit}/discussion/`
+2. Load **[template.md](references/template.md)** — use it to create the discussion file. For feature/bugfix: `.workflows/{work-unit}/discussion/discussion.md`. For epic: `.workflows/{work-unit}/discussion/{topic}.md`.
+3. Populate Context section and initial Questions list
+4. Set discussion status via manifest CLI:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.discussion.status in-progress
+   ```
+   For epic items:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js add-item {work-unit} discussion {topic}
+   ```
 5. Commit the initial file
 
 → Proceed to **Step 2**.

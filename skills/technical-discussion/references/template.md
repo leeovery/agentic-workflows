@@ -4,7 +4,7 @@
 
 ---
 
-Standard structure for `.workflows/discussion/{topic}.md`. DOCUMENT only - no plans or code.
+Standard structure for discussion files. DOCUMENT only - no plans or code. For feature/bugfix: `.workflows/{work-unit}/discussion/discussion.md`. For epic: `.workflows/{work-unit}/discussion/{topic}.md`.
 
 This is a single file per topic.
 
@@ -13,13 +13,6 @@ This is a single file per topic.
 ## Template
 
 ```markdown
----
-topic: {topic-name}
-status: in-progress
-date: YYYY-MM-DD  # Use today's actual date
-research_source: {filename}.md  # Optional — only when handoff includes research source
----
-
 # Discussion: {Topic}
 
 ## Context
@@ -96,21 +89,14 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - [ ] Validate Y
 ```
 
-## Field Notes
-
-- `topic`: The discussion topic. Should match the filename (e.g., `auth-flow` for `auth-flow.md`).
-- `status`: Lifecycle state — `in-progress` or `concluded`.
-- `date`: Today's date when creating the document.
-- `research_source`: (optional) The research file this discussion originated from. Include only when the handoff provides a research source. Feature pipeline only — greenfield discussions may draw from multiple research files.
-
 ## Usage Notes
 
 **When creating**:
-1. Ensure discussion directory exists: `.workflows/discussion/`
-2. Create file: `{topic}.md`
-3. Fill frontmatter: topic, status, date, and research_source if provided in handoff
-4. Start with context: why discussing?
-5. List questions: what needs deciding?
+1. Ensure discussion directory exists: `.workflows/{work-unit}/discussion/`
+2. Create file: `discussion.md` (feature/bugfix) or `{topic}.md` (epic)
+3. Start with context: why discussing?
+4. List questions: what needs deciding?
+5. Set status via manifest CLI (the skill handles this)
 
 **During discussion**:
 - Work through questions one at a time

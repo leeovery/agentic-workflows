@@ -23,17 +23,27 @@ Incorporate the user's context into the discussion, commit, then re-present the 
 
 #### If `yes`
 
-1. Update frontmatter `status: concluded`
-2. Final commit
-3. Check the artifact frontmatter for `work_type`
+1. Set discussion status to concluded via manifest CLI:
+   ```bash
+   # Feature/bugfix (flat phase):
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.discussion.status concluded
 
-**If work_type is set** (feature, bugfix, or greenfield):
+   # Epic (item within phase):
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.discussion.items.{topic}.status concluded
+   ```
+2. Final commit
+3. Read work_type from manifest:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+   ```
+
+**If work_type is set** (feature, bugfix, or epic):
 
 This discussion is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {topic}
-Work type: {work_type from artifact frontmatter}
+Pipeline bridge for: {work-unit}
+Work type: {work_type from manifest}
 Completed phase: discussion
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

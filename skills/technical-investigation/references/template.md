@@ -7,13 +7,6 @@
 Use this structure for investigation documents.
 
 ```markdown
----
-topic: {topic}
-status: in-progress
-work_type: bugfix
-date: {YYYY-MM-DD}
----
-
 # Investigation: {Topic Title}
 
 ## Symptoms

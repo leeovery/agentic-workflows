@@ -32,7 +32,10 @@ Incorporate the user's context into the investigation file and commit. Re-presen
 
 #### If `yes`
 
-1. Update frontmatter `status: concluded`
+1. Set investigation status to concluded via manifest CLI:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.investigation.status concluded
+   ```
 2. Final commit
 3. Display conclusion:
 
@@ -48,14 +51,17 @@ The investigation is ready for specification. The specification will
 detail the exact fix approach, acceptance criteria, and testing plan.
 ```
 
-4. Check the investigation frontmatter for `work_type`
+4. Read work_type from manifest:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+   ```
 
 **If work_type is set** (bugfix):
 
 This investigation is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {topic}
+Pipeline bridge for: {work-unit}
 Work type: bugfix
 Completed phase: investigation
 

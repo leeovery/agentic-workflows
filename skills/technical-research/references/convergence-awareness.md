@@ -28,9 +28,19 @@ Document the convergence point in the research file using this marker:
 
 Commit the file.
 
-Check the research artifact frontmatter for `work_type`.
+Set research status to concluded via manifest CLI:
 
-**If work_type is set** (feature or greenfield):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.research.status concluded
+```
+
+Check work_type from manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+```
+
+**If work_type is set** (feature or epic):
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -54,8 +64,8 @@ This topic is marked discussion-ready. Would you like to:
 Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {topic}
-Work type: {work_type from artifact frontmatter}
+Pipeline bridge for: {work-unit}
+Work type: {work_type from manifest}
 Completed phase: research
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

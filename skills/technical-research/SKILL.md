@@ -67,7 +67,7 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if research files exist in `.workflows/research/`.
+Check if research files exist in `.workflows/{work-unit}/research/`.
 
 #### If files exist
 
@@ -83,10 +83,13 @@ Read them. Announce what's been explored so far and what themes have emerged. As
 
 ## Step 1: Initialize Research
 
-1. Ensure the research directory exists: `.workflows/research/`
-2. Load **[template.md](references/template.md)** — use it to create `.workflows/research/exploration.md`
-3. Fill frontmatter: `topic: exploration`, today's date
-4. Populate the Starting Point section with context from the user
+1. Ensure the research directory exists: `.workflows/{work-unit}/research/`
+2. Load **[template.md](references/template.md)** — use it to create `.workflows/{work-unit}/research/exploration.md`
+3. Populate the Starting Point section with context from the user
+4. Set research status via manifest CLI:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.research.status in-progress
+   ```
 5. Commit the initial file
 
 → Proceed to **Step 2**.

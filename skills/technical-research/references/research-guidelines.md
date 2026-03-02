@@ -40,13 +40,13 @@ Ask one question at a time. Wait for the answer. Document. Then ask the next.
 
 ## File Strategy
 
-**Output**: `.workflows/research/exploration.md`
+**Output**: `.workflows/{work-unit}/research/exploration.md`
 
 **Template**: Use **[template.md](template.md)** for document structure.
 
 Start with one file. Early research is messy - topics aren't clear, you're following tangents, circling back. Don't force structure too early.
 
-**Let themes emerge**: Over multiple sessions, topics may become distinct. When they do, split into semantic files (`market-landscape.md`, `technical-feasibility.md`). Update the `topic` field to match the filename.
+**Let themes emerge**: Over multiple sessions, topics may become distinct. When they do, split into semantic files (`market-landscape.md`, `technical-feasibility.md`).
 
 **Periodic review**: Every few sessions, assess: are themes emerging? Split them out. Still fuzzy? Keep exploring. Ready for deeper discussion or specification? Research is complete.
 
@@ -63,8 +63,6 @@ Research without documentation is wasted. Follow this loop:
 **Don't batch**. Every insight gets pushed before the next question. Context can refresh at any time—unpushed work is lost.
 
 ## Critical Rules
-
-**No status field**: Research documents do NOT have a `status` field in their frontmatter. Only `topic` and `date`. Research is open-ended by nature — it doesn't "conclude." Even when a research exploration feels complete, do not add `status: concluded` or any similar field. The document stays as-is.
 
 **Don't hallucinate**: Only document what was actually discussed.
 
