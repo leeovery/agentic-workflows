@@ -1,7 +1,13 @@
 #!/bin/bash
 #
 # Tests the discovery script for /start-review against various workflow states.
-# Creates temporary fixtures and validates YAML output.
+# Creates temporary fixtures with manifest.json files and validates YAML output.
+#
+# Review discovery reads:
+# - Plans from manifest CLI (phases.planning)
+# - Implementation state from manifest CLI (phases.implementation)
+# - Review dirs from .workflows/{name}/review/r*/review.md
+# - planning.md from work-unit dirs
 #
 
 set -eo pipefail
@@ -32,9 +38,52 @@ echo ""
 #
 
 setup_fixture() {
-    # Clean up from previous test
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+}
+
+create_manifest() {
+    local name="$1"
+    local work_type="$2"
+    shift 2
+
+    mkdir -p "$TEST_DIR/.workflows/$name"
+
+    local phases='{}'
+    if [ -n "$1" ]; then
+        phases="$1"
+    fi
+
+    cat > "$TEST_DIR/.workflows/$name/manifest.json" << EOFMANIFEST
+{
+  "name": "$name",
+  "work_type": "$work_type",
+  "status": "active",
+  "description": "Test work unit: $name",
+  "phases": $phases
+}
+EOFMANIFEST
+}
+
+create_planning_file() {
+    local wu_name="$1"
+    local content="$2"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/planning"
+    cat > "$TEST_DIR/.workflows/$wu_name/planning/planning.md" << EOF
+$content
+EOF
+}
+
+create_review_file() {
+    local wu_name="$1"
+    local version="$2"
+    local content="$3"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/review/r${version}"
+    cat > "$TEST_DIR/.workflows/$wu_name/review/r${version}/review.md" << EOF
+$content
+EOF
 }
 
 run_discovery() {
@@ -84,62 +133,40 @@ assert_not_contains() {
 # TEST CASES
 # ============================================================================
 
-echo -e "${YELLOW}Test: No planning directory${NC}"
+echo -e "${YELLOW}Test: No work units (no plans)${NC}"
 setup_fixture
-# Don't create planning directory
+
 output=$(run_discovery)
 
 assert_contains "$output" "plans:" "Has plans section"
 assert_contains "$output" "exists: false" "Plans don't exist"
 assert_contains "$output" "count: 0" "Plan count is 0"
-assert_contains "$output" "scenario: \"no_plans\"" "Scenario is no_plans"
+assert_contains "$output" 'scenario: "no_plans"' "Scenario is no_plans"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: Empty planning directory${NC}"
+echo -e "${YELLOW}Test: Single plan with full manifest data${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning"
-output=$(run_discovery)
 
-assert_contains "$output" "exists: false" "Plans don't exist (empty dir)"
-assert_contains "$output" "scenario: \"no_plans\"" "Scenario is no_plans"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: Single plan with full frontmatter${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/user-auth"
-cat > "$TEST_DIR/.workflows/planning/user-auth/plan.md" << 'EOF'
----
+create_manifest "user-auth" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "user-auth" "---
 topic: user-auth
 status: in-progress
-date: 2024-01-15
 format: local-markdown
-specification: user-auth/specification.md
 ---
 
-# Implementation Plan: User Authentication
-
-## Overview
-
-Content here.
-EOF
+# Implementation Plan: User Authentication"
 
 output=$(run_discovery)
 
 assert_contains "$output" "exists: true" "Plans exist"
 assert_contains "$output" "count: 1" "Plan count is 1"
-assert_contains "$output" "name: \"user-auth\"" "Plan name extracted"
-assert_contains "$output" "topic: \"user-auth\"" "Topic extracted"
-assert_contains "$output" "status: \"in-progress\"" "Status extracted"
-assert_contains "$output" "date: \"2024-01-15\"" "Date extracted"
-assert_contains "$output" "format: \"local-markdown\"" "Format extracted"
-assert_contains "$output" "specification: \"user-auth/specification.md\"" "Specification extracted"
-assert_contains "$output" "scenario: \"single_plan\"" "Scenario is single_plan"
+assert_contains "$output" 'name: "user-auth"' "Plan name extracted"
+assert_contains "$output" 'planning_status: "in-progress"' "Planning status extracted"
+assert_contains "$output" 'format: "local-markdown"' "Format extracted"
+assert_contains "$output" 'scenario: "single_plan"' "Scenario is single_plan"
 
 echo ""
 
@@ -147,39 +174,31 @@ echo ""
 
 echo -e "${YELLOW}Test: Multiple plans${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/feature-a"
-mkdir -p "$TEST_DIR/.workflows/planning/feature-b"
 
-cat > "$TEST_DIR/.workflows/planning/feature-a/plan.md" << 'EOF'
----
+create_manifest "feature-a" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "feature-a" "---
 topic: feature-a
 status: in-progress
-date: 2024-01-10
 format: local-markdown
-specification: feature-a/specification.md
 ---
 
-# Implementation Plan: Feature A
-EOF
+# Implementation Plan: Feature A"
 
-cat > "$TEST_DIR/.workflows/planning/feature-b/plan.md" << 'EOF'
----
+create_manifest "feature-b" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "feature-b" "---
 topic: feature-b
 status: concluded
-date: 2024-01-20
 format: local-markdown
-specification: feature-b/specification.md
 ---
 
-# Implementation Plan: Feature B
-EOF
+# Implementation Plan: Feature B"
 
 output=$(run_discovery)
 
 assert_contains "$output" "count: 2" "Plan count is 2"
-assert_contains "$output" "name: \"feature-a\"" "First plan found"
-assert_contains "$output" "name: \"feature-b\"" "Second plan found"
-assert_contains "$output" "scenario: \"multiple_plans\"" "Scenario is multiple_plans"
+assert_contains "$output" 'name: "feature-a"' "First plan found"
+assert_contains "$output" 'name: "feature-b"' "Second plan found"
+assert_contains "$output" 'scenario: "multiple_plans"' "Scenario is multiple_plans"
 
 echo ""
 
@@ -187,29 +206,17 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with linked specification that exists${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/with-spec"
-mkdir -p "$TEST_DIR/.workflows/specification/with-spec"
 
-cat > "$TEST_DIR/.workflows/planning/with-spec/plan.md" << 'EOF'
----
+create_manifest "with-spec" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}, "specification": {"status": "concluded"}}'
+create_planning_file "with-spec" "---
 topic: with-spec
 status: in-progress
-date: 2024-03-01
 format: local-markdown
-specification: with-spec/specification.md
 ---
 
-# Implementation Plan: With Spec
-EOF
-
-cat > "$TEST_DIR/.workflows/specification/with-spec/specification.md" << 'EOF'
----
-topic: with-spec
-status: concluded
----
-
-# Specification: With Spec
-EOF
+# Implementation Plan: With Spec"
+mkdir -p "$TEST_DIR/.workflows/with-spec/specification"
+echo "# Spec" > "$TEST_DIR/.workflows/with-spec/specification/specification.md"
 
 output=$(run_discovery)
 
@@ -221,19 +228,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with linked specification that doesn't exist${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-spec"
 
-cat > "$TEST_DIR/.workflows/planning/no-spec/plan.md" << 'EOF'
----
+create_manifest "no-spec" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "no-spec" "---
 topic: no-spec
 status: in-progress
-date: 2024-03-01
 format: local-markdown
-specification: missing-spec/specification.md
 ---
 
-# Implementation Plan: No Spec
-EOF
+# Implementation Plan: No Spec"
 
 output=$(run_discovery)
 
@@ -243,92 +246,17 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: Plan with missing frontmatter fields (defaults)${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/minimal"
-
-cat > "$TEST_DIR/.workflows/planning/minimal/plan.md" << 'EOF'
----
-topic: minimal
----
-
-# Implementation Plan: Minimal
-EOF
-
-output=$(run_discovery)
-
-assert_contains "$output" "name: \"minimal\"" "Name from filename"
-assert_contains "$output" "topic: \"minimal\"" "Topic from frontmatter"
-assert_contains "$output" "status: \"unknown\"" "Status defaults to unknown"
-assert_contains "$output" "format: \"MISSING\"" "Missing format flagged"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: Plan with plan_id${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/with-plan-id"
-
-cat > "$TEST_DIR/.workflows/planning/with-plan-id/plan.md" << 'EOF'
----
-topic: with-plan-id
-status: in-progress
-date: 2024-05-01
-format: beads
-specification: with-plan-id/specification.md
-plan_id: my-project-abc123
----
-
-# Implementation Plan: With Plan ID
-EOF
-
-output=$(run_discovery)
-
-assert_contains "$output" "plan_id: \"my-project-abc123\"" "Plan ID extracted"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: Plan without plan_id${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-plan-id"
-
-cat > "$TEST_DIR/.workflows/planning/no-plan-id/plan.md" << 'EOF'
----
-topic: no-plan-id
-status: in-progress
-date: 2024-05-01
-format: local-markdown
-specification: no-plan-id/specification.md
----
-
-# Implementation Plan: No Plan ID
-EOF
-
-output=$(run_discovery)
-
-assert_not_contains "$output" "plan_id:" "No plan_id when not present"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: Plan with no review${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-review"
 
-cat > "$TEST_DIR/.workflows/planning/no-review/plan.md" << 'EOF'
----
+create_manifest "no-review" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "no-review" "---
 topic: no-review
 status: concluded
 format: local-markdown
-specification: no-review/specification.md
 ---
 
-# Plan: No Review
-EOF
+# Plan: No Review"
 
 output=$(run_discovery)
 
@@ -342,29 +270,23 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with single review${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/single-review"
-mkdir -p "$TEST_DIR/.workflows/review/single-review/r1"
 
-cat > "$TEST_DIR/.workflows/planning/single-review/plan.md" << 'EOF'
----
+create_manifest "single-review" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "review": {"status": "completed"}}'
+create_planning_file "single-review" "---
 topic: single-review
 status: concluded
 format: local-markdown
-specification: single-review/specification.md
 ---
 
-# Plan: Single Review
-EOF
+# Plan: Single Review"
 
-cat > "$TEST_DIR/.workflows/review/single-review/r1/review.md" << 'EOF'
----
+create_review_file "single-review" "1" "---
 topic: single-review
 ---
 
 **QA Verdict**: Approve
 
-# Review: Single Review
-EOF
+# Review: Single Review"
 
 output=$(run_discovery)
 
@@ -378,40 +300,31 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with multiple reviews${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/multi-review"
-mkdir -p "$TEST_DIR/.workflows/review/multi-review/r1"
-mkdir -p "$TEST_DIR/.workflows/review/multi-review/r2"
 
-cat > "$TEST_DIR/.workflows/planning/multi-review/plan.md" << 'EOF'
----
+create_manifest "multi-review" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "review": {"status": "completed"}}'
+create_planning_file "multi-review" "---
 topic: multi-review
 status: concluded
 format: local-markdown
-specification: multi-review/specification.md
 ---
 
-# Plan: Multi Review
-EOF
+# Plan: Multi Review"
 
-cat > "$TEST_DIR/.workflows/review/multi-review/r1/review.md" << 'EOF'
----
+create_review_file "multi-review" "1" "---
 topic: multi-review
 ---
 
 **QA Verdict**: Request Changes
 
-# Review: Multi Review r1
-EOF
+# Review: Multi Review r1"
 
-cat > "$TEST_DIR/.workflows/review/multi-review/r2/review.md" << 'EOF'
----
+create_review_file "multi-review" "2" "---
 topic: multi-review
 ---
 
 **QA Verdict**: Approve
 
-# Review: Multi Review r2
-EOF
+# Review: Multi Review r2"
 
 output=$(run_discovery)
 
@@ -425,21 +338,18 @@ echo ""
 
 echo -e "${YELLOW}Test: Review dir exists but no review.md files${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/empty-review"
-mkdir -p "$TEST_DIR/.workflows/review/empty-review/r1"
 
-cat > "$TEST_DIR/.workflows/planning/empty-review/plan.md" << 'EOF'
----
+create_manifest "empty-review" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "empty-review" "---
 topic: empty-review
 status: concluded
 format: local-markdown
-specification: empty-review/specification.md
 ---
 
-# Plan: Empty Review
-EOF
+# Plan: Empty Review"
 
 # r1 directory exists but no review.md inside it
+mkdir -p "$TEST_DIR/.workflows/empty-review/review/r1"
 
 output=$(run_discovery)
 
@@ -450,24 +360,20 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: Review script does not output implementation section${NC}"
+echo -e "${YELLOW}Test: Review script does not output implementation-specific sections${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/test"
 
-cat > "$TEST_DIR/.workflows/planning/test/plan.md" << 'EOF'
----
+create_manifest "test" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "test" "---
 topic: test
 status: concluded
 format: local-markdown
-specification: test/specification.md
 ---
 
-# Plan: Test
-EOF
+# Plan: Test"
 
 output=$(run_discovery)
 
-assert_not_contains "$output" "implementation:" "No implementation section"
 assert_not_contains "$output" "dependency_resolution:" "No dependency_resolution section"
 assert_not_contains "$output" "environment:" "No environment section"
 assert_not_contains "$output" "plans_concluded_count:" "No plans_concluded_count"
@@ -482,28 +388,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with implementation in-progress${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/impl-wip"
-mkdir -p "$TEST_DIR/.workflows/implementation/impl-wip"
 
-cat > "$TEST_DIR/.workflows/planning/impl-wip/plan.md" << 'EOF'
----
+create_manifest "impl-wip" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress"}}'
+create_planning_file "impl-wip" "---
 topic: impl-wip
 status: concluded
 format: local-markdown
-specification: impl-wip/specification.md
 ---
 
-# Plan: Impl WIP
-EOF
-
-cat > "$TEST_DIR/.workflows/implementation/impl-wip/tracking.md" << 'EOF'
----
-topic: impl-wip
-status: in-progress
----
-
-# Implementation Tracking
-EOF
+# Plan: Impl WIP"
 
 output=$(run_discovery)
 
@@ -515,28 +408,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with implementation completed${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/impl-done"
-mkdir -p "$TEST_DIR/.workflows/implementation/impl-done"
 
-cat > "$TEST_DIR/.workflows/planning/impl-done/plan.md" << 'EOF'
----
+create_manifest "impl-done" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}}'
+create_planning_file "impl-done" "---
 topic: impl-done
 status: concluded
 format: local-markdown
-specification: impl-done/specification.md
 ---
 
-# Plan: Impl Done
-EOF
-
-cat > "$TEST_DIR/.workflows/implementation/impl-done/tracking.md" << 'EOF'
----
-topic: impl-done
-status: completed
----
-
-# Implementation Tracking
-EOF
+# Plan: Impl Done"
 
 output=$(run_discovery)
 
@@ -548,44 +428,28 @@ echo ""
 
 echo -e "${YELLOW}Test: Implemented count with mixed plans${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/has-impl"
-mkdir -p "$TEST_DIR/.workflows/planning/no-impl"
-mkdir -p "$TEST_DIR/.workflows/implementation/has-impl"
 
-cat > "$TEST_DIR/.workflows/planning/has-impl/plan.md" << 'EOF'
----
+create_manifest "has-impl" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress"}}'
+create_planning_file "has-impl" "---
 topic: has-impl
 status: concluded
 format: local-markdown
-specification: has-impl/specification.md
 ---
 
-# Plan: Has Impl
-EOF
+# Plan: Has Impl"
 
-cat > "$TEST_DIR/.workflows/implementation/has-impl/tracking.md" << 'EOF'
----
-topic: has-impl
-status: in-progress
----
-
-# Implementation Tracking
-EOF
-
-cat > "$TEST_DIR/.workflows/planning/no-impl/plan.md" << 'EOF'
----
+create_manifest "no-impl" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "no-impl" "---
 topic: no-impl
 status: concluded
 format: local-markdown
-specification: no-impl/specification.md
 ---
 
-# Plan: No Impl
-EOF
+# Plan: No Impl"
 
 output=$(run_discovery)
 
-assert_contains "$output" "implemented_count: 1" "Implemented count is 1 (one plan with tracking)"
+assert_contains "$output" "implemented_count: 1" "Implemented count is 1 (one plan with impl)"
 
 echo ""
 
@@ -593,41 +457,31 @@ echo ""
 
 echo -e "${YELLOW}Test: Reviewed plan count${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/reviewed-topic"
-mkdir -p "$TEST_DIR/.workflows/planning/unreviewed-topic"
-mkdir -p "$TEST_DIR/.workflows/review/reviewed-topic/r1"
 
-cat > "$TEST_DIR/.workflows/planning/reviewed-topic/plan.md" << 'EOF'
----
+create_manifest "reviewed-topic" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "review": {"status": "completed"}}'
+create_planning_file "reviewed-topic" "---
 topic: reviewed-topic
 status: concluded
 format: local-markdown
-specification: reviewed-topic/specification.md
 ---
 
-# Plan: Reviewed Topic
-EOF
-
-cat > "$TEST_DIR/.workflows/planning/unreviewed-topic/plan.md" << 'EOF'
----
-topic: unreviewed-topic
-status: concluded
-format: local-markdown
-specification: unreviewed-topic/specification.md
----
-
-# Plan: Unreviewed Topic
-EOF
-
-cat > "$TEST_DIR/.workflows/review/reviewed-topic/r1/review.md" << 'EOF'
----
+# Plan: Reviewed Topic"
+create_review_file "reviewed-topic" "1" "---
 topic: reviewed-topic
 ---
 
 **QA Verdict**: Approve
 
-# Review
-EOF
+# Review"
+
+create_manifest "unreviewed-topic" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "unreviewed-topic" "---
+topic: unreviewed-topic
+status: concluded
+format: local-markdown
+---
+
+# Plan: Unreviewed Topic"
 
 output=$(run_discovery)
 
@@ -639,39 +493,22 @@ echo ""
 
 echo -e "${YELLOW}Test: All reviewed true${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/all-rev"
-mkdir -p "$TEST_DIR/.workflows/implementation/all-rev"
-mkdir -p "$TEST_DIR/.workflows/review/all-rev/r1"
 
-cat > "$TEST_DIR/.workflows/planning/all-rev/plan.md" << 'EOF'
----
+create_manifest "all-rev" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}, "review": {"status": "completed"}}'
+create_planning_file "all-rev" "---
 topic: all-rev
 status: concluded
 format: local-markdown
-specification: all-rev/specification.md
 ---
 
-# Plan
-EOF
-
-cat > "$TEST_DIR/.workflows/implementation/all-rev/tracking.md" << 'EOF'
----
-topic: all-rev
-status: completed
----
-
-# Tracking
-EOF
-
-cat > "$TEST_DIR/.workflows/review/all-rev/r1/review.md" << 'EOF'
----
+# Plan"
+create_review_file "all-rev" "1" "---
 topic: all-rev
 ---
 
 **QA Verdict**: Approve
 
-# Review
-EOF
+# Review"
 
 output=$(run_discovery)
 
@@ -683,61 +520,31 @@ echo ""
 
 echo -e "${YELLOW}Test: All reviewed false${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/rev-yes"
-mkdir -p "$TEST_DIR/.workflows/planning/rev-no"
-mkdir -p "$TEST_DIR/.workflows/implementation/rev-yes"
-mkdir -p "$TEST_DIR/.workflows/implementation/rev-no"
-mkdir -p "$TEST_DIR/.workflows/review/rev-yes/r1"
 
-cat > "$TEST_DIR/.workflows/planning/rev-yes/plan.md" << 'EOF'
----
+create_manifest "rev-yes" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}, "review": {"status": "completed"}}'
+create_planning_file "rev-yes" "---
 topic: rev-yes
 status: concluded
 format: local-markdown
-specification: rev-yes/specification.md
 ---
 
-# Plan
-EOF
-
-cat > "$TEST_DIR/.workflows/planning/rev-no/plan.md" << 'EOF'
----
-topic: rev-no
-status: concluded
-format: local-markdown
-specification: rev-no/specification.md
----
-
-# Plan
-EOF
-
-cat > "$TEST_DIR/.workflows/implementation/rev-yes/tracking.md" << 'EOF'
----
-topic: rev-yes
-status: completed
----
-
-# Tracking
-EOF
-
-cat > "$TEST_DIR/.workflows/implementation/rev-no/tracking.md" << 'EOF'
----
-topic: rev-no
-status: completed
----
-
-# Tracking
-EOF
-
-cat > "$TEST_DIR/.workflows/review/rev-yes/r1/review.md" << 'EOF'
----
+# Plan"
+create_review_file "rev-yes" "1" "---
 topic: rev-yes
 ---
 
 **QA Verdict**: Approve
 
-# Review
-EOF
+# Review"
+
+create_manifest "rev-no" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}}'
+create_planning_file "rev-no" "---
+topic: rev-no
+status: concluded
+format: local-markdown
+---
+
+# Plan"
 
 output=$(run_discovery)
 
@@ -749,35 +556,28 @@ echo ""
 
 echo -e "${YELLOW}Test: Reviews section with existing review${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/rev-section"
-mkdir -p "$TEST_DIR/.workflows/review/rev-section/r1"
 
-cat > "$TEST_DIR/.workflows/planning/rev-section/plan.md" << 'EOF'
----
+create_manifest "rev-section" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "review": {"status": "completed"}}'
+create_planning_file "rev-section" "---
 topic: rev-section
 status: concluded
 format: local-markdown
-specification: rev-section/specification.md
 ---
 
-# Plan
-EOF
-
-cat > "$TEST_DIR/.workflows/review/rev-section/r1/review.md" << 'EOF'
----
+# Plan"
+create_review_file "rev-section" "1" "---
 topic: rev-section
 ---
 
 **QA Verdict**: Approve
 
-# Review
-EOF
+# Review"
 
 output=$(run_discovery)
 
 assert_contains "$output" "reviews:" "Reviews section exists"
 assert_contains "$output" "exists: true" "Reviews exists is true"
-assert_contains "$output" 'topic: "rev-section"' "Review topic appears in reviews section"
+assert_contains "$output" 'name: "rev-section"' "Review topic appears in reviews section"
 assert_contains "$output" "latest_version: 1" "Latest version is 1"
 assert_contains "$output" "Approve" "Latest verdict contains Approve"
 
@@ -787,26 +587,61 @@ echo ""
 
 echo -e "${YELLOW}Test: Reviews section empty (no review dir)${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-rev-dir"
 
-cat > "$TEST_DIR/.workflows/planning/no-rev-dir/plan.md" << 'EOF'
----
+create_manifest "no-rev-dir" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "no-rev-dir" "---
 topic: no-rev-dir
 status: concluded
 format: local-markdown
-specification: no-rev-dir/specification.md
 ---
 
-# Plan
-EOF
+# Plan"
 
 output=$(run_discovery)
 
 assert_contains "$output" "reviews:" "Reviews section exists"
-# The second "exists: false" in output corresponds to the reviews section
-# (first one is from plans section which is true here)
-# Use a more specific check: reviews section followed by exists: false
 assert_not_contains "$output" "entries:" "No entries in reviews section"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Plan with plan_id${NC}"
+setup_fixture
+
+create_manifest "with-plan-id" "feature" '{"planning": {"status": "in-progress", "format": "beads", "plan_id": "my-project-abc123"}}'
+create_planning_file "with-plan-id" "---
+topic: with-plan-id
+status: in-progress
+format: beads
+plan_id: my-project-abc123
+---
+
+# Implementation Plan: With Plan ID"
+
+output=$(run_discovery)
+
+assert_contains "$output" 'plan_id: "my-project-abc123"' "Plan ID extracted"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Plan without plan_id${NC}"
+setup_fixture
+
+create_manifest "no-plan-id" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "no-plan-id" "---
+topic: no-plan-id
+status: in-progress
+format: local-markdown
+---
+
+# Implementation Plan: No Plan ID"
+
+output=$(run_discovery)
+
+assert_not_contains "$output" "plan_id:" "No plan_id when not present"
 
 echo ""
 

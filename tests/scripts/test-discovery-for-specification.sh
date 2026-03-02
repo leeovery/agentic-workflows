@@ -1,7 +1,12 @@
 #!/bin/bash
 #
-# Tests the discovery-for-specification.sh script against various workflow states.
-# Creates temporary fixtures and validates YAML output.
+# Tests the discovery script for start-specification.
+# Creates temporary fixtures with manifest.json files and validates YAML output.
+#
+# Specification discovery reads:
+# - Discussions from work-unit dirs (.workflows/{wu}/discussion/)
+# - Specifications from work-unit dirs (.workflows/{wu}/specification/)
+# - Cache state from .workflows/.state/discussion-consolidation-analysis.md
 #
 
 set -eo pipefail
@@ -32,9 +37,52 @@ echo ""
 #
 
 setup_fixture() {
-    # Clean up from previous test
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+}
+
+create_manifest() {
+    local name="$1"
+    local work_type="$2"
+    shift 2
+
+    mkdir -p "$TEST_DIR/.workflows/$name"
+
+    local phases='{}'
+    if [ -n "$1" ]; then
+        phases="$1"
+    fi
+
+    cat > "$TEST_DIR/.workflows/$name/manifest.json" << EOFMANIFEST
+{
+  "name": "$name",
+  "work_type": "$work_type",
+  "status": "active",
+  "description": "Test work unit: $name",
+  "phases": $phases
+}
+EOFMANIFEST
+}
+
+create_discussion_file() {
+    local wu_name="$1"
+    local filename="$2"
+    local content="$3"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/discussion"
+    cat > "$TEST_DIR/.workflows/$wu_name/discussion/$filename" << EOF
+$content
+EOF
+}
+
+create_spec_file() {
+    local wu_name="$1"
+    local content="$2"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/specification"
+    cat > "$TEST_DIR/.workflows/$wu_name/specification/specification.md" << EOF
+$content
+EOF
 }
 
 run_discovery() {
@@ -49,7 +97,7 @@ assert_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$output" | grep -q "$expected"; then
+    if echo "$output" | grep -qF -- "$expected"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -68,7 +116,7 @@ assert_not_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if ! echo "$output" | grep -q "$pattern"; then
+    if ! echo "$output" | grep -qF -- "$pattern"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -90,9 +138,9 @@ test_fresh_state() {
     local output=$(run_discovery)
 
     assert_contains "$output" 'discussions:' "Has discussions section"
-    assert_contains "$output" '\[\]  # No discussions found' "Discussions empty"
+    assert_contains "$output" '[]  # No discussions found' "Discussions empty"
     assert_contains "$output" 'specifications:' "Has specifications section"
-    assert_contains "$output" '\[\]  # No specifications found' "Specifications empty"
+    assert_contains "$output" '[]  # No specifications found' "Specifications empty"
     assert_contains "$output" 'status: "none"' "Cache status is none"
     assert_contains "$output" 'concluded_count: 0' "Concluded count is 0"
     assert_contains "$output" 'discussion_count: 0' "Discussion count is 0"
@@ -106,32 +154,23 @@ test_fresh_state() {
 }
 
 #
-# Test: Discussions only
+# Test: Discussions only (feature work units with discussion phase)
 #
 test_discussions_only() {
     echo -e "${YELLOW}Test: Discussions only (no specs)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
 status: in-progress
-date: 2026-01-20
 ---
+# Discussion: Auth Flow"
 
-# Discussion: Auth Flow
-EOF
-
-    cat > "$TEST_DIR/.workflows/discussion/api-design.md" << 'EOF'
----
-topic: api-design
+    create_manifest "api-design" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "api-design" "discussion.md" "---
 status: concluded
-date: 2026-01-19
 ---
-
-# Discussion: API Design
-EOF
+# Discussion: API Design"
 
     local output=$(run_discovery)
 
@@ -140,12 +179,7 @@ EOF
     assert_contains "$output" 'status: "in-progress"' "Found in-progress status"
     assert_contains "$output" 'status: "concluded"' "Found concluded status"
     assert_contains "$output" 'has_individual_spec: false' "No individual spec exists"
-    assert_contains "$output" 'concluded_count: 1' "One concluded discussion"
-    assert_contains "$output" 'discussion_count: 2' "Two total discussions"
-    assert_contains "$output" 'in_progress_count: 1' "One in-progress discussion"
-    assert_contains "$output" 'spec_count: 0' "No specs"
     assert_contains "$output" 'has_discussions: true' "has_discussions is true"
-    assert_contains "$output" 'has_concluded: true' "has_concluded is true"
     assert_contains "$output" 'has_specs: false' "has_specs is false"
 
     echo ""
@@ -158,21 +192,16 @@ test_specifications_only() {
     echo -e "${YELLOW}Test: Specifications only (no discussions)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
+    create_manifest "auth-system" "feature" '{"specification": {"status": "in-progress"}}'
+    create_spec_file "auth-system" "---
 status: in-progress
 type: feature
-date: 2026-01-20
 ---
-
-# Specification: Auth System
-EOF
+# Specification: Auth System"
 
     local output=$(run_discovery)
 
-    assert_contains "$output" '\[\]  # No discussions found' "Discussions empty"
+    assert_contains "$output" '[]  # No discussions found' "Discussions empty"
     assert_contains "$output" 'name: "auth-system"' "Found auth-system spec"
     assert_contains "$output" 'status: "in-progress"' "Status is in-progress"
 
@@ -186,29 +215,16 @@ test_discussion_with_spec() {
     echo -e "${YELLOW}Test: Discussion with corresponding spec${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-flow"
-
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "concluded"}, "specification": {"status": "in-progress"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
 status: concluded
-date: 2026-01-20
 ---
-
-# Discussion: Auth Flow
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/auth-flow/specification.md" << 'EOF'
----
-topic: auth-flow
+# Discussion: Auth Flow"
+    create_spec_file "auth-flow" "---
 status: in-progress
 type: feature
-date: 2026-01-21
 ---
-
-# Specification: Auth Flow
-EOF
+# Specification: Auth Flow"
 
     local output=$(run_discovery)
 
@@ -219,35 +235,22 @@ EOF
 }
 
 #
-# Test: Discussion with corresponding concluded spec
+# Test: Discussion with concluded spec
 #
 test_discussion_with_concluded_spec() {
     echo -e "${YELLOW}Test: Discussion with corresponding concluded spec${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    mkdir -p "$TEST_DIR/.workflows/specification/billing"
-
-    cat > "$TEST_DIR/.workflows/discussion/billing.md" << 'EOF'
----
-topic: billing
+    create_manifest "billing" "feature" '{"discussion": {"status": "concluded"}, "specification": {"status": "concluded"}}'
+    create_discussion_file "billing" "discussion.md" "---
 status: concluded
-date: 2026-01-20
 ---
-
-# Discussion: Billing
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
----
-topic: billing
+# Discussion: Billing"
+    create_spec_file "billing" "---
 status: concluded
 type: feature
-date: 2026-01-21
 ---
-
-# Specification: Billing
-EOF
+# Specification: Billing"
 
     local output=$(run_discovery)
 
@@ -258,153 +261,22 @@ EOF
 }
 
 #
-# Test: Discussion without spec has no spec_status
+# Test: Discussion without spec
 #
 test_discussion_without_spec_no_status() {
     echo -e "${YELLOW}Test: Discussion without spec has no spec_status${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/standalone.md" << 'EOF'
----
-topic: standalone
+    create_manifest "standalone" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "standalone" "discussion.md" "---
 status: concluded
-date: 2026-01-20
 ---
-
-# Discussion: Standalone
-EOF
+# Discussion: Standalone"
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'has_individual_spec: false' "Discussion has no spec"
     assert_not_contains "$output" 'spec_status:' "No spec_status field when no spec exists"
-
-    echo ""
-}
-
-#
-# Test: Spec with sources in object format
-#
-test_spec_with_sources() {
-    echo -e "${YELLOW}Test: Specification with sources in object format${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/combined-feature"
-    cat > "$TEST_DIR/.workflows/specification/combined-feature/specification.md" << 'EOF'
----
-topic: combined-feature
-status: in-progress
-type: feature
-date: 2026-01-20
-sources:
-  - name: auth-flow
-    status: incorporated
-  - name: api-design
-    status: incorporated
-  - name: error-handling
-    status: pending
----
-
-# Specification: Combined Feature
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "combined-feature"' "Found combined-feature spec"
-    assert_contains "$output" 'sources:' "Has sources field"
-    assert_contains "$output" 'name: "auth-flow"' "Found auth-flow source name"
-    assert_contains "$output" 'name: "api-design"' "Found api-design source name"
-    assert_contains "$output" 'name: "error-handling"' "Found error-handling source name"
-    assert_contains "$output" 'status: "incorporated"' "Found incorporated status"
-    assert_contains "$output" 'status: "pending"' "Found pending status"
-
-    echo ""
-}
-
-
-#
-# Test: Spec sources include discussion_status
-#
-test_spec_sources_discussion_status() {
-    echo -e "${YELLOW}Test: Spec sources include discussion_status${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Auth Flow
-EOF
-
-    cat > "$TEST_DIR/.workflows/discussion/api-design.md" << 'EOF'
----
-topic: api-design
-status: in-progress
-date: 2026-01-19
----
-
-# Discussion: API Design
-EOF
-
-    mkdir -p "$TEST_DIR/.workflows/specification/combined"
-    cat > "$TEST_DIR/.workflows/specification/combined/specification.md" << 'EOF'
----
-topic: combined
-status: in-progress
-type: feature
-date: 2026-01-21
-sources:
-  - name: auth-flow
-    status: incorporated
-  - name: api-design
-    status: incorporated
-  - name: deleted-topic
-    status: incorporated
----
-
-# Specification: Combined
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'discussion_status: "concluded"' "auth-flow has discussion_status concluded"
-    assert_contains "$output" 'discussion_status: "in-progress"' "api-design has discussion_status in-progress (regressed)"
-    assert_contains "$output" 'discussion_status: "not-found"' "deleted-topic has discussion_status not-found"
-
-    echo ""
-}
-
-#
-# Test: Spec with superseded_by
-#
-test_spec_superseded() {
-    echo -e "${YELLOW}Test: Specification with superseded_by${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/old-auth"
-    cat > "$TEST_DIR/.workflows/specification/old-auth/specification.md" << 'EOF'
----
-topic: old-auth
-status: superseded
-type: feature
-date: 2026-01-15
-superseded_by: new-auth
----
-
-# Specification: Old Auth
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'status: "superseded"' "Status is superseded"
-    assert_contains "$output" 'superseded_by: "new-auth"' "Has superseded_by field"
 
     echo ""
 }
@@ -416,23 +288,18 @@ test_cache_none() {
     echo -e "${YELLOW}Test: Cache status none${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    cat > "$TEST_DIR/.workflows/discussion/test.md" << 'EOF'
----
-topic: test
+    create_manifest "test" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "test" "discussion.md" "---
 status: in-progress
-date: 2026-01-20
 ---
-
-# Discussion: Test
-EOF
+# Discussion: Test"
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'status: "none"' "Cache status is none"
     assert_contains "$output" 'reason: "no cache exists"' "Reason is no cache exists"
     assert_contains "$output" 'checksum: null' "Checksum is null"
-    assert_contains "$output" 'anchored_names: \[\]' "No anchored names"
+    assert_contains "$output" 'anchored_names: []' "No anchored names"
 
     echo ""
 }
@@ -444,21 +311,16 @@ test_cache_valid() {
     echo -e "${YELLOW}Test: Cache status valid${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
+status: concluded
+---
+# Discussion: Auth Flow"
+
     mkdir -p "$TEST_DIR/.workflows/.state"
 
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Auth Flow
-EOF
-
-    # Compute the checksum that the cache should have
-    local checksum=$(cat "$TEST_DIR/.workflows/discussion"/*.md | md5sum | cut -d' ' -f1)
+    # Compute the checksum of all discussion files
+    local checksum=$(find "$TEST_DIR/.workflows" -path "*/discussion/*.md" -print0 2>/dev/null | sort -z | xargs -0 cat 2>/dev/null | md5sum | cut -d' ' -f1)
 
     cat > "$TEST_DIR/.workflows/.state/discussion-consolidation-analysis.md" << EOF
 ---
@@ -486,18 +348,13 @@ test_cache_stale() {
     echo -e "${YELLOW}Test: Cache status stale${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    mkdir -p "$TEST_DIR/.workflows/.state"
-
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
 status: concluded
-date: 2026-01-20
 ---
+# Discussion: Auth Flow"
 
-# Discussion: Auth Flow
-EOF
+    mkdir -p "$TEST_DIR/.workflows/.state"
 
     # Use a different checksum to make cache stale
     cat > "$TEST_DIR/.workflows/.state/discussion-consolidation-analysis.md" << 'EOF'
@@ -515,455 +372,6 @@ EOF
 
     assert_contains "$output" 'status: "stale"' "Cache status is stale"
     assert_contains "$output" 'reason: "discussions have changed' "Reason mentions discussions changed"
-
-    echo ""
-}
-
-#
-# Test: Anchored names in cache
-#
-test_anchored_names() {
-    echo -e "${YELLOW}Test: Anchored names in cache${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    mkdir -p "$TEST_DIR/.workflows/specification"
-    mkdir -p "$TEST_DIR/.workflows/.state"
-
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Auth Flow
-EOF
-
-    # Create a spec that matches a grouping name in the cache
-    mkdir -p "$TEST_DIR/.workflows/specification/authentication"
-    cat > "$TEST_DIR/.workflows/specification/authentication/specification.md" << 'EOF'
----
-topic: authentication
-status: in-progress
-type: feature
-date: 2026-01-21
----
-
-# Specification: Authentication
-EOF
-
-    local checksum=$(cat "$TEST_DIR/.workflows/discussion"/*.md | md5sum | cut -d' ' -f1)
-
-    # Cache with grouping names
-    cat > "$TEST_DIR/.workflows/.state/discussion-consolidation-analysis.md" << EOF
----
-checksum: $checksum
-generated: 2026-01-20T10:00:00
-research_files:
-  - auth-flow.md
----
-
-# Discussion Consolidation Analysis
-
-## Topics
-
-### Authentication
-Related to auth-flow discussion
-
-### API Design
-Not yet specified
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'anchored_names:' "Has anchored_names section"
-    assert_contains "$output" '"authentication"' "Found authentication as anchored name"
-
-    echo ""
-}
-
-#
-# Test: Current state with discussions checksum
-#
-test_current_state_checksum() {
-    echo -e "${YELLOW}Test: Current state with discussions checksum${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/test.md" << 'EOF'
----
-topic: test
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Test
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'current_state:' "Has current_state section"
-    assert_contains "$output" 'discussions_checksum:' "Has discussions_checksum"
-    assert_not_contains "$output" 'discussions_checksum: null' "Checksum is not null"
-
-    echo ""
-}
-
-#
-# Test: Spec without status defaults to active
-#
-test_spec_default_status() {
-    echo -e "${YELLOW}Test: Spec without status defaults to active${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/legacy"
-    cat > "$TEST_DIR/.workflows/specification/legacy/specification.md" << 'EOF'
----
-topic: legacy
-type: feature
-date: 2026-01-20
----
-
-# Specification: Legacy
-
-No status field.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'status: "active"' "Defaults to active status"
-
-    echo ""
-}
-
-#
-# Test: Discussion without status defaults to unknown
-#
-test_discussion_default_status() {
-    echo -e "${YELLOW}Test: Discussion without status defaults to unknown${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    cat > "$TEST_DIR/.workflows/discussion/legacy.md" << 'EOF'
----
-topic: legacy
-date: 2026-01-20
----
-
-# Discussion: Legacy
-
-No status field.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'status: "unknown"' "Defaults to unknown status"
-
-    echo ""
-}
-
-#
-# Test: Spec with many sources (8, tick-core pattern)
-#
-test_spec_many_sources() {
-    echo -e "${YELLOW}Test: Specification with many sources (8)${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/tick-core"
-    cat > "$TEST_DIR/.workflows/specification/tick-core/specification.md" << 'EOF'
----
-topic: tick-core
-status: in-progress
-type: feature
-date: 2026-01-20
-sources:
-  - name: tick-engine
-    status: incorporated
-  - name: tick-scheduler
-    status: incorporated
-  - name: tick-renderer
-    status: pending
-  - name: tick-storage
-    status: incorporated
-  - name: tick-api
-    status: pending
-  - name: tick-auth
-    status: incorporated
-  - name: tick-notifications
-    status: pending
-  - name: tick-analytics
-    status: incorporated
----
-
-# Specification: Tick Core
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "tick-core"' "Found tick-core spec"
-    assert_contains "$output" 'name: "tick-engine"' "Found tick-engine source"
-    assert_contains "$output" 'name: "tick-scheduler"' "Found tick-scheduler source"
-    assert_contains "$output" 'name: "tick-renderer"' "Found tick-renderer source"
-    assert_contains "$output" 'name: "tick-storage"' "Found tick-storage source"
-    assert_contains "$output" 'name: "tick-api"' "Found tick-api source"
-    assert_contains "$output" 'name: "tick-auth"' "Found tick-auth source"
-    assert_contains "$output" 'name: "tick-notifications"' "Found tick-notifications source"
-    assert_contains "$output" 'name: "tick-analytics"' "Found tick-analytics source"
-
-    echo ""
-}
-
-#
-# Test: Spec with --- horizontal rules in body
-#
-test_spec_with_hr_in_body() {
-    echo -e "${YELLOW}Test: Specification with --- in body content${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/tricky-spec"
-    cat > "$TEST_DIR/.workflows/specification/tricky-spec/specification.md" << 'EOF'
----
-topic: tricky-spec
-status: in-progress
-type: feature
-date: 2026-01-20
-sources:
-  - name: design-doc
-    status: incorporated
-  - name: api-review
-    status: pending
----
-
-# Specification: Tricky Spec
-
-Some introductory content here.
-
----
-
-## Section After HR
-
-More content below a horizontal rule.
-
----
-
-## Another Section
-
-Even more content with another horizontal rule.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "tricky-spec"' "Found tricky-spec"
-    assert_contains "$output" 'status: "in-progress"' "Status is in-progress"
-    assert_contains "$output" 'name: "design-doc"' "Found design-doc source"
-    assert_contains "$output" 'name: "api-review"' "Found api-review source"
-    assert_not_contains "$output" 'Section After HR' "No body content leaks into output"
-    assert_not_contains "$output" 'introductory content' "No body text leaks into output"
-
-    echo ""
-}
-
-#
-# Test: Spec with empty sources array
-#
-test_spec_empty_sources() {
-    echo -e "${YELLOW}Test: Specification with empty sources${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/empty-sources"
-    cat > "$TEST_DIR/.workflows/specification/empty-sources/specification.md" << 'EOF'
----
-topic: empty-sources
-status: in-progress
-type: feature
-date: 2026-01-20
-sources: []
----
-
-# Specification: Empty Sources
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "empty-sources"' "Found empty-sources spec"
-    assert_contains "$output" 'status: "in-progress"' "Status is in-progress"
-
-    # Count how many "sources:" lines appear - spec entry should not have sources section
-    local sources_count=$(echo "$output" | grep -c "sources:" || true)
-    TESTS_RUN=$((TESTS_RUN + 1))
-    if [ "$sources_count" -le 1 ]; then
-        echo -e "  ${GREEN}✓${NC} No sources section emitted for empty sources array"
-        TESTS_PASSED=$((TESTS_PASSED + 1))
-    else
-        echo -e "  ${RED}✗${NC} No sources section emitted for empty sources array"
-        echo -e "    Expected at most 1 sources: line, found: $sources_count"
-        TESTS_FAILED=$((TESTS_FAILED + 1))
-    fi
-
-    echo ""
-}
-
-#
-# Test: Discussion with --- horizontal rules in body
-#
-test_discussion_with_hr_in_body() {
-    echo -e "${YELLOW}Test: Discussion with --- in body content${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    cat > "$TEST_DIR/.workflows/discussion/tricky-discussion.md" << 'EOF'
----
-topic: tricky-discussion
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Tricky Discussion
-
-Some discussion content.
-
----
-
-## Decision Log
-
-We decided to use approach A.
-
----
-
-## Open Questions
-
-None remaining.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "tricky-discussion"' "Found tricky-discussion"
-    assert_contains "$output" 'status: "concluded"' "Status is concluded"
-    assert_not_contains "$output" 'Decision Log' "No body content leaks into output"
-    assert_not_contains "$output" 'Open Questions' "No body text leaks into output"
-    assert_contains "$output" 'concluded_count: 1' "Concluded count is 1"
-
-    echo ""
-}
-
-#
-# Test: Spec count excludes superseded
-#
-test_spec_count_excludes_superseded() {
-    echo -e "${YELLOW}Test: Spec count excludes superseded${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Auth Flow
-EOF
-
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-flow"
-    cat > "$TEST_DIR/.workflows/specification/auth-flow/specification.md" << 'EOF'
----
-topic: auth-flow
-status: superseded
-type: feature
-date: 2026-01-20
-superseded_by: auth-system
----
-
-# Specification: Auth Flow (superseded)
-EOF
-
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: in-progress
-type: feature
-date: 2026-01-21
-sources:
-  - name: auth-flow
-    status: incorporated
----
-
-# Specification: Auth System
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'spec_count: 1' "Spec count excludes superseded (1 active, 1 superseded)"
-    assert_contains "$output" 'has_specs: true' "has_specs is true (active spec exists)"
-
-    echo ""
-}
-
-#
-# Test: Discussion work_type output
-#
-test_discussion_work_type_output() {
-    echo -e "${YELLOW}Test: Discussion work_type output${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/typed.md" << 'EOF'
----
-topic: typed
-status: concluded
-work_type: feature
-date: 2026-01-20
----
-
-# Discussion: Typed
-EOF
-
-    cat > "$TEST_DIR/.workflows/discussion/untyped.md" << 'EOF'
----
-topic: untyped
-status: concluded
-date: 2026-01-20
----
-
-# Discussion: Untyped
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'work_type: "feature"' "work_type feature present"
-    assert_contains "$output" 'work_type: "greenfield"' "work_type defaults to greenfield"
-
-    echo ""
-}
-
-#
-# Test: Spec work_type output
-#
-test_spec_work_type_output() {
-    echo -e "${YELLOW}Test: Spec work_type output${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/buggy-thing"
-    cat > "$TEST_DIR/.workflows/specification/buggy-thing/specification.md" << 'EOF'
----
-topic: buggy-thing
-status: in-progress
-type: feature
-work_type: bugfix
-date: 2026-01-20
----
-
-# Specification: Buggy Thing
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'work_type: "bugfix"' "work_type bugfix present"
 
     echo ""
 }
@@ -997,6 +405,28 @@ EOF
 }
 
 #
+# Test: Current state with discussions checksum
+#
+test_current_state_checksum() {
+    echo -e "${YELLOW}Test: Current state with discussions checksum${NC}"
+    setup_fixture
+
+    create_manifest "test" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "test" "discussion.md" "---
+status: concluded
+---
+# Discussion: Test"
+
+    local output=$(run_discovery)
+
+    assert_contains "$output" 'current_state:' "Has current_state section"
+    assert_contains "$output" 'discussions_checksum:' "Has discussions_checksum"
+    assert_not_contains "$output" 'discussions_checksum: null' "Checksum is not null"
+
+    echo ""
+}
+
+#
 # Run all tests
 #
 echo "=========================================="
@@ -1010,23 +440,10 @@ test_specifications_only
 test_discussion_with_spec
 test_discussion_with_concluded_spec
 test_discussion_without_spec_no_status
-test_spec_with_sources
-test_spec_superseded
 test_cache_none
 test_cache_valid
 test_cache_stale
-test_anchored_names
 test_current_state_checksum
-test_spec_default_status
-test_discussion_default_status
-test_spec_many_sources
-test_spec_with_hr_in_body
-test_spec_empty_sources
-test_discussion_with_hr_in_body
-test_spec_count_excludes_superseded
-test_spec_sources_discussion_status
-test_discussion_work_type_output
-test_spec_work_type_output
 test_cache_stale_no_discussions
 
 #

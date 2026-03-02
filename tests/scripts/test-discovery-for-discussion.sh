@@ -1,7 +1,12 @@
 #!/bin/bash
 #
-# Tests the discovery-for-discussion.sh script against various workflow states.
-# Creates temporary fixtures and validates YAML output.
+# Tests the discovery script for start-discussion.
+# Creates temporary fixtures with manifest.json files and validates YAML output.
+#
+# Discussion discovery reads:
+# - Research files from .workflows/research/ (still filesystem-based)
+# - Discussions from manifest CLI + discussion files in work-unit dirs
+# - Cache state from .workflows/.state/research-analysis.md
 #
 
 set -eo pipefail
@@ -32,9 +37,42 @@ echo ""
 #
 
 setup_fixture() {
-    # Clean up from previous test
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+}
+
+# Create a manifest.json for a work unit
+create_manifest() {
+    local name="$1"
+    local work_type="$2"
+    shift 2
+
+    mkdir -p "$TEST_DIR/.workflows/$name"
+
+    local phases='{}'
+    if [ -n "$1" ]; then
+        phases="$1"
+    fi
+
+    cat > "$TEST_DIR/.workflows/$name/manifest.json" << EOFMANIFEST
+{
+  "name": "$name",
+  "work_type": "$work_type",
+  "status": "active",
+  "description": "Test work unit: $name",
+  "phases": $phases
+}
+EOFMANIFEST
+}
+
+# Create a discussion file in the work-unit-first layout
+create_discussion_file() {
+    local wu_name="$1"
+    local filename="$2"
+    local content="$3"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/discussion"
+    echo "$content" > "$TEST_DIR/.workflows/$wu_name/discussion/$filename"
 }
 
 run_discovery() {
@@ -49,7 +87,7 @@ assert_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$output" | grep -q "$expected"; then
+    if echo "$output" | grep -qF -- "$expected"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -68,7 +106,7 @@ assert_not_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if ! echo "$output" | grep -q "$pattern"; then
+    if ! echo "$output" | grep -qF -- "$pattern"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -131,31 +169,25 @@ EOF
 }
 
 #
-# Test: Discussions only (no research)
+# Test: Discussions only (from manifest — feature work unit with discussion phase)
 #
 test_discussions_only() {
     echo -e "${YELLOW}Test: Discussions only (no research)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
 status: in-progress
-date: 2026-01-20
 ---
 
-# Discussion: Auth Flow
-
-Discussing authentication flow.
-EOF
+# Discussion: Auth Flow"
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'exists: false' "Research exists: false"
-    assert_contains "$output" 'name: "auth-flow"' "Found auth-flow.md"
+    assert_contains "$output" 'name: "auth-flow"' "Found auth-flow discussion"
     assert_contains "$output" 'status: "in-progress"' "Status is in-progress"
-    assert_contains "$output" 'date: "2026-01-20"' "Extracted date"
+    assert_contains "$output" 'work_type: "feature"' "Work type is feature"
     assert_contains "$output" 'in_progress: 1' "in_progress count is 1"
     assert_contains "$output" 'concluded: 0' "concluded count is 0"
     assert_contains "$output" 'scenario: "discussions_only"' "Scenario is discussions_only"
@@ -171,8 +203,6 @@ test_research_and_discussions() {
     setup_fixture
 
     mkdir -p "$TEST_DIR/.workflows/research"
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
     cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
 ---
 topic: exploration
@@ -182,25 +212,19 @@ date: 2026-01-18
 # Research: Exploration
 EOF
 
-    cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
----
-topic: auth-flow
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
 status: concluded
-date: 2026-01-19
 ---
 
-# Discussion: Auth Flow
-EOF
+# Discussion: Auth Flow"
 
-    cat > "$TEST_DIR/.workflows/discussion/data-model.md" << 'EOF'
----
-topic: data-model
+    create_manifest "data-model" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "data-model" "discussion.md" "---
 status: in-progress
-date: 2026-01-20
 ---
 
-# Discussion: Data Model
-EOF
+# Discussion: Data Model"
 
     local output=$(run_discovery)
 
@@ -220,43 +244,29 @@ test_multiple_discussions() {
     echo -e "${YELLOW}Test: Multiple discussions with mixed statuses${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/topic-a.md" << 'EOF'
----
-topic: topic-a
+    create_manifest "topic-a" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "topic-a" "discussion.md" "---
 status: concluded
-date: 2026-01-15
 ---
-# Discussion: Topic A
-EOF
+# Discussion: Topic A"
 
-    cat > "$TEST_DIR/.workflows/discussion/topic-b.md" << 'EOF'
----
-topic: topic-b
+    create_manifest "topic-b" "feature" '{"discussion": {"status": "concluded"}}'
+    create_discussion_file "topic-b" "discussion.md" "---
 status: concluded
-date: 2026-01-16
 ---
-# Discussion: Topic B
-EOF
+# Discussion: Topic B"
 
-    cat > "$TEST_DIR/.workflows/discussion/topic-c.md" << 'EOF'
----
-topic: topic-c
+    create_manifest "topic-c" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "topic-c" "discussion.md" "---
 status: in-progress
-date: 2026-01-17
 ---
-# Discussion: Topic C
-EOF
+# Discussion: Topic C"
 
-    cat > "$TEST_DIR/.workflows/discussion/topic-d.md" << 'EOF'
----
-topic: topic-d
+    create_manifest "topic-d" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "topic-d" "discussion.md" "---
 status: in-progress
-date: 2026-01-18
 ---
-# Discussion: Topic D
-EOF
+# Discussion: Topic D"
 
     local output=$(run_discovery)
 
@@ -327,12 +337,6 @@ research_files:
 ---
 
 # Research Analysis Cache
-
-## Topics
-
-### Feature Ideas
-- **Source**: exploration.md (lines 1-10)
-- **Summary**: Initial exploration of feature ideas
 EOF
 
     local output=$(run_discovery)
@@ -395,7 +399,6 @@ test_research_no_frontmatter() {
 
     mkdir -p "$TEST_DIR/.workflows/research"
 
-    # Create research file WITHOUT frontmatter
     cat > "$TEST_DIR/.workflows/research/market-analysis.md" << 'EOF'
 # Market Analysis
 
@@ -406,33 +409,6 @@ EOF
 
     assert_contains "$output" 'name: "market-analysis"' "Found market-analysis.md"
     assert_contains "$output" 'topic: "market-analysis"' "Topic falls back to filename"
-
-    echo ""
-}
-
-#
-# Test: Discussion without status field (defaults to unknown)
-#
-test_discussion_no_status() {
-    echo -e "${YELLOW}Test: Discussion without status field${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/legacy-topic.md" << 'EOF'
----
-topic: legacy-topic
-date: 2026-01-15
----
-# Discussion: Legacy Topic
-
-No status field.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "legacy-topic"' "Found legacy-topic.md"
-    assert_contains "$output" 'status: "unknown"' "Status defaults to unknown"
 
     echo ""
 }
@@ -488,33 +464,22 @@ test_discussion_work_type() {
     echo -e "${YELLOW}Test: Discussion work_type field${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
-
-    cat > "$TEST_DIR/.workflows/discussion/with-type.md" << 'EOF'
----
-topic: with-type
+    create_manifest "auth-flow" "feature" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "auth-flow" "discussion.md" "---
 status: in-progress
-work_type: feature
-date: 2026-01-20
 ---
+# Discussion: Auth Flow"
 
-# Discussion: With Type
-EOF
-
-    cat > "$TEST_DIR/.workflows/discussion/no-type.md" << 'EOF'
----
-topic: no-type
+    create_manifest "big-project" "epic" '{"discussion": {"status": "in-progress"}}'
+    create_discussion_file "big-project" "discussion.md" "---
 status: in-progress
-date: 2026-01-20
 ---
-
-# Discussion: No Type
-EOF
+# Discussion: Big Project"
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'work_type: "feature"' "work_type feature present"
-    assert_contains "$output" 'work_type: "greenfield"' "work_type defaults to greenfield"
+    assert_contains "$output" 'work_type: "epic"' "work_type epic present"
 
     echo ""
 }
@@ -564,18 +529,34 @@ test_empty_research_dir() {
 }
 
 #
-# Test: Empty discussion directory
+# Test: Epic with multiple discussion items
 #
-test_empty_discussion_dir() {
-    echo -e "${YELLOW}Test: Empty discussion directory${NC}"
+test_epic_multiple_discussions() {
+    echo -e "${YELLOW}Test: Epic with multiple discussion items${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/discussion"
+    create_manifest "big-project" "epic" '{"discussion": {"status": "in-progress", "items": {"auth-design": {"status": "concluded"}, "data-model": {"status": "in-progress"}}}}'
+    mkdir -p "$TEST_DIR/.workflows/big-project/discussion"
+    cat > "$TEST_DIR/.workflows/big-project/discussion/auth-design.md" << 'EOF'
+---
+status: concluded
+---
+# Auth Design
+EOF
+    cat > "$TEST_DIR/.workflows/big-project/discussion/data-model.md" << 'EOF'
+---
+status: in-progress
+---
+# Data Model
+EOF
 
     local output=$(run_discovery)
 
-    assert_contains "$output" 'in_progress: 0' "in_progress count is 0"
-    assert_contains "$output" 'concluded: 0' "concluded count is 0"
+    assert_contains "$output" 'name: "auth-design"' "Found auth-design item"
+    assert_contains "$output" 'name: "data-model"' "Found data-model item"
+    assert_contains "$output" 'work_unit: "big-project"' "Work unit is big-project"
+    assert_contains "$output" 'in_progress: 1' "in_progress count is 1"
+    assert_contains "$output" 'concluded: 1' "concluded count is 1"
 
     echo ""
 }
@@ -597,12 +578,11 @@ test_cache_none
 test_cache_valid
 test_cache_stale
 test_research_no_frontmatter
-test_discussion_no_status
 test_multiple_research_files
 test_discussion_work_type
 test_cache_stale_no_research
 test_empty_research_dir
-test_empty_discussion_dir
+test_epic_multiple_discussions
 
 #
 # Summary

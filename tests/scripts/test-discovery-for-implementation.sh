@@ -1,7 +1,14 @@
 #!/bin/bash
 #
 # Tests the discovery script for /start-implementation against various workflow states.
-# Creates temporary fixtures and validates YAML output.
+# Creates temporary fixtures with manifest.json files and validates YAML output.
+#
+# Implementation discovery reads:
+# - Plans from manifest CLI (phases.planning)
+# - Implementation state from manifest CLI (phases.implementation)
+# - planning.md and implementation.md from work-unit dirs
+# - External dependencies from manifest CLI
+# - Environment setup from .workflows/environment-setup.md
 #
 
 set -eo pipefail
@@ -32,9 +39,51 @@ echo ""
 #
 
 setup_fixture() {
-    # Clean up from previous test
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+}
+
+create_manifest() {
+    local name="$1"
+    local work_type="$2"
+    shift 2
+
+    mkdir -p "$TEST_DIR/.workflows/$name"
+
+    local phases='{}'
+    if [ -n "$1" ]; then
+        phases="$1"
+    fi
+
+    cat > "$TEST_DIR/.workflows/$name/manifest.json" << EOFMANIFEST
+{
+  "name": "$name",
+  "work_type": "$work_type",
+  "status": "active",
+  "description": "Test work unit: $name",
+  "phases": $phases
+}
+EOFMANIFEST
+}
+
+create_planning_file() {
+    local wu_name="$1"
+    local content="$2"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/planning"
+    cat > "$TEST_DIR/.workflows/$wu_name/planning/planning.md" << EOF
+$content
+EOF
+}
+
+create_implementation_file() {
+    local wu_name="$1"
+    local content="$2"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/implementation"
+    cat > "$TEST_DIR/.workflows/$wu_name/implementation/implementation.md" << EOF
+$content
+EOF
 }
 
 run_discovery() {
@@ -84,62 +133,42 @@ assert_not_contains() {
 # TEST CASES
 # ============================================================================
 
-echo -e "${YELLOW}Test: No planning directory${NC}"
+echo -e "${YELLOW}Test: No work units (no plans)${NC}"
 setup_fixture
-# Don't create planning directory
+
 output=$(run_discovery)
 
 assert_contains "$output" "plans:" "Has plans section"
 assert_contains "$output" "exists: false" "Plans don't exist"
 assert_contains "$output" "count: 0" "Plan count is 0"
-assert_contains "$output" "scenario: \"no_plans\"" "Scenario is no_plans"
+assert_contains "$output" 'scenario: "no_plans"' "Scenario is no_plans"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: Empty planning directory${NC}"
+echo -e "${YELLOW}Test: Single plan with full manifest data${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning"
-output=$(run_discovery)
 
-assert_contains "$output" "exists: false" "Plans don't exist (empty dir)"
-assert_contains "$output" "scenario: \"no_plans\"" "Scenario is no_plans"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: Single plan with full frontmatter${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/user-auth"
-cat > "$TEST_DIR/.workflows/planning/user-auth/plan.md" << 'EOF'
----
+create_manifest "user-auth" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}, "specification": {"status": "concluded"}}'
+create_planning_file "user-auth" "---
 topic: user-auth
 status: in-progress
-date: 2024-01-15
 format: local-markdown
-specification: user-auth/specification.md
+specification: user-auth/specification/specification.md
 ---
 
-# Implementation Plan: User Authentication
-
-## Overview
-
-Content here.
-EOF
+# Implementation Plan: User Authentication"
 
 output=$(run_discovery)
 
 assert_contains "$output" "exists: true" "Plans exist"
 assert_contains "$output" "count: 1" "Plan count is 1"
-assert_contains "$output" "name: \"user-auth\"" "Plan name extracted"
-assert_contains "$output" "topic: \"user-auth\"" "Topic extracted"
-assert_contains "$output" "status: \"in-progress\"" "Status extracted"
-assert_contains "$output" "date: \"2024-01-15\"" "Date extracted"
-assert_contains "$output" "format: \"local-markdown\"" "Format extracted"
-assert_contains "$output" "specification: \"user-auth/specification.md\"" "Specification extracted"
-assert_contains "$output" "scenario: \"single_plan\"" "Scenario is single_plan"
+assert_contains "$output" 'name: "user-auth"' "Plan name extracted"
+assert_contains "$output" 'topic: "user-auth"' "Topic extracted"
+assert_contains "$output" 'status: "in-progress"' "Status extracted"
+assert_contains "$output" 'format: "local-markdown"' "Format extracted"
+assert_contains "$output" 'scenario: "single_plan"' "Scenario is single_plan"
 
 echo ""
 
@@ -147,39 +176,31 @@ echo ""
 
 echo -e "${YELLOW}Test: Multiple plans${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/feature-a"
-mkdir -p "$TEST_DIR/.workflows/planning/feature-b"
 
-cat > "$TEST_DIR/.workflows/planning/feature-a/plan.md" << 'EOF'
----
+create_manifest "feature-a" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "feature-a" "---
 topic: feature-a
 status: in-progress
-date: 2024-01-10
 format: local-markdown
-specification: feature-a/specification.md
 ---
 
-# Implementation Plan: Feature A
-EOF
+# Implementation Plan: Feature A"
 
-cat > "$TEST_DIR/.workflows/planning/feature-b/plan.md" << 'EOF'
----
+create_manifest "feature-b" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "feature-b" "---
 topic: feature-b
 status: concluded
-date: 2024-01-20
 format: local-markdown
-specification: feature-b/specification.md
 ---
 
-# Implementation Plan: Feature B
-EOF
+# Implementation Plan: Feature B"
 
 output=$(run_discovery)
 
 assert_contains "$output" "count: 2" "Plan count is 2"
-assert_contains "$output" "name: \"feature-a\"" "First plan found"
-assert_contains "$output" "name: \"feature-b\"" "Second plan found"
-assert_contains "$output" "scenario: \"multiple_plans\"" "Scenario is multiple_plans"
+assert_contains "$output" 'name: "feature-a"' "First plan found"
+assert_contains "$output" 'name: "feature-b"' "Second plan found"
+assert_contains "$output" 'scenario: "multiple_plans"' "Scenario is multiple_plans"
 
 echo ""
 
@@ -187,24 +208,20 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with concluded status${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/completed-feature"
 
-cat > "$TEST_DIR/.workflows/planning/completed-feature/plan.md" << 'EOF'
----
+create_manifest "completed-feature" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "completed-feature" "---
 topic: completed-feature
 status: concluded
-date: 2024-02-01
 format: local-markdown
-specification: completed-feature/specification.md
 ---
 
-# Implementation Plan: Completed Feature
-EOF
+# Implementation Plan: Completed Feature"
 
 output=$(run_discovery)
 
-assert_contains "$output" "status: \"concluded\"" "Concluded status preserved"
-assert_contains "$output" "scenario: \"single_plan\"" "Concluded plans still shown"
+assert_contains "$output" 'status: "concluded"' "Concluded status preserved"
+assert_contains "$output" 'scenario: "single_plan"' "Concluded plans still shown"
 
 echo ""
 
@@ -212,29 +229,17 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with linked specification that exists${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/with-spec"
-mkdir -p "$TEST_DIR/.workflows/specification/with-spec"
 
-cat > "$TEST_DIR/.workflows/planning/with-spec/plan.md" << 'EOF'
----
+create_manifest "with-spec" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}, "specification": {"status": "concluded"}}'
+create_planning_file "with-spec" "---
 topic: with-spec
 status: in-progress
-date: 2024-03-01
 format: local-markdown
-specification: with-spec/specification.md
 ---
 
-# Implementation Plan: With Spec
-EOF
-
-cat > "$TEST_DIR/.workflows/specification/with-spec/specification.md" << 'EOF'
----
-topic: with-spec
-status: concluded
----
-
-# Specification: With Spec
-EOF
+# Implementation Plan: With Spec"
+mkdir -p "$TEST_DIR/.workflows/with-spec/specification"
+echo "# Spec" > "$TEST_DIR/.workflows/with-spec/specification/specification.md"
 
 output=$(run_discovery)
 
@@ -246,19 +251,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with linked specification that doesn't exist${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-spec"
 
-cat > "$TEST_DIR/.workflows/planning/no-spec/plan.md" << 'EOF'
----
+create_manifest "no-spec" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "no-spec" "---
 topic: no-spec
 status: in-progress
-date: 2024-03-01
 format: local-markdown
-specification: missing-spec/specification.md
 ---
 
-# Implementation Plan: No Spec
-EOF
+# Implementation Plan: No Spec"
 
 output=$(run_discovery)
 
@@ -270,19 +271,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Environment setup file exists with setup required${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/test"
 
-cat > "$TEST_DIR/.workflows/planning/test/plan.md" << 'EOF'
----
+create_manifest "test" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "test" "---
 topic: test
 status: in-progress
-date: 2024-01-01
 format: local-markdown
-specification: test/specification.md
 ---
 
-# Implementation Plan: Test
-EOF
+# Implementation Plan: Test"
 
 cat > "$TEST_DIR/.workflows/environment-setup.md" << 'EOF'
 # Environment Setup
@@ -304,19 +301,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Environment setup file with no special setup required${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/test"
 
-cat > "$TEST_DIR/.workflows/planning/test/plan.md" << 'EOF'
----
+create_manifest "test" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "test" "---
 topic: test
 status: in-progress
-date: 2024-01-01
 format: local-markdown
-specification: test/specification.md
 ---
 
-# Implementation Plan: Test
-EOF
+# Implementation Plan: Test"
 
 cat > "$TEST_DIR/.workflows/environment-setup.md" << 'EOF'
 # Environment Setup
@@ -335,19 +328,15 @@ echo ""
 
 echo -e "${YELLOW}Test: No environment setup file${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/test"
 
-cat > "$TEST_DIR/.workflows/planning/test/plan.md" << 'EOF'
----
+create_manifest "test" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "test" "---
 topic: test
 status: in-progress
-date: 2024-01-01
 format: local-markdown
-specification: test/specification.md
 ---
 
-# Implementation Plan: Test
-EOF
+# Implementation Plan: Test"
 
 output=$(run_discovery)
 
@@ -358,95 +347,22 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: Plan with missing frontmatter fields (defaults)${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/minimal"
-
-cat > "$TEST_DIR/.workflows/planning/minimal/plan.md" << 'EOF'
----
-topic: minimal
----
-
-# Implementation Plan: Minimal
-EOF
-
-output=$(run_discovery)
-
-assert_contains "$output" "name: \"minimal\"" "Name from filename"
-assert_contains "$output" "topic: \"minimal\"" "Topic from frontmatter"
-assert_contains "$output" "status: \"unknown\"" "Status defaults to unknown"
-assert_contains "$output" "format: \"MISSING\"" "Missing format flagged"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: Plan without frontmatter (legacy edge case)${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-frontmatter"
-
-cat > "$TEST_DIR/.workflows/planning/no-frontmatter/plan.md" << 'EOF'
-# Implementation Plan: No Frontmatter
-
-## Overview
-
-This plan has no frontmatter at all.
-EOF
-
-output=$(run_discovery)
-
-assert_contains "$output" "name: \"no-frontmatter\"" "Name from filename"
-assert_contains "$output" "topic: \"no-frontmatter\"" "Topic defaults to filename"
-assert_contains "$output" "status: \"unknown\"" "Status defaults to unknown"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: Different format value${NC}"
-setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/beads-plan"
-
-cat > "$TEST_DIR/.workflows/planning/beads-plan/plan.md" << 'EOF'
----
-topic: beads-plan
-status: in-progress
-date: 2024-04-01
-format: beads
-specification: beads-plan/specification.md
----
-
-# Implementation Plan: Beads Plan
-EOF
-
-output=$(run_discovery)
-
-assert_contains "$output" "format: \"beads\"" "Non-default format preserved"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: Plan with plan_id (beads format)${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/with-plan-id"
 
-cat > "$TEST_DIR/.workflows/planning/with-plan-id/plan.md" << 'EOF'
----
+create_manifest "with-plan-id" "feature" '{"planning": {"status": "in-progress", "format": "beads", "plan_id": "my-project-abc123"}}'
+create_planning_file "with-plan-id" "---
 topic: with-plan-id
 status: in-progress
-date: 2024-05-01
 format: beads
-specification: with-plan-id/specification.md
 plan_id: my-project-abc123
 ---
 
-# Implementation Plan: With Plan ID
-EOF
+# Implementation Plan: With Plan ID"
 
 output=$(run_discovery)
 
-assert_contains "$output" "plan_id: \"my-project-abc123\"" "Plan ID extracted"
+assert_contains "$output" 'plan_id: "my-project-abc123"' "Plan ID extracted"
 
 echo ""
 
@@ -454,19 +370,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan without plan_id (local-markdown)${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-plan-id"
 
-cat > "$TEST_DIR/.workflows/planning/no-plan-id/plan.md" << 'EOF'
----
+create_manifest "no-plan-id" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "no-plan-id" "---
 topic: no-plan-id
 status: in-progress
-date: 2024-05-01
 format: local-markdown
-specification: no-plan-id/specification.md
 ---
 
-# Implementation Plan: No Plan ID
-EOF
+# Implementation Plan: No Plan ID"
 
 output=$(run_discovery)
 
@@ -475,24 +387,20 @@ assert_not_contains "$output" "plan_id:" "No plan_id when not present"
 echo ""
 
 # ============================================================================
-# EXTERNAL DEPENDENCIES FROM FRONTMATTER
+# EXTERNAL DEPENDENCIES FROM MANIFEST
 # ============================================================================
 
 echo -e "${YELLOW}Test: Plan with empty external_dependencies${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/no-deps"
 
-cat > "$TEST_DIR/.workflows/planning/no-deps/plan.md" << 'EOF'
----
+create_manifest "no-deps" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": []}}'
+create_planning_file "no-deps" "---
 topic: no-deps
 status: concluded
 format: local-markdown
-specification: no-deps/specification.md
-external_dependencies: []
 ---
 
-# Plan: No Deps
-EOF
+# Plan: No Deps"
 
 output=$(run_discovery)
 
@@ -505,22 +413,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with unresolved dependency${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/has-unresolved"
 
-cat > "$TEST_DIR/.workflows/planning/has-unresolved/plan.md" << 'EOF'
----
+create_manifest "has-unresolved" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "billing-system", "description": "Invoice generation for order completion", "state": "unresolved"}]}}'
+create_planning_file "has-unresolved" "---
 topic: has-unresolved
 status: concluded
 format: local-markdown
-specification: has-unresolved/specification.md
-external_dependencies:
-  - topic: billing-system
-    description: Invoice generation for order completion
-    state: unresolved
 ---
 
-# Plan: Has Unresolved
-EOF
+# Plan: Has Unresolved"
 
 output=$(run_discovery)
 
@@ -535,23 +436,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with resolved dependency${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/has-resolved"
 
-cat > "$TEST_DIR/.workflows/planning/has-resolved/plan.md" << 'EOF'
----
+create_manifest "has-resolved" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "authentication", "description": "User context for permissions", "state": "resolved", "task_id": "auth-1-3"}]}}'
+create_planning_file "has-resolved" "---
 topic: has-resolved
 status: concluded
 format: local-markdown
-specification: has-resolved/specification.md
-external_dependencies:
-  - topic: authentication
-    description: User context for permissions
-    state: resolved
-    task_id: auth-1-3
 ---
 
-# Plan: Has Resolved
-EOF
+# Plan: Has Resolved"
 
 output=$(run_discovery)
 
@@ -566,22 +459,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with satisfied_externally dependency${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/has-external"
 
-cat > "$TEST_DIR/.workflows/planning/has-external/plan.md" << 'EOF'
----
+create_manifest "has-external" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "payment-gateway", "description": "Payment processing", "state": "satisfied_externally"}]}}'
+create_planning_file "has-external" "---
 topic: has-external
 status: concluded
 format: local-markdown
-specification: has-external/specification.md
-external_dependencies:
-  - topic: payment-gateway
-    description: Payment processing
-    state: satisfied_externally
 ---
 
-# Plan: Has External
-EOF
+# Plan: Has External"
 
 output=$(run_discovery)
 
@@ -594,29 +480,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan with mixed dependencies${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/mixed-deps"
 
-cat > "$TEST_DIR/.workflows/planning/mixed-deps/plan.md" << 'EOF'
----
+create_manifest "mixed-deps" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "billing-system", "description": "Invoice generation", "state": "unresolved"}, {"topic": "authentication", "description": "User context", "state": "resolved", "task_id": "auth-1-3"}, {"topic": "payment-gateway", "description": "Payment processing", "state": "satisfied_externally"}]}}'
+create_planning_file "mixed-deps" "---
 topic: mixed-deps
 status: concluded
 format: local-markdown
-specification: mixed-deps/specification.md
-external_dependencies:
-  - topic: billing-system
-    description: Invoice generation
-    state: unresolved
-  - topic: authentication
-    description: User context
-    state: resolved
-    task_id: auth-1-3
-  - topic: payment-gateway
-    description: Payment processing
-    state: satisfied_externally
 ---
 
-# Plan: Mixed Deps
-EOF
+# Plan: Mixed Deps"
 
 output=$(run_discovery)
 
@@ -630,20 +502,17 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: Plan without external_dependencies field (legacy)${NC}"
+echo -e "${YELLOW}Test: Plan without external_dependencies field${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/legacy"
 
-cat > "$TEST_DIR/.workflows/planning/legacy/plan.md" << 'EOF'
----
+create_manifest "legacy" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "legacy" "---
 topic: legacy
 status: concluded
 format: local-markdown
-specification: legacy/specification.md
 ---
 
-# Plan: Legacy
-EOF
+# Plan: Legacy"
 
 output=$(run_discovery)
 
@@ -658,19 +527,15 @@ echo ""
 
 echo -e "${YELLOW}Test: No implementation directory${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/test"
 
-cat > "$TEST_DIR/.workflows/planning/test/plan.md" << 'EOF'
----
+create_manifest "test" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+create_planning_file "test" "---
 topic: test
 status: concluded
 format: local-markdown
-specification: test/specification.md
-external_dependencies: []
 ---
 
-# Plan: Test
-EOF
+# Plan: Test"
 
 output=$(run_discovery)
 
@@ -683,53 +548,22 @@ echo ""
 
 echo -e "${YELLOW}Test: Implementation tracking file - in-progress${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/core-features"
-mkdir -p "$TEST_DIR/.workflows/implementation"
 
-cat > "$TEST_DIR/.workflows/planning/core-features/plan.md" << 'EOF'
----
+create_manifest "core-features" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress", "current_phase": 2, "completed_phases": [1], "completed_tasks": ["core-1-1", "core-1-2", "core-1-3", "core-2-1", "core-2-2"]}}'
+create_planning_file "core-features" "---
 topic: core-features
 status: concluded
 format: local-markdown
-specification: core-features/specification.md
-external_dependencies: []
 ---
 
-# Plan: Core Features
-EOF
-
-mkdir -p "$TEST_DIR/.workflows/implementation/core-features"
-cat > "$TEST_DIR/.workflows/implementation/core-features/tracking.md" << 'EOF'
----
+# Plan: Core Features"
+create_implementation_file "core-features" "---
 topic: core-features
-plan: ../planning/core-features/plan.md
-format: local-markdown
 status: in-progress
 current_phase: 2
-current_task: 3
-completed_phases:
-  - 1
-completed_tasks:
-  - "core-1-1"
-  - "core-1-2"
-  - "core-1-3"
-  - "core-2-1"
-  - "core-2-2"
-started: 2025-01-15
-updated: 2025-01-20
-completed: ~
 ---
 
-# Implementation: Core Features
-
-## Phase 1: Foundation
-All tasks completed.
-
-## Phase 2: Core Logic (current)
-- Task 2.1: done
-- Task 2.2: done
-- Task 2.3: next
-EOF
+# Implementation: Core Features"
 
 output=$(run_discovery)
 
@@ -747,48 +581,21 @@ echo ""
 
 echo -e "${YELLOW}Test: Implementation tracking file - completed${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/user-auth"
-mkdir -p "$TEST_DIR/.workflows/implementation"
 
-cat > "$TEST_DIR/.workflows/planning/user-auth/plan.md" << 'EOF'
----
+create_manifest "user-auth" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed", "current_phase": 3, "completed_phases": [1, 2, 3], "completed_tasks": ["auth-1-1", "auth-1-2", "auth-1-3", "auth-2-1"]}}'
+create_planning_file "user-auth" "---
 topic: user-auth
 status: concluded
 format: local-markdown
-specification: user-auth/specification.md
-external_dependencies: []
 ---
 
-# Plan: User Auth
-EOF
-
-mkdir -p "$TEST_DIR/.workflows/implementation/user-auth"
-cat > "$TEST_DIR/.workflows/implementation/user-auth/tracking.md" << 'EOF'
----
+# Plan: User Auth"
+create_implementation_file "user-auth" "---
 topic: user-auth
-plan: ../planning/user-auth/plan.md
-format: local-markdown
 status: completed
-current_phase: 3
-current_task: ~
-completed_phases:
-  - 1
-  - 2
-  - 3
-completed_tasks:
-  - "auth-1-1"
-  - "auth-1-2"
-  - "auth-1-3"
-  - "auth-2-1"
-started: 2025-01-10
-updated: 2025-01-25
-completed: 2025-01-25
 ---
 
-# Implementation: User Auth
-
-All phases completed.
-EOF
+# Implementation: User Auth"
 
 output=$(run_discovery)
 
@@ -805,48 +612,32 @@ echo ""
 
 echo -e "${YELLOW}Test: Resolved dep with task in completed_tasks${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/billing"
-mkdir -p "$TEST_DIR/.workflows/implementation"
 
-cat > "$TEST_DIR/.workflows/planning/billing/plan.md" << 'EOF'
----
+# billing plan depends on user-auth task auth-1-3
+create_manifest "billing" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "user-auth", "description": "User context for permissions", "state": "resolved", "task_id": "auth-1-3"}]}}'
+create_planning_file "billing" "---
 topic: billing
 status: concluded
 format: local-markdown
-specification: billing/specification.md
-external_dependencies:
-  - topic: user-auth
-    description: User context for permissions
-    state: resolved
-    task_id: auth-1-3
 ---
 
-# Plan: Billing
-EOF
+# Plan: Billing"
 
-mkdir -p "$TEST_DIR/.workflows/implementation/user-auth"
-cat > "$TEST_DIR/.workflows/implementation/user-auth/tracking.md" << 'EOF'
----
+# user-auth has completed the required task
+create_manifest "user-auth" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed", "completed_phases": [1, 2, 3], "completed_tasks": ["auth-1-1", "auth-1-2", "auth-1-3"]}}'
+create_planning_file "user-auth" "---
 topic: user-auth
-plan: ../planning/user-auth/plan.md
+status: concluded
 format: local-markdown
-status: completed
-current_phase: 3
-completed_phases:
-  - 1
-  - 2
-  - 3
-completed_tasks:
-  - "auth-1-1"
-  - "auth-1-2"
-  - "auth-1-3"
-started: 2025-01-10
-updated: 2025-01-25
-completed: 2025-01-25
 ---
 
-# Implementation: User Auth
-EOF
+# Plan: User Auth"
+create_implementation_file "user-auth" "---
+topic: user-auth
+status: completed
+---
+
+# Implementation: User Auth"
 
 output=$(run_discovery)
 
@@ -859,45 +650,32 @@ echo ""
 
 echo -e "${YELLOW}Test: Resolved dep with task NOT in completed_tasks${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/billing"
-mkdir -p "$TEST_DIR/.workflows/implementation"
 
-cat > "$TEST_DIR/.workflows/planning/billing/plan.md" << 'EOF'
----
+# billing plan depends on core-features task core-2-3
+create_manifest "billing" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "core-features", "description": "Core logic needed", "state": "resolved", "task_id": "core-2-3"}]}}'
+create_planning_file "billing" "---
 topic: billing
 status: concluded
 format: local-markdown
-specification: billing/specification.md
-external_dependencies:
-  - topic: core-features
-    description: Core logic needed
-    state: resolved
-    task_id: core-2-3
 ---
 
-# Plan: Billing
-EOF
+# Plan: Billing"
 
-mkdir -p "$TEST_DIR/.workflows/implementation/core-features"
-cat > "$TEST_DIR/.workflows/implementation/core-features/tracking.md" << 'EOF'
----
+# core-features is in progress, task core-2-3 NOT completed yet
+create_manifest "core-features" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress", "current_phase": 2, "completed_phases": [1], "completed_tasks": ["core-1-1", "core-2-1", "core-2-2"]}}'
+create_planning_file "core-features" "---
 topic: core-features
-plan: ../planning/core-features/plan.md
+status: concluded
 format: local-markdown
-status: in-progress
-current_phase: 2
-completed_phases:
-  - 1
-completed_tasks:
-  - "core-1-1"
-  - "core-2-1"
-  - "core-2-2"
-started: 2025-01-15
-updated: 2025-01-20
 ---
 
-# Implementation: Core Features
-EOF
+# Plan: Core Features"
+create_implementation_file "core-features" "---
+topic: core-features
+status: in-progress
+---
+
+# Implementation: Core Features"
 
 output=$(run_discovery)
 
@@ -914,82 +692,52 @@ echo ""
 
 echo -e "${YELLOW}Test: State summary counts with multiple plans${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/feature-a"
-mkdir -p "$TEST_DIR/.workflows/planning/feature-b"
-mkdir -p "$TEST_DIR/.workflows/planning/feature-c"
-mkdir -p "$TEST_DIR/.workflows/planning/feature-d"
-mkdir -p "$TEST_DIR/.workflows/implementation"
 
 # Concluded plan, no deps, no impl -> ready
-cat > "$TEST_DIR/.workflows/planning/feature-a/plan.md" << 'EOF'
----
+create_manifest "feature-a" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": []}}'
+create_planning_file "feature-a" "---
 topic: feature-a
 status: concluded
 format: local-markdown
-specification: feature-a/specification.md
-external_dependencies: []
 ---
 
-# Plan: Feature A
-EOF
+# Plan: Feature A"
 
 # Concluded plan with unresolved dep -> not ready
-cat > "$TEST_DIR/.workflows/planning/feature-b/plan.md" << 'EOF'
----
+create_manifest "feature-b" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "feature-c", "description": "Needs feature C", "state": "unresolved"}]}}'
+create_planning_file "feature-b" "---
 topic: feature-b
 status: concluded
 format: local-markdown
-specification: feature-b/specification.md
-external_dependencies:
-  - topic: feature-c
-    description: Needs feature C
-    state: unresolved
 ---
 
-# Plan: Feature B
-EOF
+# Plan: Feature B"
 
-# Planning status -> not concluded
-cat > "$TEST_DIR/.workflows/planning/feature-c/plan.md" << 'EOF'
----
+# In-progress plan -> not concluded
+create_manifest "feature-c" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown", "external_dependencies": []}}'
+create_planning_file "feature-c" "---
 topic: feature-c
-status: planning
+status: in-progress
 format: local-markdown
-specification: feature-c/specification.md
-external_dependencies: []
 ---
 
-# Plan: Feature C
-EOF
+# Plan: Feature C"
 
 # Concluded with completed impl
-cat > "$TEST_DIR/.workflows/planning/feature-d/plan.md" << 'EOF'
----
+create_manifest "feature-d" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": []}, "implementation": {"status": "completed", "completed_phases": [1, 2], "completed_tasks": ["d-1-1", "d-2-1"]}}'
+create_planning_file "feature-d" "---
 topic: feature-d
 status: concluded
 format: local-markdown
-specification: feature-d/specification.md
-external_dependencies: []
 ---
 
-# Plan: Feature D
-EOF
-
-mkdir -p "$TEST_DIR/.workflows/implementation/feature-d"
-cat > "$TEST_DIR/.workflows/implementation/feature-d/tracking.md" << 'EOF'
----
+# Plan: Feature D"
+create_implementation_file "feature-d" "---
 topic: feature-d
 status: completed
-completed_phases: [1, 2]
-completed_tasks:
-  - "d-1-1"
-  - "d-2-1"
-started: 2025-01-01
-completed: 2025-01-10
 ---
 
-# Implementation: Feature D
-EOF
+# Implementation: Feature D"
 
 output=$(run_discovery)
 
@@ -1007,19 +755,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Plan work_type output${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/typed-plan"
 
-cat > "$TEST_DIR/.workflows/planning/typed-plan/plan.md" << 'EOF'
----
+create_manifest "typed-plan" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "typed-plan" "---
 topic: typed-plan
 status: in-progress
 format: local-markdown
-work_type: feature
-specification: typed-plan/specification.md
 ---
 
-# Implementation Plan: Typed Plan
-EOF
+# Implementation Plan: Typed Plan"
 
 output=$(run_discovery)
 
@@ -1033,23 +777,15 @@ echo ""
 
 echo -e "${YELLOW}Test: Resolved dep with no tracking file for dep topic${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/needs-foo"
 
-cat > "$TEST_DIR/.workflows/planning/needs-foo/plan.md" << 'EOF'
----
+create_manifest "needs-foo" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "foo", "description": "Needs foo completed", "state": "resolved", "task_id": "foo-1-1"}]}}'
+create_planning_file "needs-foo" "---
 topic: needs-foo
 status: concluded
 format: local-markdown
-specification: needs-foo/specification.md
-external_dependencies:
-  - topic: foo
-    description: Needs foo completed
-    state: resolved
-    task_id: foo-1-1
 ---
 
-# Plan: Needs Foo
-EOF
+# Plan: Needs Foo"
 
 output=$(run_discovery)
 
@@ -1062,7 +798,7 @@ echo ""
 # HAS_PLANS STATE FIELD
 # ============================================================================
 
-echo -e "${YELLOW}Test: has_plans false when no planning directory${NC}"
+echo -e "${YELLOW}Test: has_plans false when no work units${NC}"
 setup_fixture
 
 output=$(run_discovery)
@@ -1075,18 +811,15 @@ echo ""
 
 echo -e "${YELLOW}Test: has_plans true when plans exist${NC}"
 setup_fixture
-mkdir -p "$TEST_DIR/.workflows/planning/some-plan"
 
-cat > "$TEST_DIR/.workflows/planning/some-plan/plan.md" << 'EOF'
----
+create_manifest "some-plan" "feature" '{"planning": {"status": "in-progress", "format": "local-markdown"}}'
+create_planning_file "some-plan" "---
 topic: some-plan
 status: in-progress
 format: local-markdown
-specification: some-plan/specification.md
 ---
 
-# Implementation Plan: Some Plan
-EOF
+# Implementation Plan: Some Plan"
 
 output=$(run_discovery)
 

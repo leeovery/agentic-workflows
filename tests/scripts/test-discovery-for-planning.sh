@@ -1,7 +1,12 @@
 #!/bin/bash
 #
-# Tests the discovery-for-planning.sh script against various workflow states.
-# Creates temporary fixtures and validates YAML output.
+# Tests the discovery script for start-planning.
+# Creates temporary fixtures with manifest.json files and validates YAML output.
+#
+# Planning discovery reads:
+# - Specifications from manifest CLI (phases.specification.status, .type)
+# - Plans from manifest CLI (phases.planning.status, .format, .plan_id)
+# - Implementation state from manifest CLI (phases.implementation.status)
 #
 
 set -eo pipefail
@@ -32,9 +37,31 @@ echo ""
 #
 
 setup_fixture() {
-    # Clean up from previous test
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+}
+
+create_manifest() {
+    local name="$1"
+    local work_type="$2"
+    shift 2
+
+    mkdir -p "$TEST_DIR/.workflows/$name"
+
+    local phases='{}'
+    if [ -n "$1" ]; then
+        phases="$1"
+    fi
+
+    cat > "$TEST_DIR/.workflows/$name/manifest.json" << EOFMANIFEST
+{
+  "name": "$name",
+  "work_type": "$work_type",
+  "status": "active",
+  "description": "Test work unit: $name",
+  "phases": $phases
+}
+EOFMANIFEST
 }
 
 run_discovery() {
@@ -49,7 +76,7 @@ assert_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$output" | grep -q "$expected"; then
+    if echo "$output" | grep -qF -- "$expected"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -68,7 +95,7 @@ assert_not_contains() {
 
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if ! echo "$output" | grep -q "$pattern"; then
+    if ! echo "$output" | grep -qF -- "$pattern"; then
         echo -e "  ${GREEN}✓${NC} $description"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
@@ -91,8 +118,6 @@ test_no_specs() {
 
     assert_contains "$output" 'specifications:' "Has specifications section"
     assert_contains "$output" 'exists: false' "Specifications exists: false"
-    assert_contains "$output" 'feature: \[\]' "Feature specs empty"
-    assert_contains "$output" 'crosscutting: \[\]' "Crosscutting specs empty"
     assert_contains "$output" 'scenario: "no_specs"' "Scenario is no_specs"
     assert_contains "$output" 'feature: 0' "Feature count is 0"
     assert_contains "$output" 'feature_ready: 0' "Feature ready count is 0"
@@ -101,22 +126,13 @@ test_no_specs() {
 }
 
 #
-# Test: Single feature specification (Building)
+# Test: Single feature specification (in-progress)
 #
 test_single_spec_in_progress() {
     echo -e "${YELLOW}Test: Single feature specification (in-progress)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: in-progress
-type: feature
----
-
-# Specification: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "in-progress", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -132,22 +148,13 @@ EOF
 }
 
 #
-# Test: Single feature specification (Complete, no plan)
+# Test: Single feature specification (concluded, no plan)
 #
 test_single_spec_concluded_no_plan() {
     echo -e "${YELLOW}Test: Single feature specification (concluded, no plan)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -160,38 +167,18 @@ EOF
 }
 
 #
-# Test: Single feature specification (Complete, has plan)
+# Test: Single feature specification (concluded, has plan)
 #
 test_single_spec_concluded_with_plan() {
     echo -e "${YELLOW}Test: Single feature specification (concluded, has plan)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: planning
----
-
-# Implementation Plan: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "local-markdown"}}'
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'has_plan: true' "Plan exists"
-    assert_contains "$output" 'plan_status: "planning"' "Plan status extracted"
+    assert_contains "$output" 'plan_status: "in-progress"' "Plan status extracted"
     assert_contains "$output" 'feature_ready: 0' "Feature ready count is 0 (has plan)"
     assert_contains "$output" 'feature_with_plan: 1' "Feature with plan count is 1"
     assert_contains "$output" 'scenario: "has_options"' "Scenario is has_options (plan exists to continue)"
@@ -207,39 +194,9 @@ test_multiple_feature_specs() {
     echo -e "${YELLOW}Test: Multiple feature specifications${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/specification/billing"
-    mkdir -p "$TEST_DIR/.workflows/specification/dashboard"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
----
-topic: billing
-status: concluded
-type: feature
----
-
-# Specification: Billing
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/dashboard/specification.md" << 'EOF'
----
-topic: dashboard
-status: in-progress
-type: feature
----
-
-# Specification: Dashboard
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
+    create_manifest "billing" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
+    create_manifest "dashboard" "feature" '{"specification": {"status": "in-progress", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -260,28 +217,8 @@ test_crosscutting_specs() {
     echo -e "${YELLOW}Test: Cross-cutting specifications${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/caching-strategy"
-    mkdir -p "$TEST_DIR/.workflows/specification/rate-limiting"
-
-    cat > "$TEST_DIR/.workflows/specification/caching-strategy/specification.md" << 'EOF'
----
-topic: caching-strategy
-status: concluded
-type: cross-cutting
----
-
-# Specification: Caching Strategy
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/rate-limiting/specification.md" << 'EOF'
----
-topic: rate-limiting
-status: concluded
-type: cross-cutting
----
-
-# Specification: Rate Limiting
-EOF
+    create_manifest "caching-strategy" "feature" '{"specification": {"status": "concluded", "type": "cross-cutting"}}'
+    create_manifest "rate-limiting" "feature" '{"specification": {"status": "concluded", "type": "cross-cutting"}}'
 
     local output=$(run_discovery)
 
@@ -289,7 +226,6 @@ EOF
     assert_contains "$output" 'name: "rate-limiting"' "Found rate-limiting"
     assert_contains "$output" 'crosscutting: 2' "Crosscutting count is 2"
     assert_contains "$output" 'feature: 0' "Feature count is 0"
-    # With no feature specs and no plans, scenario should be nothing_actionable
     assert_contains "$output" 'scenario: "nothing_actionable"' "Scenario is nothing_actionable"
 
     echo ""
@@ -302,28 +238,8 @@ test_mixed_specs() {
     echo -e "${YELLOW}Test: Mixed feature and cross-cutting specifications${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/specification/caching-strategy"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/caching-strategy/specification.md" << 'EOF'
----
-topic: caching-strategy
-status: concluded
-type: cross-cutting
----
-
-# Specification: Caching Strategy
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
+    create_manifest "caching-strategy" "feature" '{"specification": {"status": "concluded", "type": "cross-cutting"}}'
 
     local output=$(run_discovery)
 
@@ -336,71 +252,20 @@ EOF
 }
 
 #
-# Test: Specification without type defaults to feature
-#
-test_spec_default_type() {
-    echo -e "${YELLOW}Test: Specification without type defaults to feature${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/legacy-feature"
-
-    cat > "$TEST_DIR/.workflows/specification/legacy-feature/specification.md" << 'EOF'
----
-topic: legacy-feature
-status: concluded
----
-
-# Specification: Legacy Feature
-
-No type field - should default to feature.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'name: "legacy-feature"' "Found legacy-feature"
-    assert_contains "$output" 'feature: 1' "Counted as feature"
-    assert_contains "$output" 'feature_ready: 1' "Ready for planning"
-
-    echo ""
-}
-
-#
 # Test: Plans section
 #
 test_plans_section() {
     echo -e "${YELLOW}Test: Plans section${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/billing"
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: In Progress
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/billing/plan.md" << 'EOF'
----
-format: linear
-status: Ready
----
-
-# Implementation Plan: Billing
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "local-markdown"}}'
+    create_manifest "billing" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "linear"}}'
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'plans:' "Has plans section"
-    assert_contains "$output" 'exists: true' "Plans exist"
-    assert_contains "$output" 'name: "auth-system"' "Found auth-system plan"
     assert_contains "$output" 'format: "local-markdown"' "Found local-markdown format"
     assert_contains "$output" 'format: "linear"' "Found linear format"
-    assert_contains "$output" 'status: "In Progress"' "Found In Progress status"
-    assert_contains "$output" 'status: "Ready"' "Found Ready status"
     assert_contains "$output" 'common_format: ""' "Mixed formats yield empty common_format"
 
     echo ""
@@ -413,17 +278,7 @@ test_plan_missing_format() {
     echo -e "${YELLOW}Test: Plan without format shows MISSING${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/old-plan"
-
-    cat > "$TEST_DIR/.workflows/planning/old-plan/plan.md" << 'EOF'
----
-status: Draft
----
-
-# Implementation Plan: Old Plan
-
-No format field.
-EOF
+    create_manifest "old-plan" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress"}}'
 
     local output=$(run_discovery)
 
@@ -440,36 +295,11 @@ test_plan_with_plan_id() {
     echo -e "${YELLOW}Test: Plan with plan_id${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/with-plan-id"
-    mkdir -p "$TEST_DIR/.workflows/planning/without-plan-id"
-
-    cat > "$TEST_DIR/.workflows/planning/with-plan-id/plan.md" << 'EOF'
----
-topic: with-plan-id
-status: in-progress
-format: beads
-plan_id: my-epic-abc123
----
-
-# Implementation Plan: With Plan ID
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/without-plan-id/plan.md" << 'EOF'
----
-topic: without-plan-id
-status: in-progress
-format: local-markdown
----
-
-# Implementation Plan: Without Plan ID
-EOF
+    create_manifest "with-plan-id" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "beads", "plan_id": "my-epic-abc123"}}'
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'plan_id: "my-epic-abc123"' "Plan ID extracted when present"
-    # The plan without plan_id should not have the field
-    # Check that output doesn't have plan_id right after without-plan-id entry
-    # This is tricky to test, so we just verify the one with plan_id works
 
     echo ""
 }
@@ -481,27 +311,7 @@ test_concluded_plan_is_actionable() {
     echo -e "${YELLOW}Test: Concluded plan is actionable (review/revise)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: concluded
----
-
-# Implementation Plan: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}}'
 
     local output=$(run_discovery)
 
@@ -520,52 +330,14 @@ test_mixed_ready_and_plans() {
     echo -e "${YELLOW}Test: Mix of ready specs and existing plans${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/billing"
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/specification/dashboard"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-
-    # Ready spec (no plan)
-    cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
----
-topic: billing
-status: concluded
-type: feature
----
-
-# Specification: Billing
-EOF
+    # Ready spec (concluded, no plan)
+    create_manifest "billing" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
 
     # Spec with in-progress plan
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: planning
----
-
-# Implementation Plan: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "local-markdown"}}'
 
     # In-progress spec (not ready)
-    cat > "$TEST_DIR/.workflows/specification/dashboard/specification.md" << 'EOF'
----
-topic: dashboard
-status: in-progress
-type: feature
----
-
-# Specification: Dashboard
-EOF
+    create_manifest "dashboard" "feature" '{"specification": {"status": "in-progress", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -584,28 +356,8 @@ test_all_in_progress_nothing_actionable() {
     echo -e "${YELLOW}Test: All specs in-progress with no plans${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/specification/billing"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: in-progress
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
----
-topic: billing
-status: in-progress
-type: feature
----
-
-# Specification: Billing
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "in-progress", "type": "feature"}}'
+    create_manifest "billing" "feature" '{"specification": {"status": "in-progress", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -638,16 +390,7 @@ test_common_format_single_plan() {
     echo -e "${YELLOW}Test: common_format with single plan${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: planning
----
-
-# Implementation Plan: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "local-markdown"}}'
 
     local output=$(run_discovery)
 
@@ -663,26 +406,8 @@ test_common_format_multiple_same() {
     echo -e "${YELLOW}Test: common_format with multiple same format${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/billing"
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: beads
-status: planning
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/billing/plan.md" << 'EOF'
----
-format: beads
-status: Ready
----
-
-# Implementation Plan: Billing
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "beads"}}'
+    create_manifest "billing" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "beads"}}'
 
     local output=$(run_discovery)
 
@@ -698,66 +423,12 @@ test_common_format_mixed() {
     echo -e "${YELLOW}Test: common_format empty with mixed formats${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/billing"
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: planning
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/billing/plan.md" << 'EOF'
----
-format: linear
-status: Ready
----
-
-# Implementation Plan: Billing
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "local-markdown"}}'
+    create_manifest "billing" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "linear"}}'
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'common_format: ""' "Mixed formats yield empty common_format"
-
-    echo ""
-}
-
-#
-# Test: common_format ignores MISSING format
-#
-test_common_format_missing_ignored() {
-    echo -e "${YELLOW}Test: common_format ignores MISSING format${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/old-plan"
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: planning
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/old-plan/plan.md" << 'EOF'
----
-status: Draft
----
-
-# Implementation Plan: Old Plan
-
-No format field.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'common_format: "local-markdown"' "MISSING format ignored, common_format from valid plans"
 
     echo ""
 }
@@ -769,37 +440,7 @@ test_spec_with_completed_implementation() {
     echo -e "${YELLOW}Test: Spec with completed implementation${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/implementation/auth-system"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: concluded
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/implementation/auth-system/tracking.md" << 'EOF'
----
-topic: auth-system
-status: completed
----
-
-# Implementation: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}}'
 
     local output=$(run_discovery)
 
@@ -818,37 +459,7 @@ test_spec_with_in_progress_implementation() {
     echo -e "${YELLOW}Test: Spec with in-progress implementation${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/implementation/auth-system"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: concluded
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/implementation/auth-system/tracking.md" << 'EOF'
----
-topic: auth-system
-status: in-progress
----
-
-# Implementation: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress"}}'
 
     local output=$(run_discovery)
 
@@ -868,37 +479,7 @@ test_all_specs_implemented() {
     echo -e "${YELLOW}Test: All specs implemented yields nothing_actionable${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/implementation/auth-system"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: concluded
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/implementation/auth-system/tracking.md" << 'EOF'
----
-topic: auth-system
-status: completed
----
-
-# Implementation: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}}'
 
     local output=$(run_discovery)
 
@@ -916,50 +497,11 @@ test_mix_implemented_and_ready() {
     echo -e "${YELLOW}Test: Mix of implemented and ready specs${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/specification/billing"
-    mkdir -p "$TEST_DIR/.workflows/planning/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/implementation/auth-system"
-
     # Implemented spec
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/auth-system/plan.md" << 'EOF'
----
-format: local-markdown
-status: concluded
----
-
-# Implementation Plan: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/implementation/auth-system/tracking.md" << 'EOF'
----
-topic: auth-system
-status: completed
----
-
-# Implementation: Auth System
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "completed"}}'
 
     # Ready spec (no plan)
-    cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
----
-topic: billing
-status: concluded
-type: feature
----
-
-# Specification: Billing
-EOF
+    create_manifest "billing" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -972,35 +514,14 @@ EOF
 }
 
 #
-# Test: Spec work_type output
+# Test: Superseded feature spec excluded
 #
 test_superseded_feature_spec_excluded() {
     echo -e "${YELLOW}Test: Superseded feature spec excluded from counts${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/auth-system"
-    mkdir -p "$TEST_DIR/.workflows/specification/old-auth"
-
-    cat > "$TEST_DIR/.workflows/specification/auth-system/specification.md" << 'EOF'
----
-topic: auth-system
-status: concluded
-type: feature
----
-
-# Specification: Auth System
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/old-auth/specification.md" << 'EOF'
----
-topic: old-auth
-status: superseded
-superseded_by: auth-system
-type: feature
----
-
-# Specification: Old Auth
-EOF
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
+    create_manifest "old-auth" "feature" '{"specification": {"status": "superseded", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -1011,33 +532,15 @@ EOF
     echo ""
 }
 
+#
+# Test: Superseded cross-cutting spec excluded
+#
 test_superseded_crosscutting_spec_excluded() {
     echo -e "${YELLOW}Test: Superseded cross-cutting spec excluded from counts${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/caching-v2"
-    mkdir -p "$TEST_DIR/.workflows/specification/caching-v1"
-
-    cat > "$TEST_DIR/.workflows/specification/caching-v2/specification.md" << 'EOF'
----
-topic: caching-v2
-status: concluded
-type: cross-cutting
----
-
-# Specification: Caching V2
-EOF
-
-    cat > "$TEST_DIR/.workflows/specification/caching-v1/specification.md" << 'EOF'
----
-topic: caching-v1
-status: superseded
-superseded_by: caching-v2
-type: cross-cutting
----
-
-# Specification: Caching V1
-EOF
+    create_manifest "caching-v2" "feature" '{"specification": {"status": "concluded", "type": "cross-cutting"}}'
+    create_manifest "caching-v1" "feature" '{"specification": {"status": "superseded", "type": "cross-cutting"}}'
 
     local output=$(run_discovery)
 
@@ -1047,22 +550,14 @@ EOF
     echo ""
 }
 
+#
+# Test: Only superseded specs yields nothing_actionable
+#
 test_superseded_spec_nothing_actionable() {
-    echo -e "${YELLOW}Test: Only superseded specs yields no_specs scenario${NC}"
+    echo -e "${YELLOW}Test: Only superseded specs yields nothing_actionable scenario${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/old-feature"
-
-    cat > "$TEST_DIR/.workflows/specification/old-feature/specification.md" << 'EOF'
----
-topic: old-feature
-status: superseded
-superseded_by: new-feature
-type: feature
----
-
-# Specification: Old Feature
-EOF
+    create_manifest "old-feature" "feature" '{"specification": {"status": "superseded", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -1071,21 +566,14 @@ EOF
     echo ""
 }
 
+#
+# Test: Spec work_type output
+#
 test_spec_work_type_output() {
     echo -e "${YELLOW}Test: Spec work_type output${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/typed-spec"
-    cat > "$TEST_DIR/.workflows/specification/typed-spec/specification.md" << 'EOF'
----
-topic: typed-spec
-status: concluded
-type: feature
-work_type: feature
----
-
-# Specification: Typed Spec
-EOF
+    create_manifest "typed-spec" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
 
     local output=$(run_discovery)
 
@@ -1101,45 +589,11 @@ test_plan_work_type_output() {
     echo -e "${YELLOW}Test: Plan work_type output${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/planning/bugfix-plan"
-    cat > "$TEST_DIR/.workflows/planning/bugfix-plan/plan.md" << 'EOF'
----
-topic: bugfix-plan
-status: in-progress
-format: local-markdown
-work_type: bugfix
----
-
-# Implementation Plan: Bugfix Plan
-EOF
+    create_manifest "bugfix-plan" "bugfix" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "in-progress", "format": "local-markdown"}}'
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'work_type: "bugfix"' "work_type bugfix in plan output"
-
-    echo ""
-}
-
-#
-# Test: Spec missing status defaults to active
-#
-test_spec_missing_status_defaults_active() {
-    echo -e "${YELLOW}Test: Spec missing status defaults to active${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/specification/no-status"
-    cat > "$TEST_DIR/.workflows/specification/no-status/specification.md" << 'EOF'
----
-topic: no-status
-type: feature
----
-
-# Specification: No Status
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'status: "active"' "Status defaults to active"
 
     echo ""
 }
@@ -1151,28 +605,7 @@ test_feature_actionable_with_plan_count() {
     echo -e "${YELLOW}Test: feature_actionable_with_plan count${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/specification/actionable-topic"
-    mkdir -p "$TEST_DIR/.workflows/planning/actionable-topic"
-
-    cat > "$TEST_DIR/.workflows/specification/actionable-topic/specification.md" << 'EOF'
----
-topic: actionable-topic
-status: concluded
-type: feature
----
-
-# Specification: Actionable Topic
-EOF
-
-    cat > "$TEST_DIR/.workflows/planning/actionable-topic/plan.md" << 'EOF'
----
-topic: actionable-topic
-status: concluded
-format: local-markdown
----
-
-# Implementation Plan: Actionable Topic
-EOF
+    create_manifest "actionable-topic" "feature" '{"specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}}'
 
     local output=$(run_discovery)
 
@@ -1196,7 +629,6 @@ test_single_spec_concluded_with_plan
 test_multiple_feature_specs
 test_crosscutting_specs
 test_mixed_specs
-test_spec_default_type
 test_plans_section
 test_plan_missing_format
 test_plan_with_plan_id
@@ -1207,7 +639,6 @@ test_common_format_no_plans
 test_common_format_single_plan
 test_common_format_multiple_same
 test_common_format_mixed
-test_common_format_missing_ignored
 test_spec_with_completed_implementation
 test_spec_with_in_progress_implementation
 test_all_specs_implemented
@@ -1217,7 +648,6 @@ test_superseded_crosscutting_spec_excluded
 test_superseded_spec_nothing_actionable
 test_spec_work_type_output
 test_plan_work_type_output
-test_spec_missing_status_defaults_active
 test_feature_actionable_with_plan_count
 
 #

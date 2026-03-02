@@ -119,7 +119,7 @@ setup_fixture
 cat > "$TEST_DIR/.workflows/.cache/sessions/session-basic-001.yaml" << 'EOF'
 topic: auth-flow
 skill: .claude/skills/technical-discussion/SKILL.md
-artifact: .workflows/discussion/auth-flow.md
+artifact: .workflows/auth-flow/discussion/discussion.md
 EOF
 
 output=$(run_hook "session-basic-001")
@@ -128,7 +128,7 @@ assert_contains "$output" "additionalContext" "Output contains additionalContext
 assert_contains "$output" "IMMEDIATE" "Output contains IMMEDIATE section"
 assert_contains "$output" "auth-flow" "Output contains topic"
 assert_contains "$output" "technical-discussion" "Output contains skill path"
-assert_contains "$output" "discussion/auth-flow.md" "Output contains artifact path"
+assert_contains "$output" "auth-flow/discussion/discussion.md" "Output contains artifact path"
 assert_not_contains "$output" "AFTER CONCLUSION" "No AFTER CONCLUSION section"
 assert_contains "$output" "workflow-bridge" "Output contains workflow-bridge continuation note"
 
@@ -141,7 +141,7 @@ setup_fixture
 cat > "$TEST_DIR/.workflows/.cache/sessions/session-extra-001.yaml" << 'EOF'
 topic: billing
 skill: .claude/skills/technical-specification/SKILL.md
-artifact: .workflows/specification/billing/specification.md
+artifact: .workflows/billing/specification/specification.md
 pipeline:
   after_conclude: |
     This is a legacy pipeline section that should be ignored
