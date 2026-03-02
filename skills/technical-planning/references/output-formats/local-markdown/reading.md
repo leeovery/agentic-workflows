@@ -4,7 +4,7 @@
 
 To retrieve all tasks for a plan:
 
-1. List all `.md` files in `.workflows/planning/{topic}/tasks/` — every file in this directory is a task file, no filtering needed
+1. List all `.md` files in `.workflows/{work-unit}/planning/tasks/` — every file in this directory is a task file, no filtering needed
 2. Read each file's frontmatter to extract: `id`, `phase`, `status`, `priority`, `depends_on`
 3. Read the first heading for the task title
 
@@ -12,7 +12,7 @@ This provides the summary-level data needed for graphing, progress overview, or 
 
 ## Extracting a Task
 
-To read a specific task, read the file at `.workflows/planning/{topic}/tasks/{task-id}.md`.
+To read a specific task, read the file at `.workflows/{work-unit}/planning/tasks/{task-id}.md`.
 
 The task file is self-contained — frontmatter holds id, phase, and status. The body contains the title and full description.
 
@@ -20,7 +20,7 @@ The task file is self-contained — frontmatter holds id, phase, and status. The
 
 To find the next task to implement:
 
-1. List all `.md` files in `.workflows/planning/{topic}/tasks/`
+1. List all `.md` files in `.workflows/{work-unit}/planning/tasks/`
 2. Filter to tasks where `status` is `pending` or `in-progress` (or missing — treat as `pending`)
 3. If any tasks have `depends_on`, check each referenced task's `status` — exclude the task unless all dependencies have `status: completed`
 4. Order by phase number (from task ID: `{topic}-{phase}-{seq}`) — complete all earlier phases first

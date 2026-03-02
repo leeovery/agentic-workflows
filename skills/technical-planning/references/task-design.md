@@ -6,7 +6,7 @@
 
 This reference defines generic principles for breaking phases into tasks and writing task detail.
 
-A work-type context file (greenfield, feature, or bugfix) is always loaded alongside this file. The context file provides task ordering, slicing examples, and work-type-specific guidance. These generic principles apply across all work types.
+A work-type context file (epic, feature, or bugfix) is always loaded alongside this file. The context file provides task ordering, slicing examples, and work-type-specific guidance. These generic principles apply across all work types.
 
 ## One Task = One TDD Cycle
 
@@ -107,7 +107,7 @@ Every task should follow this structure:
 > Relevant details from specification: code examples, architectural decisions,
 > data models, or constraints that inform implementation.
 
-**Spec Reference**: `.workflows/specification/{topic}/specification.md` (if specification was provided)
+**Spec Reference**: `.workflows/{work-unit}/specification/specification.md` (if specification was provided)
 ```
 
 ### Field Requirements

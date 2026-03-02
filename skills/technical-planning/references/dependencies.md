@@ -18,7 +18,7 @@ External dependencies are things a feature needs from other topics or systems th
 
 ## Format
 
-In Plan Index Files, external dependencies are stored in the **frontmatter** as a YAML array:
+External dependencies are stored in the **manifest** at `{work-unit}.phases.planning.external_dependencies`:
 
 ```yaml
 external_dependencies:
@@ -36,8 +36,8 @@ external_dependencies:
 
 If there are no external dependencies, use an empty array:
 
-```yaml
-external_dependencies: []
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.external_dependencies []
 ```
 
 This makes it explicit for downstream stages that dependencies were considered and none exist.
@@ -55,7 +55,7 @@ This makes it explicit for downstream stages that dependencies were considered a
 ```
 SPECIFICATION                    PLANNING
 ───────────────────────────────────────────────────────────────────
-Dependencies section    →    Added to plan frontmatter as unresolved
+Dependencies section    →    Added to manifest as unresolved
 (natural language)                      ↓
                              Resolved when linked to specific task ID
                              (via planning or /link-dependencies)

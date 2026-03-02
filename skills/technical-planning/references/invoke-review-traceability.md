@@ -13,11 +13,11 @@ This step invokes the `planning-review-traceability` agent (`../../../agents/pla
 Invoke `planning-review-traceability` with:
 
 1. **Review criteria path**: `review-traceability.md` (in this directory)
-2. **Specification path**: from the plan's `specification` frontmatter field (resolved relative to the plan directory)
-3. **Plan path**: `.workflows/planning/{topic}/plan.md`
-4. **Format reading.md path**: load **[output-formats.md](output-formats.md)**, find the entry matching the plan's `format:` field, and pass the format's `reading.md` path
-5. **Cycle number**: current `review_cycle` from the Plan Index File frontmatter
-6. **Topic name**: from the plan's `topic` frontmatter field
+2. **Specification path**: `.workflows/{work-unit}/specification/specification.md`
+3. **Plan path**: `.workflows/{work-unit}/planning/planning.md`
+4. **Format reading.md path**: read `format` from manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.format`), load **[output-formats.md](output-formats.md)**, find the matching entry, and pass the format's `reading.md` path
+5. **Cycle number**: current `review_cycle` from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.review_cycle`)
+6. **Topic name**: the topic/work-unit name
 7. **Task design path**: `task-design.md`
 
 ---

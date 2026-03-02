@@ -20,15 +20,18 @@ propose a task list.
 
 ### Invoke the Agent
 
-Read `work_type` from the Plan Index File frontmatter.
+Read `work_type` from the manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+```
 
 Invoke `planning-task-designer` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
-2. **Specification**: path from the Plan Index File's `specification:` field
-3. **Cross-cutting specs**: paths from the Plan Index File's `cross_cutting_specs:` field (if any)
+2. **Specification**: specification path from the manifest or `.workflows/{work-unit}/specification/specification.md`
+3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **task-design.md**: `task-design.md`
-5. **Context guidance**: `task-design/{work_type}.md` (default to `greenfield` if `work_type` is empty)
+5. **Context guidance**: `task-design/{work_type}.md` (default to `epic` if `work_type` is empty)
 6. **All approved phases**: the complete phase structure from the Plan Index File body
 7. **Target phase number**: the phase being broken into tasks
 8. **plan-index-schema.md**: `plan-index-schema.md`
@@ -37,11 +40,10 @@ Invoke `planning-task-designer` with these file paths:
 
 The agent returns a task overview and task table. Write the task table directly to the Plan Index File under the phase.
 
-Update the frontmatter `planning:` block:
-```yaml
-planning:
-  phase: {N}
-  task: ~
+Update the manifest planning position:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.phase {N}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task ~
 ```
 
 Commit: `planning({topic}): draft Phase {N} task list`
@@ -58,7 +60,10 @@ Then check the gate mode.
 
 ### Check Gate Mode
 
-Check `task_list_gate_mode` in the Plan Index File frontmatter.
+Check `task_list_gate_mode` via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.task_list_gate_mode
+```
 
 #### If `task_list_gate_mode: auto`
 
@@ -96,7 +101,7 @@ Update the Plan Index File with the revised task table, re-present, and ask agai
 
 #### If `auto`
 
-Note that `task_list_gate_mode` should be updated to `auto` during the commit step below.
+Note that `task_list_gate_mode` should be updated to `auto` in the manifest during the commit step below.
 
 → Proceed to **If approved** below.
 
@@ -104,8 +109,14 @@ Note that `task_list_gate_mode` should be updated to `auto` during the commit st
 
 **If the task list is new or was amended:**
 
-1. Advance the `planning:` block to the first task in this phase
-2. If user chose `auto` at this gate: update `task_list_gate_mode: auto` in the Plan Index File frontmatter
+1. Advance the planning position in the manifest to the first task in this phase:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task {first-task-seq}
+   ```
+2. If user chose `auto` at this gate: update the manifest:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task_list_gate_mode auto
+   ```
 3. Commit: `planning({topic}): approve Phase {N} task list`
 
 **If the task list was already approved and unchanged:** No updates needed.

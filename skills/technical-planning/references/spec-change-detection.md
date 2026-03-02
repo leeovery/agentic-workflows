@@ -6,7 +6,7 @@
 
 When resuming planning, check whether the specification or cross-cutting specifications have changed since planning started.
 
-The Plan Index File stores `spec_commit` — the git commit hash captured when planning began. This allows diffing any input file against that point in time.
+The manifest stores `spec_commit` — the git commit hash captured when planning began. This allows diffing any input file against that point in time.
 
 ## Detection
 

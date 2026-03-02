@@ -6,7 +6,7 @@
 
 This reference defines generic principles for breaking specifications into implementation phases.
 
-A work-type context file (greenfield, feature, or bugfix) is always loaded alongside this file. The context file provides the Phase 1 strategy, progression model, examples, and work-type-specific guidance. These generic principles apply across all work types.
+A work-type context file (epic, feature, or bugfix) is always loaded alongside this file. The context file provides the Phase 1 strategy, progression model, examples, and work-type-specific guidance. These generic principles apply across all work types.
 
 ## What Makes a Good Phase
 

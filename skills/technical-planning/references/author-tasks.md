@@ -10,9 +10,9 @@ This step uses the `planning-task-author` agent (`../../../agents/planning-task-
 
 ## A. Prepare the Scratch File
 
-Scratch file path: `.workflows/.cache/planning/{topic}/phase-{N}.md`
+Scratch file path: `.workflows/.cache/planning/{work-unit}/phase-{N}.md`
 
-Create the `.workflows/.cache/planning/{topic}/` directory if it does not exist.
+Create the `.workflows/.cache/planning/{work-unit}/` directory if it does not exist.
 
 ---
 
@@ -27,12 +27,12 @@ Authoring {count} tasks for Phase {N}: {Phase Name}...
 Invoke `planning-task-author` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
-2. **Specification**: path from the Plan Index File's `specification:` field
-3. **Cross-cutting specs**: paths from the Plan Index File's `cross_cutting_specs:` field (if any)
+2. **Specification**: specification path from the manifest or `.workflows/{work-unit}/specification/specification.md`
+3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **task-design.md**: `task-design.md`
 5. **All approved phases**: the complete phase structure from the Plan Index File body
 6. **Task list for current phase**: the approved task table (ALL tasks in the phase)
-7. **Scratch file path**: `.workflows/.cache/planning/{topic}/phase-{N}.md`
+7. **Scratch file path**: `.workflows/.cache/planning/{work-unit}/phase-{N}.md`
 
 The agent writes all tasks to the scratch file and returns.
 
@@ -54,7 +54,10 @@ Re-invoke the agent with the same inputs.
 
 ## D. Check Gate Mode
 
-Check `author_gate_mode` in the Plan Index File frontmatter.
+Check `author_gate_mode` via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.author_gate_mode
+```
 
 #### If `author_gate_mode: auto`
 
@@ -112,7 +115,10 @@ Mark the task `approved` in the scratch file. Continue to the next task.
 
 #### If `auto`
 
-Mark the task `approved` in the scratch file. Set all remaining `pending` tasks to `approved`. Update `author_gate_mode: auto` in the Plan Index File frontmatter.
+Mark the task `approved` in the scratch file. Set all remaining `pending` tasks to `approved`. Update `author_gate_mode` in the manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.author_gate_mode auto
+```
 
 → Proceed to **F. Write to Plan**.
 
@@ -166,9 +172,15 @@ For each approved task in the scratch file, in order:
 1. Read the task content from the scratch file
 2. Write to the output format (format-specific — see the format's **[authoring.md](output-formats/{format}/authoring.md)**)
 3. Update the task table in the Plan Index File: set `status: authored` and set `Ext ID` to the external identifier for the task as exposed by the output format
-4. If the Plan Index File frontmatter `ext_id` is empty, set it to the external identifier for the plan as exposed by the output format
+4. If the manifest's `{work-unit}.phases.planning.ext_id` is empty, set it to the external identifier for the plan as exposed by the output format:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.ext_id {ext-id}
+   ```
 5. If the current phase's `ext_id` is empty, set it to the external identifier for the phase as exposed by the output format
-6. Advance the `planning:` block in frontmatter to the next pending task (or next phase if this was the last task)
+6. Advance the manifest planning position to the next pending task (or next phase if this was the last task):
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task {next-task-seq}
+   ```
 7. Commit: `planning({topic}): author task {task-id} ({task name})`
 
 > *Output the next fenced block as a code block:*
@@ -183,8 +195,8 @@ Repeat for each task.
 
 ## G. Cleanup
 
-Delete the scratch file: `rm .workflows/.cache/planning/{topic}/phase-{N}.md`
+Delete the scratch file: `rm .workflows/.cache/planning/{work-unit}/phase-{N}.md`
 
-Remove the `.workflows/.cache/planning/{topic}/` directory if empty.
+Remove the `.workflows/.cache/planning/{work-unit}/` directory if empty.
 
 → Return to **[plan-construction.md](plan-construction.md)**.

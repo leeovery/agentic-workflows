@@ -34,25 +34,27 @@ independently testable stages.
 
 ### Invoke the Agent
 
-Read `work_type` from the Plan Index File frontmatter.
+Read `work_type` from the manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+```
 
 Invoke `planning-phase-designer` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
-2. **Specification**: path from the Plan Index File's `specification:` field
-3. **Cross-cutting specs**: paths from the Plan Index File's `cross_cutting_specs:` field (if any)
+2. **Specification**: specification path from the manifest or `.workflows/{work-unit}/specification/specification.md`
+3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **phase-design.md**: `phase-design.md`
-5. **Context guidance**: `phase-design/{work_type}.md` (default to `greenfield` if `work_type` is empty)
+5. **Context guidance**: `phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
 6. **task-design.md**: `task-design.md`
 7. **plan-index-schema.md**: `plan-index-schema.md`
 
 The agent returns a complete phase structure. Write it directly to the Plan Index File body.
 
-Update the frontmatter `planning:` block:
-```yaml
-planning:
-  phase: 1
-  task: ~
+Update the manifest planning position:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.phase 1
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task ~
 ```
 
 Commit: `planning({topic}): draft phase structure`
