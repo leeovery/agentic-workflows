@@ -24,7 +24,7 @@ E. Update progress + phase check + commit
 1. Follow the format's **reading.md** instructions to determine the next available task.
 2. If no available tasks remain → skip to **When All Tasks Are Complete**.
 3. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-4. Reset `fix_attempts` to `0` in the implementation tracking file.
+4. Reset `fix_attempts` to `0` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_attempts 0`).
 5. Mark the task as **in-progress** — follow the format's **updating.md** "In Progress" status transition.
 6. If the format's updating.md includes a **Phase / Parent Status** section: check whether the task's phase parent needs to be started. If so, follow the format's phase start instructions.
 
@@ -84,7 +84,7 @@ Task {id}: {Task Name} — {blocked/failed}
 
 ### Review Changes
 
-Increment `fix_attempts` in the implementation tracking file.
+Increment `fix_attempts` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_attempts {N}`).
 
 > *Output the next fenced block as a code block:*
 
@@ -99,6 +99,8 @@ Review for Task {id}: {Task Name} — needs changes (attempt {N})
 Notes (non-blocking):
 {NOTES from reviewer}
 ```
+
+Check `fix_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.fix_gate_mode`).
 
 #### If `fix_gate_mode: auto` and `fix_attempts < 3`
 
@@ -121,7 +123,7 @@ Notes (non-blocking):
 **STOP.** Wait for user choice.
 
 - **`y`/`yes`**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
-- **`auto`**: Note that `fix_gate_mode` should be updated to `auto` during the next commit step. → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
+- **`auto`**: Note that `fix_gate_mode` should be updated to `auto` via manifest CLI during the next commit step. → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
 - **`skip`**: → Proceed to **D. Task Gate**.
 - **Ask**: Answer the user's questions about the review. When complete, re-present the Review Changes options above. Repeat until the user selects a terminal option (`yes`, `auto`, `skip`, or Comment).
 - **Comment**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content, the reviewer's notes, and the user's commentary.
@@ -141,7 +143,7 @@ Phase: {phase number} — {phase name}
 {executor's SUMMARY — brief commentary, decisions, implementation notes}
 ```
 
-Check the `task_gate_mode` field in the implementation tracking file.
+Check the `task_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.task_gate_mode`).
 
 #### If `task_gate_mode: auto`
 
@@ -164,7 +166,7 @@ Check the `task_gate_mode` field in the implementation tracking file.
 **STOP.** Wait for user input.
 
 - **`y`/`yes`**: → Proceed to **E. Update Progress and Commit**.
-- **`auto`**: Note that `task_gate_mode` should be updated to `auto` during the commit step. → Proceed to **E. Update Progress and Commit**.
+- **`auto`**: Note that `task_gate_mode` should be updated to `auto` via manifest CLI during the commit step. → Proceed to **E. Update Progress and Commit**.
 - **Ask**: Answer the user's questions about the implementation. When complete, re-present the Task Gate options above. Repeat until the user selects a terminal option (`yes`, `auto`, or Comment).
 - **Comment**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the user's feedback.
 
@@ -176,18 +178,14 @@ Check the `task_gate_mode` field in the implementation tracking file.
 
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress:
 - If the format's updating.md includes a **Phase / Parent Status** section, follow its phase completion instructions
-- Append the phase number to `completed_phases` in the tracking file
 
-**Mirror to implementation tracking file** (`.workflows/implementation/{topic}/tracking.md`):
-- Append the task ID to `completed_tasks`
-- Update `current_phase` if phase changed
-- Update `current_task` to the next task (or `~` if done)
-- Update `completed_phases` if a phase completed this iteration
-- Update `updated` to today's date
-- If user chose `auto` at the task gate this turn: update `task_gate_mode: auto`
-- If user chose `auto` at the fix gate this turn: update `fix_gate_mode: auto`
-
-The tracking file is a derived view for discovery scripts and cross-topic dependency resolution — not a decision-making input during implementation (except `task_gate_mode` and `fix_gate_mode`).
+**Update implementation state via manifest CLI**:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.current_phase {N}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.current_task {next-task-id or ~}
+```
+- If user chose `auto` at the task gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.task_gate_mode auto`
+- If user chose `auto` at the fix gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_gate_mode auto`
 
 **Commit all changes** in a single commit:
 
@@ -195,7 +193,7 @@ The tracking file is a derived view for discovery scripts and cross-topic depend
 impl({topic}): T{task-id} — {brief description}
 ```
 
-Code, tests, plan progress, and tracking file — one commit per approved task.
+Code, tests, plan progress, and implementation file — one commit per approved task.
 
 This is the end of this iteration.
 

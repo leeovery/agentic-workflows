@@ -20,7 +20,7 @@ F. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Increment `analysis_cycle` in the implementation tracking file.
+Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.analysis_cycle {N}`).
 
 → If `analysis_cycle <= 3`, proceed to **B. Git Checkpoint**.
 
@@ -127,9 +127,9 @@ impl({topic}): analysis cycle {N} — synthesis
 
 ## E. Approval Gate
 
-Read the staging file from `.workflows/implementation/{topic}/analysis-tasks-c{cycle-number}.md`.
+Read the staging file from `.workflows/{work-unit}/implementation/analysis-tasks-c{cycle-number}.md`.
 
-Check `analysis_gate_mode` in the implementation tracking file (`gated` or `auto`).
+Check `analysis_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.analysis_gate_mode`).
 
 Present an overview:
 
@@ -183,7 +183,7 @@ Approve this task?
 
 #### If `analysis_gate_mode: auto`
 
-Update `status: approved` in the staging file. Note that `analysis_gate_mode` should be updated to `auto` in the tracking file during the next commit.
+Update `status: approved` in the staging file. Note that `analysis_gate_mode` should be updated to `auto` via manifest CLI during the next commit.
 
 > *Output the next fenced block as a code block:*
 
@@ -205,7 +205,7 @@ Update `status: approved` in the staging file.
 
 #### If `auto`
 
-Update `status: approved` in the staging file. Note that `analysis_gate_mode` should be updated to `auto` in the tracking file during the next commit.
+Update `status: approved` in the staging file. Note that `analysis_gate_mode` should be updated to `auto` via manifest CLI during the next commit.
 
 → Continue processing remaining tasks without stopping.
 
@@ -227,7 +227,7 @@ After all tasks processed:
 
 → If all tasks were skipped:
 
-Commit the staging file updates (include tracking file if `analysis_gate_mode` was updated):
+Commit the staging file updates (include manifest if `analysis_gate_mode` was updated):
 
 ```
 impl({topic}): analysis cycle {N} — tasks skipped
@@ -243,7 +243,7 @@ Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructi
 
 **STOP.** Do not proceed until the task writer has returned.
 
-Commit all analysis and plan changes (staging file, plan tasks, Plan Index File, and tracking file if `analysis_gate_mode` was updated):
+Commit all analysis and plan changes (staging file, plan tasks, Plan Index File, and manifest if `analysis_gate_mode` was updated):
 
 ```
 impl({topic}): add analysis phase {N} ({K} tasks)

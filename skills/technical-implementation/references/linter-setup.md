@@ -22,18 +22,17 @@ Discover and configure project linters for use during the TDD cycle's LINT step.
 
 ## Storage
 
-Linter commands are stored in the implementation tracking file frontmatter as a `linters` array:
+Linter commands are stored in the manifest as a `linters` array:
 
-```yaml
-linters:
-  - name: phpstan
-    command: vendor/bin/phpstan analyse --memory-limit=512M
-  - name: pint
-    command: vendor/bin/pint --test
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.linters [{"name":"phpstan","command":"vendor/bin/phpstan analyse --memory-limit=512M"},{"name":"pint","command":"vendor/bin/pint --test"}]
 ```
 
 Each entry has:
 - **name** — identifier for display
 - **command** — the exact shell command to run (including flags)
 
-If the user skips linter setup, store an empty array: `linters: []`
+If the user skips linter setup, store an empty array:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.linters []
+```

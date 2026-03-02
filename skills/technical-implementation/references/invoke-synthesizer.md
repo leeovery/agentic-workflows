@@ -17,7 +17,7 @@ Pass via the orchestrator's prompt:
 1. **Task normalization reference path** — `task-normalisation.md`
 2. **Topic name** — the implementation topic
 3. **Cycle number** — the current analysis cycle number
-4. **Specification path** — from the plan's frontmatter (if available)
+4. **Specification path** — from the specification phase (if available)
 
 The agent knows its own file path conventions — it locates findings files and writes output files based on the topic name.
 

@@ -23,7 +23,7 @@ Either way: dispatch agents per task — executor implements via TDD, reviewer v
 ### What This Skill Needs
 
 - **Plan content** (required) - Phases, tasks, and acceptance criteria to execute
-- **Plan format** (required) - How to parse tasks (from plan frontmatter)
+- **Plan format** (required) - How to parse tasks (from manifest)
 - **Specification content** (optional) - For context when task rationale is unclear
 - **Environment setup** (optional) - First-time setup instructions
 
@@ -35,23 +35,25 @@ Either way: dispatch agents per task — executor implements via TDD, reviewer v
 
 ```
 I need an implementation plan to execute. Could you point me to the plan file
-(e.g., .workflows/planning/{topic}/plan.md)?
+(e.g., .workflows/{work-unit}/planning/planning.md)?
 ```
 
 **STOP.** Wait for user response.
 
-#### If plan has no `format` field in frontmatter
+#### If plan has no `format` in the manifest
 
 > *Output the next fenced block as a code block:*
 
 ```
-The plan at {path} doesn't specify an output format in its frontmatter.
+The plan at {path} doesn't specify an output format in the manifest.
 Which format does this plan use?
 ```
 
 **STOP.** Wait for user response.
 
 #### If plan status is not `concluded`
+
+Check plan status via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.status`).
 
 > *Output the next fenced block as a code block:*
 
@@ -71,8 +73,12 @@ If no specification is available, the plan becomes the sole authority for design
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Also read the implementation tracking file and any other working documents for additional context.
-3. **Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle`** in the tracking file — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in `{topic}/`) to determine mid-analysis state.
+2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Also read the implementation file and any other working documents for additional context.
+3. **Check gate modes and progress** via manifest CLI:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation
+   ```
+   Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle` — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 5. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
@@ -129,8 +135,15 @@ Save their instructions to `.workflows/environment-setup.md` (or "No special set
 
 ## Step 2: Read Plan + Load Plan Adapter
 
-1. Read the plan from the provided location (typically `.workflows/planning/{topic}/plan.md`)
-2. Plans can be stored in various formats. The `format` field in the plan's frontmatter identifies which format this plan uses.
+1. Read the plan from the provided location (typically `.workflows/{work-unit}/planning/planning.md`)
+2. Plans can be stored in various formats. Read the `format` via manifest CLI:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.format
+   ```
+   If not set in the implementation phase, check the planning phase:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.format
+   ```
 3. Load the format's per-concern adapter files from `../technical-planning/references/output-formats/{format}/`:
    - **reading.md** — how to read tasks from the plan
    - **updating.md** — how to write progress to the plan
@@ -144,44 +157,45 @@ Save their instructions to `.workflows/environment-setup.md` (or "No special set
 
 ## Step 3: Initialize Implementation Tracking
 
-#### If `.workflows/implementation/{topic}/tracking.md` already exists
+#### If `.workflows/{work-unit}/implementation/implementation.md` already exists
 
-Reset `task_gate_mode`, `fix_gate_mode`, and `analysis_gate_mode` to `gated`, `fix_attempts` to `0`, and `analysis_cycle` to `0` (fresh session = fresh gates/cycles).
+Reset gate modes and counters via manifest CLI (fresh session = fresh gates/cycles):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.task_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.analysis_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_attempts 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.analysis_cycle 0
+```
 
 → Proceed to **Step 4**.
 
-#### If no tracking file exists
+#### If no implementation file exists
 
-Create `.workflows/implementation/{topic}/tracking.md`:
+1. Set implementation state via manifest CLI:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.status in-progress
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.format {format from plan}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.task_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.analysis_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.fix_attempts 0
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.analysis_cycle 0
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.linters []
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.project_skills []
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.current_phase 1
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.current_task ~
+   ```
 
-```yaml
----
-topic: {topic}
-plan: ../../planning/{topic}/plan.md
-format: {format from plan}
-status: in-progress
-task_gate_mode: gated
-fix_gate_mode: gated
-analysis_gate_mode: gated
-fix_attempts: 0
-linters: []
-analysis_cycle: 0
-project_skills: []
-current_phase: 1
-current_task: ~
-completed_phases: []
-completed_tasks: []
-started: YYYY-MM-DD  # Use today's actual date
-updated: YYYY-MM-DD  # Use today's actual date
-completed: ~
----
+2. Create `.workflows/{work-unit}/implementation/implementation.md`:
 
-# Implementation: {Topic Name}
+   ```markdown
+   # Implementation: {Topic Name}
 
-Implementation started.
-```
+   Implementation started.
+   ```
 
-Commit: `impl({topic}): start implementation`
+3. Commit: `impl({topic}): start implementation`
 
 → Proceed to **Step 4**.
 
@@ -189,7 +203,9 @@ Commit: `impl({topic}): start implementation`
 
 ## Step 4: Project Skills Discovery
 
-#### If `project_skills` is populated in the tracking file
+Check `project_skills` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.project_skills`).
+
+#### If `project_skills` is populated
 
 Present the existing configuration for confirmation:
 
@@ -242,7 +258,7 @@ Found these project skills that may be relevant to implementation:
 
 **STOP.** Wait for user to confirm which skills are relevant.
 
-Store the selected skill paths in the tracking file.
+Store the selected skill paths via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.project_skills ["{path1}","{path2}"]`).
 
 → Proceed to **Step 5**.
 
@@ -252,7 +268,7 @@ Store the selected skill paths in the tracking file.
 
 Load **[linter-setup.md](references/linter-setup.md)** and follow its discovery process to identify project linters.
 
-If `linters` is already populated in the tracking file, present the existing configuration for confirmation (same pattern as project skills in Step 4). If confirmed, skip discovery and proceed.
+Check `linters` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.linters`). If already populated, present the existing configuration for confirmation (same pattern as project skills in Step 4). If confirmed, skip discovery and proceed.
 
 Otherwise, present discovery findings to the user:
 
@@ -274,9 +290,9 @@ Recommendations: {any suggested tools with install commands}
 
 **STOP.** Wait for user choice.
 
-- **`yes`**: Store the approved linter commands in the tracking file.
+- **`yes`**: Store the approved linter commands via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.linters [...]`).
 - **`change`**: Adjust based on user input, re-present for confirmation.
-- **`skip`**: Store empty linters array.
+- **`skip`**: Store empty linters array via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.linters []`).
 
 → Proceed to **Step 6**.
 
@@ -325,22 +341,25 @@ Discuss the user's context. If additional work is needed, route back to **Step 6
 
 #### If `yes`
 
-Update the tracking file (`.workflows/implementation/{topic}/tracking.md`):
-- Set `status: completed`
-- Set `completed: YYYY-MM-DD` (use today's actual date)
-- Update `updated` date
+Update implementation status via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.status completed
+```
 
 Commit: `impl({topic}): complete implementation`
 
-**Check for pipeline continuation** — Read the plan file (`.workflows/planning/{topic}/plan.md`) and check for `work_type`
+**Check for pipeline continuation** — Read the work type via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+```
 
-**If work_type is set** (feature, bugfix, or greenfield):
+**If work_type is set** (feature, bugfix, or epic):
 
 This implementation is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {topic}
-Work type: {work_type from plan frontmatter}
+Pipeline bridge for: {work-unit}
+Work type: {work_type from manifest}
 Completed phase: implementation
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
