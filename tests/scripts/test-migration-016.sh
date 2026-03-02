@@ -53,13 +53,8 @@ report_skip() {
 
 setup_fixture() {
     rm -rf "$TEST_DIR/.workflows"
-    rm -rf "$TEST_DIR/.claude"
     FILES_UPDATED=0
     FILES_SKIPPED=0
-    # Link the manifest CLI so node can find it
-    mkdir -p "$TEST_DIR/.claude/skills/workflow-manifest/scripts"
-    cp "$SCRIPT_DIR/../../skills/workflow-manifest/scripts/manifest.js" \
-       "$TEST_DIR/.claude/skills/workflow-manifest/scripts/manifest.js"
 }
 
 run_migration() {

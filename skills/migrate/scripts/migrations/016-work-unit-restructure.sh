@@ -14,8 +14,6 @@
 #   - report_skip "filepath"
 #
 
-MANIFEST_JS=".claude/skills/workflow-manifest/scripts/manifest.js"
-
 # Skip if no .workflows directory
 if [ ! -d ".workflows" ]; then
     return 0
