@@ -16,23 +16,23 @@ Saving session state so Claude can pick up where it left off if the conversation
 .claude/hooks/workflows/write-session-state.sh \
   "unified" \
   "skills/technical-specification/SKILL.md" \
-  ".workflows/specification/unified/specification.md"
+  ".workflows/unified/specification/specification.md"
 ```
 
 This skill's purpose is now fulfilled. Invoke the [technical-specification](../../../technical-specification/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
 
-Determine work_type: use the value from Step 2 if available. Otherwise, read work_type from the source discussion(s) frontmatter.
+Determine work_type: use the value from Step 2 if available. Otherwise, read work_type from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get unified.work_type`).
 
 ```
 Specification session for: Unified
 Work type: {work_type}
 
 Sources:
-- .workflows/discussion/{discussion-name}.md
-- .workflows/discussion/{discussion-name}.md
+- .workflows/{work_unit}/discussion/{discussion-name}.md
+- .workflows/{work_unit}/discussion/{discussion-name}.md
 ...
 
-Output: .workflows/specification/unified/specification.md
+Output: .workflows/unified/specification/specification.md
 
 ---
 Invoke the technical-specification skill.

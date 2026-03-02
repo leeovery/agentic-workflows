@@ -17,7 +17,7 @@ No specifications exist yet.
 ```
 Planning Overview
 
-No specifications found in .workflows/specification/
+No specifications found in any active work unit.
 
 The planning phase requires a concluded specification.
 Run /start-specification first.

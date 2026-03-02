@@ -2,143 +2,14 @@
 #
 # Discovers the current state of plans for /start-implementation command.
 #
+# Uses the manifest CLI to read work unit state.
 # Outputs structured YAML that the command can consume directly.
 #
 
 set -eo pipefail
 
-PLAN_DIR=".workflows/planning"
-SPEC_DIR=".workflows/specification"
-IMPL_DIR=".workflows/implementation"
+MANIFEST_CLI="node .claude/skills/workflow-manifest/scripts/manifest.js"
 ENVIRONMENT_FILE=".workflows/environment-setup.md"
-
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    # Extract from YAML frontmatter (file must start with ---)
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
-
-# Helper: Extract frontmatter content (between first pair of --- delimiters)
-extract_frontmatter() {
-    local file="$1"
-    awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1{print}' "$file" 2>/dev/null
-}
-
-# Helper: Extract external_dependencies from plan frontmatter
-# Outputs individual dep entries as: topic|description|state|task_id
-extract_external_deps() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(extract_frontmatter "$file")
-
-    # Check if external_dependencies exists and is not empty array
-    if ! echo "$frontmatter" | grep -q "^external_dependencies:" 2>/dev/null; then
-        return 0
-    fi
-
-    # Check for empty array format
-    if echo "$frontmatter" | grep -q "^external_dependencies:[[:space:]]*\[\]" 2>/dev/null; then
-        return 0
-    fi
-
-    # Extract the external_dependencies block
-    echo "$frontmatter" | awk '
-/^external_dependencies:/ { in_block=1; next }
-in_block && /^[a-z_]+:/ && !/^[[:space:]]/ { exit }
-in_block && /^[[:space:]]*- topic:/ {
-    # Print previous entry if we have one
-    if (topic != "" && state != "") {
-        print topic "|" desc "|" state "|" task_id
-    }
-    # Start new entry
-    line=$0; gsub(/^[[:space:]]*- topic:[[:space:]]*/, "", line)
-    topic=line; desc=""; state=""; task_id=""
-    next
-}
-in_block && /^[[:space:]]*description:/ {
-    line=$0; gsub(/^[[:space:]]*description:[[:space:]]*/, "", line)
-    desc=line; next
-}
-in_block && /^[[:space:]]*state:/ {
-    line=$0; gsub(/^[[:space:]]*state:[[:space:]]*/, "", line)
-    state=line; next
-}
-in_block && /^[[:space:]]*task_id:/ {
-    line=$0; gsub(/^[[:space:]]*task_id:[[:space:]]*/, "", line)
-    task_id=line; next
-}
-END {
-    if (topic != "" && state != "") {
-        print topic "|" desc "|" state "|" task_id
-    }
-}
-'
-}
-
-# Helper: Extract completed_tasks from implementation tracking file
-# Returns space-separated list of task IDs
-extract_completed_tasks() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(extract_frontmatter "$file")
-
-    # Check for empty array
-    if echo "$frontmatter" | grep -q "^completed_tasks:[[:space:]]*\[\]" 2>/dev/null; then
-        return 0
-    fi
-
-    echo "$frontmatter" | awk '
-/^completed_tasks:/ { in_block=1; next }
-in_block && /^[a-z_]+:/ { exit }
-in_block && /^[[:space:]]*-[[:space:]]/ {
-    gsub(/^[[:space:]]*-[[:space:]]*/, "")
-    gsub(/"/, "")
-    print
-}
-'
-}
-
-# Helper: Extract completed_phases from implementation tracking file
-# Returns space-separated list of phase numbers
-extract_completed_phases() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(extract_frontmatter "$file")
-
-    # Check for inline array format: [1, 2, 3]
-    local inline
-    inline=$(echo "$frontmatter" | grep "^completed_phases:" | sed 's/^completed_phases:[[:space:]]*//' || true)
-    if echo "$inline" | grep -q '^\['; then
-        echo "$inline" | tr -d '[]' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$'
-        return 0
-    fi
-
-    # Check for empty array
-    if echo "$frontmatter" | grep -q "^completed_phases:[[:space:]]*\[\]" 2>/dev/null; then
-        return 0
-    fi
-
-    echo "$frontmatter" | awk '
-/^completed_phases:/ { in_block=1; next }
-in_block && /^[a-z_]+:/ { exit }
-in_block && /^[[:space:]]*-[[:space:]]/ {
-    gsub(/^[[:space:]]*-[[:space:]]*/, "")
-    print
-}
-'
-}
-
 
 # Start YAML output
 echo "# Implementation Command State Discovery"
@@ -146,7 +17,7 @@ echo "# Generated: $(date -Iseconds)"
 echo ""
 
 #
-# PLANS
+# PLANS (work units with planning phase data)
 #
 echo "plans:"
 
@@ -158,96 +29,124 @@ plans_with_unresolved_deps=0
 declare -a plan_names=()
 declare -a plan_statuses=()
 
-if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
+# Get all active work units
+work_units_json=$($MANIFEST_CLI list --status active 2>/dev/null || echo "[]")
 
-    for file in "$PLAN_DIR"/*/plan.md; do
-        [ -f "$file" ] || continue
+# Check if any work units have planning data
+has_plans=false
 
-        name=$(basename "$(dirname "$file")")
-        topic=$(extract_field "$file" "topic")
-        topic=${topic:-"$name"}
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        date=$(extract_field "$file" "date")
-        date=${date:-"unknown"}
-        format=$(extract_field "$file" "format")
-        format=${format:-"MISSING"}
-        specification=$(extract_field "$file" "specification")
-        specification=${specification:-"${name}/specification.md"}
-        plan_id=$(extract_field "$file" "plan_id")
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
+if [ "$work_units_json" != "[]" ]; then
+    # Parse work unit names from JSON array
+    work_unit_names=$(echo "$work_units_json" | node -e "
+        const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+        data.forEach(wu => console.log(wu.name));
+    " 2>/dev/null || true)
 
-        # Track plan data
-        plan_names+=("$name")
-        plan_statuses+=("$status")
+    if [ -n "$work_unit_names" ]; then
+        # First pass: check which work units have planning phase
+        plans_yaml=""
 
-        if [ "$status" = "concluded" ]; then
-            plans_concluded_count=$((plans_concluded_count + 1))
-        fi
+        while IFS= read -r wu_name; do
+            [ -z "$wu_name" ] && continue
 
-        # Check if linked specification exists
-        spec_exists="false"
-        spec_file="$SPEC_DIR/$specification"
-        if [ -f "$spec_file" ]; then
-            spec_exists="true"
-        fi
+            # Check if planning phase exists
+            planning_status=$($MANIFEST_CLI get "$wu_name".phases.planning.status 2>/dev/null || echo "")
+            [ -z "$planning_status" ] && continue
 
-        echo "    - name: \"$name\""
-        echo "      topic: \"$topic\""
-        echo "      status: \"$status\""
-        echo "      work_type: \"$work_type\""
-        echo "      date: \"$date\""
-        echo "      format: \"$format\""
-        echo "      specification: \"$specification\""
-        echo "      specification_exists: $spec_exists"
-        if [ -n "$plan_id" ]; then
-            echo "      plan_id: \"$plan_id\""
-        fi
+            # Has planning data — check if plan file exists
+            plan_file=".workflows/${wu_name}/planning/planning.md"
+            [ -f "$plan_file" ] || continue
 
-        #
-        # External dependencies from frontmatter
-        #
-        deps_output=$(extract_external_deps "$file")
-        has_unresolved="false"
-        unresolved_count=0
-        dep_count=0
+            if ! $has_plans; then
+                has_plans=true
+                echo "  exists: true"
+                echo "  files:"
+            fi
 
-        echo "      external_deps:"
-        if [ -z "$deps_output" ]; then
-            echo "        []"
-        else
-            while IFS='|' read -r dep_topic dep_desc dep_state dep_task_id; do
-                [ -z "$dep_topic" ] && continue
-                dep_count=$((dep_count + 1))
-                echo "        - topic: \"$dep_topic\""
-                echo "          state: \"$dep_state\""
-                if [ -n "$dep_task_id" ]; then
-                    echo "          task_id: \"$dep_task_id\""
-                fi
-                if [ "$dep_state" = "unresolved" ]; then
+            # Read fields from manifest
+            work_type=$($MANIFEST_CLI get "$wu_name".work_type 2>/dev/null || echo "feature")
+            format=$($MANIFEST_CLI get "$wu_name".phases.planning.format 2>/dev/null || echo "MISSING")
+            plan_id=$($MANIFEST_CLI get "$wu_name".phases.planning.plan_id 2>/dev/null || echo "")
+
+            # Read specification state
+            spec_status=$($MANIFEST_CLI get "$wu_name".phases.specification.status 2>/dev/null || echo "")
+            spec_file=".workflows/${wu_name}/specification/specification.md"
+            spec_exists="false"
+            [ -f "$spec_file" ] && spec_exists="true"
+
+            # Track plan data
+            plan_names+=("$wu_name")
+            plan_statuses+=("$planning_status")
+
+            if [ "$planning_status" = "concluded" ]; then
+                plans_concluded_count=$((plans_concluded_count + 1))
+            fi
+
+            echo "    - name: \"$wu_name\""
+            echo "      topic: \"$wu_name\""
+            echo "      status: \"$planning_status\""
+            echo "      work_type: \"$work_type\""
+            echo "      format: \"$format\""
+            echo "      specification: \"${wu_name}/specification/specification.md\""
+            echo "      specification_exists: $spec_exists"
+            if [ -n "$plan_id" ]; then
+                echo "      plan_id: \"$plan_id\""
+            fi
+
+            #
+            # External dependencies from manifest
+            #
+            deps_json=$($MANIFEST_CLI get "$wu_name".phases.planning.external_dependencies 2>/dev/null || echo "")
+            has_unresolved="false"
+            unresolved_count=0
+
+            echo "      external_deps:"
+            if [ -z "$deps_json" ] || [ "$deps_json" = "[]" ]; then
+                echo "        []"
+            else
+                # Parse deps from JSON array
+                echo "$deps_json" | node -e "
+                    const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                    if (!Array.isArray(data) || data.length === 0) {
+                        console.log('        []');
+                        process.exit(0);
+                    }
+                    data.forEach(dep => {
+                        console.log('        - topic: \"' + (dep.topic || '') + '\"');
+                        console.log('          state: \"' + (dep.state || '') + '\"');
+                        if (dep.task_id) console.log('          task_id: \"' + dep.task_id + '\"');
+                    });
+                " 2>/dev/null || echo "        []"
+
+                # Count unresolved
+                unresolved_count=$(echo "$deps_json" | node -e "
+                    const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                    const count = Array.isArray(data) ? data.filter(d => d.state === 'unresolved').length : 0;
+                    console.log(count);
+                " 2>/dev/null || echo "0")
+
+                if [ "$unresolved_count" -gt 0 ]; then
                     has_unresolved="true"
-                    unresolved_count=$((unresolved_count + 1))
                 fi
-            done <<< "$deps_output"
-        fi
-        echo "      has_unresolved_deps: $has_unresolved"
-        echo "      unresolved_dep_count: $unresolved_count"
+            fi
+            echo "      has_unresolved_deps: $has_unresolved"
+            echo "      unresolved_dep_count: $unresolved_count"
 
-        if [ "$has_unresolved" = "true" ]; then
-            plans_with_unresolved_deps=$((plans_with_unresolved_deps + 1))
-        fi
+            if [ "$has_unresolved" = "true" ]; then
+                plans_with_unresolved_deps=$((plans_with_unresolved_deps + 1))
+            fi
 
-        plan_count=$((plan_count + 1))
-    done
+            plan_count=$((plan_count + 1))
+        done <<< "$work_unit_names"
+    fi
+fi
 
-    echo "  count: $plan_count"
-else
+if ! $has_plans; then
     echo "  exists: false"
     echo "  files: []"
     echo "  count: 0"
+else
+    echo "  count: $plan_count"
 fi
 
 echo ""
@@ -260,44 +159,60 @@ echo "implementation:"
 impl_count=0
 plans_in_progress_count=0
 plans_completed_count=0
+has_impl=false
 
-if [ -d "$IMPL_DIR" ] && [ -n "$(ls -A "$IMPL_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
+if [ "$work_units_json" != "[]" ] && [ -n "$work_unit_names" ]; then
+    while IFS= read -r wu_name; do
+        [ -z "$wu_name" ] && continue
 
-    for file in "$IMPL_DIR"/*/tracking.md; do
-        [ -f "$file" ] || continue
+        # Check if implementation phase exists in manifest
+        impl_status=$($MANIFEST_CLI get "$wu_name".phases.implementation.status 2>/dev/null || echo "")
+        [ -z "$impl_status" ] && continue
 
-        impl_name=$(basename "$(dirname "$file")")
-        impl_status=$(extract_field "$file" "status")
-        impl_status=${impl_status:-"unknown"}
-        current_phase=$(extract_field "$file" "current_phase")
-        current_task=$(extract_field "$file" "current_task")
+        # Check if implementation file exists
+        impl_file=".workflows/${wu_name}/implementation/implementation.md"
+        [ -f "$impl_file" ] || continue
 
-        echo "    - topic: \"$impl_name\""
+        if ! $has_impl; then
+            has_impl=true
+            echo "  exists: true"
+            echo "  files:"
+        fi
+
+        current_phase=$($MANIFEST_CLI get "$wu_name".phases.implementation.current_phase 2>/dev/null || echo "")
+        current_task=$($MANIFEST_CLI get "$wu_name".phases.implementation.current_task 2>/dev/null || echo "")
+
+        echo "    - topic: \"$wu_name\""
         echo "      status: \"$impl_status\""
 
-        if [ -n "$current_phase" ] && [ "$current_phase" != "~" ]; then
+        if [ -n "$current_phase" ] && [ "$current_phase" != "~" ] && [ "$current_phase" != "null" ]; then
             echo "      current_phase: $current_phase"
         fi
 
-        # Completed phases
-        completed_phases_list=$(extract_completed_phases "$file")
-        if [ -n "$completed_phases_list" ]; then
-            phases_inline=$(echo "$completed_phases_list" | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
-            echo "      completed_phases: [$phases_inline]"
+        # Completed phases from manifest
+        completed_phases_json=$($MANIFEST_CLI get "$wu_name".phases.implementation.completed_phases 2>/dev/null || echo "[]")
+        if [ -n "$completed_phases_json" ] && [ "$completed_phases_json" != "[]" ]; then
+            phases_inline=$(echo "$completed_phases_json" | node -e "
+                const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                console.log(Array.isArray(data) ? data.join(', ') : '');
+            " 2>/dev/null || echo "")
+            if [ -n "$phases_inline" ]; then
+                echo "      completed_phases: [$phases_inline]"
+            else
+                echo "      completed_phases: []"
+            fi
         else
             echo "      completed_phases: []"
         fi
 
-        # Completed tasks
-        completed_tasks_list=$(extract_completed_tasks "$file")
-        if [ -n "$completed_tasks_list" ]; then
+        # Completed tasks from manifest
+        completed_tasks_json=$($MANIFEST_CLI get "$wu_name".phases.implementation.completed_tasks 2>/dev/null || echo "[]")
+        if [ -n "$completed_tasks_json" ] && [ "$completed_tasks_json" != "[]" ]; then
             echo "      completed_tasks:"
-            while IFS= read -r task_id; do
-                [ -z "$task_id" ] && continue
-                echo "        - \"$task_id\""
-            done <<< "$completed_tasks_list"
+            echo "$completed_tasks_json" | node -e "
+                const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                if (Array.isArray(data)) data.forEach(t => console.log('        - \"' + t + '\"'));
+            " 2>/dev/null || echo "      completed_tasks: []"
         else
             echo "      completed_tasks: []"
         fi
@@ -310,8 +225,10 @@ if [ -d "$IMPL_DIR" ] && [ -n "$(ls -A "$IMPL_DIR" 2>/dev/null)" ]; then
         fi
 
         impl_count=$((impl_count + 1))
-    done
-else
+    done <<< "$work_unit_names"
+fi
+
+if ! $has_impl; then
     echo "  exists: false"
     echo "  files: []"
 fi
@@ -319,66 +236,110 @@ fi
 echo ""
 
 #
-# DEPENDENCY RESOLUTION (cross-reference resolved deps against tracking files)
+# DEPENDENCY RESOLUTION (cross-reference resolved deps against implementation state)
 #
 # For each plan with resolved deps, check if the referenced tasks are actually completed
-# by reading the dependency topic's tracking file
+# by reading the dependency work unit's implementation state from the manifest
 #
 echo "dependency_resolution:"
 
-if [ "$plan_count" -gt 0 ] && [ -d "$PLAN_DIR" ]; then
+if [ "$plan_count" -gt 0 ]; then
     has_resolution_data=false
 
-    for file in "$PLAN_DIR"/*/plan.md; do
-        [ -f "$file" ] || continue
+    for i in "${!plan_names[@]}"; do
+        wu_name="${plan_names[$i]}"
 
-        name=$(basename "$(dirname "$file")")
-        deps_output=$(extract_external_deps "$file")
-        [ -z "$deps_output" ] && continue
+        deps_json=$($MANIFEST_CLI get "$wu_name".phases.planning.external_dependencies 2>/dev/null || echo "")
+        [ -z "$deps_json" ] || [ "$deps_json" = "[]" ] && continue
 
+        # Parse and check deps
+        resolution=$(echo "$deps_json" | node -e "
+            const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+            if (!Array.isArray(data) || data.length === 0) process.exit(0);
+
+            let allSatisfied = true;
+            let hasResolvedDeps = false;
+            const blocking = [];
+
+            for (const dep of data) {
+                if (dep.state === 'resolved' && dep.task_id) {
+                    hasResolvedDeps = true;
+                    // We'll mark as blocking — the shell will verify
+                    blocking.push({ topic: dep.topic, task_id: dep.task_id, reason: 'check_needed' });
+                } else if (dep.state === 'unresolved') {
+                    hasResolvedDeps = true;
+                    allSatisfied = false;
+                    blocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
+                }
+            }
+
+            console.log(JSON.stringify({ hasResolvedDeps, blocking }));
+        " 2>/dev/null || echo "")
+
+        [ -z "$resolution" ] && continue
+
+        has_resolved=$(echo "$resolution" | node -e "
+            const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+            console.log(d.hasResolvedDeps ? 'true' : 'false');
+        " 2>/dev/null || echo "false")
+
+        [ "$has_resolved" = "false" ] && continue
+
+        # For resolved deps with task_ids, check if tasks are completed
         all_satisfied=true
-        has_resolved_deps=false
         blocking_entries=""
 
-        while IFS='|' read -r dep_topic dep_desc dep_state dep_task_id; do
-            [ -z "$dep_topic" ] && continue
+        blocking_json=$(echo "$resolution" | node -e "
+            const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+            console.log(JSON.stringify(d.blocking));
+        " 2>/dev/null || echo "[]")
 
-            if [ "$dep_state" = "resolved" ] && [ -n "$dep_task_id" ]; then
-                has_resolved_deps=true
-                # Check if the dependency topic has a tracking file
-                tracking_file="$IMPL_DIR/${dep_topic}/tracking.md"
+        blocking_count=$(echo "$blocking_json" | node -e "
+            const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+            console.log(d.length);
+        " 2>/dev/null || echo "0")
+
+        for j in $(seq 0 $((blocking_count - 1))); do
+            dep_entry=$(echo "$blocking_json" | node -e "
+                const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                console.log(JSON.stringify(d[$j]));
+            " 2>/dev/null || echo "{}")
+
+            dep_topic=$(echo "$dep_entry" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.topic||'')" 2>/dev/null || echo "")
+            dep_task_id=$(echo "$dep_entry" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.task_id||'')" 2>/dev/null || echo "")
+            dep_reason=$(echo "$dep_entry" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(d.reason||'')" 2>/dev/null || echo "")
+
+            if [ "$dep_reason" = "dependency unresolved" ]; then
+                all_satisfied=false
+                blocking_entries="${blocking_entries}      - topic: \"$dep_topic\"\n        reason: \"dependency unresolved\"\n"
+            elif [ "$dep_reason" = "check_needed" ] && [ -n "$dep_task_id" ]; then
+                # Check if task is completed in the dep's implementation phase
+                completed_tasks_json=$($MANIFEST_CLI get "$dep_topic".phases.implementation.completed_tasks 2>/dev/null || echo "[]")
                 task_completed=false
 
-                if [ -f "$tracking_file" ]; then
-                    # Check if task_id is in completed_tasks
-                    completed=$(extract_completed_tasks "$tracking_file")
-                    if echo "$completed" | grep -qx "$dep_task_id" 2>/dev/null; then
-                        task_completed=true
-                    fi
+                if [ -n "$completed_tasks_json" ] && [ "$completed_tasks_json" != "[]" ]; then
+                    task_completed=$(echo "$completed_tasks_json" | node -e "
+                        const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                        const taskId = '$dep_task_id';
+                        console.log(Array.isArray(data) && data.includes(taskId) ? 'true' : 'false');
+                    " 2>/dev/null || echo "false")
                 fi
 
-                if ! $task_completed; then
+                if [ "$task_completed" = "false" ]; then
                     all_satisfied=false
                     blocking_entries="${blocking_entries}      - topic: \"$dep_topic\"\n        task_id: \"$dep_task_id\"\n        reason: \"task not yet completed\"\n"
                 fi
-            elif [ "$dep_state" = "unresolved" ]; then
-                has_resolved_deps=true
-                all_satisfied=false
-                blocking_entries="${blocking_entries}      - topic: \"$dep_topic\"\n        reason: \"dependency unresolved\"\n"
             fi
-            # satisfied_externally deps don't block
-        done <<< "$deps_output"
+        done
 
-        if $has_resolved_deps || [ -n "$blocking_entries" ]; then
-            if ! $has_resolution_data; then
-                has_resolution_data=true
-            fi
-            echo "  - plan: \"$name\""
-            echo "    deps_satisfied: $all_satisfied"
-            if [ -n "$blocking_entries" ]; then
-                echo "    deps_blocking:"
-                echo -e "$blocking_entries" | sed '/^$/d'
-            fi
+        if ! $has_resolution_data; then
+            has_resolution_data=true
+        fi
+        echo "  - plan: \"$wu_name\""
+        echo "    deps_satisfied: $all_satisfied"
+        if [ -n "$blocking_entries" ]; then
+            echo "    deps_blocking:"
+            echo -e "$blocking_entries" | sed '/^$/d'
         fi
     done
 
@@ -426,40 +387,54 @@ echo "  plans_with_unresolved_deps: $plans_with_unresolved_deps"
 
 # Plans ready = concluded + all deps satisfied (no unresolved, all resolved tasks completed)
 plans_ready_count=0
-if [ "$plan_count" -gt 0 ] && [ -d "$PLAN_DIR" ]; then
-    for file in "$PLAN_DIR"/*/plan.md; do
-        [ -f "$file" ] || continue
-        name=$(basename "$(dirname "$file")")
-        status=$(extract_field "$file" "status")
+if [ "$plan_count" -gt 0 ]; then
+    for i in "${!plan_names[@]}"; do
+        wu_name="${plan_names[$i]}"
+        status="${plan_statuses[$i]}"
 
         if [ "$status" = "concluded" ]; then
-            deps_output=$(extract_external_deps "$file")
+            deps_json=$($MANIFEST_CLI get "$wu_name".phases.planning.external_dependencies 2>/dev/null || echo "")
             is_ready=true
 
-            if [ -n "$deps_output" ]; then
-                while IFS='|' read -r dep_topic dep_desc dep_state dep_task_id; do
-                    [ -z "$dep_topic" ] && continue
+            if [ -n "$deps_json" ] && [ "$deps_json" != "[]" ]; then
+                is_ready=$(echo "$deps_json" | node -e "
+                    const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+                    if (!Array.isArray(data)) { console.log('true'); process.exit(0); }
+                    const hasBlocking = data.some(d => d.state === 'unresolved');
+                    console.log(hasBlocking ? 'false' : 'check');
+                " 2>/dev/null || echo "true")
 
-                    if [ "$dep_state" = "unresolved" ]; then
-                        is_ready=false
-                        break
-                    elif [ "$dep_state" = "resolved" ] && [ -n "$dep_task_id" ]; then
-                        tracking_file="$IMPL_DIR/${dep_topic}/tracking.md"
-                        if [ -f "$tracking_file" ]; then
-                            completed=$(extract_completed_tasks "$tracking_file")
-                            if ! echo "$completed" | grep -qx "$dep_task_id" 2>/dev/null; then
-                                is_ready=false
-                                break
-                            fi
-                        else
-                            is_ready=false
-                            break
-                        fi
-                    fi
-                done <<< "$deps_output"
+                if [ "$is_ready" = "check" ]; then
+                    # Need to verify resolved deps have completed tasks
+                    is_ready=$(echo "$deps_json" | node -e "
+                        const fs = require('fs');
+                        const { execSync } = require('child_process');
+                        const data = JSON.parse(fs.readFileSync('/dev/stdin','utf8'));
+                        let ready = true;
+                        for (const dep of data) {
+                            if (dep.state === 'resolved' && dep.task_id) {
+                                try {
+                                    const completedJson = execSync(
+                                        'node .claude/skills/workflow-manifest/scripts/manifest.js get ' + dep.topic + '.phases.implementation.completed_tasks',
+                                        { encoding: 'utf8', stdio: ['pipe','pipe','pipe'] }
+                                    ).trim();
+                                    const completed = JSON.parse(completedJson);
+                                    if (!Array.isArray(completed) || !completed.includes(dep.task_id)) {
+                                        ready = false;
+                                        break;
+                                    }
+                                } catch {
+                                    ready = false;
+                                    break;
+                                }
+                            }
+                        }
+                        console.log(ready ? 'true' : 'false');
+                    " 2>/dev/null || echo "false")
+                fi
             fi
 
-            if $is_ready; then
+            if [ "$is_ready" = "true" ]; then
                 plans_ready_count=$((plans_ready_count + 1))
             fi
         fi

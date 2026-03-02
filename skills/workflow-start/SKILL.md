@@ -12,7 +12,7 @@ hooks:
 
 Unified workflow entry point. Discovers state, determines work type, and routes appropriately.
 
-> **ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
+> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
 ## Instructions
 
@@ -54,14 +54,14 @@ If the above shows a script invocation rather than YAML output, the dynamic cont
 
 Parse the output to understand the current workflow state:
 
-**From `greenfield` section:**
-- Research files, discussions (name, status, work_type), specifications (name, status, work_type, type), plans, implementations
+**From `epic` section:**
+- Work units with `work_type: epic` — name, next_phase, phase_label, per-phase statuses
 
 **From `features` section:**
-- Topics with `work_type: feature` at any phase
+- Work units with `work_type: feature` — name, next_phase, phase_label, per-phase statuses
 
 **From `bugfixes` section:**
-- Topics with `work_type: bugfix` at any phase (includes investigations)
+- Work units with `work_type: bugfix` — name, next_phase, phase_label, per-phase statuses (includes investigation)
 
 **From `state` section:**
 - Counts for each work type, `has_any_work` flag
@@ -84,9 +84,9 @@ The reference will present the current state and ask the user which work type th
 
 Based on the selected work type, load the appropriate routing reference:
 
-#### If work type is `greenfield`
+#### If work type is `epic`
 
-Load **[greenfield-routing.md](references/greenfield-routing.md)** and follow its instructions.
+Load **[epic-routing.md](references/epic-routing.md)** and follow its instructions.
 
 #### If work type is `feature`
 

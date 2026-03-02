@@ -11,7 +11,7 @@ Based on the feature description, suggest a topic name:
 ```
 Suggested topic name: {suggested-topic:(kebabcase)}
 
-This will create: .workflows/discussion/{suggested-topic}.md
+This will create: .workflows/{suggested-topic}/discussion/discussion.md
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -30,7 +30,7 @@ Is this name okay?
 Once the topic name is confirmed, check for naming conflicts:
 
 ```bash
-ls .workflows/discussion/
+ls .workflows/
 ```
 
 #### If a discussion with the same name exists
@@ -39,7 +39,7 @@ ls .workflows/discussion/
 
 ```
 · · · · · · · · · · · ·
-A discussion named "{topic}" already exists.
+A work unit named "{topic}" already exists.
 
 - **`r`/`resume`** — Resume the existing discussion
 - **`n`/`new`** — Choose a different name

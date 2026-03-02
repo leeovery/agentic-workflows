@@ -4,9 +4,9 @@
 
 ---
 
-Check if a specification already exists for this topic.
+Check if a specification already exists for this work unit.
 
-Read `.workflows/specification/{topic}/specification.md` if it exists.
+Read `.workflows/{work_unit}/specification/specification.md` if it exists.
 
 #### If specification doesn't exist
 
@@ -19,7 +19,7 @@ Read `.workflows/specification/{topic}/specification.md` if it exists.
 ```
 Specification In Progress
 
-A specification for "{topic:(titlecase)}" already exists and is in progress.
+A specification for "{work_unit:(titlecase)}" already exists and is in progress.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -50,8 +50,8 @@ Archive the existing spec.
 ```
 Specification Concluded
 
-The specification for "{topic:(titlecase)}" has already concluded.
-Run /start-planning {work_type} {topic} to continue to planning.
+The specification for "{work_unit:(titlecase)}" has already concluded.
+Run /start-planning {work_type} {work_unit} to continue to planning.
 ```
 
 **STOP.** Do not proceed — terminal condition.

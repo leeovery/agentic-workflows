@@ -1,6 +1,6 @@
 ---
 name: start-implementation
-allowed-tools: Bash(.claude/skills/start-implementation/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/planning/)
+allowed-tools: Bash(.claude/skills/start-implementation/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -76,15 +76,15 @@ Parse the discovery output to understand:
 
 **From `plans` section:**
 - `exists` - whether any plans exist
-- `files` - list of plans with: name, topic, status, date, format, specification, specification_exists, plan_id (if present)
+- `files` - list of plans with: name, topic, status, format, specification, specification_exists, plan_id (if present)
 - Per plan `external_deps` - array of dependencies with topic, state, task_id
 - Per plan `has_unresolved_deps` - whether plan has unresolved dependencies
 - Per plan `unresolved_dep_count` - count of unresolved dependencies
 - `count` - total number of plans
 
 **From `implementation` section:**
-- `exists` - whether any implementation tracking files exist
-- `files` - list of tracking files with: topic, status, current_phase, completed_phases, completed_tasks
+- `exists` - whether any implementation files exist
+- `files` - list of implementation files with: topic, status, current_phase, completed_phases, completed_tasks
 
 **From `dependency_resolution` section:**
 - Per plan `deps_satisfied` - whether all resolved deps have their tasks completed
@@ -110,13 +110,13 @@ Parse the discovery output to understand:
 
 ## Step 2: Determine Mode
 
-Check for arguments: work_type = `$0`, topic = `$1`
+Check for arguments: work_type = `$0`, work_unit = `$1`
 
-#### If `work_type` and `topic` are both provided
+#### If `work_type` and `work_unit` are both provided
 
 → Proceed to **Step 3**.
 
-#### If `work_type` is provided without `topic`
+#### If `work_type` is provided without `work_unit`
 
 Store work_type for the handoff.
 
@@ -148,7 +148,7 @@ Load **[route-scenario.md](references/route-scenario.md)** and follow its instru
 
 Load **[display-plans.md](references/display-plans.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6** with selected topic.
+→ Proceed to **Step 6** with selected work unit.
 
 ---
 

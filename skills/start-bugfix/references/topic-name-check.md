@@ -11,7 +11,7 @@ Based on the bug description, suggest a topic name:
 ```
 Suggested topic name: {suggested-topic:(kebabcase)}
 
-This will create: .workflows/investigation/{suggested-topic}/investigation.md
+This will create: .workflows/{suggested-topic}/investigation/investigation.md
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -30,7 +30,7 @@ Is this name okay?
 Once the topic name is confirmed, check for naming conflicts:
 
 ```bash
-ls .workflows/investigation/
+ls .workflows/
 ```
 
 #### If an investigation with the same name exists
@@ -39,7 +39,7 @@ ls .workflows/investigation/
 
 ```
 · · · · · · · · · · · ·
-An investigation named "{topic}" already exists.
+A work unit named "{topic}" already exists.
 
 - **`r`/`resume`** — Resume the existing investigation
 - **`n`/`new`** — Choose a different name

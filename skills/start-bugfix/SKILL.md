@@ -1,6 +1,6 @@
 ---
 name: start-bugfix
-allowed-tools: Bash(ls .workflows/investigation/), Bash(.claude/hooks/workflows/write-session-state.sh)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/), Bash(.claude/hooks/workflows/write-session-state.sh)
 hooks:
   PreToolUse:
     - hooks:
@@ -31,11 +31,11 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it.
-2. **Identify the topic.** Check conversation history for the topic name. If unknown, check `.workflows/investigation/` for recently modified directories via `git log --oneline -5`.
+2. **Identify the topic.** Check conversation history for the topic name. If unknown, check `.workflows/` for recently modified work unit directories via `git log --oneline -5`.
 3. **Determine current step from artifacts:**
    - No investigation file exists → resume at **Step 1**
-   - Investigation exists with `status: in-progress` → resume at **Step 3** (re-invoke technical-investigation)
-   - Investigation exists with `status: concluded` → already handled by processing skill's bridge invocation
+   - Investigation exists with `in-progress` status in manifest → resume at **Step 3** (re-invoke technical-investigation)
+   - Investigation has `concluded` status in manifest → already handled by processing skill's bridge invocation
 4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.

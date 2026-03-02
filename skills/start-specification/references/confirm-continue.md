@@ -11,7 +11,7 @@
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/specification/{kebab-case-name}/specification.md (in-progress)
+Existing: .workflows/{work_unit}/specification/specification.md (in-progress)
 
 Sources to extract:
   • {discussion-name} (pending)
@@ -37,7 +37,7 @@ Proceed?
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/specification/{kebab-case-name}/specification.md (in-progress)
+Existing: .workflows/{work_unit}/specification/specification.md (in-progress)
 
 All sources extracted:
   • {discussion-name}
@@ -61,7 +61,7 @@ Proceed?
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/specification/{kebab-case-name}/specification.md (concluded)
+Existing: .workflows/{work_unit}/specification/specification.md (concluded)
 
 New sources to extract:
   • {discussion-name} (pending)

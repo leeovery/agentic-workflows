@@ -4,7 +4,7 @@
 
 ---
 
-Feature development is topic-centric. A single topic flows through the pipeline: Discussion → Specification → Planning → Implementation → Review. This reference shows in-progress features and offers options to continue or start new.
+Feature development is topic-centric. A single work unit flows through the pipeline: Discussion → Specification → Planning → Implementation → Review. This reference shows in-progress features and offers options to continue or start new.
 
 ## Display Feature State
 
@@ -50,7 +50,7 @@ Features
 
 {feature_count} feature(s) in progress:
 
-1. {topic:(titlecase)}
+1. {work_unit:(titlecase)}
    └─ {phase_label:(titlecase)}
 
 2. ...
@@ -77,7 +77,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-Recreate with actual topics and `phase_label` values from discovery.
+Recreate with actual work units and `phase_label` values from discovery.
 
 **STOP.** Wait for user response.
 
@@ -93,16 +93,16 @@ Invoke `/start-feature`. It will set `work_type: feature` automatically.
 
 Map `next_phase` to the appropriate skill:
 
-| next_phase | Skill | Work Type | Topic |
-|------------|-------|-----------|-------|
-| discussion | `/start-discussion` | feature | {topic} |
-| specification | `/start-specification` | feature | {topic} |
-| planning | `/start-planning` | feature | {topic} |
-| implementation | `/start-implementation` | feature | {topic} |
-| review | `/start-review` | feature | {topic} |
+| next_phase | Skill | Work Type | Work Unit |
+|------------|-------|-----------|-----------|
+| discussion | `/start-discussion` | feature | {work_unit} |
+| specification | `/start-specification` | feature | {work_unit} |
+| planning | `/start-planning` | feature | {work_unit} |
+| implementation | `/start-implementation` | feature | {work_unit} |
+| review | `/start-review` | feature | {work_unit} |
 
-Skills receive positional arguments: `$0` = work_type, `$1` = topic.
+Skills receive positional arguments: `$0` = work_type, `$1` = work_unit.
 
-**Example**: `/start-specification feature {topic}` — skill skips discovery, validates topic, proceeds to processing.
+**Example**: `/start-specification feature {work_unit}` — skill skips discovery, validates work unit, proceeds to processing.
 
-Invoke the skill from the table with the work type and topic as positional arguments.
+Invoke the skill from the table with the work type and work unit as positional arguments.

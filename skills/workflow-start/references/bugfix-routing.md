@@ -4,7 +4,7 @@
 
 ---
 
-Bugfix work is investigation-centric. A topic flows through: Investigation → Specification → Planning → Implementation → Review. Investigation replaces discussion by combining symptom gathering + code analysis. This reference shows in-progress bugfixes and offers options to continue or start new.
+Bugfix work is investigation-centric. A work unit flows through: Investigation → Specification → Planning → Implementation → Review. Investigation replaces discussion by combining symptom gathering + code analysis. This reference shows in-progress bugfixes and offers options to continue or start new.
 
 ## Display Bugfix State
 
@@ -50,7 +50,7 @@ Bugfixes
 
 {bugfix_count} bugfix(es) in progress:
 
-1. {topic:(titlecase)}
+1. {work_unit:(titlecase)}
    └─ {phase_label:(titlecase)}
 
 2. ...
@@ -77,7 +77,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-Recreate with actual topics and `phase_label` values from discovery.
+Recreate with actual work units and `phase_label` values from discovery.
 
 **STOP.** Wait for user response.
 
@@ -93,16 +93,16 @@ Invoke `/start-bugfix`. It will set `work_type: bugfix` and begin the investigat
 
 Map `next_phase` to the appropriate skill:
 
-| next_phase | Skill | Work Type | Topic |
-|------------|-------|-----------|-------|
-| investigation | `/start-investigation` | bugfix | {topic} |
-| specification | `/start-specification` | bugfix | {topic} |
-| planning | `/start-planning` | bugfix | {topic} |
-| implementation | `/start-implementation` | bugfix | {topic} |
-| review | `/start-review` | bugfix | {topic} |
+| next_phase | Skill | Work Type | Work Unit |
+|------------|-------|-----------|-----------|
+| investigation | `/start-investigation` | bugfix | {work_unit} |
+| specification | `/start-specification` | bugfix | {work_unit} |
+| planning | `/start-planning` | bugfix | {work_unit} |
+| implementation | `/start-implementation` | bugfix | {work_unit} |
+| review | `/start-review` | bugfix | {work_unit} |
 
-Skills receive positional arguments: `$0` = work_type, `$1` = topic.
+Skills receive positional arguments: `$0` = work_type, `$1` = work_unit.
 
-**Example**: `/start-specification bugfix {topic}` — skill skips discovery, validates topic, proceeds to processing.
+**Example**: `/start-specification bugfix {work_unit}` — skill skips discovery, validates work unit, proceeds to processing.
 
-Invoke the skill from the table with the work type and topic as positional arguments.
+Invoke the skill from the table with the work type and work unit as positional arguments.

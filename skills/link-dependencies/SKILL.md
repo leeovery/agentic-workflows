@@ -23,12 +23,12 @@ Use simple, individual commands. Never combine multiple operations into bash loo
 
 Scan the codebase for existing plans:
 
-1. **Find plan files**: Look in `.workflows/planning/`
-   - Run `ls .workflows/planning/` to list plan files
-   - Each topic is a directory containing `plan.md`
+1. **Find work units with plans**: Look in `.workflows/`
+   - Run `ls .workflows/` to list work unit directories
+   - Each work unit may contain a `planning/planning.md` file
 
-2. **Extract plan metadata**: For each plan file
-   - Read the frontmatter to get the `format:` field
+2. **Extract plan metadata**: For each work unit with a plan
+   - Read the format via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.format`
    - Note the format used by each plan
 
 **If no plans exist:**
@@ -38,7 +38,7 @@ Scan the codebase for existing plans:
 ```
 Dependency Linking
 
-No plans found in .workflows/planning/
+No plans found in .workflows/
 
 There are no plans to link. Create plans first.
 ```
@@ -83,9 +83,9 @@ format. Consolidate your plans to a single format before linking.
 
 ## Step 3: Extract External Dependencies
 
-For each plan, read the `external_dependencies` field from the frontmatter:
+For each plan, read the `external_dependencies` from the manifest:
 
-1. **Read `external_dependencies`** from each plan index file's frontmatter
+1. **Read `external_dependencies`** via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.external_dependencies`
 2. **Categorize each dependency** by its `state` field:
    - **Unresolved**: `state: unresolved` (no task linked)
    - **Resolved**: `state: resolved` (has `task_id`)
@@ -121,11 +121,11 @@ Key:
 
 For each unresolved dependency:
 
-1. **Search for matching plan**: Does `.workflows/planning/{dependency-topic}/plan.md` exist?
+1. **Search for matching plan**: Does `.workflows/{dependency-topic}/planning/planning.md` exist?
    - If no match: Mark as "no plan exists" - cannot resolve yet
 
 2. **If plan exists**: Load the format's reading reference
-   - Read `format:` from the dependency plan's frontmatter
+   - Read `format` from the dependency plan's manifest
    - Load `../technical-planning/references/output-formats/{format}/reading.md`
    - Use the task extraction instructions to search for matching tasks
 
@@ -137,8 +137,8 @@ For each unresolved dependency:
 
 For each resolved match:
 
-1. **Update the plan index file's frontmatter**:
-   - Change the dependency's `state: unresolved` to `state: resolved` and add `task_id: {task-id}`
+1. **Update the dependency in the manifest**:
+   - Change the dependency's `state: unresolved` to `state: resolved` and add `task_id: {task-id}` via manifest CLI
 
 2. **Create dependency in output format**:
    - Load `../technical-planning/references/output-formats/{format}/graph.md`
@@ -149,7 +149,7 @@ For each resolved match:
 For each plan that was a dependency target (i.e., other plans depend on it):
 
 1. **Check reverse dependencies**: Are there other plans that should have this wired up?
-2. **Offer to update**: "Plan X depends on tasks you just linked. Update its `external_dependencies` frontmatter?"
+2. **Offer to update**: "Plan X depends on tasks you just linked. Update its `external_dependencies` in the manifest?"
 
 ## Step 7: Report Results
 
@@ -173,7 +173,7 @@ Unresolved (no matching plan exists):
   • {source} → {target}: {description}
 
 Updated files:
-  • .workflows/planning/{topic}/plan.md
+  • .workflows/{topic}/planning/planning.md
 ```
 
 If any dependencies remain unresolved:

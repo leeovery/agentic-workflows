@@ -7,10 +7,10 @@
 Check if plan exists and is ready.
 
 ```bash
-ls .workflows/planning/
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.status
 ```
 
-Read `.workflows/planning/{topic}/plan.md` frontmatter.
+Also verify the plan file exists at `.workflows/{work_unit}/planning/planning.md`.
 
 #### If plan doesn't exist
 
@@ -19,10 +19,10 @@ Read `.workflows/planning/{topic}/plan.md` frontmatter.
 ```
 Plan Missing
 
-No plan found for "{topic:(titlecase)}".
+No plan found for "{work_unit:(titlecase)}".
 
 A concluded plan is required for implementation.
-Run /start-planning {work_type} {topic} to create one.
+Run /start-planning {work_type} {work_unit} to create one.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -34,8 +34,8 @@ Run /start-planning {work_type} {topic} to create one.
 ```
 Plan Not Concluded
 
-The plan for "{topic:(titlecase)}" is not yet concluded.
-Run /start-planning {work_type} {topic} to continue.
+The plan for "{work_unit:(titlecase)}" is not yet concluded.
+Run /start-planning {work_type} {work_unit} to continue.
 ```
 
 **STOP.** Do not proceed — terminal condition.

@@ -16,14 +16,14 @@ Display a readable summary of a plan's phases, tasks, and status.
 If no topic is specified, list available plans:
 
 ```bash
-ls .workflows/planning/
+ls .workflows/
 ```
 
 Ask the user which plan to view.
 
 ## Step 2: Read the Plan Index
 
-Read the plan file from `.workflows/planning/{topic}/plan.md` and check the `format:` field in the frontmatter.
+Read the plan file from `.workflows/{topic}/planning/planning.md` and check the `format` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {topic}.phases.planning.format`).
 
 ## Step 3: Load Format Reading Reference
 

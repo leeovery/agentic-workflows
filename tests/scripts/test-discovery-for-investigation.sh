@@ -1,13 +1,14 @@
 #!/bin/bash
 #
 # Tests the discovery script for start-investigation.
-# Creates temporary fixtures and validates YAML output.
+# Creates temporary fixtures with manifest.json files and validates YAML output.
 #
 
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DISCOVERY_SCRIPT="$SCRIPT_DIR/../../skills/start-investigation/scripts/discovery.sh"
+MANIFEST_CLI="$SCRIPT_DIR/../../.claude/skills/workflow-manifest/scripts/manifest.js"
 
 # Colors for output
 RED='\033[0;31m'
@@ -34,6 +35,30 @@ echo ""
 setup_fixture() {
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+}
+
+# Create a manifest.json for a work unit
+create_manifest() {
+    local name="$1"
+    local work_type="$2"
+    local inv_status="$3"  # empty string means no investigation phase
+
+    mkdir -p "$TEST_DIR/.workflows/$name"
+
+    local phases='{}'
+    if [ -n "$inv_status" ]; then
+        phases="{\"investigation\": {\"status\": \"$inv_status\"}}"
+    fi
+
+    cat > "$TEST_DIR/.workflows/$name/manifest.json" << EOFMANIFEST
+{
+  "name": "$name",
+  "work_type": "$work_type",
+  "status": "active",
+  "description": "Test work unit: $name",
+  "phases": $phases
+}
+EOFMANIFEST
 }
 
 run_discovery() {
@@ -84,7 +109,7 @@ assert_not_contains() {
 # ──────────────────────────────────────
 
 test_fresh_state() {
-    echo -e "${YELLOW}Test: Fresh state (no investigations)${NC}"
+    echo -e "${YELLOW}Test: Fresh state (no work units)${NC}"
     setup_fixture
 
     local output=$(run_discovery)
@@ -102,24 +127,14 @@ test_single_in_progress() {
     echo -e "${YELLOW}Test: Single in-progress investigation${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/investigation/login-crash"
-    cat > "$TEST_DIR/.workflows/investigation/login-crash/investigation.md" << 'EOF'
----
-topic: login-crash
-status: in-progress
-work_type: bugfix
-date: 2026-02-20
----
-# Investigation: Login Crash
-EOF
+    create_manifest "login-crash" "bugfix" "in-progress"
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'exists: true' "Investigations exist"
-    assert_contains "$output" 'topic: "login-crash"' "Found login-crash topic"
+    assert_contains "$output" 'work_unit: "login-crash"' "Found login-crash work unit"
     assert_contains "$output" 'status: "in-progress"' "Status is in-progress"
     assert_contains "$output" 'work_type: "bugfix"' "Work type is bugfix"
-    assert_contains "$output" 'date: "2026-02-20"' "Date extracted"
     assert_contains "$output" 'total: 1' "Total count is 1"
     assert_contains "$output" 'in_progress: 1' "In-progress count is 1"
     assert_contains "$output" 'concluded: 0' "Concluded count is 0"
@@ -131,16 +146,7 @@ test_single_concluded() {
     echo -e "${YELLOW}Test: Single concluded investigation${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/investigation/null-pointer"
-    cat > "$TEST_DIR/.workflows/investigation/null-pointer/investigation.md" << 'EOF'
----
-topic: null-pointer
-status: concluded
-work_type: bugfix
-date: 2026-02-18
----
-# Investigation: Null Pointer
-EOF
+    create_manifest "null-pointer" "bugfix" "concluded"
 
     local output=$(run_discovery)
 
@@ -155,171 +161,72 @@ test_multiple_mixed() {
     echo -e "${YELLOW}Test: Multiple investigations with mixed statuses${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/investigation/login-crash"
-    mkdir -p "$TEST_DIR/.workflows/investigation/null-pointer"
-    mkdir -p "$TEST_DIR/.workflows/investigation/timeout-error"
-
-    cat > "$TEST_DIR/.workflows/investigation/login-crash/investigation.md" << 'EOF'
----
-topic: login-crash
-status: in-progress
-work_type: bugfix
----
-EOF
-
-    cat > "$TEST_DIR/.workflows/investigation/null-pointer/investigation.md" << 'EOF'
----
-topic: null-pointer
-status: concluded
-work_type: bugfix
----
-EOF
-
-    cat > "$TEST_DIR/.workflows/investigation/timeout-error/investigation.md" << 'EOF'
----
-topic: timeout-error
-status: in-progress
-work_type: bugfix
----
-EOF
+    create_manifest "login-crash" "bugfix" "in-progress"
+    create_manifest "null-pointer" "bugfix" "concluded"
+    create_manifest "timeout-error" "bugfix" "in-progress"
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'total: 3' "Total count is 3"
     assert_contains "$output" 'in_progress: 2' "In-progress count is 2"
     assert_contains "$output" 'concluded: 1' "Concluded count is 1"
-    assert_contains "$output" 'topic: "login-crash"' "Found login-crash"
-    assert_contains "$output" 'topic: "null-pointer"' "Found null-pointer"
-    assert_contains "$output" 'topic: "timeout-error"' "Found timeout-error"
+    assert_contains "$output" 'work_unit: "login-crash"' "Found login-crash"
+    assert_contains "$output" 'work_unit: "null-pointer"' "Found null-pointer"
+    assert_contains "$output" 'work_unit: "timeout-error"' "Found timeout-error"
     echo ""
 }
 
-test_no_status_defaults_in_progress() {
-    echo -e "${YELLOW}Test: Missing status defaults to in-progress${NC}"
+test_bugfix_without_investigation_phase() {
+    echo -e "${YELLOW}Test: Bugfix work unit with no investigation phase yet${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/investigation/legacy-bug"
-    cat > "$TEST_DIR/.workflows/investigation/legacy-bug/investigation.md" << 'EOF'
----
-topic: legacy-bug
-work_type: bugfix
----
-# Investigation without status
-EOF
+    create_manifest "new-bug" "bugfix" ""
 
     local output=$(run_discovery)
 
-    assert_contains "$output" 'status: "in-progress"' "Status defaults to in-progress"
-    assert_contains "$output" 'in_progress: 1' "Counted as in-progress"
+    # Bugfix exists but has no investigation phase status — still fresh
+    assert_contains "$output" 'total: 0' "Total count is 0 (no investigation phase)"
+    assert_contains "$output" 'scenario: "fresh"' "Scenario is fresh"
     echo ""
 }
 
-test_no_work_type_defaults_bugfix() {
-    echo -e "${YELLOW}Test: Missing work_type defaults to bugfix${NC}"
+test_feature_work_units_excluded() {
+    echo -e "${YELLOW}Test: Feature work units are excluded${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/investigation/old-bug"
-    cat > "$TEST_DIR/.workflows/investigation/old-bug/investigation.md" << 'EOF'
----
-topic: old-bug
-status: in-progress
----
-# Investigation without work_type
-EOF
+    create_manifest "auth-flow" "feature" ""
+    create_manifest "login-crash" "bugfix" "in-progress"
 
     local output=$(run_discovery)
 
-    assert_contains "$output" 'work_type: "bugfix"' "Work type defaults to bugfix"
+    assert_not_contains "$output" 'auth-flow' "Feature work unit excluded"
+    assert_contains "$output" 'work_unit: "login-crash"' "Bugfix work unit included"
+    assert_contains "$output" 'total: 1' "Total count is 1 (bugfix only)"
     echo ""
 }
 
-test_empty_investigation_dir() {
-    echo -e "${YELLOW}Test: Investigation directory exists but is empty${NC}"
+test_epic_work_units_excluded() {
+    echo -e "${YELLOW}Test: Epic work units are excluded${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/investigation"
+    create_manifest "big-project" "epic" ""
+    create_manifest "timeout-bug" "bugfix" "in-progress"
+
+    local output=$(run_discovery)
+
+    assert_not_contains "$output" 'big-project' "Epic work unit excluded"
+    assert_contains "$output" 'work_unit: "timeout-bug"' "Bugfix work unit included"
+    echo ""
+}
+
+test_empty_workflows_dir() {
+    echo -e "${YELLOW}Test: Empty .workflows directory${NC}"
+    setup_fixture
 
     local output=$(run_discovery)
 
     assert_contains "$output" 'exists: false' "No investigations exist"
     assert_contains "$output" 'scenario: "fresh"' "Scenario is fresh"
-    echo ""
-}
-
-test_dir_without_investigation_file() {
-    echo -e "${YELLOW}Test: Investigation directory without investigation.md${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/investigation/orphan-dir"
-    echo "not an investigation" > "$TEST_DIR/.workflows/investigation/orphan-dir/notes.md"
-
-    local output=$(run_discovery)
-
-    # Dir is non-empty so exists: true, but no valid investigation files
-    assert_contains "$output" 'exists: true' "Dir exists (non-empty)"
-    assert_contains "$output" 'total: 0' "Total count is 0"
-    assert_not_contains "$output" 'topic: "orphan-dir"' "Orphan dir not listed"
-    assert_contains "$output" 'scenario: "fresh"' "Scenario is fresh (no valid investigations)"
-    echo ""
-}
-
-test_date_field_absent_when_missing() {
-    echo -e "${YELLOW}Test: Date field absent when missing from frontmatter${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/investigation/no-date-bug"
-    cat > "$TEST_DIR/.workflows/investigation/no-date-bug/investigation.md" << 'EOF'
----
-topic: no-date-bug
-status: in-progress
-work_type: bugfix
----
-# Investigation without date
-EOF
-
-    local output=$(run_discovery)
-
-    assert_not_contains "$output" 'date:' "Date line is absent when no date in frontmatter"
-    echo ""
-}
-
-test_no_frontmatter_file() {
-    echo -e "${YELLOW}Test: Investigation file with no frontmatter${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/investigation/raw-bug"
-    cat > "$TEST_DIR/.workflows/investigation/raw-bug/investigation.md" << 'EOF'
-# Just body content, no frontmatter delimiters
-
-Some investigation notes here.
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'status: "in-progress"' "Status defaults to in-progress"
-    assert_contains "$output" 'work_type: "bugfix"' "Work type defaults to bugfix"
-    assert_not_contains "$output" 'date:' "Date line is absent"
-    echo ""
-}
-
-test_topic_from_dirname_not_frontmatter() {
-    echo -e "${YELLOW}Test: Topic comes from directory name, not frontmatter${NC}"
-    setup_fixture
-
-    mkdir -p "$TEST_DIR/.workflows/investigation/dir-name"
-    cat > "$TEST_DIR/.workflows/investigation/dir-name/investigation.md" << 'EOF'
----
-topic: different-name
-status: in-progress
-work_type: bugfix
----
-# Investigation
-EOF
-
-    local output=$(run_discovery)
-
-    assert_contains "$output" 'topic: "dir-name"' "Topic is directory name"
-    assert_not_contains "$output" 'topic: "different-name"' "Frontmatter topic not used"
     echo ""
 }
 
@@ -336,13 +243,10 @@ test_fresh_state
 test_single_in_progress
 test_single_concluded
 test_multiple_mixed
-test_no_status_defaults_in_progress
-test_no_work_type_defaults_bugfix
-test_empty_investigation_dir
-test_dir_without_investigation_file
-test_date_field_absent_when_missing
-test_no_frontmatter_file
-test_topic_from_dirname_not_frontmatter
+test_bugfix_without_investigation_phase
+test_feature_work_units_excluded
+test_epic_work_units_excluded
+test_empty_workflows_dir
 
 #
 # Summary

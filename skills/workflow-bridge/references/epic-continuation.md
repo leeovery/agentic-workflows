@@ -1,70 +1,64 @@
-# Greenfield Continuation
+# Epic Continuation
 
 *Reference for **[workflow-bridge](../SKILL.md)***
 
 ---
 
-Present greenfield state, let the user choose what to do next, then enter plan mode with that specific choice.
+Present epic state, let the user choose what to do next, then enter plan mode with that specific choice.
 
-Greenfield is phase-centric — all artifacts in a phase complete before moving to the next. Unlike feature/bugfix pipelines, greenfield doesn't route to a single next phase. Instead, present what's actionable across all phases and let the user choose.
+Epic is phase-centric — all artifacts in a phase complete before moving to the next. Unlike feature/bugfix pipelines, epic doesn't route to a single next phase. Instead, present what's actionable across all phases and let the user choose.
 
 ## A. Display State
 
-Using the discovery output, build the phase-centric view.
+Using the discovery output, build the phase-centric view. The `epic_detail` section contains per-phase items.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Greenfield — {completed_phase:(titlecase)} Complete
+Epic — {completed_phase:(titlecase)} Complete
 
-"{topic:(titlecase)}" {completed_phase} has concluded.
+"{work_unit:(titlecase)}" {completed_phase} has concluded.
 
 Research:
-@if(research.count > 0)
-  @foreach(file in research.files)
-  └─ {file}
+@if(epic_detail.research)
+  @foreach(item in epic_detail.research.items)
+  └─ {item.name:(titlecase)} ({item.status})
   @endforeach
 @else
   (none)
 @endif
 
 Discussions:
-@if(discussions.count > 0)
-  @foreach(disc in discussions.files)
-  └─ {disc.name:(titlecase)} ({disc.status})
+@if(epic_detail.discussion.items.length > 0)
+  @foreach(item in epic_detail.discussion.items)
+  └─ {item.name:(titlecase)} ({item.status})
   @endforeach
 @else
   (none)
 @endif
 
 Specifications:
-@if(specifications.count > 0)
-  @foreach(spec in specifications.files)
-  └─ {spec.name:(titlecase)}
-     └─ Spec: {spec.status} ({spec.type})
-     └─ Plan: @if(spec.has_plan) exists @else (no plan) @endif
+@if(epic_detail.specification.items.length > 0)
+  @foreach(item in epic_detail.specification.items)
+  └─ {item.name:(titlecase)} ({item.status})
   @endforeach
 @else
   (none)
 @endif
 
 Plans:
-@if(plans.count > 0)
-  @foreach(plan in plans.files)
-  └─ {plan.name:(titlecase)}
-     └─ Plan: {plan.status}
-     └─ Implementation: @if(plan.has_implementation) exists @else (not started) @endif
+@if(epic_detail.planning.items.length > 0)
+  @foreach(item in epic_detail.planning.items)
+  └─ {item.name:(titlecase)} ({item.status})
   @endforeach
 @else
   (none)
 @endif
 
 Implementation:
-@if(implementation.count > 0)
-  @foreach(impl in implementation.files)
-  └─ {impl.topic:(titlecase)}
-     └─ Implementation: {impl.status}
-     └─ Review: @if(impl.has_review) exists @else (no review) @endif
+@if(epic_detail.implementation.items.length > 0)
+  @foreach(item in epic_detail.implementation.items)
+  └─ {item.name:(titlecase)} ({item.status})
   @endforeach
 @else
   (none)
@@ -90,7 +84,7 @@ Build a numbered menu of actionable items. The verb depends on the state:
 | Completed implementation, no review | Start review for |
 | Research exists | Continue research |
 
-**Specification phase is different in greenfield**: Don't offer "Start specification from {topic}". Instead, when concluded discussions exist, offer "Start specification" which invokes `/start-specification greenfield`. Don't pass a topic. Always route through discovery mode so analysis can detect changed discussions.
+**Specification phase is different in epic**: Don't offer "Start specification from {item}". Instead, when concluded discussions exist, offer "Start specification" which invokes `/start-specification epic`. Don't pass an item name. Always route through discovery mode so analysis can detect changed discussions.
 
 **Specification readiness:**
 - All discussions concluded → "Start specification" (recommended)
@@ -126,7 +120,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-Recreate with actual topics and states from discovery. Only include options that apply based on current state.
+Recreate with actual items and states from discovery. Only include options that apply based on current state.
 
 **STOP.** Wait for user response.
 
@@ -153,25 +147,25 @@ current state and present all available options.
 
 Map the selection to a skill invocation:
 
-| Selection | Skill | Work Type | Topic |
-|-----------|-------|-----------|-------|
-| Continue discussion | `/start-discussion` | greenfield | {topic} |
-| Continue specification | `/start-specification` | greenfield | — |
-| Continue plan | `/start-planning` | greenfield | {topic} |
-| Continue implementation | `/start-implementation` | greenfield | {topic} |
-| Continue research | `/start-research` | greenfield | — |
-| Start specification | `/start-specification` | greenfield | — |
-| Start planning for {topic} | `/start-planning` | greenfield | {topic} |
-| Start implementation of {topic} | `/start-implementation` | greenfield | {topic} |
-| Start review for {topic} | `/start-review` | greenfield | {topic} |
-| Start new research | `/start-research` | greenfield | — |
-| Start new discussion | `/start-discussion` | greenfield | — |
+| Selection | Skill | Work Type | Item |
+|-----------|-------|-----------|------|
+| Continue discussion | `/start-discussion` | epic | {item} |
+| Continue specification | `/start-specification` | epic | — |
+| Continue plan | `/start-planning` | epic | {item} |
+| Continue implementation | `/start-implementation` | epic | {item} |
+| Continue research | `/start-research` | epic | — |
+| Start specification | `/start-specification` | epic | — |
+| Start planning for {item} | `/start-planning` | epic | {item} |
+| Start implementation of {item} | `/start-implementation` | epic | {item} |
+| Start review for {item} | `/start-review` | epic | {item} |
+| Start new research | `/start-research` | epic | — |
+| Start new discussion | `/start-discussion` | epic | — |
 
-Skills receive positional arguments: `$0` = work_type, `$1` = topic.
+Skills receive positional arguments: `$0` = work_type, `$1` = work_unit.
 
-**With arguments** (bridge mode): `/start-discussion greenfield {topic}` — skill skips discovery, validates topic, proceeds to processing.
+**With arguments** (bridge mode): `/start-discussion epic {work_unit}` — skill skips discovery, validates work unit, proceeds to processing.
 
-**Without arguments** (discovery mode): `/start-discussion greenfield` — skill runs discovery with work_type context.
+**Without arguments** (discovery mode): `/start-discussion epic` — skill runs discovery with work_type context.
 
 → Proceed to **D. Enter Plan Mode**.
 
@@ -179,20 +173,20 @@ Skills receive positional arguments: `$0` = work_type, `$1` = topic.
 
 ## D. Enter Plan Mode
 
-#### If topic is present
+#### If item name is present
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
 
 ```
-# Continue Greenfield: {selected_phase:(titlecase)}
+# Continue Epic: {selected_phase:(titlecase)}
 
-Continue {selected_phase} for "{selected_topic}".
+Continue {selected_phase} for "{work_unit}".
 
 ## Next Step
 
-Invoke `/start-{selected_phase} greenfield {selected_topic}`
+Invoke `/start-{selected_phase} epic {work_unit}`
 
-Arguments: work_type = greenfield, topic = {selected_topic}
+Arguments: work_type = epic, work_unit = {work_unit}
 The skill will skip discovery and proceed directly to validation.
 
 ## How to proceed
@@ -200,21 +194,21 @@ The skill will skip discovery and proceed directly to validation.
 Clear context and continue.
 ```
 
-#### If topic is absent
+#### If item name is absent
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
 
 ```
-# Continue Greenfield: {selected_phase:(titlecase)}
+# Continue Epic: {selected_phase:(titlecase)}
 
 Start {selected_phase} phase.
 
 ## Next Step
 
-Invoke `/start-{selected_phase} greenfield`
+Invoke `/start-{selected_phase} epic`
 
-Arguments: work_type = greenfield
-The skill will run discovery with greenfield context.
+Arguments: work_type = epic
+The skill will run discovery with epic context.
 
 ## How to proceed
 

@@ -14,9 +14,9 @@ Saving session state so Claude can pick up where it left off if the conversation
 
 ```bash
 .claude/hooks/workflows/write-session-state.sh \
-  "{topic}" \
+  "{work_unit}" \
   "skills/technical-implementation/SKILL.md" \
-  ".workflows/implementation/{topic}/tracking.md"
+  ".workflows/{work_unit}/implementation/implementation.md"
 ```
 
 After completing the steps above, this skill's purpose is fulfilled.
@@ -28,12 +28,12 @@ Invoke the [technical-implementation](../../technical-implementation/SKILL.md) s
 ## Handoff
 
 ```
-Implementation session for: {topic}
-Plan: .workflows/planning/{topic}/plan.md
+Implementation session for: {work_unit}
+Plan: .workflows/{work_unit}/planning/planning.md
 Format: {format}
 Plan ID: {plan_id} (if applicable)
-Specification: {specification} (exists: {true|false})
-Implementation tracking: {exists | new} (status: {in-progress | not-started | completed})
+Specification: .workflows/{work_unit}/specification/specification.md (exists: {true|false})
+Implementation: {exists | new} (status: {in-progress | not-started | completed})
 
 Dependencies: {All satisfied | List any notes}
 Environment: {Setup required | No special setup required}

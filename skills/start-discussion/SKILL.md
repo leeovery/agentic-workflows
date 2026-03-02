@@ -1,6 +1,6 @@
 ---
 name: start-discussion
-allowed-tools: Bash(.claude/skills/start-discussion/scripts/discovery.sh), Bash(mkdir -p .workflows/.state), Bash(rm .workflows/.state/research-analysis.md), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/discussion/)
+allowed-tools: Bash(.claude/skills/start-discussion/scripts/discovery.sh), Bash(mkdir -p .workflows/.state), Bash(rm .workflows/.state/research-analysis.md), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js *), Bash(ls .workflows/)
 hooks:
   PreToolUse:
     - hooks:
@@ -80,8 +80,8 @@ Parse the discovery output to understand:
 - `checksum` - current checksum of all research files
 
 **From `discussions` section:**
-- `exists` - whether discussion files exist
-- `files` - each discussion's name, status, and date
+- `exists` - whether discussion entries exist (from manifests)
+- `files` - each discussion's name, work_unit, status, and work_type
 - `counts.in_progress` and `counts.concluded` - totals for routing
 
 **From `cache` section:**

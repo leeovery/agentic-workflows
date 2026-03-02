@@ -4,14 +4,11 @@
 
 ---
 
-Check if plan and implementation exist and are ready.
+Check if plan and implementation exist and are ready via manifest CLI.
 
 ```bash
-ls .workflows/planning/
-ls .workflows/implementation/
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.status
 ```
-
-Read `.workflows/planning/{topic}/plan.md` frontmatter.
 
 #### If plan doesn't exist
 
@@ -20,27 +17,29 @@ Read `.workflows/planning/{topic}/plan.md` frontmatter.
 ```
 Plan Missing
 
-No plan found for "{topic:(titlecase)}".
+No plan found for "{work_unit:(titlecase)}".
 
 A concluded plan and implementation are required for review.
-Run /start-planning {work_type} {topic} to create one.
+Run /start-planning {work_type} {work_unit} to create one.
 ```
 
 **STOP.** Do not proceed — terminal condition.
 
-Read `.workflows/implementation/{topic}/tracking.md` frontmatter.
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.implementation.status
+```
 
-#### If implementation tracking doesn't exist
+#### If implementation doesn't exist
 
 > *Output the next fenced block as a code block:*
 
 ```
 Implementation Missing
 
-No implementation found for "{topic:(titlecase)}".
+No implementation found for "{work_unit:(titlecase)}".
 
 A completed implementation is required for review.
-Run /start-implementation {work_type} {topic} to start one.
+Run /start-implementation {work_type} {work_unit} to start one.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -52,8 +51,8 @@ Run /start-implementation {work_type} {topic} to start one.
 ```
 Implementation Not Complete
 
-The implementation for "{topic:(titlecase)}" is not yet completed.
-Run /start-implementation {work_type} {topic} to continue.
+The implementation for "{work_unit:(titlecase)}" is not yet completed.
+Run /start-implementation {work_type} {work_unit} to continue.
 ```
 
 **STOP.** Do not proceed — terminal condition.

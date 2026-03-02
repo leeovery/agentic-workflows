@@ -1,174 +1,16 @@
 #!/bin/bash
 #
-# Discovers the full workflow state across all phases
+# Discovers the full workflow state across all work units
 # for the /status command.
 #
+# Uses manifest CLI to read work unit state.
 # Outputs structured YAML that the command can consume directly.
 #
 
 set -eo pipefail
 
-RESEARCH_DIR=".workflows/research"
-DISCUSSION_DIR=".workflows/discussion"
-SPEC_DIR=".workflows/specification"
-PLAN_DIR=".workflows/planning"
-IMPL_DIR=".workflows/implementation"
-
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
-
-# Helper: Extract frontmatter content (between first pair of --- delimiters)
-extract_frontmatter() {
-    local file="$1"
-    awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1{print}' "$file" 2>/dev/null
-}
-
-# Helper: Extract sources from specification frontmatter
-# Outputs: name|status per line (object format only; legacy converted by migration 004)
-extract_sources() {
-    local file="$1"
-    local in_sources=false
-    local current_name=""
-    local current_status=""
-
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^sources: ]]; then
-            in_sources=true
-            continue
-        fi
-
-        if $in_sources && [[ "$line" =~ ^[a-z_]+: ]] && [[ ! "$line" =~ ^[[:space:]] ]]; then
-            if [ -n "$current_name" ]; then
-                echo "${current_name}|${current_status:-incorporated}"
-            fi
-            break
-        fi
-
-        if $in_sources; then
-            if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*name:[[:space:]]*(.+)$ ]]; then
-                if [ -n "$current_name" ]; then
-                    echo "${current_name}|${current_status:-incorporated}"
-                fi
-                current_name="${BASH_REMATCH[1]}"
-                current_name=$(echo "$current_name" | sed 's/^"//' | sed 's/"$//' | xargs)
-                current_status=""
-            elif [[ "$line" =~ ^[[:space:]]*status:[[:space:]]*(.+)$ ]]; then
-                current_status="${BASH_REMATCH[1]}"
-                current_status=$(echo "$current_status" | sed 's/^"//' | sed 's/"$//' | xargs)
-            fi
-        fi
-    done < <(extract_frontmatter "$file")
-
-    if [ -n "$current_name" ]; then
-        echo "${current_name}|${current_status:-incorporated}"
-    fi
-}
-
-# Helper: Extract external_dependencies from plan frontmatter
-# Outputs: topic|state|task_id per line
-extract_external_deps() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(extract_frontmatter "$file")
-
-    if ! echo "$frontmatter" | grep -q "^external_dependencies:" 2>/dev/null; then
-        return 0
-    fi
-
-    if echo "$frontmatter" | grep -q "^external_dependencies:[[:space:]]*\[\]" 2>/dev/null; then
-        return 0
-    fi
-
-    echo "$frontmatter" | awk '
-/^external_dependencies:/ { in_block=1; next }
-in_block && /^[a-z_]+:/ && !/^[[:space:]]/ { exit }
-in_block && /^[[:space:]]*- topic:/ {
-    if (topic != "") print topic "|" state "|" task_id
-    line=$0; gsub(/^[[:space:]]*- topic:[[:space:]]*/, "", line)
-    topic=line; state=""; task_id=""
-    next
-}
-in_block && /^[[:space:]]*state:/ {
-    line=$0; gsub(/^[[:space:]]*state:[[:space:]]*/, "", line)
-    state=line; next
-}
-in_block && /^[[:space:]]*task_id:/ {
-    line=$0; gsub(/^[[:space:]]*task_id:[[:space:]]*/, "", line)
-    task_id=line; next
-}
-END { if (topic != "") print topic "|" state "|" task_id }
-'
-}
-
-# Helper: Count completed tasks from implementation tracking
-count_completed_tasks() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(extract_frontmatter "$file")
-
-    if echo "$frontmatter" | grep -q "^completed_tasks:[[:space:]]*\[\]" 2>/dev/null; then
-        echo 0
-        return
-    fi
-
-    local count
-    count=$(echo "$frontmatter" | awk '
-/^completed_tasks:/ { in_block=1; next }
-in_block && /^[a-z_]+:/ { exit }
-in_block && /^[[:space:]]*-[[:space:]]/ { c++ }
-END { print c+0 }
-')
-    echo "$count"
-}
-
-# Helper: Count completed phases from implementation tracking
-count_completed_phases() {
-    local file="$1"
-    local frontmatter
-    frontmatter=$(extract_frontmatter "$file")
-
-    # Handle inline array format: [1, 2, 3]
-    local inline
-    inline=$(echo "$frontmatter" | grep "^completed_phases:" | sed 's/^completed_phases:[[:space:]]*//' || true)
-    if echo "$inline" | grep -q '^\['; then
-        local items
-        items=$(echo "$inline" | tr -d '[]' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$')
-        if [ -n "$items" ]; then
-            echo "$items" | wc -l | tr -d ' '
-        else
-            echo 0
-        fi
-        return
-    fi
-
-    if echo "$frontmatter" | grep -q "^completed_phases:[[:space:]]*\[\]" 2>/dev/null; then
-        echo 0
-        return
-    fi
-
-    local count
-    count=$(echo "$frontmatter" | awk '
-/^completed_phases:/ { in_block=1; next }
-in_block && /^[a-z_]+:/ { exit }
-in_block && /^[[:space:]]*-[[:space:]]/ { c++ }
-END { print c+0 }
-')
-    echo "$count"
-}
-
+MANIFEST_CLI="node .claude/skills/workflow-manifest/scripts/manifest.js"
+WORKFLOWS_DIR=".workflows"
 
 # Start YAML output
 echo "# Workflow Status Discovery"
@@ -176,254 +18,311 @@ echo "# Generated: $(date -Iseconds)"
 echo ""
 
 #
-# RESEARCH
+# GET ALL ACTIVE WORK UNITS
 #
-echo "research:"
+active_json=$($MANIFEST_CLI list --status active 2>/dev/null || echo "[]")
+unit_count=$(echo "$active_json" | node -e "
+const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+process.stdout.write(String(d.length));
+")
 
-research_count=0
-if [ -d "$RESEARCH_DIR" ] && [ -n "$(ls -A "$RESEARCH_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
-    for file in "$RESEARCH_DIR"/*; do
-        [ -f "$file" ] || continue
-        name=$(basename "$file" .md)
-        echo "    - \"$name\""
-        research_count=$((research_count + 1))
-    done
-    echo "  count: $research_count"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  count: 0"
+if [ "$unit_count" -eq 0 ]; then
+    echo "work_units: []"
+    echo ""
+    echo "state:"
+    echo "  has_any_work: false"
+    exit 0
 fi
 
-echo ""
+#
+# OUTPUT PER-UNIT DETAILS
+#
+echo "work_units:"
+
+echo "$active_json" | node -e "
+const units = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+const fs = require('fs');
+const path = require('path');
+
+for (const u of units) {
+    const name = u.name;
+    const workType = u.work_type || 'feature';
+    const phases = u.phases || {};
+    const baseDir = path.join('.workflows', name);
+
+    console.log('  - name: \"' + name + '\"');
+    console.log('    work_type: \"' + workType + '\"');
+    console.log('    description: \"' + (u.description || '').replace(/\"/g, '\\\\\"') + '\"');
+
+    // --- Research ---
+    const research = phases.research || {};
+    const researchStatus = research.status || null;
+    console.log('    research:');
+    if (researchStatus) {
+        console.log('      status: \"' + researchStatus + '\"');
+        // Count research files
+        const researchDir = path.join(baseDir, 'research');
+        let researchFiles = [];
+        try {
+            researchFiles = fs.readdirSync(researchDir).filter(f => f.endsWith('.md'));
+        } catch (_) {}
+        console.log('      file_count: ' + researchFiles.length);
+    } else {
+        console.log('      status: ~');
+    }
+
+    // --- Discussion ---
+    const discussion = phases.discussion || {};
+    const discStatus = discussion.status || null;
+    console.log('    discussion:');
+    if (discStatus) {
+        console.log('      status: \"' + discStatus + '\"');
+    } else {
+        console.log('      status: ~');
+    }
+
+    // --- Investigation ---
+    const investigation = phases.investigation || {};
+    const invStatus = investigation.status || null;
+    console.log('    investigation:');
+    if (invStatus) {
+        console.log('      status: \"' + invStatus + '\"');
+    } else {
+        console.log('      status: ~');
+    }
+
+    // --- Specification ---
+    const spec = phases.specification || {};
+    const specStatus = spec.status || null;
+    const specType = spec.type || 'feature';
+    const supersededBy = spec.superseded_by || null;
+    console.log('    specification:');
+    if (specStatus) {
+        console.log('      status: \"' + specStatus + '\"');
+        console.log('      type: \"' + specType + '\"');
+        if (supersededBy) {
+            console.log('      superseded_by: \"' + supersededBy + '\"');
+        }
+        // Read sources from specification file frontmatter
+        const specFile = path.join(baseDir, 'specification', 'specification.md');
+        let sources = [];
+        try {
+            const content = fs.readFileSync(specFile, 'utf8');
+            const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);
+            if (fmMatch) {
+                const fm = fmMatch[1];
+                const srcMatch = fm.match(/^sources:\\s*\\n((?:\\s+- [\\s\\S]*?)(?=\\n[a-z_]+:|$))/m);
+                if (srcMatch) {
+                    const srcBlock = srcMatch[1];
+                    const items = srcBlock.split(/\\n\\s+- /).filter(Boolean);
+                    for (const item of items) {
+                        const nameMatch = item.match(/name:\\s*[\"']?([^\"'\\n]+)/);
+                        const statusMatch = item.match(/status:\\s*[\"']?([^\"'\\n]+)/);
+                        if (nameMatch) {
+                            sources.push({
+                                name: nameMatch[1].trim(),
+                                status: statusMatch ? statusMatch[1].trim() : 'incorporated'
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (_) {}
+        if (sources.length > 0) {
+            console.log('      sources:');
+            for (const s of sources) {
+                console.log('        - name: \"' + s.name + '\"');
+                console.log('          status: \"' + s.status + '\"');
+            }
+        } else {
+            console.log('      sources: []');
+        }
+    } else {
+        console.log('      status: ~');
+    }
+
+    // --- Planning ---
+    const planning = phases.planning || {};
+    const planStatus = planning.status || null;
+    const planFormat = planning.format || null;
+    console.log('    planning:');
+    if (planStatus) {
+        console.log('      status: \"' + planStatus + '\"');
+        if (planFormat) {
+            console.log('      format: \"' + planFormat + '\"');
+        }
+        // Read external_dependencies from planning.md frontmatter
+        const planFile = path.join(baseDir, 'planning', 'planning.md');
+        let deps = [];
+        try {
+            const content = fs.readFileSync(planFile, 'utf8');
+            const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);
+            if (fmMatch) {
+                const fm = fmMatch[1];
+                const depMatch = fm.match(/^external_dependencies:\\s*\\n((?:\\s+- [\\s\\S]*?)(?=\\n[a-z_]+:|$))/m);
+                if (depMatch) {
+                    const depBlock = depMatch[1];
+                    const items = depBlock.split(/\\n\\s+- /).filter(Boolean);
+                    for (const item of items) {
+                        const topicMatch = item.match(/topic:\\s*[\"']?([^\"'\\n]+)/);
+                        const stateMatch = item.match(/state:\\s*[\"']?([^\"'\\n]+)/);
+                        const taskMatch = item.match(/task_id:\\s*[\"']?([^\"'\\n]+)/);
+                        if (topicMatch) {
+                            deps.push({
+                                topic: topicMatch[1].trim(),
+                                state: stateMatch ? stateMatch[1].trim() : 'unresolved',
+                                task_id: taskMatch ? taskMatch[1].trim() : ''
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (_) {}
+        const hasUnresolved = deps.some(d => d.state === 'unresolved');
+        if (deps.length > 0) {
+            console.log('      external_deps:');
+            for (const d of deps) {
+                console.log('        - topic: \"' + d.topic + '\"');
+                console.log('          state: \"' + d.state + '\"');
+                if (d.task_id) console.log('          task_id: \"' + d.task_id + '\"');
+            }
+        } else {
+            console.log('      external_deps: []');
+        }
+        console.log('      has_unresolved_deps: ' + hasUnresolved);
+    } else {
+        console.log('      status: ~');
+    }
+
+    // --- Implementation ---
+    const impl = phases.implementation || {};
+    const implStatus = impl.status || null;
+    const currentPhase = impl.current_phase || null;
+    console.log('    implementation:');
+    if (implStatus) {
+        console.log('      status: \"' + implStatus + '\"');
+        if (currentPhase && currentPhase !== '~') {
+            console.log('      current_phase: ' + currentPhase);
+        }
+        // Count completed tasks from implementation.md frontmatter
+        const implFile = path.join(baseDir, 'implementation', 'implementation.md');
+        let completedTasks = 0;
+        try {
+            const content = fs.readFileSync(implFile, 'utf8');
+            const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);
+            if (fmMatch) {
+                const fm = fmMatch[1];
+                const ctMatch = fm.match(/^completed_tasks:\\s*\\n((?:\\s+- [\\s\\S]*?)(?=\\n[a-z_]+:|$))/m);
+                if (ctMatch) {
+                    completedTasks = (ctMatch[1].match(/^\\s+- /gm) || []).length;
+                }
+                // Handle inline array: completed_tasks: [t1, t2]
+                const inlineMatch = fm.match(/^completed_tasks:\\s*\\[([^\\]]*)\\]/m);
+                if (inlineMatch && inlineMatch[1].trim()) {
+                    completedTasks = inlineMatch[1].split(',').length;
+                }
+            }
+        } catch (_) {}
+        // Count total tasks from plan task files (local-markdown format)
+        let totalTasks = 0;
+        const planFmt = (phases.planning || {}).format || (phases.implementation || {}).format;
+        if (planFmt === 'local-markdown') {
+            const tasksDir = path.join(baseDir, 'planning', 'tasks');
+            try {
+                totalTasks = fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).length;
+            } catch (_) {}
+        }
+        console.log('      completed_tasks: ' + completedTasks);
+        console.log('      total_tasks: ' + totalTasks);
+    } else {
+        console.log('      status: ~');
+    }
+
+    // --- Review ---
+    const review = phases.review || {};
+    const reviewStatus = review.status || null;
+    console.log('    review:');
+    if (reviewStatus) {
+        console.log('      status: \"' + reviewStatus + '\"');
+    } else {
+        console.log('      status: ~');
+    }
+
+    console.log('');
+}
+"
 
 #
-# DISCUSSIONS
+# AGGREGATED COUNTS
 #
-echo "discussions:"
+echo "$active_json" | node -e "
+const units = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
 
-disc_count=0
-disc_concluded=0
-disc_in_progress=0
+// Group by work_type
+const counts = { epic: 0, feature: 0, bugfix: 0 };
+let researchCount = 0;
+let discCount = 0, discConcluded = 0, discInProgress = 0;
+let specActive = 0, specFeature = 0, specCrosscutting = 0;
+let planCount = 0, planConcluded = 0, planInProgress = 0;
+let implCount = 0, implCompleted = 0, implInProgress = 0;
 
-if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
-    for file in "$DISCUSSION_DIR"/*.md; do
-        [ -f "$file" ] || continue
-        name=$(basename "$file" .md)
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
+for (const u of units) {
+    const wt = u.work_type || 'feature';
+    if (counts[wt] !== undefined) counts[wt]++;
 
-        echo "    - name: \"$name\""
-        echo "      status: \"$status\""
-        echo "      work_type: \"$work_type\""
+    const phases = u.phases || {};
 
-        disc_count=$((disc_count + 1))
-        [ "$status" = "concluded" ] && disc_concluded=$((disc_concluded + 1))
-        [ "$status" = "in-progress" ] && disc_in_progress=$((disc_in_progress + 1))
-    done
-    echo "  count: $disc_count"
-    echo "  concluded: $disc_concluded"
-    echo "  in_progress: $disc_in_progress"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  count: 0"
-    echo "  concluded: 0"
-    echo "  in_progress: 0"
-fi
+    if (phases.research && phases.research.status) researchCount++;
 
-echo ""
+    if (phases.discussion && phases.discussion.status) {
+        discCount++;
+        if (phases.discussion.status === 'concluded') discConcluded++;
+        if (phases.discussion.status === 'in-progress') discInProgress++;
+    }
 
-#
-# SPECIFICATIONS
-#
-echo "specifications:"
+    if (phases.specification && phases.specification.status && phases.specification.status !== 'superseded') {
+        specActive++;
+        const st = (phases.specification || {}).type || 'feature';
+        if (st === 'cross-cutting') specCrosscutting++;
+        else specFeature++;
+    }
 
-spec_count=0
-spec_active=0
-spec_superseded=0
-spec_feature=0
-spec_crosscutting=0
+    if (phases.planning && phases.planning.status) {
+        planCount++;
+        if (phases.planning.status === 'concluded') planConcluded++;
+        if (phases.planning.status === 'in-progress') planInProgress++;
+    }
 
-if [ -d "$SPEC_DIR" ] && [ -n "$(ls -A "$SPEC_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
-    for file in "$SPEC_DIR"/*/specification.md; do
-        [ -f "$file" ] || continue
-        name=$(basename "$(dirname "$file")")
-        status=$(extract_field "$file" "status")
-        status=${status:-"in-progress"}
-        spec_type=$(extract_field "$file" "type")
-        spec_type=${spec_type:-"feature"}
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
-        superseded_by=$(extract_field "$file" "superseded_by")
+    if (phases.implementation && phases.implementation.status) {
+        implCount++;
+        if (phases.implementation.status === 'completed') implCompleted++;
+        if (phases.implementation.status === 'in-progress') implInProgress++;
+    }
+}
 
-        echo "    - name: \"$name\""
-        echo "      status: \"$status\""
-        echo "      type: \"$spec_type\""
-        echo "      work_type: \"$work_type\""
-        [ -n "$superseded_by" ] && echo "      superseded_by: \"$superseded_by\""
-
-        # Sources
-        sources_output=$(extract_sources "$file")
-        if [ -n "$sources_output" ]; then
-            echo "      sources:"
-            while IFS='|' read -r src_name src_status; do
-                [ -z "$src_name" ] && continue
-                echo "        - name: \"$src_name\""
-                echo "          status: \"$src_status\""
-            done <<< "$sources_output"
-        else
-            echo "      sources: []"
-        fi
-
-        spec_count=$((spec_count + 1))
-        if [ "$status" = "superseded" ]; then
-            spec_superseded=$((spec_superseded + 1))
-        else
-            spec_active=$((spec_active + 1))
-            [ "$spec_type" = "cross-cutting" ] && spec_crosscutting=$((spec_crosscutting + 1))
-            [ "$spec_type" != "cross-cutting" ] && spec_feature=$((spec_feature + 1))
-        fi
-    done
-    echo "  count: $spec_count"
-    echo "  active: $spec_active"
-    echo "  superseded: $spec_superseded"
-    echo "  feature: $spec_feature"
-    echo "  crosscutting: $spec_crosscutting"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  count: 0"
-    echo "  active: 0"
-    echo "  superseded: 0"
-    echo "  feature: 0"
-    echo "  crosscutting: 0"
-fi
-
-echo ""
-
-#
-# PLANS
-#
-echo "plans:"
-
-plan_count=0
-plan_concluded=0
-plan_in_progress=0
-
-if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
-    for file in "$PLAN_DIR"/*/plan.md; do
-        [ -f "$file" ] || continue
-        name=$(basename "$(dirname "$file")")
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        format=$(extract_field "$file" "format")
-        format=${format:-"unknown"}
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
-        specification=$(extract_field "$file" "specification")
-        specification=${specification:-"${name}/specification.md"}
-
-        echo "    - name: \"$name\""
-        echo "      status: \"$status\""
-        echo "      format: \"$format\""
-        echo "      work_type: \"$work_type\""
-        echo "      specification: \"$specification\""
-
-        # External dependencies
-        deps_output=$(extract_external_deps "$file")
-        has_unresolved="false"
-        if [ -n "$deps_output" ]; then
-            echo "      external_deps:"
-            while IFS='|' read -r dep_topic dep_state dep_task_id; do
-                [ -z "$dep_topic" ] && continue
-                echo "        - topic: \"$dep_topic\""
-                echo "          state: \"$dep_state\""
-                [ -n "$dep_task_id" ] && echo "          task_id: \"$dep_task_id\""
-                [ "$dep_state" = "unresolved" ] && has_unresolved="true"
-            done <<< "$deps_output"
-        else
-            echo "      external_deps: []"
-        fi
-        echo "      has_unresolved_deps: $has_unresolved"
-
-        plan_count=$((plan_count + 1))
-        [ "$status" = "concluded" ] && plan_concluded=$((plan_concluded + 1))
-        { [ "$status" = "planning" ] || [ "$status" = "in-progress" ]; } && plan_in_progress=$((plan_in_progress + 1))
-    done
-    echo "  count: $plan_count"
-    echo "  concluded: $plan_concluded"
-    echo "  in_progress: $plan_in_progress"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  count: 0"
-    echo "  concluded: 0"
-    echo "  in_progress: 0"
-fi
-
-echo ""
-
-#
-# IMPLEMENTATION
-#
-echo "implementation:"
-
-impl_count=0
-impl_completed=0
-impl_in_progress=0
-
-if [ -d "$IMPL_DIR" ] && [ -n "$(ls -A "$IMPL_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
-    for file in "$IMPL_DIR"/*/tracking.md; do
-        [ -f "$file" ] || continue
-        topic=$(basename "$(dirname "$file")")
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        current_phase=$(extract_field "$file" "current_phase")
-
-        completed_tasks=$(count_completed_tasks "$file")
-        completed_phases=$(count_completed_phases "$file")
-
-        # Count total tasks from plan directory (local-markdown format)
-        total_tasks=0
-        plan_file="$PLAN_DIR/${topic}/plan.md"
-        if [ -f "$plan_file" ]; then
-            plan_format=$(extract_field "$plan_file" "format")
-            if [ "$plan_format" = "local-markdown" ] && [ -d "$PLAN_DIR/${topic}" ]; then
-                total_tasks=$(ls -1 "$PLAN_DIR/${topic}/tasks/"*.md 2>/dev/null | wc -l | tr -d ' ')
-            fi
-        fi
-
-        echo "    - topic: \"$topic\""
-        echo "      status: \"$status\""
-        [ -n "$current_phase" ] && [ "$current_phase" != "~" ] && echo "      current_phase: $current_phase"
-        echo "      completed_tasks: $completed_tasks"
-        echo "      completed_phases: $completed_phases"
-        echo "      total_tasks: $total_tasks"
-
-        impl_count=$((impl_count + 1))
-        [ "$status" = "completed" ] && impl_completed=$((impl_completed + 1))
-        [ "$status" = "in-progress" ] && impl_in_progress=$((impl_in_progress + 1))
-    done
-    echo "  count: $impl_count"
-    echo "  completed: $impl_completed"
-    echo "  in_progress: $impl_in_progress"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  count: 0"
-    echo "  completed: 0"
-    echo "  in_progress: 0"
-fi
+console.log('counts:');
+console.log('  by_work_type:');
+console.log('    epic: ' + counts.epic);
+console.log('    feature: ' + counts.feature);
+console.log('    bugfix: ' + counts.bugfix);
+console.log('  research: ' + researchCount);
+console.log('  discussion:');
+console.log('    total: ' + discCount);
+console.log('    concluded: ' + discConcluded);
+console.log('    in_progress: ' + discInProgress);
+console.log('  specification:');
+console.log('    active: ' + specActive);
+console.log('    feature: ' + specFeature);
+console.log('    crosscutting: ' + specCrosscutting);
+console.log('  planning:');
+console.log('    total: ' + planCount);
+console.log('    concluded: ' + planConcluded);
+console.log('    in_progress: ' + planInProgress);
+console.log('  implementation:');
+console.log('    total: ' + implCount);
+console.log('    completed: ' + implCompleted);
+console.log('    in_progress: ' + implInProgress);
+console.log('');
+console.log('state:');
+console.log('  has_any_work: true');
+"

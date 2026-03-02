@@ -88,7 +88,7 @@ Saving session state so Claude can pick up where it left off if the conversation
 .claude/hooks/workflows/write-session-state.sh \
   "{topic}" \
   "skills/technical-research/SKILL.md" \
-  ".workflows/research/{topic}.md"
+  ".workflows/{topic}/research/{topic}.md"
 ```
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

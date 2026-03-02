@@ -1,6 +1,6 @@
 ---
 name: start-planning
-allowed-tools: Bash(.claude/skills/start-planning/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/specification/)
+allowed-tools: Bash(.claude/skills/start-planning/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -101,13 +101,13 @@ Parse the discovery output to understand:
 
 ## Step 2: Determine Mode
 
-Check for arguments: work_type = `$0`, topic = `$1`
+Check for arguments: work_type = `$0`, work_unit = `$1`
 
-#### If `work_type` and `topic` are both provided
+#### If `work_type` and `work_unit` are both provided
 
 → Proceed to **Step 3**.
 
-#### If `work_type` is provided without `topic`
+#### If `work_type` is provided without `work_unit`
 
 Store work_type for the handoff.
 

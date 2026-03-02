@@ -14,7 +14,7 @@ Invoke the [technical-research](../../technical-research/SKILL.md) skill for you
 ```
 Research session for: {topic}
 Work type: {work_type}
-Output: .workflows/research/exploration.md
+Output: .workflows/{topic}/research/exploration.md
 
 Context:
 - Prompted by: {problem, opportunity, or curiosity}

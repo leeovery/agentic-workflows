@@ -24,7 +24,7 @@ Planning Overview
 
 {N} specifications found. {M} plans exist.
 
-1. {topic:(titlecase)}
+1. {work_unit:(titlecase)}
    └─ Plan: @if(has_plan) {plan_status:[in-progress|concluded]} @else (no plan) @endif
    └─ Spec: concluded
    @if(has_impl && impl_status != completed) └─ Impl: {impl_status} @endif
@@ -50,7 +50,7 @@ Do NOT include specs with `impl_status: completed` in the numbered list — they
 Completed specifications:
 These specifications have been fully implemented.
 
-  • {topic} (implementation completed)
+  • {work_unit} (implementation completed)
 ```
 
 **If non-plannable specifications exist**, show them in a separate code block:
@@ -62,7 +62,7 @@ Specifications not ready for planning:
 These specifications are either still in progress or cross-cutting
 and cannot be planned directly.
 
-  • {topic} ({type:[feature|cross-cutting]}, {status:[in-progress|concluded]})
+  • {work_unit} ({type:[feature|cross-cutting]}, {status:[in-progress|concluded]})
 ```
 
 **Key/Legend** — show only statuses that appear in the current display. No `---` separator before this section.
@@ -110,7 +110,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-Recreate with actual topics and states from discovery.
+Recreate with actual work units and states from discovery.
 
 **STOP.** Wait for user response.
 
@@ -119,7 +119,7 @@ Recreate with actual topics and states from discovery.
 > *Output the next fenced block as a code block:*
 
 ```
-Automatically proceeding with "{topic:(titlecase)}".
+Automatically proceeding with "{work_unit:(titlecase)}".
 ```
 
 **If nothing actionable:**

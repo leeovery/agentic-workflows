@@ -75,8 +75,8 @@ Write to `.workflows/.state/discussion-consolidation-analysis.md`:
 checksum: {checksum from current_state.discussions_checksum}
 generated: {ISO date}
 discussion_files:
-  - {topic1}.md
-  - {topic2}.md
+  - {discussion-name-1}.md
+  - {discussion-name-2}.md
 ---
 
 # Discussion Consolidation Analysis
@@ -84,18 +84,18 @@ discussion_files:
 ## Recommended Groupings
 
 ### {Suggested Specification Name}
-- **{topic-a}**: {why it belongs in this group}
-- **{topic-b}**: {why it belongs in this group}
+- **{discussion-a}**: {why it belongs in this group}
+- **{discussion-b}**: {why it belongs in this group}
 
 **Coupling**: {Brief explanation of what binds these together}
 
 ### {Another Specification Name}
-- **{topic-d}**: {why it belongs}
+- **{discussion-d}**: {why it belongs}
 
 **Coupling**: {Brief explanation}
 
 ## Independent Discussions
-- **{topic-f}**: {Why this stands alone}
+- **{discussion-f}**: {Why this stands alone}
 
 ## Analysis Notes
 {Any additional context about the relationships discovered}

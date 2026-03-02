@@ -1,6 +1,6 @@
 ---
 name: start-investigation
-allowed-tools: Bash(.claude/skills/start-investigation/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/investigation/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(.claude/skills/start-investigation/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/)
 hooks:
   PreToolUse:
     - hooks:
@@ -71,7 +71,7 @@ Parse the discovery output to understand:
 
 **From `investigations` section:**
 - `exists` - whether investigation files exist
-- `files` - each investigation's topic, status, and date
+- `files` - each investigation's work_unit, status, and work_type
 - `counts.in_progress` and `counts.concluded` - totals for routing
 
 **From `state` section:**
@@ -85,15 +85,15 @@ Parse the discovery output to understand:
 
 ## Step 2: Determine Mode
 
-Check for arguments: work_type = `$0`, topic = `$1`
+Check for arguments: work_type = `$0`, work_unit = `$1`
 
 Investigation is always bugfix work_type. If work_type is provided, it should be `bugfix`.
 
-#### If `work_type` and `topic` are both provided
+#### If `work_type` and `work_unit` are both provided
 
 → Proceed to **Step 3** (Validate Investigation).
 
-#### If `work_type` is provided without `topic`
+#### If `work_type` is provided without `work_unit`
 
 → Proceed to **Step 4** (Route Based on Scenario).
 
@@ -103,7 +103,7 @@ Investigation is always bugfix work_type. If work_type is provided, it should be
 
 ---
 
-## Step 3: Validate Investigation
+## Step 3: Validate Work Unit
 
 Load **[validate-investigation.md](references/validate-investigation.md)** and follow its instructions as written.
 

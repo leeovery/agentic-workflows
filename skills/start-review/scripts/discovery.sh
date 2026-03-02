@@ -2,39 +2,13 @@
 #
 # Discovers the current state of plans for /start-review command.
 #
+# Uses the manifest CLI to read work unit state.
 # Outputs structured YAML that the command can consume directly.
 #
 
 set -eo pipefail
 
-PLAN_DIR=".workflows/planning"
-SPEC_DIR=".workflows/specification"
-REVIEW_DIR=".workflows/review"
-IMPL_DIR=".workflows/implementation"
-
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    # Extract from YAML frontmatter (file must start with ---)
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
-
-# Helper: Extract frontmatter content (between first pair of --- delimiters)
-extract_frontmatter() {
-    local file="$1"
-    awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1{print}' "$file" 2>/dev/null
-}
-
+MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 
 # Start YAML output
 echo "# Review Command State Discovery"
@@ -42,7 +16,7 @@ echo "# Generated: $(date -Iseconds)"
 echo ""
 
 #
-# PLANS
+# WORK UNITS (via manifest CLI)
 #
 echo "plans:"
 
@@ -50,49 +24,59 @@ plan_count=0
 implemented_count=0
 completed_count=0
 
-if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
+# Get all active work units
+units_json=$($MANIFEST list --status active 2>/dev/null || echo "[]")
+
+if [ "$units_json" = "[]" ]; then
+    echo "  exists: false"
+    echo "  files: []"
+    echo "  count: 0"
+else
     echo "  exists: true"
     echo "  files:"
 
-    for file in "$PLAN_DIR"/*/plan.md; do
-        [ -f "$file" ] || continue
+    # Parse each work unit from JSON array
+    # Use node for reliable JSON parsing
+    unit_names=$(node -e "
+        const units = $units_json;
+        units.forEach(u => console.log(u.name));
+    " 2>/dev/null || true)
 
-        name=$(basename "$(dirname "$file")")
-        topic=$(extract_field "$file" "topic")
-        topic=${topic:-"$name"}
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        date=$(extract_field "$file" "date")
-        date=${date:-"unknown"}
-        format=$(extract_field "$file" "format")
-        format=${format:-"MISSING"}
-        specification=$(extract_field "$file" "specification")
-        specification=${specification:-"${name}/specification.md"}
-        plan_id=$(extract_field "$file" "plan_id")
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
+    for name in $unit_names; do
+        # Check if planning phase exists
+        planning_status=$($MANIFEST get "$name".phases.planning.status 2>/dev/null || echo "")
+        [ -z "$planning_status" ] && continue
 
-        # Check if linked specification exists
+        # Read planning phase data
+        work_type=$($MANIFEST get "$name".work_type 2>/dev/null || echo "unknown")
+        format=$($MANIFEST get "$name".phases.planning.format 2>/dev/null || echo "MISSING")
+
+        # Check if planning.md file exists
+        plan_file=".workflows/${name}/planning/planning.md"
+        if [ ! -f "$plan_file" ]; then
+            continue
+        fi
+
+        # Check if specification exists
+        spec_file=".workflows/${name}/specification/specification.md"
         spec_exists="false"
-        spec_file="$SPEC_DIR/$specification"
         if [ -f "$spec_file" ]; then
             spec_exists="true"
         fi
 
-        # Check implementation status
-        impl_tracking=".workflows/implementation/${name}/tracking.md"
-        impl_status="none"
-        if [ -f "$impl_tracking" ]; then
-            impl_status_val=$(extract_field "$impl_tracking" "status")
-            impl_status=${impl_status_val:-"in-progress"}
-        fi
+        # Check implementation status via manifest
+        impl_status=$($MANIFEST get "$name".phases.implementation.status 2>/dev/null || echo "none")
 
-        # Check review status for this plan
+        # Check review status via manifest
+        review_status=$($MANIFEST get "$name".phases.review.status 2>/dev/null || echo "")
+
+        # Count review versions by scanning review directories
+        review_dir=".workflows/${name}/review"
         review_count=0
         latest_review_version=0
         latest_review_verdict=""
-        if [ -d "$REVIEW_DIR/$name" ]; then
-            for rdir in "$REVIEW_DIR/$name"/r*/; do
+        if [ -d "$review_dir" ]; then
+            for rdir in "$review_dir"/r*/; do
                 [ -d "$rdir" ] || continue
                 [ -f "${rdir}review.md" ] || continue
                 rnum=${rdir##*r}
@@ -107,16 +91,10 @@ if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
         fi
 
         echo "    - name: \"$name\""
-        echo "      topic: \"$topic\""
-        echo "      status: \"$status\""
         echo "      work_type: \"$work_type\""
-        echo "      date: \"$date\""
+        echo "      planning_status: \"$planning_status\""
         echo "      format: \"$format\""
-        echo "      specification: \"$specification\""
         echo "      specification_exists: $spec_exists"
-        if [ -n "$plan_id" ]; then
-            echo "      plan_id: \"$plan_id\""
-        fi
         echo "      implementation_status: \"$impl_status\""
         echo "      review_count: $review_count"
         if [ "$review_count" -gt 0 ]; then
@@ -134,10 +112,6 @@ if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
     done
 
     echo "  count: $plan_count"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  count: 0"
 fi
 
 echo ""
@@ -148,74 +122,72 @@ echo ""
 echo "reviews:"
 
 reviewed_plan_count=0
-# Track which plan names have been reviewed (space-separated)
+# Track which work unit names have been reviewed (space-separated)
 reviewed_plans=""
 
-if [ -d "$REVIEW_DIR" ]; then
-    # Check for any review directories with r*/review.md
-    has_reviews="false"
-    for topic_dir in "$REVIEW_DIR"/*/; do
-        [ -d "$topic_dir" ] || continue
-        if ls -d "$topic_dir"r*/review.md >/dev/null 2>&1; then
-            has_reviews="true"
-            break
-        fi
-    done
+has_reviews="false"
 
-    echo "  exists: $has_reviews"
+if [ "$units_json" != "[]" ]; then
+    for name in $unit_names; do
+        review_dir=".workflows/${name}/review"
+        [ -d "$review_dir" ] || continue
 
-    if [ "$has_reviews" = "true" ]; then
-        echo "  entries:"
-
-        for topic_dir in "$REVIEW_DIR"/*/; do
-            [ -d "$topic_dir" ] || continue
-            topic=$(basename "$topic_dir")
-            # Count r*/ versions
-            versions=0
-            latest_version=0
-            latest_path=""
-            for rdir in "$topic_dir"r*/; do
-                [ -d "$rdir" ] || continue
-                [ -f "${rdir}review.md" ] || continue
-                rnum=${rdir##*r}
-                rnum=${rnum%/}
-                versions=$((versions + 1))
-                if [ "$rnum" -gt "$latest_version" ] 2>/dev/null; then
-                    latest_version=$rnum
-                    latest_path="$rdir"
-                fi
-            done
-
-            [ "$versions" -eq 0 ] && continue
-
-            # Extract verdict from latest review.md
-            latest_verdict=""
-            if [ -f "${latest_path}review.md" ]; then
-                latest_verdict=$(grep -m1 '\*\*QA Verdict\*\*:' "${latest_path}review.md" 2>/dev/null | \
-                    sed -E 's/.*\*\*QA Verdict\*\*:[[:space:]]*//' || true)
+        # Count r*/ versions
+        versions=0
+        latest_version=0
+        latest_path=""
+        for rdir in "$review_dir"/r*/; do
+            [ -d "$rdir" ] || continue
+            [ -f "${rdir}review.md" ] || continue
+            rnum=${rdir##*r}
+            rnum=${rnum%/}
+            versions=$((versions + 1))
+            if [ "$rnum" -gt "$latest_version" ] 2>/dev/null; then
+                latest_version=$rnum
+                latest_path="$rdir"
             fi
-
-            # Check for synthesis: look for review-tasks-c*.md in implementation dir
-            has_synthesis="false"
-            if ls "$IMPL_DIR/$topic"/review-tasks-c*.md >/dev/null 2>&1; then
-                has_synthesis="true"
-            fi
-
-            # Track reviewed plans
-            if ! echo " $reviewed_plans " | grep -q " $topic "; then
-                reviewed_plans="$reviewed_plans $topic"
-                reviewed_plan_count=$((reviewed_plan_count + 1))
-            fi
-
-            echo "    - topic: \"$topic\""
-            echo "      versions: $versions"
-            echo "      latest_version: $latest_version"
-            echo "      latest_verdict: \"$latest_verdict\""
-            echo "      latest_path: \"$latest_path\""
-            echo "      has_synthesis: $has_synthesis"
         done
-    fi
-else
+
+        [ "$versions" -eq 0 ] && continue
+        has_reviews="true"
+
+        # Extract verdict from latest review.md
+        latest_verdict=""
+        if [ -f "${latest_path}review.md" ]; then
+            latest_verdict=$(grep -m1 '\*\*QA Verdict\*\*:' "${latest_path}review.md" 2>/dev/null | \
+                sed -E 's/.*\*\*QA Verdict\*\*:[[:space:]]*//' || true)
+        fi
+
+        # Check for synthesis: look for review-tasks-c*.md in implementation dir
+        has_synthesis="false"
+        impl_dir=".workflows/${name}/implementation"
+        if ls "$impl_dir"/review-tasks-c*.md >/dev/null 2>&1; then
+            has_synthesis="true"
+        fi
+
+        # Track reviewed plans
+        if ! echo " $reviewed_plans " | grep -q " $name "; then
+            reviewed_plans="$reviewed_plans $name"
+            reviewed_plan_count=$((reviewed_plan_count + 1))
+        fi
+
+        # Output on first review entry
+        if [ "$versions" -gt 0 ] && ! echo "$printed_header" | grep -q "yes"; then
+            printed_header="yes"
+            echo "  exists: true"
+            echo "  entries:"
+        fi
+
+        echo "    - name: \"$name\""
+        echo "      versions: $versions"
+        echo "      latest_version: $latest_version"
+        echo "      latest_verdict: \"$latest_verdict\""
+        echo "      latest_path: \"$latest_path\""
+        echo "      has_synthesis: $has_synthesis"
+    done
+fi
+
+if [ "$has_reviews" = "false" ]; then
     echo "  exists: false"
 fi
 

@@ -16,13 +16,7 @@ Work type: feature
 
 {compiled feature context from gather-feature-context}
 
-The discussion frontmatter should include:
-- topic: {topic}
-- status: in-progress
-- work_type: feature
-- date: {today}
-
 Invoke the technical-discussion skill.
 ```
 
-When the discussion concludes, the processing skill will detect `work_type: feature` in the artifact and invoke workflow-bridge automatically.
+When the discussion concludes, the processing skill will read `work_type` from the manifest and invoke workflow-bridge automatically.

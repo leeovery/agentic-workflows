@@ -17,7 +17,7 @@ Review Overview
 
 {N} plans found. {M} with implementations.
 
-1. {topic:(titlecase)}
+1. {work_unit:(titlecase)}
    └─ Plan: concluded ({format})
    └─ Implementation: {impl_status:[completed|in-progress]}
    └─ Spec: {spec:[exists|missing]}
@@ -42,7 +42,7 @@ Omit any section entirely if it has no entries.
 Plans not ready for review:
 These plans have no implementation to review.
 
-  • {topic} (no implementation)
+  • {work_unit} (no implementation)
 ```
 
 **Key/Legend** — show only statuses that appear in the current display. No `---` separator before this section.
@@ -83,7 +83,7 @@ Run /start-implementation first.
 > *Output the next fenced block as a code block:*
 
 ```
-Automatically proceeding with "{topic:(titlecase)}".
+Automatically proceeding with "{work_unit:(titlecase)}".
 Scope: single
 ```
 

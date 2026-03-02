@@ -2,91 +2,72 @@
 #
 # Discovery script for /start-investigation.
 #
-# Scans the investigation directory for existing investigations.
+# Queries the manifest CLI to find bugfix work units and their
+# investigation phase state.
 #
 # Outputs structured YAML that the skill can consume directly.
 #
 
 set -eo pipefail
 
-INVESTIGATION_DIR=".workflows/investigation"
+CLI="node .claude/skills/workflow-manifest/scripts/manifest.js"
 
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
+# Fetch all active work units as JSON array
+json=$($CLI list --status active 2>/dev/null || echo '[]')
 
 # Start YAML output
 echo "# Start-Investigation Discovery"
 echo "# Generated: $(date -Iseconds)"
 echo ""
 
-#
-# INVESTIGATIONS
-#
-echo "investigations:"
+# Parse bugfix work units and emit investigation state
+node -e "
+  const manifests = JSON.parse(process.argv[1]);
+  const bugfixes = manifests.filter(m => m.work_type === 'bugfix');
 
-inv_count=0
-inv_in_progress=0
-inv_concluded=0
+  const ps = (m, phase) => ((m.phases || {})[phase] || {}).status || null;
 
-if [ -d "$INVESTIGATION_DIR" ] && [ -n "$(ls -A "$INVESTIGATION_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
-    for dir in "$INVESTIGATION_DIR"/*/; do
-        [ -d "$dir" ] || continue
-        file="${dir}investigation.md"
-        [ -f "$file" ] || continue
+  // Filter to those with investigation phase activity or ready for investigation
+  const withInvestigation = bugfixes.filter(m => {
+    const invStatus = ps(m, 'investigation');
+    return invStatus === 'in-progress' || invStatus === 'concluded' || invStatus === null;
+  });
 
-        topic=$(basename "$dir")
-        status=$(extract_field "$file" "status")
-        status=${status:-"in-progress"}
-        date=$(extract_field "$file" "date")
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"bugfix"}
+  console.log('investigations:');
 
-        echo "    - topic: \"$topic\""
-        echo "      status: \"$status\""
-        echo "      work_type: \"$work_type\""
-        [ -n "$date" ] && echo "      date: \"$date\""
+  const inProgress = withInvestigation.filter(m => ps(m, 'investigation') === 'in-progress');
+  const concluded = withInvestigation.filter(m => ps(m, 'investigation') === 'concluded');
 
-        inv_count=$((inv_count + 1))
-        [ "$status" = "concluded" ] && inv_concluded=$((inv_concluded + 1))
-        [ "$status" = "in-progress" ] && inv_in_progress=$((inv_in_progress + 1))
-    done
-    echo "  counts:"
-    echo "    total: $inv_count"
-    echo "    in_progress: $inv_in_progress"
-    echo "    concluded: $inv_concluded"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  counts:"
-    echo "    total: 0"
-    echo "    in_progress: 0"
-    echo "    concluded: 0"
-fi
+  if (withInvestigation.length === 0) {
+    console.log('  exists: false');
+    console.log('  files: []');
+  } else {
+    const hasFiles = withInvestigation.filter(m => ps(m, 'investigation') !== null);
+    console.log('  exists: ' + (hasFiles.length > 0));
+    if (hasFiles.length === 0) {
+      console.log('  files: []');
+    } else {
+      console.log('  files:');
+      for (const m of hasFiles) {
+        console.log('    - work_unit: \"' + m.name + '\"');
+        console.log('      status: \"' + ps(m, 'investigation') + '\"');
+        console.log('      work_type: \"bugfix\"');
+      }
+    }
+  }
 
-echo ""
+  console.log('  counts:');
+  console.log('    total: ' + withInvestigation.filter(m => ps(m, 'investigation') !== null).length);
+  console.log('    in_progress: ' + inProgress.length);
+  console.log('    concluded: ' + concluded.length);
+  console.log('');
 
-#
-# STATE SUMMARY
-#
-echo "state:"
-
-if [ "$inv_count" -eq 0 ]; then
-    echo "  scenario: \"fresh\""
-else
-    echo "  scenario: \"has_investigations\""
-fi
+  // State summary
+  console.log('state:');
+  const hasAny = withInvestigation.filter(m => ps(m, 'investigation') !== null).length > 0;
+  if (!hasAny) {
+    console.log('  scenario: \"fresh\"');
+  } else {
+    console.log('  scenario: \"has_investigations\"');
+  }
+" "$json"

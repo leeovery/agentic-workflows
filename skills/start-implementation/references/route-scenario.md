@@ -17,7 +17,7 @@ No plans exist yet.
 ```
 Implementation Overview
 
-No plans found in .workflows/planning/
+No work units with concluded plans found.
 
 The implementation phase requires a plan.
 Run /start-planning first to create a plan from a specification.

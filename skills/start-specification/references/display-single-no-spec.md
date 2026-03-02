@@ -15,7 +15,7 @@ Specification Overview
 
 Single concluded discussion found.
 
-1. {topic:(titlecase)}
+1. {work_unit:(titlecase)}
    └─ Spec: (no spec)
    └─ Discussions:
       └─ {discussion-name} (ready)
@@ -51,7 +51,7 @@ Key:
 > *Output the next fenced block as a code block:*
 
 ```
-Automatically proceeding with "{topic:(titlecase)}".
+Automatically proceeding with "{work_unit:(titlecase)}".
 ```
 
 Auto-proceed with verb **"Creating"**.

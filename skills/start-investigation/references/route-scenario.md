@@ -16,14 +16,14 @@ Investigations Overview
 @if(investigations.counts.in_progress > 0)
 In Progress:
 @foreach(inv in investigations.files where status is in-progress)
-  • {inv.topic}
+  • {inv.work_unit}
 @endforeach
 @endif
 
 @if(investigations.counts.concluded > 0)
 Concluded:
 @foreach(inv in investigations.files where status is concluded)
-  • {inv.topic}
+  • {inv.work_unit}
 @endforeach
 @endif
 ```
@@ -35,7 +35,7 @@ Concluded:
 What would you like to do?
 
 @if(in_progress investigations exist)
-{N}. Resume "{topic}" investigation
+{N}. Resume "{work_unit}" investigation
 @endforeach
 @endif
 {N}. Start new investigation
@@ -48,7 +48,7 @@ What would you like to do?
 
 Set source="continue".
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6** with that topic.
+→ Return to **[the skill](../SKILL.md)** for **Step 6** with that work unit.
 
 #### If `new`
 

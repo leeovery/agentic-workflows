@@ -1,6 +1,6 @@
 ---
 name: start-review
-allowed-tools: Bash(.claude/skills/start-review/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/planning/), Bash(ls .workflows/implementation/)
+allowed-tools: Bash(.claude/skills/start-review/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -76,12 +76,12 @@ Parse the discovery output to understand:
 
 **From `plans` section:**
 - `exists` - whether any plans exist
-- `files` - list of plans with: name, topic, status, date, format, specification, specification_exists, plan_id (if present)
+- `files` - list of plans with: name, work_type, planning_status, format, specification_exists, implementation_status, review_count, latest_review_version, latest_review_verdict
 - `count` - total number of plans
 
 **From `reviews` section:**
 - `exists` - whether any reviews exist
-- `entries` - list of reviews with: scope, type, plans, versions, latest_version, latest_verdict, latest_path, has_synthesis
+- `entries` - list of reviews with: name, versions, latest_version, latest_verdict, latest_path, has_synthesis
 
 **From `state` section:**
 - `scenario` - one of: `"no_plans"`, `"single_plan"`, `"multiple_plans"`
@@ -98,13 +98,13 @@ Parse the discovery output to understand:
 
 ## Step 2: Determine Mode
 
-Check for arguments: work_type = `$0`, topic = `$1`
+Check for arguments: work_type = `$0`, work_unit = `$1`
 
-#### If `work_type` and `topic` are both provided
+#### If `work_type` and `work_unit` are both provided
 
 → Proceed to **Step 3**.
 
-#### If `work_type` is provided without `topic`
+#### If `work_type` is provided without `work_unit`
 
 Store work_type for the handoff.
 

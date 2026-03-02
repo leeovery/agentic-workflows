@@ -3,13 +3,16 @@
 # Discovers the current state of discussions, specifications, and cache
 # for the /start-specification command.
 #
+# Uses the manifest CLI for work unit state. Scans discussion files
+# within work unit directories for source-level detail.
+#
 # Outputs structured YAML that the command can consume directly.
 #
 
 set -eo pipefail
 
-DISCUSSION_DIR=".workflows/discussion"
-SPEC_DIR=".workflows/specification"
+MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
+WORKFLOWS_DIR=".workflows"
 CACHE_FILE=".workflows/.state/discussion-consolidation-analysis.md"
 
 # Helper: Extract a frontmatter field value from a file
@@ -29,132 +32,104 @@ extract_field() {
     echo "$value"
 }
 
-# Helper: Extract array field from frontmatter (returns space-separated values)
-# Usage: extract_array_field <file> <field_name>
-extract_array_field() {
-    local file="$1"
-    local field="$2"
-    local result
-    # Look for field followed by array items (- item), within frontmatter only
-    result=$(awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1{print}' "$file" 2>/dev/null | \
-        sed -n "/^${field}:/,/^[a-z_]*:/p" | \
-        grep "^[[:space:]]*-" | \
-        sed 's/^[[:space:]]*-[[:space:]]*//' | \
-        tr '\n' ' ' | \
-        sed 's/[[:space:]]*$//' || true)
-    echo "$result"
-}
-
-# Helper: Extract sources with status from object format
-# Outputs YAML-formatted source entries with name, status, and discussion_status
-# Usage: extract_sources_with_status <file> [discussion_dir]
-#
-# Note: This only handles the object format. Legacy simple array format
-# is converted by migration 004 before discovery runs.
-extract_sources_with_status() {
-    local file="$1"
-    local discussion_dir="$2"
-    local in_sources=false
-    local current_name=""
-    local current_status=""
-
-    # Helper: output a single source entry with discussion_status lookup
-    _emit_source() {
-        local name="$1"
-        local status="$2"
-        echo "      - name: \"$name\""
-        echo "        status: \"$status\""
-        if [ -n "$discussion_dir" ]; then
-            if [ -f "$discussion_dir/${name}.md" ]; then
-                local disc_status
-                disc_status=$(extract_field "$discussion_dir/${name}.md" "status")
-                echo "        discussion_status: \"${disc_status:-unknown}\""
-            else
-                echo "        discussion_status: \"not-found\""
-            fi
-        fi
-    }
-
-    # Read frontmatter and parse sources block
-    while IFS= read -r line; do
-        # Detect start of sources block
-        if [[ "$line" =~ ^sources: ]]; then
-            in_sources=true
-            continue
-        fi
-
-        # Detect end of sources block (next top-level field)
-        if $in_sources && [[ "$line" =~ ^[a-z_]+: ]] && [[ ! "$line" =~ ^[[:space:]] ]]; then
-            # Output last source if pending
-            if [ -n "$current_name" ]; then
-                _emit_source "$current_name" "${current_status:-incorporated}"
-            fi
-            break
-        fi
-
-        if $in_sources; then
-            # Object format: "  - name: value"
-            if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*name:[[:space:]]*(.+)$ ]]; then
-                # Output previous source if exists
-                if [ -n "$current_name" ]; then
-                    _emit_source "$current_name" "${current_status:-incorporated}"
-                fi
-                current_name="${BASH_REMATCH[1]}"
-                current_name=$(echo "$current_name" | sed 's/^"//' | sed 's/"$//' | xargs)
-                current_status=""
-            # Status line: "    status: value"
-            elif [[ "$line" =~ ^[[:space:]]*status:[[:space:]]*(.+)$ ]]; then
-                current_status="${BASH_REMATCH[1]}"
-                current_status=$(echo "$current_status" | sed 's/^"//' | sed 's/"$//' | xargs)
-            fi
-        fi
-    done < <(awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1{print}' "$file" 2>/dev/null)
-
-    # Output last source if pending (end of frontmatter)
-    if [ -n "$current_name" ]; then
-        _emit_source "$current_name" "${current_status:-incorporated}"
-    fi
-}
-
 # Start YAML output
 echo "# Specification Command State Discovery"
 echo "# Generated: $(date -Iseconds)"
 echo ""
+
+# Get all active work units into a temp file for reuse
+tmp_units=$(mktemp)
+trap 'rm -f "$tmp_units"' EXIT
+
+$MANIFEST list --status active 2>/dev/null > "$tmp_units" || echo "[]" > "$tmp_units"
+
+work_unit_count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$tmp_units','utf8')).length)" 2>/dev/null || echo "0")
+
+# Parse work units into name/type pairs
+tmp_pairs=$(mktemp)
+trap 'rm -f "$tmp_units" "$tmp_pairs"' EXIT
+
+if [ "$work_unit_count" -gt 0 ]; then
+    node -e "
+        const units = JSON.parse(require('fs').readFileSync('$tmp_units', 'utf8'));
+        for (const u of units) {
+            console.log(u.name + ' ' + u.work_type);
+        }
+    " 2>/dev/null > "$tmp_pairs"
+fi
 
 #
 # DISCUSSIONS
 #
 echo "discussions:"
 
-if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; then
-    for file in "$DISCUSSION_DIR"/*.md; do
-        [ -f "$file" ] || continue
+discussion_found=false
 
-        name=$(basename "$file" .md)
+while IFS=' ' read -r wu_name wu_type; do
+    [ -z "$wu_name" ] && continue
+    disc_dir="$WORKFLOWS_DIR/$wu_name/discussion"
+    [ -d "$disc_dir" ] || continue
+
+    if [ "$wu_type" = "epic" ]; then
+        # Epic: multiple discussion files
+        for file in "$disc_dir"/*.md; do
+            [ -f "$file" ] || continue
+            name=$(basename "$file" .md)
+            status=$(extract_field "$file" "status")
+            status=${status:-"unknown"}
+
+            # Check if this discussion is tracked as a spec source via manifest
+            has_individual_spec="false"
+            spec_status=""
+            spec_phase_status=$($MANIFEST get "$wu_name".phases.specification.status 2>/dev/null || echo "")
+            if [ -n "$spec_phase_status" ] && [ "$spec_phase_status" != "undefined" ]; then
+                # Check if there's a sources entry for this discussion
+                source_check=$($MANIFEST get "$wu_name".phases.specification.sources."$name".status 2>/dev/null || echo "")
+                if [ -n "$source_check" ] && [ "$source_check" != "undefined" ]; then
+                    has_individual_spec="true"
+                    spec_status="$spec_phase_status"
+                fi
+            fi
+
+            echo "  - name: \"$name\""
+            echo "    work_unit: \"$wu_name\""
+            echo "    status: \"$status\""
+            echo "    work_type: \"$wu_type\""
+            echo "    has_individual_spec: $has_individual_spec"
+            if [ "$has_individual_spec" = "true" ]; then
+                echo "    spec_status: \"$spec_status\""
+            fi
+            discussion_found=true
+        done
+    else
+        # Feature/bugfix: single discussion file
+        file="$disc_dir/discussion.md"
+        [ -f "$file" ] || continue
         status=$(extract_field "$file" "status")
         status=${status:-"unknown"}
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
 
-        # Check if this discussion has a corresponding individual spec
+        # Check specification status via manifest
         has_individual_spec="false"
         spec_status=""
-        if [ -f "$SPEC_DIR/${name}/specification.md" ]; then
+        spec_phase_status=$($MANIFEST get "$wu_name".phases.specification.status 2>/dev/null || echo "")
+        if [ -n "$spec_phase_status" ] && [ "$spec_phase_status" != "undefined" ]; then
             has_individual_spec="true"
-            # Extract spec status in real-time (not from cache)
-            spec_status=$(extract_field "$SPEC_DIR/${name}/specification.md" "status")
-            spec_status=${spec_status:-"in-progress"}
+            spec_status="$spec_phase_status"
         fi
 
-        echo "  - name: \"$name\""
+        echo "  - name: \"$wu_name\""
+        echo "    work_unit: \"$wu_name\""
         echo "    status: \"$status\""
-        echo "    work_type: \"$work_type\""
+        echo "    work_type: \"$wu_type\""
         echo "    has_individual_spec: $has_individual_spec"
         if [ "$has_individual_spec" = "true" ]; then
             echo "    spec_status: \"$spec_status\""
         fi
-    done
-else
+        discussion_found=true
+    fi
+done < "$tmp_pairs"
+
+if [ "$discussion_found" = false ]; then
     echo "  []  # No discussions found"
 fi
 
@@ -165,34 +140,66 @@ echo ""
 #
 echo "specifications:"
 
-if [ -d "$SPEC_DIR" ] && [ -n "$(ls -A "$SPEC_DIR" 2>/dev/null)" ]; then
-    for file in "$SPEC_DIR"/*/specification.md; do
-        [ -f "$file" ] || continue
+spec_found=false
 
-        name=$(basename "$(dirname "$file")")
-        status=$(extract_field "$file" "status")
-        status=${status:-"active"}
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
+while IFS=' ' read -r wu_name wu_type; do
+    [ -z "$wu_name" ] && continue
+    spec_file="$WORKFLOWS_DIR/$wu_name/specification/specification.md"
+    [ -f "$spec_file" ] || continue
 
-        superseded_by=$(extract_field "$file" "superseded_by")
+    spec_status=$($MANIFEST get "$wu_name".phases.specification.status 2>/dev/null || echo "")
+    [ -z "$spec_status" ] && spec_status=$(extract_field "$spec_file" "status")
+    spec_status=${spec_status:-"in-progress"}
 
-        echo "  - name: \"$name\""
-        echo "    status: \"$status\""
-        echo "    work_type: \"$work_type\""
+    # Check for superseded status in frontmatter
+    superseded_by=$(extract_field "$spec_file" "superseded_by")
 
-        if [ -n "$superseded_by" ]; then
-            echo "    superseded_by: \"$superseded_by\""
-        fi
+    echo "  - name: \"$wu_name\""
+    echo "    work_unit: \"$wu_name\""
+    echo "    status: \"$spec_status\""
+    echo "    work_type: \"$wu_type\""
 
-        # Extract sources with status (handles both old and new format)
-        sources_output=$(extract_sources_with_status "$file" "$DISCUSSION_DIR")
-        if [ -n "$sources_output" ]; then
-            echo "    sources:"
-            echo "$sources_output"
-        fi
-    done
-else
+    if [ -n "$superseded_by" ]; then
+        echo "    superseded_by: \"$superseded_by\""
+    fi
+
+    # Extract sources from manifest with discussion_status lookup
+    sources_json=$($MANIFEST get "$wu_name".phases.specification.sources 2>/dev/null || echo "")
+    if [ -n "$sources_json" ] && [ "$sources_json" != "undefined" ]; then
+        echo "    sources:"
+        # Emit each source with its discussion_status
+        node -e "
+            const sources = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+            for (const [name] of Object.entries(sources)) { console.log(name); }
+        " <<< "$sources_json" 2>/dev/null | while IFS= read -r src_name; do
+            src_status=$(node -e "
+                const sources = JSON.parse('$(echo "$sources_json" | sed "s/'/\\\\'/g")');
+                const info = sources['$src_name'];
+                console.log(typeof info === 'object' ? (info.status || 'incorporated') : 'incorporated');
+            " 2>/dev/null || echo "incorporated")
+
+            echo "      - name: \"$src_name\""
+            echo "        status: \"$src_status\""
+
+            # Look up discussion file for discussion_status
+            if [ "$wu_type" = "epic" ]; then
+                disc_file="$WORKFLOWS_DIR/$wu_name/discussion/${src_name}.md"
+            else
+                disc_file="$WORKFLOWS_DIR/$wu_name/discussion/discussion.md"
+            fi
+            if [ -f "$disc_file" ]; then
+                disc_status=$(extract_field "$disc_file" "status")
+                echo "        discussion_status: \"${disc_status:-unknown}\""
+            else
+                echo "        discussion_status: \"not-found\""
+            fi
+        done
+    fi
+
+    spec_found=true
+done < "$tmp_pairs"
+
+if [ "$spec_found" = false ]; then
     echo "  []  # No specifications found"
 fi
 
@@ -212,9 +219,11 @@ if [ -f "$CACHE_FILE" ]; then
     cached_checksum=$(extract_field "$CACHE_FILE" "checksum")
     cached_date=$(extract_field "$CACHE_FILE" "generated")
 
-    # Determine status based on checksum comparison
-    if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; then
-        current_checksum=$(cat "$DISCUSSION_DIR"/*.md 2>/dev/null | md5sum | cut -d' ' -f1)
+    # Compute current checksum across all discussion files in all work units
+    all_discussion_files=$(find "$WORKFLOWS_DIR" -path "*/.archive" -prune -o -path "*/discussion/*.md" -print 2>/dev/null | sort)
+
+    if [ -n "$all_discussion_files" ]; then
+        current_checksum=$(echo "$all_discussion_files" | xargs cat 2>/dev/null | md5sum | cut -d' ' -f1)
 
         if [ "$cached_checksum" = "$current_checksum" ]; then
             echo "  status: \"valid\""
@@ -232,16 +241,13 @@ if [ -f "$CACHE_FILE" ]; then
     echo "  generated: \"${cached_date:-unknown}\""
 
     # Extract anchored names (groupings that have existing specs)
-    # These are the grouping names from the cache that have corresponding specs
     echo "  anchored_names:"
 
-    # Parse the cache file for grouping names (### Name format)
-    # and check if a spec exists for each
     anchored_found=false
     while IFS= read -r grouping_name; do
         # Clean the name (remove any trailing annotations, lowercase, spaces to hyphens)
         clean_name=$(echo "$grouping_name" | sed 's/[[:space:]]*(.*)//' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-        if [ -f "$SPEC_DIR/${clean_name}/specification.md" ]; then
+        if [ -d "$WORKFLOWS_DIR/$clean_name/specification" ] && [ -f "$WORKFLOWS_DIR/$clean_name/specification/specification.md" ]; then
             echo "    - \"$clean_name\""
             anchored_found=true
         fi
@@ -265,16 +271,18 @@ echo ""
 #
 echo "current_state:"
 
-if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; then
-    # Compute checksum of all discussion files (deterministic via sorted glob)
-    current_checksum=$(cat "$DISCUSSION_DIR"/*.md 2>/dev/null | md5sum | cut -d' ' -f1)
+# Gather all discussion files across work units
+all_disc_files=$(find "$WORKFLOWS_DIR" -path "*/.archive" -prune -o -path "*/discussion/*.md" -print 2>/dev/null | sort)
+
+if [ -n "$all_disc_files" ]; then
+    current_checksum=$(echo "$all_disc_files" | xargs cat 2>/dev/null | md5sum | cut -d' ' -f1)
     echo "  discussions_checksum: \"$current_checksum\""
 
     # Count discussions by status
     discussion_count=0
     concluded_count=0
     in_progress_count=0
-    for file in "$DISCUSSION_DIR"/*.md; do
+    while IFS= read -r file; do
         [ -f "$file" ] || continue
         discussion_count=$((discussion_count + 1))
         status=$(extract_field "$file" "status")
@@ -283,22 +291,22 @@ if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; 
         elif [ "$status" = "in-progress" ]; then
             in_progress_count=$((in_progress_count + 1))
         fi
-    done
+    done <<< "$all_disc_files"
     echo "  discussion_count: $discussion_count"
     echo "  concluded_count: $concluded_count"
     echo "  in_progress_count: $in_progress_count"
 
     # Count non-superseded specifications
     spec_count=0
-    if [ -d "$SPEC_DIR" ] && [ -n "$(ls -A "$SPEC_DIR" 2>/dev/null)" ]; then
-        for file in "$SPEC_DIR"/*/specification.md; do
-            [ -f "$file" ] || continue
-            spec_status=$(extract_field "$file" "status")
-            if [ "$spec_status" != "superseded" ]; then
-                spec_count=$((spec_count + 1))
-            fi
-        done
-    fi
+    while IFS=' ' read -r wu_name wu_type; do
+        [ -z "$wu_name" ] && continue
+        spec_file="$WORKFLOWS_DIR/$wu_name/specification/specification.md"
+        [ -f "$spec_file" ] || continue
+        file_status=$(extract_field "$spec_file" "status")
+        if [ "$file_status" != "superseded" ]; then
+            spec_count=$((spec_count + 1))
+        fi
+    done < "$tmp_pairs"
     echo "  spec_count: $spec_count"
 
     # Boolean helpers

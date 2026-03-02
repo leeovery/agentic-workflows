@@ -14,9 +14,9 @@ Saving session state so Claude can pick up where it left off if the conversation
 
 ```bash
 .claude/hooks/workflows/write-session-state.sh \
-  "{topic}" \
+  "{work_unit}" \
   "skills/technical-investigation/SKILL.md" \
-  ".workflows/investigation/{topic}/investigation.md"
+  ".workflows/{work_unit}/investigation/investigation.md"
 ```
 
 This skill's purpose is now fulfilled.
@@ -32,8 +32,8 @@ Construct the handoff based on how this investigation was initiated.
 #### If source is `fresh` or `bridge`
 
 ```
-Investigation session for: {topic}
-Output: .workflows/investigation/{topic}/investigation.md
+Investigation session for: {work_unit}
+Output: .workflows/{work_unit}/investigation/investigation.md
 
 Bug context:
 - Expected behavior: {from user's description}
@@ -46,9 +46,9 @@ Invoke the technical-investigation skill.
 #### If source is `continue`
 
 ```
-Investigation session for: {topic}
+Investigation session for: {work_unit}
 Source: existing investigation
-Output: .workflows/investigation/{topic}/investigation.md
+Output: .workflows/{work_unit}/investigation/investigation.md
 
 Invoke the technical-investigation skill.
 ```

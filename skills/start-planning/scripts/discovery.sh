@@ -3,36 +3,31 @@
 # Discovers the current state of specifications and plans
 # for the /start-planning command.
 #
+# Uses the manifest CLI to read work unit state.
 # Outputs structured YAML that the command can consume directly.
 #
 
 set -eo pipefail
 
-SPEC_DIR=".workflows/specification"
-PLAN_DIR=".workflows/planning"
-IMPL_DIR=".workflows/implementation"
-
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    # Extract from YAML frontmatter (file must start with ---)
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
+MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 
 # Start YAML output
 echo "# Planning Command State Discovery"
 echo "# Generated: $(date -Iseconds)"
 echo ""
+
+#
+# Gather all active work units via manifest CLI
+#
+manifests_json=$($MANIFEST list --status active 2>/dev/null || echo "[]")
+
+# Count work units (portable: no jq dependency)
+work_unit_count=$(echo "$manifests_json" | node -e "
+  let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{
+    const arr=JSON.parse(d);
+    console.log(arr.length);
+  });
+")
 
 #
 # SPECIFICATIONS
@@ -46,118 +41,7 @@ feature_actionable_with_plan_count=0
 feature_implemented_count=0
 crosscutting_count=0
 
-if [ -d "$SPEC_DIR" ] && [ -n "$(ls -A "$SPEC_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  feature:"
-
-    # First pass: feature specifications
-    for file in "$SPEC_DIR"/*/specification.md; do
-        [ -f "$file" ] || continue
-
-        name=$(basename "$(dirname "$file")")
-        status=$(extract_field "$file" "status")
-        status=${status:-"active"}
-        spec_type=$(extract_field "$file" "type")
-        spec_type=${spec_type:-"feature"}
-
-        # Skip cross-cutting specs in this pass
-        [ "$spec_type" = "cross-cutting" ] && continue
-
-        # Skip superseded specs — they've been absorbed into another spec
-        [ "$status" = "superseded" ] && continue
-
-        # Check if plan exists and its status
-        has_plan="false"
-        plan_status=""
-        if [ -f "$PLAN_DIR/${name}/plan.md" ]; then
-            has_plan="true"
-            plan_status=$(extract_field "$PLAN_DIR/${name}/plan.md" "status")
-            plan_status=${plan_status:-"unknown"}
-        fi
-
-        # Check if implementation tracking exists and its status
-        has_impl="false"
-        impl_status=""
-        if [ -f "$IMPL_DIR/${name}/tracking.md" ]; then
-            has_impl="true"
-            impl_status=$(extract_field "$IMPL_DIR/${name}/tracking.md" "status")
-            impl_status=${impl_status:-"unknown"}
-        fi
-
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
-
-        echo "    - name: \"$name\""
-        echo "      status: \"$status\""
-        echo "      work_type: \"$work_type\""
-        echo "      has_plan: $has_plan"
-        if [ "$has_plan" = "true" ]; then
-            echo "      plan_status: \"$plan_status\""
-        fi
-        echo "      has_impl: $has_impl"
-        if [ "$has_impl" = "true" ]; then
-            echo "      impl_status: \"$impl_status\""
-        fi
-
-        feature_count=$((feature_count + 1))
-        # "concluded" specs without plans are ready for planning
-        if [ "$status" = "concluded" ] && [ "$has_plan" = "false" ]; then
-            feature_ready_count=$((feature_ready_count + 1))
-        fi
-        if [ "$has_plan" = "true" ]; then
-            feature_with_plan_count=$((feature_with_plan_count + 1))
-            # Track specs with plans that are still actionable (not fully implemented)
-            if [ "$impl_status" != "completed" ]; then
-                feature_actionable_with_plan_count=$((feature_actionable_with_plan_count + 1))
-            fi
-        fi
-        # Track fully implemented specs
-        if [ "$impl_status" = "completed" ]; then
-            feature_implemented_count=$((feature_implemented_count + 1))
-        fi
-    done
-
-    if [ "$feature_count" -eq 0 ]; then
-        echo "    []  # No feature specifications"
-    fi
-
-    echo "  crosscutting:"
-
-    # Second pass: cross-cutting specifications
-    for file in "$SPEC_DIR"/*/specification.md; do
-        [ -f "$file" ] || continue
-
-        name=$(basename "$(dirname "$file")")
-        spec_type=$(extract_field "$file" "type")
-        spec_type=${spec_type:-"feature"}
-
-        # Only cross-cutting specs in this pass
-        [ "$spec_type" != "cross-cutting" ] && continue
-
-        status=$(extract_field "$file" "status")
-        status=${status:-"active"}
-
-        # Skip superseded specs
-        [ "$status" = "superseded" ] && continue
-
-        echo "    - name: \"$name\""
-        echo "      status: \"$status\""
-
-        crosscutting_count=$((crosscutting_count + 1))
-    done
-
-    if [ "$crosscutting_count" -eq 0 ]; then
-        echo "    []  # No cross-cutting specifications"
-    fi
-
-    echo "  counts:"
-    echo "    feature: $feature_count"
-    echo "    feature_ready: $feature_ready_count"
-    echo "    feature_with_plan: $feature_with_plan_count"
-    echo "    feature_actionable_with_plan: $feature_actionable_with_plan_count"
-    echo "    feature_implemented: $feature_implemented_count"
-    echo "    crosscutting: $crosscutting_count"
-else
+if [ "$work_unit_count" -eq 0 ]; then
     echo "  exists: false"
     echo "  feature: []"
     echo "  crosscutting: []"
@@ -168,6 +52,134 @@ else
     echo "    feature_actionable_with_plan: 0"
     echo "    feature_implemented: 0"
     echo "    crosscutting: 0"
+else
+    # Parse each work unit's specification and planning state
+    # Node script extracts the fields we need from the JSON array
+    parsed=$(echo "$manifests_json" | node -e "
+      let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{
+        const arr=JSON.parse(d);
+        for (const m of arr) {
+          const spec = (m.phases && m.phases.specification) || {};
+          const plan = (m.phases && m.phases.planning) || {};
+          const impl = (m.phases && m.phases.implementation) || {};
+          const specStatus = spec.status || '';
+          const specType = spec.type || 'feature';
+          const planStatus = plan.status || '';
+          const implStatus = impl.status || '';
+          const planFormat = plan.format || '';
+          const planId = plan.plan_id || '';
+          const workType = m.work_type || 'feature';
+          // Output pipe-delimited: name|work_type|spec_status|spec_type|plan_status|impl_status|plan_format|plan_id
+          console.log([m.name, workType, specStatus, specType, planStatus, implStatus, planFormat, planId].join('|'));
+        }
+      });
+    ")
+
+    has_any_spec=false
+    feature_lines=""
+    crosscutting_lines=""
+    plan_lines=""
+    plan_format_seen=""
+    plan_format_unanimous="true"
+
+    while IFS='|' read -r name work_type spec_status spec_type plan_status impl_status plan_format plan_id; do
+        [ -z "$name" ] && continue
+
+        # Skip work units with no specification phase at all
+        [ -z "$spec_status" ] && continue
+
+        has_any_spec=true
+
+        # Skip superseded specs
+        [ "$spec_status" = "superseded" ] && continue
+
+        if [ "$spec_type" = "cross-cutting" ]; then
+            crosscutting_count=$((crosscutting_count + 1))
+            crosscutting_lines="${crosscutting_lines}    - name: \"$name\"\n      status: \"$spec_status\"\n"
+            continue
+        fi
+
+        # Feature spec
+        feature_count=$((feature_count + 1))
+
+        has_plan="false"
+        if [ -n "$plan_status" ]; then
+            has_plan="true"
+        fi
+
+        has_impl="false"
+        if [ -n "$impl_status" ]; then
+            has_impl="true"
+        fi
+
+        line="    - name: \"$name\"\n      status: \"$spec_status\"\n      work_type: \"$work_type\"\n      has_plan: $has_plan\n"
+        if [ "$has_plan" = "true" ]; then
+            line="${line}      plan_status: \"$plan_status\"\n"
+        fi
+        line="${line}      has_impl: $has_impl\n"
+        if [ "$has_impl" = "true" ]; then
+            line="${line}      impl_status: \"$impl_status\"\n"
+        fi
+        feature_lines="${feature_lines}${line}"
+
+        # Count ready (concluded + no plan)
+        if [ "$spec_status" = "concluded" ] && [ "$has_plan" = "false" ]; then
+            feature_ready_count=$((feature_ready_count + 1))
+        fi
+        if [ "$has_plan" = "true" ]; then
+            feature_with_plan_count=$((feature_with_plan_count + 1))
+            if [ "$impl_status" != "completed" ]; then
+                feature_actionable_with_plan_count=$((feature_actionable_with_plan_count + 1))
+            fi
+        fi
+        if [ "$impl_status" = "completed" ]; then
+            feature_implemented_count=$((feature_implemented_count + 1))
+        fi
+
+        # Track plan data for plans section
+        if [ -n "$plan_status" ]; then
+            plan_lines="${plan_lines}    - name: \"$name\"\n      format: \"${plan_format:-MISSING}\"\n      status: \"$plan_status\"\n      work_type: \"$work_type\"\n"
+            if [ -n "$plan_id" ]; then
+                plan_lines="${plan_lines}      plan_id: \"$plan_id\"\n"
+            fi
+
+            if [ -n "$plan_format" ] && [ "$plan_format" != "MISSING" ]; then
+                if [ -z "$plan_format_seen" ]; then
+                    plan_format_seen="$plan_format"
+                elif [ "$plan_format_seen" != "$plan_format" ]; then
+                    plan_format_unanimous="false"
+                fi
+            fi
+        fi
+    done <<< "$parsed"
+
+    if [ "$has_any_spec" = "true" ]; then
+        echo "  exists: true"
+    else
+        echo "  exists: false"
+    fi
+
+    echo "  feature:"
+    if [ "$feature_count" -eq 0 ]; then
+        echo "    []  # No feature specifications"
+    else
+        echo -e "$feature_lines" | sed '/^$/d'
+    fi
+
+    echo "  crosscutting:"
+    if [ "$crosscutting_count" -eq 0 ]; then
+        echo "    []  # No cross-cutting specifications"
+    else
+        echo -e "$crosscutting_lines" | sed '/^$/d'
+    fi
+
+    echo "  counts:"
+    echo "    feature: $feature_count"
+    echo "    feature_ready: $feature_ready_count"
+    echo "    feature_with_plan: $feature_with_plan_count"
+    echo "    feature_actionable_with_plan: $feature_actionable_with_plan_count"
+    echo "    feature_implemented: $feature_implemented_count"
+    echo "    crosscutting: $crosscutting_count"
 fi
 
 echo ""
@@ -177,42 +189,11 @@ echo ""
 #
 echo "plans:"
 
-plan_format_seen=""
-plan_format_unanimous="true"
-
-if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
+# Reuse plan data already gathered above
+if [ -n "$plan_lines" ]; then
     echo "  exists: true"
     echo "  files:"
-
-    for file in "$PLAN_DIR"/*/plan.md; do
-        [ -f "$file" ] || continue
-
-        name=$(basename "$(dirname "$file")")
-        format=$(extract_field "$file" "format")
-        format=${format:-"MISSING"}
-
-        if [ "$format" != "MISSING" ]; then
-            if [ -z "$plan_format_seen" ]; then
-                plan_format_seen="$format"
-            elif [ "$plan_format_seen" != "$format" ]; then
-                plan_format_unanimous="false"
-            fi
-        fi
-
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        plan_id=$(extract_field "$file" "plan_id")
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
-
-        echo "    - name: \"$name\""
-        echo "      format: \"$format\""
-        echo "      status: \"$status\""
-        echo "      work_type: \"$work_type\""
-        if [ -n "$plan_id" ]; then
-            echo "      plan_id: \"$plan_id\""
-        fi
-    done
+    echo -e "$plan_lines" | sed '/^$/d'
 
     if [ "$plan_format_unanimous" = "true" ] && [ -n "$plan_format_seen" ]; then
         echo "  common_format: \"$plan_format_seen\""
@@ -235,11 +216,10 @@ echo "state:"
 specs_exist="false"
 plans_exist="false"
 
-if [ -d "$SPEC_DIR" ] && [ -n "$(ls -A "$SPEC_DIR" 2>/dev/null)" ]; then
+if [ "${has_any_spec:-false}" = "true" ]; then
     specs_exist="true"
 fi
-
-if [ -d "$PLAN_DIR" ] && [ -n "$(ls -A "$PLAN_DIR" 2>/dev/null)" ]; then
+if [ -n "$plan_lines" ]; then
     plans_exist="true"
 fi
 

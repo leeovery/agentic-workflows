@@ -4,7 +4,7 @@
 
 ---
 
-Shows when multiple concluded discussions exist, specifications exist, and cache is none or stale. Displays existing specs from discovery frontmatter (NOT from cache), lists unassigned discussions, and offers analysis or continue options.
+Shows when multiple concluded discussions exist, specifications exist, and cache is none or stale. Displays existing specs from discovery manifest data (NOT from cache), lists unassigned discussions, and offers analysis or continue options.
 
 ## A. Display
 
@@ -23,7 +23,7 @@ For each non-superseded specification from discovery output, display as nested t
 > *Output the next fenced block as a code block:*
 
 ```
-1. {topic:(titlecase)}
+1. {work_unit:(titlecase)}
    └─ Spec: {spec_status:[in-progress|concluded]} ({X} of {Y} sources extracted)
    └─ Discussions:
       ├─ {source-name} (extracted)

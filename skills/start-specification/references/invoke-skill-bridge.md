@@ -14,9 +14,9 @@ Saving session state so Claude can pick up where it left off if the conversation
 
 ```bash
 .claude/hooks/workflows/write-session-state.sh \
-  "{topic}" \
+  "{work_unit}" \
   "skills/technical-specification/SKILL.md" \
-  ".workflows/specification/{topic}/specification.md"
+  ".workflows/{work_unit}/specification/specification.md"
 ```
 
 This skill's purpose is now fulfilled.
@@ -32,21 +32,14 @@ Construct the handoff based on the work type and verb.
 #### If `work_type` is `feature`
 
 ```
-Specification session for: {topic}
+Specification session for: {work_unit}
 Work type: {work_type}
 
 Source material:
-- Discussion: .workflows/discussion/{topic}.md
+- Discussion: .workflows/{work_unit}/discussion/discussion.md
 
-Topic name: {topic}
+Work unit: {work_unit}
 Action: {verb} specification
-
-The specification frontmatter should include:
-- topic: {topic}
-- status: in-progress
-- type: feature
-- work_type: {work_type}
-- date: {today}
 
 Invoke the technical-specification skill.
 ```
@@ -54,21 +47,14 @@ Invoke the technical-specification skill.
 #### If `work_type` is `bugfix`
 
 ```
-Specification session for: {topic}
+Specification session for: {work_unit}
 Work type: {work_type}
 
 Source material:
-- Investigation: .workflows/investigation/{topic}/investigation.md
+- Investigation: .workflows/{work_unit}/investigation/investigation.md
 
-Topic name: {topic}
+Work unit: {work_unit}
 Action: {verb} specification
-
-The specification frontmatter should include:
-- topic: {topic}
-- status: in-progress
-- type: feature
-- work_type: {work_type}
-- date: {today}
 
 Invoke the technical-specification skill.
 ```

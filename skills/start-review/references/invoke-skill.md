@@ -16,9 +16,9 @@ Saving session state so Claude can pick up where it left off if the conversation
 
 ```bash
 .claude/hooks/workflows/write-session-state.sh \
-  "{topic}" \
+  "{work_unit}" \
   "skills/technical-review/SKILL.md" \
-  ".workflows/review/{scope}/r{N}/review.md"
+  ".workflows/{work_unit}/review/r{N}/review.md"
 ```
 
 ---
@@ -33,16 +33,15 @@ Each plan is reviewed independently. When multiple plans are selected, pass all 
 ```
 Review session
 Plans to review:
-  - topic: {topic-1}
-    plan: .workflows/planning/{topic-1}/plan.md
+  - work_unit: {work_unit_1}
+    plan: .workflows/{work_unit_1}/planning/planning.md
     format: {format}
-    plan_id: {plan_id} (if applicable)
-    specification: {specification} (exists: {true|false})
+    specification: .workflows/{work_unit_1}/specification/specification.md (exists: {true|false})
     review_version: r{N}
-  - topic: {topic-2}
-    plan: .workflows/planning/{topic-2}/plan.md
+  - work_unit: {work_unit_2}
+    plan: .workflows/{work_unit_2}/planning/planning.md
     format: {format}
-    specification: {specification} (exists: {true|false})
+    specification: .workflows/{work_unit_2}/specification/specification.md (exists: {true|false})
     review_version: r{N}
 
 Invoke the technical-review skill.
@@ -50,11 +49,11 @@ Invoke the technical-review skill.
 
 **Example handoff (analysis-only):**
 ```
-Analysis session for: {topic}
+Analysis session for: {work_unit}
 Review mode: analysis-only
-Review path: .workflows/review/{topic}/r{N}/
+Review path: .workflows/{work_unit}/review/r{N}/
 Format: {format}
-Specification: {spec path}
+Specification: .workflows/{work_unit}/specification/specification.md
 
 Invoke the technical-review skill.
 ```

@@ -3,13 +3,14 @@
 # Discovers the current state of research, discussions, and cache
 # for the /start-discussion command.
 #
+# Uses manifest CLI to enumerate work units and their discussion phase state.
 # Outputs structured YAML that the command can consume directly.
 #
 
 set -eo pipefail
 
+MANIFEST_CLI="node .claude/skills/workflow-manifest/scripts/manifest.js"
 RESEARCH_DIR=".workflows/research"
-DISCUSSION_DIR=".workflows/discussion"
 CACHE_FILE=".workflows/.state/research-analysis.md"
 
 # Helper: Extract a frontmatter field value from a file
@@ -19,7 +20,6 @@ extract_field() {
     local field="$2"
     local value=""
 
-    # Extract from YAML frontmatter (file must start with ---)
     if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
         value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
             grep -i -m1 "^${field}:" | \
@@ -29,13 +29,16 @@ extract_field() {
     echo "$value"
 }
 
+# Fetch all active work units as JSON array
+json=$($MANIFEST_CLI list --status active 2>/dev/null || echo '[]')
+
 # Start YAML output
 echo "# Discussion Command State Discovery"
 echo "# Generated: $(date -Iseconds)"
 echo ""
 
 #
-# RESEARCH FILES
+# RESEARCH FILES (still filesystem-based — research predates manifests)
 #
 echo "research:"
 
@@ -65,51 +68,81 @@ fi
 echo ""
 
 #
-# DISCUSSIONS
+# DISCUSSIONS (from manifest CLI)
 #
 echo "discussions:"
 
-if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; then
-    echo "  exists: true"
-    echo "  files:"
+node -e "
+  const manifests = JSON.parse(process.argv[1]);
+  const fs = require('fs');
+  const path = require('path');
 
-    in_progress_count=0
-    concluded_count=0
+  // Collect all discussion entries across work units
+  const discussions = [];
 
-    for file in "$DISCUSSION_DIR"/*.md; do
-        [ -f "$file" ] || continue
+  for (const m of manifests) {
+    const dp = m.phases && m.phases.discussion;
+    if (!dp) continue;
 
-        name=$(basename "$file" .md)
-        status=$(extract_field "$file" "status")
-        status=${status:-"unknown"}
-        date=$(extract_field "$file" "date")
-        work_type=$(extract_field "$file" "work_type")
-        work_type=${work_type:-"greenfield"}
+    if (m.work_type === 'epic') {
+      // Epic: multiple discussion items under phases.discussion.items
+      const items = dp.items || {};
+      for (const [itemName, itemData] of Object.entries(items)) {
+        discussions.push({
+          name: itemName,
+          work_unit: m.name,
+          work_type: m.work_type,
+          status: itemData.status || 'unknown',
+        });
+      }
+      // Also check for top-level discussion status (epic with no items yet)
+      if (Object.keys(items).length === 0 && dp.status) {
+        discussions.push({
+          name: m.name,
+          work_unit: m.name,
+          work_type: m.work_type,
+          status: dp.status,
+        });
+      }
+    } else {
+      // Feature/bugfix: single discussion per work unit
+      if (dp.status) {
+        discussions.push({
+          name: m.name,
+          work_unit: m.name,
+          work_type: m.work_type,
+          status: dp.status,
+        });
+      }
+    }
+  }
 
-        echo "    - name: \"$name\""
-        echo "      status: \"$status\""
-        echo "      work_type: \"$work_type\""
-        if [ -n "$date" ]; then
-            echo "      date: \"$date\""
-        fi
+  if (discussions.length === 0) {
+    console.log('  exists: false');
+    console.log('  files: []');
+    console.log('  counts:');
+    console.log('    in_progress: 0');
+    console.log('    concluded: 0');
+  } else {
+    let inProgress = 0;
+    let concluded = 0;
 
-        if [ "$status" = "in-progress" ]; then
-            in_progress_count=$((in_progress_count + 1))
-        elif [ "$status" = "concluded" ]; then
-            concluded_count=$((concluded_count + 1))
-        fi
-    done
+    console.log('  exists: true');
+    console.log('  files:');
+    for (const d of discussions) {
+      console.log('    - name: \"' + d.name + '\"');
+      console.log('      work_unit: \"' + d.work_unit + '\"');
+      console.log('      status: \"' + d.status + '\"');
+      console.log('      work_type: \"' + d.work_type + '\"');
 
-    echo "  counts:"
-    echo "    in_progress: $in_progress_count"
-    echo "    concluded: $concluded_count"
-else
-    echo "  exists: false"
-    echo "  files: []"
-    echo "  counts:"
-    echo "    in_progress: 0"
-    echo "    concluded: 0"
-fi
+      if (d.status === 'in-progress') inProgress++;
+      else if (d.status === 'concluded') concluded++;
+    }
+    console.log('  counts:');
+    console.log('    in_progress: ' + inProgress);
+    console.log('    concluded: ' + concluded);
+  }
+" "$json"
 
 echo ""
 
@@ -182,7 +215,24 @@ if [ -d "$RESEARCH_DIR" ] && [ -n "$(ls -A "$RESEARCH_DIR" 2>/dev/null)" ]; then
     research_exists="true"
 fi
 
-if [ -d "$DISCUSSION_DIR" ] && [ -n "$(ls -A "$DISCUSSION_DIR" 2>/dev/null)" ]; then
+# Check discussions via manifest data already fetched
+disc_count=$(node -e "
+  const manifests = JSON.parse(process.argv[1]);
+  let count = 0;
+  for (const m of manifests) {
+    const dp = m.phases && m.phases.discussion;
+    if (!dp) continue;
+    if (m.work_type === 'epic') {
+      count += Object.keys(dp.items || {}).length;
+      if (Object.keys(dp.items || {}).length === 0 && dp.status) count++;
+    } else if (dp.status) {
+      count++;
+    }
+  }
+  console.log(count);
+" "$json")
+
+if [ "$disc_count" -gt 0 ] 2>/dev/null; then
     discussions_exist="true"
 fi
 

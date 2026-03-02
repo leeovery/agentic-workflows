@@ -8,13 +8,7 @@ Check if source material exists and is ready.
 
 #### If `work_type` is `feature`
 
-Check if discussion exists and is concluded:
-
-```bash
-ls .workflows/discussion/
-```
-
-Read `.workflows/discussion/{topic}.md` frontmatter.
+Check if discussion exists and is concluded. Read `.workflows/{work_unit}/discussion/discussion.md` frontmatter.
 
 **If discussion doesn't exist:**
 
@@ -23,10 +17,10 @@ Read `.workflows/discussion/{topic}.md` frontmatter.
 ```
 Source Material Missing
 
-No discussion found for "{topic:(titlecase)}".
+No discussion found for "{work_unit:(titlecase)}".
 
 A concluded discussion is required before specification.
-Run /start-discussion feature {topic} to start one.
+Run /start-discussion feature {work_unit} to start one.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -38,8 +32,8 @@ Run /start-discussion feature {topic} to start one.
 ```
 Discussion In Progress
 
-The discussion for "{topic:(titlecase)}" is not yet concluded.
-Run /start-discussion feature {topic} to continue.
+The discussion for "{work_unit:(titlecase)}" is not yet concluded.
+Run /start-discussion feature {work_unit} to continue.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -50,13 +44,7 @@ Run /start-discussion feature {topic} to continue.
 
 #### If `work_type` is `bugfix`
 
-Check if investigation exists and is concluded:
-
-```bash
-ls .workflows/investigation/
-```
-
-Read `.workflows/investigation/{topic}/investigation.md` frontmatter.
+Check if investigation exists and is concluded. Read `.workflows/{work_unit}/investigation/investigation.md` frontmatter.
 
 **If investigation doesn't exist:**
 
@@ -65,10 +53,10 @@ Read `.workflows/investigation/{topic}/investigation.md` frontmatter.
 ```
 Source Material Missing
 
-No investigation found for "{topic:(titlecase)}".
+No investigation found for "{work_unit:(titlecase)}".
 
 A concluded investigation is required before specification.
-Run /start-investigation bugfix {topic} to start one.
+Run /start-investigation bugfix {work_unit} to start one.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -80,8 +68,8 @@ Run /start-investigation bugfix {topic} to start one.
 ```
 Investigation In Progress
 
-The investigation for "{topic:(titlecase)}" is not yet concluded.
-Run /start-investigation bugfix {topic} to continue.
+The investigation for "{work_unit:(titlecase)}" is not yet concluded.
+Run /start-investigation bugfix {work_unit} to continue.
 ```
 
 **STOP.** Do not proceed — terminal condition.

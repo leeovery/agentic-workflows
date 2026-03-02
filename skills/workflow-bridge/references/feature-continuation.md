@@ -14,12 +14,12 @@ Use `next_phase` from discovery output to determine the target skill:
 
 | next_phase | Target Skill | Plan Mode Instructions |
 |------------|--------------|------------------------|
-| research | start-research | Resume research for topic |
-| discussion | start-discussion | Start/resume discussion for topic |
-| specification | start-specification | Start/resume specification for topic |
-| planning | start-planning | Start/resume planning for topic |
-| implementation | start-implementation | Start/resume implementation for topic |
-| review | start-review | Start review for topic |
+| research | start-research | Resume research for work unit |
+| discussion | start-discussion | Start/resume discussion for work unit |
+| specification | start-specification | Start/resume specification for work unit |
+| planning | start-planning | Start/resume planning for work unit |
+| implementation | start-implementation | Start/resume implementation for work unit |
+| review | start-review | Start review for work unit |
 | done | (terminal) | Pipeline complete |
 
 ## Generate Plan Mode Content
@@ -31,7 +31,7 @@ Use `next_phase` from discovery output to determine the target skill:
 ```
 Feature Complete
 
-"{topic:(titlecase)}" has completed all pipeline phases.
+"{work_unit:(titlecase)}" has completed all pipeline phases.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -41,15 +41,15 @@ Feature Complete
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
 
 ```
-# Continue Feature: {topic}
+# Continue Feature: {work_unit}
 
 The previous phase has concluded. Continue the pipeline.
 
 ## Next Step
 
-Invoke `/start-{next_phase} feature {topic}`
+Invoke `/start-{next_phase} feature {work_unit}`
 
-Arguments: work_type = feature, topic = {topic}
+Arguments: work_type = feature, work_unit = {work_unit}
 The skill will skip discovery and proceed directly to validation.
 
 ## How to proceed
