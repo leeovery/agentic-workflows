@@ -72,6 +72,7 @@ skills/
 
   # Phase entry skills (two-mode: discovery OR bridge)
   start-research/            # Begin research exploration
+    references/              #   Context gathering, handoffs
   start-discussion/          # Discussion - discovery mode or bridge mode (topic+work_type)
     scripts/discovery.sh     #   Discovery script
     references/              #   Discovery flow, context gathering

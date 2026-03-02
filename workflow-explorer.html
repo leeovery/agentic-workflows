@@ -1942,14 +1942,14 @@ const FLOWCHARTS = {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry: technical-discussion skill receives context from command.' },
       { id: 'validate', label: 'Validate inputs', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Verify source material and topic name. Stop if missing.' },
-      { id: 'init', label: 'Initialize document', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Create discussion/{topic}.md with YAML frontmatter. Set status: active.' },
+      { id: 'init', label: 'Initialize document', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Create {work_unit}/discussion/discussion.md. Set status via manifest CLI.' },
       { id: 'engage', label: 'Engage on topic', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Present topic for discussion. Ask probing questions one at a time.' },
       { id: 'capture', label: 'Capture decisions', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Record options considered, journey of exploration, and decisions (even provisional ones) with rationale.' },
       { id: 'document', label: 'Write to disk', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Write reasoning and context to the discussion file. Not a verbatim transcript — capture the journey, not the dialogue.' },
       { id: 'commit', label: 'Commit & push', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Commit at natural breaks. Never batch — context refresh loses unpushed work.' },
       { id: 'more', label: 'More topics?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Are there more topics to discuss?' },
       { id: 'conclude', label: 'Conclude discussion', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set status: concluded. All decisions documented. Ready for specification.' },
-      { id: 'end', label: 'discussion/{topic}.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Concluded discussion document ready for specification phase.' },
+      { id: 'end', label: '{work_unit}/discussion/discussion.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Concluded discussion document ready for specification phase.' },
       { id: 'next', label: 'Invoke /start-specification', desc: 'Navigate to the specification command to build a validated spec from concluded discussions.', w: 210, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'specification' },
     ],
     connections: [
@@ -1981,7 +1981,7 @@ const FLOWCHARTS = {
       { id: 'final-review', label: 'Final review', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Review ALL sources against spec. Flag potentially missed content.' },
       { id: 'supersede', label: 'Supersede source specs', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'If sources included existing specs, mark them superseded_by new spec.' },
       { id: 'signoff', label: 'User sign-off', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Final user approval of the complete specification.' },
-      { id: 'end', label: 'specification/{topic}/specification.md', shape: 'pill', w: 260, h: 40, color: 'var(--specification)', bg: 'var(--specification-bg)', desc: 'Output: Validated, standalone specification — the golden document.' },
+      { id: 'end', label: '{work_unit}/specification/specification.md', shape: 'pill', w: 260, h: 40, color: 'var(--specification)', bg: 'var(--specification-bg)', desc: 'Output: Validated, standalone specification — the golden document.' },
       { id: 'next', label: 'Invoke /start-planning', desc: 'Navigate to the planning command to create phased implementation tasks from the specification.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'planning' },
     ],
     connections: [
@@ -2035,7 +2035,7 @@ const FLOWCHARTS = {
       { id: 'integ-finding', label: 'ASK: Approve fix?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Process findings one at a time (Critical/Important/Minor). Present finding + proposed fix. User: approve (y — applies verbatim), skip, or request changes. Commits after each. Tracking file deleted when complete.' },
       // Conclusion
       { id: 'conclude', label: 'Conclude plan', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 8: Set status: concluded. Checkpoint: all tasks must be authored before concluding.' },
-      { id: 'end', label: 'planning/{topic}/plan.md', shape: 'pill', w: 190, h: 40, color: 'var(--planning)', bg: 'var(--planning-bg)', desc: 'Output: Plan index + authored tasks in chosen output format.' },
+      { id: 'end', label: '{work_unit}/planning/planning.md', shape: 'pill', w: 190, h: 40, color: 'var(--planning)', bg: 'var(--planning-bg)', desc: 'Output: Plan index + authored tasks in chosen output format.' },
       { id: 'next', label: 'Invoke /start-implementation', desc: 'Navigate to the implementation command to execute the plan via strict TDD.', w: 215, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'implementation' },
     ],
     connections: [

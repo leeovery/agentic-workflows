@@ -1,10 +1,10 @@
-# Work Type Architecture — Open Design Questions
+# Work Type Architecture — Design Questions (Resolved)
 
-Captured during the unified entry point PR (`feat/unified-entry-point-work-type-architecture`). These are structural concerns that need a proper discussion cycle, not quick fixes.
+Captured during the unified entry point PR (`feat/unified-entry-point-work-type-architecture`). These questions were resolved by the V2 architecture — see `WORK-TYPE-ARCHITECTURE-DISCUSSION.md` for the design discussion and decisions.
 
 ## Background
 
-The workflow system originally targeted greenfield development — research through to implementation for a new product. Work types (feature, bugfix, greenfield) were added to support different pipeline shapes on existing products. The current PR adds investigation for bugfix, unified entry points (`/workflow-start`, `/workflow-bridge`), and two-mode phase skills (bridge vs discovery).
+The workflow system originally targeted epic development — research through to implementation for a new product. Work types (feature, bugfix, epic) were added to support different pipeline shapes on existing products. The current PR adds investigation for bugfix, unified entry points (`/workflow-start`, `/workflow-bridge`), and two-mode phase skills (bridge vs discovery).
 
 ## Problem 1: Pipeline Continuity Is Fragile
 
@@ -16,14 +16,14 @@ These are conflated. If `work_type` is missing from an artifact, the pipeline si
 
 ### Where work_type gets lost
 
-- **Bare invocations from greenfield menus**: "Start specification", "Start new discussion", "Start new research" invoke skills without arguments. No work_type flows through.
+- **Bare invocations from epic menus**: "Start specification", "Start new discussion", "Start new research" invoke skills without arguments. No work_type flows through.
 - **Direct phase entry**: `/start-discussion`, `/start-specification`, etc. invoked without arguments create artifacts without work_type.
 - **Templates don't include work_type**: Only investigation template has it. Discussion, specification, and research templates omit it.
 - **Discovery-mode handoffs don't pass work_type**: Only bridge-mode handoffs and power-user skills (`/start-feature`, `/start-bugfix`) explicitly instruct work_type in the handoff text.
 
 ### Current mitigations
 
-- Migrations 013-015 backfill `work_type: greenfield` into existing artifacts — fixes old files but doesn't prevent the issue for new ones
+- Migrations 013-015 backfill `work_type: epic` into existing artifacts — fixes old files but doesn't prevent the issue for new ones
 - Bridge mode (topic + work_type positional args) carries work_type correctly
 - Power user entry points hardcode work_type in handoff templates
 
@@ -33,13 +33,13 @@ Should pipeline continuity be tied to work_type, or should there be an independe
 
 ## Problem 2: Greenfield Scope Pollution
 
-All artifacts live in `.workflows/` with no scoping. A greenfield v1 project creates research, discussions, specifications, plans — all concluded. When the user later wants to do major new work (v2, new subsystem), those old artifacts pollute discovery scripts, menus, and analysis.
+All artifacts live in `.workflows/` with no scoping. A epic v1 project creates research, discussions, specifications, plans — all concluded. When the user later wants to do major new work (v2, new subsystem), those old artifacts pollute discovery scripts, menus, and analysis.
 
 ### What needs deciding
 
-- Should there be a concept of "archiving" or "closing" a greenfield cycle?
+- Should there be a concept of "archiving" or "closing" a epic cycle?
 - Should discovery scripts filter by some scope/project/cycle marker?
-- Is this a naming problem (greenfield implies "from scratch") or a structural problem?
+- Is this a naming problem (epic implies "from scratch") or a structural problem?
 
 ## Problem 3: Missing Middle Ground in Work Type Taxonomy
 
@@ -53,12 +53,12 @@ Gap: Large feature set on an existing product. Multiple related discussions and 
 ### What needs deciding
 
 - Is a fourth work type needed (epic, initiative, project)?
-- Or can greenfield be repurposed to mean "multi-topic, phase-centric work" regardless of whether the product exists?
-- If greenfield is repurposed, does it need scoping (Problem 2) to separate cycles?
+- Or can epic be repurposed to mean "multi-topic, phase-centric work" regardless of whether the product exists?
+- If epic is repurposed, does it need scoping (Problem 2) to separate cycles?
 
 ## Problem 4: No Work Type Pivot
 
-If a user starts with `/start-feature` but research reveals the scope is larger than one topic, there's no mechanism to pivot to greenfield (or whatever the multi-topic work type is). The pipeline is locked to feature.
+If a user starts with `/start-feature` but research reveals the scope is larger than one topic, there's no mechanism to pivot to epic (or whatever the multi-topic work type is). The pipeline is locked to feature.
 
 ### What needs deciding
 
@@ -72,7 +72,7 @@ When a user calls `/start-discussion` directly (no `/start-feature`, no `/workfl
 
 Options discussed:
 1. **No pipeline** — direct entry is standalone, no work_type, no bridge at conclusion
-2. **Default to greenfield** — assume multi-topic if not specified
+2. **Default to epic** — assume multi-topic if not specified
 3. **Ask** — if no existing context provides work_type, ask the user
 
 ### What needs deciding
@@ -86,7 +86,7 @@ Options discussed:
 The following concrete bugs are being fixed in this PR regardless of the above design questions:
 
 1. **Greenfield menus stripped "Continue specification" entirely** — should offer it routing to bare `/start-specification` (discovery mode with analysis)
-2. **Bare invocations from greenfield menus need work_type** — parameter reorder: `$0` = work_type, `$1` = topic, so work_type can be passed without topic
+2. **Bare invocations from epic menus need work_type** — parameter reorder: `$0` = work_type, `$1` = topic, so work_type can be passed without topic
 3. **Bridge discovery script research→discussion bug** — research has no `status: concluded`, so feature bridge never routes forward (fixed)
 4. **Bridge mode gather-context-bridge loses research context** — now detects research file and includes discussion-ready summary (fixed)
 5. **Convention fixes across validate/check reference files** (fixed)

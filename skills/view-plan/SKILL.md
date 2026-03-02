@@ -1,6 +1,7 @@
 ---
 name: view-plan
 disable-model-invocation: true
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -23,7 +24,7 @@ Ask the user which plan to view.
 
 ## Step 2: Read the Plan Index
 
-Read the plan file from `.workflows/{topic}/planning/planning.md` and check the `format` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {topic}.phases.planning.format`).
+Read the plan file from `.workflows/{work_unit}/planning/planning.md` and check the `format` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.format`).
 
 ## Step 3: Load Format Reading Reference
 
@@ -46,7 +47,7 @@ Display a readable summary:
 > *Output the next fenced block as a code block:*
 
 ```
-Plan: {topic}
+Plan: {work_unit}
 
 **Format:** {format}
 

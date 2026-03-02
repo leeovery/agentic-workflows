@@ -40,6 +40,6 @@ These are natural pauses, not every exchange. Document the reasoning and context
 
 **After writing, git commit.** Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
 
-**Create the file early.** After understanding the topic and initial questions, create the discussion file with frontmatter, context, and the questions list. Don't wait until you have answers.
+**Create the file early.** After understanding the topic and initial questions, create the discussion file with context and the questions list. Don't wait until you have answers.
 
 → Return to **[the skill](../SKILL.md)**.

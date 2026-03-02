@@ -351,7 +351,7 @@ test_implementation_tracking() {
     echo -e "${YELLOW}Test: Implementation tracking${NC}"
     setup_fixture
 
-    create_manifest "auth-system" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress", "current_phase": 1}}'
+    create_manifest "auth-system" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress", "current_phase": 1, "completed_tasks": ["auth-system-1-1"]}}'
     create_planning_file "auth-system" "---
 topic: auth-system
 status: concluded
@@ -432,7 +432,7 @@ test_full_workflow() {
     create_manifest "caching" "feature" '{"discussion": {"status": "in-progress"}}'
 
     # Feature with concluded spec and sources
-    create_manifest "auth-system" "feature" '{"discussion": {"status": "concluded"}, "specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress", "current_phase": 1}}'
+    create_manifest "auth-system" "feature" '{"discussion": {"status": "concluded"}, "specification": {"status": "concluded", "type": "feature"}, "planning": {"status": "concluded", "format": "local-markdown"}, "implementation": {"status": "in-progress", "current_phase": 1, "completed_tasks": ["auth-system-1-1"]}}'
     create_spec_file "auth-system" "---
 topic: auth-system
 status: concluded

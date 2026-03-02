@@ -1,6 +1,7 @@
 ---
 name: link-dependencies
 disable-model-invocation: true
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:

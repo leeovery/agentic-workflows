@@ -15,23 +15,6 @@ MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 WORKFLOWS_DIR=".workflows"
 CACHE_FILE=".workflows/.state/discussion-consolidation-analysis.md"
 
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    # Extract from YAML frontmatter (file must start with ---)
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
-
 # Start YAML output
 echo "# Specification Command State Discovery"
 echo "# Generated: $(date -Iseconds)"
@@ -75,7 +58,7 @@ while IFS=' ' read -r wu_name wu_type; do
         for file in "$disc_dir"/*.md; do
             [ -f "$file" ] || continue
             name=$(basename "$file" .md)
-            status=$(extract_field "$file" "status")
+            status=$($MANIFEST get "$wu_name".phases.discussion.items."$name".status 2>/dev/null || echo "")
             status=${status:-"unknown"}
 
             # Check if this discussion is tracked as a spec source via manifest
@@ -105,7 +88,7 @@ while IFS=' ' read -r wu_name wu_type; do
         # Feature/bugfix: single discussion file
         file="$disc_dir/discussion.md"
         [ -f "$file" ] || continue
-        status=$(extract_field "$file" "status")
+        status=$($MANIFEST get "$wu_name".phases.discussion.status 2>/dev/null || echo "")
         status=${status:-"unknown"}
 
         # Check specification status via manifest
@@ -148,11 +131,10 @@ while IFS=' ' read -r wu_name wu_type; do
     [ -f "$spec_file" ] || continue
 
     spec_status=$($MANIFEST get "$wu_name".phases.specification.status 2>/dev/null || echo "")
-    [ -z "$spec_status" ] && spec_status=$(extract_field "$spec_file" "status")
     spec_status=${spec_status:-"in-progress"}
 
-    # Check for superseded status in frontmatter
-    superseded_by=$(extract_field "$spec_file" "superseded_by")
+    # Check for superseded_by in manifest
+    superseded_by=$($MANIFEST get "$wu_name".phases.specification.superseded_by 2>/dev/null || echo "")
 
     echo "  - name: \"$wu_name\""
     echo "    work_unit: \"$wu_name\""
@@ -181,18 +163,13 @@ while IFS=' ' read -r wu_name wu_type; do
             echo "      - name: \"$src_name\""
             echo "        status: \"$src_status\""
 
-            # Look up discussion file for discussion_status
+            # Look up discussion status from manifest
             if [ "$wu_type" = "epic" ]; then
-                disc_file="$WORKFLOWS_DIR/$wu_name/discussion/${src_name}.md"
+                disc_status=$($MANIFEST get "$wu_name".phases.discussion.items."$src_name".status 2>/dev/null || echo "")
             else
-                disc_file="$WORKFLOWS_DIR/$wu_name/discussion/discussion.md"
+                disc_status=$($MANIFEST get "$wu_name".phases.discussion.status 2>/dev/null || echo "")
             fi
-            if [ -f "$disc_file" ]; then
-                disc_status=$(extract_field "$disc_file" "status")
-                echo "        discussion_status: \"${disc_status:-unknown}\""
-            else
-                echo "        discussion_status: \"not-found\""
-            fi
+            echo "        discussion_status: \"${disc_status:-unknown}\""
         done
     fi
 
@@ -216,8 +193,9 @@ echo ""
 echo "cache:"
 
 if [ -f "$CACHE_FILE" ]; then
-    cached_checksum=$(extract_field "$CACHE_FILE" "checksum")
-    cached_date=$(extract_field "$CACHE_FILE" "generated")
+    # Read cache metadata from frontmatter (this is a scratch file the skill creates)
+    cached_checksum=$(awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1 && /^checksum:/{sub(/^checksum:[[:space:]]*/,""); print}' "$CACHE_FILE")
+    cached_date=$(awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1 && /^generated:/{sub(/^generated:[[:space:]]*/,""); print}' "$CACHE_FILE")
 
     # Compute current checksum across all discussion files in all work units
     all_discussion_files=$(find "$WORKFLOWS_DIR" -path "*/.archive" -prune -o -path "*/discussion/*.md" -print 2>/dev/null | sort)
@@ -278,49 +256,44 @@ if [ -n "$all_disc_files" ]; then
     current_checksum=$(echo "$all_disc_files" | xargs cat 2>/dev/null | md5sum | cut -d' ' -f1)
     echo "  discussions_checksum: \"$current_checksum\""
 
-    # Count discussions by status
-    discussion_count=0
-    concluded_count=0
-    in_progress_count=0
-    while IFS= read -r file; do
-        [ -f "$file" ] || continue
-        discussion_count=$((discussion_count + 1))
-        status=$(extract_field "$file" "status")
-        if [ "$status" = "concluded" ]; then
-            concluded_count=$((concluded_count + 1))
-        elif [ "$status" = "in-progress" ]; then
-            in_progress_count=$((in_progress_count + 1))
-        fi
-    done <<< "$all_disc_files"
-    echo "  discussion_count: $discussion_count"
-    echo "  concluded_count: $concluded_count"
-    echo "  in_progress_count: $in_progress_count"
-
-    # Count non-superseded specifications
-    spec_count=0
-    while IFS=' ' read -r wu_name wu_type; do
-        [ -z "$wu_name" ] && continue
-        spec_file="$WORKFLOWS_DIR/$wu_name/specification/specification.md"
-        [ -f "$spec_file" ] || continue
-        file_status=$(extract_field "$spec_file" "status")
-        if [ "$file_status" != "superseded" ]; then
-            spec_count=$((spec_count + 1))
-        fi
-    done < "$tmp_pairs"
-    echo "  spec_count: $spec_count"
-
-    # Boolean helpers
-    echo "  has_discussions: true"
-    if [ "$concluded_count" -gt 0 ]; then
-        echo "  has_concluded: true"
-    else
-        echo "  has_concluded: false"
-    fi
-    if [ "$spec_count" -gt 0 ]; then
-        echo "  has_specs: true"
-    else
-        echo "  has_specs: false"
-    fi
+    # Count discussions and specs by status from manifest
+    node -e "
+        const units = JSON.parse(require('fs').readFileSync('$tmp_units', 'utf8'));
+        let discCount = 0, concluded = 0, inProgress = 0, specCount = 0;
+        for (const u of units) {
+            const dp = u.phases && u.phases.discussion;
+            if (dp) {
+                if (u.work_type === 'epic') {
+                    const items = dp.items || {};
+                    for (const [, item] of Object.entries(items)) {
+                        discCount++;
+                        if (item.status === 'concluded') concluded++;
+                        else if (item.status === 'in-progress') inProgress++;
+                    }
+                    if (Object.keys(items).length === 0 && dp.status) {
+                        discCount++;
+                        if (dp.status === 'concluded') concluded++;
+                        else if (dp.status === 'in-progress') inProgress++;
+                    }
+                } else if (dp.status) {
+                    discCount++;
+                    if (dp.status === 'concluded') concluded++;
+                    else if (dp.status === 'in-progress') inProgress++;
+                }
+            }
+            const sp = u.phases && u.phases.specification;
+            if (sp && sp.status && sp.status !== 'superseded') {
+                specCount++;
+            }
+        }
+        console.log('  discussion_count: ' + discCount);
+        console.log('  concluded_count: ' + concluded);
+        console.log('  in_progress_count: ' + inProgress);
+        console.log('  spec_count: ' + specCount);
+        console.log('  has_discussions: ' + (discCount > 0));
+        console.log('  has_concluded: ' + (concluded > 0));
+        console.log('  has_specs: ' + (specCount > 0));
+    " 2>/dev/null
 else
     echo "  discussions_checksum: null"
     echo "  discussion_count: 0"

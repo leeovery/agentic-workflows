@@ -59,7 +59,7 @@ Check the investigation status. If in-progress:
 Create the work unit manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init {topic} --work-type bugfix --description "{description}"
+node .claude/skills/workflow-manifest/scripts/manifest.js init {work_unit} --work-type bugfix --description "{description}"
 ```
 
 Where `{description}` is a concise one-line summary compiled from the bug context gathered in Step 1.

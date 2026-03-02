@@ -1,6 +1,7 @@
 ---
 name: technical-planning
 user-invocable: false
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 # Technical Planning

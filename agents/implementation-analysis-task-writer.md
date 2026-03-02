@@ -44,7 +44,7 @@ Append at the end of the Plan Index File body, following the **Phase Entry** and
 - Task `Status`: `authored` (task files are fully written)
 - Task `Ext ID`: external identifier for the task from the output format
 - Task IDs must match the IDs used in the created task files
-- If the Plan Index File frontmatter `ext_id` is empty, set it to the external identifier for the plan from the output format
+- If the manifest's `{work_unit}.phases.planning.ext_id` is empty, set it via the manifest CLI to the external identifier for the plan from the output format
 
 ## Hard Rules
 

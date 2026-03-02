@@ -156,25 +156,9 @@ for (const u of units) {
         if (currentPhase && currentPhase !== '~') {
             console.log('      current_phase: ' + currentPhase);
         }
-        // Count completed tasks from implementation.md frontmatter
-        const implFile = path.join(baseDir, 'implementation', 'implementation.md');
-        let completedTasks = 0;
-        try {
-            const content = fs.readFileSync(implFile, 'utf8');
-            const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);
-            if (fmMatch) {
-                const fm = fmMatch[1];
-                const ctMatch = fm.match(/^completed_tasks:\\s*\\n((?:\\s+- [\\s\\S]*?)(?=\\n[a-z_]+:|$))/m);
-                if (ctMatch) {
-                    completedTasks = (ctMatch[1].match(/^\\s+- /gm) || []).length;
-                }
-                // Handle inline array: completed_tasks: [t1, t2]
-                const inlineMatch = fm.match(/^completed_tasks:\\s*\\[([^\\]]*)\\]/m);
-                if (inlineMatch && inlineMatch[1].trim()) {
-                    completedTasks = inlineMatch[1].split(',').length;
-                }
-            }
-        } catch (_) {}
+        // Count completed tasks from manifest
+        const completedArr = Array.isArray(impl.completed_tasks) ? impl.completed_tasks : [];
+        const completedTasks = completedArr.length;
         // Count total tasks from plan task files (local-markdown format)
         let totalTasks = 0;
         const planFmt = (phases.planning || {}).format || (phases.implementation || {}).format;

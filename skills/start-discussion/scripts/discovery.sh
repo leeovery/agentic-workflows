@@ -12,22 +12,6 @@ set -eo pipefail
 MANIFEST_CLI="node .claude/skills/workflow-manifest/scripts/manifest.js"
 CACHE_FILE=".workflows/.state/research-analysis.md"
 
-# Helper: Extract a frontmatter field value from a file
-# Usage: extract_field <file> <field_name>
-extract_field() {
-    local file="$1"
-    local field="$2"
-    local value=""
-
-    if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        value=$(sed -n '2,/^---$/p' "$file" 2>/dev/null | \
-            grep -i -m1 "^${field}:" | \
-            sed -E "s/^${field}:[[:space:]]*//i" || true)
-    fi
-
-    echo "$value"
-}
-
 # Fetch all active work units as JSON array
 json=$($MANIFEST_CLI list --status active 2>/dev/null || echo '[]')
 
@@ -62,11 +46,9 @@ if [ ${#research_files[@]} -gt 0 ]; then
     echo "  files:"
     for file in "${research_files[@]}"; do
         name=$(basename "$file" .md)
-        topic=$(extract_field "$file" "topic")
-        topic=${topic:-"$name"}
 
         echo "    - name: \"$name\""
-        echo "      topic: \"$topic\""
+        echo "      topic: \"$name\""
     done
 
     # Compute checksum of all research files (deterministic via sorted glob)
@@ -170,8 +152,9 @@ echo ""
 echo "cache:"
 
 if [ -f "$CACHE_FILE" ]; then
-    cached_checksum=$(extract_field "$CACHE_FILE" "checksum")
-    cached_date=$(extract_field "$CACHE_FILE" "generated")
+    # Read cache metadata from frontmatter (this is a scratch file the skill creates)
+    cached_checksum=$(awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1 && /^checksum:/{sub(/^checksum:[[:space:]]*/,""); print}' "$CACHE_FILE")
+    cached_date=$(awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1 && /^generated:/{sub(/^generated:[[:space:]]*/,""); print}' "$CACHE_FILE")
 
     # Determine status based on checksum comparison
     # Collect all research files across work units

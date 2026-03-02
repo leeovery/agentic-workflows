@@ -13,7 +13,7 @@ Act as an **expert technical architect** analyzing a complete implementation pla
 
 You receive file paths via the orchestrator's prompt:
 
-1. **Plan Index File path** — The plan with phases, task tables, and frontmatter
+1. **Plan Index File path** — The plan with phases and task tables
 2. **reading.md** — The output format's reading reference (how to list and read tasks)
 3. **graph.md** — The output format's graph reference (priority + dependency CRUD instructions)
 

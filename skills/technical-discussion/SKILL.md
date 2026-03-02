@@ -1,6 +1,7 @@
 ---
 name: technical-discussion
 user-invocable: false
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 # Technical Discussion
@@ -69,7 +70,7 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if the discussion file already exists. For feature/bugfix: `.workflows/{work_unit}/discussion/discussion.md`. For epic: `.workflows/{work_unit}/discussion/{work_unit}.md`.
+Check if the discussion file already exists. For feature/bugfix: `.workflows/{work_unit}/discussion/discussion.md`. For epic: `.workflows/{work_unit}/discussion/{topic}.md`.
 
 #### If the file exists
 
@@ -86,7 +87,7 @@ Read it. Announce the current state of the discussion (questions answered, quest
 ## Step 1: Initialize Discussion
 
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
-2. Load **[template.md](references/template.md)** — use it to create the discussion file. For feature/bugfix: `.workflows/{work_unit}/discussion/discussion.md`. For epic: `.workflows/{work_unit}/discussion/{work_unit}.md`.
+2. Load **[template.md](references/template.md)** — use it to create the discussion file. For feature/bugfix: `.workflows/{work_unit}/discussion/discussion.md`. For epic: `.workflows/{work_unit}/discussion/{topic}.md`.
 3. Populate Context section and initial Questions list
 4. Set discussion status via manifest CLI:
    ```bash

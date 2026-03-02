@@ -1,6 +1,7 @@
 ---
 name: technical-investigation
 user-invocable: false
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 # Technical Investigation
@@ -73,7 +74,7 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 **After writing, git commit.** Commits let you track and recover after compaction. Don't batch — commit each time you write.
 
-**Create the file early.** After understanding the initial symptoms, create the investigation file with frontmatter and symptoms section.
+**Create the file early.** After understanding the initial symptoms, create the investigation file with the symptoms section.
 
 **On length**: Investigations can vary widely. Capture what's needed to fully understand the bug. Don't summarize prematurely — document the trail.
 
