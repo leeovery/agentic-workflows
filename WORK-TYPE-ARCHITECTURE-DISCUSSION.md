@@ -291,7 +291,7 @@ When a user calls `/start-discussion` directly (no `/workflow-start`, no `/start
 
 ### How the Discussion Evolved
 
-Initially leaned toward "standalone, no pipeline, clean exit" — direct entry is standalone, bridge fires and exits gracefully. But the work-unit-first directory structure undermined this. With everything living under `.workflows/{work-unit}/`, there's no natural home for a loose unassigned artifact.
+Initially leaned toward "standalone, no pipeline, clean exit" — direct entry is standalone, bridge fires and exits gracefully. But the work-unit-first directory structure undermined this. With everything living under `.workflows/{work_unit}/`, there's no natural home for a loose unassigned artifact.
 
 Explored option 3 from the original doc — allowing unassigned artifacts in a `_standalone/` or `_unassigned/` directory. This had appeal as an exploratory space where you discuss before committing to a work type. The idea was: discuss freely, figure out scope, then create the work unit and adopt the discussion.
 
@@ -570,7 +570,7 @@ Precise terms for internal consistency across skills, CLI, and documentation. Ma
 Everything structural in one coordinated change:
 
 - **Manifest CLI** — Node script at `skills/manifest/scripts/manifest.js`. JSON format, get/set/list/init/archive with dot notation, validation, file locking.
-- **Directory restructure** — phase-first → work-unit-first. `.workflows/{work-unit}/manifest.json` + phase subdirectories.
+- **Directory restructure** — phase-first → work-unit-first. `.workflows/{work_unit}/manifest.json` + phase subdirectories.
 - **Remove all frontmatter** — manifest is sole source of truth. Artifacts become pure markdown.
 - **Rename greenfield → epic** — work_type value, all references across skills.
 - **Artifact renaming** — `plan.md` → `planning.md`, `tracking.md` → `implementation.md`, topic-named discussions → `discussion.md` for features/bugfixes.

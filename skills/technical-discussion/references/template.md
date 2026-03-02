@@ -4,7 +4,7 @@
 
 ---
 
-Standard structure for discussion files. DOCUMENT only - no plans or code. For feature/bugfix: `.workflows/{work-unit}/discussion/discussion.md`. For epic: `.workflows/{work-unit}/discussion/{topic}.md`.
+Standard structure for discussion files. DOCUMENT only - no plans or code. For feature/bugfix: `.workflows/{work_unit}/discussion/discussion.md`. For epic: `.workflows/{work_unit}/discussion/{topic}.md`.
 
 This is a single file per topic.
 
@@ -92,7 +92,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 ## Usage Notes
 
 **When creating**:
-1. Ensure discussion directory exists: `.workflows/{work-unit}/discussion/`
+1. Ensure discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Create file: `discussion.md` (feature/bugfix) or `{topic}.md` (epic)
 3. Start with context: why discussing?
 4. List questions: what needs deciding?

@@ -91,7 +91,7 @@ If you are uncertain whether the user approved, **ASK**: "Ready to log it, or do
 ## E. Log and Commit
 
 1. Write to the specification — **verbatim** as presented and approved. No silent modifications.
-2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.sources.{source-name}.status incorporated`). See **[specification-format.md](specification-format.md)** for source status details.
+2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.sources.{source-name}.status incorporated`). See **[specification-format.md](specification-format.md)** for source status details.
 3. Commit at natural breaks — after significant exchanges, after each major topic, and before any context refresh.
 
 ---

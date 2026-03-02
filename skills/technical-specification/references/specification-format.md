@@ -4,7 +4,7 @@
 
 ---
 
-This file defines the canonical structure for specification files (`.workflows/{work-unit}/specification/specification.md`).
+This file defines the canonical structure for specification files (`.workflows/{work_unit}/specification/specification.md`).
 
 The specification is a single file per topic. Structure is **flexible** — organize around phases and subject matter, not rigid sections. This is a working document.
 
@@ -18,15 +18,15 @@ Specification metadata is stored in the work-unit manifest, not in file frontmat
 
 ```bash
 # Read fields
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.status
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.type
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.review_cycle
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.sources.{source-name}.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.type
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.review_cycle
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.finding_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.sources.{source-name}.status
 
 # Write fields
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.status concluded
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.sources.{source-name}.status incorporated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.sources.{source-name}.status incorporated
 ```
 
 | Field | Set when |
@@ -65,10 +65,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases
 Track each source with its incorporation status via the manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.sources.auth-flow.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.sources.auth-flow.status
 # → incorporated
 
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.sources.api-design.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.sources.api-design.status
 # → pending
 ```
 
@@ -78,8 +78,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases
 
 **When to update source status:**
 
-1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.sources.{source-name}.status pending`
-2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.sources.{source-name}.status incorporated`
+1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.sources.{source-name}.status pending`
+2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.sources.{source-name}.status incorporated`
 3. **When adding a new source to an existing spec**: Add it with `status: pending` via the same command
 
 **How to determine if a source is incorporated:**
@@ -89,7 +89,7 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**Important**: The specification's overall status should only be set to `concluded` (via `node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.status concluded`) when:
+**Important**: The specification's overall status should only be set to `concluded` (via `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.status concluded`) when:
 - All sources are marked as `incorporated`
 - Both review phases are complete
 - User has signed off

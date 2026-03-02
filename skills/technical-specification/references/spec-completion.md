@@ -97,9 +97,9 @@ Discuss the user's context, apply any changes, then re-present the sign-off prom
 Update the specification metadata via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.status concluded
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.type feature  # or cross-cutting, as confirmed
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.date $(date +%Y-%m-%d)
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.type feature  # or cross-cutting, as confirmed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.date $(date +%Y-%m-%d)
 ```
 
 Specification is complete when:
@@ -131,7 +131,7 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 ## F. Pipeline Continuation
 
-Check the work type via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type`).
+Check the work type via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.work_type`).
 
 #### If `work_type` is set (`feature`, `bugfix`, or `epic`)
 

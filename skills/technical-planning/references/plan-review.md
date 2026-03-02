@@ -12,21 +12,21 @@ Two-part review dispatched to sub-agents. Traceability runs first — its approv
 
 Check the `review_cycle` field in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.review_cycle
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.review_cycle
 ```
 
 #### If `review_cycle` is missing or not set
 
 Set `review_cycle: 1` in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.review_cycle 1
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.review_cycle 1
 ```
 
 #### If `review_cycle` is already set
 
 Increment `review_cycle` by 1:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.review_cycle {N+1}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.review_cycle {N+1}
 ```
 
 Record the current cycle number — passed to both review agents for tracking file naming (`c{N}`).
@@ -65,8 +65,8 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 Check `finding_gate_mode` and `review_cycle` in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.review_cycle
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.finding_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.review_cycle
 ```
 
 #### If `finding_gate_mode: auto` and `review_cycle < 5`

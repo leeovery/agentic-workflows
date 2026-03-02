@@ -81,7 +81,7 @@ Show the finding with its proposed content, read directly from the tracking file
 
 ### Check Gate Mode
 
-Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.finding_gate_mode`).
+Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.finding_gate_mode`).
 
 #### If `finding_gate_mode: auto`
 
@@ -135,7 +135,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 
 1. Log the content (same as "If approved" above)
 2. Update the tracking file: set resolution to "Approved"
-3. Update `finding_gate_mode` to `auto` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.finding_gate_mode auto`)
+3. Update `finding_gate_mode` to `auto` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.finding_gate_mode auto`)
 4. Commit
 5. Process all remaining findings using the auto-mode flow above
 

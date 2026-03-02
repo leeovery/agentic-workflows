@@ -18,7 +18,7 @@ External dependencies are things a feature needs from other topics or systems th
 
 ## Format
 
-External dependencies are stored in the **manifest** at `{work-unit}.phases.planning.external_dependencies`:
+External dependencies are stored in the **manifest** at `{work_unit}.phases.planning.external_dependencies`:
 
 ```yaml
 external_dependencies:
@@ -37,7 +37,7 @@ external_dependencies:
 If there are no external dependencies, use an empty array:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.external_dependencies []
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.external_dependencies []
 ```
 
 This makes it explicit for downstream stages that dependencies were considered and none exist.

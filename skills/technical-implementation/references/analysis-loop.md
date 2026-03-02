@@ -20,7 +20,7 @@ F. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.implementation.analysis_cycle {N}`).
+Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.implementation.analysis_cycle {N}`).
 
 → If `analysis_cycle <= 3`, proceed to **B. Git Checkpoint**.
 
@@ -127,9 +127,9 @@ impl({topic}): analysis cycle {N} — synthesis
 
 ## E. Approval Gate
 
-Read the staging file from `.workflows/{work-unit}/implementation/analysis-tasks-c{cycle-number}.md`.
+Read the staging file from `.workflows/{work_unit}/implementation/analysis-tasks-c{cycle-number}.md`.
 
-Check `analysis_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.implementation.analysis_gate_mode`).
+Check `analysis_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.implementation.analysis_gate_mode`).
 
 Present an overview:
 

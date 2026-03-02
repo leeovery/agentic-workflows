@@ -34,7 +34,7 @@ Incorporate the user's context into the investigation file and commit. Re-presen
 
 1. Set investigation status to concluded via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.investigation.status concluded
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.investigation.status concluded
    ```
 2. Final commit
 3. Display conclusion:
@@ -53,7 +53,7 @@ detail the exact fix approach, acceptance criteria, and testing plan.
 
 4. Read work_type from manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.work_type
    ```
 
 **If work_type is set** (bugfix):
@@ -61,7 +61,7 @@ detail the exact fix approach, acceptance criteria, and testing plan.
 This investigation is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {work-unit}
+Pipeline bridge for: {work_unit}
 Work type: bugfix
 Completed phase: investigation
 

@@ -107,7 +107,7 @@ Every task should follow this structure:
 > Relevant details from specification: code examples, architectural decisions,
 > data models, or constraints that inform implementation.
 
-**Spec Reference**: `.workflows/{work-unit}/specification/specification.md` (if specification was provided)
+**Spec Reference**: `.workflows/{work_unit}/specification/specification.md` (if specification was provided)
 ```
 
 ### Field Requirements

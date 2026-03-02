@@ -31,13 +31,13 @@ Commit the file.
 Set research status to concluded via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.research.status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.research.status concluded
 ```
 
 Check work_type from manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.work_type
 ```
 
 **If work_type is set** (feature or epic):
@@ -64,7 +64,7 @@ This topic is marked discussion-ready. Would you like to:
 Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {work-unit}
+Pipeline bridge for: {work_unit}
 Work type: {work_type from manifest}
 Completed phase: research
 

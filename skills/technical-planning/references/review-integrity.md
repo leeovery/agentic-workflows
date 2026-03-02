@@ -75,7 +75,7 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 
 ## Tracking File
 
-After completing the analysis, create a tracking file at `.workflows/{work-unit}/planning/review-integrity-tracking-c{N}.md` (where N is the current review cycle).
+After completing the analysis, create a tracking file at `.workflows/{work_unit}/planning/review-integrity-tracking-c{N}.md` (where N is the current review cycle).
 
 Categorize each finding by severity:
 

@@ -13,9 +13,9 @@ This step invokes the `planning-review-integrity` agent (`../../../agents/planni
 Invoke `planning-review-integrity` with:
 
 1. **Review criteria path**: `review-integrity.md` (in this directory)
-2. **Plan path**: `.workflows/{work-unit}/planning/planning.md`
-3. **Format reading.md path**: read `format` from manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.format`), load **[output-formats.md](output-formats.md)**, find the matching entry, and pass the format's `reading.md` path
-4. **Cycle number**: current `review_cycle` from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.review_cycle`)
+2. **Plan path**: `.workflows/{work_unit}/planning/planning.md`
+3. **Format reading.md path**: read `format` from manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.format`), load **[output-formats.md](output-formats.md)**, find the matching entry, and pass the format's `reading.md` path
+4. **Cycle number**: current `review_cycle` from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.review_cycle`)
 5. **Topic name**: the topic/work-unit name
 6. **Task design path**: `task-design.md`
 

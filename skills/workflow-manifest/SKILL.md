@@ -8,6 +8,8 @@ allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 
 CLI tool for reading and writing work unit manifest files. Single source of truth for all workflow state.
 
+**`{work_unit}`** in skill files refers to the work unit's **name** — the manifest `name` field and the directory name under `.workflows/`. Examples: `dark-mode`, `payments-overhaul`, `fix-auth-redirect`. This is the same value that was previously called `{topic}` in phase-first paths.
+
 ## Invocation
 
 ```bash
@@ -129,4 +131,4 @@ Item-level statuses within epic phases follow the same phase-level rules.
 - **File locking**: `.lock` file next to manifest, exclusive create (`wx` flag), 30s stale detection. Prevents concurrent session conflicts.
 - **Atomic writes**: write to `.tmp` then `fs.renameSync`. No partial writes.
 - **Auto-creation**: `init` creates the work unit directory. Phase directories are created by skills when they enter that phase, not by the CLI.
-- **Dot path convention**: `<work-unit>.<json.path>` — first segment resolves to `.workflows/<work-unit>/manifest.json`, remaining segments navigate the JSON structure.
+- **Dot path convention**: `<work_unit>.<json.path>` — first segment resolves to `.workflows/<work_unit>/manifest.json`, remaining segments navigate the JSON structure.

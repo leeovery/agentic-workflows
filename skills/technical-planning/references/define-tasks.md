@@ -22,13 +22,13 @@ propose a task list.
 
 Read `work_type` from the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.work_type
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.work_type
 ```
 
 Invoke `planning-task-designer` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
-2. **Specification**: specification path from the manifest or `.workflows/{work-unit}/specification/specification.md`
+2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/specification.md`
 3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **task-design.md**: `task-design.md`
 5. **Context guidance**: `task-design/{work_type}.md` (default to `epic` if `work_type` is empty)
@@ -42,8 +42,8 @@ The agent returns a task overview and task table. Write the task table directly 
 
 Update the manifest planning position:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.phase {N}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task ~
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.phase {N}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.task ~
 ```
 
 Commit: `planning({topic}): draft Phase {N} task list`
@@ -62,7 +62,7 @@ Then check the gate mode.
 
 Check `task_list_gate_mode` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.planning.task_list_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.planning.task_list_gate_mode
 ```
 
 #### If `task_list_gate_mode: auto`
@@ -111,11 +111,11 @@ Note that `task_list_gate_mode` should be updated to `auto` in the manifest duri
 
 1. Advance the planning position in the manifest to the first task in this phase:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task {first-task-seq}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.task {first-task-seq}
    ```
 2. If user chose `auto` at this gate: update the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.planning.task_list_gate_mode auto
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.planning.task_list_gate_mode auto
    ```
 3. Commit: `planning({topic}): approve Phase {N} task list`
 

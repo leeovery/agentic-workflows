@@ -46,7 +46,7 @@ What bug would you like to investigate? Provide:
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the investigation file** at `.workflows/{work-unit}/investigation/investigation.md` — this is your source of truth for what's been discovered.
+2. **Read the investigation file** at `.workflows/{work_unit}/investigation/investigation.md` — this is your source of truth for what's been discovered.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Announce your position** to the user before continuing: what you've found so far, what's still to investigate, and what comes next. Wait for confirmation.
 
@@ -81,7 +81,7 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 ## Step 0: Resume Detection
 
-Check if `.workflows/{work-unit}/investigation/investigation.md` already exists.
+Check if `.workflows/{work_unit}/investigation/investigation.md` already exists.
 
 #### If the file exists
 
@@ -97,12 +97,12 @@ Read it. Announce what's been documented so far and what phase the investigation
 
 ## Step 1: Initialize Investigation
 
-1. Create the investigation directory: `.workflows/{work-unit}/investigation/`
-2. Load **[template.md](references/template.md)** — use it to create `.workflows/{work-unit}/investigation/investigation.md`
+1. Create the investigation directory: `.workflows/{work_unit}/investigation/`
+2. Load **[template.md](references/template.md)** — use it to create `.workflows/{work_unit}/investigation/investigation.md`
 3. Populate the Symptoms section with any context already gathered
 4. Set investigation status via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.investigation.status in-progress
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.investigation.status in-progress
    ```
 5. Commit the initial file
 

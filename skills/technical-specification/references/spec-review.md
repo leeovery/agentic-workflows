@@ -16,15 +16,15 @@ Load **[review-tracking-format.md](review-tracking-format.md)** — internalize 
 
 ## A. Cycle Management
 
-Check the `review_cycle` field via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.review_cycle`).
+Check the `review_cycle` field via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.review_cycle`).
 
 #### If `review_cycle` is 0 or not set
 
-Set `review_cycle` to 1 via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.review_cycle 1`).
+Set `review_cycle` to 1 via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.review_cycle 1`).
 
 #### If `review_cycle` is already set
 
-Increment `review_cycle` by 1 via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work-unit}.phases.specification.review_cycle {N}`).
+Increment `review_cycle` by 1 via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.specification.review_cycle {N}`).
 
 Record the current cycle number — used for tracking file naming (`c{N}`).
 
@@ -72,7 +72,7 @@ Dispatch the `specification-review-input` agent via the Task tool:
 
 - **Agent file**: `../../../agents/specification-review-input.md`
 - **Specification path**: the specification file path
-- **Source material paths**: all source document paths from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.sources`)
+- **Source material paths**: all source document paths from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.sources`)
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
 - **Review tracking format path**: `review-tracking-format.md` (in this references directory)
@@ -117,8 +117,8 @@ Load **[process-review-findings.md](process-review-findings.md)** and follow its
 
 Check `finding_gate_mode` and `review_cycle` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work-unit}.phases.specification.review_cycle
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.finding_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.phases.specification.review_cycle
 ```
 
 #### If `finding_gate_mode: auto` and `review_cycle < 5`

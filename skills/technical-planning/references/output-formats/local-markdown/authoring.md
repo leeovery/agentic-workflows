@@ -2,7 +2,7 @@
 
 ## Task Storage
 
-Each task is written to `.workflows/{work-unit}/planning/tasks/{task-id}.md` — a markdown file with frontmatter and a description body.
+Each task is written to `.workflows/{work_unit}/planning/tasks/{task-id}.md` — a markdown file with frontmatter and a description body.
 
 ```markdown
 ---
@@ -60,5 +60,5 @@ In the task file, add a **Needs Clarification** section:
 Delete the tasks directory — preserves `planning.md` (the Plan Index) and any review tracking files:
 
 ```bash
-rm -rf .workflows/{work-unit}/planning/tasks/
+rm -rf .workflows/{work_unit}/planning/tasks/
 ```

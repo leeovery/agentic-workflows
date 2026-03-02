@@ -40,7 +40,7 @@ Ask one question at a time. Wait for the answer. Document. Then ask the next.
 
 ## File Strategy
 
-**Output**: `.workflows/{work-unit}/research/exploration.md`
+**Output**: `.workflows/{work_unit}/research/exploration.md`
 
 **Template**: Use **[template.md](template.md)** for document structure.
 
