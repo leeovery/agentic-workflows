@@ -34,6 +34,13 @@ echo ""
 setup_fixture() {
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+
+    # Set up manifest CLI so discovery scripts can find it
+    if [ ! -f "$TEST_DIR/.claude/skills/workflow-manifest/scripts/manifest.js" ]; then
+        mkdir -p "$TEST_DIR/.claude/skills/workflow-manifest/scripts"
+        ln -sf "$SCRIPT_DIR/../../skills/workflow-manifest/scripts/manifest.js" \
+            "$TEST_DIR/.claude/skills/workflow-manifest/scripts/manifest.js"
+    fi
 }
 
 # Create a manifest.json for a work unit
