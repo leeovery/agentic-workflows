@@ -195,7 +195,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases
    Implementation started.
    ```
 
-3. Commit: `impl({topic}): start implementation`
+3. Commit: `impl({work_unit}): start implementation`
 
 → Proceed to **Step 4**.
 
@@ -346,7 +346,7 @@ Update implementation status via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.implementation.status completed
 ```
 
-Commit: `impl({topic}): complete implementation`
+Commit: `impl({work_unit}): complete implementation`
 
 **Check for pipeline continuation** — Read the work type via manifest CLI:
 ```bash
@@ -370,7 +370,7 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 > *Output the next fenced block as a code block:*
 
 ```
-Implementation completed: {topic}
+Implementation completed: {work_unit}
 
 The implementation is ready for review. Run /start-review to begin.
 ```

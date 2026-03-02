@@ -112,7 +112,7 @@ The CLI validates structural values to prevent invalid state:
 | `phases.research.status` | `in-progress`, `concluded` |
 | `phases.discussion.status` | `in-progress`, `concluded` |
 | `phases.investigation.status` | `in-progress`, `concluded` |
-| `phases.specification.status` | `in-progress`, `concluded` |
+| `phases.specification.status` | `in-progress`, `concluded`, `superseded` |
 | `phases.planning.status` | `in-progress`, `concluded` |
 | `phases.implementation.status` | `in-progress`, `completed` |
 | `phases.review.status` | `in-progress`, `completed` |

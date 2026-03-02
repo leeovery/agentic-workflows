@@ -142,14 +142,14 @@ setup_fixture
 
 CLAUDE_SESSION_ID="test-session-001" \
 CLAUDE_PROJECT_DIR="$TEST_DIR" \
-bash "$WRITE_SCRIPT" "auth-flow" ".claude/skills/technical-discussion/SKILL.md" ".workflows/discussion/auth-flow.md"
+bash "$WRITE_SCRIPT" "auth-flow" ".claude/skills/technical-discussion/SKILL.md" ".workflows/auth-flow/discussion/discussion.md"
 
 session_file="$TEST_DIR/.workflows/.cache/sessions/test-session-001.yaml"
 assert_file_exists "$session_file" "Session file created"
 content=$(cat "$session_file")
 assert_contains "$content" "^topic: auth-flow$" "Topic field correct"
 assert_contains "$content" "^skill: .claude/skills/technical-discussion/SKILL.md$" "Skill field correct"
-assert_contains "$content" "^artifact: .workflows/discussion/auth-flow.md$" "Artifact field correct"
+assert_contains "$content" "^artifact: .workflows/auth-flow/discussion/discussion.md$" "Artifact field correct"
 assert_not_contains "$content" "pipeline" "No pipeline section in output"
 
 echo ""

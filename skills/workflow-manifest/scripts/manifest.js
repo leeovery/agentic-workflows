@@ -21,7 +21,7 @@ const VALID_PHASE_STATUSES = {
   research:       ['in-progress', 'concluded'],
   discussion:     ['in-progress', 'concluded'],
   investigation:  ['in-progress', 'concluded'],
-  specification:  ['in-progress', 'concluded'],
+  specification:  ['in-progress', 'concluded', 'superseded'],
   planning:       ['in-progress', 'concluded'],
   implementation: ['in-progress', 'completed'],
   review:         ['in-progress', 'completed'],

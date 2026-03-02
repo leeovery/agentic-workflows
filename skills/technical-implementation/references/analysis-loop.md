@@ -56,7 +56,7 @@ Ensure a clean working tree before analysis. Run `git status`.
 
 If there are unstaged changes or untracked files, categorize them:
 
-- **Implementation files** (files touched by `impl({topic}):` commits) — stage these automatically.
+- **Implementation files** (files touched by `impl({work_unit}):` commits) — stage these automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
 
 **Pre-analysis checkpoint — unexpected files detected:**
@@ -78,7 +78,7 @@ If there are unstaged changes or untracked files, categorize them:
 Commit included files:
 
 ```
-impl({topic}): pre-analysis checkpoint
+impl({work_unit}): pre-analysis checkpoint
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -94,7 +94,7 @@ Load **[invoke-analysis.md](invoke-analysis.md)** and follow its instructions.
 Commit the analysis findings:
 
 ```
-impl({topic}): analysis cycle {N} — findings
+impl({work_unit}): analysis cycle {N} — findings
 ```
 
 #### If all three agents returned `STATUS: clean`
@@ -116,7 +116,7 @@ Load **[invoke-synthesizer.md](invoke-synthesizer.md)** and follow its instructi
 Commit the synthesis output:
 
 ```
-impl({topic}): analysis cycle {N} — synthesis
+impl({work_unit}): analysis cycle {N} — synthesis
 ```
 
 → If `STATUS: clean`, return to the skill for **Step 8**.
@@ -230,7 +230,7 @@ After all tasks processed:
 Commit the staging file updates (include manifest if `analysis_gate_mode` was updated):
 
 ```
-impl({topic}): analysis cycle {N} — tasks skipped
+impl({work_unit}): analysis cycle {N} — tasks skipped
 ```
 
 Return to the skill for **Step 8**.
@@ -246,7 +246,7 @@ Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructi
 Commit all analysis and plan changes (staging file, plan tasks, Plan Index File, and manifest if `analysis_gate_mode` was updated):
 
 ```
-impl({topic}): add analysis phase {N} ({K} tasks)
+impl({work_unit}): add analysis phase {N} ({K} tasks)
 ```
 
 → Return to **[the skill](../SKILL.md)**. New tasks are now in the plan.

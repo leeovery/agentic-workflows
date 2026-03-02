@@ -195,10 +195,10 @@ test_single_feature_discussion() {
 # Test: Specification with sources from file frontmatter
 #
 test_spec_with_sources() {
-    echo -e "${YELLOW}Test: Specification with sources from file frontmatter${NC}"
+    echo -e "${YELLOW}Test: Specification with sources from manifest${NC}"
     setup_fixture
 
-    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature"}}'
+    create_manifest "auth-system" "feature" '{"specification": {"status": "concluded", "type": "feature", "sources": [{"name": "auth-flow", "status": "incorporated"}, {"name": "session-management", "status": "incorporated"}]}}'
     create_spec_file "auth-system" "---
 topic: auth-system
 status: concluded
@@ -229,7 +229,7 @@ test_spec_pending_source() {
     echo -e "${YELLOW}Test: Specification with pending source${NC}"
     setup_fixture
 
-    create_manifest "billing" "feature" '{"specification": {"status": "in-progress", "type": "feature"}}'
+    create_manifest "billing" "feature" '{"specification": {"status": "in-progress", "type": "feature", "sources": [{"name": "payment-processing", "status": "incorporated"}, {"name": "rate-limiting", "status": "pending"}]}}'
     create_spec_file "billing" "---
 topic: billing
 status: in-progress
@@ -286,13 +286,13 @@ test_superseded_spec() {
 }
 
 #
-# Test: Plan with external dependencies from file frontmatter
+# Test: Plan with external dependencies
 #
 test_plan_with_deps() {
     echo -e "${YELLOW}Test: Plan with external dependencies${NC}"
     setup_fixture
 
-    create_manifest "billing" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+    create_manifest "billing" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "auth-system", "description": "User authentication", "state": "unresolved"}]}}'
     create_planning_file "billing" "---
 topic: billing
 status: concluded
@@ -321,7 +321,7 @@ test_plan_resolved_deps() {
     echo -e "${YELLOW}Test: Plan with resolved dependencies${NC}"
     setup_fixture
 
-    create_manifest "billing" "feature" '{"planning": {"status": "concluded", "format": "local-markdown"}}'
+    create_manifest "billing" "feature" '{"planning": {"status": "concluded", "format": "local-markdown", "external_dependencies": [{"topic": "auth-system", "description": "User authentication", "state": "resolved", "task_id": "auth-system-1-3"}]}}'
     create_planning_file "billing" "---
 topic: billing
 status: concluded

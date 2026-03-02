@@ -30,14 +30,20 @@ Check the verdict(s) from the review(s) being analyzed.
 No actionable findings. All reviews passed with no required changes.
 ```
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {topic} work_type`) and check for `work_type`
+Set the review phase status to completed:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.review.status completed
+```
+
+**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.work_type`) and check for `work_type`
 
 **If work_type is set** (feature, bugfix, or epic):
 
 This review is part of a pipeline. The pipeline is complete. Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {topic}
+Pipeline bridge for: {work_unit}
 Work type: {work_type from manifest}
 Completed phase: review
 
@@ -49,7 +55,7 @@ Invoke the workflow-bridge skill to enter plan mode with completion confirmation
 > *Output the next fenced block as a code block:*
 
 ```
-Review complete: {topic}
+Review complete: {work_unit}
 
 All checks passed. The implementation has been validated.
 ```
@@ -88,14 +94,14 @@ Proceed with synthesis?
 
 User has chosen to skip synthesis. This is a terminal condition, but check for pipeline continuation first.
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {topic} work_type`) and check for `work_type`
+**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.work_type`) and check for `work_type`
 
 **If work_type is set** (feature, bugfix, or epic):
 
 This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
 ```
-Pipeline bridge for: {topic}
+Pipeline bridge for: {work_unit}
 Work type: {work_type from manifest}
 Completed phase: review
 
@@ -164,7 +170,7 @@ No actionable tasks synthesized.
 
 ## C. Approval Gate
 
-Read the staging file from `.workflows/{topic}/implementation/review-tasks-c{cycle-number}.md`.
+Read the staging file from `.workflows/{work_unit}/implementation/review-tasks-c{cycle-number}.md`.
 
 Check `gate_mode` in the staging file frontmatter (`gated` or `auto`).
 
@@ -265,7 +271,7 @@ After all tasks processed:
 Commit the staging file updates:
 
 ```
-review({topic}): synthesis cycle {N} — tasks skipped
+review({work_unit}): synthesis cycle {N} — tasks skipped
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -285,7 +291,7 @@ For approved tasks in the staging file, invoke the task writer.
 Commit all changes (staging file, plan tasks, Plan Index Files):
 
 ```
-review({topic}): add review remediation ({K} tasks)
+review({work_unit}): add review remediation ({K} tasks)
 ```
 
 → Proceed to **E. Re-open Implementation + Plan Mode Handoff**.
@@ -296,22 +302,22 @@ review({topic}): add review remediation ({K} tasks)
 
 For each plan that received new tasks:
 
-1. Read the implementation tracking file at `.workflows/{topic}/implementation/implementation.md`
+1. Read the implementation tracking file at `.workflows/{work_unit}/implementation/implementation.md`
 2. Update the manifest via CLI:
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} implementation.status in-progress`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} implementation.updated {today's date}`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} implementation.analysis_cycle 0`
-   - Remove `completed` field if present: `node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} implementation.completed ""`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.implementation.status in-progress`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.implementation.updated {today's date}`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.implementation.analysis_cycle 0`
+   - Remove `completed` field if present: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.implementation.completed ""`
 3. Commit tracking changes:
 
 ```
-review({topic}): re-open implementation tracking
+review({work_unit}): re-open implementation tracking
 ```
 
 Then enter plan mode and write the following plan:
 
 ```
-# Review Actions Complete: {topic}
+# Review Actions Complete: {work_unit}
 
 Review findings have been synthesized into {N} implementation tasks.
 
@@ -326,7 +332,7 @@ Review findings have been synthesized into {N} implementation tasks.
 
 ## Context
 
-- Plan updated: {topic}
+- Plan updated: {work_unit}
 - Tasks created: {total count}
 - Implementation tracking: re-opened
 

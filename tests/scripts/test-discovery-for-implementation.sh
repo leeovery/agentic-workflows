@@ -751,7 +751,7 @@ output=$(run_discovery)
 assert_contains "$output" "plan_count: 4" "Total plan count is 4"
 assert_contains "$output" "plans_concluded_count: 3" "Concluded count is 3"
 assert_contains "$output" "plans_with_unresolved_deps: 1" "Plans with unresolved deps is 1"
-assert_contains "$output" "plans_ready_count: 2" "Plans ready count is 2 (A and D)"
+assert_contains "$output" "plans_ready_count: 1" "Plans ready count is 1 (A only — D already completed)"
 assert_contains "$output" "plans_completed_count: 1" "Plans completed count is 1"
 
 echo ""

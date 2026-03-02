@@ -4,7 +4,7 @@
 # Creates temporary fixtures with manifest.json files and validates YAML output.
 #
 # Discussion discovery reads:
-# - Research files from .workflows/research/ (still filesystem-based)
+# - Research files from .workflows/{work_unit}/research/ directories
 # - Discussions from manifest CLI + discussion files in work-unit dirs
 # - Cache state from .workflows/.state/research-analysis.md
 #
@@ -39,6 +39,13 @@ echo ""
 setup_fixture() {
     rm -rf "$TEST_DIR/.workflows"
     mkdir -p "$TEST_DIR/.workflows"
+
+    # Set up manifest CLI so discovery scripts can find it
+    if [ ! -f "$TEST_DIR/.claude/skills/workflow-manifest/scripts/manifest.js" ]; then
+        mkdir -p "$TEST_DIR/.claude/skills/workflow-manifest/scripts"
+        ln -sf "$SCRIPT_DIR/../../skills/workflow-manifest/scripts/manifest.js" \
+            "$TEST_DIR/.claude/skills/workflow-manifest/scripts/manifest.js"
+    fi
 }
 
 # Create a manifest.json for a work unit
@@ -63,6 +70,16 @@ create_manifest() {
   "phases": $phases
 }
 EOFMANIFEST
+}
+
+# Create a research file in a work unit directory
+create_research_file() {
+    local wu_name="$1"
+    local filename="$2"
+    local content="$3"
+
+    mkdir -p "$TEST_DIR/.workflows/$wu_name/research"
+    echo "$content" > "$TEST_DIR/.workflows/$wu_name/research/$filename"
 }
 
 # Create a discussion file in the work-unit-first layout
@@ -143,17 +160,15 @@ test_research_only() {
     echo -e "${YELLOW}Test: Research only (no discussions)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
-    cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
----
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "exploration.md" "---
 topic: exploration
 date: 2026-01-21
 ---
 
 # Research: Initial Exploration
 
-Exploring ideas for the new feature.
-EOF
+Exploring ideas for the new feature."
 
     local output=$(run_discovery)
 
@@ -202,15 +217,13 @@ test_research_and_discussions() {
     echo -e "${YELLOW}Test: Research and discussions${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
-    cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
----
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "exploration.md" "---
 topic: exploration
 date: 2026-01-18
 ---
 
-# Research: Exploration
-EOF
+# Research: Exploration"
 
     create_manifest "auth-flow" "feature" '{"discussion": {"status": "concluded"}}'
     create_discussion_file "auth-flow" "discussion.md" "---
@@ -287,14 +300,12 @@ test_cache_none() {
     echo -e "${YELLOW}Test: Cache status none (no cache file)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
-    cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
----
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "exploration.md" "---
 topic: exploration
 date: 2026-01-21
 ---
-# Research
-EOF
+# Research"
 
     local output=$(run_discovery)
 
@@ -313,19 +324,17 @@ test_cache_valid() {
     echo -e "${YELLOW}Test: Cache status valid (checksums match)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
     mkdir -p "$TEST_DIR/.workflows/.state"
 
-    cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
----
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "exploration.md" "---
 topic: exploration
 date: 2026-01-21
 ---
-# Research: Exploration
-EOF
+# Research: Exploration"
 
     # Compute the checksum of the research file
-    local checksum=$(cat "$TEST_DIR/.workflows/research"/*.md | md5sum | cut -d' ' -f1)
+    local checksum=$(cat "$TEST_DIR/.workflows/research-project/research"/*.md | md5sum | cut -d' ' -f1)
 
     # Create cache with matching checksum
     cat > "$TEST_DIR/.workflows/.state/research-analysis.md" << EOF
@@ -357,18 +366,16 @@ test_cache_stale() {
     echo -e "${YELLOW}Test: Cache status stale (research changed)${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
     mkdir -p "$TEST_DIR/.workflows/.state"
 
-    cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
----
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "exploration.md" "---
 topic: exploration
 date: 2026-01-21
 ---
 # Research: Exploration
 
-This content is different from when cache was created.
-EOF
+This content is different from when cache was created."
 
     # Create cache with OLD checksum (doesn't match current)
     cat > "$TEST_DIR/.workflows/.state/research-analysis.md" << 'EOF'
@@ -397,13 +404,10 @@ test_research_no_frontmatter() {
     echo -e "${YELLOW}Test: Research files without frontmatter${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "market-analysis.md" "# Market Analysis
 
-    cat > "$TEST_DIR/.workflows/research/market-analysis.md" << 'EOF'
-# Market Analysis
-
-No frontmatter here, just content.
-EOF
+No frontmatter here, just content."
 
     local output=$(run_discovery)
 
@@ -420,31 +424,24 @@ test_multiple_research_files() {
     echo -e "${YELLOW}Test: Multiple research files${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
-
-    cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
----
+    create_manifest "research-project" "epic" '{}'
+    create_research_file "research-project" "exploration.md" "---
 topic: exploration
 date: 2026-01-18
 ---
-# Exploration
-EOF
+# Exploration"
 
-    cat > "$TEST_DIR/.workflows/research/market-landscape.md" << 'EOF'
----
+    create_research_file "research-project" "market-landscape.md" "---
 topic: market-landscape
 date: 2026-01-19
 ---
-# Market Landscape
-EOF
+# Market Landscape"
 
-    cat > "$TEST_DIR/.workflows/research/technical-feasibility.md" << 'EOF'
----
+    create_research_file "research-project" "technical-feasibility.md" "---
 topic: technical-feasibility
 date: 2026-01-20
 ---
-# Technical Feasibility
-EOF
+# Technical Feasibility"
 
     local output=$(run_discovery)
 
@@ -519,7 +516,9 @@ test_empty_research_dir() {
     echo -e "${YELLOW}Test: Empty research directory${NC}"
     setup_fixture
 
-    mkdir -p "$TEST_DIR/.workflows/research"
+    # Create a work unit with an empty research dir
+    create_manifest "research-project" "epic" '{}'
+    mkdir -p "$TEST_DIR/.workflows/research-project/research"
 
     local output=$(run_discovery)
 

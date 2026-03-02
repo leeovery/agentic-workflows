@@ -44,7 +44,7 @@ Work type: {work_type}
 Output: {output_path}
 
 Research reference:
-Source: .workflows/research/{filename}.md (lines {start}-{end})
+Source: .workflows/{work_unit}/research/{filename}.md (lines {start}-{end})
 Summary: {the 1-2 sentence summary from the research analysis}
 
 Invoke the technical-discussion skill.
@@ -56,11 +56,11 @@ Invoke the technical-discussion skill.
 Discussion session for: {topic}
 Work unit: {work_unit}
 Work type: {work_type}
-Research source: .workflows/research/{topic}.md
+Research source: .workflows/{work_unit}/research/{topic}.md
 Output: {output_path}
 
 Research reference:
-Source: .workflows/research/{topic}.md
+Source: .workflows/{work_unit}/research/{topic}.md
 Summary: {the discussion-ready summary from the research file}
 
 Invoke the technical-discussion skill.

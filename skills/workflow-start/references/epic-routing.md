@@ -90,7 +90,7 @@ Parse the user's selection, then follow the instructions below the table to invo
 | Start implementation | `/start-implementation` | epic | {work_unit} |
 | Start review | `/start-review` | epic | {work_unit} |
 | Start research | `/start-research` | epic | — |
-| Start new epic | `/start-discussion` | epic | — |
+| Start new epic | `/start-epic` | — | — |
 
 Skills receive positional arguments: `$0` = work_type, `$1` = work_unit.
 

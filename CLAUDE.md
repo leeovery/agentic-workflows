@@ -96,20 +96,26 @@ skills/
 
 .claude/skills/
   create-output-format/      # Dev-time skill: scaffold new output format adapters
-  skill-creator/             # Dev-time skill: guide for creating effective skills
   update-workflow-explorer/  # Dev-time skill: sync workflow-explorer.html with source
 
 agents/
-  review-task-verifier.md           # Verifies single task implementation for review
-  review-findings-synthesizer.md   # Synthesizes QA findings into remediation tasks
-  implementation-task-executor.md  # TDD executor for single plan tasks
-  implementation-task-reviewer.md  # Post-task review for spec conformance
-  planning-phase-designer.md       # Design phases from specification
-  planning-task-designer.md        # Break phases into task lists
-  planning-task-author.md          # Write full task detail
-  planning-dependency-grapher.md   # Analyze task dependencies and priorities
-  planning-review-traceability.md  # Spec-to-plan traceability analysis
-  planning-review-integrity.md     # Plan structural quality review
+  review-task-verifier.md                # Verifies single task implementation for review
+  review-findings-synthesizer.md         # Synthesizes QA findings into remediation tasks
+  implementation-task-executor.md        # TDD executor for single plan tasks
+  implementation-task-reviewer.md        # Post-task review for spec conformance
+  implementation-analysis-architecture.md # Architecture conformance analysis
+  implementation-analysis-duplication.md  # Duplication and DRY analysis
+  implementation-analysis-standards.md    # Coding standards analysis
+  implementation-analysis-synthesizer.md  # Synthesize analysis findings
+  implementation-analysis-task-writer.md  # Write tasks from analysis findings
+  planning-phase-designer.md             # Design phases from specification
+  planning-task-designer.md              # Break phases into task lists
+  planning-task-author.md                # Write full task detail
+  planning-dependency-grapher.md         # Analyze task dependencies and priorities
+  planning-review-traceability.md        # Spec-to-plan traceability analysis
+  planning-review-integrity.md           # Plan structural quality review
+  specification-review-gap-analysis.md   # Specification gap analysis
+  specification-review-input.md          # Specification input review
 
 tests/
   scripts/                   # Shell script tests for discovery and migrations
@@ -215,7 +221,7 @@ The contract and scaffolding templates live in `.claude/skills/create-output-for
 **Why this matters:** Listing formats elsewhere creates maintenance dependencies. If a format is added or removed, we should only need to update the planning references - not hunt through other skills or documentation.
 
 **How other phases reference formats:**
-- Plans include a `format:` field in their frontmatter
+- Plans include a `format` field in their manifest
 - Consumers load only the per-concern file they need (e.g., `{format}/reading.md` for implementation)
 
 This keeps format knowledge centralized in the planning phase where it belongs.
@@ -237,7 +243,7 @@ The `/migrate` skill keeps workflow files in sync with the current system design
 4. Use helper functions: `report_update`, `report_skip` (for display only)
 
 **Migration 016 — Work-unit restructure:**
-Migration 016 converts phase-first directories to work-unit-first, creates `manifest.json` files from artifact frontmatter, strips frontmatter from artifacts, renames `plan.md` to `planning.md` and `tracking.md` to `implementation.md`, and updates `work_type: greenfield` to `epic`.
+Migration 016 converts phase-first directories to work-unit-first, creates `manifest.json` files from artifact frontmatter, renames `plan.md` to `planning.md` and `tracking.md` to `implementation.md`, and updates `work_type: greenfield` to `epic`. Frontmatter is preserved in migrated artifacts as a safety net — a follow-up migration will strip it once the manifest system is proven.
 
 **Critical: Frontmatter extraction in bash scripts**
 
@@ -632,7 +638,7 @@ Entry-point skills that invoke processing skills use this exact blockquote to pr
 
 Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STOP gates. This pattern is used in implementation (task + fix gates), planning (task list approval + task authoring + review findings), and specification (review findings).
 
-**Frontmatter tracking**: Gate modes are stored in the relevant frontmatter file (`gated` or `auto`). This ensures they survive context refresh.
+**Manifest tracking**: Gate modes are stored in the manifest via CLI (`gated` or `auto`). This ensures they survive context refresh.
 
 **Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
 
@@ -645,10 +651,10 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 ```
 
 **Lifecycle**:
-- Default: `gated` (set in frontmatter template on creation)
-- Opt-in: user chooses `a`/`auto` at any per-item gate → frontmatter updated before next commit
+- Default: `gated` (set in manifest on creation)
+- Opt-in: user chooses `a`/`auto` at any per-item gate → manifest updated via CLI before next commit
 - Reset: entry-point skills reset gates to `gated` on fresh invocation (not on `continue`)
-- Context refresh: read gate modes from frontmatter and preserve
+- Context refresh: read gate modes from manifest and preserve
 
 **Menu option format**: Add between the primary action and secondary options:
 ```

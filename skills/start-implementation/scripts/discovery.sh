@@ -393,6 +393,12 @@ if [ "$plan_count" -gt 0 ]; then
         status="${plan_statuses[$i]}"
 
         if [ "$status" = "concluded" ]; then
+            # Skip plans whose implementation is already started or completed
+            impl_status=$($MANIFEST_CLI get "$wu_name".phases.implementation.status 2>/dev/null || echo "")
+            if [ "$impl_status" = "completed" ] || [ "$impl_status" = "in-progress" ]; then
+                continue
+            fi
+
             deps_json=$($MANIFEST_CLI get "$wu_name".phases.planning.external_dependencies 2>/dev/null || echo "")
             is_ready=true
 

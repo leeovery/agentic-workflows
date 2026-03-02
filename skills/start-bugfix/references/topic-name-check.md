@@ -56,4 +56,12 @@ Check the investigation status. If in-progress:
 
 #### If no conflict
 
+Create the work unit manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js init {topic} --work-type bugfix --description "{description}"
+```
+
+Where `{description}` is a concise one-line summary compiled from the bug context gathered in Step 1.
+
 → Return to **[the skill](../SKILL.md)**.

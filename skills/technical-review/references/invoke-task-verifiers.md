@@ -13,7 +13,7 @@ This step dispatches `review-task-verifier` agents in batches to verify ALL task
 Build the list of implementation files using git history. For each plan in scope:
 
 ```bash
-git log --oneline --name-only --pretty=format: --grep="impl({topic}):" | sort -u | grep -v '^$'
+git log --oneline --name-only --pretty=format: --grep="impl({work_unit}):" | sort -u | grep -v '^$'
 ```
 
 This captures all files touched by implementation commits for the topic.
@@ -35,7 +35,7 @@ From each plan in scope, list every task across all phases:
 Ensure the review output directory exists:
 
 ```bash
-mkdir -p .workflows/{topic}/review/r{N}
+mkdir -p .workflows/{work_unit}/review/r{N}
 ```
 
 ---
@@ -78,7 +78,7 @@ FINDINGS_COUNT: {N blocking issues}
 SUMMARY: {1 sentence}
 ```
 
-Full findings are written to `.workflows/{topic}/review/r{N}/qa-task-{index}.md`.
+Full findings are written to `.workflows/{work_unit}/review/r{N}/qa-task-{index}.md`.
 
 ---
 
@@ -86,7 +86,7 @@ Full findings are written to `.workflows/{topic}/review/r{N}/qa-task-{index}.md`
 
 Once all batches have completed:
 
-1. Read all `.workflows/{topic}/review/r{N}/qa-task-*.md` files
+1. Read all `.workflows/{work_unit}/review/r{N}/qa-task-*.md` files
 2. Synthesize findings from file contents:
    - Collect all tasks with `STATUS: Incomplete` or `STATUS: Issues Found` as blocking issues
    - Collect all test issues (under/over-tested)

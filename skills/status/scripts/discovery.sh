@@ -103,31 +103,8 @@ for (const u of units) {
         if (supersededBy) {
             console.log('      superseded_by: \"' + supersededBy + '\"');
         }
-        // Read sources from specification file frontmatter
-        const specFile = path.join(baseDir, 'specification', 'specification.md');
-        let sources = [];
-        try {
-            const content = fs.readFileSync(specFile, 'utf8');
-            const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);
-            if (fmMatch) {
-                const fm = fmMatch[1];
-                const srcMatch = fm.match(/^sources:\\s*\\n((?:\\s+- [\\s\\S]*?)(?=\\n[a-z_]+:|$))/m);
-                if (srcMatch) {
-                    const srcBlock = srcMatch[1];
-                    const items = srcBlock.split(/\\n\\s+- /).filter(Boolean);
-                    for (const item of items) {
-                        const nameMatch = item.match(/name:\\s*[\"']?([^\"'\\n]+)/);
-                        const statusMatch = item.match(/status:\\s*[\"']?([^\"'\\n]+)/);
-                        if (nameMatch) {
-                            sources.push({
-                                name: nameMatch[1].trim(),
-                                status: statusMatch ? statusMatch[1].trim() : 'incorporated'
-                            });
-                        }
-                    }
-                }
-            }
-        } catch (_) {}
+        // Read sources from manifest
+        const sources = Array.isArray(spec.sources) ? spec.sources : [];
         if (sources.length > 0) {
             console.log('      sources:');
             for (const s of sources) {
@@ -151,33 +128,8 @@ for (const u of units) {
         if (planFormat) {
             console.log('      format: \"' + planFormat + '\"');
         }
-        // Read external_dependencies from planning.md frontmatter
-        const planFile = path.join(baseDir, 'planning', 'planning.md');
-        let deps = [];
-        try {
-            const content = fs.readFileSync(planFile, 'utf8');
-            const fmMatch = content.match(/^---\\n([\\s\\S]*?)\\n---/);
-            if (fmMatch) {
-                const fm = fmMatch[1];
-                const depMatch = fm.match(/^external_dependencies:\\s*\\n((?:\\s+- [\\s\\S]*?)(?=\\n[a-z_]+:|$))/m);
-                if (depMatch) {
-                    const depBlock = depMatch[1];
-                    const items = depBlock.split(/\\n\\s+- /).filter(Boolean);
-                    for (const item of items) {
-                        const topicMatch = item.match(/topic:\\s*[\"']?([^\"'\\n]+)/);
-                        const stateMatch = item.match(/state:\\s*[\"']?([^\"'\\n]+)/);
-                        const taskMatch = item.match(/task_id:\\s*[\"']?([^\"'\\n]+)/);
-                        if (topicMatch) {
-                            deps.push({
-                                topic: topicMatch[1].trim(),
-                                state: stateMatch ? stateMatch[1].trim() : 'unresolved',
-                                task_id: taskMatch ? taskMatch[1].trim() : ''
-                            });
-                        }
-                    }
-                }
-            }
-        } catch (_) {}
+        // Read external_dependencies from manifest
+        const deps = Array.isArray(planning.external_dependencies) ? planning.external_dependencies : [];
         const hasUnresolved = deps.some(d => d.state === 'unresolved');
         if (deps.length > 0) {
             console.log('      external_deps:');

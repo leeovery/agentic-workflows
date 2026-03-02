@@ -9,7 +9,7 @@
 ```markdown
 # Implementation Review: {Topic / Product}
 
-**Plan**: {topic}
+**Plan**: {work_unit}
 **QA Verdict**: Approve | Request Changes | Comments Only
 
 ## Summary

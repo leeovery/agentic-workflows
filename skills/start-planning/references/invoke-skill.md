@@ -31,8 +31,11 @@ Construct the handoff based on the plan state.
 
 #### If creating fresh plan (no existing plan)
 
+**If work_type is available**, add the Work type line.
+
 ```
 Planning session for: {work_unit}
+Work type: {work_type}
 Specification: .workflows/{work_unit}/specification/specification.md
 Additional context: {summary of user's additional context, or "none"}
 Cross-cutting references: {list of applicable cross-cutting specs with brief summaries, or "none"}
@@ -43,8 +46,11 @@ Invoke the technical-planning skill.
 
 #### If continuing or reviewing existing plan
 
+**If work_type is available**, add the Work type line.
+
 ```
 Planning session for: {work_unit}
+Work type: {work_type}
 Specification: .workflows/{work_unit}/specification/specification.md
 Existing plan: .workflows/{work_unit}/planning/planning.md
 

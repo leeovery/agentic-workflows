@@ -6,6 +6,12 @@
 
 After completing the steps above, this skill's purpose is fulfilled.
 
+## Set Review Status
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases.review.status in-progress
+```
+
 ## Save Session Bookmark
 
 > *Output the next fenced block as a code block:*

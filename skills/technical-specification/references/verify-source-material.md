@@ -16,5 +16,5 @@ Verify that all source material exists and is accessible before beginning specif
 
 ```bash
 ls .workflows/auth-flow/discussion/discussion.md
-ls .workflows/research/api-patterns.md
+ls .workflows/{work_unit}/research/api-patterns.md
 ```

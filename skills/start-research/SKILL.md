@@ -1,6 +1,6 @@
 ---
 name: start-research
-allowed-tools: Bash(.claude/hooks/workflows/write-session-state.sh)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(.claude/hooks/workflows/write-session-state.sh)
 hooks:
   PreToolUse:
     - hooks:

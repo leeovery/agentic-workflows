@@ -90,10 +90,16 @@ else
             done
         fi
 
+        # Check for external plan ID (e.g., Linear project)
+        plan_id=$($MANIFEST get "$name".phases.planning.plan_id 2>/dev/null || echo "")
+
         echo "    - name: \"$name\""
         echo "      work_type: \"$work_type\""
         echo "      planning_status: \"$planning_status\""
         echo "      format: \"$format\""
+        if [ -n "$plan_id" ]; then
+            echo "      plan_id: \"$plan_id\""
+        fi
         echo "      specification_exists: $spec_exists"
         echo "      implementation_status: \"$impl_status\""
         echo "      review_count: $review_count"

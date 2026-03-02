@@ -190,7 +190,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.phases
 **Commit all changes** in a single commit:
 
 ```
-impl({topic}): T{task-id} — {brief description}
+impl({work_unit}): T{task-id} — {brief description}
 ```
 
 Code, tests, plan progress, and implementation file — one commit per approved task.

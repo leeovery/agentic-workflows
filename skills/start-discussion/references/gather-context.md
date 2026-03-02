@@ -10,7 +10,7 @@ Route based on the `source` variable set in earlier steps.
 
 Bridge mode: topic and work_type were provided by the caller.
 
-Check if research exists for this topic. Read `.workflows/research/{topic}.md` and look for a `> **Discussion-ready**:` marker.
+Check if research exists for this topic. Read `.workflows/{work_unit}/research/{topic}.md` and look for a `> **Discussion-ready**:` marker.
 
 **If research exists with a discussion-ready marker:**
 

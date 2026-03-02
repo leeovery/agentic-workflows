@@ -11,7 +11,7 @@ Summarise the selected research topic in 2-5 lines, drawing from the source, sum
 ```
 New discussion: {topic}
 
-Based on research: .workflows/research/{filename}.md (lines {start}-{end})
+Based on research: .workflows/{work_unit}/research/{filename}.md (lines {start}-{end})
 
 {2-5 line summary of the topic and what needs discussing}
 

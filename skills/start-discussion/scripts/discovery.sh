@@ -10,7 +10,6 @@
 set -eo pipefail
 
 MANIFEST_CLI="node .claude/skills/workflow-manifest/scripts/manifest.js"
-RESEARCH_DIR=".workflows/research"
 CACHE_FILE=".workflows/.state/research-analysis.md"
 
 # Helper: Extract a frontmatter field value from a file
@@ -38,16 +37,30 @@ echo "# Generated: $(date -Iseconds)"
 echo ""
 
 #
-# RESEARCH FILES (still filesystem-based — research predates manifests)
+# RESEARCH FILES (scan research dirs within work units)
 #
 echo "research:"
 
-if [ -d "$RESEARCH_DIR" ] && [ -n "$(ls -A "$RESEARCH_DIR" 2>/dev/null)" ]; then
+research_files=()
+for wu_dir in .workflows/*/; do
+    [ -d "$wu_dir" ] || continue
+    wu_name=$(basename "$wu_dir")
+    # Skip dot-prefixed directories
+    case "$wu_name" in .*) continue ;; esac
+
+    research_dir="${wu_dir}research"
+    [ -d "$research_dir" ] || continue
+
+    for file in "$research_dir"/*.md; do
+        [ -f "$file" ] || continue
+        research_files+=("$file")
+    done
+done
+
+if [ ${#research_files[@]} -gt 0 ]; then
     echo "  exists: true"
     echo "  files:"
-    for file in "$RESEARCH_DIR"/*.md; do
-        [ -f "$file" ] || continue
-
+    for file in "${research_files[@]}"; do
         name=$(basename "$file" .md)
         topic=$(extract_field "$file" "topic")
         topic=${topic:-"$name"}
@@ -57,7 +70,7 @@ if [ -d "$RESEARCH_DIR" ] && [ -n "$(ls -A "$RESEARCH_DIR" 2>/dev/null)" ]; then
     done
 
     # Compute checksum of all research files (deterministic via sorted glob)
-    research_checksum=$(cat "$RESEARCH_DIR"/*.md 2>/dev/null | md5sum | cut -d' ' -f1)
+    research_checksum=$(cat "${research_files[@]}" 2>/dev/null | md5sum | cut -d' ' -f1)
     echo "  checksum: \"$research_checksum\""
 else
     echo "  exists: false"
@@ -161,8 +174,20 @@ if [ -f "$CACHE_FILE" ]; then
     cached_date=$(extract_field "$CACHE_FILE" "generated")
 
     # Determine status based on checksum comparison
-    if [ -d "$RESEARCH_DIR" ] && [ -n "$(ls -A "$RESEARCH_DIR" 2>/dev/null)" ]; then
-        current_checksum=$(cat "$RESEARCH_DIR"/*.md 2>/dev/null | md5sum | cut -d' ' -f1)
+    # Collect all research files across work units
+    _cache_research_files=()
+    for _wu_dir in .workflows/*/; do
+        [ -d "$_wu_dir" ] || continue
+        _wu_name=$(basename "$_wu_dir")
+        case "$_wu_name" in .*) continue ;; esac
+        [ -d "${_wu_dir}research" ] || continue
+        for _rf in "${_wu_dir}research"/*.md; do
+            [ -f "$_rf" ] && _cache_research_files+=("$_rf")
+        done
+    done
+
+    if [ ${#_cache_research_files[@]} -gt 0 ]; then
+        current_checksum=$(cat "${_cache_research_files[@]}" 2>/dev/null | md5sum | cut -d' ' -f1)
 
         if [ "$cached_checksum" = "$current_checksum" ]; then
             echo "  status: \"valid\""
@@ -211,9 +236,16 @@ echo "state:"
 research_exists="false"
 discussions_exist="false"
 
-if [ -d "$RESEARCH_DIR" ] && [ -n "$(ls -A "$RESEARCH_DIR" 2>/dev/null)" ]; then
-    research_exists="true"
-fi
+# Check for research files across all work units
+for _wu_dir in .workflows/*/; do
+    [ -d "$_wu_dir" ] || continue
+    _wu_name=$(basename "$_wu_dir")
+    case "$_wu_name" in .*) continue ;; esac
+    if [ -d "${_wu_dir}research" ] && [ -n "$(ls -A "${_wu_dir}research" 2>/dev/null)" ]; then
+        research_exists="true"
+        break
+    fi
+done
 
 # Check discussions via manifest data already fetched
 disc_count=$(node -e "
