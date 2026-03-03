@@ -7,7 +7,18 @@ const { loadActiveManifests, phaseData, listFiles, countFiles } = require('../..
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
   if (manifests.length === 0) {
-    return { work_units: [], counts: null, state: { has_any_work: false } };
+    return {
+      work_units: [],
+      counts: {
+        by_work_type: { epic: 0, feature: 0, bugfix: 0 },
+        research: 0,
+        discussion: { total: 0, concluded: 0, in_progress: 0 },
+        specification: { active: 0, feature: 0, crosscutting: 0 },
+        planning: { total: 0, concluded: 0, in_progress: 0 },
+        implementation: { total: 0, completed: 0, in_progress: 0 },
+      },
+      state: { has_any_work: false },
+    };
   }
 
   const workflowsDir = path.join(cwd, '.workflows');

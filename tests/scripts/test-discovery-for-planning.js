@@ -93,4 +93,65 @@ describe('start-planning discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.plans.common_format, '');
   });
+
+  it('includes plan_id when present', () => {
+    createManifest(dir, 'auth', {
+      phases: {
+        specification: { status: 'concluded', type: 'feature' },
+        planning: { status: 'concluded', format: 'linear', plan_id: 'LIN-123' },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.plans.files[0].plan_id, 'LIN-123');
+  });
+
+  it('in-progress spec is not ready', () => {
+    createManifest(dir, 'auth', {
+      phases: {
+        specification: { status: 'in-progress', type: 'feature' },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.counts.feature_ready, 0);
+    assert.strictEqual(r.specifications.counts.feature, 1);
+  });
+
+  it('counts actionable plans correctly', () => {
+    createManifest(dir, 'a', {
+      phases: {
+        specification: { status: 'concluded', type: 'feature' },
+        planning: { status: 'in-progress', format: 'local-markdown' },
+      },
+    });
+    createManifest(dir, 'b', {
+      phases: {
+        specification: { status: 'concluded', type: 'feature' },
+        planning: { status: 'concluded', format: 'local-markdown' },
+        implementation: { status: 'completed' },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.counts.feature_with_plan, 2);
+    assert.strictEqual(r.specifications.counts.feature_actionable_with_plan, 1);
+    assert.strictEqual(r.specifications.counts.feature_implemented, 1);
+  });
+
+  it('returns no_specs for empty project', () => {
+    const r = discover(dir);
+    assert.strictEqual(r.state.scenario, 'no_specs');
+    assert.strictEqual(r.specifications.exists, false);
+    assert.strictEqual(r.plans.exists, false);
+  });
+
+  it('includes work_type on plans', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'epic',
+      phases: {
+        specification: { status: 'concluded', type: 'feature' },
+        planning: { status: 'concluded', format: 'local-markdown' },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.plans.files[0].work_type, 'epic');
+  });
 });

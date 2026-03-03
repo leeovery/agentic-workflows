@@ -159,4 +159,65 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.state.scenario, 'multiple_plans');
     assert.strictEqual(r.state.plans_concluded_count, 1);
   });
+
+  it('completed implementation is not counted as ready', () => {
+    createManifest(dir, 'auth', {
+      phases: {
+        planning: { status: 'concluded', format: 'local-markdown' },
+        implementation: { status: 'completed' },
+      },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.state.plans_completed_count, 1);
+    assert.strictEqual(r.state.plans_ready_count, 0);
+  });
+
+  it('plan_id included when present', () => {
+    createManifest(dir, 'auth', {
+      phases: { planning: { status: 'concluded', format: 'linear', plan_id: 'LIN-42' } },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.plans.files[0].plan_id, 'LIN-42');
+  });
+
+  it('no environment file returns unknown', () => {
+    createManifest(dir, 'auth', {
+      phases: { planning: { status: 'concluded', format: 'local-markdown' } },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.environment.setup_file_exists, false);
+    assert.strictEqual(r.environment.requires_setup, 'unknown');
+  });
+
+  it('specification_exists is tracked', () => {
+    createManifest(dir, 'auth', {
+      phases: { planning: { status: 'concluded', format: 'local-markdown' } },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+    const r = discover(dir);
+    assert.strictEqual(r.plans.files[0].specification_exists, true);
+  });
+
+  it('plan without planning.md file is skipped', () => {
+    createManifest(dir, 'auth', {
+      phases: { planning: { status: 'concluded', format: 'local-markdown' } },
+    });
+    // Don't create the planning.md file
+    const r = discover(dir);
+    assert.strictEqual(r.plans.exists, false);
+    assert.strictEqual(r.state.scenario, 'no_plans');
+  });
+
+  it('dependency resolution with no deps is empty', () => {
+    createManifest(dir, 'auth', {
+      phases: { planning: { status: 'concluded', format: 'local-markdown' } },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.dependency_resolution.length, 0);
+  });
 });

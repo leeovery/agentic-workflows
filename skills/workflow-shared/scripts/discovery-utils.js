@@ -28,6 +28,7 @@ function countFiles(dir, ext) {
 }
 
 function filesChecksum(paths) {
+  if (!paths || paths.length === 0) return null;
   const hash = crypto.createHash('md5');
   for (const p of paths) {
     try { hash.update(fs.readFileSync(p)); } catch {}
@@ -41,6 +42,7 @@ function readFrontmatterField(filePath, field) {
     const lines = content.split('\n');
     let inFrontmatter = false;
     let dashes = 0;
+    const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     for (const line of lines) {
       if (line.trim() === '---') {
         dashes++;
@@ -48,8 +50,14 @@ function readFrontmatterField(filePath, field) {
         if (dashes === 2) break;
       }
       if (inFrontmatter) {
-        const match = line.match(new RegExp(`^${field}:\\s*(.+)$`));
-        if (match) return match[1].trim();
+        const match = line.match(new RegExp(`^${escaped}:\\s*(.+)$`));
+        if (match) {
+          let val = match[1].trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          return val;
+        }
       }
     }
   } catch {}

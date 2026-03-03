@@ -78,4 +78,55 @@ describe('workflow-bridge discovery', () => {
     const r = discover(dir, 'crash');
     assert.strictEqual(r.next_phase, 'specification');
   });
+
+  it('detects all phase file types', () => {
+    createManifest(dir, 'full', {
+      work_type: 'feature',
+      phases: {
+        discussion: { status: 'concluded' },
+        specification: { status: 'concluded' },
+        planning: { status: 'concluded' },
+        implementation: { status: 'completed' },
+        review: { status: 'completed' },
+      },
+    });
+    createFile(dir, '.workflows/full/discussion/full.md', '');
+    createFile(dir, '.workflows/full/specification/full/specification.md', '');
+    createFile(dir, '.workflows/full/planning/full/planning.md', '');
+    createFile(dir, '.workflows/full/implementation/full/implementation.md', '');
+    createFile(dir, '.workflows/full/review/full/r1/review.md', '');
+    const r = discover(dir, 'full');
+    assert.strictEqual(r.phases.discussion.exists, true);
+    assert.strictEqual(r.phases.specification.exists, true);
+    assert.strictEqual(r.phases.planning.exists, true);
+    assert.strictEqual(r.phases.implementation.exists, true);
+    assert.strictEqual(r.phases.review.exists, true);
+  });
+
+  it('returns status from manifest', () => {
+    createManifest(dir, 'auth', { work_type: 'feature', status: 'active' });
+    const r = discover(dir, 'auth');
+    assert.strictEqual(r.status, 'active');
+  });
+
+  it('epic detail includes all phase items', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          status: 'in-progress',
+          items: { 'auth': { status: 'concluded' } },
+        },
+        specification: {
+          status: 'in-progress',
+          items: { 'auth': { status: 'in-progress' } },
+        },
+      },
+    });
+    const r = discover(dir, 'v1');
+    assert.ok(r.epic_detail.discussion);
+    assert.ok(r.epic_detail.specification);
+    assert.strictEqual(r.epic_detail.discussion.items[0].name, 'auth');
+    assert.strictEqual(r.epic_detail.specification.items[0].name, 'auth');
+  });
 });

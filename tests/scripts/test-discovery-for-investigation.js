@@ -56,4 +56,21 @@ describe('start-investigation discovery', () => {
     assert.strictEqual(r.state.scenario, 'fresh');
     assert.strictEqual(r.investigations.counts.total, 0);
   });
+
+  it('includes work_type field on each investigation', () => {
+    createManifest(dir, 'bug1', {
+      work_type: 'bugfix',
+      phases: { investigation: { status: 'in-progress' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.investigations.files[0].work_type, 'bugfix');
+  });
+
+  it('returns empty state when only epic/feature work units exist', () => {
+    createManifest(dir, 'epic1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
+    createManifest(dir, 'feat1', { work_type: 'feature', phases: { discussion: { status: 'concluded' } } });
+    const r = discover(dir);
+    assert.strictEqual(r.state.scenario, 'fresh');
+    assert.strictEqual(r.investigations.counts.total, 0);
+  });
 });

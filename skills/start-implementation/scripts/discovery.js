@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, loadManifest, phaseData, fileExists, listDirs } = require('../../workflow-shared/scripts/discovery-utils');
 
@@ -122,7 +123,7 @@ function discover(cwd) {
   let requiresSetup = 'unknown';
   if (envExists) {
     try {
-      const content = require('fs').readFileSync(envFile, 'utf8');
+      const content = fs.readFileSync(envFile, 'utf8');
       requiresSetup = /no special setup required/i.test(content) ? false : true;
     } catch { requiresSetup = true; }
   }

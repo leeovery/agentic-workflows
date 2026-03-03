@@ -107,7 +107,7 @@ function discover(cwd) {
 
     const cachedDate = readFrontmatterField(cacheFile, 'generated');
     const discDir = path.join(workflowsDir, m.name, 'discussion');
-    const discFiles = listFiles(discDir, '.md').sort();
+    const discFiles = listFiles(discDir, '.md');
 
     let status = 'stale';
     let reason = 'discussions have changed since cache was generated';

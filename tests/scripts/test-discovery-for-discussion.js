@@ -110,4 +110,46 @@ describe('start-discussion discovery', () => {
     assert.strictEqual(r.cache.status, 'none');
     assert.strictEqual(r.cache.entries.length, 0);
   });
+
+  it('epic with no items but with discussion status', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { status: 'in-progress' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.discussions.files.length, 1);
+    assert.strictEqual(r.discussions.files[0].name, 'v1');
+    assert.strictEqual(r.discussions.files[0].work_type, 'epic');
+  });
+
+  it('extracts research_files from cache', () => {
+    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
+    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
+
+    const crypto = require('crypto');
+    const checksum = crypto.createHash('md5').update('# Notes').digest('hex');
+
+    createFile(dir, '.workflows/v1/.state/research-analysis.md',
+      `---\nchecksum: ${checksum}\ngenerated: 2026-01-01\nresearch_files:\n  - notes.md\n---\n# Analysis`);
+
+    const r = discover(dir);
+    assert.strictEqual(r.cache.entries[0].research_files.length, 1);
+    assert.strictEqual(r.cache.entries[0].research_files[0], 'notes.md');
+  });
+
+  it('computes research checksum', () => {
+    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
+    createFile(dir, '.workflows/v1/research/a.md', 'content a');
+    createFile(dir, '.workflows/v1/research/b.md', 'content b');
+    const r = discover(dir);
+    assert.ok(r.research.checksum);
+    assert.strictEqual(typeof r.research.checksum, 'string');
+    assert.strictEqual(r.research.checksum.length, 32);
+  });
+
+  it('returns null checksum when no research files', () => {
+    createManifest(dir, 'auth', { work_type: 'feature' });
+    const r = discover(dir);
+    assert.strictEqual(r.research.checksum, null);
+  });
 });

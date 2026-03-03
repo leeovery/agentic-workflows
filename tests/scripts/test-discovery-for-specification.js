@@ -144,4 +144,61 @@ describe('start-specification discovery', () => {
     const r = discover(dir);
     assert.ok(r.current_state.discussions_checksum);
   });
+
+  it('returns null checksum when no discussion files', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { status: 'concluded' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.current_state.discussions_checksum, null);
+  });
+
+  it('tracks superseded_by field on specs', () => {
+    createManifest(dir, 'old', {
+      work_type: 'feature',
+      phases: {
+        specification: { status: 'superseded', superseded_by: 'new-spec' },
+      },
+    });
+    createFile(dir, '.workflows/old/specification/old/specification.md', '# Old');
+    // Superseded specs are excluded, so we won't find it
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.length, 0);
+  });
+
+  it('feature without spec shows has_individual_spec false', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { status: 'concluded' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.discussions[0].has_individual_spec, false);
+  });
+
+  it('spec with no sources has no sources field', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { status: 'concluded' },
+        specification: { status: 'in-progress' },
+      },
+    });
+    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.length, 1);
+    assert.strictEqual(r.specifications[0].sources, undefined);
+  });
+
+  it('stale cache when discussions changed', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { status: 'concluded' } },
+    });
+    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth updated');
+    createFile(dir, '.workflows/auth/.state/discussion-consolidation-analysis.md',
+      '---\nchecksum: stale-hash\ngenerated: 2026-01-01\n---\n# Analysis');
+    const r = discover(dir);
+    assert.strictEqual(r.cache.entries[0].status, 'stale');
+  });
 });

@@ -121,7 +121,7 @@ agents/
   specification-review-input.md          # Specification input review
 
 tests/
-  scripts/                   # Shell script tests for discovery and migrations
+  scripts/                   # Tests for discovery scripts and migrations
 
 hooks/
   workflows/

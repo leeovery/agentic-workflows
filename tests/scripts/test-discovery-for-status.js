@@ -146,4 +146,90 @@ describe('status discovery', () => {
     assert.strictEqual(r.work_units[0].specification.sources.length, 1);
     assert.strictEqual(r.work_units[0].specification.sources[0].name, 'auth-discussion');
   });
+
+  it('returns empty counts when no work units', () => {
+    const r = discover(dir);
+    assert.ok(r.counts);
+    assert.strictEqual(r.counts.by_work_type.epic, 0);
+    assert.strictEqual(r.counts.by_work_type.feature, 0);
+    assert.strictEqual(r.counts.by_work_type.bugfix, 0);
+    assert.strictEqual(r.counts.research, 0);
+    assert.strictEqual(r.counts.discussion.total, 0);
+    assert.strictEqual(r.counts.specification.active, 0);
+    assert.strictEqual(r.counts.planning.total, 0);
+    assert.strictEqual(r.counts.implementation.total, 0);
+  });
+
+  it('handles investigation status for bugfix', () => {
+    createManifest(dir, 'crash', {
+      work_type: 'bugfix',
+      phases: { investigation: { status: 'concluded' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.work_units[0].investigation.status, 'concluded');
+  });
+
+  it('tracks review status', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { review: { status: 'completed' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.work_units[0].review.status, 'completed');
+  });
+
+  it('handles sources as array format', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        specification: {
+          status: 'concluded',
+          type: 'feature',
+          sources: [{ name: 'auth-disc', status: 'incorporated' }],
+        },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.work_units[0].specification.sources.length, 1);
+    assert.strictEqual(r.work_units[0].specification.sources[0].name, 'auth-disc');
+  });
+
+  it('superseded_by tracked in specification', () => {
+    createManifest(dir, 'old', {
+      work_type: 'feature',
+      phases: {
+        specification: { status: 'superseded', superseded_by: 'new-spec' },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.work_units[0].specification.superseded_by, 'new-spec');
+  });
+
+  it('planning in-progress counted', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { planning: { status: 'in-progress', format: 'local-markdown' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.counts.planning.in_progress, 1);
+    assert.strictEqual(r.counts.planning.total, 1);
+  });
+
+  it('implementation completed counted', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { implementation: { status: 'completed' } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.counts.implementation.completed, 1);
+  });
+
+  it('description field included', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      description: 'Auth flow feature',
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.work_units[0].description, 'Auth flow feature');
+  });
 });

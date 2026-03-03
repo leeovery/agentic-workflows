@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, phaseStatus, phaseItems, listFiles, listDirs, filesChecksum, readFrontmatterField } = require('../../workflow-shared/scripts/discovery-utils');
 
@@ -81,7 +82,6 @@ function discover(cwd) {
     // Extract research_files list from cache body
     const researchFilesList = [];
     try {
-      const fs = require('fs');
       const content = fs.readFileSync(cacheFile, 'utf8');
       const lines = content.split('\n');
       let inSection = false;

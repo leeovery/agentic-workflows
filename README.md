@@ -280,7 +280,7 @@ agents/
 └── planning-review-integrity.md     # Plan structural quality review
 
 tests/
-└── scripts/                         # Shell script tests for discovery and migrations
+└── scripts/                         # Tests for discovery scripts and migrations
 ```
 
 ## Skills
