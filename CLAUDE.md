@@ -309,7 +309,7 @@ $MANIFEST get {work_unit} --phase discussion --topic {topic} status    # phase-l
 $MANIFEST set {work_unit} --phase discussion --topic {topic} status concluded  # phase-level write
 $MANIFEST add-item {work_unit} --phase discussion --topic {topic}      # create phase entry
 $MANIFEST get {work_unit} work_type                                    # work-unit-level read
-$MANIFEST get {work_unit} --raw phases.discussion.status               # raw dot-path (discovery scripts only)
+$MANIFEST set {work_unit} phases.research.analysis_cache '{"checksum":"..."}' # work-unit-level write (dot-path)
 ```
 
 See `skills/workflow-manifest/SKILL.md` for the full API.

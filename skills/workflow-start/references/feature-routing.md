@@ -15,7 +15,7 @@ Using the discovery output, check if there are any features in progress.
 > *Output the next fenced block as a code block:*
 
 ```
-Features
+Feature Overview
 
 No features in progress.
 ```
@@ -33,11 +33,11 @@ Ready to start a new feature.
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 Invoke `start-feature`. It will set `work_type: feature` automatically.
 
-#### If `no`
+**If `no`:**
 
 → Return to **[the skill](../SKILL.md)** for **Step 2** (work type selection).
 
@@ -46,7 +46,7 @@ Invoke `start-feature`. It will set `work_type: feature` automatically.
 > *Output the next fenced block as a code block:*
 
 ```
-Features
+Feature Overview
 
 {feature_count} feature(s) in progress:
 

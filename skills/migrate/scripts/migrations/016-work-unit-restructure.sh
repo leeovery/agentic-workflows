@@ -3,7 +3,7 @@
 # 016-work-unit-restructure.sh
 #
 # Migrates from phase-first directory structure to work-unit-first.
-# Moves artifacts from .workflows/{phase}/{topic}/ to .workflows/{topic}/{phase}/
+# Moves artifacts from .workflows/{phase}/{topic}/ to .workflows/{work_unit}/{phase}/
 # Creates manifest.json for each work unit via node.
 # Renames greenfield → epic, plan.md → planning.md, tracking.md → implementation.md.
 #

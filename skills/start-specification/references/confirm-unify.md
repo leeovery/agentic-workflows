@@ -17,8 +17,8 @@ Sources:
   ...
 
 Existing specifications to incorporate:
-  • {work_unit}/specification/{topic}/specification.md → will be superseded
-  • {work_unit}/specification/{topic}/specification.md → will be superseded
+  • .workflows/{work_unit}/specification/{topic}/specification.md → will be superseded
+  • .workflows/{work_unit}/specification/{topic}/specification.md → will be superseded
 
 Output: .workflows/unified/specification/unified/specification.md
 ```

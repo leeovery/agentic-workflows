@@ -16,7 +16,7 @@ Saving session state for compaction recovery.
 .claude/hooks/workflows/write-session-state.sh \
   "{topic}" \
   "skills/technical-investigation/SKILL.md" \
-  ".workflows/{topic}/investigation/{topic}.md"
+  ".workflows/{work_unit}/investigation/{topic}.md"
 ```
 
 ## Handoff
@@ -32,7 +32,7 @@ Initial bug context:
 - Reproduction: {steps if provided, otherwise "unknown"}
 - Initial hypothesis: {user's suspicion if any}
 
-Create investigation file: .workflows/{topic}/investigation/{topic}.md
+Create investigation file: .workflows/{work_unit}/investigation/{topic}.md
 
 Invoke the technical-investigation skill.
 ```

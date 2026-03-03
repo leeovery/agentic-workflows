@@ -15,7 +15,7 @@ Using the discovery output, check if there are any bugfixes in progress.
 > *Output the next fenced block as a code block:*
 
 ```
-Bugfixes
+Bugfix Overview
 
 No bugfixes in progress.
 ```
@@ -33,11 +33,11 @@ Ready to start a new bugfix.
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 Invoke `start-bugfix`. It will set `work_type: bugfix` automatically.
 
-#### If `no`
+**If `no`:**
 
 → Return to **[the skill](../SKILL.md)** for **Step 2** (work type selection).
 
@@ -46,7 +46,7 @@ Invoke `start-bugfix`. It will set `work_type: bugfix` automatically.
 > *Output the next fenced block as a code block:*
 
 ```
-Bugfixes
+Bugfix Overview
 
 {bugfix_count} bugfix(es) in progress:
 

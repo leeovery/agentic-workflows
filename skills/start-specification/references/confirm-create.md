@@ -44,7 +44,7 @@ Sources:
 Output: .workflows/{work_unit}/specification/{topic}/specification.md
 
 After completion:
-  {work_unit}/specification/{source-topic}/specification.md → marked as superseded
+  .workflows/{work_unit}/specification/{source-topic}/specification.md → marked as superseded
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

@@ -127,13 +127,12 @@ function withLock(name, fn) {
 // ---------------------------------------------------------------------------
 
 /**
- * Extract --phase, --topic, and --raw flags from args.
- * Returns { phase, topic, raw, positional } where positional is remaining args.
+ * Extract --phase and --topic flags from args.
+ * Returns { phase, topic, positional } where positional is remaining args.
  */
 function parseFlags(args) {
   let phase = null;
   let topic = null;
-  let raw = false;
   const positional = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -141,14 +140,12 @@ function parseFlags(args) {
       phase = args[++i];
     } else if (args[i] === '--topic' && i + 1 < args.length) {
       topic = args[++i];
-    } else if (args[i] === '--raw') {
-      raw = true;
     } else {
       positional.push(args[i]);
     }
   }
 
-  return { phase, topic, raw, positional };
+  return { phase, topic, positional };
 }
 
 /**
@@ -344,29 +341,12 @@ function cmdInit(args) {
 }
 
 function cmdGet(args) {
-  const { phase, topic, raw, positional } = parseFlags(args);
+  const { phase, topic, positional } = parseFlags(args);
 
-  if (positional.length < 1) die('Usage: get <name> [--phase <phase>] [--topic <topic>] [--raw] [field.path]');
+  if (positional.length < 1) die('Usage: get <name> [--phase <phase>] [--topic <topic>] [field.path]');
 
   const name = positional[0];
   const manifest = readManifest(name);
-
-  if (raw) {
-    // Raw mode: direct dot-path traversal, bypassing phase/topic routing.
-    // Used by discovery scripts that need internal manifest access.
-    if (positional.length === 1) {
-      process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
-      return;
-    }
-
-    const segments = positional[1].split('.');
-    const value = getByPath(manifest, segments);
-    if (value === undefined) {
-      die(`Path "${positional[1]}" not found in "${name}"`);
-    }
-    outputValue(value);
-    return;
-  }
 
   if (!phase) {
     // Work-unit-level: get <name> [field]

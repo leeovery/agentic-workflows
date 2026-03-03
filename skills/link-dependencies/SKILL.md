@@ -174,7 +174,7 @@ Unresolved (no matching plan exists):
   • {source} → {target}: {description}
 
 Updated files:
-  • .workflows/{topic}/planning/{topic}/planning.md
+  • .workflows/{work_unit}/planning/{topic}/planning.md
 ```
 
 If any dependencies remain unresolved:

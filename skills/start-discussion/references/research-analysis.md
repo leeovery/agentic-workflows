@@ -10,6 +10,8 @@ Use `cache.entries` from discovery to determine the approach. Check if a cache e
 
 #### If a cache entry exists with `status` `valid`
 
+> *Output the next fenced block as a code block:*
+
 ```
 Using cached research analysis (unchanged since {entry.generated})
 ```
@@ -17,6 +19,8 @@ Using cached research analysis (unchanged since {entry.generated})
 Load the topics from `.workflows/{work_unit}/.state/research-analysis.md` and proceed.
 
 #### If no cache entry exists or entry `status` is `stale`
+
+> *Output the next fenced block as a code block:*
 
 ```
 Analyzing research documents...
