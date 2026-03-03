@@ -25,7 +25,7 @@ This skill receives context from the calling processing skill:
 
 If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
-```bash
+```node
 node .claude/skills/workflow-bridge/scripts/discovery.js {work_unit}
 ```
 
