@@ -1021,6 +1021,202 @@ assert_dir_not_exists "$TEST_DIR/.workflows/planning" "planning phase dir cleane
 
 echo ""
 
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Epic with multiple topics across phases${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/auth-flow"
+mkdir -p "$TEST_DIR/.workflows/specification/billing"
+mkdir -p "$TEST_DIR/.workflows/planning/auth-flow/tasks"
+mkdir -p "$TEST_DIR/.workflows/implementation/auth-flow"
+
+# Two epic discussions
+cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
+---
+topic: auth-flow
+status: concluded
+work_type: greenfield
+date: 2026-01-10
+---
+
+# Discussion: Auth Flow
+EOF
+
+cat > "$TEST_DIR/.workflows/discussion/billing.md" << 'EOF'
+---
+topic: billing
+status: in-progress
+work_type: greenfield
+date: 2026-01-12
+---
+
+# Discussion: Billing
+EOF
+
+# Both have specs
+cat > "$TEST_DIR/.workflows/specification/auth-flow/specification.md" << 'EOF'
+---
+topic: auth-flow
+status: concluded
+work_type: greenfield
+type: feature
+review_cycle: 2
+---
+
+# Specification: Auth Flow
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
+---
+topic: billing
+status: in-progress
+work_type: greenfield
+type: feature
+---
+
+# Specification: Billing
+EOF
+
+# Only auth-flow has plan + impl
+cat > "$TEST_DIR/.workflows/planning/auth-flow/plan.md" << 'EOF'
+---
+topic: auth-flow
+status: concluded
+work_type: greenfield
+format: local-markdown
+---
+
+# Plan: Auth Flow
+EOF
+
+echo "task content" > "$TEST_DIR/.workflows/planning/auth-flow/tasks/task-1.md"
+
+cat > "$TEST_DIR/.workflows/implementation/auth-flow/tracking.md" << 'EOF'
+---
+topic: auth-flow
+status: in-progress
+work_type: greenfield
+format: local-markdown
+current_phase: phase-1
+---
+
+# Implementation: Auth Flow
+EOF
+
+run_migration
+
+# Both specs moved to v1
+assert_file_exists "$TEST_DIR/.workflows/v1/specification/auth-flow/specification.md" "auth-flow spec in v1"
+assert_file_exists "$TEST_DIR/.workflows/v1/specification/billing/specification.md" "billing spec in v1"
+
+# Only auth-flow has plan+impl
+assert_file_exists "$TEST_DIR/.workflows/v1/planning/auth-flow/planning.md" "auth-flow plan renamed in v1"
+assert_file_exists "$TEST_DIR/.workflows/v1/planning/auth-flow/tasks/task-1.md" "auth-flow tasks in v1"
+assert_file_exists "$TEST_DIR/.workflows/v1/implementation/auth-flow/implementation.md" "auth-flow impl renamed in v1"
+
+# Manifest has items for both spec topics but only auth-flow in plan/impl
+manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
+auth_spec=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.specification && m.phases.specification.items && m.phases.specification.items['auth-flow'] ? m.phases.specification.items['auth-flow'].status : 'missing')")
+billing_spec=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.specification && m.phases.specification.items && m.phases.specification.items['billing'] ? m.phases.specification.items['billing'].status : 'missing')")
+auth_plan=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.planning && m.phases.planning.items && m.phases.planning.items['auth-flow'] ? m.phases.planning.items['auth-flow'].status : 'missing')")
+billing_plan=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.planning && m.phases.planning.items ? (m.phases.planning.items['billing'] ? 'found' : 'absent') : 'no-items')")
+
+assert_equals "$auth_spec" "concluded" "manifest spec items: auth-flow concluded"
+assert_equals "$billing_spec" "in-progress" "manifest spec items: billing in-progress"
+assert_equals "$auth_plan" "concluded" "manifest plan items: auth-flow concluded"
+assert_equals "$billing_plan" "absent" "manifest plan items: billing absent (no plan)"
+
+# Source dirs cleaned up
+assert_dir_not_exists "$TEST_DIR/.workflows/specification" "spec phase dir cleaned up"
+assert_dir_not_exists "$TEST_DIR/.workflows/planning" "planning phase dir cleaned up"
+assert_dir_not_exists "$TEST_DIR/.workflows/implementation" "impl phase dir cleaned up"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Feature with review — manifest has review phase${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/review/dark-mode/r1"
+
+cat > "$TEST_DIR/.workflows/discussion/dark-mode.md" << 'EOF'
+---
+topic: dark-mode
+status: concluded
+work_type: feature
+date: 2026-01-15
+---
+
+# Discussion: Dark Mode
+EOF
+
+echo "review findings" > "$TEST_DIR/.workflows/review/dark-mode/r1/review.md"
+
+run_migration
+
+assert_file_exists "$TEST_DIR/.workflows/dark-mode/review/dark-mode/r1/review.md" "feature review moved"
+
+manifest=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
+assert_contains "$manifest" '"review"' "manifest has review phase"
+assert_contains "$manifest" '"status": "completed"' "manifest review status is completed"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: research-analysis.md moves to v1/.state/ (regression)${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/.state"
+
+cat > "$TEST_DIR/.workflows/discussion/some-topic.md" << 'EOF'
+---
+topic: some-topic
+status: concluded
+work_type: greenfield
+date: 2026-01-10
+---
+
+# Discussion: Some Topic
+EOF
+
+echo "research analysis content" > "$TEST_DIR/.workflows/.state/research-analysis.md"
+
+run_migration
+
+assert_file_exists "$TEST_DIR/.workflows/v1/.state/research-analysis.md" "research-analysis.md moved to v1/.state/"
+assert_file_not_exists "$TEST_DIR/.workflows/.state/research-analysis.md" "original research-analysis.md removed"
+
+content=$(cat "$TEST_DIR/.workflows/v1/.state/research-analysis.md")
+assert_contains "$content" "research analysis content" "research-analysis.md content preserved"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Review-only triggers v1 (no discussion needed)${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/review/orphan-topic/r1"
+
+echo "review findings" > "$TEST_DIR/.workflows/review/orphan-topic/r1/review.md"
+
+run_migration
+
+assert_file_exists "$TEST_DIR/.workflows/v1/manifest.json" "v1 created from review-only"
+assert_file_exists "$TEST_DIR/.workflows/v1/review/orphan-topic/r1/review.md" "review-only topic moved to v1"
+
+manifest=$(cat "$TEST_DIR/.workflows/v1/manifest.json")
+assert_contains "$manifest" '"work_type": "epic"' "v1 is epic"
+
+review_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); var r=m.phases.review; console.log(r && r.items && r.items['orphan-topic'] ? r.items['orphan-topic'].status : 'missing')")
+assert_equals "$review_status" "completed" "review-only topic in manifest items"
+
+assert_dir_not_exists "$TEST_DIR/.workflows/review" "review phase dir cleaned up"
+
+echo ""
+
 # ============================================================================
 # SUMMARY
 # ============================================================================

@@ -298,12 +298,12 @@ while IFS= read -r name; do
         epic_discs=$(_016_read_list "epic_discussions")
         if [ -n "$epic_discs" ]; then
             mkdir -p ".workflows/$name/discussion"
-            echo "$epic_discs" | while IFS= read -r dfile; do
+            while IFS= read -r dfile; do
                 if [ -f "$dfile" ]; then
                     mv "$dfile" ".workflows/$name/discussion/"
                     report_update "$dfile" "moved to .workflows/$name/discussion/"
                 fi
-            done
+            done <<< "$epic_discs"
         fi
     else
         disc_file=$(_016_fetch "disc" "$name")
@@ -336,7 +336,7 @@ while IFS= read -r name; do
     if [ "$name" = "v1" ]; then
         epic_specs=$(_016_read_list "epic_specifications")
         if [ -n "$epic_specs" ]; then
-            echo "$epic_specs" | while IFS= read -r entry; do
+            while IFS= read -r entry; do
                 _topic="${entry%%:*}"
                 _dir="${entry#*:}"
                 if [ -d "$_dir" ]; then
@@ -347,7 +347,7 @@ while IFS= read -r name; do
                     done
                     report_update "$_dir" "moved to .workflows/$name/specification/$_topic/"
                 fi
-            done
+            done <<< "$epic_specs"
         fi
     else
         spec_dir=$(_016_fetch "spec" "$name")
@@ -365,7 +365,7 @@ while IFS= read -r name; do
     if [ "$name" = "v1" ]; then
         epic_plans=$(_016_read_list "epic_planning")
         if [ -n "$epic_plans" ]; then
-            echo "$epic_plans" | while IFS= read -r entry; do
+            while IFS= read -r entry; do
                 _topic="${entry%%:*}"
                 _dir="${entry#*:}"
                 if [ -d "$_dir" ]; then
@@ -386,7 +386,7 @@ while IFS= read -r name; do
                         fi
                     done
                 fi
-            done
+            done <<< "$epic_plans"
         fi
     else
         plan_dir=$(_016_fetch "plan" "$name")
@@ -414,7 +414,7 @@ while IFS= read -r name; do
     if [ "$name" = "v1" ]; then
         epic_impls=$(_016_read_list "epic_implementation")
         if [ -n "$epic_impls" ]; then
-            echo "$epic_impls" | while IFS= read -r entry; do
+            while IFS= read -r entry; do
                 _topic="${entry%%:*}"
                 _dir="${entry#*:}"
                 if [ -d "$_dir" ]; then
@@ -431,7 +431,7 @@ while IFS= read -r name; do
                         fi
                     done
                 fi
-            done
+            done <<< "$epic_impls"
         fi
     else
         impl_dir=$(_016_fetch "impl" "$name")
@@ -455,7 +455,7 @@ while IFS= read -r name; do
     if [ "$name" = "v1" ]; then
         epic_revs=$(_016_read_list "epic_reviews")
         if [ -n "$epic_revs" ]; then
-            echo "$epic_revs" | while IFS= read -r entry; do
+            while IFS= read -r entry; do
                 _topic="${entry%%:*}"
                 _dir="${entry#*:}"
                 if [ -d "$_dir" ]; then
@@ -466,7 +466,7 @@ while IFS= read -r name; do
                     done
                     report_update "$_dir" "moved to .workflows/$name/review/$_topic/"
                 fi
-            done
+            done <<< "$epic_revs"
         fi
     else
         review_dir=$(_016_fetch "review" "$name")
@@ -485,12 +485,12 @@ while IFS= read -r name; do
         epic_research=$(_016_read_list "epic_research")
         if [ -n "$epic_research" ]; then
             mkdir -p ".workflows/$name/research"
-            echo "$epic_research" | while IFS= read -r rfile; do
+            while IFS= read -r rfile; do
                 if [ -f "$rfile" ]; then
                     mv "$rfile" ".workflows/$name/research/"
                     report_update "$rfile" "moved to .workflows/$name/research/"
                 fi
-            done
+            done <<< "$epic_research"
         fi
     fi
 
@@ -712,6 +712,12 @@ while IFS= read -r name; do
                     }
                 }
             }
+        }
+
+        // Review (feature/bugfix — topic subdir: review/{name}/)
+        var revDirFB = path.join(workDir, 'review', name);
+        if (fs.existsSync(revDirFB)) {
+            manifest.phases.review = { status: 'completed' };
         }
 
         // Review (epic — multiple topic subdirs, items structure)
