@@ -72,6 +72,6 @@ Prerequisites that must exist before implementation can begin:
 
 ## Purpose
 
-This section feeds into the planning phase, where dependencies become blocking relationships between epics/phases. It helps sequence implementation correctly.
+This section enables dependency tracking when plans are built from this specification. Dependencies become blocking relationships that help sequence work correctly.
 
 **Key distinction**: This is about sequencing what must come first, not mapping out what works together. A feature may integrate with many systems — only list the ones that block you from starting.

@@ -12,7 +12,7 @@ The user has already reviewed findings and agreed on fix direction. This step co
 · · · · · · · · · · · ·
 Investigation complete. Ready to conclude?
 
-- **`y`/`yes`** — Conclude investigation and proceed to specification
+- **`y`/`yes`** — Conclude investigation
 - **Comment** — Add context before concluding
 - **`r`/`reopen`** — Reopen investigation (more analysis needed)
 · · · · · · · · · · · ·
@@ -47,8 +47,7 @@ Investigation concluded: {work_unit}
 Root cause: {brief summary}
 Fix direction: {chosen approach}
 
-The investigation is ready for specification. The specification will
-detail the exact fix approach, acceptance criteria, and testing plan.
+The investigation is concluded. Root cause and fix direction are documented.
 ```
 
 4. Read work_type from manifest:

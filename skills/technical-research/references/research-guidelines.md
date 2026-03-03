@@ -25,7 +25,7 @@ Don't constrain yourself. Research goes wherever it needs to go.
 
 **Be honest**: If something seems flawed or risky, say so. Challenge assumptions.
 
-**Explore, don't decide**: Your job is to surface options, tradeoffs, and understanding — not to pick winners. Synthesis is welcome ("the tradeoffs are X, Y, Z"), conclusions are not ("therefore we should do Y"). Decisions belong in the discussion phase.
+**Explore, don't decide**: Your job is to surface options, tradeoffs, and understanding — not to pick winners. Synthesis is welcome ("the tradeoffs are X, Y, Z"), conclusions are not ("therefore we should do Y"). Decisions belong elsewhere — your job is to explore.
 
 ## Questioning
 

@@ -31,8 +31,8 @@ This specification appears to be a {feature/cross-cutting} specification.
 multiple features handle data retrieval, rather than being a standalone piece
 of functionality to build."}
 
-  Feature specs      — proceed to planning and implementation
-  Cross-cutting specs — referenced by feature plans, no own implementation plan
+  Feature specs      — standalone, directly actionable
+  Cross-cutting specs — referenced by feature specs, no own action plan
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

@@ -77,7 +77,7 @@ Phase {N}: {Phase Name} — task list approved. Proceeding to authoring.
 
 #### If `task_list_gate_mode: gated`
 
-**STOP.** Ask:
+**STOP.** Wait for user response.
 
 > *Output the next fenced block as markdown (not a code block):*
 

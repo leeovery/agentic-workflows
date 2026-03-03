@@ -49,7 +49,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_t
 This topic is marked discussion-ready. Would you like to:
 
 - **`c`/`continue`** — Continue exploring
-- **`d`/`discuss`** — Transition to discussion phase
+- **`d`/`discuss`** — Transition to structured discussion
 · · · · · · · · · · · ·
 ```
 

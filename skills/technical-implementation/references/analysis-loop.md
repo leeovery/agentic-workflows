@@ -191,7 +191,7 @@ Update `status: approved` in the staging file. Note that `analysis_gate_mode` sh
 Task {current} of {total}: {title} — approved (auto).
 ```
 
-→ Continue to next task without stopping.
+→ Proceed to next task without stopping.
 
 ---
 

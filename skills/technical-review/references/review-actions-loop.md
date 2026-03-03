@@ -232,7 +232,7 @@ Approve this task?
 Task {current} of {total}: {title} — approved (auto).
 ```
 
-→ Continue to next task without stopping.
+→ Proceed to next task without stopping.
 
 ---
 

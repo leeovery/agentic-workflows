@@ -14,7 +14,7 @@ This step invokes the `implementation-task-executor` agent (`../../../agents/imp
 
 1. **tdd-workflow.md**: `tdd-workflow.md`
 2. **code-quality.md**: `code-quality.md`
-3. **Specification path**: from the specification phase (if available)
+3. **Specification path**: from the specification (if available)
 4. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} project_skills`)
 5. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
 6. **Linter commands**: from `linters` in the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} linters`) (if configured)

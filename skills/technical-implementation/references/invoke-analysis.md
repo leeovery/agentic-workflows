@@ -25,7 +25,7 @@ This captures all files touched by implementation commits for the topic.
 Dispatch **all three in parallel** via the Task tool. Each agent receives the same inputs:
 
 1. **Implementation files** — the file list from scope identification
-2. **Specification path** — from the specification phase (if available)
+2. **Specification path** — from the specification (if available)
 3. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} project_skills`)
 4. **code-quality.md path** — `code-quality.md`
 5. **Topic name** — the implementation topic

@@ -10,9 +10,6 @@ Act as **expert debugger** tracing through code, **documentation assistant** cap
 
 ## Purpose in the Workflow
 
-This skill is the first phase of the **bugfix pipeline**:
-Investigation → Specification → Planning → Implementation → Review
-
 Investigation combines:
 - **Symptom gathering**: What's broken, how it manifests, reproduction steps
 - **Code analysis**: Tracing paths, finding root cause, understanding blast radius
