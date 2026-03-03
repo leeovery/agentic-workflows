@@ -11,7 +11,6 @@ function discover(cwd) {
   const plans = [];
   const reviews = [];
   let implementedCount = 0, completedCount = 0, reviewedPlanCount = 0;
-  const reviewedNames = new Set();
 
   for (const m of manifests) {
     const planning = phaseData(m, 'planning');
@@ -81,10 +80,7 @@ function discover(cwd) {
         has_synthesis: hasSynthesis,
       });
 
-      if (!reviewedNames.has(m.name)) {
-        reviewedNames.add(m.name);
-        reviewedPlanCount++;
-      }
+      reviewedPlanCount++;
     }
   }
 

@@ -36,7 +36,6 @@ function discover(cwd) {
     if (byType[wt] !== undefined) byType[wt]++;
 
     const baseDir = path.join(workflowsDir, m.name);
-    const phases = m.phases || {};
 
     // Research
     const research = phaseData(m, 'research');
