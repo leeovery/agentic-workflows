@@ -15,7 +15,7 @@ Using the discovery output, build the phase-centric view.
 ```
 Epic Overview
 
-@foreach(unit in epics.items)
+@foreach(unit in epics.work_units)
 {N}. {unit.name:(titlecase)}
    └─ {unit.phase_label:(titlecase)}
 @endforeach

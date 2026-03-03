@@ -13,7 +13,7 @@ function discover(cwd) {
   let discCount = 0, concludedCount = 0, inProgressCount = 0;
 
   for (const m of manifests) {
-    const dp = (m.phases || {}).discussion;
+    const dp = phaseData(m, 'discussion');
     if (!dp) continue;
     const specPhase = phaseData(m, 'specification');
 
@@ -85,8 +85,9 @@ function discover(cwd) {
         // Look up discussion status
         let discStatus = 'unknown';
         if (m.work_type === 'epic') {
-          const items = ((m.phases || {}).discussion || {}).items || {};
-          discStatus = (items[srcName] || {}).status || 'unknown';
+          const discItems = phaseItems(m, 'discussion');
+          const match = discItems.find(i => i.name === srcName);
+          discStatus = match ? (match.status || 'unknown') : 'unknown';
         } else {
           discStatus = phaseStatus(m, 'discussion') || 'unknown';
         }

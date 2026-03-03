@@ -55,13 +55,13 @@ node .claude/skills/workflow-start/scripts/discovery.js
 Parse the output to understand the current workflow state:
 
 **From `epics` section:**
-- `items` — work units with `work_type: epic` — name, next_phase, phase_label, per-phase statuses
+- `work_units` — work units with `work_type: epic` — name, next_phase, phase_label, per-phase statuses
 
 **From `features` section:**
-- `items` — work units with `work_type: feature` — name, next_phase, phase_label, per-phase statuses
+- `work_units` — work units with `work_type: feature` — name, next_phase, phase_label, per-phase statuses
 
 **From `bugfixes` section:**
-- `items` — work units with `work_type: bugfix` — name, next_phase, phase_label, per-phase statuses (includes investigation)
+- `work_units` — work units with `work_type: bugfix` — name, next_phase, phase_label, per-phase statuses (includes investigation)
 
 **From `state` section:**
 - Counts for each work type, `has_any_work` flag

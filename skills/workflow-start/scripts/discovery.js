@@ -29,9 +29,9 @@ function discover(cwd) {
   }
 
   return {
-    epics: { items: epics, count: epics.length },
-    features: { items: features, count: features.length },
-    bugfixes: { items: bugfixes, count: bugfixes.length },
+    epics: { work_units: epics, count: epics.length },
+    features: { work_units: features, count: features.length },
+    bugfixes: { work_units: bugfixes, count: bugfixes.length },
     state: {
       has_any_work: manifests.length > 0,
       epic_count: epics.length,
@@ -58,9 +58,9 @@ function format(result) {
     lines.push('');
   }
 
-  emitSection('epics', result.epics.items);
-  emitSection('features', result.features.items);
-  emitSection('bugfixes', result.bugfixes.items);
+  emitSection('epics', result.epics.work_units);
+  emitSection('features', result.features.work_units);
+  emitSection('bugfixes', result.bugfixes.work_units);
 
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);

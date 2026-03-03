@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { loadManifest, phaseStatus, phaseItems, fileExists, listFiles, listDirs, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadManifest, phaseStatus, phaseItems, phaseData, fileExists, listFiles, listDirs, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
 
 const ALL_PHASES = ['research', 'discussion', 'investigation', 'specification', 'planning', 'implementation', 'review'];
 
@@ -51,7 +51,7 @@ function discover(cwd, workUnit) {
   if (workType === 'epic') {
     const epicDetail = {};
     for (const phase of ['research', 'discussion', 'specification', 'planning', 'implementation', 'review']) {
-      const pd = (manifest.phases || {})[phase];
+      const pd = phaseData(manifest, phase);
       if (!pd) continue;
       const items = phaseItems(manifest, phase);
       epicDetail[phase] = {

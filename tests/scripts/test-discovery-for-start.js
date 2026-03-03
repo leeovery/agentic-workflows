@@ -16,9 +16,9 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.state.epic_count, 0);
     assert.strictEqual(r.state.feature_count, 0);
     assert.strictEqual(r.state.bugfix_count, 0);
-    assert.strictEqual(r.epics.items.length, 0);
-    assert.strictEqual(r.features.items.length, 0);
-    assert.strictEqual(r.bugfixes.items.length, 0);
+    assert.strictEqual(r.epics.work_units.length, 0);
+    assert.strictEqual(r.features.work_units.length, 0);
+    assert.strictEqual(r.bugfixes.work_units.length, 0);
   });
 
   it('groups work units by type', () => {
@@ -30,9 +30,9 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.state.epic_count, 1);
     assert.strictEqual(r.state.feature_count, 1);
     assert.strictEqual(r.state.bugfix_count, 1);
-    assert.strictEqual(r.epics.items[0].name, 'v1');
-    assert.strictEqual(r.features.items[0].name, 'dark-mode');
-    assert.strictEqual(r.bugfixes.items[0].name, 'login-crash');
+    assert.strictEqual(r.epics.work_units[0].name, 'v1');
+    assert.strictEqual(r.features.work_units[0].name, 'dark-mode');
+    assert.strictEqual(r.bugfixes.work_units[0].name, 'login-crash');
   });
 
   it('computes next_phase for feature pipeline', () => {
@@ -41,8 +41,8 @@ describe('workflow-start discovery', () => {
       phases: { discussion: { status: 'concluded' } },
     });
     const r = discover(dir);
-    assert.strictEqual(r.features.items[0].next_phase, 'specification');
-    assert.strictEqual(r.features.items[0].phase_label, 'ready for specification');
+    assert.strictEqual(r.features.work_units[0].next_phase, 'specification');
+    assert.strictEqual(r.features.work_units[0].phase_label, 'ready for specification');
   });
 
   it('computes next_phase for bugfix pipeline', () => {
@@ -51,8 +51,8 @@ describe('workflow-start discovery', () => {
       phases: { investigation: { status: 'in-progress' } },
     });
     const r = discover(dir);
-    assert.strictEqual(r.bugfixes.items[0].next_phase, 'investigation');
-    assert.strictEqual(r.bugfixes.items[0].phase_label, 'investigation (in-progress)');
+    assert.strictEqual(r.bugfixes.work_units[0].next_phase, 'investigation');
+    assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'investigation (in-progress)');
   });
 
   it('computes next_phase for epic pipeline', () => {
@@ -61,8 +61,8 @@ describe('workflow-start discovery', () => {
       phases: { research: { status: 'concluded' } },
     });
     const r = discover(dir);
-    assert.strictEqual(r.epics.items[0].next_phase, 'discussion');
-    assert.strictEqual(r.epics.items[0].phase_label, 'ready for discussion');
+    assert.strictEqual(r.epics.work_units[0].next_phase, 'discussion');
+    assert.strictEqual(r.epics.work_units[0].phase_label, 'ready for discussion');
   });
 
   it('returns done when review is completed', () => {
@@ -77,7 +77,7 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.features.items[0].next_phase, 'done');
+    assert.strictEqual(r.features.work_units[0].next_phase, 'done');
   });
 
   it('includes per-phase statuses', () => {
@@ -89,7 +89,7 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    const p = r.features.items[0].phases;
+    const p = r.features.work_units[0].phases;
     assert.strictEqual(p.discussion, 'concluded');
     assert.strictEqual(p.specification, 'in-progress');
     assert.strictEqual(p.planning, 'none');
@@ -100,7 +100,7 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'active', { work_type: 'feature' });
     const r = discover(dir);
     assert.strictEqual(r.state.feature_count, 1);
-    assert.strictEqual(r.features.items[0].name, 'active');
+    assert.strictEqual(r.features.work_units[0].name, 'active');
   });
 
   it('handles multiple features', () => {
@@ -108,7 +108,7 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'b', { work_type: 'feature', phases: { specification: { status: 'concluded' } } });
     const r = discover(dir);
     assert.strictEqual(r.state.feature_count, 2);
-    assert.strictEqual(r.features.items.length, 2);
+    assert.strictEqual(r.features.work_units.length, 2);
   });
 
   it('includes correct phase keys per work type', () => {
@@ -116,12 +116,12 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'ft', { work_type: 'feature' });
     createManifest(dir, 'bf', { work_type: 'bugfix' });
     const r = discover(dir);
-    assert.ok('research' in r.epics.items[0].phases);
-    assert.ok(!('investigation' in r.epics.items[0].phases));
-    assert.ok('investigation' in r.bugfixes.items[0].phases);
-    assert.ok(!('research' in r.bugfixes.items[0].phases));
-    assert.ok(!('research' in r.features.items[0].phases));
-    assert.ok(!('investigation' in r.features.items[0].phases));
+    assert.ok('research' in r.epics.work_units[0].phases);
+    assert.ok(!('investigation' in r.epics.work_units[0].phases));
+    assert.ok('investigation' in r.bugfixes.work_units[0].phases);
+    assert.ok(!('research' in r.bugfixes.work_units[0].phases));
+    assert.ok(!('research' in r.features.work_units[0].phases));
+    assert.ok(!('investigation' in r.features.work_units[0].phases));
   });
 
   it('format() produces valid output', () => {
@@ -130,7 +130,7 @@ describe('workflow-start discovery', () => {
     // Access format via the module
     const mod = require('../../skills/workflow-start/scripts/discovery');
     // format isn't exported but we can verify the object structure is sound
-    assert.ok(r.features.items[0].name);
-    assert.ok(r.features.items[0].phases);
+    assert.ok(r.features.work_units[0].name);
+    assert.ok(r.features.work_units[0].phases);
   });
 });

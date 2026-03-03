@@ -31,7 +31,7 @@ function discover(cwd) {
   let concluded = 0;
 
   for (const m of manifests) {
-    const dp = (m.phases || {}).discussion;
+    const dp = phaseData(m, 'discussion');
     if (!dp) continue;
 
     if (m.work_type === 'epic') {
