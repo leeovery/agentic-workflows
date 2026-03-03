@@ -267,10 +267,57 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.next_phase, 'discussion');
     });
 
-    it('returns in-progress phases', () => {
+    it('returns in-progress planning', () => {
       const r = computeNextPhase({ work_type: 'feature', phases: { planning: { status: 'in-progress' } } });
       assert.strictEqual(r.next_phase, 'planning');
       assert.ok(r.phase_label.includes('in-progress'));
+    });
+
+    it('returns in-progress review', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { review: { status: 'in-progress' } } });
+      assert.strictEqual(r.next_phase, 'review');
+      assert.strictEqual(r.phase_label, 'review (in-progress)');
+    });
+
+    it('returns in-progress implementation', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { implementation: { status: 'in-progress' } } });
+      assert.strictEqual(r.next_phase, 'implementation');
+      assert.strictEqual(r.phase_label, 'implementation (in-progress)');
+    });
+
+    it('returns in-progress specification', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { specification: { status: 'in-progress' } } });
+      assert.strictEqual(r.next_phase, 'specification');
+      assert.strictEqual(r.phase_label, 'specification (in-progress)');
+    });
+
+    it('returns in-progress discussion', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
+      assert.strictEqual(r.next_phase, 'discussion');
+      assert.strictEqual(r.phase_label, 'discussion (in-progress)');
+    });
+
+    it('returns in-progress investigation (bugfix)', () => {
+      const r = computeNextPhase({ work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
+      assert.strictEqual(r.next_phase, 'investigation');
+      assert.strictEqual(r.phase_label, 'investigation (in-progress)');
+    });
+
+    it('returns in-progress research (epic)', () => {
+      const r = computeNextPhase({ work_type: 'epic', phases: { research: { status: 'in-progress' } } });
+      assert.strictEqual(r.next_phase, 'research');
+      assert.strictEqual(r.phase_label, 'research (in-progress)');
+    });
+
+    it('higher priority phase takes precedence', () => {
+      const r = computeNextPhase({
+        work_type: 'feature',
+        phases: {
+          implementation: { status: 'completed' },
+          review: { status: 'completed' },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'done');
     });
   });
 });

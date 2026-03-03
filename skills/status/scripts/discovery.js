@@ -1,8 +1,7 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, phaseData, listFiles, countFiles } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseData, countFiles } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);

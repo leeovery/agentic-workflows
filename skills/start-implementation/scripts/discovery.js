@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, loadManifest, phaseData, fileExists, listDirs } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, loadManifest, phaseData, fileExists } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);

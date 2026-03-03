@@ -129,4 +129,35 @@ describe('workflow-bridge discovery', () => {
     assert.strictEqual(r.epic_detail.discussion.items[0].name, 'auth');
     assert.strictEqual(r.epic_detail.specification.items[0].name, 'auth');
   });
+
+  it('detects research file existence', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { research: { status: 'in-progress' } },
+    });
+    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
+    const r = discover(dir, 'v1');
+    assert.strictEqual(r.phases.research.exists, true);
+    assert.strictEqual(r.phases.research.status, 'in-progress');
+  });
+
+  it('detects investigation file existence', () => {
+    createManifest(dir, 'crash', {
+      work_type: 'bugfix',
+      phases: { investigation: { status: 'in-progress' } },
+    });
+    createFile(dir, '.workflows/crash/investigation/crash.md', '# Investigation');
+    const r = discover(dir, 'crash');
+    assert.strictEqual(r.phases.investigation.exists, true);
+    assert.strictEqual(r.phases.investigation.status, 'in-progress');
+  });
+
+  it('reports false for missing research files', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { research: { status: 'in-progress' } },
+    });
+    const r = discover(dir, 'v1');
+    assert.strictEqual(r.phases.research.exists, false);
+  });
 });

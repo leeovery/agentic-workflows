@@ -220,4 +220,23 @@ describe('start-implementation discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.dependency_resolution.length, 0);
   });
+
+  it('handles resolved dep pointing to missing manifest', () => {
+    createManifest(dir, 'advanced', {
+      phases: {
+        planning: {
+          status: 'concluded',
+          format: 'local-markdown',
+          external_dependencies: [
+            { topic: 'nonexistent', state: 'resolved', task_id: 'task-1' },
+          ],
+        },
+      },
+    });
+    createFile(dir, '.workflows/advanced/planning/advanced/planning.md', '# Plan');
+    const r = discover(dir);
+    const res = r.dependency_resolution.find(d => d.plan === 'advanced');
+    assert.strictEqual(res.deps_satisfied, false);
+    assert.strictEqual(res.deps_blocking[0].reason, 'task not yet completed');
+  });
 });
