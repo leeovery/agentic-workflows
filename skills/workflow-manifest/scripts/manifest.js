@@ -404,12 +404,11 @@ function cmdSet(args) {
     return;
   }
 
-  // Phase-level: set <name> --phase <phase> --topic <topic> <field.path> <value>
-  if (positional.length !== 3) die('Usage: set <name> --phase <phase> --topic <topic> <field.path> <value>');
+  // Phase-level: set <name> --phase <phase> [--topic <topic>] <field.path> <value>
+  if (positional.length !== 3) die('Usage: set <name> --phase <phase> [--topic <topic>] <field.path> <value>');
 
   const name = positional[0];
   validatePhase(phase);
-  if (!topic) die('--topic is required for phase-level set');
 
   const fieldSegments = positional[1].split('.');
   const value = parseValue(positional[2]);

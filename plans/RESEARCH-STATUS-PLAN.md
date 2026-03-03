@@ -51,7 +51,7 @@ Change from marker scanning to manifest status authority:
 
 **File:** `skills/start-discussion/scripts/discovery.sh` (lines 44-52)
 
-Add `work_unit` and `status` fields per research file entry by reading from manifest via `--raw` (discovery script pattern):
+Add `work_unit` and `status` fields per research file entry by reading from manifest via CLI:
 
 ```yaml
 research:

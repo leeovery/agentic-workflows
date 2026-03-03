@@ -363,6 +363,43 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: set --phase without --topic (topicless phase)${NC}"
+setup_fixture
+run_cli init topicless --work-type feature --description "Topicless" >/dev/null 2>&1
+run_cli set topicless --phase research status in-progress >/dev/null 2>&1
+output=$(run_cli_stdout get topicless --phase research status)
+
+assert_equals "$output" "in-progress" "Set phase without topic routes to phases.<phase>"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: set --phase without --topic concludes research${NC}"
+setup_fixture
+run_cli init topicless2 --work-type epic --description "Topicless epic" >/dev/null 2>&1
+run_cli set topicless2 --phase research status in-progress >/dev/null 2>&1
+run_cli set topicless2 --phase research status concluded >/dev/null 2>&1
+output=$(run_cli_stdout get topicless2 --phase research status)
+
+assert_equals "$output" "concluded" "Topicless set works for epic too"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get --phase without --topic returns whole phase${NC}"
+setup_fixture
+run_cli init topicless3 --work-type feature --description "Topicless get" >/dev/null 2>&1
+run_cli set topicless3 --phase research status concluded >/dev/null 2>&1
+output=$(run_cli_stdout get topicless3 --phase research)
+
+assert_contains "$output" '"status": "concluded"' "Get phase without topic returns phase object"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: set rejects invalid phase names${NC}"
 setup_fixture
 run_cli init phase-check --work-type feature --description "Phase" >/dev/null 2>&1
