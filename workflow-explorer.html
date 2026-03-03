@@ -1919,7 +1919,7 @@ const FLOWCHARTS = {
       { id: 'more', label: 'More to explore?', shape: 'diamond', w: 120, h: 120, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Periodic review: more questions? Themes emerging? Ready for discussion/spec?' },
       { id: 'split', label: 'Themes emerging?', shape: 'diamond', w: 120, h: 120, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Over multiple sessions, topics may become distinct. Split if so.' },
       { id: 'split-files', label: 'Split into files', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Split exploration.md into semantic files (market-landscape.md, technical-feasibility.md, etc).' },
-      { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research never "concludes" — always open-ended.' },
+      { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research concludes when parked as discussion-ready.' },
       { id: 'next', label: 'Invoke /start-discussion', desc: 'Navigate to the discussion command to begin capturing architecture decisions from research output.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'discussion' },
     ],
     connections: [
@@ -2613,7 +2613,7 @@ const FLOWCHART_DESCS = {
   research: {
     summary: 'Explore ideas, feasibility, and validate concepts across technical, business, and market domains.',
     body: `<p>The simplest command — no discovery script, no prerequisites, no cache. Gathers context through 4 sequential questions (seed idea, existing knowledge, starting direction, constraints) then hands off to the <strong>technical-research</strong> skill.</p>
-<p>The skill acts as a research partner, looping through <strong>Ask → Discuss → Document → Commit</strong>. Output starts as a single file and splits as themes emerge. Research never formally "concludes" — it feeds into discussion when ready.</p>`,
+<p>The skill acts as a research partner, looping through <strong>Ask → Discuss → Document → Commit</strong>. Output starts as a single file and splits as themes emerge. Research concludes when the user parks a topic as discussion-ready.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', skill: 'technical-research', complexity: 'Simple' }
   },
   discussion: {
@@ -2662,7 +2662,7 @@ const FLOWCHART_DESCS = {
   'skill-research': {
     summary: 'The research skill — an interactive exploration loop across technical, product, and market domains.',
     body: `<p>Acts as a research partner. Uses structured questioning from <code>references/interview.md</code> to guide exploration. The core loop: <strong>Ask → Discuss → Document → Commit → Repeat</strong>.</p>
-<p>Output starts as a single <code>exploration.md</code> file and splits into separate files as distinct themes emerge. Research is open-ended — there is no formal "conclusion" status. When enough insight has accumulated, the user moves to discussion.</p>`,
+<p>Output starts as a single <code>exploration.md</code> file and splits into separate files as distinct themes emerge. Research concludes when the user parks a topic as discussion-ready. If they return to it, research reopens — same lifecycle as any other phase.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', complexity: 'Looping skill' }
   },
   'skill-discussion': {

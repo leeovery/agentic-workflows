@@ -71,7 +71,7 @@ Greenfield's mechanics (multi-topic, phase-centric, long-running) are exactly ri
 - **Soft guidance**: When entering a phase with incomplete prior work (e.g., specification with in-progress discussions), surface a warning: "2 discussions still in progress. Specification works best with all discussions concluded so it can analyze groupings fully. Proceed anyway?" User decides.
 - **No enforcement**: Topics move independently within an epic. One topic in planning while another is still in discussion is valid.
 
-Note: Research has no `concluded` status — it's open-ended and ongoing by design. It doesn't gate subsequent phases.
+Note: This was later revised — research now gets `in-progress` / `concluded` status like every other phase. See "Resolved: Research Phase Concludes" below (lines 496-502).
 
 ### Migration Implication
 
