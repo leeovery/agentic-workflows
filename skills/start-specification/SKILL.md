@@ -78,7 +78,7 @@ Parse the discovery output to understand:
 
 **From `specifications` array:** Each specification's name, work_unit, status, work_type, sources, and superseded_by (if applicable). Specifications with `status: superseded` should be noted but excluded from active counts.
 
-**From `cache` section:** `status` (valid/stale/none), `reason`, `generated`, `anchored_names`.
+**From `cache` section:** `entries` array — each entry has `status` (valid/stale), `reason`, `generated`, `anchored_names`. Empty array if no cache exists.
 
 **From `current_state`:** `concluded_count`, `spec_count`, `has_discussions`, `has_concluded`, `has_specs`, and other counts/booleans for routing.
 

@@ -63,22 +63,20 @@ When forming groupings:
 
 ## C. Save to Cache
 
+Write cache metadata to manifest:
+```bash
+MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
+$MANIFEST set {work_unit} phases.discussion.analysis_cache '{"checksum":"{checksum from current_state.discussions_checksum}","generated":"{ISO date}"}'
+```
+
 Create the cache directory if needed:
 ```bash
 mkdir -p .workflows/{work_unit}/.state
 ```
 
-Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`:
+Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter):
 
 ```markdown
----
-checksum: {checksum from current_state.discussions_checksum}
-generated: {ISO date}
-discussion_files:
-  - {discussion-name-1}.md
-  - {discussion-name-2}.md
----
-
 # Discussion Consolidation Analysis
 
 ## Recommended Groupings

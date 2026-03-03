@@ -78,36 +78,45 @@ describe('start-discussion discovery', () => {
     assert.strictEqual(r.state.has_discussions, true);
   });
 
-  it('detects valid cache', () => {
-    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
-    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
-
-    // Compute checksum for the research file
+  it('detects valid cache from manifest analysis_cache', () => {
     const crypto = require('crypto');
     const checksum = crypto.createHash('md5').update('# Notes').digest('hex');
 
-    createFile(dir, '.workflows/v1/.state/research-analysis.md',
-      `---\nchecksum: ${checksum}\ngenerated: 2026-01-01\n---\n# Analysis`);
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: {
+          status: 'concluded',
+          analysis_cache: { checksum, generated: '2026-01-01', files: ['notes.md'] },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
 
     const r = discover(dir);
     assert.strictEqual(r.cache.entries.length, 1);
     assert.strictEqual(r.cache.entries[0].status, 'valid');
   });
 
-  it('detects stale cache', () => {
-    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
+  it('detects stale cache from manifest analysis_cache', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: {
+          status: 'concluded',
+          analysis_cache: { checksum: 'old-checksum', generated: '2026-01-01', files: ['notes.md'] },
+        },
+      },
+    });
     createFile(dir, '.workflows/v1/research/notes.md', '# Notes updated');
-    createFile(dir, '.workflows/v1/.state/research-analysis.md',
-      '---\nchecksum: old-checksum\ngenerated: 2026-01-01\n---\n# Analysis');
 
     const r = discover(dir);
     assert.strictEqual(r.cache.entries[0].status, 'stale');
   });
 
-  it('returns no cache when none exists', () => {
+  it('returns empty cache entries when no cache exists', () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
     const r = discover(dir);
-    assert.strictEqual(r.cache.status, 'none');
     assert.strictEqual(r.cache.entries.length, 0);
   });
 
@@ -122,15 +131,20 @@ describe('start-discussion discovery', () => {
     assert.strictEqual(r.discussions.files[0].work_type, 'epic');
   });
 
-  it('extracts research_files from cache', () => {
-    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
-    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
-
+  it('reads research_files from manifest analysis_cache', () => {
     const crypto = require('crypto');
     const checksum = crypto.createHash('md5').update('# Notes').digest('hex');
 
-    createFile(dir, '.workflows/v1/.state/research-analysis.md',
-      `---\nchecksum: ${checksum}\ngenerated: 2026-01-01\nresearch_files:\n  - notes.md\n---\n# Analysis`);
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: {
+          status: 'concluded',
+          analysis_cache: { checksum, generated: '2026-01-01', files: ['notes.md'] },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
 
     const r = discover(dir);
     assert.strictEqual(r.cache.entries[0].research_files.length, 1);

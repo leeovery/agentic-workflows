@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, phaseStatus, phaseItems, phaseData, listFiles, listDirs, filesChecksum, readFrontmatterField, fileExists } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseStatus, phaseItems, phaseData, listFiles, listDirs, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -97,15 +97,14 @@ function discover(cwd) {
     specifications.push(spec);
   }
 
-  // --- Cache (discussion-consolidation-analysis) ---
+  // --- Cache (discussion-consolidation-analysis from manifest) ---
   const cacheEntries = [];
 
   for (const m of manifests) {
-    const cacheFile = path.join(workflowsDir, m.name, '.state', 'discussion-consolidation-analysis.md');
-    const cachedChecksum = readFrontmatterField(cacheFile, 'checksum');
-    if (!cachedChecksum) continue;
+    const discPhase = phaseData(m, 'discussion');
+    const cache = discPhase.analysis_cache;
+    if (!cache || !cache.checksum) continue;
 
-    const cachedDate = readFrontmatterField(cacheFile, 'generated');
     const discDir = path.join(workflowsDir, m.name, 'discussion');
     const discFiles = listFiles(discDir, '.md');
 
@@ -114,7 +113,7 @@ function discover(cwd) {
 
     if (discFiles.length > 0) {
       const currentChecksum = filesChecksum(discFiles.map(f => path.join(discDir, f)));
-      if (cachedChecksum === currentChecksum) {
+      if (cache.checksum === currentChecksum) {
         status = 'valid';
         reason = 'checksums match';
       }
@@ -124,6 +123,7 @@ function discover(cwd) {
 
     // Extract anchored names (grouping headings with existing specs)
     const anchoredNames = [];
+    const cacheFile = path.join(workflowsDir, m.name, '.state', 'discussion-consolidation-analysis.md');
     try {
       const content = fs.readFileSync(cacheFile, 'utf8');
       const headings = content.match(/^### .+$/gm) || [];
@@ -138,7 +138,7 @@ function discover(cwd) {
 
     cacheEntries.push({
       work_unit: m.name, status, reason,
-      checksum: cachedChecksum, generated: cachedDate || 'unknown',
+      checksum: cache.checksum, generated: cache.generated || 'unknown',
       anchored_names: anchoredNames,
     });
   }
@@ -157,9 +157,7 @@ function discover(cwd) {
   return {
     discussions: discussions,
     specifications: specifications,
-    cache: cacheEntries.length > 0
-      ? { entries: cacheEntries }
-      : { status: 'none', reason: 'no cache exists', entries: [] },
+    cache: { entries: cacheEntries },
     current_state: {
       discussions_checksum: discussionsChecksum,
       discussion_count: discCount,
@@ -204,7 +202,7 @@ function format(result) {
 
   lines.push('=== CACHE ===');
   if (result.cache.entries.length === 0) {
-    lines.push(`  status: ${result.cache.status}`);
+    lines.push('  (none)');
   } else {
     for (const c of result.cache.entries) {
       lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);

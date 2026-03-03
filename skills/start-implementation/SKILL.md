@@ -80,27 +80,20 @@ Parse the discovery output to understand:
 - Per plan `external_deps` - array of dependencies with topic, state, task_id
 - Per plan `has_unresolved_deps` - whether plan has unresolved dependencies
 - Per plan `unresolved_dep_count` - count of unresolved dependencies
+- Per plan `deps_satisfied` - whether all resolved deps have their tasks completed
+- Per plan `deps_blocking` - list of deps not yet satisfied with reason
 - `count` - total number of plans
 
 **From `implementation` section:**
 - `exists` - whether any implementation files exist
 - `files` - list of implementation files with: topic, status, current_phase, completed_phases, completed_tasks
 
-**From `dependency_resolution` section:**
-- Per plan `deps_satisfied` - whether all resolved deps have their tasks completed
-- Per plan `deps_blocking` - list of deps not yet satisfied with reason
-
 **From `environment` section:**
 - `setup_file_exists` - whether environment-setup.md exists
-- `requires_setup` - true, false, or unknown
+- `requires_setup` - true, false, or null (null when file doesn't exist)
 
 **From `state` section:**
 - `scenario` - one of: `"no_plans"`, `"single_plan"`, `"multiple_plans"`
-- `plans_concluded_count` - plans with status concluded
-- `plans_with_unresolved_deps` - plans with unresolved external deps
-- `plans_ready_count` - concluded plans with all deps satisfied
-- `plans_in_progress_count` - implementations in progress
-- `plans_completed_count` - implementations completed
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

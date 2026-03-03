@@ -85,13 +85,11 @@ Parse the discovery output to understand:
 - `counts.in_progress` and `counts.concluded` - totals for routing
 
 **From `cache` section:**
-- `status` - one of three values:
-  - `"valid"` - cache exists and checksums match (safe to load)
-  - `"stale"` - cache exists but research has changed (needs re-analysis)
-  - `"none"` - no cache file exists
-- `reason` - explanation of the status
-- `generated` - when the cache was created (null if none)
-- `research_files` - list of files that were analyzed
+- `entries` - array of cache entries (empty if no cache exists). Each entry has:
+  - `status` - `"valid"` (checksums match) or `"stale"` (research changed)
+  - `reason` - explanation of the status
+  - `generated` - when the cache was created
+  - `research_files` - list of files that were analyzed
 
 **From `state` section:**
 - `scenario` - one of: `"fresh"`, `"research_only"`, `"discussions_only"`, `"research_and_discussions"`

@@ -56,7 +56,7 @@ Features
 2. ...
 ```
 
-Build tree from `features.topics` array. Each topic shows `name` (titlecased) and `phase_label` (titlecased).
+Build tree from `features.items` array. Each topic shows `name` (titlecased) and `phase_label` (titlecased).
 
 ## Build Menu Options
 

@@ -28,7 +28,7 @@ Environment setup file found: .workflows/.state/environment-setup.md
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If `setup_file_exists` is false or `requires_setup` is unknown
+#### If `setup_file_exists` is false or `requires_setup` is null
 
 > *Output the next fenced block as a code block:*
 

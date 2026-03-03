@@ -8,7 +8,7 @@
 
 After the plan is selected:
 
-1. **Check the plan's `external_deps` and `dependency_resolution`** from the discovery output
+1. **Check the plan's `deps_satisfied` and `deps_blocking`** from the discovery output
 
 #### If all deps satisfied (or no deps)
 

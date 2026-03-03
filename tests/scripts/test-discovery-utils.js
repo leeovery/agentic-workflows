@@ -8,7 +8,7 @@ const { setupFixture, cleanupFixture, createFile } = require('./discovery-test-u
 
 const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
-  readFrontmatterField, loadManifest, loadActiveManifests,
+  loadManifest, loadActiveManifests,
   phaseStatus, phaseItems, phaseData, computeNextPhase,
 } = require('../../skills/workflow-shared/scripts/discovery-utils');
 
@@ -96,47 +96,6 @@ describe('discovery-utils', () => {
       createFile(dir, 'a.txt', 'hello');
       const result = filesChecksum([path.join(dir, 'a.txt'), path.join(dir, 'missing.txt')]);
       assert.ok(typeof result === 'string' && result.length === 32);
-    });
-  });
-
-  describe('readFrontmatterField', () => {
-    it('reads simple field', () => {
-      createFile(dir, 'doc.md', '---\ntitle: Hello World\n---\n# Body');
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'title'), 'Hello World');
-    });
-
-    it('strips double quotes', () => {
-      createFile(dir, 'doc.md', '---\nchecksum: "abc123"\n---\n');
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'checksum'), 'abc123');
-    });
-
-    it('strips single quotes', () => {
-      createFile(dir, 'doc.md', "---\nchecksum: 'abc123'\n---\n");
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'checksum'), 'abc123');
-    });
-
-    it('returns null for missing field', () => {
-      createFile(dir, 'doc.md', '---\ntitle: Hello\n---\n');
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'missing'), null);
-    });
-
-    it('returns null for missing file', () => {
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'nope.md'), 'title'), null);
-    });
-
-    it('returns null when no frontmatter', () => {
-      createFile(dir, 'doc.md', '# Just a heading\nSome text');
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'title'), null);
-    });
-
-    it('ignores --- in body content', () => {
-      createFile(dir, 'doc.md', '---\ntitle: Hello\n---\n# Body\n---\ntitle: Fake\n---');
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'title'), 'Hello');
-    });
-
-    it('handles field names with regex metacharacters', () => {
-      createFile(dir, 'doc.md', '---\nfield.name: value\n---\n');
-      assert.strictEqual(readFrontmatterField(path.join(dir, 'doc.md'), 'field.name'), 'value');
     });
   });
 

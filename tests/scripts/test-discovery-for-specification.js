@@ -110,18 +110,36 @@ describe('start-specification discovery', () => {
     assert.strictEqual(r.current_state.in_progress_count, 1);
   });
 
-  it('detects valid cache with anchored names', () => {
+  it('detects valid cache with anchored names from manifest', () => {
+    const crypto = require('crypto');
+
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: {
+        discussion: {
+          status: 'concluded',
+          analysis_cache: { checksum: null, generated: '2026-01-01' },
+        },
+      },
     });
     createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
 
-    const crypto = require('crypto');
     const checksum = crypto.createHash('md5').update('# Auth').digest('hex');
 
+    // Update manifest with correct checksum
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: {
+          status: 'concluded',
+          analysis_cache: { checksum, generated: '2026-01-01' },
+        },
+      },
+    });
+
+    // Cache file is pure markdown (no frontmatter)
     createFile(dir, '.workflows/auth/.state/discussion-consolidation-analysis.md',
-      `---\nchecksum: ${checksum}\ngenerated: 2026-01-01\n---\n### Auth\nContent here`);
+      '### Auth\nContent here');
     createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
 
     const r = discover(dir);
@@ -130,9 +148,9 @@ describe('start-specification discovery', () => {
     assert.ok(r.cache.entries[0].anchored_names.includes('auth'));
   });
 
-  it('returns no cache when none exists', () => {
+  it('returns empty cache entries when none exists', () => {
     const r = discover(dir);
-    assert.strictEqual(r.cache.status, 'none');
+    assert.strictEqual(r.cache.entries.length, 0);
   });
 
   it('computes discussions checksum', () => {
@@ -193,11 +211,14 @@ describe('start-specification discovery', () => {
   it('stale cache when discussions changed', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: {
+        discussion: {
+          status: 'concluded',
+          analysis_cache: { checksum: 'stale-hash', generated: '2026-01-01' },
+        },
+      },
     });
     createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth updated');
-    createFile(dir, '.workflows/auth/.state/discussion-consolidation-analysis.md',
-      '---\nchecksum: stale-hash\ngenerated: 2026-01-01\n---\n# Analysis');
     const r = discover(dir);
     assert.strictEqual(r.cache.entries[0].status, 'stale');
   });

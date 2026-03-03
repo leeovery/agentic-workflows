@@ -15,12 +15,12 @@ Using the discovery output, build the phase-centric view.
 ```
 Epic Overview
 
-@foreach(unit in epic.work_units)
+@foreach(unit in epics.items)
 {N}. {unit.name:(titlecase)}
    └─ {unit.phase_label:(titlecase)}
 @endforeach
 
-@if(epic.count == 0)
+@if(epics.count == 0)
 No epics in progress.
 @endif
 ```

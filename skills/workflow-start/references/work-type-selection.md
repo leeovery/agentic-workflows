@@ -31,7 +31,7 @@ Workflow Overview
 
 @if(epic_count > 0)
 Epics:
-@foreach(unit in epic.work_units)
+@foreach(unit in epics.items)
   {N}. {unit.name:(titlecase)}
      └─ {unit.phase_label:(titlecase)}
 @endforeach
@@ -39,7 +39,7 @@ Epics:
 
 @if(feature_count > 0)
 Features:
-@foreach(topic in features.topics)
+@foreach(topic in features.items)
   {N}. {topic.name:(titlecase)}
      └─ {topic.phase_label:(titlecase)}
 @endforeach
@@ -47,14 +47,14 @@ Features:
 
 @if(bugfix_count > 0)
 Bugfixes:
-@foreach(topic in bugfixes.topics)
+@foreach(topic in bugfixes.items)
   {N}. {topic.name:(titlecase)}
      └─ {topic.phase_label:(titlecase)}
 @endforeach
 @endif
 ```
 
-Use values from `epic.work_units`, `features.topics`, `bugfixes.topics`.
+Use values from `epics.items`, `features.items`, `bugfixes.items`.
 
 ## Ask Work Type
 

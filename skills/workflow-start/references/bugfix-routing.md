@@ -56,7 +56,7 @@ Bugfixes
 2. ...
 ```
 
-Build tree from `bugfixes.topics` array. Each topic shows `name` (titlecased) and `phase_label` (titlecased).
+Build tree from `bugfixes.items` array. Each topic shows `name` (titlecased) and `phase_label` (titlecased).
 
 ## Build Menu Options
 

@@ -10,10 +10,7 @@ function discover(cwd) {
 
   const plans = [];
   const implementations = [];
-  let plansConcluded = 0, plansWithUnresolvedDeps = 0;
-  let implInProgress = 0, implCompleted = 0;
 
-  // First pass: collect plan and impl data
   for (const m of manifests) {
     const planning = phaseData(m, 'planning');
     if (!planning.status) continue;
@@ -32,8 +29,28 @@ function discover(cwd) {
     const unresolvedCount = externalDeps.filter(d => d.state === 'unresolved').length;
     const hasUnresolved = unresolvedCount > 0;
 
-    if (planning.status === 'concluded') plansConcluded++;
-    if (hasUnresolved) plansWithUnresolvedDeps++;
+    // Dependency resolution: inline per plan
+    let depsSatisfied = true;
+    const depsBlocking = [];
+
+    for (const dep of externalDeps) {
+      if (dep.state === 'unresolved') {
+        depsSatisfied = false;
+        depsBlocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
+      } else if (dep.state === 'resolved' && dep.task_id) {
+        const depManifest = loadManifest(cwd, dep.topic);
+        const depImpl = depManifest ? phaseData(depManifest, 'implementation') : {};
+        const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
+
+        if (!completedTasks.includes(dep.task_id)) {
+          depsSatisfied = false;
+          depsBlocking.push({ topic: dep.topic, task_id: dep.task_id, reason: 'task not yet completed' });
+        }
+      } else if (dep.state === 'resolved' && !dep.task_id) {
+        depsSatisfied = false;
+        depsBlocking.push({ topic: dep.topic, reason: 'resolved dependency missing task reference' });
+      }
+    }
 
     plans.push({
       name: m.name,
@@ -50,6 +67,8 @@ function discover(cwd) {
       })),
       has_unresolved_deps: hasUnresolved,
       unresolved_dep_count: unresolvedCount,
+      deps_satisfied: depsSatisfied,
+      deps_blocking: depsBlocking,
     });
 
     // Implementation tracking
@@ -64,63 +83,13 @@ function discover(cwd) {
         completed_phases: completedPhases,
         completed_tasks: completedTasks,
       });
-
-      if (impl.status === 'in-progress') implInProgress++;
-      else if (impl.status === 'completed') implCompleted++;
     }
-  }
-
-  // Dependency resolution: cross-reference resolved deps against actual completion
-  const depResolution = [];
-  for (const plan of plans) {
-    if (plan.external_deps.length === 0) continue;
-
-    let allSatisfied = true;
-    const blocking = [];
-
-    for (const dep of plan.external_deps) {
-      if (dep.state === 'unresolved') {
-        allSatisfied = false;
-        blocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
-      } else if (dep.state === 'resolved' && dep.task_id) {
-        // Check if the referenced task is actually completed
-        const depManifest = loadManifest(cwd, dep.topic);
-        const depImpl = depManifest ? phaseData(depManifest, 'implementation') : {};
-        const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
-
-        if (!completedTasks.includes(dep.task_id)) {
-          allSatisfied = false;
-          blocking.push({ topic: dep.topic, task_id: dep.task_id, reason: 'task not yet completed' });
-        }
-      }
-    }
-
-    depResolution.push({ plan: plan.name, deps_satisfied: allSatisfied, deps_blocking: blocking });
-  }
-
-  // Compute ready count (concluded + all deps satisfied + not already in-progress/completed)
-  let plansReady = 0;
-  for (const plan of plans) {
-    if (plan.status !== 'concluded') continue;
-
-    // Skip if already implementing
-    const implEntry = implementations.find(i => i.topic === plan.name);
-    if (implEntry && (implEntry.status === 'in-progress' || implEntry.status === 'completed')) continue;
-
-    // Check deps
-    const resolution = depResolution.find(d => d.plan === plan.name);
-    if (resolution && !resolution.deps_satisfied) continue;
-
-    // Also check unresolved deps directly
-    if (plan.has_unresolved_deps) continue;
-
-    plansReady++;
   }
 
   // Environment
   const envFile = path.join(cwd, '.workflows', '.state', 'environment-setup.md');
   const envExists = fileExists(envFile);
-  let requiresSetup = 'unknown';
+  let requiresSetup = null;
   if (envExists) {
     try {
       const content = fs.readFileSync(envFile, 'utf8');
@@ -139,7 +108,6 @@ function discover(cwd) {
       exists: implementations.length > 0,
       files: implementations,
     },
-    dependency_resolution: depResolution,
     environment: {
       setup_file_exists: envExists,
       setup_file: '.workflows/.state/environment-setup.md',
@@ -147,11 +115,6 @@ function discover(cwd) {
     },
     state: {
       has_plans: plans.length > 0, plan_count: plans.length,
-      plans_concluded_count: plansConcluded,
-      plans_with_unresolved_deps: plansWithUnresolvedDeps,
-      plans_ready_count: plansReady,
-      plans_in_progress_count: implInProgress,
-      plans_completed_count: implCompleted,
       scenario,
     },
   };
@@ -170,6 +133,11 @@ function format(result) {
         deps = `, deps: ${p.external_deps.length} (${p.unresolved_dep_count} unresolved)`;
       }
       lines.push(`  ${p.name}: ${p.status}, format=${p.format}${deps}`);
+      if (p.deps_blocking.length > 0) {
+        for (const b of p.deps_blocking) {
+          lines.push(`    blocked: ${b.topic}${b.task_id ? ':' + b.task_id : ''} (${b.reason})`);
+        }
+      }
     }
   }
   lines.push('');
@@ -184,25 +152,13 @@ function format(result) {
   }
   lines.push('');
 
-  if (result.dependency_resolution.length > 0) {
-    lines.push('=== DEPENDENCY RESOLUTION ===');
-    for (const d of result.dependency_resolution) {
-      lines.push(`  ${d.plan}: satisfied=${d.deps_satisfied}`);
-      for (const b of d.deps_blocking) {
-        lines.push(`    blocked: ${b.topic}${b.task_id ? ':' + b.task_id : ''} (${b.reason})`);
-      }
-    }
-    lines.push('');
-  }
-
   lines.push('=== ENVIRONMENT ===');
   lines.push(`  exists: ${result.environment.setup_file_exists}, requires_setup: ${result.environment.requires_setup}`);
   lines.push('');
 
   lines.push('=== STATE ===');
   lines.push(`scenario: ${result.state.scenario}`);
-  lines.push(`plans: ${result.state.plan_count} total, ${result.state.plans_concluded_count} concluded, ${result.state.plans_ready_count} ready`);
-  lines.push(`impl: ${result.state.plans_in_progress_count} in-progress, ${result.state.plans_completed_count} completed`);
+  lines.push(`plans: ${result.state.plan_count} total`);
 
   return lines.join('\n') + '\n';
 }

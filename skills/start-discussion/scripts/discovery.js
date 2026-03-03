@@ -1,8 +1,7 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, phaseStatus, phaseItems, listFiles, filesChecksum, readFrontmatterField } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseStatus, phaseItems, phaseData, listFiles, filesChecksum } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -55,14 +54,13 @@ function discover(cwd) {
     }
   }
 
-  // --- Cache state ---
+  // --- Cache state (from manifest analysis_cache) ---
   const cacheEntries = [];
   for (const m of manifests) {
-    const cacheFile = path.join(workflowsDir, m.name, '.state', 'research-analysis.md');
-    const cachedChecksum = readFrontmatterField(cacheFile, 'checksum');
-    if (!cachedChecksum) continue;
+    const researchPhase = phaseData(m, 'research');
+    const cache = researchPhase.analysis_cache;
+    if (!cache || !cache.checksum) continue;
 
-    const cachedDate = readFrontmatterField(cacheFile, 'generated');
     const researchDir = path.join(workflowsDir, m.name, 'research');
     const rFiles = listFiles(researchDir, '.md');
 
@@ -71,7 +69,7 @@ function discover(cwd) {
 
     if (rFiles.length > 0) {
       const currentChecksum = filesChecksum(rFiles.map(f => path.join(researchDir, f)));
-      if (cachedChecksum === currentChecksum) {
+      if (cache.checksum === currentChecksum) {
         status = 'valid';
         reason = 'checksums match';
       }
@@ -79,28 +77,13 @@ function discover(cwd) {
       reason = 'no research files to compare';
     }
 
-    // Extract research_files list from cache body
-    const researchFilesList = [];
-    try {
-      const content = fs.readFileSync(cacheFile, 'utf8');
-      const lines = content.split('\n');
-      let inSection = false;
-      for (const line of lines) {
-        if (/^research_files:/.test(line)) { inSection = true; continue; }
-        if (inSection && /^---$/.test(line)) break;
-        if (inSection && /^\s*-\s+/.test(line)) {
-          researchFilesList.push(line.replace(/^\s*-\s+/, '').trim());
-        }
-      }
-    } catch {}
-
     cacheEntries.push({
       work_unit: m.name,
       status,
       reason,
-      checksum: cachedChecksum,
-      generated: cachedDate || 'unknown',
-      research_files: researchFilesList,
+      checksum: cache.checksum,
+      generated: cache.generated || 'unknown',
+      research_files: Array.isArray(cache.files) ? cache.files : [],
     });
   }
 
@@ -124,9 +107,7 @@ function discover(cwd) {
       files: discussions,
       counts: { in_progress: inProgress, concluded },
     },
-    cache: cacheEntries.length > 0
-      ? { entries: cacheEntries }
-      : { status: 'none', reason: 'no cache exists', entries: [] },
+    cache: { entries: cacheEntries },
     state: { has_research: hasResearch, has_discussions: hasDiscussions, scenario },
   };
 }
@@ -158,7 +139,7 @@ function format(result) {
 
   lines.push('=== CACHE ===');
   if (result.cache.entries.length === 0) {
-    lines.push(`  status: ${result.cache.status}, reason: ${result.cache.reason}`);
+    lines.push('  (none)');
   } else {
     for (const c of result.cache.entries) {
       lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);

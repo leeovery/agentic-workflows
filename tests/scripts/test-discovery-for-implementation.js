@@ -25,8 +25,6 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.plans.exists, true);
     assert.strictEqual(r.plans.files.length, 1);
     assert.strictEqual(r.state.scenario, 'single_plan');
-    assert.strictEqual(r.state.plans_concluded_count, 1);
-    assert.strictEqual(r.state.plans_ready_count, 1);
   });
 
   it('tracks implementation state', () => {
@@ -46,8 +44,6 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.implementation.exists, true);
     assert.strictEqual(r.implementation.files[0].status, 'in-progress');
     assert.strictEqual(r.implementation.files[0].completed_tasks.length, 2);
-    assert.strictEqual(r.state.plans_in_progress_count, 1);
-    assert.strictEqual(r.state.plans_ready_count, 0); // already in-progress
   });
 
   it('detects unresolved dependencies', () => {
@@ -66,8 +62,8 @@ describe('start-implementation discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.plans.files[0].has_unresolved_deps, true);
     assert.strictEqual(r.plans.files[0].unresolved_dep_count, 1);
-    assert.strictEqual(r.state.plans_with_unresolved_deps, 1);
-    assert.strictEqual(r.state.plans_ready_count, 0);
+    assert.strictEqual(r.plans.files[0].deps_satisfied, false);
+    assert.strictEqual(r.plans.files[0].deps_blocking[0].reason, 'dependency unresolved');
   });
 
   it('resolves dependencies against completed tasks', () => {
@@ -95,9 +91,9 @@ describe('start-implementation discovery', () => {
     createFile(dir, '.workflows/advanced/planning/advanced/planning.md', '# Plan');
 
     const r = discover(dir);
-    const advRes = r.dependency_resolution.find(d => d.plan === 'advanced');
-    assert.strictEqual(advRes.deps_satisfied, true);
-    assert.strictEqual(r.state.plans_ready_count, 1); // advanced is ready (core is already in-progress)
+    const adv = r.plans.files.find(p => p.name === 'advanced');
+    assert.strictEqual(adv.deps_satisfied, true);
+    assert.strictEqual(adv.deps_blocking.length, 0);
   });
 
   it('blocks when resolved dep task not completed', () => {
@@ -122,9 +118,30 @@ describe('start-implementation discovery', () => {
     createFile(dir, '.workflows/advanced/planning/advanced/planning.md', '# Plan');
 
     const r = discover(dir);
-    const advRes = r.dependency_resolution.find(d => d.plan === 'advanced');
-    assert.strictEqual(advRes.deps_satisfied, false);
-    assert.strictEqual(advRes.deps_blocking[0].task_id, 'core-1-1');
+    const adv = r.plans.files.find(p => p.name === 'advanced');
+    assert.strictEqual(adv.deps_satisfied, false);
+    assert.strictEqual(adv.deps_blocking[0].task_id, 'core-1-1');
+    assert.strictEqual(adv.deps_blocking[0].reason, 'task not yet completed');
+  });
+
+  it('blocks when resolved dep has no task_id', () => {
+    createManifest(dir, 'advanced', {
+      phases: {
+        planning: {
+          status: 'concluded',
+          format: 'local-markdown',
+          external_dependencies: [
+            { topic: 'core', state: 'resolved' },
+          ],
+        },
+      },
+    });
+    createFile(dir, '.workflows/advanced/planning/advanced/planning.md', '# Plan');
+
+    const r = discover(dir);
+    const adv = r.plans.files.find(p => p.name === 'advanced');
+    assert.strictEqual(adv.deps_satisfied, false);
+    assert.strictEqual(adv.deps_blocking[0].reason, 'resolved dependency missing task reference');
   });
 
   it('detects environment setup file', () => {
@@ -157,20 +174,6 @@ describe('start-implementation discovery', () => {
     createFile(dir, '.workflows/b/planning/b/planning.md', '# B');
     const r = discover(dir);
     assert.strictEqual(r.state.scenario, 'multiple_plans');
-    assert.strictEqual(r.state.plans_concluded_count, 1);
-  });
-
-  it('completed implementation is not counted as ready', () => {
-    createManifest(dir, 'auth', {
-      phases: {
-        planning: { status: 'concluded', format: 'local-markdown' },
-        implementation: { status: 'completed' },
-      },
-    });
-    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
-    const r = discover(dir);
-    assert.strictEqual(r.state.plans_completed_count, 1);
-    assert.strictEqual(r.state.plans_ready_count, 0);
   });
 
   it('plan_id included when present', () => {
@@ -182,14 +185,14 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.plans.files[0].plan_id, 'LIN-42');
   });
 
-  it('no environment file returns unknown', () => {
+  it('no environment file returns null for requires_setup', () => {
     createManifest(dir, 'auth', {
       phases: { planning: { status: 'concluded', format: 'local-markdown' } },
     });
     createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
     const r = discover(dir);
     assert.strictEqual(r.environment.setup_file_exists, false);
-    assert.strictEqual(r.environment.requires_setup, 'unknown');
+    assert.strictEqual(r.environment.requires_setup, null);
   });
 
   it('specification_exists is tracked', () => {
@@ -212,13 +215,14 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.state.scenario, 'no_plans');
   });
 
-  it('dependency resolution with no deps is empty', () => {
+  it('plan with no deps has deps_satisfied true', () => {
     createManifest(dir, 'auth', {
       phases: { planning: { status: 'concluded', format: 'local-markdown' } },
     });
     createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
     const r = discover(dir);
-    assert.strictEqual(r.dependency_resolution.length, 0);
+    assert.strictEqual(r.plans.files[0].deps_satisfied, true);
+    assert.strictEqual(r.plans.files[0].deps_blocking.length, 0);
   });
 
   it('handles resolved dep pointing to missing manifest', () => {
@@ -235,8 +239,33 @@ describe('start-implementation discovery', () => {
     });
     createFile(dir, '.workflows/advanced/planning/advanced/planning.md', '# Plan');
     const r = discover(dir);
-    const res = r.dependency_resolution.find(d => d.plan === 'advanced');
-    assert.strictEqual(res.deps_satisfied, false);
-    assert.strictEqual(res.deps_blocking[0].reason, 'task not yet completed');
+    const adv = r.plans.files.find(p => p.name === 'advanced');
+    assert.strictEqual(adv.deps_satisfied, false);
+    assert.strictEqual(adv.deps_blocking[0].reason, 'task not yet completed');
+  });
+
+  it('no dependency_resolution in return value', () => {
+    createManifest(dir, 'auth', {
+      phases: { planning: { status: 'concluded', format: 'local-markdown' } },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.dependency_resolution, undefined);
+  });
+
+  it('no dead count fields in state', () => {
+    createManifest(dir, 'auth', {
+      phases: {
+        planning: { status: 'concluded', format: 'local-markdown' },
+        implementation: { status: 'completed' },
+      },
+    });
+    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.state.plans_concluded_count, undefined);
+    assert.strictEqual(r.state.plans_with_unresolved_deps, undefined);
+    assert.strictEqual(r.state.plans_ready_count, undefined);
+    assert.strictEqual(r.state.plans_in_progress_count, undefined);
+    assert.strictEqual(r.state.plans_completed_count, undefined);
   });
 });

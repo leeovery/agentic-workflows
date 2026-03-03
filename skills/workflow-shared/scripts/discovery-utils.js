@@ -36,34 +36,6 @@ function filesChecksum(paths) {
   return hash.digest('hex');
 }
 
-function readFrontmatterField(filePath, field) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n');
-    let inFrontmatter = false;
-    let dashes = 0;
-    const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    for (const line of lines) {
-      if (line.trim() === '---') {
-        dashes++;
-        if (dashes === 1) { inFrontmatter = true; continue; }
-        if (dashes === 2) break;
-      }
-      if (inFrontmatter) {
-        const match = line.match(new RegExp(`^${escaped}:\\s*(.+)$`));
-        if (match) {
-          let val = match[1].trim();
-          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-            val = val.slice(1, -1);
-          }
-          return val;
-        }
-      }
-    }
-  } catch {}
-  return null;
-}
-
 function loadManifest(cwd, name) {
   const p = path.join(cwd, '.workflows', name, 'manifest.json');
   try {
@@ -133,7 +105,6 @@ module.exports = {
   listDirs,
   countFiles,
   filesChecksum,
-  readFrontmatterField,
   loadManifest,
   loadActiveManifests,
   phaseStatus,
