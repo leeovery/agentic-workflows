@@ -1,6 +1,6 @@
 ---
 name: start-investigation
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(.claude/skills/start-investigation/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(node .claude/skills/start-investigation/scripts/discovery.js), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(ls .workflows/)
 hooks:
   PreToolUse:
     - hooks:
@@ -59,12 +59,12 @@ Invoke the `/migrate` skill and assess its output.
 
 ## Step 1: Discovery State
 
-!`.claude/skills/start-investigation/scripts/discovery.sh`
+!`node .claude/skills/start-investigation/scripts/discovery.js`
 
-If the above shows a script invocation rather than YAML output, the dynamic content preprocessor did not run. Execute the script before continuing:
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
-.claude/skills/start-investigation/scripts/discovery.sh
+node .claude/skills/start-investigation/scripts/discovery.js
 ```
 
 Parse the discovery output to understand:

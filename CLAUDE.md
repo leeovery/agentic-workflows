@@ -50,11 +50,13 @@ skills/
 
   # Unified entry points
   workflow-start/              # Unified entry point - discovers state, routes by work type
-    scripts/discovery.sh       #   Comprehensive cross-phase discovery
+    scripts/discovery.js       #   Comprehensive cross-phase discovery
     references/                #   Work type selection, routing references
   workflow-bridge/             # Pipeline continuation - discovers next phase, enters plan mode
-    scripts/discovery.sh       #   Topic-specific or phase-centric discovery
+    scripts/discovery.js       #   Topic-specific or phase-centric discovery
     references/                #   Work-type-specific continuation logic
+  workflow-shared/             # Shared utilities used by other workflow skills
+    scripts/discovery-utils.js #   Discovery helpers (manifest loading, phase state, checksums)
   workflow-manifest/           # Manifest CLI — single source of truth for workflow state
     scripts/manifest.js        #   Node.js CLI (get/set/list/init/archive)
 
@@ -74,25 +76,25 @@ skills/
   start-research/            # Begin research exploration
     references/              #   Context gathering, handoffs
   start-discussion/          # Discussion - discovery mode or bridge mode (topic+work_type)
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
     references/              #   Discovery flow, context gathering
   start-investigation/       # Investigation - discovery mode or bridge mode
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
     references/              #   Discovery flow
   start-specification/       # Specification - discovery mode or bridge mode
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
     references/              #   Discovery flow, grouping analysis
   start-planning/            # Planning - discovery mode or bridge mode
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
     references/              #   Discovery flow, cross-cutting context
   start-implementation/      # Implementation - discovery mode or bridge mode
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
     references/              #   Discovery flow, dependency checking
   start-review/              # Review - discovery mode or bridge mode
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
     references/              #   Discovery flow, plan display
   status/                    # Show workflow status and next steps
-    scripts/discovery.sh     #   Discovery script
+    scripts/discovery.js     #   Discovery script
   view-plan/                 # View plan tasks and progress
 
 .claude/skills/

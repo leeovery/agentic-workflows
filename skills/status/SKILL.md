@@ -1,7 +1,7 @@
 ---
 name: status
 disable-model-invocation: true
-allowed-tools: Bash(.claude/skills/status/scripts/discovery.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
+allowed-tools: Bash(node .claude/skills/status/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -30,15 +30,15 @@ Invoke the `/migrate` skill and assess its output.
 
 ## Step 1: Discovery State
 
-!`.claude/skills/status/scripts/discovery.sh`
+!`node .claude/skills/status/scripts/discovery.js`
 
-If the above shows a script invocation rather than YAML output, the dynamic content preprocessor did not run. Execute the script before continuing:
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
-.claude/skills/status/scripts/discovery.sh
+node .claude/skills/status/scripts/discovery.js
 ```
 
-If YAML content is already displayed, it has been run on your behalf.
+If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output. **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

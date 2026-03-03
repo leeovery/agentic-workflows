@@ -1,7 +1,7 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(.claude/skills/workflow-bridge/scripts/discovery.sh)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(node .claude/skills/workflow-bridge/scripts/discovery.js)
 ---
 
 Enter plan mode with deterministic continuation instructions.
@@ -21,12 +21,12 @@ This skill receives context from the calling processing skill:
 
 ## Step 1: Run Discovery
 
-!`.claude/skills/workflow-bridge/scripts/discovery.sh`
+!`node .claude/skills/workflow-bridge/scripts/discovery.js`
 
-If the above shows a script invocation rather than YAML output, the dynamic content preprocessor did not run. Execute the script before continuing:
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
-.claude/skills/workflow-bridge/scripts/discovery.sh {work_unit}
+node .claude/skills/workflow-bridge/scripts/discovery.js {work_unit}
 ```
 
 The output contains: `work_type`, `phases` (per-phase status), `next_phase`, and for epic work type, `epic_detail` with item-level state. Use the known work type and work unit from the calling context:

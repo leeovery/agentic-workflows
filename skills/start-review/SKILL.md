@@ -1,6 +1,6 @@
 ---
 name: start-review
-allowed-tools: Bash(.claude/skills/start-review/scripts/discovery.sh), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
+allowed-tools: Bash(node .claude/skills/start-review/scripts/discovery.js), Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -62,15 +62,15 @@ Invoke the `/migrate` skill and assess its output.
 
 ## Step 1: Discovery State
 
-!`.claude/skills/start-review/scripts/discovery.sh`
+!`node .claude/skills/start-review/scripts/discovery.js`
 
-If the above shows a script invocation rather than YAML output, the dynamic content preprocessor did not run. Execute the script before continuing:
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
-.claude/skills/start-review/scripts/discovery.sh
+node .claude/skills/start-review/scripts/discovery.js
 ```
 
-If YAML content is already displayed, it has been run on your behalf.
+If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
