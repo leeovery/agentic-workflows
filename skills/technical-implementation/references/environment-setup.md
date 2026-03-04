@@ -21,7 +21,7 @@ Look for: `.workflows/.state/environment-setup.md`
 
 This file contains natural language instructions for setting up the implementation environment. It's project-specific.
 
-## If Setup Document Exists
+#### If setup document exists
 
 Read and follow the instructions. Common setup tasks include:
 
@@ -34,7 +34,7 @@ Read and follow the instructions. Common setup tasks include:
 
 Execute each instruction and verify it succeeds before proceeding.
 
-## If Setup Document Missing
+#### If setup document is missing
 
 Ask the user:
 
@@ -46,7 +46,7 @@ If they provide instructions, offer to save them:
 
 If they say no setup is needed, create `.workflows/.state/environment-setup.md` with "No special setup required." and commit. This prevents asking the same question in future sessions.
 
-## No Setup Required
+#### If no setup is required
 
 If the environment setup document contains only "No special setup required" (or similar), skip environment setup and proceed directly to reading the plan.
 

@@ -20,11 +20,11 @@ Also check for new cross-cutting specification files that didn't exist at that c
 
 ## Reporting
 
-**If no changes detected:**
+#### If no changes detected
 
 > "Specification unchanged since planning started."
 
-**If changes detected:**
+#### If changes detected
 
 Summarise the extent of changes:
 
