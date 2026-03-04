@@ -305,9 +305,13 @@ Load **[task-loop.md](references/task-loop.md)** and follow its instructions as 
 
 After the loop completes:
 
-→ If the task loop exited early (user chose `stop`), proceed to **Step 8**.
+#### If the task loop exited early (user chose `stop`)
 
-→ Otherwise, proceed to **Step 7**.
+→ Proceed to **Step 8**.
+
+#### Otherwise
+
+→ Proceed to **Step 7**.
 
 ---
 
@@ -315,9 +319,13 @@ After the loop completes:
 
 Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instructions as written.
 
-→ If new tasks were created in the plan, return to **Step 6**.
+#### If new tasks were created in the plan
 
-→ If no tasks were created, proceed to **Step 8**.
+→ Return to **Step 6**.
+
+#### If no tasks were created
+
+→ Proceed to **Step 8**.
 
 ---
 

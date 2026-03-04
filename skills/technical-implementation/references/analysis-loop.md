@@ -22,9 +22,11 @@ F. Create tasks in plan → invoke-task-writer.md
 
 Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle {N}`).
 
-→ If `analysis_cycle <= 3`, proceed to **B. Git Checkpoint**.
+#### If `analysis_cycle` <= 3
 
-If `analysis_cycle > 3`:
+→ Proceed to **B. Git Checkpoint**.
+
+#### If `analysis_cycle` > 3
 
 **Do NOT skip analysis autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running analysis until no issues are found. Present the choice and let the user decide.
 
@@ -52,9 +54,13 @@ Analysis has run {N-1} times so far. You can continue (recommended if issues wer
 
 Ensure a clean working tree before analysis. Run `git status`.
 
-→ If the working tree is clean, proceed to **C. Dispatch Analysis Agents**.
+#### If the working tree is clean
 
-If there are unstaged changes or untracked files, categorize them:
+→ Proceed to **C. Dispatch Analysis Agents**.
+
+#### If there are unstaged changes or untracked files
+
+Categorize them:
 
 - **Implementation files** (files touched by `impl({work_unit}):` commits) — stage these automatically.
 - **Unexpected files** (files not touched during implementation) — present to the user:
@@ -119,9 +125,13 @@ Commit the synthesis output:
 impl({work_unit}): analysis cycle {N} — synthesis
 ```
 
-→ If `STATUS: clean`, return to the skill for **Step 8**.
+#### If `STATUS` is `clean`
 
-→ If `STATUS: tasks_proposed`, proceed to **E. Approval Gate**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+
+#### If `STATUS` is `tasks_proposed`
+
+→ Proceed to **E. Approval Gate**.
 
 ---
 
@@ -223,9 +233,11 @@ Revise the task content in the staging file based on the user's feedback. Re-pre
 
 After all tasks processed:
 
-→ If any tasks have `status: approved`, proceed to **F. Create Tasks in Plan**.
+#### If any tasks have `status: approved`
 
-→ If all tasks were skipped:
+→ Proceed to **F. Create Tasks in Plan**.
+
+#### If all tasks were skipped
 
 Commit the staging file updates (include manifest if `analysis_gate_mode` was updated):
 
@@ -233,7 +245,7 @@ Commit the staging file updates (include manifest if `analysis_gate_mode` was up
 impl({work_unit}): analysis cycle {N} — tasks skipped
 ```
 
-Return to the skill for **Step 8**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 ---
 

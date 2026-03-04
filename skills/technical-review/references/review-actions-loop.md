@@ -298,9 +298,11 @@ Revise the task content in the staging file based on the user's feedback. Re-pre
 
 After all tasks processed:
 
-→ If any tasks have `status: approved`, proceed to **D. Create Tasks in Plan**.
+#### If any tasks have `status: approved`
 
-→ If all tasks were skipped:
+→ Proceed to **D. Create Tasks in Plan**.
+
+#### If all tasks were skipped
 
 Commit the staging file updates:
 

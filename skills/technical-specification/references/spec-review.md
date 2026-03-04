@@ -30,9 +30,11 @@ Record the current cycle number — used for tracking file naming (`c{N}`).
 
 Commit the updated manifest.
 
-→ If `review_cycle <= 3`, proceed to **B. Phase 1 — Input Review**.
+**If `review_cycle` <= 3:**
 
-#### If `review_cycle > 3`
+→ Proceed to **B. Phase 1 — Input Review**.
+
+#### If `review_cycle` > 3
 
 Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} finding_gate_mode`).
 
