@@ -120,9 +120,9 @@ describe('status discovery', () => {
         planning: {
           status: 'concluded',
           format: 'local-markdown',
-          external_dependencies: [
-            { topic: 'core', state: 'unresolved', task_id: 'core-1' },
-          ],
+          external_dependencies: {
+            core: { state: 'unresolved', task_id: 'core-1' },
+          },
         },
       },
     });

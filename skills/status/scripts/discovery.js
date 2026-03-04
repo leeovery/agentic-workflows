@@ -89,8 +89,10 @@ function discover(cwd) {
       if (planStatus === 'in-progress') planInProgress++;
     }
 
-    const externalDeps = Array.isArray(plan.external_dependencies) ? plan.external_dependencies : [];
-    const hasUnresolved = externalDeps.some(d => d.state === 'unresolved');
+    const externalDepsObj = (plan.external_dependencies && typeof plan.external_dependencies === 'object' && !Array.isArray(plan.external_dependencies))
+      ? plan.external_dependencies
+      : {};
+    const hasUnresolved = Object.values(externalDepsObj).some(d => d.state === 'unresolved');
 
     // Implementation
     const impl = phaseData(m, 'implementation');
@@ -130,8 +132,8 @@ function discover(cwd) {
         status: planStatus,
         ...(planStatus && {
           format: plan.format || null,
-          external_deps: externalDeps.map(d => ({
-            topic: d.topic, state: d.state,
+          external_deps: Object.entries(externalDepsObj).map(([topic, d]) => ({
+            topic, state: d.state,
             ...(d.task_id && { task_id: d.task_id }),
           })),
           has_unresolved_deps: hasUnresolved,

@@ -95,7 +95,7 @@ format. Consolidate your plans to a single format before linking.
 For each plan, read the `external_dependencies` from the manifest:
 
 1. **Read `external_dependencies`** via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} external_dependencies`
-2. **Categorize each dependency** by its `state` field:
+2. **Categorize each dependency** by iterating the object's entries. Each key is a topic, each value has a `state` field:
    - **Unresolved**: `state: unresolved` (no task linked)
    - **Resolved**: `state: resolved` (has `task_id`)
    - **Satisfied externally**: `state: satisfied_externally`
@@ -146,8 +146,9 @@ For each unresolved dependency:
 
 For each resolved match:
 
-1. **Update the dependency in the manifest**:
-   - Change the dependency's `state: unresolved` to `state: resolved` and add `task_id: {task-id}` via manifest CLI
+1. **Update the dependency in the manifest** via dot-path set:
+   - Set `state` to `resolved`: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.{dep-topic}.state resolved`
+   - Set `task_id`: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.{dep-topic}.task_id {task-id}`
 
 2. **Create dependency in output format**:
    - Load `../technical-planning/references/output-formats/{format}/graph.md`

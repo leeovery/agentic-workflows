@@ -52,9 +52,9 @@ describe('start-implementation discovery', () => {
         planning: {
           status: 'concluded',
           format: 'local-markdown',
-          external_dependencies: [
-            { topic: 'core', state: 'unresolved', task_id: 'core-1-1' },
-          ],
+          external_dependencies: {
+            core: { state: 'unresolved', task_id: 'core-1-1' },
+          },
         },
       },
     });
@@ -82,9 +82,9 @@ describe('start-implementation discovery', () => {
         planning: {
           status: 'concluded',
           format: 'local-markdown',
-          external_dependencies: [
-            { topic: 'core', state: 'resolved', task_id: 'core-1-1' },
-          ],
+          external_dependencies: {
+            core: { state: 'resolved', task_id: 'core-1-1' },
+          },
         },
       },
     });
@@ -109,9 +109,9 @@ describe('start-implementation discovery', () => {
         planning: {
           status: 'concluded',
           format: 'local-markdown',
-          external_dependencies: [
-            { topic: 'core', state: 'resolved', task_id: 'core-1-1' },
-          ],
+          external_dependencies: {
+            core: { state: 'resolved', task_id: 'core-1-1' },
+          },
         },
       },
     });
@@ -130,9 +130,9 @@ describe('start-implementation discovery', () => {
         planning: {
           status: 'concluded',
           format: 'local-markdown',
-          external_dependencies: [
-            { topic: 'core', state: 'resolved' },
-          ],
+          external_dependencies: {
+            core: { state: 'resolved' },
+          },
         },
       },
     });
@@ -231,9 +231,9 @@ describe('start-implementation discovery', () => {
         planning: {
           status: 'concluded',
           format: 'local-markdown',
-          external_dependencies: [
-            { topic: 'nonexistent', state: 'resolved', task_id: 'task-1' },
-          ],
+          external_dependencies: {
+            nonexistent: { state: 'resolved', task_id: 'task-1' },
+          },
         },
       },
     });

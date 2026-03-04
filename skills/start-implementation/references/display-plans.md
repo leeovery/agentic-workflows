@@ -152,7 +152,7 @@ Recreate with actual work unit names and states from discovery.
 
 1. Identify the plan and the specific dependency
 2. Confirm with the user which dependency to mark as satisfied
-3. Update the dependency's `state` to `satisfied_externally` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies [...]`)
+3. Update the dependency's `state` to `satisfied_externally` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.{dep-topic}.state satisfied_externally`)
 4. Commit the change
 5. Re-run classification and re-present this display
 

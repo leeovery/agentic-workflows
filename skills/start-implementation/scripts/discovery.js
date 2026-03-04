@@ -21,11 +21,12 @@ function discover(cwd) {
     const specFile = path.join(workflowsDir, m.name, 'specification', m.name, 'specification.md');
     const impl = phaseData(m, 'implementation');
 
-    // External dependencies
-    const externalDeps = Array.isArray(planning.external_dependencies)
+    // External dependencies (object keyed by topic)
+    const externalDepsObj = (planning.external_dependencies && typeof planning.external_dependencies === 'object' && !Array.isArray(planning.external_dependencies))
       ? planning.external_dependencies
-      : [];
+      : {};
 
+    const externalDeps = Object.entries(externalDepsObj).map(([topic, d]) => ({ topic, ...d }));
     const unresolvedCount = externalDeps.filter(d => d.state === 'unresolved').length;
     const hasUnresolved = unresolvedCount > 0;
 
