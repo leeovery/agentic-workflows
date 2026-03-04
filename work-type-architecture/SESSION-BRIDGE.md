@@ -1,4 +1,4 @@
-# Session Bridge — Audit Round 4 (Discussion Complete)
+# Session Bridge — Audit Round 5 (Fixes Complete)
 
 ## What We're Doing
 
@@ -6,28 +6,25 @@ This PR (`feat/work-type-architecture-v2`) implements work-type architecture for
 
 ## Current State
 
-Rounds 1–4 complete. All fixes committed. Tests pass:
-- 161/161 discovery tests (was 159, added 2 research tests)
-- 88/88 manifest CLI tests (was 80, added 8 push tests)
-- 540/540 migration tests (was 118 for m016, added 13 for m017, others unchanged)
+Rounds 1–5 complete. All fixes committed. Tests pass:
+- 161/161 discovery tests
+- 88/88 manifest CLI tests
+- 540/540 migration tests
 
-Round 4 fixes implemented across 11 commits:
-1. `add-item` → `init-phase` rename (all call sites, tests, docs)
-2. New `push` command for array append
-3. `external_dependencies` array → object conversion (+ migration 017)
-4. `completed_tasks`/`completed_phases` writes in task loop
-5. `computeNextPhase` research handling for all non-bugfix types
-6. Epic spec sources checked at item level
-7. Positional argument redesign ($0=wt, $1=wu, $2=topic)
-8. Small targeted fixes (Findings 7, 8, 10, 11)
-9. Em-dash conventions and epic status rule (Findings 9, 13)
-10. Heading conventions — H4 for conditionals (Findings 16, 17)
+Round 5 dispatched 10 agents. Found 2 issues, both fixed:
+1. Mode detection in 6 start-{phase} skills missing $2 (topic) — gap from Round 4 Phase 7
+2. 13 bold routing conditionals → H4 across 5 files (1 rejected — instructional, not routing)
+
+Full discussion log at `work-type-architecture/AUDIT-ROUND5-DISCUSSION.md`.
 
 ## What Needs to Happen Next
 
-Dispatch 10 Round 5 agents to verify all fixes. Audit checklist updated with sections 15–20.
+Dispatch Round 6 agents to verify Round 5 fixes. Audit checklist updated with sections 21–22.
 
-See the "Summary: Agreed Fixes" table at the bottom of `AUDIT-ROUND4-DISCUSSION.md` for the full list.
+### Key Decisions Made in Round 5
+
+- **Routing vs instructional conditionals**: H4 (`#### If`) is only for routing — choosing between mutually exclusive execution paths. Bold "if" text that provides guidance or suggestions within a single path stays as bold. Example: "If you catch yourself violating TDD..." is instructional, not routing.
+- **Mode detection three-arg pattern**: All start-{phase} skills must document $0, $1, $2 and include the resolution formula. The mode detection was missed in Phase 7 of the Round 4 fixes.
 
 ### Key Decisions Made in Round 4
 
@@ -46,7 +43,7 @@ See the "Summary: Agreed Fixes" table at the bottom of `AUDIT-ROUND4-DISCUSSION.
 - **Rendering instruction scope**: Only user-facing output blocks need rendering instructions. Bash command blocks and file path references are exempt.
 - **Step 0 consolidation**: `/migrate` skill owns the STOP gate and conditional branching. Entry-point skills just say "Invoke the `/migrate` skill and assess its output."
 - **Dynamic output**: Even for variable content, provide a rendering instruction + fenced block with placeholder template.
-- **Bold vs H4 conditionals**: Bold is valid only when nested under an H4. Top-level conditionals within a step must use H4.
+- **Bold vs H4 conditionals**: Bold is valid only when nested under an H4. Top-level routing conditionals within a step must use H4. Instructional/guidance "if" text stays bold.
 - **Split display blocks**: Intentional pattern for header + iteration + per-item template (not a violation).
 
 ## Process Rules
@@ -67,8 +64,9 @@ See the "Summary: Agreed Fixes" table at the bottom of `AUDIT-ROUND4-DISCUSSION.
 
 ## Files to Read
 
-- `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md` — **READ FIRST** — full discussion log with all decisions, fix list, and disposition of every finding
-- `work-type-architecture/AUDIT-CHECKLIST.md` — the living audit checklist (sections 1–14)
+- `work-type-architecture/AUDIT-ROUND5-DISCUSSION.md` — **READ FIRST** — Round 5 findings, dispositions, and fixes
+- `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md` — Round 4 discussion log with all architectural decisions
+- `work-type-architecture/AUDIT-CHECKLIST.md` — the living audit checklist (sections 1–22)
 - `work-type-architecture/AUDIT-ROUND1-FIXES.md` — fix tracker from Round 1 (all completed)
 - `work-type-architecture/ARCHITECTURE-FIX-PLAN.md` — the original 8-fix architecture plan
 - `work-type-architecture/DISCOVERY-CLEANUP-PLAN.md` — the 7-fix discovery cleanup plan

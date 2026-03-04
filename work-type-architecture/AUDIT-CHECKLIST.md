@@ -297,6 +297,31 @@ Round 4 fixed remaining instances of bold text and H2 used for top-level conditi
 
 ---
 
+## Round 6 Checks
+
+Source: Round 5 audit findings and fixes (AUDIT-ROUND5-DISCUSSION.md).
+
+### 21. Phase Skill Mode Detection — Three-Arg Pattern
+
+Round 5 found that all 6 start-{phase} skills were missing the `$2` (topic) argument in their mode detection logic. All now document three args and use the resolution formula.
+
+**What to flag**:
+- Any start-{phase} skill Step 2 missing `topic = $2 (optional)` in the args line
+- Missing resolution line: `topic = $2, or if not provided and work_type is not epic, topic = $1`
+- Conditional branches still referencing `work_unit` instead of `topic` for bridge mode detection
+- `start-discussion` using `topic = $1` (old naming, should be `work_unit = $1`)
+
+### 22. Bold Conditionals — Routing vs Instructional
+
+Round 5 converted 13 bold routing conditionals to H4. One finding was rejected because it was instructional guidance, not routing.
+
+**What to flag**:
+- Bold conditionals (`**If ...:**`) that are top-level routing (mutually exclusive execution paths) — should be H4
+- Do NOT flag bold "if" text that is instructional guidance, suggestions, or recovery instructions (e.g., "If you catch yourself violating TDD...")
+- The distinction: routing conditionals choose between different execution paths; instructional "if" provides guidance within a single path
+
+---
+
 ## How to Use This Document
 
 1. Dispatch audit agents — each agent gets this full checklist plus the relevant source plans
