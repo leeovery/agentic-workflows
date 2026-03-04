@@ -202,15 +202,46 @@ The routing tables pass `{work_unit}` as $1 for epics. But the start-{phase} ski
 
 **User context**: This is likely a knock-on effect from early in the PR where an agent did a find-and-replace swapping "topic" for "work_unit". The user caught and largely fixed this, but some instances in the routing tables remain.
 
-### Discussion: In Progress
+### Discussion
 
-This needs further investigation. The core question: for epic bridge mode invocations like `/start-discussion epic {???}`, what should $1 actually be? Options:
-1. $1 = work_unit, skill does mini-discovery for topic (contradicts "skips discovery" in bridge mode)
-2. $1 = topic, skill reverse-looks-up the work_unit (expensive, fragile)
-3. Two positional args: $0 = work_type, $1 = work_unit, $2 = topic (API change)
-4. Different bridge mode semantics for epic vs feature/bugfix
+**Background**: The positional argument pattern (`$0` = work_type, `$1` = topic) was introduced before this PR when feature and bugfix pipelines were added. At that time there was no concept of work units — everything was one big group of artifacts. The work-unit concept was added in this PR to constrain analysis scope (e.g., preventing cross-feature data from leaking into analysis). During implementation, an agent did a find-and-replace changing "topic" to "work_unit", which conflated the two concepts.
 
-This is suspected to be a larger discussion. Documentation paused here to capture state before continuing.
+**Key principle from user**: Topic and work_unit are **different concepts** even when they have the same string value (feature/bugfix). They represent different things. We should never assume they're interchangeable, and the system should handle them consistently across all work types.
+
+**The problem**: For epic, the skill needs two pieces of information — the work_unit (to find the manifest) and the topic (to know which item within the phase). The original single-argument pattern can't express both.
+
+**Considered and rejected**:
+- Colon-delimited syntax (`epic payments-overhaul:payment-processing`) — adds parsing complexity, edge cases with colons in names, no real benefit over positional
+- $1 = topic with reverse lookup to find work_unit — expensive, fragile
+- Different bridge semantics per work type — inconsistent
+
+### Decision
+
+**Three positional arguments**: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional)
+
+**Rules**:
+- Feature/bugfix: always two args (`$0 $1`). Topic inferred from work_unit since they share the same value for these work types.
+- Epic with known topic: three args (`$0 $1 $2`). Full bridge mode — skip all discovery.
+- Epic without topic: two args (`$0 $1`). Scoped discovery within the epic to determine topic.
+
+**Skill resolution logic**:
+```
+work_unit = $1                                    (always present)
+topic = $2 || (wt !== 'epic' ? $1 : null)        (infer for feature/bugfix, null triggers discovery for epic)
+```
+
+**Examples**:
+```
+/start-discussion feature auth-flow                           → bridge mode (topic = auth-flow)
+/start-investigation bugfix login-crash                       → bridge mode (topic = login-crash)
+/start-discussion epic payments-overhaul payment-processing   → bridge mode (topic = payment-processing)
+/start-specification epic payments-overhaul                   → scoped discovery (spec is not 1:1 from discussion)
+/start-research epic payments-overhaul                        → scoped discovery (research has no topic)
+```
+
+**Note on specification**: Epic specification doesn't take a topic because it's not one-to-one from discussion to specification. The skill analyses all concluded discussions within the epic and determines groupings. This is already the intended behaviour — `/start-specification epic {work_unit}` runs scoped discovery.
+
+**Impact**: Update CLAUDE.md two-mode pattern docs, all routing tables (epic-continuation, epic-routing, feature-routing, bugfix-routing, feature-continuation, bugfix-continuation), and all start-{phase} skill mode detection logic.
 
 ---
 
