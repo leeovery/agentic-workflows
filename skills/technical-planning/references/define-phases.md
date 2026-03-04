@@ -67,10 +67,6 @@ Continue to **Review and Approve** below.
 
 Present the phase structure to the user as rendered markdown (not in a code block). Then, separately, present the choices:
 
-**STOP.** Wait for user response.
-
-**Phase Structure**
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -81,6 +77,8 @@ Present the phase structure to the user as rendered markdown (not in a code bloc
 - **Or navigate** — a different phase or task, or the leading edge.
 · · · · · · · · · · · ·
 ```
+
+**STOP.** Wait for user response.
 
 #### If the user provides feedback
 

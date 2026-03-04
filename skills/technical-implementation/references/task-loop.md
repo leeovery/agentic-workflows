@@ -70,7 +70,7 @@ Task {id}: {Task Name} — {blocked/failed}
 
 #### If `stop`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 7**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 ---
 

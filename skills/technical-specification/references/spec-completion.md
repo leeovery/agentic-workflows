@@ -131,9 +131,27 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 ## F. Pipeline Continuation
 
+Read the specification type from the manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} type
+```
+
+#### If `type` is `cross-cutting`
+
+> *Output the next fenced block as a code block:*
+
+```
+Cross-cutting specification concluded: {topic}
+
+This specification defines patterns/policies referenced by feature plans.
+It does not proceed to planning independently.
+```
+
+#### If `type` is `feature` (or not set)
+
 Check the work type via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`).
 
-#### If `work_type` is set (`feature`, `bugfix`, or `epic`)
+**If `work_type` is set** (`feature`, `bugfix`, or `epic`):
 
 This specification is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
@@ -145,7 +163,7 @@ Completed phase: specification
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
 
-#### If `work_type` is not set
+**If `work_type` is not set:**
 
 > *Output the next fenced block as a code block:*
 

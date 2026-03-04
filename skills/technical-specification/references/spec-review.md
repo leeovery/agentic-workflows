@@ -34,6 +34,16 @@ Commit the updated manifest.
 
 #### If `review_cycle > 3`
 
+Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} finding_gate_mode`).
+
+**If `finding_gate_mode: auto`:**
+
+Auto mode is active — pass through to review. Section D's safety cap (cycle 5) handles escalation.
+
+→ Proceed to **B. Phase 1 — Input Review**.
+
+**If `finding_gate_mode: gated` (or not set):**
+
 **Do NOT skip review autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running review until no issues are found. Present the choice and let the user decide.
 
 > *Output the next fenced block as a code block:*

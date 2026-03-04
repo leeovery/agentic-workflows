@@ -92,7 +92,11 @@ Proceed with synthesis?
 
 #### If `no`
 
-User has chosen to skip synthesis. This is a terminal condition, but check for pipeline continuation first.
+User has chosen to skip synthesis. Set review status to completed — the review produced a verdict, even if the user declines to act on it now.
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+```
 
 **Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
 
@@ -141,6 +145,36 @@ Synthesize non-blocking findings?
 → Proceed to **B. Dispatch Review Synthesizer**.
 
 #### If `no`
+
+Set review status to completed — the review produced a verdict, even if the user declines to act on non-blocking comments.
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+```
+
+**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+
+**If work_type is set** (feature, bugfix, or epic):
+
+This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+
+```
+Pipeline bridge for: {work_unit}
+Work type: {work_type from manifest}
+Completed phase: review
+
+Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
+```
+
+**If work_type is not set:**
+
+> *Output the next fenced block as a code block:*
+
+```
+Review complete: {work_unit}
+
+Non-blocking comments noted. The implementation has been validated.
+```
 
 **STOP.** Do not proceed — terminal condition.
 
