@@ -324,7 +324,7 @@ All entry-point skills that present discovery state, menus, or interactive choic
 
 ### Rendering Instructions
 
-Every fenced block in skill files must be preceded by a rendering instruction:
+Every **user-facing output** fenced block in skill files must be preceded by a rendering instruction. Fenced blocks that are model instructions (bash commands to execute, file paths to load) are exempt — they are not displayed to the user.
 
 ```
 > *Output the next fenced block as a code block:*
