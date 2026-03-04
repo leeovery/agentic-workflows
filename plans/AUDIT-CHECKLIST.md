@@ -57,7 +57,7 @@ $MANIFEST set {work_unit} phases.research.analysis_cache '{"checksum":"..."}'
 - Old dot-path syntax: `{name}.phases.discussion.status` (the dot-delimited name prefix)
 - `--raw` flag anywhere
 - Phase-level metadata (like `analysis_cache`) accessed via `--phase --topic` instead of work-unit-level dot-path
-- Missing `--topic` on phase operations that should have it
+- Missing `--topic` on phase operations that should have it (note: `--phase` without `--topic` is valid for topicless phases like research)
 
 ### 3. Work Type Architecture Correctness
 
@@ -69,10 +69,10 @@ Three work types: Epic, Feature, Bugfix. A work unit is an instance of a work ty
 
 **Key**: Skills never know the internal structure — the CLI abstracts it via `--phase --topic` flags.
 
-**workflow-start naming**: `epics: { items: [...] }`, `features: { items: [...] }`, `bugfixes: { items: [...] }` — all plural, all use `items`.
+**workflow-start naming**: `epics: { work_units: [...] }`, `features: { work_units: [...] }`, `bugfixes: { work_units: [...] }` — all plural, all use `work_units`.
 
 **What to flag**:
-- `work_units` or `topics` keys (old naming, replaced by `items`)
+- `items` or `topics` keys in workflow-start (replaced by `work_units`)
 - `epic` singular key (should be `epics`)
 - `greenfield` work type (replaced by `epic`)
 - Skills that hardcode manifest internal structure (flat vs items) instead of using CLI flags
@@ -91,7 +91,7 @@ Things that should no longer exist anywhere in the codebase.
 - `dependency_resolution` top-level array (flattened into plan entries as `deps_satisfied`/`deps_blocking`)
 - Dead state counts: `plans_concluded_count`, `plans_with_unresolved_deps`, `plans_ready_count`, `plans_in_progress_count`, `plans_completed_count`
 - `cache.status` / `cache.reason` at top level (normalized to always `cache: { entries: [...] }`)
-- `work_units` / `topics` keys in workflow-start (replaced by `items`)
+- `items` / `topics` keys in workflow-start (replaced by `work_units`)
 
 **Research status**: No "never concludes" language. Research supports `in-progress` / `concluded` status via manifest. Migration 016 detects concluded research via `> **Discussion-ready**:` marker.
 
@@ -116,6 +116,58 @@ Check all skill files (SKILL.md, references/*.md) against CLAUDE.md conventions.
 - Load directives: no `→` before Load line, bold the markdown link
 - Reference file headers: `# Title` + `*Reference for **[parent-skill](../SKILL.md)***` + `---`
 - Zero Output Rule blockquote present in entry-point skills that invoke processing skills
+
+---
+
+## Round 2 Checks
+
+Source: Round 1 fixes — verifying correctness of changes made.
+
+### 6. Workflow-Start Discovery Shape
+
+Round 1 renamed `items` to `work_units` in workflow-start discovery output.
+
+**Correct shape**: `epics: { work_units: [...] }`, `features: { work_units: [...] }`, `bugfixes: { work_units: [...] }` — all plural group names, all use `work_units`.
+
+**What to flag**:
+- Any remaining `.items` references in workflow-start skill files, references, or tests
+- `topics` key anywhere in workflow-start (old naming)
+- Note: `work_units` in `skills/status/scripts/discovery.js` is correct — different context (flat list of all units)
+
+### 7. Topicless Phase Operations
+
+Round 1 updated the manifest CLI to allow `--phase` without `--topic` for phases that don't have topics (currently only research).
+
+**Valid calls**:
+```
+$MANIFEST set {work_unit} --phase research status in-progress
+$MANIFEST set {work_unit} --phase research status concluded
+$MANIFEST get {work_unit} --phase research status
+```
+
+**What to flag**:
+- `--phase research --topic` with any topic value — research has no topics
+- Any remaining code that works around the old limitation (e.g., using work-unit-level dot-path `phases.research.status` to avoid the --topic requirement when `--phase` would be more appropriate)
+
+### 8. Discovery Script Abstractions
+
+Round 1 enforced use of `phaseData()` and `phaseItems()` from discovery-utils.
+
+**What to flag**:
+- Direct access to `(m.phases || {}).{phase}` — should use `phaseData(m, '{phase}')`
+- Direct access to `.items` on phase objects — should use `phaseItems(m, '{phase}')`
+- Discovery scripts that import `phaseData` or `phaseItems` but don't use them (or vice versa — use the pattern but don't import)
+
+### 9. Round 1 Convention Fixes Verification
+
+Verify the specific convention fixes from Round 1 are correct:
+
+- `**⚠️ ZERO OUTPUT RULE**:` (with emoji) present in: start-bugfix, start-investigation, start-research, and all other entry-point skills that invoke processing skills
+- Step 0 (migrations) present in ALL entry-point skills including view-plan and link-dependencies
+- No duplicate H4 headings anywhere
+- No nested H4 conditionals (sub-conditions should use bold text)
+- No `→ Proceed to` used for backward/upward navigation
+- Rendering instructions match block content (no markdown formatting inside code blocks)
 
 ---
 
