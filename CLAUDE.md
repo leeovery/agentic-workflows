@@ -58,7 +58,7 @@ skills/
   workflow-shared/             # Shared utilities used by other workflow skills
     scripts/discovery-utils.js #   Discovery helpers (manifest loading, phase state, checksums)
   workflow-manifest/           # Manifest CLI — single source of truth for workflow state
-    scripts/manifest.js        #   Node.js CLI (get/set/list/init/archive)
+    scripts/manifest.js        #   Node.js CLI (get/set/list/init/init-phase/push/archive)
 
   # Entry-point skills (user-invocable — gather context, invoke processing skills)
   migrate/                   # Keep workflow files in sync with system design
@@ -287,7 +287,7 @@ Processing skills run long and may hit context compaction. The hook system provi
 **Session state files:**
 - Stored at `.workflows/.cache/sessions/{session_id}.yaml`
 - Created by entry-point skills before invoking processing skills
-- Contain: topic, skill path, artifact path, optional pipeline context
+- Contain: topic, skill path, artifact path
 - Ephemeral — cleaned up on session end, gitignored
 
 **First-run bootstrap:**
@@ -314,6 +314,7 @@ MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 $MANIFEST get {work_unit} --phase discussion --topic {topic} status    # phase-level read
 $MANIFEST set {work_unit} --phase discussion --topic {topic} status concluded  # phase-level write
 $MANIFEST init-phase {work_unit} --phase discussion --topic {topic}    # create phase entry
+$MANIFEST push {work_unit} --phase implementation --topic {topic} completed_tasks "task-1"  # append to array
 $MANIFEST get {work_unit} work_type                                    # work-unit-level read
 $MANIFEST set {work_unit} phases.research.analysis_cache '{"checksum":"..."}' # work-unit-level write (dot-path)
 ```
