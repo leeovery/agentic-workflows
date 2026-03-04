@@ -77,15 +77,16 @@ Parse the discovery output to understand:
 
 ## Step 2: Determine Mode
 
-Check for arguments: work_type = `$0`, work_unit = `$1`
+Check for arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional)
+Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`
 
 Investigation is always bugfix work_type. If work_type is provided, it should be `bugfix`.
 
-#### If `work_type` and `work_unit` are both provided
+#### If `topic` resolved (bridge mode)
 
 → Proceed to **Step 3** (Validate Investigation).
 
-#### If `work_type` is provided without `work_unit`
+#### If `work_type` and `work_unit` provided but no `topic` (scoped discovery)
 
 → Proceed to **Step 4** (Route Based on Scenario).
 

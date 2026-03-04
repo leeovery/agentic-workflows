@@ -95,13 +95,14 @@ Parse the discovery output to understand:
 
 ## Step 2: Determine Mode
 
-Check for arguments: work_type = `$0`, work_unit = `$1`
+Check for arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional)
+Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`
 
-#### If `work_type` and `work_unit` are both provided
+#### If `topic` resolved (bridge mode)
 
 → Proceed to **Step 3**.
 
-#### If `work_type` is provided without `work_unit`
+#### If `work_type` and `work_unit` provided but no `topic` (scoped discovery)
 
 Store work_type for the handoff.
 
