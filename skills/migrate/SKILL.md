@@ -16,9 +16,11 @@ Run the migration script:
 .claude/skills/migrate/scripts/migrate.sh
 ```
 
-### If files were updated
+#### If files were updated
 
 The script will list which files were updated. Present this to the user:
+
+> *Output the next fenced block as a code block:*
 
 ```
 {list from script output}
@@ -28,7 +30,9 @@ Review changes with `git diff`, then proceed when ready.
 
 Wait for user acknowledgment before returning control to the calling skill.
 
-### If no updates needed
+#### If no updates needed
+
+> *Output the next fenced block as a code block:*
 
 ```
 All documents up to date.
