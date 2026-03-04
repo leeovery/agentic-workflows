@@ -95,7 +95,7 @@ Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manife
 Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specification.
 ```
 
-→ Present the next pending finding, or proceed to **C. After All Findings Processed**.
+→ Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
 
 #### If `finding_gate_mode: gated`
 
@@ -129,7 +129,7 @@ Incorporate feedback and re-present the proposed content **in full**. Update the
 Finding {N} of {total}: {brief_title:(titlecase)} — added.
 ```
 
-→ Present the next pending finding, or proceed to **C. After All Findings Processed**.
+→ Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
 
 #### If `auto`
 
@@ -152,7 +152,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 Finding {N} of {total}: {brief_title:(titlecase)} — skipped.
 ```
 
-→ Present the next pending finding, or proceed to **C. After All Findings Processed**.
+→ Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
 
 ---
 

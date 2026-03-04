@@ -192,12 +192,12 @@ First, choose the Output Format.
 
 Present the recommendation:
 
-Existing plans use **{format}**. Use the same format for consistency?
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
+Existing plans use **{format}**. Use the same format for consistency?
+
 - **`y`/`yes`** — Use {format}
 - **`n`/`no`** — See all available formats
 · · · · · · · · · · · ·
@@ -207,7 +207,20 @@ Existing plans use **{format}**. Use the same format for consistency?
 
 #### If no recommendation, or user declined
 
-Present the formats from **[output-formats.md](references/output-formats.md)** to the user — including description, pros, cons, and "best for". Number each format and ask the user to pick.
+Read **[output-formats.md](references/output-formats.md)** and present each format to the user.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+@foreach(format in output_formats)
+{N}. **{format.name}** — {format.description}
+   Best for: {format.best_for}
+@endforeach
+
+Select a format (enter number):
+· · · · · · · · · · · ·
+```
 
 **STOP.** Wait for the user to choose.
 
