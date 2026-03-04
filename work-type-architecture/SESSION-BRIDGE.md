@@ -1,4 +1,4 @@
-# Session Bridge — Audit Round 5 (Fixes Complete)
+# Session Bridge — Audit Round 6 Complete
 
 ## What We're Doing
 
@@ -6,20 +6,29 @@ This PR (`feat/work-type-architecture-v2`) implements work-type architecture for
 
 ## Current State
 
-Rounds 1–5 complete. All fixes committed. Tests pass:
+Rounds 1–6 complete. All fixes committed. Tests pass:
 - 161/161 discovery tests
 - 88/88 manifest CLI tests
 - 540/540 migration tests
 
-Round 5 dispatched 10 agents. Found 2 issues, both fixed:
-1. Mode detection in 6 start-{phase} skills missing $2 (topic) — gap from Round 4 Phase 7
-2. 13 bold routing conditionals → H4 across 5 files (1 rejected — instructional, not routing)
+Round 6 dispatched 20 agents in two waves:
+- **Wave 1** (10 agents): Focused regression + convention checks. Found 3 minor issues, all fixed.
+- **Wave 2** (10 agents): Comprehensive full-codebase audit — every file, every line, against all plans and conventions. 227 files total. **Zero findings.**
 
-Full discussion log at `work-type-architecture/AUDIT-ROUND5-DISCUSSION.md`.
+Round 6 fixes:
+1. `→ Present` non-standard navigation verb → `→ Return to` (3 instances in process-review-findings.md)
+2. Bare user-facing text moved into rendered menu block (technical-planning/SKILL.md)
+3. Dynamic format selection output given rendering instruction + @foreach template (technical-planning/SKILL.md)
+
+Full discussion log at `work-type-architecture/AUDIT-ROUND6-DISCUSSION.md`.
 
 ## What Needs to Happen Next
 
-Dispatch Round 6 agents to verify Round 5 fixes. Audit checklist updated with sections 21–22.
+The audit is converging. Round 4 found 12 issues, Round 5 found 2, Round 6 found 3 minor convention issues. The comprehensive wave 2 audit read every file and found nothing. The PR is ready for final review or merge.
+
+### Key Decisions Made in Round 6
+
+- No new architectural decisions — Round 6 was purely verification.
 
 ### Key Decisions Made in Round 5
 
@@ -64,7 +73,8 @@ Dispatch Round 6 agents to verify Round 5 fixes. Audit checklist updated with se
 
 ## Files to Read
 
-- `work-type-architecture/AUDIT-ROUND5-DISCUSSION.md` — **READ FIRST** — Round 5 findings, dispositions, and fixes
+- `work-type-architecture/AUDIT-ROUND6-DISCUSSION.md` — **READ FIRST** — Round 6 findings and comprehensive audit results
+- `work-type-architecture/AUDIT-ROUND5-DISCUSSION.md` — Round 5 findings, dispositions, and fixes
 - `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md` — Round 4 discussion log with all architectural decisions
 - `work-type-architecture/AUDIT-CHECKLIST.md` — the living audit checklist (sections 1–22)
 - `work-type-architecture/AUDIT-ROUND1-FIXES.md` — fix tracker from Round 1 (all completed)
