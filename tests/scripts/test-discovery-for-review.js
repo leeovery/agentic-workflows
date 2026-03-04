@@ -177,4 +177,39 @@ describe('start-review discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.plans.files[0].specification_exists, false);
   });
+
+  it('discovers epic planning items with reviews', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        planning: {
+          items: {
+            'auth': { status: 'concluded', format: 'local-markdown' },
+            'billing': { status: 'concluded', format: 'local-markdown' },
+          },
+        },
+        implementation: {
+          items: {
+            'auth': { status: 'completed' },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/planning/auth/planning.md', '# Auth Plan');
+    createFile(dir, '.workflows/v1/planning/billing/planning.md', '# Billing Plan');
+    createFile(dir, '.workflows/v1/review/auth/r1/review.md', '**QA Verdict**: Approve');
+    const r = discover(dir);
+    assert.strictEqual(r.plans.files.length, 2);
+    const auth = r.plans.files.find(p => p.name === 'auth');
+    assert.strictEqual(auth.work_type, 'epic');
+    assert.strictEqual(auth.implementation_status, 'completed');
+    assert.strictEqual(auth.review_count, 1);
+    assert.strictEqual(auth.latest_review_verdict, 'Approve');
+    const billing = r.plans.files.find(p => p.name === 'billing');
+    assert.strictEqual(billing.implementation_status, 'none');
+    assert.strictEqual(billing.review_count, 0);
+    // Reviews section
+    assert.strictEqual(r.reviews.entries.length, 1);
+    assert.strictEqual(r.reviews.entries[0].name, 'auth');
+  });
 });

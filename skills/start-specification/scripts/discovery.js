@@ -68,39 +68,61 @@ function discover(cwd) {
   let specCount = 0;
 
   for (const m of manifests) {
-    const specFile = path.join(workflowsDir, m.name, 'specification', m.name, 'specification.md');
-    if (!fileExists(specFile)) continue;
+    if (m.work_type === 'epic') {
+      const specItems = phaseItems(m, 'specification');
+      for (const item of specItems) {
+        const specFile = path.join(workflowsDir, m.name, 'specification', item.name, 'specification.md');
+        if (!fileExists(specFile)) continue;
 
-    const sp = phaseData(m, 'specification');
-    const status = sp.status || 'in-progress';
-    if (status === 'superseded') continue;
+        const status = item.status || 'in-progress';
+        if (status === 'superseded') continue;
 
-    specCount++;
-    const spec = {
-      name: m.name, work_unit: m.name, status,
-      work_type: m.work_type,
-    };
+        specCount++;
+        const spec = {
+          name: item.name, work_unit: m.name, status,
+          work_type: m.work_type,
+        };
 
-    if (sp.superseded_by) spec.superseded_by = sp.superseded_by;
+        if (item.superseded_by) spec.superseded_by = item.superseded_by;
 
-    // Sources from manifest
-    if (sp.sources && typeof sp.sources === 'object') {
-      spec.sources = Object.entries(sp.sources).map(([srcName, srcData]) => {
-        const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'incorporated') : 'incorporated';
-        // Look up discussion status
-        let discStatus = 'unknown';
-        if (m.work_type === 'epic') {
+        if (item.sources && typeof item.sources === 'object') {
           const discItems = phaseItems(m, 'discussion');
-          const match = discItems.find(i => i.name === srcName);
-          discStatus = match ? (match.status || 'unknown') : 'unknown';
-        } else {
-          discStatus = phaseStatus(m, 'discussion') || 'unknown';
+          spec.sources = Object.entries(item.sources).map(([srcName, srcData]) => {
+            const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'incorporated') : 'incorporated';
+            const match = discItems.find(i => i.name === srcName);
+            const discStatus = match ? (match.status || 'unknown') : 'unknown';
+            return { name: srcName, status: srcStatus, discussion_status: discStatus };
+          });
         }
-        return { name: srcName, status: srcStatus, discussion_status: discStatus };
-      });
-    }
 
-    specifications.push(spec);
+        specifications.push(spec);
+      }
+    } else {
+      const specFile = path.join(workflowsDir, m.name, 'specification', m.name, 'specification.md');
+      if (!fileExists(specFile)) continue;
+
+      const sp = phaseData(m, 'specification');
+      const status = sp.status || 'in-progress';
+      if (status === 'superseded') continue;
+
+      specCount++;
+      const spec = {
+        name: m.name, work_unit: m.name, status,
+        work_type: m.work_type,
+      };
+
+      if (sp.superseded_by) spec.superseded_by = sp.superseded_by;
+
+      if (sp.sources && typeof sp.sources === 'object') {
+        spec.sources = Object.entries(sp.sources).map(([srcName, srcData]) => {
+          const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'incorporated') : 'incorporated';
+          const discStatus = phaseStatus(m, 'discussion') || 'unknown';
+          return { name: srcName, status: srcStatus, discussion_status: discStatus };
+        });
+      }
+
+      specifications.push(spec);
+    }
   }
 
   // --- Cache (discussion-consolidation-analysis from manifest) ---

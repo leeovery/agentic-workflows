@@ -253,6 +253,39 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.dependency_resolution, undefined);
   });
 
+  it('discovers epic planning and implementation items', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        planning: {
+          items: {
+            'auth': { status: 'concluded', format: 'local-markdown' },
+            'billing': { status: 'concluded', format: 'local-markdown' },
+          },
+        },
+        implementation: {
+          items: {
+            'auth': { status: 'in-progress', completed_tasks: ['auth-1-1'], completed_phases: [1] },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/planning/auth/planning.md', '# Auth Plan');
+    createFile(dir, '.workflows/v1/planning/billing/planning.md', '# Billing Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.plans.files.length, 2);
+    const auth = r.plans.files.find(p => p.name === 'auth');
+    assert.strictEqual(auth.topic, 'auth');
+    assert.strictEqual(auth.work_type, 'epic');
+    assert.strictEqual(auth.specification, 'v1/specification/auth/specification.md');
+    const billing = r.plans.files.find(p => p.name === 'billing');
+    assert.strictEqual(billing.topic, 'billing');
+    // auth has implementation tracking
+    assert.strictEqual(r.implementation.files.length, 1);
+    assert.strictEqual(r.implementation.files[0].topic, 'auth');
+    assert.strictEqual(r.implementation.files[0].completed_tasks.length, 1);
+  });
+
   it('no dead count fields in state', () => {
     createManifest(dir, 'auth', {
       phases: {

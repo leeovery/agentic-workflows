@@ -1,6 +1,6 @@
 'use strict';
 
-const { loadActiveManifests, phaseData } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseData, phaseItems } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -12,49 +12,71 @@ function discover(cwd) {
   let planFormatSeen = null, planFormatUnanimous = true;
 
   for (const m of manifests) {
-    const spec = phaseData(m, 'specification');
-    const plan = phaseData(m, 'planning');
-    const impl = phaseData(m, 'implementation');
-
-    if (!spec.status) continue;
-    if (spec.status === 'superseded') continue;
-
-    const specType = spec.type || 'feature';
-
-    if (specType === 'cross-cutting') {
-      crosscuttingSpecs.push({ name: m.name, status: spec.status });
-      continue;
-    }
-
-    const hasPlan = !!plan.status;
-    const hasImpl = !!impl.status;
-
-    const entry = {
-      name: m.name, status: spec.status, work_type: m.work_type,
-      has_plan: hasPlan,
-      ...(hasPlan && { plan_status: plan.status }),
-      has_impl: hasImpl,
-      ...(hasImpl && { impl_status: impl.status }),
-    };
-    featureSpecs.push(entry);
-
-    if (spec.status === 'concluded' && !hasPlan) featureReady++;
-    if (hasPlan) {
-      featureWithPlan++;
-      if (impl.status !== 'completed') featureActionableWithPlan++;
-
-      plans.push({
-        name: m.name, format: plan.format || 'MISSING',
-        status: plan.status, work_type: m.work_type,
-        ...(plan.plan_id && { plan_id: plan.plan_id }),
-      });
-
-      if (plan.format && plan.format !== 'MISSING') {
-        if (!planFormatSeen) planFormatSeen = plan.format;
-        else if (planFormatSeen !== plan.format) planFormatUnanimous = false;
+    // Build a list of spec entries: for epic, iterate items; for feature/bugfix, use flat phase data
+    const specEntries = [];
+    if (m.work_type === 'epic') {
+      for (const item of phaseItems(m, 'specification')) {
+        specEntries.push({ topic: item.name, ...item });
+      }
+    } else {
+      const sp = phaseData(m, 'specification');
+      if (sp.status) {
+        specEntries.push({ topic: m.name, ...sp });
       }
     }
-    if (impl.status === 'completed') featureImplemented++;
+
+    for (const spec of specEntries) {
+      if (spec.status === 'superseded') continue;
+
+      const specType = spec.type || 'feature';
+
+      if (specType === 'cross-cutting') {
+        crosscuttingSpecs.push({ name: spec.topic, status: spec.status });
+        continue;
+      }
+
+      // Look up corresponding plan and implementation for this topic
+      let plan, impl;
+      if (m.work_type === 'epic') {
+        const planItems = phaseItems(m, 'planning');
+        plan = planItems.find(i => i.name === spec.topic) || {};
+        const implItems = phaseItems(m, 'implementation');
+        impl = implItems.find(i => i.name === spec.topic) || {};
+      } else {
+        plan = phaseData(m, 'planning');
+        impl = phaseData(m, 'implementation');
+      }
+
+      const hasPlan = !!plan.status;
+      const hasImpl = !!impl.status;
+
+      const entry = {
+        name: spec.topic, status: spec.status, work_type: m.work_type,
+        has_plan: hasPlan,
+        ...(hasPlan && { plan_status: plan.status }),
+        has_impl: hasImpl,
+        ...(hasImpl && { impl_status: impl.status }),
+      };
+      featureSpecs.push(entry);
+
+      if (spec.status === 'concluded' && !hasPlan) featureReady++;
+      if (hasPlan) {
+        featureWithPlan++;
+        if (impl.status !== 'completed') featureActionableWithPlan++;
+
+        plans.push({
+          name: spec.topic, format: plan.format || 'MISSING',
+          status: plan.status, work_type: m.work_type,
+          ...(plan.plan_id && { plan_id: plan.plan_id }),
+        });
+
+        if (plan.format && plan.format !== 'MISSING') {
+          if (!planFormatSeen) planFormatSeen = plan.format;
+          else if (planFormatSeen !== plan.format) planFormatUnanimous = false;
+        }
+      }
+      if (impl.status === 'completed') featureImplemented++;
+    }
   }
 
   const hasAnySpec = featureSpecs.length > 0 || crosscuttingSpecs.length > 0;

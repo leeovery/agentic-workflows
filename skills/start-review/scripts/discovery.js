@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, phaseData, fileExists, listDirs, listFiles } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseData, phaseItems, fileExists, listDirs, listFiles } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -13,74 +13,95 @@ function discover(cwd) {
   let implementedCount = 0, completedCount = 0, reviewedPlanCount = 0;
 
   for (const m of manifests) {
-    const planning = phaseData(m, 'planning');
-    if (!planning.status) continue;
-
-    const planFile = path.join(workflowsDir, m.name, 'planning', m.name, 'planning.md');
-    if (!fileExists(planFile)) continue;
-
-    const specFile = path.join(workflowsDir, m.name, 'specification', m.name, 'specification.md');
-    const impl = phaseData(m, 'implementation');
-    const implStatus = impl.status || 'none';
-
-    // Count review versions
-    const reviewDir = path.join(workflowsDir, m.name, 'review', m.name);
-    let reviewCount = 0, latestVersion = 0, latestVerdict = '';
-
-    for (const rname of listDirs(reviewDir)) {
-      if (!rname.startsWith('r')) continue;
-      const reviewFile = path.join(reviewDir, rname, 'review.md');
-      if (!fileExists(reviewFile)) continue;
-      const rnum = parseInt(rname.slice(1), 10);
-      if (isNaN(rnum)) continue;
-      reviewCount++;
-      if (rnum > latestVersion) {
-        latestVersion = rnum;
-        try {
-          const content = fs.readFileSync(reviewFile, 'utf8');
-          const match = content.match(/\*\*QA Verdict\*\*:\s*(.+)/);
-          latestVerdict = match ? match[1].trim() : '';
-        } catch { latestVerdict = ''; }
+    // Build planning entries: for epic, iterate items; for feature/bugfix, use flat phase data
+    const planEntries = [];
+    if (m.work_type === 'epic') {
+      for (const item of phaseItems(m, 'planning')) {
+        planEntries.push({ topic: item.name, ...item });
+      }
+    } else {
+      const planning = phaseData(m, 'planning');
+      if (planning.status) {
+        planEntries.push({ topic: m.name, ...planning });
       }
     }
 
-    const plan = {
-      name: m.name, work_type: m.work_type,
-      planning_status: planning.status,
-      format: planning.format || 'MISSING',
-      specification_exists: fileExists(specFile),
-      implementation_status: implStatus,
-      review_count: reviewCount,
-      ...(planning.plan_id && { plan_id: planning.plan_id }),
-    };
+    for (const planning of planEntries) {
+      const topic = planning.topic;
+      const planFile = path.join(workflowsDir, m.name, 'planning', topic, 'planning.md');
+      if (!fileExists(planFile)) continue;
 
-    if (reviewCount > 0) {
-      plan.latest_review_version = latestVersion;
-      plan.latest_review_verdict = latestVerdict;
-    }
+      const specFile = path.join(workflowsDir, m.name, 'specification', topic, 'specification.md');
 
-    plans.push(plan);
+      // Look up implementation for this topic
+      let impl;
+      if (m.work_type === 'epic') {
+        const implItems = phaseItems(m, 'implementation');
+        impl = implItems.find(i => i.name === topic) || {};
+      } else {
+        impl = phaseData(m, 'implementation');
+      }
+      const implStatus = impl.status || 'none';
 
-    if (implStatus !== 'none') implementedCount++;
-    if (implStatus === 'completed') completedCount++;
+      // Count review versions
+      const reviewDir = path.join(workflowsDir, m.name, 'review', topic);
+      let reviewCount = 0, latestVersion = 0, latestVerdict = '';
 
-    // Reviews section
-    if (reviewCount > 0) {
-      const latestPath = path.join(reviewDir, `r${latestVersion}`) + '/';
+      for (const rname of listDirs(reviewDir)) {
+        if (!rname.startsWith('r')) continue;
+        const reviewFile = path.join(reviewDir, rname, 'review.md');
+        if (!fileExists(reviewFile)) continue;
+        const rnum = parseInt(rname.slice(1), 10);
+        if (isNaN(rnum)) continue;
+        reviewCount++;
+        if (rnum > latestVersion) {
+          latestVersion = rnum;
+          try {
+            const content = fs.readFileSync(reviewFile, 'utf8');
+            const match = content.match(/\*\*QA Verdict\*\*:\s*(.+)/);
+            latestVerdict = match ? match[1].trim() : '';
+          } catch { latestVerdict = ''; }
+        }
+      }
 
-      // Check for synthesis
-      const implDir = path.join(workflowsDir, m.name, 'implementation', m.name);
-      const hasSynthesis = listFiles(implDir, '.md').some(f => f.startsWith('review-tasks-c'));
+      const plan = {
+        name: topic, work_type: m.work_type,
+        planning_status: planning.status,
+        format: planning.format || 'MISSING',
+        specification_exists: fileExists(specFile),
+        implementation_status: implStatus,
+        review_count: reviewCount,
+        ...(planning.plan_id && { plan_id: planning.plan_id }),
+      };
 
-      reviews.push({
-        name: m.name, versions: reviewCount,
-        latest_version: latestVersion,
-        latest_verdict: latestVerdict,
-        latest_path: latestPath,
-        has_synthesis: hasSynthesis,
-      });
+      if (reviewCount > 0) {
+        plan.latest_review_version = latestVersion;
+        plan.latest_review_verdict = latestVerdict;
+      }
 
-      reviewedPlanCount++;
+      plans.push(plan);
+
+      if (implStatus !== 'none') implementedCount++;
+      if (implStatus === 'completed') completedCount++;
+
+      // Reviews section
+      if (reviewCount > 0) {
+        const latestPath = path.join(reviewDir, `r${latestVersion}`) + '/';
+
+        // Check for synthesis
+        const implDir = path.join(workflowsDir, m.name, 'implementation', topic);
+        const hasSynthesis = listFiles(implDir, '.md').some(f => f.startsWith('review-tasks-c'));
+
+        reviews.push({
+          name: topic, versions: reviewCount,
+          latest_version: latestVersion,
+          latest_verdict: latestVerdict,
+          latest_path: latestPath,
+          has_synthesis: hasSynthesis,
+        });
+
+        reviewedPlanCount++;
+      }
     }
   }
 

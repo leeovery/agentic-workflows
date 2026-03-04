@@ -95,6 +95,65 @@ describe('start-specification discovery', () => {
     assert.strictEqual(data.has_individual_spec, false);
   });
 
+  it('finds epic specification items with sources', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: {
+            'auth-design': { status: 'concluded' },
+            'data-model': { status: 'concluded' },
+          },
+        },
+        specification: {
+          items: {
+            'auth-spec': {
+              status: 'concluded',
+              type: 'feature',
+              sources: { 'auth-design': { status: 'incorporated' } },
+            },
+            'data-spec': {
+              status: 'in-progress',
+              sources: { 'data-model': { status: 'extracted' } },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
+    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data Spec');
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.length, 2);
+    const authSpec = r.specifications.find(s => s.name === 'auth-spec');
+    assert.strictEqual(authSpec.work_unit, 'v1');
+    assert.strictEqual(authSpec.status, 'concluded');
+    assert.strictEqual(authSpec.work_type, 'epic');
+    assert.strictEqual(authSpec.sources.length, 1);
+    assert.strictEqual(authSpec.sources[0].name, 'auth-design');
+    assert.strictEqual(authSpec.sources[0].discussion_status, 'concluded');
+    const dataSpec = r.specifications.find(s => s.name === 'data-spec');
+    assert.strictEqual(dataSpec.status, 'in-progress');
+  });
+
+  it('skips superseded epic specification items', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: {
+          items: {
+            'old-spec': { status: 'superseded', superseded_by: 'new-spec' },
+            'new-spec': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/old-spec/specification.md', '# Old');
+    createFile(dir, '.workflows/v1/specification/new-spec/specification.md', '# New');
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.length, 1);
+    assert.strictEqual(r.specifications[0].name, 'new-spec');
+  });
+
   it('computes discussion counts correctly', () => {
     createManifest(dir, 'a', {
       work_type: 'feature',

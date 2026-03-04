@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, loadManifest, phaseData, fileExists } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, loadManifest, phaseData, phaseItems, fileExists } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -12,78 +12,99 @@ function discover(cwd) {
   const implementations = [];
 
   for (const m of manifests) {
-    const planning = phaseData(m, 'planning');
-    if (!planning.status) continue;
-
-    const planFile = path.join(workflowsDir, m.name, 'planning', m.name, 'planning.md');
-    if (!fileExists(planFile)) continue;
-
-    const specFile = path.join(workflowsDir, m.name, 'specification', m.name, 'specification.md');
-    const impl = phaseData(m, 'implementation');
-
-    // External dependencies (object keyed by topic)
-    const externalDepsObj = (planning.external_dependencies && typeof planning.external_dependencies === 'object' && !Array.isArray(planning.external_dependencies))
-      ? planning.external_dependencies
-      : {};
-
-    const externalDeps = Object.entries(externalDepsObj).map(([topic, d]) => ({ topic, ...d }));
-    const unresolvedCount = externalDeps.filter(d => d.state === 'unresolved').length;
-    const hasUnresolved = unresolvedCount > 0;
-
-    // Dependency resolution: inline per plan
-    let depsSatisfied = true;
-    const depsBlocking = [];
-
-    for (const dep of externalDeps) {
-      if (dep.state === 'unresolved') {
-        depsSatisfied = false;
-        depsBlocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
-      } else if (dep.state === 'resolved' && dep.task_id) {
-        const depManifest = loadManifest(cwd, dep.topic);
-        const depImpl = depManifest ? phaseData(depManifest, 'implementation') : {};
-        const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
-
-        if (!completedTasks.includes(dep.task_id)) {
-          depsSatisfied = false;
-          depsBlocking.push({ topic: dep.topic, task_id: dep.task_id, reason: 'task not yet completed' });
-        }
-      } else if (dep.state === 'resolved' && !dep.task_id) {
-        depsSatisfied = false;
-        depsBlocking.push({ topic: dep.topic, reason: 'resolved dependency missing task reference' });
+    // Build a list of planning entries: for epic, iterate items; for feature/bugfix, use flat phase data
+    const planEntries = [];
+    if (m.work_type === 'epic') {
+      for (const item of phaseItems(m, 'planning')) {
+        planEntries.push({ topic: item.name, ...item });
+      }
+    } else {
+      const planning = phaseData(m, 'planning');
+      if (planning.status) {
+        planEntries.push({ topic: m.name, ...planning });
       }
     }
 
-    plans.push({
-      name: m.name,
-      topic: m.name,
-      status: planning.status,
-      work_type: m.work_type,
-      format: planning.format || 'MISSING',
-      specification: `${m.name}/specification/${m.name}/specification.md`,
-      specification_exists: fileExists(specFile),
-      ...(planning.plan_id && { plan_id: planning.plan_id }),
-      external_deps: externalDeps.map(d => ({
-        topic: d.topic || '', state: d.state || '',
-        ...(d.task_id && { task_id: d.task_id }),
-      })),
-      has_unresolved_deps: hasUnresolved,
-      unresolved_dep_count: unresolvedCount,
-      deps_satisfied: depsSatisfied,
-      deps_blocking: depsBlocking,
-    });
+    for (const planning of planEntries) {
+      const topic = planning.topic;
+      const planFile = path.join(workflowsDir, m.name, 'planning', topic, 'planning.md');
+      if (!fileExists(planFile)) continue;
 
-    // Implementation tracking
-    if (impl.status) {
-      const completedPhases = Array.isArray(impl.completed_phases) ? impl.completed_phases : [];
-      const completedTasks = Array.isArray(impl.completed_tasks) ? impl.completed_tasks : [];
+      const specFile = path.join(workflowsDir, m.name, 'specification', topic, 'specification.md');
 
-      implementations.push({
-        topic: m.name,
-        status: impl.status,
-        ...(impl.current_phase != null && impl.current_phase !== '~' && { current_phase: impl.current_phase }),
-        completed_phases: completedPhases,
-        completed_tasks: completedTasks,
+      // Look up implementation for this topic
+      let impl;
+      if (m.work_type === 'epic') {
+        const implItems = phaseItems(m, 'implementation');
+        impl = implItems.find(i => i.name === topic) || {};
+      } else {
+        impl = phaseData(m, 'implementation');
+      }
+
+      // External dependencies (object keyed by topic)
+      const externalDepsObj = (planning.external_dependencies && typeof planning.external_dependencies === 'object' && !Array.isArray(planning.external_dependencies))
+        ? planning.external_dependencies
+        : {};
+
+      const externalDeps = Object.entries(externalDepsObj).map(([depTopic, d]) => ({ topic: depTopic, ...d }));
+      const unresolvedCount = externalDeps.filter(d => d.state === 'unresolved').length;
+      const hasUnresolved = unresolvedCount > 0;
+
+      // Dependency resolution: inline per plan
+      let depsSatisfied = true;
+      const depsBlocking = [];
+
+      for (const dep of externalDeps) {
+        if (dep.state === 'unresolved') {
+          depsSatisfied = false;
+          depsBlocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
+        } else if (dep.state === 'resolved' && dep.task_id) {
+          const depManifest = loadManifest(cwd, dep.topic);
+          const depImpl = depManifest ? phaseData(depManifest, 'implementation') : {};
+          const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
+
+          if (!completedTasks.includes(dep.task_id)) {
+            depsSatisfied = false;
+            depsBlocking.push({ topic: dep.topic, task_id: dep.task_id, reason: 'task not yet completed' });
+          }
+        } else if (dep.state === 'resolved' && !dep.task_id) {
+          depsSatisfied = false;
+          depsBlocking.push({ topic: dep.topic, reason: 'resolved dependency missing task reference' });
+        }
+      }
+
+      plans.push({
+        name: topic,
+        topic,
+        status: planning.status,
+        work_type: m.work_type,
+        format: planning.format || 'MISSING',
+        specification: `${m.name}/specification/${topic}/specification.md`,
+        specification_exists: fileExists(specFile),
+        ...(planning.plan_id && { plan_id: planning.plan_id }),
+        external_deps: externalDeps.map(d => ({
+          topic: d.topic || '', state: d.state || '',
+          ...(d.task_id && { task_id: d.task_id }),
+        })),
+        has_unresolved_deps: hasUnresolved,
+        unresolved_dep_count: unresolvedCount,
+        deps_satisfied: depsSatisfied,
+        deps_blocking: depsBlocking,
       });
+
+      // Implementation tracking
+      if (impl.status) {
+        const completedPhases = Array.isArray(impl.completed_phases) ? impl.completed_phases : [];
+        const completedTasks = Array.isArray(impl.completed_tasks) ? impl.completed_tasks : [];
+
+        implementations.push({
+          topic,
+          status: impl.status,
+          ...(impl.current_phase != null && impl.current_phase !== '~' && { current_phase: impl.current_phase }),
+          completed_phases: completedPhases,
+          completed_tasks: completedTasks,
+        });
+      }
     }
   }
 

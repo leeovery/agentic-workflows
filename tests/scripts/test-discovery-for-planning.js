@@ -144,14 +144,56 @@ describe('start-planning discovery', () => {
   });
 
   it('includes work_type on plans', () => {
-    createManifest(dir, 'auth', {
+    createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        specification: { status: 'concluded', type: 'feature' },
-        planning: { status: 'concluded', format: 'local-markdown' },
+        specification: {
+          items: { 'auth': { status: 'concluded', type: 'feature' } },
+        },
+        planning: {
+          items: { 'auth': { status: 'concluded', format: 'local-markdown' } },
+        },
       },
     });
     const r = discover(dir);
     assert.strictEqual(r.plans.files[0].work_type, 'epic');
+  });
+
+  it('discovers epic spec and plan items independently', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: {
+          items: {
+            'auth': { status: 'concluded', type: 'feature' },
+            'billing': { status: 'concluded', type: 'feature' },
+            'caching': { status: 'concluded', type: 'cross-cutting' },
+          },
+        },
+        planning: {
+          items: {
+            'auth': { status: 'concluded', format: 'local-markdown' },
+          },
+        },
+        implementation: {
+          items: {
+            'auth': { status: 'completed' },
+          },
+        },
+      },
+    });
+    const r = discover(dir);
+    // 2 feature specs (auth + billing), 1 cross-cutting (caching)
+    assert.strictEqual(r.specifications.feature.length, 2);
+    assert.strictEqual(r.specifications.crosscutting.length, 1);
+    assert.strictEqual(r.specifications.crosscutting[0].name, 'caching');
+    // auth has a plan and completed impl; billing is ready (no plan)
+    assert.strictEqual(r.specifications.counts.feature_ready, 1);
+    assert.strictEqual(r.specifications.counts.feature_with_plan, 1);
+    assert.strictEqual(r.specifications.counts.feature_implemented, 1);
+    assert.strictEqual(r.plans.files.length, 1);
+    assert.strictEqual(r.plans.files[0].name, 'auth');
+    // billing is actionable (concluded, no plan) so scenario is has_options
+    assert.strictEqual(r.state.scenario, 'has_options');
   });
 });

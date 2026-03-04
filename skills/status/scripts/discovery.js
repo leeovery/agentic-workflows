@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { loadActiveManifests, phaseData, countFiles } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseData, phaseItems, countFiles } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -46,13 +46,37 @@ function discover(cwd) {
       fileCount = countFiles(path.join(baseDir, 'research'), '.md');
     }
 
+    // Helper: aggregate item statuses into a single representative status
+    // all concluded → 'concluded', any in-progress → 'in-progress', otherwise first item's status
+    function aggregateStatus(items) {
+      if (items.length === 0) return null;
+      const statuses = items.map(i => i.status).filter(Boolean);
+      if (statuses.length === 0) return null;
+      if (statuses.every(s => s === 'concluded' || s === 'completed')) return statuses[0];
+      if (statuses.some(s => s === 'in-progress')) return 'in-progress';
+      return statuses[0];
+    }
+
     // Discussion
-    const disc = phaseData(m, 'discussion');
-    const discStatus = disc.status || null;
-    if (discStatus) {
-      discTotal++;
-      if (discStatus === 'concluded') discConcluded++;
-      if (discStatus === 'in-progress') discInProgress++;
+    let discStatus = null;
+    let discItemCount = 0;
+    if (wt === 'epic') {
+      const items = phaseItems(m, 'discussion');
+      if (items.length > 0) {
+        discItemCount = items.length;
+        discStatus = aggregateStatus(items);
+        discTotal += items.length;
+        discConcluded += items.filter(i => i.status === 'concluded').length;
+        discInProgress += items.filter(i => i.status === 'in-progress').length;
+      }
+    } else {
+      const disc = phaseData(m, 'discussion');
+      discStatus = disc.status || null;
+      if (discStatus) {
+        discTotal++;
+        if (discStatus === 'concluded') discConcluded++;
+        if (discStatus === 'in-progress') discInProgress++;
+      }
     }
 
     // Investigation
@@ -60,91 +84,172 @@ function discover(cwd) {
     const invStatus = inv.status || null;
 
     // Specification
-    const spec = phaseData(m, 'specification');
-    const specStatus = spec.status || null;
-    const specType = spec.type || 'feature';
-    if (specStatus && specStatus !== 'superseded') {
-      specActive++;
-      if (specType === 'cross-cutting') specCrosscutting++;
-      else specFeature++;
-    }
-
-    // Sources
+    let specStatus = null;
+    let specType = 'feature';
     let sources = [];
-    if (spec.sources && typeof spec.sources === 'object' && !Array.isArray(spec.sources)) {
-      sources = Object.entries(spec.sources).map(([name, data]) => ({
-        name,
-        status: (typeof data === 'object') ? (data.status || 'incorporated') : 'incorporated',
-      }));
-    } else if (Array.isArray(spec.sources)) {
-      sources = spec.sources;
+    let specItemCount = 0;
+    if (wt === 'epic') {
+      const items = phaseItems(m, 'specification');
+      if (items.length > 0) {
+        specItemCount = items.length;
+        const activeItems = items.filter(i => i.status !== 'superseded');
+        specStatus = aggregateStatus(activeItems);
+        for (const item of activeItems) {
+          specActive++;
+          const itemType = item.type || 'feature';
+          if (itemType === 'cross-cutting') specCrosscutting++;
+          else specFeature++;
+        }
+      }
+    } else {
+      const spec = phaseData(m, 'specification');
+      specStatus = spec.status || null;
+      specType = spec.type || 'feature';
+      if (specStatus && specStatus !== 'superseded') {
+        specActive++;
+        if (specType === 'cross-cutting') specCrosscutting++;
+        else specFeature++;
+      }
+      if (spec.sources && typeof spec.sources === 'object' && !Array.isArray(spec.sources)) {
+        sources = Object.entries(spec.sources).map(([name, data]) => ({
+          name,
+          status: (typeof data === 'object') ? (data.status || 'incorporated') : 'incorporated',
+        }));
+      } else if (Array.isArray(spec.sources)) {
+        sources = spec.sources;
+      }
+      if (spec.superseded_by) specType = spec.type || 'feature'; // preserve for output
     }
 
     // Planning
-    const plan = phaseData(m, 'planning');
-    const planStatus = plan.status || null;
-    if (planStatus) {
-      planTotal++;
-      if (planStatus === 'concluded') planConcluded++;
-      if (planStatus === 'in-progress') planInProgress++;
+    let planStatus = null;
+    let planFormat = null;
+    let externalDepsObj = {};
+    let hasUnresolved = false;
+    let planItemCount = 0;
+    if (wt === 'epic') {
+      const items = phaseItems(m, 'planning');
+      if (items.length > 0) {
+        planItemCount = items.length;
+        planStatus = aggregateStatus(items);
+        planTotal += items.length;
+        planConcluded += items.filter(i => i.status === 'concluded').length;
+        planInProgress += items.filter(i => i.status === 'in-progress').length;
+        // Use format from first item that has one
+        const withFmt = items.find(i => i.format);
+        planFormat = withFmt ? withFmt.format : null;
+        // Aggregate external deps across all items
+        for (const item of items) {
+          const deps = (item.external_dependencies && typeof item.external_dependencies === 'object' && !Array.isArray(item.external_dependencies))
+            ? item.external_dependencies : {};
+          Object.assign(externalDepsObj, deps);
+        }
+        hasUnresolved = Object.values(externalDepsObj).some(d => d.state === 'unresolved');
+      }
+    } else {
+      const plan = phaseData(m, 'planning');
+      planStatus = plan.status || null;
+      planFormat = plan.format || null;
+      if (planStatus) {
+        planTotal++;
+        if (planStatus === 'concluded') planConcluded++;
+        if (planStatus === 'in-progress') planInProgress++;
+      }
+      externalDepsObj = (plan.external_dependencies && typeof plan.external_dependencies === 'object' && !Array.isArray(plan.external_dependencies))
+        ? plan.external_dependencies : {};
+      hasUnresolved = Object.values(externalDepsObj).some(d => d.state === 'unresolved');
     }
-
-    const externalDepsObj = (plan.external_dependencies && typeof plan.external_dependencies === 'object' && !Array.isArray(plan.external_dependencies))
-      ? plan.external_dependencies
-      : {};
-    const hasUnresolved = Object.values(externalDepsObj).some(d => d.state === 'unresolved');
 
     // Implementation
-    const impl = phaseData(m, 'implementation');
-    const implStatus = impl.status || null;
-    if (implStatus) {
-      implTotal++;
-      if (implStatus === 'completed') implCompleted++;
-      if (implStatus === 'in-progress') implInProgressCount++;
-    }
-
-    const completedTasks = Array.isArray(impl.completed_tasks) ? impl.completed_tasks.length : 0;
+    let implStatus = null;
+    let completedTasks = 0;
     let totalTasks = 0;
-    const planFmt = plan.format || impl.format;
-    if (planFmt === 'local-markdown') {
-      totalTasks = countFiles(path.join(baseDir, 'planning', m.name, 'tasks'), '.md');
+    let implCurrentPhase = null;
+    let implItemCount = 0;
+    if (wt === 'epic') {
+      const items = phaseItems(m, 'implementation');
+      if (items.length > 0) {
+        implItemCount = items.length;
+        implStatus = aggregateStatus(items);
+        implTotal += items.length;
+        implCompleted += items.filter(i => i.status === 'completed').length;
+        implInProgressCount += items.filter(i => i.status === 'in-progress').length;
+        // Sum tasks across all items
+        for (const item of items) {
+          completedTasks += Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
+        }
+        // Sum task files across all topics
+        const planItems = phaseItems(m, 'planning');
+        for (const pi of planItems) {
+          const fmt = pi.format || planFormat;
+          if (fmt === 'local-markdown') {
+            totalTasks += countFiles(path.join(baseDir, 'planning', pi.name, 'tasks'), '.md');
+          }
+        }
+      }
+    } else {
+      const impl = phaseData(m, 'implementation');
+      implStatus = impl.status || null;
+      if (implStatus) {
+        implTotal++;
+        if (implStatus === 'completed') implCompleted++;
+        if (implStatus === 'in-progress') implInProgressCount++;
+      }
+      completedTasks = Array.isArray(impl.completed_tasks) ? impl.completed_tasks.length : 0;
+      const planFmt = planFormat || impl.format;
+      if (planFmt === 'local-markdown') {
+        totalTasks = countFiles(path.join(baseDir, 'planning', m.name, 'tasks'), '.md');
+      }
+      if (impl.current_phase != null && impl.current_phase !== '~') implCurrentPhase = impl.current_phase;
     }
 
     // Review
-    const review = phaseData(m, 'review');
-    const reviewStatus = review.status || null;
+    let reviewStatus = null;
+    if (wt === 'epic') {
+      const items = phaseItems(m, 'review');
+      if (items.length > 0) {
+        reviewStatus = aggregateStatus(items);
+      }
+    } else {
+      const review = phaseData(m, 'review');
+      reviewStatus = review.status || null;
+    }
 
+    const specData = phaseData(m, 'specification');
     workUnits.push({
       name: m.name, work_type: wt,
       description: m.description || '',
       research: { status: researchStatus, ...(researchStatus && { file_count: fileCount }) },
-      discussion: { status: discStatus },
+      discussion: { status: discStatus, ...(wt === 'epic' && discItemCount > 0 && { item_count: discItemCount }) },
       investigation: { status: invStatus },
       specification: {
         status: specStatus,
         ...(specStatus && {
-          type: specType,
-          ...(spec.superseded_by && { superseded_by: spec.superseded_by }),
-          sources,
+          type: wt === 'epic' ? 'mixed' : specType,
+          ...(wt !== 'epic' && specData.superseded_by && { superseded_by: specData.superseded_by }),
+          ...(wt !== 'epic' && { sources }),
+          ...(wt === 'epic' && specItemCount > 0 && { item_count: specItemCount }),
         }),
       },
       planning: {
         status: planStatus,
         ...(planStatus && {
-          format: plan.format || null,
+          format: planFormat,
           external_deps: Object.entries(externalDepsObj).map(([topic, d]) => ({
             topic, state: d.state,
             ...(d.task_id && { task_id: d.task_id }),
           })),
           has_unresolved_deps: hasUnresolved,
+          ...(wt === 'epic' && planItemCount > 0 && { item_count: planItemCount }),
         }),
       },
       implementation: {
         status: implStatus,
         ...(implStatus && {
-          ...(impl.current_phase != null && impl.current_phase !== '~' && { current_phase: impl.current_phase }),
+          ...(implCurrentPhase != null && { current_phase: implCurrentPhase }),
           completed_tasks: completedTasks,
           total_tasks: totalTasks,
+          ...(wt === 'epic' && implItemCount > 0 && { item_count: implItemCount }),
         }),
       },
       review: { status: reviewStatus },

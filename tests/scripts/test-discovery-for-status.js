@@ -232,4 +232,61 @@ describe('status discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.work_units[0].description, 'Auth flow feature');
   });
+
+  it('aggregates epic item statuses across phases', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: { status: 'concluded' },
+        discussion: {
+          items: {
+            'auth': { status: 'concluded' },
+            'billing': { status: 'in-progress' },
+            'data': { status: 'concluded' },
+          },
+        },
+        specification: {
+          items: {
+            'auth-spec': { status: 'concluded', type: 'feature' },
+            'billing-spec': { status: 'in-progress', type: 'feature' },
+          },
+        },
+        planning: {
+          items: {
+            'auth-spec': { status: 'concluded', format: 'local-markdown' },
+          },
+        },
+        implementation: {
+          items: {
+            'auth-spec': { status: 'completed', completed_tasks: ['a-1-1', 'a-1-2'] },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
+    const r = discover(dir);
+    const wu = r.work_units[0];
+    assert.strictEqual(wu.work_type, 'epic');
+    // Discussion: 3 items, 2 concluded + 1 in-progress → aggregate 'in-progress'
+    assert.strictEqual(wu.discussion.status, 'in-progress');
+    assert.strictEqual(wu.discussion.item_count, 3);
+    // Specification: 2 items, 1 concluded + 1 in-progress → aggregate 'in-progress'
+    assert.strictEqual(wu.specification.status, 'in-progress');
+    assert.strictEqual(wu.specification.item_count, 2);
+    // Planning: 1 item, concluded
+    assert.strictEqual(wu.planning.status, 'concluded');
+    assert.strictEqual(wu.planning.item_count, 1);
+    // Implementation: 1 item, completed
+    assert.strictEqual(wu.implementation.status, 'completed');
+    assert.strictEqual(wu.implementation.completed_tasks, 2);
+    // Global counts
+    assert.strictEqual(r.counts.discussion.total, 3);
+    assert.strictEqual(r.counts.discussion.concluded, 2);
+    assert.strictEqual(r.counts.discussion.in_progress, 1);
+    assert.strictEqual(r.counts.specification.active, 2);
+    assert.strictEqual(r.counts.planning.total, 1);
+    assert.strictEqual(r.counts.planning.concluded, 1);
+    assert.strictEqual(r.counts.implementation.total, 1);
+    assert.strictEqual(r.counts.implementation.completed, 1);
+  });
 });

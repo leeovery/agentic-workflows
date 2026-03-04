@@ -289,5 +289,70 @@ describe('discovery-utils', () => {
       });
       assert.strictEqual(r.next_phase, 'done');
     });
+
+    it('epic: returns specification when all discussion items concluded', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              'auth': { status: 'concluded' },
+              'billing': { status: 'concluded' },
+            },
+          },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'specification');
+      assert.strictEqual(r.phase_label, 'ready for specification');
+    });
+
+    it('epic: returns discussion in-progress when some items not concluded', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              'auth': { status: 'concluded' },
+              'billing': { status: 'in-progress' },
+            },
+          },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'discussion');
+      assert.strictEqual(r.phase_label, 'discussion (in-progress)');
+    });
+
+    it('epic: returns planning when all spec items concluded', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth': { status: 'concluded' } } },
+          specification: { items: { 'auth-spec': { status: 'concluded' } } },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'planning');
+    });
+
+    it('epic: most advanced phase wins', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth': { status: 'concluded' }, 'billing': { status: 'in-progress' } } },
+          specification: { items: { 'auth-spec': { status: 'in-progress' } } },
+        },
+      });
+      // specification in-progress is checked before discussion
+      assert.strictEqual(r.next_phase, 'specification');
+      assert.strictEqual(r.phase_label, 'specification (in-progress)');
+    });
+
+    it('epic: uses flat status for research (topicless)', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: { research: { status: 'in-progress' } },
+      });
+      assert.strictEqual(r.next_phase, 'research');
+      assert.strictEqual(r.phase_label, 'research (in-progress)');
+    });
   });
 });
