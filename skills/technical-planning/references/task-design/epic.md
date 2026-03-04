@@ -1,6 +1,6 @@
 # Epic Task Design
 
-*Context guidance for **[task-design.md](../task-design.md)** --- new system builds*
+*Context guidance for **[task-design.md](../task-design.md)** — new system builds*
 
 ---
 
@@ -42,6 +42,6 @@ The first task is slightly larger because it establishes the foundation AND the 
 
 After Phase 1 completes, code exists. When designing tasks for subsequent phases:
 
-- **Review what Phase 1 established** --- understand the patterns, conventions, and structure that were created. Subsequent tasks should extend these consistently.
-- **Check for drift** --- if early implementation decisions could be improved, note them but don't redesign mid-project. Consistency matters more than perfection.
-- **Build on what's there** --- subsequent phases have infrastructure to work with. Tasks should use existing models, services, and patterns rather than creating parallel structures.
+- **Review what Phase 1 established** — understand the patterns, conventions, and structure that were created. Subsequent tasks should extend these consistently.
+- **Check for drift** — if early implementation decisions could be improved, note them but don't redesign mid-project. Consistency matters more than perfection.
+- **Build on what's there** — subsequent phases have infrastructure to work with. Tasks should use existing models, services, and patterns rather than creating parallel structures.

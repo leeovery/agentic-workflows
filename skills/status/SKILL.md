@@ -98,6 +98,7 @@ For each group, show a header then numbered entries with phase state:
 **Rules:**
 
 - Show investigation instead of discussion for bugfix work units
+- For epic work units, show research phase and individual topics within each phase (discussion items, spec items, etc.)
 - Show `(cross-cutting)` after spec status for cross-cutting specs; omit type label for feature specs
 - Blank line between numbered items
 - For implementation: `in-progress` shows phase and task progress (e.g., `in-progress — phase 2, 5/12 tasks done`); `completed` shows `completed`
