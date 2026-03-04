@@ -1,4 +1,4 @@
-# Session Bridge — Audit Round 4 (In Progress)
+# Session Bridge — Audit Round 4 (Discussion Complete)
 
 ## What We're Doing
 
@@ -6,23 +6,23 @@ This PR (`feat/work-type-architecture-v2`) implements work-type architecture for
 
 ## Current State
 
-Rounds 1, 2, and 3 complete. All fixes committed. Tests pass:
+Rounds 1–3 complete. All fixes committed. Tests pass:
 - 159/159 discovery tests
 - 80/80 manifest CLI tests
 - 118/118 migration tests
 
-Round 4 dispatched 10 agents (5 logic/integrity + 5 convention). All agents complete. We are **mid-discussion of findings** — presenting one at a time, no changes made yet.
+Round 4 dispatched 10 agents (5 logic/integrity + 5 convention). All agents complete. **All findings discussed and dispositioned.** Full discussion log at `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md`.
 
-### Round 4 Progress
+## What Needs to Happen Next
 
-Findings 1–3 discussed. Finding 3 discussion paused for documentation. Remaining findings not yet presented. Full discussion log at `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md`.
+Implement the 12 agreed fixes from Round 4. Then re-run tests. Then update audit checklist and re-dispatch agents for Round 5.
 
-| Finding | Status | Summary |
-|---------|--------|---------|
-| 1. `completed_tasks`/`completed_phases` never written | **Discussed — decisions made** | Add `push` command, rename `add-item` → `init-phase`, convert `external_dependencies` to object |
-| 2. `computeNextPhase` ignores research for features | **Discussed — decision made** | Share research checks between epic/feature, default to "ready for discussion" |
-| 3. Epic routing passes work_unit where topic needed | **In progress** | Naming inconsistency, possibly deeper architectural issue. Needs further investigation |
-| 4–23. Remaining findings | **Not yet presented** | See AUDIT-ROUND4-DISCUSSION.md for full list |
+The fixes fall into three categories:
+1. **Large architectural changes** (Findings 1, 2, 3, 6) — manifest CLI, discovery scripts, routing tables, positional arguments
+2. **Small targeted fixes** (Findings 7, 8, 9, 10, 11, 13) — one-liner or few-line changes
+3. **Convention fixes** (Findings 16, 17) — heading level changes
+
+See the "Summary: Agreed Fixes" table at the bottom of `AUDIT-ROUND4-DISCUSSION.md` for the full list.
 
 ### Key Decisions Made in Round 4
 
@@ -31,6 +31,9 @@ Findings 1–3 discussed. Finding 3 discussion paused for documentation. Remaini
 - **Convert `external_dependencies` to object-keyed-by-topic**: Eliminates need for a `set-where`/`patch-item` command. Individual deps updated via dot-path `set`. Simplifies discovery scripts.
 - **No `set-where`/`patch-item` needed**: With `external_dependencies` as an object, `push` is the only new command required.
 - **Research is optional for both epic and feature**: `computeNextPhase` should check research for both work types, defaulting to "ready for discussion" (not "ready for research"). Research only appears if already started.
+- **Three positional arguments**: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional). Feature/bugfix always two args (topic inferred). Epic with known topic uses three args. Epic without topic uses two args (scoped discovery).
+- **Topic and work_unit are different concepts**: Even when they share the same string value for feature/bugfix, they represent different things. Never assume interchangeable.
+- **"Unified" is a topic, not a work unit**: In spec handoff files, "unified" is the grouping name when all discussions combine into one spec. The work_unit position in paths should be `{work_unit}`, not "unified".
 - **Future direction**: `continue-{type}` skills will be introduced to simplify continuation. `start-{phase}` skills will become non-user-invokable. Current fixes are stepping stones.
 
 ### Key Decisions from Rounds 1–3
@@ -55,11 +58,11 @@ Findings 1–3 discussed. Finding 3 discussion paused for documentation. Remaini
 - **Status discovery `work_units`**: the `work_units` key in `skills/status/scripts/discovery.js` is correct — different semantic context
 - **Rendering instructions**: Only for user-facing output blocks, not model instruction blocks
 - **Step 0**: `/migrate` owns the branching; callers just invoke and assess
-- **$1 naming confusion**: CLAUDE.md says $1=topic, epic routing tables say $1=work_unit. Under investigation (Finding 3).
+- **Positional args**: `$0`=work_type, `$1`=work_unit, `$2`=topic (optional). Skills resolve: `topic = $2 || (wt !== 'epic' ? $1 : null)`
 
 ## Files to Read
 
-- `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md` — **READ FIRST** — full discussion log with decisions and remaining findings
+- `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md` — **READ FIRST** — full discussion log with all decisions, fix list, and disposition of every finding
 - `work-type-architecture/AUDIT-CHECKLIST.md` — the living audit checklist (sections 1–14)
 - `work-type-architecture/AUDIT-ROUND1-FIXES.md` — fix tracker from Round 1 (all completed)
 - `work-type-architecture/ARCHITECTURE-FIX-PLAN.md` — the original 8-fix architecture plan
