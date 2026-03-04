@@ -1,5 +1,9 @@
 # Interview Mode
 
+*Reference for **[research-guidelines.md](research-guidelines.md)***
+
+---
+
 Focused questioning to probe ideas more deeply during research.
 
 ## Process

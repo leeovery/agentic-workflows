@@ -39,17 +39,17 @@ Epics:
 
 @if(feature_count > 0)
 Features:
-@foreach(topic in features.work_units)
-  {N}. {topic.name:(titlecase)}
-     └─ {topic.phase_label:(titlecase)}
+@foreach(unit in features.work_units)
+  {N}. {unit.name:(titlecase)}
+     └─ {unit.phase_label:(titlecase)}
 @endforeach
 @endif
 
 @if(bugfix_count > 0)
 Bugfixes:
-@foreach(topic in bugfixes.work_units)
-  {N}. {topic.name:(titlecase)}
-     └─ {topic.phase_label:(titlecase)}
+@foreach(unit in bugfixes.work_units)
+  {N}. {unit.name:(titlecase)}
+     └─ {unit.phase_label:(titlecase)}
 @endforeach
 @endif
 ```

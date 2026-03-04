@@ -1,5 +1,9 @@
 # Research Document Template
 
+*Reference for **[technical-research](../SKILL.md)***
+
+---
+
 Use this template when creating research documents.
 
 ## Template

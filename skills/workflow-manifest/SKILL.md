@@ -103,7 +103,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set <name> status arch
 **Phase level** (with flags):
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase discussion --topic auth-flow status concluded
-node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase planning --topic auth-flow task_gate_mode auto
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase planning --topic auth-flow task_list_gate_mode auto
 ```
 
 Values are parsed as JSON first (for arrays, objects, numbers, booleans), falling back to string. Validates structural fields:
