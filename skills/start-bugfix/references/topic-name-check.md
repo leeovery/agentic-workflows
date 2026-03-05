@@ -27,19 +27,21 @@ Is this name okay?
 
 **STOP.** Wait for user response.
 
-Once the topic name is confirmed, check for naming conflicts:
+Once the topic name is confirmed, check for work unit naming conflicts:
 
 ```bash
 ls .workflows/
 ```
 
-#### If an investigation with the same name exists
+For bugfix, the topic name and work unit name are the same value.
+
+#### If a work unit with the same name exists
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-A work unit named "{topic}" already exists.
+A work unit named "{work_unit}" already exists.
 
 - **`r`/`resume`** — Resume the existing investigation
 - **`n`/`new`** — Choose a different name
