@@ -565,6 +565,11 @@ Precise terms for internal consistency across skills, CLI, and documentation. Ma
 
 ## Implementation Sequencing
 
+**Revised order** (updated during PR 1 review): PR 1 → PR 4 → PR 5 → PR 2 → PR 3 → PR 6. The start/continue split and phase skills going internal (PR 4/5) were moved ahead of bridge work (PR 2/3) because:
+- PR 1 review kept hitting topic/work_unit conflation in discovery displays and dual-mode complexity — issues that PR 4/5 eliminate entirely
+- Bridge logic (PR 2/3) is simpler when phase skills are already internal and the caller always provides work_type and work_unit — no "no work_type" or standalone cases to handle
+- PR 6 (processing skills pipeline-aware) naturally follows PR 5 — unchanged
+
 ### PR 1: Big Bang — New Architecture
 
 Everything structural in one coordinated change:
