@@ -57,10 +57,10 @@ Research without documentation is wasted. Follow this loop:
 1. **Ask** a question
 2. **Discuss** the answer
 3. **Document** the insight
-4. **Commit and push** immediately
+4. **Commit** immediately
 5. **Repeat**
 
-**Don't batch**. Every insight gets pushed before the next question. Context can refresh at any time—unpushed work is lost.
+**Don't batch**. Every insight gets committed before the next question. Context can refresh at any time—uncommitted work is lost.
 
 ## Critical Rules
 

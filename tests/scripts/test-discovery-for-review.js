@@ -212,4 +212,23 @@ describe('start-review discovery', () => {
     assert.strictEqual(r.reviews.entries.length, 1);
     assert.strictEqual(r.reviews.entries[0].name, 'auth');
   });
+
+  it('bugfix work unit with completed implementation is reviewable', () => {
+    createManifest(dir, 'login-crash', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { status: 'concluded' },
+        specification: { status: 'concluded', type: 'feature' },
+        planning: { status: 'concluded', format: 'local-markdown' },
+        implementation: { status: 'completed' },
+      },
+    });
+    createFile(dir, '.workflows/login-crash/planning/login-crash/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.plans.exists, true);
+    assert.strictEqual(r.plans.files.length, 1);
+    assert.strictEqual(r.plans.files[0].name, 'login-crash');
+    assert.strictEqual(r.plans.files[0].work_type, 'bugfix');
+    assert.strictEqual(r.plans.files[0].implementation_status, 'completed');
+  });
 });

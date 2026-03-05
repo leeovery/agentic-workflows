@@ -38,6 +38,7 @@ Each plan is reviewed independently. When multiple plans are selected, pass all 
 **Example handoff:**
 ```
 Review session
+Work type: {work_type}
 Plans to review:
   - work_unit: {work_unit_1}
     plan: .workflows/{work_unit_1}/planning/{topic}/planning.md
@@ -56,6 +57,7 @@ Invoke the technical-review skill.
 **Example handoff (analysis-only):**
 ```
 Analysis session for: {work_unit}
+Work type: {work_type}
 Review mode: analysis-only
 Review path: .workflows/{work_unit}/review/{topic}/r{N}/
 Format: {format}

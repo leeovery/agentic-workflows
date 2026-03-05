@@ -14,9 +14,10 @@ You locate the analysis findings files written by the analysis agents using the 
 You receive via the orchestrator's prompt:
 
 1. **Task normalization reference path** — canonical task template
-2. **Topic name** — the implementation topic
-3. **Cycle number** — which analysis cycle this is
-4. **Specification path** — the validated specification
+2. **Work unit** — the work unit name (for path construction)
+3. **Topic name** — the implementation topic
+4. **Cycle number** — which analysis cycle this is
+5. **Specification path** — the validated specification
 
 ## Your Process
 

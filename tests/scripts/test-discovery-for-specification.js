@@ -285,4 +285,19 @@ describe('start-specification discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.cache.entries[0].status, 'stale');
   });
+
+  it('bugfix work unit with investigation as source', () => {
+    createManifest(dir, 'login-crash', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { status: 'concluded' },
+        specification: { status: 'in-progress' },
+      },
+    });
+    createFile(dir, '.workflows/login-crash/specification/login-crash/specification.md', '# Spec');
+    const r = discover(dir);
+    assert.strictEqual(r.specifications.length, 1);
+    assert.strictEqual(r.specifications[0].work_type, 'bugfix');
+    assert.strictEqual(r.specifications[0].name, 'login-crash');
+  });
 });

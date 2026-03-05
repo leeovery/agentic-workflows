@@ -13,10 +13,11 @@ You locate the review findings files using the provided paths, then read them, d
 
 You receive via the orchestrator's prompt:
 
-1. **Plan topic** — the plan being synthesized
-2. **Review path** — path to `r{N}/` directory containing review summary and QA files
-3. **Specification path** — the validated specification for context
-4. **Cycle number** — which review remediation cycle this is
+1. **Work unit** — the work unit name (for path construction)
+2. **Plan topic** — the plan being synthesized
+3. **Review path** — path to `r{N}/` directory containing review summary and QA files
+4. **Specification path** — the validated specification for context
+5. **Cycle number** — which review remediation cycle this is
 
 ## Your Process
 

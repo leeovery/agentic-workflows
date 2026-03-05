@@ -98,7 +98,7 @@ Update the specification metadata via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status concluded
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} type feature  # or cross-cutting, as confirmed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} type {type}  # feature or cross-cutting, as confirmed in Section A
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} date $(date +%Y-%m-%d)
 ```
 

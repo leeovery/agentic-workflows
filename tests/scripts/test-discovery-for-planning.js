@@ -196,4 +196,19 @@ describe('start-planning discovery', () => {
     // billing is actionable (concluded, no plan) so scenario is has_options
     assert.strictEqual(r.state.scenario, 'has_options');
   });
+
+  it('bugfix work unit with concluded spec is plannable', () => {
+    createManifest(dir, 'login-crash', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { status: 'concluded' },
+        specification: { status: 'concluded', type: 'feature' },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.state.scenario, 'has_options');
+    assert.strictEqual(r.specifications.feature.length, 1);
+    assert.strictEqual(r.specifications.feature[0].name, 'login-crash');
+    assert.strictEqual(r.specifications.feature[0].work_type, 'bugfix');
+  });
 });

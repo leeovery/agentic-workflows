@@ -157,8 +157,8 @@ function discover(cwd) {
       const headings = content.match(/^### .+$/gm) || [];
       for (const h of headings) {
         const cleanName = h.replace(/^### /, '').replace(/\s*\(.*\)/, '').toLowerCase().replace(/\s+/g, '-');
-        const specDir = path.join(workflowsDir, cleanName, 'specification');
-        if (listDirs(specDir).some(d => fileExists(path.join(specDir, d, 'specification.md')))) {
+        const specDir = path.join(workflowsDir, m.name, 'specification');
+        if (fileExists(path.join(specDir, cleanName, 'specification.md'))) {
           anchoredNames.push(cleanName);
         }
       }

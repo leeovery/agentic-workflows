@@ -301,4 +301,21 @@ describe('start-implementation discovery', () => {
     assert.strictEqual(r.state.plans_in_progress_count, undefined);
     assert.strictEqual(r.state.plans_completed_count, undefined);
   });
+
+  it('bugfix work unit with concluded plan is implementable', () => {
+    createManifest(dir, 'login-crash', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { status: 'concluded' },
+        specification: { status: 'concluded', type: 'feature' },
+        planning: { status: 'concluded', format: 'local-markdown' },
+      },
+    });
+    createFile(dir, '.workflows/login-crash/planning/login-crash/planning.md', '# Plan');
+    const r = discover(dir);
+    assert.strictEqual(r.plans.exists, true);
+    assert.strictEqual(r.plans.files.length, 1);
+    assert.strictEqual(r.plans.files[0].name, 'login-crash');
+    assert.strictEqual(r.plans.files[0].work_type, 'bugfix');
+  });
 });

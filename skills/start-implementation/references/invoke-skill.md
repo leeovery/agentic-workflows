@@ -29,6 +29,7 @@ Invoke the [technical-implementation](../../technical-implementation/SKILL.md) s
 
 ```
 Implementation session for: {work_unit}
+Work type: {work_type}
 Plan: .workflows/{work_unit}/planning/{topic}/planning.md
 Format: {format}
 Ext ID: {ext_id} (if applicable)

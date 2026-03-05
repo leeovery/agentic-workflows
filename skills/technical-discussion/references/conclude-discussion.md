@@ -58,7 +58,7 @@ Inspect the returned object for any topics with `status: in-progress` (excluding
 > *Output the next fenced block as a code block:*
 
 ```
-Discussion concluded: {work_unit}
+Discussion concluded: {topic}
 
 Remaining in-progress discussions:
   • {topic-1}
@@ -72,7 +72,7 @@ To continue, clear your context and run /start-discussion to pick up the next to
 > *Output the next fenced block as a code block:*
 
 ```
-Discussion concluded: {work_unit}
+Discussion concluded: {topic}
 
 All discussions are now concluded.
 ```

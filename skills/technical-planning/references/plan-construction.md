@@ -65,7 +65,7 @@ Check `task_list_gate_mode` via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} task_list_gate_mode
 ```
 
-#### If `task_list_gate_mode: auto` (existing task table)
+**If `task_list_gate_mode` is `auto`:**
 
 > *Output the next fenced block as a code block:*
 
@@ -75,7 +75,7 @@ Phase {N}: {Phase Name} — task list confirmed. Proceeding to authoring.
 
 → Proceed to **Author Tasks for the Phase** below.
 
-#### If `task_list_gate_mode: gated` (existing task table)
+**If `task_list_gate_mode` is `gated`:**
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -90,11 +90,11 @@ Phase {N}: {Phase Name} — task list confirmed. Proceeding to authoring.
 
 **STOP.** Wait for the user's response.
 
-#### If the user wants changes
+**If the user wants changes:**
 
 → Proceed to **A. Define Tasks** with this phase for revision.
 
-#### If confirmed
+**If confirmed:**
 
 → Proceed to **Author Tasks for the Phase** below.
 

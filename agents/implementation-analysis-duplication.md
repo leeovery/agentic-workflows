@@ -17,8 +17,9 @@ You receive via the orchestrator's prompt:
 2. **Specification path** — the validated specification for design context
 3. **Project skill paths** — relevant `.claude/skills/` paths for framework conventions
 4. **code-quality.md path** — quality standards
-5. **Topic name** — the implementation topic
-6. **Cycle number** — which analysis cycle this is (used in output file naming)
+5. **Work unit** — the work unit name (for path construction)
+6. **Topic name** — the implementation topic
+7. **Cycle number** — which analysis cycle this is (used in output file naming)
 
 ## Your Focus
 
