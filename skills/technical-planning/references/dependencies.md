@@ -41,7 +41,8 @@ External dependencies are stored in the **manifest** as `external_dependencies` 
 Set individual dependencies via dot-path:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.billing-system '{"description":"Invoice generation","state":"unresolved"}'
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.billing-system.description "Invoice generation"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.billing-system.state unresolved
 ```
 
 If there are no external dependencies, use an empty object:

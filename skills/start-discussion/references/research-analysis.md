@@ -46,7 +46,8 @@ Write cache metadata to manifest:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} phases.research.analysis_cache.checksum "{research.checksum from discovery}"
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} phases.research.analysis_cache.generated "{ISO timestamp}"
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} phases.research.analysis_cache.files '["{filename1}.md","{filename2}.md"]'
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} phases.research.analysis_cache.files "{filename1}.md"
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} phases.research.analysis_cache.files "{filename2}.md"
 ```
 
 Ensure the cache directory exists:

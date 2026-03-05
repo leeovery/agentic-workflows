@@ -259,7 +259,11 @@ Found these project skills that may be relevant to implementation:
 
 **STOP.** Wait for user to confirm which skills are relevant.
 
-Store the selected skill paths via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} project_skills ["{path1}","{path2}"]`).
+Store the selected skill paths via manifest CLI, pushing each path individually:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --phase implementation --topic {topic} project_skills "{path1}"
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --phase implementation --topic {topic} project_skills "{path2}"
+```
 
 → Proceed to **Step 5**.
 
