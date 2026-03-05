@@ -44,7 +44,8 @@ All manifest interactions must use the domain-aware flag syntax.
 ```
 $MANIFEST get {work_unit} --phase discussion --topic {topic} status
 $MANIFEST set {work_unit} --phase discussion --topic {topic} status concluded
-$MANIFEST add-item {work_unit} --phase discussion --topic {topic}
+$MANIFEST init-phase {work_unit} --phase discussion --topic {topic}
+$MANIFEST push {work_unit} --phase implementation --topic {topic} completed_tasks "task-1"
 ```
 
 **Work-unit-level operations** (no `--phase`/`--topic` flags, dot-path positional args):

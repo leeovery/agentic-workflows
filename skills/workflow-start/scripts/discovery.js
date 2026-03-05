@@ -1,6 +1,6 @@
 'use strict';
 
-const { loadActiveManifests, phaseStatus, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseStatus, phaseItems, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
@@ -21,7 +21,16 @@ function discover(cwd) {
         : featureKeys;
 
     for (const k of keys) {
-      phases[k] = phaseStatus(m, k) || 'none';
+      if (m.work_type === 'epic' && k !== 'research') {
+        // Epic phases have per-item statuses; include items for routing
+        const items = phaseItems(m, k);
+        phases[k] = {
+          total: items.length,
+          items: items.map(item => ({ name: item.name, status: item.status || 'unknown' })),
+        };
+      } else {
+        phases[k] = phaseStatus(m, k) || 'none';
+      }
     }
 
     const unit = { name: m.name, next_phase: state.next_phase, phase_label: state.phase_label, phases };
@@ -55,7 +64,19 @@ function format(result) {
     for (const u of items) {
       lines.push(`  ${u.name} (${u.next_phase}: ${u.phase_label})`);
       for (const [k, v] of Object.entries(u.phases)) {
-        lines.push(`    ${k}: ${v}`);
+        if (typeof v === 'object') {
+          // Epic per-item phase
+          if (v.total === 0) {
+            lines.push(`    ${k}: (none)`);
+          } else {
+            lines.push(`    ${k}: ${v.total} items`);
+            for (const item of v.items) {
+              lines.push(`      - ${item.name} (${item.status})`);
+            }
+          }
+        } else {
+          lines.push(`    ${k}: ${v}`);
+        }
       }
     }
     lines.push('');

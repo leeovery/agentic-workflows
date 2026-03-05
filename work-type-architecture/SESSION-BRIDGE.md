@@ -104,7 +104,7 @@ Dispatch Round 8 agents to verify Round 7 fixes and do a final comprehensive pas
 - `work-type-architecture/AUDIT-ROUND6-DISCUSSION.md` — Round 6 findings
 - `work-type-architecture/AUDIT-ROUND5-DISCUSSION.md` — Round 5 findings
 - `work-type-architecture/AUDIT-ROUND4-DISCUSSION.md` — Round 4 discussion log with all architectural decisions
-- `work-type-architecture/AUDIT-CHECKLIST.md` — the living audit checklist (sections 1–22)
+- `work-type-architecture/AUDIT-CHECKLIST.md` — the living audit checklist (sections 1–28)
 - `work-type-architecture/AUDIT-ROUND1-FIXES.md` — fix tracker from Round 1 (all completed)
 - `work-type-architecture/ARCHITECTURE-FIX-PLAN.md` — the original 8-fix architecture plan
 - `work-type-architecture/DISCOVERY-CLEANUP-PLAN.md` — the 7-fix discovery cleanup plan

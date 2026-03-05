@@ -124,6 +124,49 @@ describe('workflow-start discovery', () => {
     assert.ok(!('investigation' in r.features.work_units[0].phases));
   });
 
+  it('epic phases include per-item detail', () => {
+    createManifest(dir, 'v3', {
+      work_type: 'epic',
+      phases: {
+        research: { status: 'concluded' },
+        discussion: {
+          items: {
+            'auth': { status: 'concluded' },
+            'payments': { status: 'in-progress' },
+            'notifications': { status: 'concluded' },
+          },
+        },
+        specification: {
+          items: {
+            'auth': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    const r = discover(dir);
+    const p = r.epics.work_units[0].phases;
+
+    // Research is topicless — flat string
+    assert.strictEqual(p.research, 'concluded');
+
+    // Discussion has items
+    assert.strictEqual(p.discussion.total, 3);
+    assert.strictEqual(p.discussion.items.length, 3);
+    const auth = p.discussion.items.find(i => i.name === 'auth');
+    assert.strictEqual(auth.status, 'concluded');
+    const payments = p.discussion.items.find(i => i.name === 'payments');
+    assert.strictEqual(payments.status, 'in-progress');
+
+    // Specification has 1 item
+    assert.strictEqual(p.specification.total, 1);
+    assert.strictEqual(p.specification.items[0].name, 'auth');
+    assert.strictEqual(p.specification.items[0].status, 'in-progress');
+
+    // Planning has no items
+    assert.strictEqual(p.planning.total, 0);
+    assert.strictEqual(p.planning.items.length, 0);
+  });
+
   it('format() produces valid output', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { status: 'concluded' } } });
     const r = discover(dir);
