@@ -64,9 +64,19 @@ Set phase="discussion".
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
-**If no phase is in progress:**
+**Otherwise:**
 
-→ Return to **[the skill](../SKILL.md)** for **Step 4**.
+The epic exists but is past the initial phases. Direct to workflow-start for continuation.
+
+> *Output the next fenced block as a code block:*
+
+```
+"{work_unit:(titlecase)}" already exists and is past the initial phases.
+
+Run /workflow-start to continue from where you left off.
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 #### If no conflict
 
