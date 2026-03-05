@@ -4,14 +4,14 @@
 
 ---
 
-Based on the bug description, suggest a topic name:
+Based on the bug description, suggest a work unit name:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Suggested topic name: {suggested-topic:(kebabcase)}
+Suggested work unit name: {suggested-name:(kebabcase)}
 
-This will create: .workflows/{suggested-topic}/investigation/{suggested-topic}.md
+This will create: .workflows/{suggested-name}/investigation/{suggested-name}.md
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
