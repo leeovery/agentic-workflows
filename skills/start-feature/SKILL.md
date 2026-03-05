@@ -64,7 +64,7 @@ Load **[gather-feature-context.md](references/gather-feature-context.md)** and f
 
 ## Step 2: Feature Name
 
-Load **[topic-name-check.md](references/topic-name-check.md)** and follow its instructions.
+Load **[name-check.md](references/name-check.md)** and follow its instructions.
 
 → Proceed to **Step 3**.
 

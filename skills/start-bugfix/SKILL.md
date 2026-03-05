@@ -61,7 +61,7 @@ Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow it
 
 ## Step 2: Bugfix Name
 
-Load **[topic-name-check.md](references/topic-name-check.md)** and follow its instructions.
+Load **[name-check.md](references/name-check.md)** and follow its instructions.
 
 → Proceed to **Step 3**.
 
