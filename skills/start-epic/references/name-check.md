@@ -4,14 +4,12 @@
 
 ---
 
-Based on the epic description, suggest a work unit name:
+Based on the epic description, suggest a name. Once confirmed, this becomes `{work_unit}` for all subsequent references.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Suggested epic name: {suggested-name:(kebabcase)}
-
-This will create: .workflows/{suggested-name}/manifest.json
+Suggested epic name: {work_unit:(kebabcase)}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -39,7 +37,7 @@ ls .workflows/
 
 ```
 · · · · · · · · · · · ·
-A work unit named "{work_unit}" already exists.
+An epic named "{work_unit}" already exists.
 
 - **`r`/`resume`** — Resume the existing epic
 - **`n`/`new`** — Choose a different name

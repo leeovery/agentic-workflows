@@ -1,15 +1,15 @@
-# Topic Name
+# Feature Name
 
 *Reference for **[start-feature](../SKILL.md)***
 
 ---
 
-Based on the feature description, suggest a topic name:
+Based on the feature description, suggest a name. Once confirmed, this becomes both `{work_unit}` and `{topic}` — for feature, they are always the same value.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Suggested topic name: {suggested-topic:(kebabcase)}
+Suggested feature name: {work_unit:(kebabcase)}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -24,8 +24,6 @@ Is this name okay?
 ```
 
 **STOP.** Wait for user response.
-
-Once the topic name is confirmed, set `work_unit` = `topic`. For feature, they are always the same value.
 
 Create the work unit manifest:
 

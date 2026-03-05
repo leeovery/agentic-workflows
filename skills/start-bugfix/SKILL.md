@@ -59,7 +59,7 @@ Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow it
 
 ---
 
-## Step 2: Topic Name
+## Step 2: Bugfix Name
 
 Load **[topic-name-check.md](references/topic-name-check.md)** and follow its instructions.
 

@@ -1,15 +1,15 @@
-# Topic Name
+# Bugfix Name
 
 *Reference for **[start-bugfix](../SKILL.md)***
 
 ---
 
-Based on the bug description, suggest a topic name:
+Based on the bug description, suggest a name. Once confirmed, this becomes both `{work_unit}` and `{topic}` — for bugfix, they are always the same value.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Suggested topic name: {suggested-topic:(kebabcase)}
+Suggested bugfix name: {work_unit:(kebabcase)}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -24,8 +24,6 @@ Is this name okay?
 ```
 
 **STOP.** Wait for user response.
-
-Once the topic name is confirmed, set `work_unit` = `topic`. For bugfix, they are always the same value.
 
 Create the work unit manifest:
 
