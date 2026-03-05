@@ -749,7 +749,7 @@ EOF
 run_migration
 
 research_status=$(node -e "var m = JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.research ? m.phases.research.status : 'missing')")
-assert_equals "$research_status" "in-progress" "research without Discussion-ready marker gets in-progress status"
+assert_equals "$research_status" "concluded" "research concluded when later phases (discussion) exist"
 
 echo ""
 
@@ -1214,6 +1214,516 @@ review_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/
 assert_equals "$review_status" "completed" "review-only topic in manifest items"
 
 assert_dir_not_exists "$TEST_DIR/.workflows/review" "review phase dir cleaned up"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Implementation without work_type falls back to prior registration${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/auth-flow"
+mkdir -p "$TEST_DIR/.workflows/planning/auth-flow"
+mkdir -p "$TEST_DIR/.workflows/implementation/auth-flow"
+
+cat > "$TEST_DIR/.workflows/discussion/auth-flow.md" << 'EOF'
+---
+topic: auth-flow
+status: concluded
+work_type: feature
+date: 2026-01-15
+---
+
+# Discussion: Auth Flow
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/auth-flow/specification.md" << 'EOF'
+---
+topic: auth-flow
+status: concluded
+work_type: feature
+type: feature
+---
+
+# Specification: Auth Flow
+EOF
+
+cat > "$TEST_DIR/.workflows/planning/auth-flow/plan.md" << 'EOF'
+---
+topic: auth-flow
+status: concluded
+work_type: feature
+format: tick
+ext_id: tick-abc123
+---
+
+# Plan: Auth Flow
+EOF
+
+# Implementation has frontmatter but NO work_type (the gap 013-015 missed)
+cat > "$TEST_DIR/.workflows/implementation/auth-flow/tracking.md" << 'EOF'
+---
+topic: auth-flow
+status: completed
+format: tick
+task_gate_mode: auto
+fix_gate_mode: gated
+fix_attempts: 0
+analysis_cycle: 2
+current_phase: 3
+current_task: ~
+---
+
+# Implementation: Auth Flow
+EOF
+
+run_migration
+
+assert_file_exists "$TEST_DIR/.workflows/auth-flow/manifest.json" "manifest created"
+assert_file_exists "$TEST_DIR/.workflows/auth-flow/implementation/auth-flow/implementation.md" "implementation moved to feature work unit"
+assert_file_not_exists "$TEST_DIR/.workflows/implementation/auth-flow/tracking.md" "old implementation file removed"
+
+manifest=$(cat "$TEST_DIR/.workflows/auth-flow/manifest.json")
+assert_contains "$manifest" '"work_type": "feature"' "work unit is feature"
+
+impl_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/auth-flow/manifest.json','utf8')); console.log(m.phases.implementation ? m.phases.implementation.status : 'missing')")
+assert_equals "$impl_status" "completed" "implementation status in manifest"
+
+# Verify no v1 epic was created (all artifacts belong to the feature)
+assert_file_not_exists "$TEST_DIR/.workflows/v1/manifest.json" "no v1 epic created"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Implementation without work_type — bugfix falls back correctly${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/investigation/fix-crash"
+mkdir -p "$TEST_DIR/.workflows/specification/fix-crash"
+mkdir -p "$TEST_DIR/.workflows/planning/fix-crash"
+mkdir -p "$TEST_DIR/.workflows/implementation/fix-crash"
+
+cat > "$TEST_DIR/.workflows/investigation/fix-crash/investigation.md" << 'EOF'
+---
+topic: fix-crash
+status: concluded
+work_type: bugfix
+---
+
+# Investigation: Fix Crash
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/fix-crash/specification.md" << 'EOF'
+---
+topic: fix-crash
+status: concluded
+work_type: bugfix
+type: feature
+---
+
+# Specification: Fix Crash
+EOF
+
+cat > "$TEST_DIR/.workflows/planning/fix-crash/plan.md" << 'EOF'
+---
+topic: fix-crash
+status: concluded
+work_type: bugfix
+format: local-markdown
+---
+
+# Plan: Fix Crash
+EOF
+
+# No work_type in implementation
+cat > "$TEST_DIR/.workflows/implementation/fix-crash/tracking.md" << 'EOF'
+---
+topic: fix-crash
+status: completed
+format: local-markdown
+task_gate_mode: auto
+---
+
+# Implementation: Fix Crash
+EOF
+
+run_migration
+
+assert_file_exists "$TEST_DIR/.workflows/fix-crash/implementation/fix-crash/implementation.md" "bugfix implementation moved to own work unit"
+
+manifest=$(cat "$TEST_DIR/.workflows/fix-crash/manifest.json")
+assert_contains "$manifest" '"work_type": "bugfix"' "work unit is bugfix"
+
+impl_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/fix-crash/manifest.json','utf8')); console.log(m.phases.implementation ? m.phases.implementation.status : 'missing')")
+assert_equals "$impl_status" "completed" "implementation status in bugfix manifest"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Non-standard status values are normalized${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/widget"
+mkdir -p "$TEST_DIR/.workflows/planning/widget"
+
+cat > "$TEST_DIR/.workflows/discussion/widget.md" << 'EOF'
+---
+topic: widget
+status: concluded
+work_type: feature
+---
+
+# Discussion: Widget
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/widget/specification.md" << 'EOF'
+---
+topic: widget
+status: concluded
+work_type: feature
+type: feature
+---
+
+# Specification: Widget
+EOF
+
+# Non-standard status: "planning" instead of "in-progress"
+cat > "$TEST_DIR/.workflows/planning/widget/plan.md" << 'EOF'
+---
+topic: widget
+status: planning
+work_type: feature
+format: tick
+---
+
+# Plan: Widget
+EOF
+
+run_migration
+
+plan_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/widget/manifest.json','utf8')); console.log(m.phases.planning.status)")
+assert_equals "$plan_status" "in-progress" "non-standard 'planning' status normalized to 'in-progress'"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Status normalization — completed/concluded crossover${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/crossover"
+
+cat > "$TEST_DIR/.workflows/discussion/crossover.md" << 'EOF'
+---
+topic: crossover
+status: completed
+work_type: feature
+---
+
+# Discussion: Crossover
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/crossover/specification.md" << 'EOF'
+---
+topic: crossover
+status: completed
+work_type: feature
+type: feature
+---
+
+# Specification: Crossover
+EOF
+
+run_migration
+
+disc_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/crossover/manifest.json','utf8')); console.log(m.phases.discussion.status)")
+assert_equals "$disc_status" "concluded" "discussion 'completed' normalized to 'concluded'"
+
+spec_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/crossover/manifest.json','utf8')); console.log(m.phases.specification.status)")
+assert_equals "$spec_status" "concluded" "specification 'completed' normalized to 'concluded'"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Research status inferred from later phases${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/research"
+
+# Research with no Discussion-ready marker
+cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
+# Research Exploration
+
+Some research content without any Discussion-ready marker.
+EOF
+
+# Greenfield discussion exists — proves research was concluded
+cat > "$TEST_DIR/.workflows/discussion/topic-a.md" << 'EOF'
+---
+topic: topic-a
+status: concluded
+work_type: greenfield
+---
+
+# Discussion: Topic A
+EOF
+
+run_migration
+
+research_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.research ? m.phases.research.status : 'missing')")
+assert_equals "$research_status" "concluded" "research concluded when later phases exist"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Research status stays in-progress when no later phases${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/research"
+
+# Research only — no other phases, no Discussion-ready marker
+cat > "$TEST_DIR/.workflows/research/exploration.md" << 'EOF'
+# Research Exploration
+
+Early research, nothing else exists yet.
+EOF
+
+# Need a greenfield discussion to trigger v1 epic creation... but we want ONLY research.
+# Research without any other phase and without a marker: the file is greenfield (no work_type),
+# so it triggers V1_EPIC_NEEDED. The v1 manifest should have only research, in-progress.
+run_migration
+
+# v1 should exist with research only
+research_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.research ? m.phases.research.status : 'missing')")
+assert_equals "$research_status" "in-progress" "research stays in-progress when no later phases"
+
+# No other phases should exist
+phase_count=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(Object.keys(m.phases).length)")
+assert_equals "$phase_count" "1" "only research phase in manifest"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Specification path references updated for new directory depth${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/my-feature"
+mkdir -p "$TEST_DIR/.workflows/planning/my-feature"
+
+cat > "$TEST_DIR/.workflows/discussion/my-feature.md" << 'EOF'
+---
+topic: my-feature
+status: concluded
+work_type: feature
+---
+
+# Discussion: My Feature
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/my-feature/specification.md" << 'EOF'
+---
+topic: my-feature
+status: concluded
+work_type: feature
+type: feature
+---
+
+# Specification: My Feature
+EOF
+
+cat > "$TEST_DIR/.workflows/planning/my-feature/plan.md" << 'EOF'
+---
+topic: my-feature
+status: concluded
+work_type: feature
+format: local-markdown
+specification: ../specification/my-feature/specification.md
+spec_commit: abc123
+---
+
+# Plan: My Feature
+EOF
+
+run_migration
+
+spec_ref=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/my-feature/manifest.json','utf8')); console.log(m.phases.planning.specification)")
+assert_equals "$spec_ref" "../../specification/my-feature/specification.md" "spec path gets extra ../ for new directory depth"
+
+# Verify the path actually resolves
+resolved="$TEST_DIR/.workflows/my-feature/planning/my-feature/$spec_ref"
+assert_file_exists "$(cd "$(dirname "$resolved")" && pwd)/$(basename "$resolved")" "spec path resolves to actual file"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: Epic spec path references also updated${NC}"
+setup_fixture
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/billing"
+mkdir -p "$TEST_DIR/.workflows/planning/billing"
+
+cat > "$TEST_DIR/.workflows/discussion/billing.md" << 'EOF'
+---
+topic: billing
+status: concluded
+work_type: greenfield
+---
+
+# Discussion: Billing
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/billing/specification.md" << 'EOF'
+---
+topic: billing
+status: concluded
+work_type: greenfield
+type: feature
+---
+
+# Specification: Billing
+EOF
+
+cat > "$TEST_DIR/.workflows/planning/billing/plan.md" << 'EOF'
+---
+topic: billing
+status: concluded
+work_type: greenfield
+format: tick
+ext_id: tick-abc
+specification: ../specification/billing/specification.md
+spec_commit: def456
+---
+
+# Plan: Billing
+EOF
+
+run_migration
+
+epic_spec_ref=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.planning.items.billing.specification)")
+assert_equals "$epic_spec_ref" "../../specification/billing/specification.md" "epic spec path gets extra ../"
+
+# ============================================================================
+echo -e "${YELLOW}TEST: Superseded specification status preserved${NC}"
+# ============================================================================
+
+setup_fixture
+
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/specification/payments"
+mkdir -p "$TEST_DIR/.workflows/specification/payments-v2"
+
+cat > "$TEST_DIR/.workflows/discussion/payments.md" << 'EOF'
+---
+topic: payments
+status: concluded
+work_type: greenfield
+---
+
+# Discussion: Payments
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/payments/specification.md" << 'EOF'
+---
+topic: payments
+status: superseded
+superseded_by: payments-v2
+type: feature
+work_type: greenfield
+---
+
+# Specification: Payments (superseded)
+EOF
+
+cat > "$TEST_DIR/.workflows/specification/payments-v2/specification.md" << 'EOF'
+---
+topic: payments-v2
+status: concluded
+type: feature
+work_type: greenfield
+---
+
+# Specification: Payments v2
+EOF
+
+run_migration
+
+superseded_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.specification.items.payments.status)")
+assert_equals "$superseded_status" "superseded" "superseded spec status preserved"
+
+v2_status=$(node -e "var m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/v1/manifest.json','utf8')); console.log(m.phases.specification.items['payments-v2'].status)")
+assert_equals "$v2_status" "concluded" "non-superseded spec status preserved"
+
+# ============================================================================
+echo -e "${YELLOW}TEST: Research subdirectories migrated to v1 epic${NC}"
+# ============================================================================
+
+setup_fixture
+
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/research/sync-engine"
+mkdir -p "$TEST_DIR/.workflows/research/multi-tenancy"
+
+cat > "$TEST_DIR/.workflows/discussion/core.md" << 'EOF'
+---
+topic: core
+status: concluded
+work_type: greenfield
+---
+
+# Discussion: Core
+EOF
+
+cat > "$TEST_DIR/.workflows/research/overview.md" << 'EOF'
+---
+topic: overview
+---
+
+# Research overview
+EOF
+
+echo "# Sync architecture" > "$TEST_DIR/.workflows/research/sync-engine/architecture.md"
+echo "# Sync API design" > "$TEST_DIR/.workflows/research/sync-engine/api-design.md"
+echo "# MT overview" > "$TEST_DIR/.workflows/research/multi-tenancy/overview.md"
+
+run_migration
+
+assert_equals "$([ -d "$TEST_DIR/.workflows/v1/research/sync-engine" ] && echo yes)" "yes" "research subdir sync-engine migrated"
+assert_equals "$([ -f "$TEST_DIR/.workflows/v1/research/sync-engine/architecture.md" ] && echo yes)" "yes" "research subdir file migrated"
+assert_equals "$([ -d "$TEST_DIR/.workflows/v1/research/multi-tenancy" ] && echo yes)" "yes" "research subdir multi-tenancy migrated"
+assert_equals "$([ -f "$TEST_DIR/.workflows/v1/research/overview.md" ] && echo yes)" "yes" "flat research file also migrated"
+assert_equals "$([ -d "$TEST_DIR/.workflows/research" ] && echo yes || echo no)" "no" "old research dir removed"
+
+echo ""
+
+# ============================================================================
+echo -e "${YELLOW}TEST: .gitkeep-only directories treated as empty${NC}"
+# ============================================================================
+
+setup_fixture
+
+mkdir -p "$TEST_DIR/.workflows/discussion"
+mkdir -p "$TEST_DIR/.workflows/planning"
+
+cat > "$TEST_DIR/.workflows/discussion/widget.md" << 'EOF'
+---
+topic: widget
+status: concluded
+work_type: greenfield
+---
+
+# Discussion: Widget
+EOF
+
+touch "$TEST_DIR/.workflows/planning/.gitkeep"
+
+run_migration
+
+assert_equals "$([ -d "$TEST_DIR/.workflows/planning" ] && echo yes || echo no)" "no" ".gitkeep-only planning dir removed"
+assert_equals "$([ -d "$TEST_DIR/.workflows/v1/discussion" ] && echo yes)" "yes" "discussion still migrated correctly"
 
 echo ""
 

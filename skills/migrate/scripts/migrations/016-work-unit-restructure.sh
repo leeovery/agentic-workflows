@@ -223,6 +223,9 @@ if [ -d ".workflows/implementation" ]; then
                     _016_register "$topic" "$wt"
                 fi
                 _016_store "impl" "$topic" "$dir"
+            elif [ -n "$(_016_get_wt "$topic")" ]; then
+                # No work_type in frontmatter, but topic already registered by earlier scan
+                _016_store "impl" "$topic" "$dir"
             else
                 V1_EPIC_NEEDED=true
                 _016_append "epic_implementation" "$topic:$dir"
@@ -264,6 +267,12 @@ if [ -d ".workflows/research" ]; then
             V1_EPIC_NEEDED=true
             _016_append "epic_research" "$file"
         fi
+    done
+    # Also track research subdirectories (freeform research collections)
+    for dir in ".workflows/research"/*/; do
+        [ -d "$dir" ] || continue
+        V1_EPIC_NEEDED=true
+        _016_append "epic_research_dirs" "$dir"
     done
 fi
 
@@ -492,6 +501,17 @@ while IFS= read -r name; do
                 fi
             done <<< "$epic_research"
         fi
+        epic_research_dirs=$(_016_read_list "epic_research_dirs")
+        if [ -n "$epic_research_dirs" ]; then
+            mkdir -p ".workflows/$name/research"
+            while IFS= read -r rdir; do
+                if [ -d "$rdir" ]; then
+                    dirname=$(basename "$rdir")
+                    mv "$rdir" ".workflows/$name/research/$dirname"
+                    report_update "$rdir" "moved to .workflows/$name/research/$dirname"
+                fi
+            done <<< "$epic_research_dirs"
+        fi
     fi
 
     # Move state files to per-work-unit state dir
@@ -539,6 +559,23 @@ while IFS= read -r name; do
             return result;
         }
 
+        // Normalize status values to valid manifest statuses
+        function normalizeStatus(phase, rawStatus) {
+            var validByPhase = {
+                discussion:     ['in-progress', 'concluded'],
+                investigation:  ['in-progress', 'concluded'],
+                specification:  ['in-progress', 'concluded', 'superseded'],
+                planning:       ['in-progress', 'concluded'],
+                implementation: ['in-progress', 'completed'],
+                review:         ['in-progress', 'completed']
+            };
+            var valid = validByPhase[phase] || ['in-progress'];
+            if (valid.indexOf(rawStatus) !== -1) return rawStatus;
+            if (rawStatus === 'completed') return valid.indexOf('completed') !== -1 ? 'completed' : 'concluded';
+            if (rawStatus === 'concluded') return valid.indexOf('concluded') !== -1 ? 'concluded' : 'completed';
+            return valid[0];
+        }
+
         var manifest = {
             name: name,
             work_type: workType,
@@ -552,7 +589,7 @@ while IFS= read -r name; do
         var discFile = path.join(workDir, 'discussion', name + '.md');
         if (fs.existsSync(discFile)) {
             var fm = extractFrontmatter(discFile);
-            manifest.phases.discussion = { status: fm.status || 'in-progress' };
+            manifest.phases.discussion = { status: normalizeStatus('discussion', fm.status || 'in-progress') };
             if (fm.research_source) manifest.phases.discussion.research_source = fm.research_source;
             if (fm.date) manifest.created = fm.date;
         }
@@ -567,7 +604,7 @@ while IFS= read -r name; do
                     files.forEach(function(f) {
                         var topic = f.replace(/\.md$/, '');
                         var fm = extractFrontmatter(path.join(discDir, f));
-                        items[topic] = { status: fm.status || 'in-progress' };
+                        items[topic] = { status: normalizeStatus('discussion', fm.status || 'in-progress') };
                     });
                     manifest.phases.discussion = { items: items };
                 }
@@ -578,7 +615,7 @@ while IFS= read -r name; do
         var invFile = path.join(workDir, 'investigation', name + '.md');
         if (fs.existsSync(invFile)) {
             var fm = extractFrontmatter(invFile);
-            manifest.phases.investigation = { status: fm.status || 'in-progress' };
+            manifest.phases.investigation = { status: normalizeStatus('investigation', fm.status || 'in-progress') };
             if (fm.date && !manifest.created) manifest.created = fm.date;
         }
 
@@ -586,7 +623,7 @@ while IFS= read -r name; do
         var specFile = path.join(workDir, 'specification', name, 'specification.md');
         if (fs.existsSync(specFile)) {
             var fm = extractFrontmatter(specFile);
-            var spec = { status: fm.status || 'in-progress' };
+            var spec = { status: normalizeStatus('specification', fm.status || 'in-progress') };
             if (fm.type) spec.type = fm.type;
             if (fm.review_cycle) spec.review_cycle = parseInt(fm.review_cycle, 10) || 0;
             if (fm.finding_gate_mode) spec.finding_gate_mode = fm.finding_gate_mode;
@@ -606,7 +643,7 @@ while IFS= read -r name; do
                         var sf = path.join(specDir, d, 'specification.md');
                         if (fs.existsSync(sf)) {
                             var fm = extractFrontmatter(sf);
-                            var item = { status: fm.status || 'in-progress' };
+                            var item = { status: normalizeStatus('specification', fm.status || 'in-progress') };
                             if (fm.type) item.type = fm.type;
                             if (fm.review_cycle) item.review_cycle = parseInt(fm.review_cycle, 10) || 0;
                             if (fm.finding_gate_mode) item.finding_gate_mode = fm.finding_gate_mode;
@@ -620,14 +657,24 @@ while IFS= read -r name; do
             }
         }
 
+        // Fix relative spec paths: old structure was one level shallower
+        // Old: .workflows/planning/{topic}/plan.md → ../specification/... resolved correctly
+        // New: .workflows/{wu}/planning/{topic}/planning.md → needs ../../specification/...
+        function fixSpecPath(specPath) {
+            if (specPath && specPath.indexOf('../specification/') === 0) {
+                return '../' + specPath;
+            }
+            return specPath;
+        }
+
         // Planning (feature/bugfix — topic subdir: planning/{name}/)
         var planFile = path.join(workDir, 'planning', name, 'planning.md');
         if (fs.existsSync(planFile)) {
             var fm = extractFrontmatter(planFile);
-            var plan = { status: fm.status || 'in-progress' };
+            var plan = { status: normalizeStatus('planning', fm.status || 'in-progress') };
             if (fm.format) plan.format = fm.format;
             if (fm.ext_id) plan.ext_id = fm.ext_id;
-            if (fm.specification) plan.specification = fm.specification;
+            if (fm.specification) plan.specification = fixSpecPath(fm.specification);
             if (fm.spec_commit) plan.spec_commit = fm.spec_commit;
             if (fm.task_gate_mode) plan.task_gate_mode = fm.task_gate_mode;
             if (fm.finding_gate_mode) plan.finding_gate_mode = fm.finding_gate_mode;
@@ -648,10 +695,10 @@ while IFS= read -r name; do
                         var pf = path.join(planDir, d, 'planning.md');
                         if (fs.existsSync(pf)) {
                             var fm = extractFrontmatter(pf);
-                            var item = { status: fm.status || 'in-progress' };
+                            var item = { status: normalizeStatus('planning', fm.status || 'in-progress') };
                             if (fm.format) item.format = fm.format;
                             if (fm.ext_id) item.ext_id = fm.ext_id;
-                            if (fm.specification) item.specification = fm.specification;
+                            if (fm.specification) item.specification = fixSpecPath(fm.specification);
                             if (fm.spec_commit) item.spec_commit = fm.spec_commit;
                             if (fm.task_gate_mode) item.task_gate_mode = fm.task_gate_mode;
                             if (fm.finding_gate_mode) item.finding_gate_mode = fm.finding_gate_mode;
@@ -670,7 +717,7 @@ while IFS= read -r name; do
         var implFile = path.join(workDir, 'implementation', name, 'implementation.md');
         if (fs.existsSync(implFile)) {
             var fm = extractFrontmatter(implFile);
-            var impl = { status: fm.status || 'in-progress' };
+            var impl = { status: normalizeStatus('implementation', fm.status || 'in-progress') };
             if (fm.format) impl.format = fm.format;
             if (fm.task_gate_mode) impl.task_gate_mode = fm.task_gate_mode;
             if (fm.fix_gate_mode) impl.fix_gate_mode = fm.fix_gate_mode;
@@ -695,7 +742,7 @@ while IFS= read -r name; do
                         var imf = path.join(implDir, d, 'implementation.md');
                         if (fs.existsSync(imf)) {
                             var fm = extractFrontmatter(imf);
-                            var item = { status: fm.status || 'in-progress' };
+                            var item = { status: normalizeStatus('implementation', fm.status || 'in-progress') };
                             if (fm.format) item.format = fm.format;
                             if (fm.task_gate_mode) item.task_gate_mode = fm.task_gate_mode;
                             if (fm.fix_gate_mode) item.fix_gate_mode = fm.fix_gate_mode;
@@ -746,7 +793,11 @@ while IFS= read -r name; do
                     var content = fs.readFileSync(path.join(resDir, f), 'utf8');
                     return /^> \*\*Discussion-ready\*\*:/m.test(content);
                 });
-                manifest.phases.research = { status: hasConcluded ? 'concluded' : 'in-progress' };
+                // If later phases exist, research must have concluded
+                var hasLaterPhases = Object.keys(manifest.phases).some(function(p) {
+                    return p !== 'research';
+                });
+                manifest.phases.research = { status: (hasConcluded || hasLaterPhases) ? 'concluded' : 'in-progress' };
             }
         }
 
@@ -765,7 +816,7 @@ done < "$_016_TMPDIR/wu_list"
 
 for phase_dir in discussion investigation specification planning implementation review research; do
     if [ -d ".workflows/$phase_dir" ]; then
-        remaining=$(find ".workflows/$phase_dir" -type f 2>/dev/null | head -1)
+        remaining=$(find ".workflows/$phase_dir" -type f ! -name ".gitkeep" 2>/dev/null | head -1)
         if [ -z "$remaining" ]; then
             rm -rf ".workflows/$phase_dir"
             report_update ".workflows/$phase_dir" "removed empty phase directory"
