@@ -55,7 +55,7 @@ Invoke the `/migrate` skill and assess its output.
 
 If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
-```node
+```bash
 node .claude/skills/start-investigation/scripts/discovery.js
 ```
 
