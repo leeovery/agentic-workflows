@@ -46,11 +46,11 @@ Append at the end of the Plan Index File body, following the **Phase Entry** and
 - Task `Ext ID`: external identifier for the task from the output format
 - Task IDs must match the IDs used in the created task files
 - Check the planning `ext_id` via the manifest CLI:
-  ```
+  ```bash
   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} ext_id
   ```
   If the command errors (field doesn't exist) or returns empty, set it to the external identifier for the plan from the output format:
-  ```
+  ```bash
   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} ext_id "{ext_id_value}"
   ```
 
