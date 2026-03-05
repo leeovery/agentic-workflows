@@ -81,7 +81,7 @@ function discover(cwd) {
         format: planning.format || 'MISSING',
         specification: `${m.name}/specification/${topic}/specification.md`,
         specification_exists: fileExists(specFile),
-        ...(planning.plan_id && { plan_id: planning.plan_id }),
+        ...(planning.ext_id && { ext_id: planning.ext_id }),
         external_deps: externalDeps.map(d => ({
           topic: d.topic || '', state: d.state || '',
           ...(d.task_id && { task_id: d.task_id }),

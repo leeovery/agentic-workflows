@@ -79,7 +79,7 @@ Parse the discovery output to understand:
 
 **From `plans` section:**
 - `exists` - whether any plans exist
-- `files` - each plan's name, format, status, and plan_id (if present)
+- `files` - each plan's name, format, status, and ext_id (if present)
 - `common_format` - the output format if all existing plans share the same one; empty string otherwise
 
 **From `state` section:**

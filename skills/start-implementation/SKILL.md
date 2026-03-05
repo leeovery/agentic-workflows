@@ -68,7 +68,7 @@ Parse the discovery output to understand:
 
 **From `plans` section:**
 - `exists` - whether any plans exist
-- `files` - list of plans with: name, topic, status, format, specification, specification_exists, plan_id (if present)
+- `files` - list of plans with: name, topic, status, format, specification, specification_exists, ext_id (if present)
 - Per plan `external_deps` - array of dependencies with topic, state, task_id
 - Per plan `has_unresolved_deps` - whether plan has unresolved dependencies
 - Per plan `unresolved_dep_count` - count of unresolved dependencies

@@ -188,11 +188,33 @@ Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow
 
 #### If `STATUS` is `clean`
 
+No actionable tasks from synthesis. Set review status to completed — the review produced a verdict and synthesis was attempted.
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+```
+
 > *Output the next fenced block as a code block:*
 
 ```
-No actionable tasks synthesized.
+No actionable tasks synthesized. Review complete.
 ```
+
+**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+
+**If work_type is set** (feature, bugfix, or epic):
+
+This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+
+```
+Pipeline bridge for: {work_unit}
+Work type: {work_type from manifest}
+Completed phase: review
+
+Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
+```
+
+**If work_type is not set:**
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -304,11 +326,33 @@ After all tasks processed:
 
 #### If all tasks were skipped
 
+Set review status to completed — the review produced a verdict and synthesis tasks were offered, but the user chose to skip them all.
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+```
+
 Commit the staging file updates:
 
 ```
 review({work_unit}): synthesis cycle {N} — tasks skipped
 ```
+
+**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+
+**If work_type is set** (feature, bugfix, or epic):
+
+This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+
+```
+Pipeline bridge for: {work_unit}
+Work type: {work_type from manifest}
+Completed phase: review
+
+Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
+```
+
+**If work_type is not set:**
 
 **STOP.** Do not proceed — terminal condition.
 

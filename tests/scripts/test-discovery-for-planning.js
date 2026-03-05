@@ -94,15 +94,15 @@ describe('start-planning discovery', () => {
     assert.strictEqual(r.plans.common_format, '');
   });
 
-  it('includes plan_id when present', () => {
+  it('includes ext_id when present', () => {
     createManifest(dir, 'auth', {
       phases: {
         specification: { status: 'concluded', type: 'feature' },
-        planning: { status: 'concluded', format: 'linear', plan_id: 'LIN-123' },
+        planning: { status: 'concluded', format: 'linear', ext_id: 'LIN-123' },
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.plans.files[0].plan_id, 'LIN-123');
+    assert.strictEqual(r.plans.files[0].ext_id, 'LIN-123');
   });
 
   it('in-progress spec is not ready', () => {

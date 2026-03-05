@@ -10,7 +10,7 @@
 
 ```
 · · · · · · · · · · · ·
-- **`p`/`park`** — Mark as discussion-ready and move to another topic
+- **`c`/`conclude`** — Conclude research and move forward
 - **`k`/`keep`** — Keep digging, there's more to understand
 - Comment — your call
 · · · · · · · · · · · ·
@@ -18,15 +18,7 @@
 
 **STOP.** Wait for user response.
 
-#### If the user parks it
-
-Document the convergence point in the research file using this marker:
-
-```markdown
-> **Discussion-ready**: {Brief summary of what was explored and why it's ready for decision-making. Key tradeoffs or options identified.}
-```
-
-Commit the file.
+#### If the user concludes
 
 Set research status to concluded via manifest CLI:
 
@@ -42,25 +34,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_t
 
 **If work_type is set** (feature or epic):
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-This topic is marked discussion-ready. Would you like to:
-
-- **`c`/`continue`** — Continue exploring
-- **`d`/`discuss`** — Transition to structured discussion
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If continue:**
-
-→ Return to **[research-session.md](research-session.md)**.
-
-**If discuss:**
-
 Invoke the `/workflow-bridge` skill:
 
 ```
@@ -73,7 +46,15 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 
 **If work_type is not set:**
 
-→ Return to **[research-session.md](research-session.md)**.
+> *Output the next fenced block as a code block:*
+
+```
+Research concluded for {work_unit}.
+
+Run /start-discussion to begin structured discussion.
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 #### If the user keeps digging
 

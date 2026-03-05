@@ -71,7 +71,7 @@ function discover(cwd) {
         specification_exists: fileExists(specFile),
         implementation_status: implStatus,
         review_count: reviewCount,
-        ...(planning.plan_id && { plan_id: planning.plan_id }),
+        ...(planning.ext_id && { ext_id: planning.ext_id }),
       };
 
       if (reviewCount > 0) {

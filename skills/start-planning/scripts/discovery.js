@@ -67,7 +67,7 @@ function discover(cwd) {
         plans.push({
           name: spec.topic, format: plan.format || 'MISSING',
           status: plan.status, work_type: m.work_type,
-          ...(plan.plan_id && { plan_id: plan.plan_id }),
+          ...(plan.ext_id && { ext_id: plan.ext_id }),
         });
 
         if (plan.format && plan.format !== 'MISSING') {

@@ -18,7 +18,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 
 **If research status is `concluded`:**
 
-Read `.workflows/{work_unit}/research/*.md` for the `> **Discussion-ready**:` summary content to include in the handoff.
+Read `.workflows/{work_unit}/research/*.md` for context to include in the handoff.
 
 > *Output the next fenced block as a code block:*
 
@@ -27,7 +27,7 @@ Starting discussion: {topic:(titlecase)}
 Work type: {work_type}
 
 Research context:
-{discussion-ready summary extracted from research file}
+{key findings and context from research files}
 
 Anything to add or adjust before we begin, or "go" to proceed:
 ```

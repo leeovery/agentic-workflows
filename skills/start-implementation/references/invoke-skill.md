@@ -31,7 +31,7 @@ Invoke the [technical-implementation](../../technical-implementation/SKILL.md) s
 Implementation session for: {work_unit}
 Plan: .workflows/{work_unit}/planning/{topic}/planning.md
 Format: {format}
-Plan ID: {plan_id} (if applicable)
+Ext ID: {ext_id} (if applicable)
 Specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
 Implementation: {exists | new} (status: {in-progress | not-started | completed})
 

@@ -116,13 +116,13 @@ describe('start-review discovery', () => {
     assert.strictEqual(r.state.implemented_count, 0);
   });
 
-  it('plan_id included when present', () => {
+  it('ext_id included when present', () => {
     createManifest(dir, 'auth', {
-      phases: { planning: { status: 'concluded', format: 'linear', plan_id: 'LIN-42' } },
+      phases: { planning: { status: 'concluded', format: 'linear', ext_id: 'LIN-42' } },
     });
     createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
     const r = discover(dir);
-    assert.strictEqual(r.plans.files[0].plan_id, 'LIN-42');
+    assert.strictEqual(r.plans.files[0].ext_id, 'LIN-42');
   });
 
   it('completed_count tracks completed implementations', () => {
