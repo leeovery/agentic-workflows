@@ -4,12 +4,12 @@
 
 ---
 
-Based on the epic description, suggest a name. Once confirmed, this becomes `{work_unit}` for all subsequent references.
+Based on the epic description, suggest a name in kebab-case. Once confirmed, this becomes `{work_unit}` for all subsequent references.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Suggested epic name: {work_unit:(kebabcase)}
+Suggested epic name: {work_unit}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

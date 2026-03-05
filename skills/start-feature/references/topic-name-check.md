@@ -4,12 +4,12 @@
 
 ---
 
-Based on the feature description, suggest a name. Once confirmed, this becomes both `{work_unit}` and `{topic}` — for feature, they are always the same value.
+Based on the feature description, suggest a name in kebab-case. Once confirmed, this becomes both `{work_unit}` and `{topic}` — for feature, they are always the same value.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Suggested feature name: {work_unit:(kebabcase)}
+Suggested feature name: {work_unit}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
