@@ -387,7 +387,6 @@ For each plan that received new tasks:
    - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} status in-progress`
    - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} updated {today's date}`
    - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0`
-   - Remove `completed` field if present: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} completed ""`
 3. Commit tracking changes:
 
 ```
