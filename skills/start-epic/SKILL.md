@@ -38,8 +38,9 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
    - No manifest exists → resume at **Step 1**
    - Manifest exists, no research or discussion file → resume at **Step 4** (re-evaluate routing)
    - Research file exists, no discussion → resume at **Step 5** (re-invoke technical-research)
-   - Discussion exists with `in-progress` status in manifest → resume at **Step 5** (re-invoke technical-discussion)
-   - Discussion has `concluded` status in manifest → already handled by processing skill's bridge invocation
+   - Check discussion status via CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase discussion --topic {topic} status`
+   - Status is `in-progress` → resume at **Step 5** (re-invoke technical-discussion)
+   - Status is `concluded` → already handled by processing skill's bridge invocation
 4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
