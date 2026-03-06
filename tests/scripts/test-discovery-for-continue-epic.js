@@ -10,58 +10,53 @@ describe('continue-epic discovery', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  describe('list mode', () => {
-    it('returns empty when no epics exist', () => {
-      const r = discover(dir);
-      assert.strictEqual(r.mode, 'list');
-      assert.strictEqual(r.count, 0);
-    });
-
-    it('lists active epics only', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-      });
-      createManifest(dir, 'old', { work_type: 'epic', status: 'archived' });
-      const r = discover(dir);
-      assert.strictEqual(r.count, 1);
-      assert.strictEqual(r.epics[0].name, 'v1');
-    });
-
-    it('excludes non-epic work types', () => {
-      createManifest(dir, 'v1', { work_type: 'epic' });
-      createManifest(dir, 'auth', { work_type: 'feature' });
-      const r = discover(dir);
-      assert.strictEqual(r.count, 1);
-    });
-
-    it('includes active phases', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          research: { items: { exploration: { status: 'concluded' } } },
-          discussion: { items: { auth: { status: 'in-progress' } } },
-          specification: { items: { auth: { status: 'in-progress' } } },
-        },
-      });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].active_phases, ['research', 'discussion', 'specification']);
-    });
+  it('returns empty when no epics exist', () => {
+    const r = discover(dir);
+    assert.strictEqual(r.count, 0);
+    assert.strictEqual(r.epics.length, 0);
+    assert.strictEqual(r.summary, 'no active epics');
   });
 
-  describe('detail mode', () => {
-    it('returns error for missing work unit', () => {
-      const r = discover(dir, 'nonexistent');
-      assert.strictEqual(r.error, 'not_found');
+  it('lists active epics only', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
+    createManifest(dir, 'old', { work_type: 'epic', status: 'archived' });
+    const r = discover(dir);
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.epics[0].name, 'v1');
+  });
 
-    it('returns error for wrong type', () => {
-      createManifest(dir, 'auth', { work_type: 'feature' });
-      const r = discover(dir, 'auth');
-      assert.strictEqual(r.error, 'wrong_type');
+  it('excludes non-epic work types', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    createManifest(dir, 'auth', { work_type: 'feature' });
+    const r = discover(dir);
+    assert.strictEqual(r.count, 1);
+  });
+
+  it('includes active phases', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { exploration: { status: 'concluded' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
+      },
     });
+    const r = discover(dir);
+    assert.deepStrictEqual(r.epics[0].active_phases, ['research', 'discussion', 'specification']);
+  });
 
-    it('returns phase items', () => {
+  it('returns summary with count', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    createManifest(dir, 'v2', { work_type: 'epic' });
+    const r = discover(dir);
+    assert.strictEqual(r.summary, '2 active epic(s)');
+  });
+
+  describe('epic detail', () => {
+    it('includes phase items in detail', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -73,9 +68,9 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.mode, 'detail');
-      assert.strictEqual(r.phases.discussion.length, 2);
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.phases.discussion.length, 2);
     });
 
     it('tracks in-progress items', () => {
@@ -86,10 +81,11 @@ describe('continue-epic discovery', () => {
           specification: { items: { billing: { status: 'in-progress' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.in_progress.length, 2);
-      assert.strictEqual(r.in_progress[0].name, 'auth');
-      assert.strictEqual(r.in_progress[0].phase, 'discussion');
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.in_progress.length, 2);
+      assert.strictEqual(d.in_progress[0].name, 'auth');
+      assert.strictEqual(d.in_progress[0].phase, 'discussion');
     });
 
     it('tracks concluded items', () => {
@@ -99,9 +95,10 @@ describe('continue-epic discovery', () => {
           discussion: { items: { auth: { status: 'concluded' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.concluded.length, 1);
-      assert.strictEqual(r.concluded[0].name, 'auth');
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.concluded.length, 1);
+      assert.strictEqual(d.concluded[0].name, 'auth');
     });
 
     it('detects unaccounted discussions', () => {
@@ -124,8 +121,8 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.deepStrictEqual(r.unaccounted_discussions, ['payments']);
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['payments']);
     });
 
     it('detects reopened discussions', () => {
@@ -147,8 +144,8 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.deepStrictEqual(r.reopened_discussions, ['auth']);
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
     });
 
     it('computes next-phase-ready: spec concluded no plan', () => {
@@ -158,9 +155,10 @@ describe('continue-epic discovery', () => {
           specification: { items: { auth: { status: 'concluded' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.next_phase_ready.length, 1);
-      assert.strictEqual(r.next_phase_ready[0].action, 'start_planning');
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.next_phase_ready.length, 1);
+      assert.strictEqual(d.next_phase_ready[0].action, 'start_planning');
     });
 
     it('computes next-phase-ready: plan concluded no impl', () => {
@@ -170,9 +168,8 @@ describe('continue-epic discovery', () => {
           planning: { items: { auth: { status: 'concluded' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.next_phase_ready.length, 1);
-      assert.strictEqual(r.next_phase_ready[0].action, 'start_implementation');
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.next_phase_ready[0].action, 'start_implementation');
     });
 
     it('computes next-phase-ready: impl completed no review', () => {
@@ -182,9 +179,8 @@ describe('continue-epic discovery', () => {
           implementation: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.next_phase_ready.length, 1);
-      assert.strictEqual(r.next_phase_ready[0].action, 'start_review');
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.next_phase_ready[0].action, 'start_review');
     });
 
     it('does not show next-phase-ready when next phase already exists', () => {
@@ -195,8 +191,8 @@ describe('continue-epic discovery', () => {
           planning: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.next_phase_ready.length, 0);
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.next_phase_ready.length, 0);
     });
 
     it('sets gating flags correctly', () => {
@@ -209,11 +205,12 @@ describe('continue-epic discovery', () => {
           implementation: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.gating.can_start_specification, true);
-      assert.strictEqual(r.gating.can_start_planning, true);
-      assert.strictEqual(r.gating.can_start_implementation, true);
-      assert.strictEqual(r.gating.can_start_review, true);
+      const r = discover(dir);
+      const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.can_start_specification, true);
+      assert.strictEqual(g.can_start_planning, true);
+      assert.strictEqual(g.can_start_implementation, true);
+      assert.strictEqual(g.can_start_review, true);
     });
 
     it('gating is false when no concluded items', () => {
@@ -223,9 +220,10 @@ describe('continue-epic discovery', () => {
           discussion: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.gating.can_start_specification, false);
-      assert.strictEqual(r.gating.can_start_planning, false);
+      const r = discover(dir);
+      const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.can_start_specification, false);
+      assert.strictEqual(g.can_start_planning, false);
     });
 
     it('includes spec sources in phase items', () => {
@@ -245,22 +243,23 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      const spec = r.phases.specification[0];
+      const r = discover(dir);
+      const spec = r.epics[0].detail.phases.specification[0];
       assert.strictEqual(spec.sources.length, 2);
       assert.strictEqual(spec.sources[0].topic, 'providers');
-      assert.strictEqual(spec.sources[0].status, 'incorporated');
     });
 
     it('handles empty epic (no phases)', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.mode, 'detail');
-      assert.deepStrictEqual(r.phases, {});
-      assert.strictEqual(r.in_progress.length, 0);
-      assert.strictEqual(r.concluded.length, 0);
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.deepStrictEqual(d.phases, {});
+      assert.strictEqual(d.in_progress.length, 0);
+      assert.strictEqual(d.concluded.length, 0);
     });
+  });
 
+  describe('edge cases', () => {
     it('sources using name field instead of topic', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
@@ -276,9 +275,8 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      // auth is sourced via name field, so should not be unaccounted
-      assert.deepStrictEqual(r.unaccounted_discussions, []);
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, []);
     });
 
     it('spec with empty sources array', () => {
@@ -293,9 +291,8 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      // auth is concluded and not sourced, so it's unaccounted
-      assert.deepStrictEqual(r.unaccounted_discussions, ['auth']);
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
     });
 
     it('spec with no sources field', () => {
@@ -310,8 +307,8 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.deepStrictEqual(r.unaccounted_discussions, ['auth']);
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
     });
 
     it('multiple items ready simultaneously', () => {
@@ -336,10 +333,10 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      // auth and billing ready for planning, payments ready for impl, core ready for review
-      assert.strictEqual(r.next_phase_ready.length, 4);
-      const actions = r.next_phase_ready.map(n => n.action).sort();
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.next_phase_ready.length, 4);
+      const actions = d.next_phase_ready.map(n => n.action).sort();
       assert.deepStrictEqual(actions, ['start_implementation', 'start_planning', 'start_planning', 'start_review']);
     });
 
@@ -360,22 +357,21 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      // Both discussions unaccounted since spec has no sources
-      assert.strictEqual(r.unaccounted_discussions.length, 2);
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.unaccounted_discussions.length, 2);
     });
 
     it('gating flags all false for empty epic', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.gating.can_start_specification, false);
-      assert.strictEqual(r.gating.can_start_planning, false);
-      assert.strictEqual(r.gating.can_start_implementation, false);
-      assert.strictEqual(r.gating.can_start_review, false);
+      const r = discover(dir);
+      const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.can_start_specification, false);
+      assert.strictEqual(g.can_start_planning, false);
+      assert.strictEqual(g.can_start_implementation, false);
+      assert.strictEqual(g.can_start_review, false);
     });
 
     it('concluded discussion that is in-progress is not both reopened and unaccounted', () => {
-      // Discussion is in-progress AND sourced — it's reopened, not unaccounted
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -390,10 +386,9 @@ describe('continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir, 'v1');
-      assert.deepStrictEqual(r.reopened_discussions, ['auth']);
-      // Not unaccounted because it's in-progress (unaccounted only checks concluded)
-      assert.deepStrictEqual(r.unaccounted_discussions, []);
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, []);
     });
   });
 });

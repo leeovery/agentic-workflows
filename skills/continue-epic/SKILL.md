@@ -34,67 +34,61 @@ Invoke the `/migrate` skill and assess its output.
 
 ---
 
-## Step 1: Check Arguments
+## Step 1: Discovery State
 
-Check for arguments: work_unit = `$0` (optional).
+!`node .claude/skills/continue-epic/scripts/discovery.js`
 
-#### If work_unit provided
-
-→ Proceed to **Step 3**.
-
-#### Otherwise
-
-→ Proceed to **Step 2**.
-
----
-
-## Step 2: Select Epic
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.js
 ```
 
-Parse the output. If `count` is 0:
+If discovery output is already displayed, it has been run on your behalf.
 
-> *Output the next fenced block as a code block:*
+Parse the discovery output to understand:
 
-```
-Continue Epic
+**From `epics` array:** Each epic has:
+- `name` - the work unit name
+- `active_phases` - list of phase names that have artifacts
+- `detail` - full phase-by-phase breakdown containing:
+  - `phases` - per-phase items with statuses and spec sources
+  - `in_progress` - items currently in-progress (name + phase)
+  - `concluded` - items that are concluded/completed (name + phase)
+  - `next_phase_ready` - items ready for the next phase (name + action + label)
+  - `unaccounted_discussions` - concluded discussions not sourced in any spec
+  - `reopened_discussions` - in-progress discussions that are sourced in a spec
+  - `gating` - boolean flags for phase-forward gating
 
-No epics in progress.
+**From top-level fields:**
+- `count` - number of active epics
+- `summary` - human-readable state summary
 
-Run /start-epic to begin a new one.
-```
+**IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **Step 2**.
 
-If epics exist, load **[select-epic.md](references/select-epic.md)** and follow its instructions as written.
+---
+
+## Step 2: Check Arguments
+
+Check for arguments: work_unit = `$0` (optional).
+
+#### If `work_unit` provided
+
+Validate it against the discovery output's `epics` array. If a match is found, store that epic's data and skip epic selection.
+
+→ Proceed to **Step 3**.
+
+#### If `work_unit` not provided
 
 → Proceed to **Step 3**.
 
 ---
 
-## Step 3: Load Epic Detail
+## Step 3: Select Epic
 
-```bash
-node .claude/skills/continue-epic/scripts/discovery.js {work_unit}
-```
-
-#### If error is `not_found` or `wrong_type`
-
-> *Output the next fenced block as a code block:*
-
-```
-Continue Epic
-
-No epic named "{work_unit}" found.
-
-Run /continue-epic to see available epics, or /start-epic to begin a new one.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### Otherwise
+Load **[select-epic.md](references/select-epic.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 

@@ -34,81 +34,69 @@ Invoke the `/migrate` skill and assess its output.
 
 ---
 
-## Step 1: Check Arguments
+## Step 1: Discovery State
 
-Check for arguments: work_unit = `$0` (optional).
+!`node .claude/skills/continue-bugfix/scripts/discovery.js`
+
+If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
+
+```bash
+node .claude/skills/continue-bugfix/scripts/discovery.js
+```
+
+If discovery output is already displayed, it has been run on your behalf.
+
+Parse the discovery output to understand:
+
+**From `bugfixes` array:**
+- `name` - the work unit name
+- `next_phase` - the phase to route to
+- `phase_label` - human-readable phase status
+- `concluded_phases` - list of concluded/completed phases (for backwards navigation)
+
+**From top-level fields:**
+- `count` - number of active bugfixes
+- `summary` - human-readable state summary
+
+**IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
 → Proceed to **Step 2**.
 
 ---
 
-## Step 2: Run Discovery
+## Step 2: Check Arguments
 
-```bash
-node .claude/skills/continue-bugfix/scripts/discovery.js {work_unit}
-```
+Check for arguments: work_unit = `$0` (optional).
 
-If `work_unit` was not provided, run without arguments to get all bugfixes.
+#### If `work_unit` provided
 
-Parse the output. The discovery script returns one of:
-
-- **Error `not_found`**: No bugfix with that name exists
-- **Error `wrong_type`**: Work unit exists but is not a bugfix
-- **Error `done`**: Bugfix pipeline is complete
-- **Mode `list`**: List of active bugfixes with phase info
-- **Mode `single`**: Single bugfix with phase info
-
-#### If error is `not_found` or `wrong_type` or `done`
-
-> *Output the next fenced block as a code block:*
-
-```
-Continue Bugfix
-
-No bugfix named "{work_unit}" found.
-
-Run /continue-bugfix to see available bugfixes, or /start-bugfix to begin a new one.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If mode is `list` and `count` is 0
-
-> *Output the next fenced block as a code block:*
-
-```
-Continue Bugfix
-
-No bugfixes in progress.
-
-Run /start-bugfix to begin a new one.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If mode is `list`
-
-Load **[display-and-select.md](references/display-and-select.md)** and follow its instructions as written.
+Validate it against the discovery output's `bugfixes` array. If a match is found, store that bugfix's data and skip display.
 
 → Proceed to **Step 3**.
 
-#### If mode is `single`
-
-Store the bugfix data and skip to **Step 3**.
+#### If `work_unit` not provided
 
 → Proceed to **Step 3**.
 
 ---
 
-## Step 3: Backwards Navigation
+## Step 3: Display and Route
 
-Load **[revisit-phase.md](references/revisit-phase.md)** and follow its instructions as written.
+Load **[display-and-select.md](references/display-and-select.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Route to Phase Skill
+## Step 4: Backwards Navigation
+
+Load **[revisit-phase.md](references/revisit-phase.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Route to Phase Skill
 
 Using the selected bugfix's `next_phase`, invoke the appropriate phase skill:
 
@@ -122,6 +110,6 @@ Using the selected bugfix's `next_phase`, invoke the appropriate phase skill:
 
 Skills receive positional arguments: `$0` = work_type (`bugfix`), `$1` = work_unit. Topic is inferred from work_unit.
 
-If the user chose to revisit a concluded phase in Step 3, use that phase instead of `next_phase`.
+If the user chose to revisit a concluded phase in Step 4, use that phase instead of `next_phase`.
 
 Invoke the skill. This is terminal — do not return to the backbone.

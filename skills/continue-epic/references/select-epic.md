@@ -4,9 +4,53 @@
 
 ---
 
-Display active epics and let the user select one.
+Select which epic to continue. Handles terminal conditions, work_unit validation, and user selection.
 
-## Display
+## A. Check for Terminal Conditions
+
+#### If `count` is 0
+
+> *Output the next fenced block as a code block:*
+
+```
+Continue Epic
+
+No epics in progress.
+
+Run /start-epic to begin a new one.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `work_unit` was provided but not found in epics array
+
+> *Output the next fenced block as a code block:*
+
+```
+Continue Epic
+
+No active epic named "{work_unit}" found.
+
+Run /continue-epic to see available epics, or /start-epic to begin a new one.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+→ Proceed to **B. Route by Context**.
+
+## B. Route by Context
+
+#### If `work_unit` was provided and matched an epic
+
+Store the matched epic's data (name, active_phases, detail). Skip display.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+#### If `work_unit` was not provided
+
+→ Proceed to **C. Display and Menu**.
+
+## C. Display and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -23,8 +67,6 @@ Continue Epic
 ```
 
 Build from the discovery output's `epics` array. Each epic shows `name` (titlecased) and a comma-separated list of `active_phases` (titlecased). Blank line between each numbered item.
-
-## Menu
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -45,6 +87,6 @@ Recreate with actual epics from discovery. No auto-select, even with one item.
 
 ## Process Selection
 
-Store the selected epic's work unit name.
+Store the selected epic's data (name, active_phases, detail) for use in subsequent steps.
 
 → Return to **[the skill](../SKILL.md)**.

@@ -15,27 +15,7 @@ function concludedPhases(manifest) {
   return concluded;
 }
 
-function discover(cwd, workUnit) {
-  if (workUnit) {
-    const { loadManifest } = require('../../workflow-shared/scripts/discovery-utils');
-    const manifest = loadManifest(cwd, workUnit);
-    if (!manifest) return { error: 'not_found', work_unit: workUnit };
-    if (manifest.work_type !== 'bugfix') return { error: 'wrong_type', work_unit: workUnit, work_type: manifest.work_type };
-
-    const state = computeNextPhase(manifest);
-    if (state.next_phase === 'done') return { error: 'done', work_unit: workUnit };
-
-    return {
-      mode: 'single',
-      bugfix: {
-        name: workUnit,
-        next_phase: state.next_phase,
-        phase_label: state.phase_label,
-        concluded_phases: concludedPhases(manifest),
-      },
-    };
-  }
-
+function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
   const bugfixes = [];
 
@@ -52,36 +32,26 @@ function discover(cwd, workUnit) {
   }
 
   return {
-    mode: 'list',
     bugfixes,
     count: bugfixes.length,
+    summary: bugfixes.length === 0
+      ? 'no active bugfixes'
+      : `${bugfixes.length} active bugfix(es)`,
   };
 }
 
 function format(result) {
-  if (result.error) return `Error: ${result.error} (${result.work_unit})\n`;
-
   const lines = [];
-
-  if (result.mode === 'single') {
-    const b = result.bugfix;
-    lines.push(`=== BUGFIX: ${b.name} ===`);
-    lines.push(`next_phase: ${b.next_phase}`);
-    lines.push(`phase_label: ${b.phase_label}`);
-    lines.push(`concluded_phases: ${b.concluded_phases.join(', ') || '(none)'}`);
-  } else {
-    lines.push(`=== BUGFIXES (${result.count}) ===`);
-    for (const b of result.bugfixes) {
-      lines.push(`  ${b.name}: ${b.phase_label} [concluded: ${b.concluded_phases.join(', ') || 'none'}]`);
-    }
+  lines.push(`=== BUGFIXES (${result.count}) ===`);
+  lines.push(`summary: ${result.summary}`);
+  for (const b of result.bugfixes) {
+    lines.push(`  ${b.name}: ${b.phase_label} [concluded: ${b.concluded_phases.join(', ') || 'none'}]`);
   }
-
   return lines.join('\n') + '\n';
 }
 
 if (require.main === module) {
-  const workUnit = process.argv[2] || null;
-  process.stdout.write(format(discover(process.cwd(), workUnit)));
+  process.stdout.write(format(discover(process.cwd())));
 }
 
 module.exports = { discover };

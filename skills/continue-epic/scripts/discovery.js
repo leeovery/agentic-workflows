@@ -1,77 +1,33 @@
 'use strict';
 
-const { loadActiveManifests, loadManifest, phaseItems, phaseData } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseItems, phaseData } = require('../../workflow-shared/scripts/discovery-utils');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
-/**
- * List mode: return all active epics with summary info.
- */
-function discoverList(cwd) {
-  const manifests = loadActiveManifests(cwd);
-  const epics = [];
-
-  for (const m of manifests) {
-    if (m.work_type !== 'epic') continue;
-
-    // Collect phases that have items or status
-    const activePhases = [];
-    for (const phase of EPIC_PHASES) {
-      const items = phaseItems(m, phase);
-      const pd = phaseData(m, phase);
-      if (items.length > 0 || pd.status) {
-        activePhases.push(phase);
-      }
-    }
-
-    epics.push({
-      name: m.name,
-      active_phases: activePhases,
-    });
-  }
-
-  return {
-    mode: 'list',
-    epics,
-    count: epics.length,
-  };
-}
-
-/**
- * Detail mode: return full phase-by-phase breakdown for a single epic.
- */
-function discoverDetail(cwd, workUnit) {
-  const manifest = loadManifest(cwd, workUnit);
-  if (!manifest) return { error: 'not_found', work_unit: workUnit };
-  if (manifest.work_type !== 'epic') return { error: 'wrong_type', work_unit: workUnit, work_type: manifest.work_type };
-
+function buildEpicDetail(manifest) {
   const phases = {};
   const allSourcedDiscussions = new Set();
   const concludedItems = [];
   const inProgressItems = [];
   const nextPhaseReady = [];
 
-  // Build per-phase data
   for (const phase of EPIC_PHASES) {
     const items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
 
-    const phaseItems2 = [];
+    const phaseEntries = [];
     for (const item of items) {
       const entry = { name: item.name, status: item.status || 'unknown' };
 
-      // For specification items, include sources
       if (phase === 'specification' && item.sources) {
         entry.sources = item.sources;
-        // Track which discussions are sourced
         for (const src of item.sources) {
           allSourcedDiscussions.add(src.topic || src.name);
         }
       }
 
-      phaseItems2.push(entry);
+      phaseEntries.push(entry);
 
-      // Classify items
       if (item.status === 'in-progress') {
         inProgressItems.push({ name: item.name, phase });
       }
@@ -80,10 +36,9 @@ function discoverDetail(cwd, workUnit) {
       }
     }
 
-    phases[phase] = phaseItems2;
+    phases[phase] = phaseEntries;
   }
 
-  // Detect unaccounted discussions (concluded but not sourced in any spec)
   const discussionItems = phaseItems(manifest, 'discussion');
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
@@ -92,7 +47,6 @@ function discoverDetail(cwd, workUnit) {
     }
   }
 
-  // Detect reopened discussions (in-progress but incorporated in a spec)
   const reopenedDiscussions = [];
   for (const d of discussionItems) {
     if (d.status === 'in-progress' && allSourcedDiscussions.has(d.name)) {
@@ -100,12 +54,10 @@ function discoverDetail(cwd, workUnit) {
     }
   }
 
-  // Compute next-phase-ready items
   const specItems = phaseItems(manifest, 'specification');
   const planItems = phaseItems(manifest, 'planning');
   const implItems = phaseItems(manifest, 'implementation');
 
-  // Concluded specs with no plan
   const planTopics = new Set(planItems.map(i => i.name));
   for (const s of specItems) {
     if (s.status === 'concluded' && !planTopics.has(s.name)) {
@@ -113,7 +65,6 @@ function discoverDetail(cwd, workUnit) {
     }
   }
 
-  // Concluded plans with no implementation
   const implTopics = new Set(implItems.map(i => i.name));
   for (const p of planItems) {
     if (p.status === 'concluded' && !implTopics.has(p.name)) {
@@ -121,7 +72,6 @@ function discoverDetail(cwd, workUnit) {
     }
   }
 
-  // Completed implementations with no review
   const reviewItems = phaseItems(manifest, 'review');
   const reviewTopics = new Set(reviewItems.map(i => i.name));
   for (const i of implItems) {
@@ -130,15 +80,12 @@ function discoverDetail(cwd, workUnit) {
     }
   }
 
-  // Phase-forward gating checks
   const hasConcludedSpec = specItems.some(s => s.status === 'concluded');
   const hasConcludedPlan = planItems.some(p => p.status === 'concluded');
   const hasConcludedDiscussion = discussionItems.some(d => d.status === 'concluded');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
   return {
-    mode: 'detail',
-    work_unit: workUnit,
     phases,
     in_progress: inProgressItems,
     concluded: concludedItems,
@@ -154,27 +101,50 @@ function discoverDetail(cwd, workUnit) {
   };
 }
 
-function discover(cwd, workUnit) {
-  if (workUnit) return discoverDetail(cwd, workUnit);
-  return discoverList(cwd);
+function discover(cwd) {
+  const manifests = loadActiveManifests(cwd);
+  const epics = [];
+
+  for (const m of manifests) {
+    if (m.work_type !== 'epic') continue;
+
+    const activePhases = [];
+    for (const phase of EPIC_PHASES) {
+      const items = phaseItems(m, phase);
+      const pd = phaseData(m, phase);
+      if (items.length > 0 || pd.status) {
+        activePhases.push(phase);
+      }
+    }
+
+    epics.push({
+      name: m.name,
+      active_phases: activePhases,
+      detail: buildEpicDetail(m),
+    });
+  }
+
+  return {
+    epics,
+    count: epics.length,
+    summary: epics.length === 0
+      ? 'no active epics'
+      : `${epics.length} active epic(s)`,
+  };
 }
 
 function format(result) {
-  if (result.error) return `Error: ${result.error} (${result.work_unit})\n`;
-
   const lines = [];
+  lines.push(`=== EPICS (${result.count}) ===`);
+  lines.push(`summary: ${result.summary}`);
 
-  if (result.mode === 'list') {
-    lines.push(`=== EPICS (${result.count}) ===`);
-    for (const e of result.epics) {
-      lines.push(`  ${e.name}: ${e.active_phases.join(', ') || '(no phases)'}`);
-    }
-  } else {
-    lines.push(`=== ${result.work_unit} (epic detail) ===`);
-    for (const [phase, items] of Object.entries(result.phases)) {
-      lines.push(`  ${phase}:`);
+  for (const e of result.epics) {
+    lines.push(`  ${e.name}: ${e.active_phases.join(', ') || '(no phases)'}`);
+    const d = e.detail;
+    for (const [phase, items] of Object.entries(d.phases)) {
+      lines.push(`    ${phase}:`);
       for (const item of items) {
-        let line = `    - ${item.name} (${item.status})`;
+        let line = `      - ${item.name} (${item.status})`;
         if (item.sources) {
           const srcNames = item.sources.map(s => `${s.topic || s.name}:${s.status || '?'}`);
           line += ` [sources: ${srcNames.join(', ')}]`;
@@ -182,23 +152,23 @@ function format(result) {
         lines.push(line);
       }
     }
-    if (result.in_progress.length > 0) {
-      lines.push('  in-progress:');
-      for (const i of result.in_progress) lines.push(`    - ${i.name} (${i.phase})`);
+    if (d.in_progress.length > 0) {
+      lines.push('    in-progress:');
+      for (const i of d.in_progress) lines.push(`      - ${i.name} (${i.phase})`);
     }
-    if (result.next_phase_ready.length > 0) {
-      lines.push('  next-phase-ready:');
-      for (const n of result.next_phase_ready) lines.push(`    - ${n.name}: ${n.action} (${n.label})`);
+    if (d.next_phase_ready.length > 0) {
+      lines.push('    next-phase-ready:');
+      for (const n of d.next_phase_ready) lines.push(`      - ${n.name}: ${n.action} (${n.label})`);
     }
-    if (result.unaccounted_discussions.length > 0) {
-      lines.push(`  unaccounted_discussions: ${result.unaccounted_discussions.join(', ')}`);
+    if (d.unaccounted_discussions.length > 0) {
+      lines.push(`    unaccounted_discussions: ${d.unaccounted_discussions.join(', ')}`);
     }
-    if (result.reopened_discussions.length > 0) {
-      lines.push(`  reopened_discussions: ${result.reopened_discussions.join(', ')}`);
+    if (d.reopened_discussions.length > 0) {
+      lines.push(`    reopened_discussions: ${d.reopened_discussions.join(', ')}`);
     }
-    if (result.concluded.length > 0) {
-      lines.push('  concluded:');
-      for (const c of result.concluded) lines.push(`    - ${c.name} (${c.phase})`);
+    if (d.concluded.length > 0) {
+      lines.push('    concluded:');
+      for (const c of d.concluded) lines.push(`      - ${c.name} (${c.phase})`);
     }
   }
 
@@ -206,8 +176,7 @@ function format(result) {
 }
 
 if (require.main === module) {
-  const workUnit = process.argv[2] || null;
-  process.stdout.write(format(discover(process.cwd(), workUnit)));
+  process.stdout.write(format(discover(process.cwd())));
 }
 
 module.exports = { discover };
