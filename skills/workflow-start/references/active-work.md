@@ -1,26 +1,12 @@
-# Unified Display
+# Active Work
 
 *Reference for **[workflow-start](../SKILL.md)***
 
 ---
 
-Single-step unified router. Show all state, present menu, route to start/continue skills.
+Display all active work and present a unified menu for continuing or starting work.
 
 ## Display
-
-#### If `state.has_any_work` is false
-
-> *Output the next fenced block as a code block:*
-
-```
-Workflow Overview
-
-No active work found.
-```
-
-→ Proceed to **A. Empty State Menu**.
-
-#### If `state.has_any_work` is true
 
 > *Output the next fenced block as a code block:*
 
@@ -57,41 +43,7 @@ Epics:
 
 Build from discovery output. Only show sections that have work units. Numbering is continuous across sections. Feature/bugfix shows `phase_label` (titlecased). Epic shows comma-separated `active_phases` (titlecased). Blank line between each numbered item.
 
-→ Proceed to **B. Active Work Menu**.
-
----
-
-## A. Empty State Menu
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-What would you like to start?
-
-1. **Feature** — add functionality to an existing product
-2. **Epic** — large initiative, multi-topic, multi-session
-3. **Bugfix** — fix broken behavior
-
-Select an option (enter number):
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-Route based on selection:
-
-| Selection | Invoke |
-|-----------|--------|
-| Feature | `/start-feature` |
-| Epic | `/start-epic` |
-| Bugfix | `/start-bugfix` |
-
-Invoke the selected skill. This is terminal.
-
----
-
-## B. Active Work Menu
+## Menu
 
 Build a numbered menu with continue items first, then start-new options separated by a blank line.
 
@@ -132,4 +84,4 @@ Recreate with actual work units from discovery.
 | Start new epic | `/start-epic` |
 | Start new bugfix | `/start-bugfix` |
 
-Invoke the selected skill. This is terminal.
+This skill ends. The invoked skill will load into context and provide additional instructions.

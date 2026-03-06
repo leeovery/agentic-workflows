@@ -62,6 +62,18 @@ Parse the output to understand the current workflow state:
 
 ---
 
-## Step 2: Display and Route
+## Step 2: Check State
 
-Load **[unified-display.md](references/unified-display.md)** and follow its instructions as written.
+#### If `state.has_any_work` is false
+
+Load **[empty-state.md](references/empty-state.md)** and follow its instructions as written.
+
+#### Otherwise
+
+→ Proceed to **Step 3**.
+
+---
+
+## Step 3: Display and Route
+
+Load **[active-work.md](references/active-work.md)** and follow its instructions as written.
