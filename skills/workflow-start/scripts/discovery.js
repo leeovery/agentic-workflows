@@ -1,11 +1,9 @@
 'use strict';
 
-const path = require('path');
-const { loadActiveManifests, phaseStatus, phaseItems, computeNextPhase, listFiles } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, phaseStatus, phaseItems, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
 
 function discover(cwd) {
   const manifests = loadActiveManifests(cwd);
-  const workflowsDir = path.join(cwd, '.workflows');
   const epics = [];
   const features = [];
   const bugfixes = [];
@@ -23,16 +21,8 @@ function discover(cwd) {
         : featureKeys;
 
     for (const k of keys) {
-      if (m.work_type === 'epic' && k === 'research') {
-        // Epic research: include file listing from filesystem
-        const resDir = path.join(workflowsDir, m.name, 'research');
-        const files = listFiles(resDir, '.md');
-        phases[k] = {
-          status: phaseStatus(m, k) || 'none',
-          files: files.map(f => f.replace(/\.md$/, '')),
-        };
-      } else if (m.work_type === 'epic') {
-        // Epic non-research phases: per-item statuses
+      if (m.work_type === 'epic') {
+        // Epic: per-item statuses (all phases including research)
         const items = phaseItems(m, k);
         phases[k] = {
           total: items.length,
@@ -74,14 +64,7 @@ function format(result) {
     for (const u of items) {
       lines.push(`  ${u.name} (${u.next_phase}: ${u.phase_label})`);
       for (const [k, v] of Object.entries(u.phases)) {
-        if (typeof v === 'object' && 'files' in v) {
-          // Epic research with file listing
-          lines.push(`    ${k}: ${v.status} (${v.files.length} files)`);
-          for (const f of v.files) {
-            lines.push(`      - ${f}`);
-          }
-        } else if (typeof v === 'object') {
-          // Epic per-item phase
+        if (typeof v === 'object') {
           if (v.total === 0) {
             lines.push(`    ${k}: (none)`);
           } else {

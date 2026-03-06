@@ -89,8 +89,9 @@ Read them. Announce what's been explored so far and what themes have emerged. As
 3. Populate the Starting Point section with context from the user
 4. Set research status via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research status in-progress
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status in-progress
    ```
+   Where `{topic}` is derived from the research file name (e.g., "exploration" for `exploration.md`).
 5. Commit the initial file
 
 → Proceed to **Step 2**.

@@ -89,7 +89,7 @@ function computeNextPhase(manifest) {
   const ps = (phase) => {
     if (wt === 'epic') {
       const items = phaseItems(manifest, phase);
-      if (items.length === 0) return phaseStatus(manifest, phase); // fallback to flat (e.g., research)
+      if (items.length === 0) return phaseStatus(manifest, phase); // fallback to flat if no items
       const statuses = items.map(i => i.status).filter(Boolean);
       if (statuses.length === 0) return null;
       if (statuses.every(s => s === 'concluded' || s === 'completed')) return statuses[0];

@@ -128,7 +128,11 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'v3', {
       work_type: 'epic',
       phases: {
-        research: { status: 'concluded' },
+        research: {
+          items: {
+            'exploration': { status: 'concluded' },
+          },
+        },
         discussion: {
           items: {
             'auth': { status: 'concluded' },
@@ -146,9 +150,10 @@ describe('workflow-start discovery', () => {
     const r = discover(dir);
     const p = r.epics.work_units[0].phases;
 
-    // Research has status + file listing
-    assert.strictEqual(p.research.status, 'concluded');
-    assert.strictEqual(p.research.files.length, 0); // no research files on disk
+    // Research uses items like all other epic phases
+    assert.strictEqual(p.research.total, 1);
+    assert.strictEqual(p.research.items[0].name, 'exploration');
+    assert.strictEqual(p.research.items[0].status, 'concluded');
 
     // Discussion has items
     assert.strictEqual(p.discussion.total, 3);
@@ -168,31 +173,37 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(p.planning.items.length, 0);
   });
 
-  it('epic research lists files from filesystem', () => {
+  it('epic research uses manifest items', () => {
     createManifest(dir, 'v4', {
       work_type: 'epic',
-      phases: { research: { status: 'in-progress' } },
+      phases: {
+        research: {
+          items: {
+            'exploration': { status: 'in-progress' },
+            'architecture': { status: 'concluded' },
+            'data-modelling': { status: 'in-progress' },
+          },
+        },
+      },
     });
-    createFile(dir, '.workflows/v4/research/exploration.md', '# Exploration');
-    createFile(dir, '.workflows/v4/research/architecture.md', '# Architecture');
-    createFile(dir, '.workflows/v4/research/data-modelling.md', '# Data Modelling');
     const r = discover(dir);
     const res = r.epics.work_units[0].phases.research;
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.files.length, 3);
-    assert.ok(res.files.includes('exploration'));
-    assert.ok(res.files.includes('architecture'));
-    assert.ok(res.files.includes('data-modelling'));
+    assert.strictEqual(res.total, 3);
+    assert.strictEqual(res.items.length, 3);
+    const exploration = res.items.find(i => i.name === 'exploration');
+    assert.strictEqual(exploration.status, 'in-progress');
+    const architecture = res.items.find(i => i.name === 'architecture');
+    assert.strictEqual(architecture.status, 'concluded');
   });
 
-  it('epic research with no files returns empty array', () => {
+  it('epic research with no items returns empty', () => {
     createManifest(dir, 'v5', {
       work_type: 'epic',
-      phases: { research: { status: 'none' } },
     });
     const r = discover(dir);
     const res = r.epics.work_units[0].phases.research;
-    assert.strictEqual(res.files.length, 0);
+    assert.strictEqual(res.total, 0);
+    assert.strictEqual(res.items.length, 0);
   });
 
   it('format() produces valid output', () => {

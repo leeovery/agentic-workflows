@@ -346,13 +346,44 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.phase_label, 'specification (in-progress)');
     });
 
-    it('epic: uses flat status for research (topicless)', () => {
+    it('epic: falls back to flat status for research when no items', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: { research: { status: 'in-progress' } },
       });
       assert.strictEqual(r.next_phase, 'research');
       assert.strictEqual(r.phase_label, 'research (in-progress)');
+    });
+
+    it('epic: aggregates research items like other phases', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          research: {
+            items: {
+              'exploration': { status: 'concluded' },
+              'architecture': { status: 'in-progress' },
+            },
+          },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'research');
+      assert.strictEqual(r.phase_label, 'research (in-progress)');
+    });
+
+    it('epic: research concluded with items advances to discussion', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          research: {
+            items: {
+              'exploration': { status: 'concluded' },
+            },
+          },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'discussion');
+      assert.strictEqual(r.phase_label, 'ready for discussion');
     });
   });
 });

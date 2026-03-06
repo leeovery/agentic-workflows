@@ -19,7 +19,7 @@ const VALID_PHASES = [
 ];
 
 // Phases that have no topics — --topic is not required for these
-const TOPICLESS_PHASES = ['research'];
+const TOPICLESS_PHASES = [];
 
 const VALID_PHASE_STATUSES = {
   research:       ['in-progress', 'concluded'],
