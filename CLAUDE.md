@@ -49,12 +49,12 @@ skills/
   technical-review/          # Validate against artifacts
 
   # Unified entry points
-  workflow-start/              # Unified entry point - discovers state, routes by work type
-    scripts/discovery.js       #   Comprehensive cross-phase discovery
-    references/                #   Work type selection, routing references
+  workflow-start/              # Unified router — single view, routes to start/continue skills
+    scripts/discovery.js       #   All active work units grouped by type
+    references/                #   Unified display and routing
   workflow-bridge/             # Pipeline continuation - discovers next phase, enters plan mode
     scripts/discovery.js       #   Topic-specific or phase-centric discovery
-    references/                #   Work-type-specific continuation logic
+    references/                #   Work-type-specific continuation logic (with backwards nav)
   workflow-shared/             # Shared utilities used by other workflow skills
     scripts/discovery-utils.js #   Discovery helpers (manifest loading, phase state, checksums)
   workflow-manifest/           # Manifest CLI — single source of truth for workflow state
@@ -64,12 +64,21 @@ skills/
   migrate/                   # Keep workflow files in sync with system design
     scripts/migrate.sh       #   Migration orchestrator
     scripts/migrations/      #   Individual migration scripts (numbered)
-  start-epic/                # Start epic pipeline (multi-topic, multi-session)
+  start-epic/                # Create new epic (create only, no resume)
     references/              #   Interview questions, handoffs, phase bridge
-  start-feature/             # Start feature pipeline (power user entry)
+  start-feature/             # Create new feature (create only, no resume)
     references/              #   Interview questions, handoffs, phase bridge
-  start-bugfix/              # Start bugfix pipeline (power user entry)
+  start-bugfix/              # Create new bugfix (create only, no resume)
     references/              #   Bug context gathering, phase bridge
+  continue-feature/          # Resume in-progress feature — phase routing + backwards nav
+    scripts/discovery.js     #   Active features with phase state
+    references/              #   Display, selection, revisit phase
+  continue-bugfix/           # Resume in-progress bugfix — phase routing + backwards nav
+    scripts/discovery.js     #   Active bugfixes with phase state
+    references/              #   Display, selection, revisit phase
+  continue-epic/             # Resume in-progress epic — full state display + interactive menu
+    scripts/discovery.js     #   List mode (all epics) and detail mode (per-phase items)
+    references/              #   Epic selection, state display, menu, resume concluded
   link-dependencies/         # Link dependencies across topics
 
   # Phase entry skills (two-mode: discovery OR bridge)
@@ -136,7 +145,7 @@ hooks/
 
 Skills are organised in two tiers:
 
-**Entry-point skills** (`/start-*`, `/status`, `/migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/status`, `/view-plan`, `/link-dependencies`, `/workflow-start`) have `disable-model-invocation: true`. Phase entry-points (`/start-*`) do not, since they are invoked by `workflow-start` routing and `workflow-bridge` continuations. `/migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every entry-point skill).
+**Entry-point skills** (`/start-*`, `/continue-*`, `/status`, `/migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/status`, `/view-plan`, `/link-dependencies`, `/workflow-start`, `/continue-feature`, `/continue-bugfix`, `/continue-epic`) have `disable-model-invocation: true`. Phase entry-points (`/start-*`) do not, since they are invoked by continue skills and `workflow-bridge` continuations. `/migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every entry-point skill).
 
 **Processing skills** (`technical-*`) are model-invocable. They receive inputs and process them without knowing where the inputs came from. Entry-point skills are responsible for gathering inputs.
 
@@ -149,7 +158,7 @@ Phase entry skills (`start-discussion`, `start-specification`, etc.) support thr
 **Bridge Mode** (work_type + work_unit + topic):
 - Invoked with all arguments: `/start-discussion feature {work_unit} {topic}`
 - For feature/bugfix, topic can be omitted (inferred from work_unit): `/start-discussion feature {work_unit}`
-- Or invoked by `workflow-bridge` with work_type + work_unit + topic in context
+- Invoked by `continue-*` skills, `workflow-bridge`, or `workflow-start` with work_type + work_unit + topic in context
 - Skips discovery, validates topic exists, proceeds to pre-flight and processing
 - Enables deterministic pipeline continuation
 - Skill resolution: `topic = $2 || (wt !== 'epic' ? $1 : null)`
@@ -186,12 +195,12 @@ Processing skills should **never hardcode references** to specific workflow phas
 
 **Work types and work units**: A *work type* is one of three pipeline shapes: epic, feature, or bugfix. A *work unit* is a named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" is an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
-**Topics**: A *topic* is the item within a phase. For feature/bugfix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). Research is exempt — it may contain multiple files (especially for epics) but they are not tracked as individual topics in the manifest. The discussion phase analyses all research files collectively to derive discussion topics.
+**Topics**: A *topic* is the item within a phase. For feature/bugfix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All phases use per-topic items in the manifest for epic (including research). For feature/bugfix, research uses flat phase-level status. The discussion phase analyses all research files collectively to derive discussion topics.
 
 Work-unit-first directory structure with uniform `{topic}` in all paths. For feature/bugfix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase.
 
 - Manifest: `.workflows/{work_unit}/manifest.json`
-- Research: `.workflows/{work_unit}/research/` (freeform, no topic)
+- Research: `.workflows/{work_unit}/research/` (items for epic, flat for feature/bugfix)
 - Discussion: `.workflows/{work_unit}/discussion/{topic}.md` (flat file)
 - Investigation: `.workflows/{work_unit}/investigation/{topic}.md` (flat file)
 - Specification: `.workflows/{work_unit}/specification/{topic}/specification.md`
