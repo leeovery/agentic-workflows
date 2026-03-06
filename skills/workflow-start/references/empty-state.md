@@ -38,4 +38,4 @@ Invoke the selected skill:
 | Epic | `/start-epic` |
 | Bugfix | `/start-bugfix` |
 
-This skill ends. The invoked skill will load into context and provide additional instructions — terminal.
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
