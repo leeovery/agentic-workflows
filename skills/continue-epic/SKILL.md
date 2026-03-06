@@ -78,7 +78,7 @@ Check for arguments: work_unit = `$0` (optional).
 
 Store the work_unit.
 
-→ Proceed to **Step 4** (skipping Step 3).
+→ Proceed to **Step 4**.
 
 #### If `work_unit` not provided
 
