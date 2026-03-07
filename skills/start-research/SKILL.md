@@ -55,10 +55,11 @@ Invoke the `/migrate` skill and assess its output.
 ## Step 1: Check Arguments
 
 Check for arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
+Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`
 
 If provided, store for the handoff.
 
-#### If `work_unit` and `topic` resolved (bridge mode)
+#### If `topic` resolved (bridge mode)
 
 → Proceed to **Step 2** (Validate Phase).
 
