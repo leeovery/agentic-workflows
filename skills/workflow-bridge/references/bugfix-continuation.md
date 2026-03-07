@@ -85,13 +85,17 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-List only concluded phases that come before `next_phase`. "Back" returns to the proceed/revisit prompt above.
+List only concluded phases that come before `next_phase`.
 
 **STOP.** Wait for user response.
 
-**If user chose Back:** Re-display the proceed/revisit prompt.
+**If user chose Back:**
 
-**If user chose a phase:** Set `target_phase` = selected phase.
+→ Return to **B. Offer Revisit**.
+
+**If user chose a phase:**
+
+Set `target_phase` = selected phase.
 
 → Proceed to **C. Enter Plan Mode**.
 
