@@ -6,7 +6,7 @@
 
 Display the full phase-by-phase breakdown for the selected epic, then present the interactive menu.
 
-## State Display
+## A. State Display
 
 #### If no phases have items (brand-new epic)
 
