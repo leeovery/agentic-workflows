@@ -52,7 +52,7 @@ List all concluded items across all phases.
 
 #### If user chose a topic
 
-Route to the appropriate phase skill with the topic.
+Route to the appropriate phase skill with the topic. The phase entry skill handles setting the status back to `in-progress` — continue-epic does not modify the manifest status.
 
 | Phase | Invoke |
 |-------|--------|
