@@ -1,4 +1,4 @@
-# Validate Plan and Implementation
+# Validate Phase
 
 *Reference for **[start-review](../SKILL.md)***
 
@@ -58,5 +58,31 @@ Run /start-implementation {work_type} {work_unit} to continue.
 **STOP.** Do not proceed — terminal condition.
 
 #### If plan and implementation are both ready
+
+Check review's own phase status:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} status
+```
+
+**If status is `concluded`:**
+
+Reset to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status in-progress
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Reopening review: {topic:(titlecase)}
+```
+
+→ Return to **[the skill](../SKILL.md)**.
+
+**If status is `in-progress` or not found:**
+
+Proceed normally.
 
 → Return to **[the skill](../SKILL.md)**.

@@ -1,4 +1,4 @@
-# Validate Plan
+# Validate Phase
 
 *Reference for **[start-implementation](../SKILL.md)***
 
@@ -41,5 +41,31 @@ Run /start-planning {work_type} {work_unit} {topic} to continue.
 **STOP.** Do not proceed — terminal condition.
 
 #### If plan exists and status is `concluded`
+
+Check implementation's own status:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} status
+```
+
+**If status is `completed`:**
+
+Reset to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} status in-progress
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Reopening implementation: {topic:(titlecase)}
+```
+
+→ Return to **[the skill](../SKILL.md)**.
+
+**If status is `in-progress` or not found:**
+
+Proceed normally.
 
 → Return to **[the skill](../SKILL.md)**.

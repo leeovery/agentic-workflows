@@ -96,9 +96,9 @@ Investigation is always bugfix work_type. If work_type is provided, it should be
 
 ---
 
-## Step 3: Validate Work Unit
+## Step 3: Validate Phase
 
-Load **[validate-investigation.md](references/validate-investigation.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 #### If `resume`
 

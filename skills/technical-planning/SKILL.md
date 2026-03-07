@@ -102,11 +102,6 @@ Check the planning status via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
 ```
 
-If `concluded`, update it to `in-progress`:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} status in-progress
-```
-
 Note the current phase and task position from the manifest:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} phase

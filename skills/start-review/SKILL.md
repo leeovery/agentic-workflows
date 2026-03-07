@@ -109,9 +109,9 @@ Store work_type for the handoff.
 
 ---
 
-## Step 3: Validate Plan and Implementation
+## Step 3: Validate Phase
 
-Load **[validate-artifacts.md](references/validate-artifacts.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 

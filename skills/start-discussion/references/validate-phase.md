@@ -1,4 +1,4 @@
-# Validate Topic
+# Validate Phase
 
 *Reference for **[start-discussion](../SKILL.md)***
 
@@ -26,16 +26,21 @@ Set source="continue".
 
 #### If discussion exists and status is `concluded`
 
+Reset to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase discussion --topic {topic} status in-progress
+```
+
 > *Output the next fenced block as a code block:*
 
 ```
-Discussion Concluded
-
-The discussion for "{topic:(titlecase)}" has already concluded.
-Run /start-specification to continue to spec.
+Reopening discussion: {topic:(titlecase)}
 ```
 
-**STOP.** Do not proceed — terminal condition.
+Set source="continue".
+
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 #### If no collision
 

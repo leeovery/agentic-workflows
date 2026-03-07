@@ -98,7 +98,7 @@ Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, top
 
 #### If `topic` resolved (bridge mode)
 
-→ Proceed to **Step 3**.
+→ Proceed to **Step 3** (Validate Specification).
 
 #### If `work_type` and `work_unit` provided but no `topic` (scoped discovery)
 
@@ -116,7 +116,7 @@ Store work_type for the handoff.
 
 Load **[validate-spec.md](references/validate-spec.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 6**.
 
 ---
 
@@ -136,9 +136,9 @@ Load **[display-state.md](references/display-state.md)** and follow its instruct
 
 ---
 
-## Step 6: Route by Plan State
+## Step 6: Validate Phase
 
-Load **[route-plan-state.md](references/route-plan-state.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 ---
 

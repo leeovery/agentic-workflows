@@ -1,4 +1,4 @@
-# Check Existing Specification
+# Validate Phase
 
 *Reference for **[start-specification](../SKILL.md)***
 
@@ -45,13 +45,16 @@ Archive the existing spec.
 
 #### If specification exists with status `concluded`
 
+Reset to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status in-progress
+```
+
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Concluded
-
-The specification for "{work_unit:(titlecase)}" has already concluded.
-Run /start-planning {work_type} {work_unit} to continue to planning.
+Reopening specification: {work_unit:(titlecase)}
 ```
 
-**STOP.** Do not proceed — terminal condition.
+→ Return to **[the skill](../SKILL.md)** with verb="Continuing".

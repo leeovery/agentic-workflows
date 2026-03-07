@@ -113,9 +113,9 @@ Store work_type for the handoff.
 
 ---
 
-## Step 3: Validate Topic
+## Step 3: Validate Phase
 
-Load **[validate-topic.md](references/validate-topic.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 #### If `resume`
 

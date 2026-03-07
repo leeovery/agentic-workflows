@@ -109,9 +109,9 @@ Load **[validate-source.md](references/validate-source.md)** and follow its inst
 
 ---
 
-## Step 4: Check Existing Specification
+## Step 4: Validate Phase
 
-Load **[check-existing-spec.md](references/check-existing-spec.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 

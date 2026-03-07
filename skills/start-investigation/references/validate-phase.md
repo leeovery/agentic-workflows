@@ -1,4 +1,4 @@
-# Validate Work Unit
+# Validate Phase
 
 *Reference for **[start-investigation](../SKILL.md)***
 
@@ -28,16 +28,21 @@ Set source="continue".
 
 **If status is `concluded`:**
 
+Reset to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase investigation --topic {topic} status in-progress
+```
+
 > *Output the next fenced block as a code block:*
 
 ```
-Investigation Concluded
-
-The investigation for "{work_unit:(titlecase)}" has already concluded.
-Run /start-specification bugfix {work_unit} to continue to spec.
+Reopening investigation: {work_unit:(titlecase)}
 ```
 
-**STOP.** Do not proceed — terminal condition.
+Set source="continue".
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
 
 #### If no collision
 

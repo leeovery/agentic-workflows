@@ -54,21 +54,37 @@ Invoke the `/migrate` skill and assess its output.
 
 ## Step 1: Check Arguments
 
-Check for arguments: work_type = `$0`. If provided, store for the handoff.
+Check for arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
 
-→ Proceed to **Step 2**.
+If provided, store for the handoff.
+
+#### If `work_unit` and `topic` resolved (bridge mode)
+
+→ Proceed to **Step 2** (Validate Phase).
+
+#### Otherwise
+
+→ Proceed to **Step 3** (Gather Context).
 
 ---
 
-## Step 2: Gather Context
+## Step 2: Validate Phase
+
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+
+→ Proceed to **Step 4**.
+
+---
+
+## Step 3: Gather Context
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 3: Invoke the Skill
+## Step 4: Invoke the Skill
 
 Before invoking the processing skill, save a session bookmark.
 
