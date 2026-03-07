@@ -1,6 +1,6 @@
 # Start/Continue Split — Design Document
 
-*Part of the [Implementation Index](../IMPLEMENTATION-INDEX.md). Evolved from [PR4-START-CONTINUE-SPLIT.md](../PR4-START-CONTINUE-SPLIT.md). Full design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](../WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 609-636).*
+*Part of the [Implementation Index](../../IMPLEMENTATION-INDEX.md). Evolved from [PR4-START-CONTINUE-SPLIT.md](../PR4-START-CONTINUE-SPLIT.md). Full design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](../WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 609-636).*
 
 ## Summary
 

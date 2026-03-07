@@ -1,6 +1,6 @@
 # PR 4: Start/Continue Split
 
-*Part of the [Implementation Index](IMPLEMENTATION-INDEX.md). Design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 604-631).*
+*Part of the [Implementation Index](../IMPLEMENTATION-INDEX.md). Design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 604-631).*
 
 ## Summary
 

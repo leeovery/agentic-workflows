@@ -1,13 +1,13 @@
 # Implementation Index
 
-Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the current PR. Full design discussion and decisions in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](WORK-TYPE-ARCHITECTURE-DISCUSSION.md).
+Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the current PR. Full design discussion and decisions in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](archive/WORK-TYPE-ARCHITECTURE-DISCUSSION.md).
 
 ## Revised Execution Order
 
 | Order | PR | Focus | File |
 |-------|-----|-------|------|
 | ✅ | PR 1 | Big Bang — New Architecture | (current branch) |
-| ✅ | PR 4 | Start/Continue Split | [Design](start-continue-split/DESIGN.md) |
+| ✅ | PR 4 | Start/Continue Split | [Design](archive/start-continue-split/DESIGN.md) |
 | 3rd | PR 5 | Phase Skills Internal | [PR5-PHASE-SKILLS-INTERNAL.md](PR5-PHASE-SKILLS-INTERNAL.md) |
 | 4th | PR 2 | Bridge Always Fires | [PR2-BRIDGE-ALWAYS-FIRES.md](PR2-BRIDGE-ALWAYS-FIRES.md) |
 | 5th | PR 3 | Bridge Epic Navigation | [PR3-BRIDGE-EPIC-NAVIGATION.md](PR3-BRIDGE-EPIC-NAVIGATION.md) |

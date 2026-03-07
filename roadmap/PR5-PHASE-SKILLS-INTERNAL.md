@@ -1,6 +1,6 @@
 # PR 5: Phase Skills Internal
 
-*Part of the [Implementation Index](IMPLEMENTATION-INDEX.md). Design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 633-635).*
+*Part of the [Implementation Index](IMPLEMENTATION-INDEX.md). Design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](archive/WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 633-635).*
 
 ## Summary
 

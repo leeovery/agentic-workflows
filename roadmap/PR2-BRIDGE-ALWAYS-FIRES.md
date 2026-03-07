@@ -1,6 +1,6 @@
 # PR 2: Bridge Always Fires
 
-*Part of the [Implementation Index](IMPLEMENTATION-INDEX.md). Design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 592-594).*
+*Part of the [Implementation Index](IMPLEMENTATION-INDEX.md). Design context in [WORK-TYPE-ARCHITECTURE-DISCUSSION.md](archive/WORK-TYPE-ARCHITECTURE-DISCUSSION.md) (lines 592-594).*
 
 ## Summary
 
