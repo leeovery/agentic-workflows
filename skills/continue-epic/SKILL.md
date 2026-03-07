@@ -124,7 +124,13 @@ Load **[display-and-menu.md](references/display-and-menu.md)** and follow its in
 
 ## Step 6: Route Selection
 
-Based on the user's menu selection, invoke the appropriate skill:
+#### If user selected "Resume a concluded topic"
+
+Load **[resume-concluded.md](references/resume-concluded.md)** and follow its instructions as written.
+
+#### Otherwise
+
+Invoke the appropriate skill based on the user's menu selection:
 
 | Menu option | Invoke |
 |-------------|--------|
@@ -139,7 +145,6 @@ Based on the user's menu selection, invoke the appropriate skill:
 | Start specification | `/start-specification epic {work_unit}` |
 | Start new discussion topic | `/start-discussion epic {work_unit}` |
 | Start new research | `/start-research epic {work_unit}` |
-| Resume a concluded topic | Load **[resume-concluded.md](references/resume-concluded.md)** |
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
 
