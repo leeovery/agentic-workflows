@@ -15,6 +15,8 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | 7th | PR 7 | Work Unit Lifecycle | [PR7-WORK-UNIT-LIFECYCLE.md](PR7-WORK-UNIT-LIFECYCLE.md) |
 | 8th | PR 8 | Skip Review | [PR8-SKIP-REVIEW.md](PR8-SKIP-REVIEW.md) |
 | 9th | PR 9 | Normalise Terminal Status | [PR9-NORMALISE-TERMINAL-STATUS.md](PR9-NORMALISE-TERMINAL-STATUS.md) |
+| 10th | PR 10 | Research Refactor | [Design Brief](research-refactor/DESIGN-BRIEF.md) |
+| 11th | PR 11 | Session State Removal | [Design Brief](session-state-removal/DESIGN-BRIEF.md) |
 
 ## Why This Order
 
@@ -24,4 +26,3 @@ PR 4/5 moved ahead of PR 2/3 during the PR 1 review. The review kept hitting top
 
 - **Natural language migrations** — viability for structural changes. Revisit when relevant.
 - **Work type pivot** — manifest makes it technically trivial, but UX/workflow implications not discussed.
-- **Session state removal** — compaction recovery hook system doesn't work reliably. Design brief at `session-state-removal/DESIGN-BRIEF.md`.
