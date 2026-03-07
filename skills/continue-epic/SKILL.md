@@ -114,23 +114,15 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ---
 
-## Step 5: Display State
+## Step 5: Display State and Menu
 
-Load **[display-state.md](references/display-state.md)** and follow its instructions as written.
+Load **[display-and-menu.md](references/display-and-menu.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Build Menu and Route
-
-Load **[build-menu.md](references/build-menu.md)** and follow its instructions as written.
-
-→ Proceed to **Step 7**.
-
----
-
-## Step 7: Route Selection
+## Step 6: Route Selection
 
 Based on the user's menu selection, invoke the appropriate skill:
 
@@ -151,4 +143,4 @@ Based on the user's menu selection, invoke the appropriate skill:
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
 
-Invoke the selected skill. This is terminal — do not return to the backbone.
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
