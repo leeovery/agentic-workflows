@@ -406,7 +406,7 @@ Review findings have been synthesized into {N} implementation tasks.
 
 ## Instructions
 
-1. Invoke `start-implementation`
+1. Invoke `workflow-implementation-entry`
 2. The skill will detect the new tasks and start executing them
 
 ## Context
