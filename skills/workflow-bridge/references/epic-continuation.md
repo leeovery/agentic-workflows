@@ -28,6 +28,8 @@ Parse the output. Use the epic's `detail` object as the discovery data for the d
 
 Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.
 
+**STOP.** Do not proceed until the above has returned with the user's selection.
+
 → Proceed to **C. Enter Plan Mode**.
 
 ---
