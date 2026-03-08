@@ -328,14 +328,10 @@ The plan contains **{N} phases** with **{M} tasks** total, reviewed for traceabi
 Status has been marked as `concluded`. The plan is ready for implementation.
 ```
 
-4. **Check for pipeline continuation** — Check work_type via manifest CLI:
+4. **Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
    ```
-
-#### If work_type is set (feature, bugfix, or epic)
-
-This plan is part of a pipeline. Invoke the `/workflow-bridge` skill:
 
 ```
 Pipeline bridge for: {work_unit}
@@ -343,14 +339,4 @@ Work type: {work_type from manifest}
 Completed phase: planning
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-#### If work_type is not set
-
-> *Output the next fenced block as a code block:*
-
-```
-Plan concluded: {work_unit}
-
-The plan is ready for implementation. Run /start-implementation to begin.
 ```

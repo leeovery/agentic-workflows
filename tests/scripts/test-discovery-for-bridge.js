@@ -53,7 +53,7 @@ describe('workflow-bridge discovery', () => {
     assert.strictEqual(r.next_phase, 'done');
   });
 
-  it('returns interactive for epic', () => {
+  it('computes next_phase for epic same as other types', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -64,10 +64,8 @@ describe('workflow-bridge discovery', () => {
       },
     });
     const r = discover(dir, 'v1');
-    assert.strictEqual(r.next_phase, 'interactive');
-    assert.ok(r.epic_detail);
-    assert.strictEqual(r.epic_detail.discussion.items.length, 2);
-    assert.strictEqual(r.epic_detail.discussion.items[0].name, 'auth-design');
+    assert.strictEqual(r.next_phase, 'discussion');
+    assert.strictEqual(r.epic_detail, undefined);
   });
 
   it('computes bugfix pipeline correctly', () => {
@@ -109,27 +107,6 @@ describe('workflow-bridge discovery', () => {
     assert.strictEqual(r.status, 'active');
   });
 
-  it('epic detail includes all phase items', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: {
-          status: 'in-progress',
-          items: { 'auth': { status: 'concluded' } },
-        },
-        specification: {
-          status: 'in-progress',
-          items: { 'auth': { status: 'in-progress' } },
-        },
-      },
-    });
-    const r = discover(dir, 'v1');
-    assert.ok(r.epic_detail.discussion);
-    assert.ok(r.epic_detail.specification);
-    assert.strictEqual(r.epic_detail.discussion.items[0].name, 'auth');
-    assert.strictEqual(r.epic_detail.specification.items[0].name, 'auth');
-  });
-
   it('detects research file existence', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -161,7 +138,7 @@ describe('workflow-bridge discovery', () => {
     assert.strictEqual(r.phases.research.exists, false);
   });
 
-  it('epic detail includes research items', () => {
+  it('epic returns phases and next_phase without epic_detail', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -175,42 +152,8 @@ describe('workflow-bridge discovery', () => {
     });
     createFile(dir, '.workflows/v1/research/exploration.md', '# Exploration');
     const r = discover(dir, 'v1');
-    assert.ok(r.epic_detail.research);
-    assert.strictEqual(r.epic_detail.research.items.length, 2);
-    const names = r.epic_detail.research.items.map(i => i.name).sort();
-    assert.deepStrictEqual(names, ['architecture', 'exploration']);
+    assert.strictEqual(r.epic_detail, undefined);
     assert.strictEqual(r.phases.research.exists, true);
-  });
-
-  it('epic research with items but no flat status still shows in epic_detail', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: {
-          items: { 'exploration': { status: 'in-progress' } },
-        },
-      },
-    });
-    const r = discover(dir, 'v1');
-    assert.ok(r.epic_detail.research);
-    assert.strictEqual(r.epic_detail.research.items.length, 1);
-    // phaseStatus returns null when no flat status, but items are still in epic_detail
-    assert.strictEqual(r.phases.research.status, 'none');
-  });
-
-  it('epic with only research items has items in research detail', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: {
-          items: { 'exploration': { status: 'concluded' } },
-        },
-      },
-    });
-    const r = discover(dir, 'v1');
-    assert.ok(r.epic_detail.research);
-    assert.strictEqual(r.epic_detail.research.items.length, 1);
-    // Other phases exist in epic_detail but with empty items
-    assert.strictEqual(r.epic_detail.discussion.items.length, 0);
+    assert.strictEqual(r.work_type, 'epic');
   });
 });

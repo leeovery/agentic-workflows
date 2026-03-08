@@ -122,12 +122,12 @@ Using the selected feature's `next_phase`, invoke the appropriate phase skill:
 
 | next_phase | Invoke |
 |------------|--------|
-| research | `/start-research feature {work_unit}` |
-| discussion | `/start-discussion feature {work_unit}` |
-| specification | `/start-specification feature {work_unit}` |
-| planning | `/start-planning feature {work_unit}` |
-| implementation | `/start-implementation feature {work_unit}` |
-| review | `/start-review feature {work_unit}` |
+| research | `/workflow-research-entry feature {work_unit}` |
+| discussion | `/workflow-discussion-entry feature {work_unit}` |
+| specification | `/workflow-specification-entry feature {work_unit}` |
+| planning | `/workflow-planning-entry feature {work_unit}` |
+| implementation | `/workflow-implementation-entry feature {work_unit}` |
+| review | `/workflow-review-entry feature {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`feature`), `$1` = work_unit. Topic is inferred from work_unit.
 

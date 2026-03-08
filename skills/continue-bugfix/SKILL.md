@@ -122,11 +122,11 @@ Using the selected bugfix's `next_phase`, invoke the appropriate phase skill:
 
 | next_phase | Invoke |
 |------------|--------|
-| investigation | `/start-investigation bugfix {work_unit}` |
-| specification | `/start-specification bugfix {work_unit}` |
-| planning | `/start-planning bugfix {work_unit}` |
-| implementation | `/start-implementation bugfix {work_unit}` |
-| review | `/start-review bugfix {work_unit}` |
+| investigation | `/workflow-investigation-entry bugfix {work_unit}` |
+| specification | `/workflow-specification-entry bugfix {work_unit}` |
+| planning | `/workflow-planning-entry bugfix {work_unit}` |
+| implementation | `/workflow-implementation-entry bugfix {work_unit}` |
+| review | `/workflow-review-entry bugfix {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`bugfix`), `$1` = work_unit. Topic is inferred from work_unit.
 

@@ -55,10 +55,10 @@ See [Installation](#installation) for details.
 
 Pick your entry point based on where you are:
 
-- **Seeds of an idea?** → Start with `/start-research` *(recommended)*
+- **Seeds of an idea?** → Start with `/start-feature` or `/start-epic` and choose research *(recommended)*
   You have a rough idea but haven't explored feasibility, alternatives, or scope yet. Research lets you think freely before committing to anything.
 
-- **Know what you're building?** → Start with `/start-discussion`
+- **Know what you're building?** → Use `/start-feature` or `/start-epic` and choose discussion
   You've moved past exploration and want to capture architecture decisions, edge cases, and rationale for specific topics.
 
 - **Clear feature, ready to build?** → Use `/start-feature`
@@ -136,7 +136,7 @@ If a session is interrupted, run `/workflow-start` to pick up where you left off
 
 ### Under the Hood
 
-Skills are organised in two tiers. **Entry-point skills** (`/start-*`, `/status`, etc.) gather context from files, prompts, or inline input. **Processing skills** (`technical-*`) receive those inputs and do the work — they don't know or care where inputs came from. This separation means the same processing skill can be invoked from different entry points: `/start-specification` and `/start-feature` both feed `technical-specification` with different inputs. You can create custom entry-point skills that feed processing skills in new ways.
+Skills are organised in two tiers. **Entry-point skills** (`/start-*`, `/continue-*`, `/status`, etc.) gather context from files, prompts, or inline input. **Processing skills** (`technical-*`) receive those inputs and do the work — they don't know or care where inputs came from. **Phase entry skills** (`workflow-*-entry`) are the internal glue — invoked by entry-point skills to handle phase-specific validation and processing skill invocation. You can create custom entry-point skills that feed processing skills in new ways.
 
 ### Compaction Recovery
 
@@ -148,18 +148,16 @@ Long-running skills can hit context compaction, where Claude's conversation is s
 
 Session state is ephemeral (gitignored, cleaned up on session end) and per-session — multiple concurrent sessions don't interfere.
 
-### Workflow Skills
+### Workflow Navigation
 
-| Phase          | Skill                   |
-|----------------|-------------------------|
-| Research       | `/start-research`       |
-| Discussion     | `/start-discussion`     |
-| Specification  | `/start-specification`  |
-| Planning       | `/start-planning`       |
-| Implementation | `/start-implementation` |
-| Review         | `/start-review`         |
+| Action | Skill |
+|--------|-------|
+| Start a new feature | `/start-feature` |
+| Start a new epic | `/start-epic` |
+| Start a new bugfix | `/start-bugfix` |
+| Resume work | `/workflow-start` or `/continue-feature` / `/continue-epic` / `/continue-bugfix` |
 
-Run the skill directly or ask Claude to run it. Each gathers context from previous phase outputs and passes it to the processing skill.
+Phase entry skills (`workflow-*-entry`) are internal — they're invoked automatically by the start, continue, and bridge skills. You don't need to call them directly.
 
 ### Output Formats
 
@@ -256,15 +254,17 @@ skills/
 ├── start-feature/                   # Pipeline: discussion → spec → plan → impl → review
 ├── start-bugfix/                    # Pipeline: investigation → spec → plan → impl → review
 ├── link-dependencies/               # Standalone: wire cross-topic deps
-├── start-research/                  # Begin research
-├── start-discussion/                # Begin discussions
-├── start-investigation/             # Begin investigation (bugfix)
-├── start-specification/             # Begin specification
-├── start-planning/                  # Begin planning
-├── start-implementation/            # Begin implementation
-├── start-review/                    # Begin review
 ├── status/                          # Show workflow status
-└── view-plan/                       # View plan tasks
+├── view-plan/                       # View plan tasks
+│
+├── # Phase entry skills (internal — invoked by start/continue/bridge)
+├── workflow-research-entry/         # Research phase bootstrap + invoke
+├── workflow-discussion-entry/       # Discussion phase — scoped epic path or bridge
+├── workflow-investigation-entry/    # Investigation phase bootstrap + invoke
+├── workflow-specification-entry/    # Specification phase — scoped epic path or bridge
+├── workflow-planning-entry/         # Planning phase — validate spec + invoke
+├── workflow-implementation-entry/   # Implementation phase — validate plan + invoke
+└── workflow-review-entry/           # Review phase — validate impl + invoke
 
 agents/
 ├── review-task-verifier.md           # Verifies single task implementation for review
@@ -302,19 +302,19 @@ Processing skills are **input-agnostic**: they receive inputs and process them w
 
 Entry-point skills are the input layer: they gather context and pass it to processing skills.
 
-#### Workflow Skills
+#### Phase Entry Skills (Internal)
 
-Sequential skills that expect files from previous phases and pass content to processing skills.
+Phase entry skills are invoked automatically by start/continue/bridge skills. They handle phase-specific validation, bootstrap questions, and processing skill invocation.
 
-| Skill                                                                        | Description                                                                                                                                                                                                |
-|------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [**/start-research**](skills/start-research/)                                | Begin research exploration. For early-stage ideas, feasibility checks, and broad exploration before formal discussion.                                                                                     |
-| [**/start-discussion**](skills/start-discussion/)                            | Begin a new technical discussion. Gathers topic, context, background information, and relevant codebase areas before starting documentation.                                                               |
-| [**/start-investigation**](skills/start-investigation/)                      | Begin a bug investigation. Gathers symptoms and context, then drives root cause analysis through the bugfix pipeline.                                                                                      |
-| [**/start-specification**](skills/start-specification/)                      | Start a specification session from existing discussion(s). Automatically analyses multiple discussions for natural groupings and consolidates them into unified specifications.                            |
-| [**/start-planning**](skills/start-planning/)                                | Start a planning session from an existing specification. Creates implementation plans with phases, tasks, and acceptance criteria. Supports multiple output formats. |
-| [**/start-implementation**](skills/start-implementation/)                    | Start implementing a plan. Executes tasks via strict TDD, committing after each passing test.                                                                                                              |
-| [**/start-review**](skills/start-review/)                                    | Start reviewing completed work. Validates implementation against plan tasks and acceptance criteria. Findings can be synthesized into remediation tasks.                                                    |
+| Skill | Description |
+|-------|-------------|
+| **workflow-research-entry** | Research phase bootstrap — seed questions + invoke processing skill |
+| **workflow-discussion-entry** | Discussion phase — scoped epic analysis or bridge mode context gathering |
+| **workflow-investigation-entry** | Investigation phase — bug context gathering + invoke processing skill |
+| **workflow-specification-entry** | Specification phase — scoped epic analysis flow or bridge mode validation |
+| **workflow-planning-entry** | Planning phase — validate spec, cross-cutting context + invoke |
+| **workflow-implementation-entry** | Implementation phase — validate plan, check deps/env + invoke |
+| **workflow-review-entry** | Review phase — validate impl, determine version + invoke |
 
 #### Utility Skills
 

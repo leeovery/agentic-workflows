@@ -51,6 +51,6 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions.
 
 ## Step 3: Invoke Entry-Point Skill
 
-Invoke `/start-investigation bugfix {work_unit}`.
+Invoke `/workflow-investigation-entry bugfix {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

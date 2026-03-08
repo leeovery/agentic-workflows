@@ -63,7 +63,7 @@ Invoke the appropriate entry-point skill based on the selected phase:
 
 | Phase | Invoke |
 |-------|--------|
-| research | `/start-research feature {work_unit}` |
-| discussion | `/start-discussion feature {work_unit}` |
+| research | `/workflow-research-entry feature {work_unit}` |
+| discussion | `/workflow-discussion-entry feature {work_unit}` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

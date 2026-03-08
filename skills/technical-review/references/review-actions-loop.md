@@ -36,11 +36,11 @@ Set the review phase status to completed:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
 ```
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
 
-**If work_type is set** (feature, bugfix, or epic):
-
-This review is part of a pipeline. The pipeline is complete. Invoke the `/workflow-bridge` skill:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 ```
 Pipeline bridge for: {work_unit}
@@ -49,18 +49,6 @@ Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
 ```
-
-**If work_type is not set:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Review complete: {work_unit}
-
-All checks passed. The implementation has been validated.
-```
-
-**STOP.** Do not proceed — terminal condition.
 
 #### If any verdict is `Request Changes`
 
@@ -98,11 +86,11 @@ User has chosen to skip synthesis. Set review status to completed — the review
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
 ```
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
 
-**If work_type is set** (feature, bugfix, or epic):
-
-This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 ```
 Pipeline bridge for: {work_unit}
@@ -111,10 +99,6 @@ Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
-
-**If work_type is not set:**
-
-**STOP.** Do not proceed — terminal condition.
 
 #### If verdict is `Comments Only`
 
@@ -152,11 +136,11 @@ Set review status to completed — the review produced a verdict, even if the us
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
 ```
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
 
-**If work_type is set** (feature, bugfix, or epic):
-
-This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 ```
 Pipeline bridge for: {work_unit}
@@ -165,18 +149,6 @@ Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
 ```
-
-**If work_type is not set:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Review complete: {work_unit}
-
-Non-blocking comments noted. The implementation has been validated.
-```
-
-**STOP.** Do not proceed — terminal condition.
 
 ---
 
@@ -200,11 +172,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 No actionable tasks synthesized. Review complete.
 ```
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
 
-**If work_type is set** (feature, bugfix, or epic):
-
-This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 ```
 Pipeline bridge for: {work_unit}
@@ -213,10 +185,6 @@ Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
-
-**If work_type is not set:**
-
-**STOP.** Do not proceed — terminal condition.
 
 #### If `STATUS` is `tasks_proposed`
 
@@ -338,11 +306,11 @@ Commit the staging file updates:
 review({work_unit}): synthesis cycle {N} — tasks skipped
 ```
 
-**Check for pipeline continuation** — Query the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and check for `work_type`
+**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
 
-**If work_type is set** (feature, bugfix, or epic):
-
-This review is part of a pipeline. Invoke the `/workflow-bridge` skill:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 ```
 Pipeline bridge for: {work_unit}
@@ -351,10 +319,6 @@ Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
-
-**If work_type is not set:**
-
-**STOP.** Do not proceed — terminal condition.
 
 ---
 
@@ -406,7 +370,7 @@ Review findings have been synthesized into {N} implementation tasks.
 
 ## Instructions
 
-1. Invoke `start-implementation`
+1. Invoke `workflow-implementation-entry`
 2. The skill will detect the new tasks and start executing them
 
 ## Context
@@ -421,4 +385,4 @@ Clear context and continue. Claude will start implementation
 and pick up the new review remediation tasks automatically.
 ```
 
-Exit plan mode. The user will approve and clear context, and the fresh session will pick up with `/start-implementation` routing to the new tasks.
+Exit plan mode. The user will approve and clear context, and the fresh session will pick up with the implementation entry skill routing to the new tasks.

@@ -81,27 +81,23 @@ skills/
     references/              #   Epic selection, state display, menu, resume concluded
   link-dependencies/         # Link dependencies across topics
 
-  # Phase entry skills (two-mode: discovery OR bridge)
-  start-research/            # Begin research exploration
-    references/              #   Context gathering, handoffs
-  start-discussion/          # Discussion - discovery mode or bridge mode (topic+work_type)
-    scripts/discovery.js     #   Discovery script
-    references/              #   Discovery flow, context gathering
-  start-investigation/       # Investigation - discovery mode or bridge mode
-    scripts/discovery.js     #   Discovery script
-    references/              #   Discovery flow
-  start-specification/       # Specification - discovery mode or bridge mode
-    scripts/discovery.js     #   Discovery script
-    references/              #   Discovery flow, grouping analysis
-  start-planning/            # Planning - discovery mode or bridge mode
-    scripts/discovery.js     #   Discovery script
-    references/              #   Discovery flow, cross-cutting context
-  start-implementation/      # Implementation - discovery mode or bridge mode
-    scripts/discovery.js     #   Discovery script
-    references/              #   Discovery flow, dependency checking
-  start-review/              # Review - discovery mode or bridge mode
-    scripts/discovery.js     #   Discovery script
-    references/              #   Discovery flow, plan display
+  # Phase entry skills (internal — invoked by start/continue/bridge skills)
+  workflow-research-entry/       # Research phase bootstrap + invoke
+    references/                  #   Context gathering, handoffs
+  workflow-discussion-entry/     # Discussion phase — scoped epic path or bridge
+    scripts/discovery.js         #   Scoped discovery (accepts work_unit arg)
+    references/                  #   Epic flow, context gathering
+  workflow-investigation-entry/  # Investigation phase bootstrap + invoke
+    references/                  #   Bug context gathering, handoffs
+  workflow-specification-entry/  # Specification phase — scoped epic path or bridge
+    scripts/discovery.js         #   Scoped discovery (accepts work_unit arg)
+    references/                  #   Epic analysis flow, grouping, handoffs
+  workflow-planning-entry/       # Planning phase — validate spec + invoke
+    references/                  #   Spec validation, cross-cutting context
+  workflow-implementation-entry/ # Implementation phase — validate plan + invoke
+    references/                  #   Dependency checking, environment check
+  workflow-review-entry/         # Review phase — validate impl + invoke
+    references/                  #   Review version, handoffs
   status/                    # Show workflow status and next steps
     scripts/discovery.js     #   Discovery script
   view-plan/                 # View plan tasks and progress
@@ -145,35 +141,26 @@ hooks/
 
 Skills are organised in two tiers:
 
-**Entry-point skills** (`/start-*`, `/continue-*`, `/status`, `/migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/status`, `/view-plan`, `/link-dependencies`, `/workflow-start`, `/continue-feature`, `/continue-bugfix`, `/continue-epic`) have `disable-model-invocation: true`. Phase entry-points (`/start-*`) do not, since they are invoked by continue skills and `workflow-bridge` continuations. `/migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every entry-point skill).
+**Entry-point skills** (`/start-*`, `/continue-*`, `/status`, `/migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/status`, `/view-plan`, `/link-dependencies`, `/workflow-start`, `/continue-feature`, `/continue-bugfix`, `/continue-epic`) have `disable-model-invocation: true`. `/migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every user-invocable entry-point skill).
+
+**Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). They are invoked by start/continue/bridge skills with work_type and work_unit always provided. They handle phase-specific validation, bootstrap questions for new entries, and processing skill invocation.
 
 **Processing skills** (`technical-*`) are model-invocable. They receive inputs and process them without knowing where the inputs came from. Entry-point skills are responsible for gathering inputs.
 
 **Standalone entry points** (e.g., `/start-feature`) can invoke processing skills directly without requiring previous phase files.
 
-### Two-Mode Pattern for Phase Skills
+### Phase Entry Skill Routing
 
-Phase entry skills (`start-discussion`, `start-specification`, etc.) support three invocation patterns. Arguments are positional: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional).
+Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional). Topic resolution: `topic = $2 || (wt !== 'epic' ? $1 : null)`.
 
-**Bridge Mode** (work_type + work_unit + topic):
-- Invoked with all arguments: `/start-discussion feature {work_unit} {topic}`
-- For feature/bugfix, topic can be omitted (inferred from work_unit): `/start-discussion feature {work_unit}`
-- Invoked by `continue-*` skills, `workflow-bridge`, or `workflow-start` with work_type + work_unit + topic in context
-- Skips discovery, validates topic exists, proceeds to pre-flight and processing
-- Enables deterministic pipeline continuation
-- Skill resolution: `topic = $2 || (wt !== 'epic' ? $1 : null)`
+**With topic** (feature/bugfix always; epic when caller provides it):
+- Check manifest phase status → new entry (bootstrap questions) / resume / reopen
+- No discovery needed — topic is already determined
 
-**Discovery Mode with pipeline context** (work_type + work_unit):
-- Invoked with work_type and work_unit but no topic: `/start-specification epic {work_unit}`
-- Stores work_type for the handoff, then runs full discovery
-- Enables epic routing where topic isn't known until analysis
-
-**Standalone Discovery Mode** (no arguments):
-- User invokes `/start-discussion` directly
-- Full discovery, topic selection, context gathering
-- No pipeline context — artifacts created without work_type won't trigger bridge at conclusion
-
-The two-mode pattern consolidates what was previously split between `start-*` (discovery) and `begin-*` (bridge) skills into a single skill with early mode detection.
+**Without topic** (epic only — scoped path):
+- Run discovery scoped to work_unit → analysis/selection flow → determine topic
+- Only used by discussion and specification (research also, but simpler — just asks seed questions)
+- Planning, implementation, review always receive a topic
 
 ### Keeping Processing Skills Workflow-Agnostic (IMPORTANT)
 
@@ -526,7 +513,6 @@ Planning Overview
 No specification found in .workflows/{work_unit}/specification/{topic}/
 
 The planning phase requires a concluded specification.
-Run /start-specification first.
 ```
 
 ### Bullet Characters

@@ -32,8 +32,6 @@ Check work_type from manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
 ```
 
-**If work_type is set** (feature or epic):
-
 Invoke the `/workflow-bridge` skill:
 
 ```
@@ -42,16 +40,6 @@ Work type: {work_type from manifest}
 Completed phase: research
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**If work_type is not set:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Research concluded for {work_unit}.
-
-Run /start-discussion to begin structured discussion.
 ```
 
 **STOP.** Do not proceed — terminal condition.

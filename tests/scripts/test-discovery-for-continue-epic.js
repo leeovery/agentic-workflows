@@ -391,4 +391,72 @@ describe('continue-epic discovery', () => {
       assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, []);
     });
   });
+
+  describe('work_unit filtering', () => {
+    it('returns only the specified epic when work_unit provided', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      createManifest(dir, 'v2', {
+        work_type: 'epic',
+        phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir, 'v1');
+      assert.strictEqual(r.count, 1);
+      assert.strictEqual(r.epics[0].name, 'v1');
+    });
+
+    it('returns all epics when work_unit not provided', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      createManifest(dir, 'v2', {
+        work_type: 'epic',
+        phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.count, 2);
+    });
+
+    it('returns empty when work_unit does not match any epic', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir, 'nonexistent');
+      assert.strictEqual(r.count, 0);
+    });
+
+    it('filters by work_unit and still excludes non-epic types', () => {
+      createManifest(dir, 'auth', { work_type: 'feature' });
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir, 'auth');
+      assert.strictEqual(r.count, 0);
+    });
+
+    it('produces full detail for filtered epic', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'concluded' } } },
+          specification: { items: { auth: { status: 'concluded' } } },
+        },
+      });
+      createManifest(dir, 'v2', {
+        work_type: 'epic',
+        phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir, 'v1');
+      assert.strictEqual(r.count, 1);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.concluded.length, 2);
+      assert.strictEqual(d.gating.can_start_specification, true);
+      assert.strictEqual(d.gating.can_start_planning, true);
+    });
+  });
 });

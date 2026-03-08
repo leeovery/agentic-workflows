@@ -14,12 +14,12 @@ Use `next_phase` from discovery output to determine the target skill:
 
 | next_phase | Target Skill |
 |------------|--------------|
-| research | start-research |
-| discussion | start-discussion |
-| specification | start-specification |
-| planning | start-planning |
-| implementation | start-implementation |
-| review | start-review |
+| research | workflow-research-entry |
+| discussion | workflow-discussion-entry |
+| specification | workflow-specification-entry |
+| planning | workflow-planning-entry |
+| implementation | workflow-implementation-entry |
+| review | workflow-review-entry |
 | done | (terminal) |
 
 ## A. Check Terminal
@@ -111,7 +111,7 @@ Call the `EnterPlanMode` tool to enter plan mode. Then write the following conte
 
 ## Next Step
 
-Invoke `/start-{target_phase} feature {work_unit}`
+Invoke `/workflow-{target_phase}-entry feature {work_unit}`
 
 Arguments: work_type = feature, work_unit = {work_unit} (topic inferred from work_unit)
 The skill will skip discovery and proceed directly to validation.

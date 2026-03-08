@@ -8,7 +8,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 |-------|-----|-------|------|
 | ✅ | PR 1 | Big Bang — New Architecture | (current branch) |
 | ✅ | PR 4 | Start/Continue Split | [Design](archive/start-continue-split/DESIGN.md) |
-| 3rd | PR 5 | Phase Skills Internal | [PR5-PHASE-SKILLS-INTERNAL.md](PR5-PHASE-SKILLS-INTERNAL.md) |
+| ✅ | PR 5 | Phase Skills Internal | [PR5-PHASE-SKILLS-INTERNAL.md](PR5-PHASE-SKILLS-INTERNAL.md) |
 | 4th | PR 2 | Bridge Always Fires | [PR2-BRIDGE-ALWAYS-FIRES.md](PR2-BRIDGE-ALWAYS-FIRES.md) |
 | 5th | PR 3 | Bridge Epic Navigation | [PR3-BRIDGE-EPIC-NAVIGATION.md](PR3-BRIDGE-EPIC-NAVIGATION.md) |
 | 6th | PR 6 | Processing Skills Pipeline-Aware | [PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md](PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md) |
@@ -17,6 +17,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | 9th | PR 9 | Normalise Terminal Status | [PR9-NORMALISE-TERMINAL-STATUS.md](PR9-NORMALISE-TERMINAL-STATUS.md) |
 | 10th | PR 10 | Research Refactor | [Design Brief](research-refactor/DESIGN-BRIEF.md) |
 | 11th | PR 11 | Session State Removal | [Design Brief](session-state-removal/DESIGN-BRIEF.md) |
+| 12th | PR 12 | Feature Research Analysis | [PR12-FEATURE-RESEARCH-ANALYSIS.md](PR12-FEATURE-RESEARCH-ANALYSIS.md) |
 
 ## Why This Order
 

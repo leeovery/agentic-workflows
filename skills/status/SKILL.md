@@ -69,8 +69,8 @@ Workflow Status
 
 No active work units found in .workflows/
 
-Start with /start-research to explore ideas,
-or /start-discussion if you already know what to build.
+Start with /start-feature, /start-epic, or /start-bugfix
+to begin a new work unit.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -169,11 +169,11 @@ Omit categories with no entries.
 
 Based on gaps in the workflow, briefly suggest 2-3 most relevant actions:
 
-- Concluded discussions not in any spec → `/start-specification`
-- In-progress specs → finish with `/start-specification`
-- Concluded feature specs without plans → `/start-planning`
-- Concluded plans not yet implemented → `/start-implementation`
-- Completed implementations → `/start-review`
+- Concluded discussions not in any spec → use `/continue-feature` or `/continue-epic` to proceed
+- In-progress specs → use `/continue-feature` or `/continue-epic` to continue
+- Concluded feature specs without plans → use `/continue-feature` or `/continue-epic` to start planning
+- Concluded plans not yet implemented → use `/continue-feature` or `/continue-epic` to start implementation
+- Completed implementations → use `/continue-feature` or `/continue-epic` to start review
 
 If plans exist, mention `/view-plan` for detailed plan viewing.
 

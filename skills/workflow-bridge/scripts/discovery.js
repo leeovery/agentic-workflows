@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { loadManifest, phaseStatus, phaseItems, phaseData, fileExists, listFiles, listDirs, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadManifest, phaseStatus, fileExists, listFiles, listDirs, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
 
 const ALL_PHASES = ['research', 'discussion', 'investigation', 'specification', 'planning', 'implementation', 'review'];
 
@@ -33,36 +33,15 @@ function discover(cwd, workUnit) {
   }
 
   const workType = manifest.work_type;
-  let next_phase;
-  if (workType === 'epic') {
-    next_phase = 'interactive';
-  } else {
-    next_phase = computeNextPhase(manifest).next_phase;
-  }
+  const next_phase = computeNextPhase(manifest).next_phase;
 
-  const result = {
+  return {
     work_unit: workUnit,
     work_type: workType,
     status: manifest.status,
     phases,
     next_phase,
   };
-
-  if (workType === 'epic') {
-    const epicDetail = {};
-    for (const phase of ['research', 'discussion', 'specification', 'planning', 'implementation', 'review']) {
-      const pd = phaseData(manifest, phase);
-      if (!pd) continue;
-      const items = phaseItems(manifest, phase);
-      epicDetail[phase] = {
-        status: pd.status || 'none',
-        items: items.map(i => ({ name: i.name, status: i.status || 'unknown' })),
-      };
-    }
-    result.epic_detail = epicDetail;
-  }
-
-  return result;
 }
 
 function format(result) {
@@ -75,17 +54,6 @@ function format(result) {
 
   for (const [phase, data] of Object.entries(result.phases)) {
     lines.push(`  ${phase}: ${data.status}${data.exists ? '' : ' (no files)'}`);
-  }
-
-  if (result.epic_detail) {
-    lines.push('');
-    lines.push('=== EPIC DETAIL ===');
-    for (const [phase, data] of Object.entries(result.epic_detail)) {
-      lines.push(`  ${phase}: ${data.status}`);
-      for (const item of data.items) {
-        lines.push(`    - ${item.name}: ${item.status}`);
-      }
-    }
   }
 
   return lines.join('\n') + '\n';

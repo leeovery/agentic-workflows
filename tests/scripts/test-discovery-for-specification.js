@@ -3,9 +3,9 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils');
-const { discover } = require('../../skills/start-specification/scripts/discovery');
+const { discover } = require('../../skills/workflow-specification-entry/scripts/discovery');
 
-describe('start-specification discovery', () => {
+describe('workflow-specification-entry discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });

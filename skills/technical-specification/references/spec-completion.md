@@ -149,11 +149,7 @@ It does not proceed to planning independently.
 
 #### If `type` is `feature` (or not set)
 
-Check the work type via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`).
-
-**If `work_type` is set** (`feature`, `bugfix`, or `epic`):
-
-This specification is part of a pipeline. Invoke the `/workflow-bridge` skill:
+Read the work type via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
@@ -161,14 +157,4 @@ Work type: {work_type from manifest}
 Completed phase: specification
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**If `work_type` is not set:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Specification concluded: {work_unit}
-
-The specification is ready for planning. Run /start-planning to begin.
 ```
