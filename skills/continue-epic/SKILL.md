@@ -116,7 +116,7 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ## Step 5: Display State and Menu
 
-Load **[display-and-menu.md](references/display-and-menu.md)** and follow its instructions as written.
+Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
