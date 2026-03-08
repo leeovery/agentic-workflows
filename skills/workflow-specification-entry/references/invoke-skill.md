@@ -1,4 +1,4 @@
-# Invoke the Skill (Bridge Mode)
+# Invoke the Skill
 
 *Reference for **[workflow-specification-entry](../SKILL.md)***
 

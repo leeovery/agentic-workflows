@@ -6,9 +6,9 @@
 
 Route based on the `source` variable set in earlier steps.
 
-#### If source is `bridge`
+#### If source is `new`
 
-Bridge mode: topic and work_type were provided by the caller.
+New discussion entry: topic and work_type were provided by the caller.
 
 Check research status via manifest:
 
@@ -34,25 +34,13 @@ Anything to add or adjust before we begin, or "go" to proceed:
 
 **STOP.** Wait for user response.
 
-Set source="research-bridge".
+Set source="new-with-research".
 
 → Return to **[the skill](../SKILL.md)**.
 
 **Otherwise:**
 
-> *Output the next fenced block as a code block:*
-
-```
-Starting discussion: {topic:(titlecase)}
-Work type: {work_type}
-
-What would you like to discuss? Provide some initial context:
-- What's the problem or opportunity?
-- What prompted this?
-- Any initial thoughts or constraints?
-```
-
-**STOP.** Wait for user response.
+Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions.
 
 → Return to **[the skill](../SKILL.md)**.
 

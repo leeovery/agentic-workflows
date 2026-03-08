@@ -10,7 +10,7 @@ Ask each question below **one at a time**. After each, **STOP** and wait for the
 
 ## Topic Name
 
-**If topic is already known** (provided by caller via bridge path), skip this section entirely and proceed to **Core Problem**.
+**If topic is already known** (new entry with topic resolved), skip this section entirely and proceed to **Core Problem**.
 
 Based on the user's description, suggest a topic name in kebab-case. This becomes `{topic}` for all subsequent references.
 

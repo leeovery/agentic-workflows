@@ -29,7 +29,7 @@ Invoke the [technical-investigation](../../technical-investigation/SKILL.md) ski
 
 Construct the handoff based on source.
 
-#### If source is `bridge`
+#### If source is `new`
 
 ```
 Investigation session for: {work_unit}

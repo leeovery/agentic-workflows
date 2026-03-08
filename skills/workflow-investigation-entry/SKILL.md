@@ -55,6 +55,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 
 **If phase not found (new entry):**
 
+Set source="new".
+
 → Proceed to **Step 3** (Gather Bug Context).
 
 ---

@@ -90,9 +90,9 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ---
 
-## Step 4: Invoke the Skill (Bridge Mode)
+## Step 4: Invoke the Skill
 
-Load **[invoke-skill-bridge.md](references/invoke-skill-bridge.md)** and follow its instructions as written.
+Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.
 
 ---
 

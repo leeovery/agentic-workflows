@@ -60,7 +60,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 
 **If phase not found (new entry):**
 
-→ Proceed to **Step 7** (Gather Context) with source="bridge".
+→ Proceed to **Step 7** (Gather Context) with source="new".
 
 #### If no `topic` (epic — scoped path)
 

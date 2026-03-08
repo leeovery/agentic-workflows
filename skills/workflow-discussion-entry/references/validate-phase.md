@@ -41,9 +41,3 @@ Reopening discussion: {topic:(titlecase)}
 Set source="continue".
 
 → Return to **[the skill](../SKILL.md)**.
-
-#### If no collision
-
-Set source="bridge".
-
-→ Return to **[the skill](../SKILL.md)**.

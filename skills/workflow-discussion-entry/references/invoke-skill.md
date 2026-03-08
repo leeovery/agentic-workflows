@@ -29,11 +29,9 @@ Invoke the [technical-discussion](../../technical-discussion/SKILL.md) skill for
 
 ## Handoff
 
-Construct the handoff based on how this discussion was initiated.
+Construct the handoff based on how this discussion was initiated. Work type is always available (callers always provide it).
 
 #### If source is `research`
-
-**If work_type is available** (from Step 2), add the Work type line:
 
 ```
 Discussion session for: {topic}
@@ -48,13 +46,12 @@ Summary: {the 1-2 sentence summary from the research analysis}
 Invoke the technical-discussion skill.
 ```
 
-#### If source is `research-bridge`
+#### If source is `new-with-research`
 
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
 Work type: {work_type}
-Research source: .workflows/{work_unit}/research/{research_filename}.md
 Output: {output_path}
 
 Research reference:
@@ -66,12 +63,6 @@ Invoke the technical-discussion skill.
 
 #### If source is `continue`
 
-Read work_type from the manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
-
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
@@ -82,21 +73,7 @@ Output: {output_path}
 Invoke the technical-discussion skill.
 ```
 
-#### If source is `fresh`
-
-**If work_type is available** (from Step 2), add the Work type line:
-
-```
-Discussion session for: {topic}
-Work unit: {work_unit}
-Work type: {work_type}
-Source: fresh
-Output: {output_path}
-
-Invoke the technical-discussion skill.
-```
-
-#### If source is `bridge`
+#### If source is `fresh` or `new`
 
 ```
 Discussion session for: {topic}
