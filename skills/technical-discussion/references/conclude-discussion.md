@@ -28,14 +28,10 @@ Incorporate the user's context into the discussion, commit, then re-present the 
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase discussion --topic {topic} status concluded
    ```
 2. Final commit
-3. Read work_type from manifest and invoke the bridge:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-   ```
+3. Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: discussion
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

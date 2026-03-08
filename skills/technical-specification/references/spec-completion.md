@@ -149,11 +149,10 @@ It does not proceed to planning independently.
 
 #### If `type` is `feature` (or not set)
 
-Read the work type via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`) and invoke the bridge:
+Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: specification
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

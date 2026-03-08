@@ -36,15 +36,10 @@ Set the review phase status to completed:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
 ```
 
-**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+**Pipeline continuation** — Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
@@ -86,15 +81,10 @@ User has chosen to skip synthesis. Set review status to completed — the review
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
 ```
 
-**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+**Pipeline continuation** — Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
@@ -136,15 +126,10 @@ Set review status to completed — the review produced a verdict, even if the us
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
 ```
 
-**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+**Pipeline continuation** — Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
@@ -172,15 +157,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 No actionable tasks synthesized. Review complete.
 ```
 
-**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+**Pipeline continuation** — Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
@@ -306,15 +286,10 @@ Commit the staging file updates:
 review({work_unit}): synthesis cycle {N} — tasks skipped
 ```
 
-**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+**Pipeline continuation** — Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: review
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

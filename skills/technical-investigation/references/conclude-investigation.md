@@ -50,14 +50,10 @@ Fix direction: {chosen approach}
 The investigation is concluded. Root cause and fix direction are documented.
 ```
 
-4. Read work_type from manifest and invoke the bridge:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-   ```
+4. Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: bugfix
 Completed phase: investigation
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

@@ -41,7 +41,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 ```
 Review session
 Work unit: {work_unit}
-Work type: {work_type}
+
 Plans to review:
   - work_unit: {work_unit}
     plan: .workflows/{work_unit}/planning/{topic}/planning.md

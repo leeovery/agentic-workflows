@@ -33,7 +33,7 @@ Construct the handoff based on source.
 
 ```
 Investigation session for: {work_unit}
-Work type: bugfix
+
 Output: .workflows/{work_unit}/investigation/{topic}.md
 
 Bug context:
@@ -48,7 +48,7 @@ Invoke the technical-investigation skill.
 
 ```
 Investigation session for: {work_unit}
-Work type: bugfix
+
 Source: existing investigation
 Output: .workflows/{work_unit}/investigation/{topic}.md
 

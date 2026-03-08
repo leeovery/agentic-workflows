@@ -26,17 +26,10 @@ Set research status to concluded via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research status concluded
 ```
 
-Check work_type from manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
-
 Invoke the `/workflow-bridge` skill:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: research
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

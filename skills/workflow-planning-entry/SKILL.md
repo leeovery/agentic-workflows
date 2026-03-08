@@ -44,7 +44,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
 Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
-Store work_type and work_unit for the handoff.
+Store work_unit for the handoff.
 
 → Proceed to **Step 2**.
 

@@ -43,7 +43,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 ```
 Implementation session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
+
 Plan: .workflows/{work_unit}/planning/{topic}/planning.md
 Format: {format}
 Ext ID: {ext_id} (if applicable)

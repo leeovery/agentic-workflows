@@ -29,14 +29,13 @@ Invoke the [technical-discussion](../../technical-discussion/SKILL.md) skill for
 
 ## Handoff
 
-Construct the handoff based on how this discussion was initiated. Work type is always available (callers always provide it).
+Construct the handoff based on how this discussion was initiated.
 
 #### If source is `research`
 
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
 Output: {output_path}
 
 Research reference:
@@ -51,7 +50,6 @@ Invoke the technical-discussion skill.
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
 Output: {output_path}
 
 Research reference:
@@ -66,7 +64,6 @@ Invoke the technical-discussion skill.
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
 Source: existing discussion
 Output: {output_path}
 
@@ -78,7 +75,6 @@ Invoke the technical-discussion skill.
 ```
 Discussion session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
 Source: fresh
 Output: {output_path}
 

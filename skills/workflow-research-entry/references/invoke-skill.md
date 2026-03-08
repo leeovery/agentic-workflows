@@ -12,14 +12,14 @@ Invoke the [technical-research](../../technical-research/SKILL.md) skill for you
 
 ## Handoff
 
-Construct the handoff. Work type is always available (callers always provide it).
+Construct the handoff.
 
 #### If source is `continue`
 
 ```
 Research session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
+
 Source: existing research
 Output: .workflows/{work_unit}/research/exploration.md
 
@@ -31,7 +31,7 @@ Invoke the technical-research skill.
 ```
 Research session for: {topic}
 Work unit: {work_unit}
-Work type: {work_type}
+
 Output: .workflows/{work_unit}/research/exploration.md
 
 Context:

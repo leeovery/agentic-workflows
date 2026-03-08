@@ -361,14 +361,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 
 Commit: `impl({work_unit}): complete implementation`
 
-**Pipeline continuation** — Read the work type via manifest CLI and invoke the bridge:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+**Pipeline continuation** — Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
-Work type: {work_type from manifest}
 Completed phase: implementation
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.

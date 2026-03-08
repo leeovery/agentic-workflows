@@ -8,7 +8,7 @@ Route based on the `source` variable set in earlier steps.
 
 #### If source is `new`
 
-New discussion entry: topic and work_type were provided by the caller.
+New discussion entry: topic was provided by the caller.
 
 Check research status via manifest:
 
@@ -24,7 +24,6 @@ Read `.workflows/{work_unit}/research/*.md` for context to include in the handof
 
 ```
 Starting discussion: {topic:(titlecase)}
-Work type: {work_type}
 
 Research context:
 {key findings and context from research files}

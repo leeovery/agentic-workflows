@@ -14,12 +14,17 @@ This skill is invoked by processing skills (technical-discussion, technical-spec
 
 This skill receives context from the calling processing skill:
 - **Work unit**: The work unit name (directory under `.workflows/`) = `{work_unit}`
-- **Work type**: epic, feature, or bugfix = `{work_type}`
 - **Completed phase**: The phase that just concluded = `{completed_phase}`
 
 ---
 
-## Step 1: Run Discovery
+## Step 1: Read Work Type and Run Discovery
+
+Read work type from the manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 #### If work type is `epic`
 
@@ -27,7 +32,7 @@ This skill receives context from the calling processing skill:
 
 #### Otherwise
 
-Run the discovery script with the work unit from the calling context:
+Run the discovery script with the work unit:
 
 ```bash
 node .claude/skills/workflow-bridge/scripts/discovery.js {work_unit}

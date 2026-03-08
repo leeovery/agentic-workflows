@@ -21,11 +21,8 @@ Saving session state so Claude can pick up where it left off if the conversation
 
 This skill's purpose is now fulfilled. Invoke the [technical-specification](../../../technical-specification/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
 
-Determine work_type: use the value from Step 2 if available. Otherwise, read work_type from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type`).
-
 ```
 Specification session for: {Title Case Name}
-Work type: {work_type}
 
 Source discussions:
 - .workflows/{work_unit}/discussion/{discussion-name}.md

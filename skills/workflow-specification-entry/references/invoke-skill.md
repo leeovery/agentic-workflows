@@ -27,13 +27,12 @@ Invoke the [technical-specification](../../technical-specification/SKILL.md) ski
 
 ## Handoff
 
-Construct the handoff based on the work type and verb.
+Construct the handoff based on verb and source material.
 
 #### If `work_type` is `feature`
 
 ```
 Specification session for: {work_unit}
-Work type: {work_type}
 
 Source material:
 - Discussion: .workflows/{work_unit}/discussion/{topic}.md
@@ -48,7 +47,6 @@ Invoke the technical-specification skill.
 
 ```
 Specification session for: {work_unit}
-Work type: {work_type}
 
 Source material:
 - Investigation: .workflows/{work_unit}/investigation/{topic}.md
@@ -65,7 +63,6 @@ Read the spec's source discussions from the manifest: `get {work_unit} --phase s
 
 ```
 Specification session for: {topic}
-Work type: {work_type}
 
 Source material:
 - .workflows/{work_unit}/discussion/{source-discussion-1}.md
