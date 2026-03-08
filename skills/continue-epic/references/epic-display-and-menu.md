@@ -24,7 +24,7 @@ This reference collects the user's selection and returns control to the caller. 
 No work started yet.
 ```
 
-→ Proceed to **B. Menu**.
+→ Proceed to **C. Menu**.
 
 #### If phases have items
 
@@ -36,12 +36,14 @@ No work started yet.
 @foreach(phase in phases where phase has items)
   {phase:(titlecase)}
 @foreach(item in phase.items)
-    └─ {item.name:(titlecase)} ({item.status})@if(phase is planning and item.format) [{item.format}]@endif@if(phase is planning and item.deps_blocking) (blocked)@endif
+    └─ {item.name:(titlecase)} ({item.status})@if(phase is planning and item.format) [{item.format}]@endif
 @if(phase is specification and item.sources)
        └─ {source.topic:(titlecase)} ({source.status})
 @endif
-@if(phase is implementation and item.completed_tasks)
-       └─ {item.completed_tasks.length} task(s) completed@if(item.current_phase), phase: {item.current_phase}@endif
+@if(phase is implementation and item.current_phase)
+       └─ Phase {item.current_phase}, {item.completed_tasks.length} task(s) completed
+@elseif(phase is implementation and item.completed_tasks)
+       └─ {item.completed_tasks.length} task(s) completed
 @endif
 @endforeach
 
@@ -55,16 +57,35 @@ No work started yet.
 
 - Phase headers as section labels (titlecased)
 - Items under each phase use `└─` branches with titlecased names and parenthetical status
-- Planning items show format in brackets and `(blocked)` if dependencies are blocking
+- Planning items show format in brackets after status
 - Specification items show their source discussions as a sub-tree beneath, one `└─` per source
 - Source status: `(incorporated)` or `(pending)` from manifest
-- Implementation items show task completion count and current phase if in-progress
+- Implementation items show progress: `Phase {N}, {M} task(s) completed` if in-progress with current_phase; `{M} task(s) completed` otherwise
 - Phases with no items don't appear
 - Blank line between phase sections
 
+### Not Ready Block
+
+After the main state display, check for plans that are **not implementable** — plans with `deps_blocking` entries, or plans with non-concluded status. If any exist, show them in a separate code block:
+
+> *Output the next fenced block as a code block:*
+
+```
+Plans not ready for implementation:
+These plans have unresolved dependencies that must be
+addressed first.
+
+  • {topic} (blocked by {dep_topic}:{task_id})
+  • {topic} (blocked by {dep_topic})
+```
+
+Use the `deps_blocking` array from the planning phase items. Show each blocking dependency with its cross-plan task reference using colon notation (`{plan}:{task-id}`) when a `task_id` is present.
+
+Only show this block when blocked plans exist. Omit entirely if no plans are blocked.
+
 ### Recommendations
 
-Check the following conditions in order. Show the first that applies as a line within the code block, separated by a blank line from the last phase section. If none apply, no recommendation.
+Check the following conditions in order. Show the first that applies as a line within the state display code block, separated by a blank line from the last phase section. If none apply, no recommendation.
 
 | Condition | Recommendation |
 |-----------|---------------|
@@ -75,23 +96,49 @@ Check the following conditions in order. Show the first that applies as a line w
 | Some plans concluded, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
 
-→ Proceed to **B. Menu**.
+→ Proceed to **B. Key**.
 
 ---
 
-## B. Menu
+## B. Key
+
+Show only statuses and categories that appear in the current display. No `---` separator before this section.
+
+> *Output the next fenced block as a code block:*
+
+```
+Key:
+
+  Status:
+    in-progress — work is ongoing
+    concluded   — phase complete
+    completed   — all tasks implemented
+
+  Blocking reason:
+    blocked by {plan}:{task} — depends on another plan's task
+    blocked by {plan}        — dependency unresolved
+```
+
+→ Proceed to **C. Menu**.
+
+---
+
+## C. Menu
 
 Build a numbered menu with three sections:
 
 **Section 1 — In-progress items** (always first):
 - Any item with status `in-progress` in any phase
-- Format: `Continue "{topic:(titlecase)}" — {phase} (in-progress)`
+- Planning in-progress: `Continue "{topic:(titlecase)}" — planning (in-progress)`
+- Implementation in-progress with progress: `Continue "{topic:(titlecase)}" — implementation (Phase {N}, Task {M})`
+- Implementation in-progress without progress: `Continue "{topic:(titlecase)}" — implementation (in-progress)`
+- Other phases: `Continue "{topic:(titlecase)}" — {phase} (in-progress)`
 
 **Section 2 — Next-phase-ready items:**
 - From `next_phase_ready` in discovery output
 - Concluded spec with no plan: `Start planning for "{topic:(titlecase)}" — spec concluded`
 - Concluded plan with no implementation:
-  - If `blocked`: `Start implementation of "{topic:(titlecase)}" — plan concluded (blocked by {dep_topics})`
+  - If `blocked`: show but mark as not selectable: `Start implementation of "{topic:(titlecase)}" — blocked by {dep_topic}:{task_id}`
   - Otherwise: `Start implementation of "{topic:(titlecase)}" — plan concluded`
 - Completed implementation with no review: `Start review for "{topic:(titlecase)}" — implementation completed`
 - Unaccounted discussions (from `unaccounted_discussions`): `Start specification — {N} discussion(s) not yet in a spec`
@@ -116,7 +163,7 @@ Build a numbered menu with three sections:
 - All implementations completed, some without reviews → first reviewable implementation "(recommended)"
 - Otherwise → no recommendation (complete in-progress work first)
 
-**Blocked items:** Items marked `blocked` in `next_phase_ready` are shown in the menu with their blocking reason but are **not selectable**. If the user picks a blocked item, explain why it's blocked and re-present the menu.
+**Blocked items:** Items marked `blocked` in `next_phase_ready` are shown in the menu but are **not selectable**. If the user picks a blocked item, explain why it's blocked and re-present the menu.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -129,11 +176,12 @@ What would you like to do?
 3. Start planning for "User Profiles" — spec concluded
 4. Continue "Caching" — planning (in-progress)
 5. Start implementation of "Notifications" — plan concluded (recommended)
-6. Start specification — 3 discussion(s) not yet in a spec
-7. Start new discussion topic
-8. Start new research
-9. Resume a concluded topic
-10. Stop here — resume later with /workflow-start
+6. Start implementation of "Reporting" — blocked by core-features:core-2-3
+7. Start specification — 3 discussion(s) not yet in a spec
+8. Start new discussion topic
+9. Start new research
+10. Resume a concluded topic
+11. Stop here — resume later with /workflow-start
 
 Select an option (enter number):
 · · · · · · · · · · · ·
@@ -145,7 +193,7 @@ Recreate with actual items from discovery. Blank line between sections.
 
 ---
 
-## C. Handle Selection
+## D. Handle Selection
 
 #### If user chose `Stop here`
 
@@ -159,6 +207,45 @@ current state and present all available options.
 ```
 
 **STOP.** Do not proceed — terminal condition.
+
+#### If user chose a blocked item
+
+Explain which dependencies are blocking and how to resolve them:
+
+> *Output the next fenced block as a code block:*
+
+```
+"{topic:(titlecase)}" cannot start implementation yet.
+
+Blocking dependencies:
+  • {dep_topic}:{task_id} — {reason}
+  • {dep_topic} — {reason}
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+- **`u`/`unblock`** — Mark a dependency as satisfied externally
+- **`b`/`back`** — Return to menu
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `unblock`:**
+
+Ask which dependency to mark as satisfied. Update via manifest CLI:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.{dep_topic}.state satisfied_externally
+```
+
+Commit the change. Then re-present the menu from **C. Menu** (the item may now be unblocked).
+
+**If user chose `back`:**
+
+→ Return to **C. Menu**.
 
 #### If user chose `Resume a concluded topic`
 
