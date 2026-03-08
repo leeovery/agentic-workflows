@@ -124,12 +124,6 @@ Load **[display-and-menu.md](references/display-and-menu.md)** and follow its in
 
 ## Step 6: Route Selection
 
-#### If user selected "Resume a concluded topic"
-
-Load **[resume-concluded.md](references/resume-concluded.md)** and follow its instructions as written.
-
-#### Otherwise
-
 Invoke the appropriate skill based on the user's menu selection:
 
 | Menu option | Invoke |

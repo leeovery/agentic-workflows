@@ -247,9 +247,7 @@ Commit the change. Then re-present the menu from **C. Menu** (the item may now b
 
 #### If user chose `Resume a concluded topic`
 
-Store selection: `action = resume_concluded`.
-
-→ Return to the caller.
+→ Proceed to **E. Resume Concluded**.
 
 #### Otherwise
 
@@ -268,5 +266,59 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 | Start specification | specification | — |
 | Start new discussion topic | discussion | — |
 | Start new research | research | — |
+
+→ Return to the caller with the selected phase and topic.
+
+---
+
+## E. Resume Concluded
+
+Display all concluded items across all phases and let the user select one to resume.
+
+Using the `concluded` items from discovery output, group by phase:
+
+> *Output the next fenced block as a code block:*
+
+```
+Concluded Topics
+
+@foreach(phase in phases)
+@if(phase.concluded_items)
+  {phase:(titlecase)}
+@foreach(item in concluded where item.phase == phase)
+    └─ {item.name:(titlecase)} (concluded)
+@endforeach
+@endif
+
+@endforeach
+```
+
+Only show phases with concluded items. Blank line between phase sections.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Which topic would you like to resume?
+
+1. Resume "{item.name:(titlecase)}" — {item.phase}
+2. ...
+{N}. Back to main menu
+
+Select an option (enter number):
+· · · · · · · · · · · ·
+```
+
+List all concluded items across all phases.
+
+**STOP.** Wait for user response.
+
+#### If user chose `Back to main menu`
+
+→ Return to **C. Menu**.
+
+#### If user chose a topic
+
+Store the selected phase and topic.
 
 → Return to the caller with the selected phase and topic.
