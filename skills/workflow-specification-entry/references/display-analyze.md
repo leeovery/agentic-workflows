@@ -1,6 +1,6 @@
 # Display: Analyze Prompt
 
-*Reference for **[start-specification](../SKILL.md)***
+*Reference for **[workflow-specification-entry](../SKILL.md)***
 
 ---
 
@@ -97,8 +97,8 @@ rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 > *Output the next fenced block as a code block:*
 
 ```
-Understood. You can run /start-discussion to continue working on
-discussions, or re-run this command when ready.
+Understood. Continue working on discussions, or re-run this
+command when ready.
 ```
 
 **STOP.** Do not proceed — terminal condition.

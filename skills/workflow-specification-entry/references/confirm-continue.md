@@ -99,8 +99,8 @@ Proceed?
 > *Output the next fenced block as a code block:*
 
 ```
-Understood. You can run /start-discussion to continue working on
-discussions, or re-run this command when ready.
+Understood. Continue working on discussions, or re-run this
+command when ready.
 ```
 
 **STOP.** Do not proceed — terminal condition.

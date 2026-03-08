@@ -1,12 +1,7 @@
 ---
-name: start-specification
-allowed-tools: Bash(node .claude/skills/start-specification/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md), Bash(.claude/hooks/workflows/write-session-state.sh)
-hooks:
-  PreToolUse:
-    - hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/workflows/system-check.sh"
-          once: true
+name: workflow-specification-entry
+user-invocable: false
+allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md), Bash(.claude/hooks/workflows/write-session-state.sh)
 ---
 
 Invoke the **technical-specification** skill for this conversation.
@@ -44,25 +39,24 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 
 ---
 
-## Step 0: Run Migrations
+## Step 1: Parse Arguments
 
-**This step is mandatory. You must complete it before proceeding.**
+Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
+Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
-Invoke the `/migrate` skill and assess its output.
+Store work_type and work_unit for the handoff.
 
----
+#### If `topic` resolved
 
-## Step 1: Discovery State
+→ Proceed to **Step 2** (Validate Source Material).
 
-!`node .claude/skills/start-specification/scripts/discovery.js`
+#### If no `topic` (epic — scoped path)
 
-If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
+Run discovery scoped to this work unit:
 
 ```bash
-node .claude/skills/start-specification/scripts/discovery.js
+node .claude/skills/workflow-specification-entry/scripts/discovery.js {work_unit}
 ```
-
-If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
@@ -76,61 +70,40 @@ Parse the discovery output to understand:
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
-→ Proceed to **Step 2**.
+→ Proceed to **Step 5** (Check Prerequisites).
 
 ---
 
-## Step 2: Determine Mode
+## Step 2: Validate Source Material
 
-Check for arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional)
-Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`
-
-#### If `topic` resolved (bridge mode)
+Load **[validate-source.md](references/validate-source.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
 
-#### If `work_type` and `work_unit` provided but no `topic` (scoped discovery)
-
-Store work_type for the handoff.
-
-→ Proceed to **Step 6**.
-
-#### If neither is provided
-
-→ Proceed to **Step 6**.
-
 ---
 
-## Step 3: Validate Source Material
+## Step 3: Validate Phase
 
-Load **[validate-source.md](references/validate-source.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Validate Phase
-
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
-
-→ Proceed to **Step 5**.
-
----
-
-## Step 5: Invoke the Skill (Bridge Mode)
+## Step 4: Invoke the Skill (Bridge Mode)
 
 Load **[invoke-skill-bridge.md](references/invoke-skill-bridge.md)** and follow its instructions as written.
 
 ---
 
-## Step 6: Check Prerequisites
+## Step 5: Check Prerequisites
 
 Load **[check-prerequisites.md](references/check-prerequisites.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 7: Route Based on State
+## Step 6: Route Based on State
 
 Load **[route-scenario.md](references/route-scenario.md)** and follow its instructions as written.

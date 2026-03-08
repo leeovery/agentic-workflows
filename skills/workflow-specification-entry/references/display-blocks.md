@@ -1,6 +1,6 @@
 # Display: Block Scenarios
 
-*Reference for **[start-specification](../SKILL.md)***
+*Reference for **[workflow-specification-entry](../SKILL.md)***
 
 ---
 
@@ -19,7 +19,7 @@ The specification phase requires concluded discussions to work from.
 Discussions capture the technical decisions, edge cases, and rationale
 that specifications are built upon.
 
-Run /start-discussion to begin documenting technical decisions.
+The specification phase requires concluded discussions to work from.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -39,7 +39,7 @@ The following discussions are still in progress:
   • {discussion-name}
 
 Specifications can only be created from concluded discussions.
-Run /start-discussion to continue working on a discussion.
+Conclude at least one discussion before proceeding.
 ```
 
 List all in-progress discussions from discovery output.

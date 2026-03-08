@@ -4,8 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, phaseStatus, phaseItems, phaseData, listFiles, listDirs, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils');
 
-function discover(cwd) {
-  const manifests = loadActiveManifests(cwd);
+function discover(cwd, workUnit) {
+  const allManifests = loadActiveManifests(cwd);
+  const manifests = workUnit
+    ? allManifests.filter(m => m.name === workUnit)
+    : allManifests;
   const workflowsDir = path.join(cwd, '.workflows');
 
   // --- Discussions ---
@@ -251,7 +254,8 @@ function format(result) {
 }
 
 if (require.main === module) {
-  process.stdout.write(format(discover(process.cwd())));
+  const workUnit = process.argv[2] || null;
+  process.stdout.write(format(discover(process.cwd(), workUnit)));
 }
 
 module.exports = { discover };

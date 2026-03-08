@@ -1,6 +1,6 @@
 # Validate Source Material
 
-*Reference for **[start-specification](../SKILL.md)***
+*Reference for **[workflow-specification-entry](../SKILL.md)***
 
 ---
 
@@ -19,8 +19,7 @@ Source Material Missing
 
 No discussion found for "{work_unit:(titlecase)}".
 
-A concluded discussion is required before specification.
-Run /start-discussion feature {work_unit} to start one.
+A concluded discussion is required before specification can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -33,7 +32,8 @@ Run /start-discussion feature {work_unit} to start one.
 Discussion In Progress
 
 The discussion for "{work_unit:(titlecase)}" is not yet concluded.
-Run /start-discussion feature {work_unit} to continue.
+
+The discussion must be concluded before specification can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -55,8 +55,7 @@ Source Material Missing
 
 No investigation found for "{work_unit:(titlecase)}".
 
-A concluded investigation is required before specification.
-Run /start-investigation bugfix {work_unit} to start one.
+A concluded investigation is required before specification can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -69,7 +68,8 @@ Run /start-investigation bugfix {work_unit} to start one.
 Investigation In Progress
 
 The investigation for "{work_unit:(titlecase)}" is not yet concluded.
-Run /start-investigation bugfix {work_unit} to continue.
+
+The investigation must be concluded before specification can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -91,8 +91,7 @@ Source Material Missing
 
 No discussions found for "{work_unit:(titlecase)}".
 
-At least one concluded discussion is required before specification.
-Run /start-discussion epic {work_unit} to start one.
+At least one concluded discussion is required before specification can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -106,7 +105,7 @@ No Concluded Discussions
 
 No concluded discussions found for "{work_unit:(titlecase)}".
 
-At least one concluded discussion is required before specification.
+At least one concluded discussion is required before specification can begin.
 Run /continue-epic to continue an in-progress discussion.
 ```
 

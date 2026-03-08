@@ -1,6 +1,6 @@
 # Display: Specs Menu
 
-*Reference for **[start-specification](../SKILL.md)***
+*Reference for **[workflow-specification-entry](../SKILL.md)***
 
 ---
 
