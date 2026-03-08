@@ -10,13 +10,13 @@ Epic is phase-centric — all artifacts in a phase complete before moving to the
 
 ## A. Run Epic Discovery
 
-The bridge's own discovery provides minimal epic data. Run the continue-epic discovery for enriched state (dependencies, implementation progress, format):
+The bridge's own discovery provides minimal epic data. Run the continue-epic discovery scoped to this work unit for enriched state (dependencies, implementation progress, format):
 
 ```bash
-node .claude/skills/continue-epic/scripts/discovery.js
+node .claude/skills/continue-epic/scripts/discovery.js {work_unit}
 ```
 
-Parse the output to find the epic matching `{work_unit}`. Use that epic's `detail` object as the discovery data for the shared display.
+Parse the output. Use the epic's `detail` object as the discovery data for the display.
 
 ## B. Display and Menu
 

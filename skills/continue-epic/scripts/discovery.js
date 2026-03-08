@@ -156,8 +156,11 @@ function buildEpicDetail(cwd, manifest) {
   };
 }
 
-function discover(cwd) {
-  const manifests = loadActiveManifests(cwd);
+function discover(cwd, workUnit) {
+  const allManifests = loadActiveManifests(cwd);
+  const manifests = workUnit
+    ? allManifests.filter(m => m.name === workUnit)
+    : allManifests;
   const epics = [];
 
   for (const m of manifests) {
@@ -245,7 +248,8 @@ function format(result) {
 }
 
 if (require.main === module) {
-  process.stdout.write(format(discover(process.cwd())));
+  const workUnit = process.argv[2] || undefined;
+  process.stdout.write(format(discover(process.cwd(), workUnit)));
 }
 
 module.exports = { discover };
