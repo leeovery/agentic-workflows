@@ -57,6 +57,7 @@ skills/
     references/                #   Work-type-specific continuation logic (with backwards nav)
   workflow-shared/             # Shared utilities used by other workflow skills
     scripts/discovery-utils.js #   Discovery helpers (manifest loading, phase state, checksums)
+    references/                #   Shared reference files (epic display/menu)
   workflow-manifest/           # Manifest CLI — single source of truth for workflow state
     scripts/manifest.js        #   Node.js CLI (get/set/list/init/init-phase/push/archive)
 

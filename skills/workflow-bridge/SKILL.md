@@ -1,7 +1,7 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(node .claude/skills/workflow-bridge/scripts/discovery.js)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(node .claude/skills/workflow-bridge/scripts/discovery.js), Bash(node .claude/skills/continue-epic/scripts/discovery.js)
 ---
 
 Enter plan mode with deterministic continuation instructions.
