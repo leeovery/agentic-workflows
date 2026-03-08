@@ -26,7 +26,7 @@ Parse the output to find the epic matching `{work_unit}`. Use that epic's `detai
 {completed_phase:(titlecase)} concluded for "{work_unit:(titlecase)}".
 ```
 
-Load **[epic-display-and-menu.md](../../workflow-shared/references/epic-display-and-menu.md)** and follow its instructions as written.
+Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.
 
 The shared reference will display the epic state and present the menu, then return with the user's selection (action, phase, topic).
 

@@ -4,7 +4,7 @@
 
 ---
 
-Load **[epic-display-and-menu.md](../../workflow-shared/references/epic-display-and-menu.md)** and follow its instructions as written.
+Load **[epic-display-and-menu.md](epic-display-and-menu.md)** and follow its instructions as written.
 
 The shared reference will display the epic state and present the menu, then return with the user's selection (action, phase, topic).
 
