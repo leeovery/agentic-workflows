@@ -18,11 +18,11 @@ Which work unit would you like to manage? (enter number from list above, or **`b
 
 **STOP.** Wait for user response.
 
-**If user chose `b`/`back`:**
+#### If user chose `b`/`back`
 
 → Return to caller.
 
-**If user chose a number:**
+#### If user chose a number
 
 Store the selected work unit. → Proceed to **B. Action Menu**.
 
@@ -30,17 +30,15 @@ Store the selected work unit. → Proceed to **B. Action Menu**.
 
 Determine whether to show the `d`/`done` option. Check if at least one topic has completed implementation.
 
-First, check whether the implementation phase exists:
-
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name} phases.implementation
 ```
 
-**If the result is `false`:**
+#### If the result is `false`
 
 Set `implementation_completed` = false.
 
-**If the result is `true`:**
+#### If the result is `true`
 
 Get the work type:
 
@@ -87,7 +85,7 @@ Set `implementation_completed` = true.
 
 **STOP.** Wait for user response.
 
-**If user chose `d`/`done`:**
+#### If user chose `d`/`done`
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status concluded
@@ -101,7 +99,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 
 → Return to caller to redisplay main view (re-run discovery, re-render from top).
 
-**If user chose `x`/`cancel`:**
+#### If user chose `x`/`cancel`
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status cancelled
@@ -115,10 +113,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 
 → Return to caller to redisplay main view (re-run discovery, re-render from top).
 
-**If user chose `b`/`back`:**
+#### If user chose `b`/`back`
 
 → Return to caller.
 
-**If user asked a question:**
+#### If user asked a question
 
 Answer the question, then redisplay the action menu (section B).

@@ -62,11 +62,11 @@ Select an option (enter number):
 
 **STOP.** Wait for user response.
 
-**If user chose `b`/`back`:**
+#### If user chose `b`/`back`
 
 → Return to caller.
 
-**If user chose a number:**
+#### If user chose a number
 
 Store the selected item. → Proceed to **C. Action Menu**.
 
@@ -86,7 +86,7 @@ Store the selected item. → Proceed to **C. Action Menu**.
 
 **STOP.** Wait for user response.
 
-**If user chose `r`/`reactivate`:**
+#### If user chose `r`/`reactivate`
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status in-progress
@@ -100,10 +100,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 
 → Return to caller to redisplay main view (re-run discovery, re-render from top).
 
-**If user chose `b`/`back`:**
+#### If user chose `b`/`back`
 
 → Return to **A. Display List** (re-render with current data).
 
-**If user asked a question:**
+#### If user asked a question
 
 Answer the question, then redisplay the action menu (section C).

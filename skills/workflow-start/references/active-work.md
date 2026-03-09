@@ -82,7 +82,7 @@ Recreate with actual work units from discovery.
 
 **STOP.** Wait for user response.
 
-**If user chose a continue or start-new option:**
+#### If user chose a continue or start-new option
 
 Invoke the selected skill:
 
@@ -97,10 +97,10 @@ Invoke the selected skill:
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
-**If user chose "View concluded & cancelled":**
+#### If user chose "View concluded & cancelled"
 
 → Load **[view-concluded.md](view-concluded.md)** with no work_type filter (unified across all types). On return, re-run discovery and redisplay from the top of this reference.
 
-**If user chose `m`/`manage`:**
+#### If user chose `m`/`manage`
 
 → Load **[manage-work-unit.md](manage-work-unit.md)**. On return, re-run discovery and redisplay from the top of this reference.
