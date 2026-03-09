@@ -85,6 +85,7 @@ function buildEpicDetail(cwd, manifest) {
     phases[phase] = phaseEntries;
   }
 
+  const researchItems = phaseItems(manifest, 'research');
   const discussionItems = phaseItems(manifest, 'discussion');
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
@@ -135,6 +136,8 @@ function buildEpicDetail(cwd, manifest) {
     }
   }
 
+  const hasResearch = researchItems.length > 0;
+  const hasConcludedResearch = researchItems.some(r => r.status === 'concluded');
   const hasConcludedSpec = specItems.some(s => s.status === 'concluded');
   const hasConcludedPlan = planItems.some(p => p.status === 'concluded');
   const hasConcludedDiscussion = discussionItems.some(d => d.status === 'concluded');
@@ -148,6 +151,8 @@ function buildEpicDetail(cwd, manifest) {
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
     gating: {
+      has_research: hasResearch,
+      can_start_discussion: hasConcludedResearch,
       can_start_specification: hasConcludedDiscussion,
       can_start_planning: hasConcludedSpec,
       can_start_implementation: hasConcludedPlan,

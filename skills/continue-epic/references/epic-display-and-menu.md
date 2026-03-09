@@ -73,6 +73,7 @@ No work started yet.
 | Condition | Recommendation |
 |-----------|---------------|
 | In-progress items across multiple phases | No recommendation |
+| Some research in-progress, some concluded | "Consider concluding remaining research before starting discussion. Topic analysis works best with all research available." |
 | Some discussions in-progress, some concluded | "Consider concluding remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
 | All discussions concluded, specs not started | "All discussions are concluded. Specification will analyze and group them." |
 | Some specs concluded, some in-progress | "Concluding all specifications before planning helps identify cross-cutting dependencies." |
@@ -250,6 +251,45 @@ Commit the change. Then re-present the menu from **C. Menu** (the item may now b
 → Proceed to **E. Resume Concluded**.
 
 #### Otherwise
+
+**Soft gate check** — before routing, check if the user's selection conflicts with a phase-completion recommendation. These are advisory, not blocking. The conditions use the `phases` data from discovery to count in-progress vs total items.
+
+| User selected phase | Condition | Gate message |
+|---------------------|-----------|--------------|
+| discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Discussion topic analysis works best with all research available." |
+| specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Specification grouping analysis works best with all discussions available." |
+| planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all concluded." |
+| implementation | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
+
+**If a soft gate condition matches:**
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+{N} of {M} {phase items} still in-progress. {Gate message}.
+
+The system will re-analyse if you revisit later — proceeding
+now is safe, but may require rework.
+
+- **`y`/`yes`** — Proceed anyway
+- **`b`/`back`** — Return to menu
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `back`:**
+
+→ Return to **C. Menu**.
+
+**If user chose `yes`:**
+
+Continue to routing below.
+
+**If no soft gate condition matches**, continue to routing below.
+
+---
 
 Store the selected action, phase, and topic (if applicable). Map to a routing entry:
 

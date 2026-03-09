@@ -199,6 +199,7 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
+          research: { items: { 'market-analysis': { status: 'concluded' } } },
           discussion: { items: { auth: { status: 'concluded' } } },
           specification: { items: { auth: { status: 'concluded' } } },
           planning: { items: { auth: { status: 'concluded' } } },
@@ -207,6 +208,8 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.has_research, true);
+      assert.strictEqual(g.can_start_discussion, true);
       assert.strictEqual(g.can_start_specification, true);
       assert.strictEqual(g.can_start_planning, true);
       assert.strictEqual(g.can_start_implementation, true);
@@ -217,13 +220,29 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
+          research: { items: { 'market-analysis': { status: 'in-progress' } } },
           discussion: { items: { auth: { status: 'in-progress' } } },
         },
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.has_research, true);
+      assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
+    });
+
+    it('has_research is false when no research items exist', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'concluded' } } },
+        },
+      });
+      const r = discover(dir);
+      const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.has_research, false);
+      assert.strictEqual(g.can_start_discussion, false);
     });
 
     it('includes spec sources in phase items', () => {
@@ -365,6 +384,8 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
+      assert.strictEqual(g.has_research, false);
+      assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
       assert.strictEqual(g.can_start_implementation, false);
