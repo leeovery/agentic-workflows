@@ -28,11 +28,7 @@ Store the selected work unit. → Proceed to **B. Action Menu**.
 
 ## B. Action Menu
 
-Check if the selected work unit has reached implementation (at least one topic has entered the implementation phase):
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name} phases.implementation
-```
+Check if at least one topic has completed implementation. For feature/bugfix, check `phases.implementation.status`. For epic, check if any item in `phases.implementation.items` has `status: completed`. Use the manifest CLI to read the phase data.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -40,7 +36,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name}
 · · · · · · · · · · · ·
 **{selected.name:(titlecase)}** ({selected.work_type})
 
-@if(has_implementation)
+@if(implementation_completed)
 - **`d`/`done`** — Mark as concluded
 @endif
 - **`x`/`cancel`** — Mark as cancelled
