@@ -22,7 +22,7 @@ describe('continue-epic discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
-    createManifest(dir, 'old', { work_type: 'epic', status: 'archived' });
+    createManifest(dir, 'old', { work_type: 'epic', status: 'concluded' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.epics[0].name, 'v1');

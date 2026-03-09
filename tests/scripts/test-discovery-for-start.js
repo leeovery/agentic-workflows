@@ -69,7 +69,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('skips archived work units', () => {
-    createManifest(dir, 'old', { work_type: 'feature', status: 'archived' });
+    createManifest(dir, 'old', { work_type: 'feature', status: 'concluded' });
     createManifest(dir, 'active', { work_type: 'feature' });
     const r = discover(dir);
     assert.strictEqual(r.state.feature_count, 1);
@@ -137,8 +137,8 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.features.work_units[0].name, 'active-feat');
   });
 
-  it('has_any_work is false when only archived and done exist', () => {
-    createManifest(dir, 'archived', { work_type: 'feature', status: 'archived' });
+  it('has_any_work is false when only concluded and done exist', () => {
+    createManifest(dir, 'archived', { work_type: 'feature', status: 'concluded' });
     createManifest(dir, 'done', {
       work_type: 'bugfix',
       phases: {

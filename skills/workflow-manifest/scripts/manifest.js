@@ -33,7 +33,7 @@ const VALID_PHASE_STATUSES = {
 
 const VALID_GATE_MODES = ['gated', 'auto'];
 
-const VALID_WORK_UNIT_STATUSES = ['active', 'archived'];
+const VALID_WORK_UNIT_STATUSES = ['in-progress', 'concluded', 'cancelled'];
 
 const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;
@@ -334,7 +334,7 @@ function cmdInit(args) {
   const manifest = {
     name,
     work_type: workType,
-    status: 'active',
+    status: 'in-progress',
     created: new Date().toISOString().slice(0, 10),
     description,
     phases: {},
@@ -636,37 +636,6 @@ function cmdExists(args) {
   process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
 }
 
-function cmdArchive(args) {
-  if (args.length !== 1) die('Usage: archive <name>');
-
-  const name = args[0];
-  const dir = manifestDir(name);
-
-  if (!fs.existsSync(dir)) {
-    die(`Work unit "${name}" not found`);
-  }
-
-  const archiveBase = path.join(WORKFLOWS_DIR, '.archive');
-  const archiveDest = path.join(archiveBase, name);
-
-  if (fs.existsSync(archiveDest)) {
-    die(`Archive destination already exists for "${name}"`);
-  }
-
-  withLock(name, () => {
-    // Update status before moving
-    const manifest = readManifest(name);
-    manifest.status = 'archived';
-    writeManifestAtomic(name, manifest);
-
-    // Move to archive
-    fs.mkdirSync(archiveBase, { recursive: true });
-    fs.renameSync(dir, archiveDest);
-  });
-
-  process.stdout.write(`Archived work unit "${name}"\n`);
-}
-
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -674,7 +643,7 @@ function cmdArchive(args) {
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
-  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, list, init-phase, push, exists, archive');
+  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, list, init-phase, push, exists');
 }
 
 switch (command) {
@@ -685,6 +654,5 @@ switch (command) {
   case 'init-phase': cmdInitPhase(args); break;
   case 'push':     cmdPush(args); break;
   case 'exists':   cmdExists(args); break;
-  case 'archive':  cmdArchive(args); break;
   default:         die(`Unknown command "${command}"`);
 }

@@ -19,7 +19,7 @@ describe('continue-bugfix discovery', () => {
 
   it('lists active bugfixes only', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
-    createManifest(dir, 'old', { work_type: 'bugfix', status: 'archived' });
+    createManifest(dir, 'old', { work_type: 'bugfix', status: 'concluded' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.bugfixes[0].name, 'crash');

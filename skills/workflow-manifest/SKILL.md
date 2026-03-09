@@ -40,7 +40,6 @@ $MANIFEST exists {work_unit} --phase <phase> [--topic <topic>] [field.path]
 # Management (unchanged):
 $MANIFEST init name --work-type type --description "..."
 $MANIFEST list [--status s] [--work-type t]
-$MANIFEST archive name
 ```
 
 **`--topic` is optional for get** — if omitted, returns the whole phase object. Discovery scripts use this to iterate items:
@@ -102,7 +101,7 @@ Write a value. Two modes:
 **Work-unit level** (no flags):
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set <name> description "Updated description"
-node .claude/skills/workflow-manifest/scripts/manifest.js set <name> status archived
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name> status concluded
 ```
 
 **Phase level** (with flags):
@@ -117,7 +116,7 @@ Values are parsed as JSON first (for arrays, objects, numbers, booleans), fallin
 - **phase names**: `research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`
 - **phase statuses**: per-phase valid values (see Validation section)
 - **gate modes**: `gated`, `auto`
-- **work unit status**: `active`, `archived`
+- **work unit status**: `in-progress`, `concluded`, `cancelled`
 
 ### `list`
 
@@ -128,13 +127,13 @@ Enumerate work units by scanning `.workflows/` for `manifest.json` files. Skips 
 node .claude/skills/workflow-manifest/scripts/manifest.js list
 
 # Filter by status
-node .claude/skills/workflow-manifest/scripts/manifest.js list --status active
+node .claude/skills/workflow-manifest/scripts/manifest.js list --status in-progress
 
 # Filter by work type
 node .claude/skills/workflow-manifest/scripts/manifest.js list --work-type epic
 
 # Combined filters
-node .claude/skills/workflow-manifest/scripts/manifest.js list --status active --work-type feature
+node .claude/skills/workflow-manifest/scripts/manifest.js list --status in-progress --work-type feature
 ```
 
 Output: JSON array of manifest objects.
@@ -185,16 +184,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase 
 
 If the work unit doesn't exist and a deeper path is requested, outputs `false` (no error). Actual usage errors (missing args, invalid phase name) still use `die()`.
 
-### `archive`
-
-Move a work unit to `.workflows/.archive/<name>/` and set status to `archived`.
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js archive <name>
-```
-
-Errors if work unit does not exist.
-
 ## Validation
 
 The CLI validates structural values to prevent invalid state:
@@ -202,7 +191,7 @@ The CLI validates structural values to prevent invalid state:
 | Field                          | Valid Values                             |
 |--------------------------------|------------------------------------------|
 | `work_type`                    | `epic`, `feature`, `bugfix`              |
-| `status` (work unit)           | `active`, `archived`                     |
+| `status` (work unit)           | `in-progress`, `concluded`, `cancelled`  |
 | `phases.research.status`       | `in-progress`, `concluded`               |
 | `phases.discussion.status`     | `in-progress`, `concluded`               |
 | `phases.investigation.status`  | `in-progress`, `concluded`               |
@@ -216,7 +205,7 @@ Item-level statuses within epic phases follow the same phase-level rules.
 
 ## Output Conventions
 
-- **Scalar values**: raw to stdout, no quotes (e.g., `active`, `concluded`)
+- **Scalar values**: raw to stdout, no quotes (e.g., `in-progress`, `concluded`)
 - **Subtrees and lists**: formatted JSON to stdout
 - **Errors**: message to stderr, non-zero exit code
 

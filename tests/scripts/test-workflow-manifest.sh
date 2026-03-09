@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Tests for the workflow manifest CLI (manifest.js)
-# Validates init, get, set, list, init-phase, archive commands.
+# Validates init, get, set, list, init-phase, push, exists commands.
 # Uses domain-aware flag syntax (--phase, --topic).
 #
 
@@ -197,7 +197,7 @@ assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json
 content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
 assert_contains "$content" '"name": "dark-mode"' "name field set"
 assert_contains "$content" '"work_type": "feature"' "work_type field set"
-assert_contains "$content" '"status": "active"' "status defaults to active"
+assert_contains "$content" '"status": "in-progress"' "status defaults to in-progress"
 assert_contains "$content" '"description": "Add dark mode"' "description set"
 assert_contains "$content" '"phases": {}' "phases initialized empty"
 assert_contains "$content" '"created":' "created date set"
@@ -252,7 +252,7 @@ setup_fixture
 run_cli init scalar-test --work-type bugfix --description "Scalar" >/dev/null 2>&1
 output=$(run_cli_stdout get scalar-test status)
 
-assert_equals "$output" "active" "Scalar value output raw"
+assert_equals "$output" "in-progress" "Scalar value output raw"
 
 echo ""
 
@@ -543,12 +543,12 @@ echo ""
 echo -e "${YELLOW}Test: list filters by status${NC}"
 setup_fixture
 run_cli init active-one --work-type feature --description "Active" >/dev/null 2>&1
-run_cli init archived-one --work-type feature --description "Archived" >/dev/null 2>&1
-run_cli set archived-one status archived >/dev/null 2>&1
-output=$(run_cli_stdout list --status active)
+run_cli init concluded-one --work-type feature --description "Concluded" >/dev/null 2>&1
+run_cli set concluded-one status concluded >/dev/null 2>&1
+output=$(run_cli_stdout list --status in-progress)
 
-assert_contains "$output" '"name": "active-one"' "Active work unit listed"
-assert_not_contains "$output" '"name": "archived-one"' "Archived work unit excluded"
+assert_contains "$output" '"name": "active-one"' "In-progress work unit listed"
+assert_not_contains "$output" '"name": "concluded-one"' "Concluded work unit excluded"
 
 echo ""
 
@@ -573,7 +573,7 @@ run_cli init visible --work-type feature --description "Visible" >/dev/null 2>&1
 # Create dot-prefixed directories that should be skipped
 mkdir -p "$TEST_DIR/.workflows/.archive/old-thing"
 cat > "$TEST_DIR/.workflows/.archive/old-thing/manifest.json" << 'EOF'
-{"name":"old-thing","work_type":"feature","status":"archived"}
+{"name":"old-thing","work_type":"feature","status":"cancelled"}
 EOF
 mkdir -p "$TEST_DIR/.workflows/.cache"
 mkdir -p "$TEST_DIR/.workflows/.state"
@@ -742,38 +742,6 @@ assert_contains "$output" '"v2"' "Second tag appended"
 echo ""
 
 # ============================================================================
-# ARCHIVE TESTS
-# ============================================================================
-
-echo -e "${YELLOW}Test: archive moves directory and updates status${NC}"
-setup_fixture
-run_cli init to-archive --work-type feature --description "Archive me" >/dev/null 2>&1
-# Add some content to verify it moves
-mkdir -p "$TEST_DIR/.workflows/to-archive/discussion"
-echo "# Test" > "$TEST_DIR/.workflows/to-archive/discussion/to-archive.md"
-
-run_cli archive to-archive >/dev/null 2>&1
-
-assert_dir_not_exists "$TEST_DIR/.workflows/to-archive" "Original directory removed"
-assert_dir_exists "$TEST_DIR/.workflows/.archive/to-archive" "Archive directory created"
-assert_file_exists "$TEST_DIR/.workflows/.archive/to-archive/manifest.json" "Manifest in archive"
-assert_file_exists "$TEST_DIR/.workflows/.archive/to-archive/discussion/to-archive.md" "Content preserved in archive"
-
-# Check status updated
-archived_content=$(cat "$TEST_DIR/.workflows/.archive/to-archive/manifest.json")
-assert_contains "$archived_content" '"status": "archived"' "Status set to archived"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: archive errors on missing work unit${NC}"
-setup_fixture
-assert_exit_nonzero "Archive of missing work unit fails" archive nonexistent
-
-echo ""
-
-# ============================================================================
 # DOMAIN ROUTING TESTS
 # ============================================================================
 
@@ -833,7 +801,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set on missing work unit errors${NC}"
 setup_fixture
-assert_exit_nonzero "Set on nonexistent work unit fails" set ghost status archived
+assert_exit_nonzero "Set on nonexistent work unit fails" set ghost status cancelled
 
 echo ""
 

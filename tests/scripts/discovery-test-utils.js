@@ -18,7 +18,7 @@ function createManifest(dir, name, data) {
   const manifest = {
     name,
     work_type: 'feature',
-    status: 'active',
+    status: 'in-progress',
     description: `Test: ${name}`,
     phases: {},
     ...data,

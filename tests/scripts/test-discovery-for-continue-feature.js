@@ -19,7 +19,7 @@ describe('continue-feature discovery', () => {
 
   it('lists active features only', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
-    createManifest(dir, 'old', { work_type: 'feature', status: 'archived' });
+    createManifest(dir, 'old', { work_type: 'feature', status: 'concluded' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.features[0].name, 'auth');

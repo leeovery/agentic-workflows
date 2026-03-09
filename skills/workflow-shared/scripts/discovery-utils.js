@@ -63,7 +63,18 @@ function loadActiveManifests(cwd) {
   for (const name of listDirs(workflowsDir)) {
     if (name.startsWith('.')) continue;
     const m = loadManifest(cwd, name);
-    if (m && m.status === 'active') results.push(m);
+    if (m && m.status === 'in-progress') results.push(m);
+  }
+  return results;
+}
+
+function loadAllManifests(cwd) {
+  const workflowsDir = path.join(cwd, '.workflows');
+  const results = [];
+  for (const name of listDirs(workflowsDir)) {
+    if (name.startsWith('.')) continue;
+    const m = loadManifest(cwd, name);
+    if (m) results.push(m);
   }
   return results;
 }
@@ -178,4 +189,5 @@ module.exports = {
   filesChecksum,
   computeNextPhase,
   loadActiveManifests,
+  loadAllManifests,
 };
