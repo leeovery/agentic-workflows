@@ -61,8 +61,6 @@ process. Should I proceed anyway, or should the plan be reviewed first?
 
 **STOP.** Wait for user response.
 
-If no specification is available, the plan becomes the sole authority for design decisions.
-
 ---
 
 ## Resuming After Context Refresh

@@ -85,10 +85,8 @@ Read all plan(s) provided for the selected scope.
 
 For each plan:
 1. Read the plan — understand phases, tasks, and acceptance criteria
-2. Read the linked specification if available — load design context
+2. Read the linked specification — load design context
 3. Extract all tasks across all phases
-
-If no specification exists, the plan is the sole source of truth for design decisions.
 
 → Proceed to **Step 2**.
 
