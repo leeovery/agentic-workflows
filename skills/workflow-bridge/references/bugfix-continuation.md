@@ -117,11 +117,11 @@ Check if there are concluded phases earlier in the pipeline that the user could 
 
 **STOP.** Wait for user response.
 
-**If user chose `y`/`yes`:**
+#### If user chose `y`/`yes`
 
 → Proceed to **D. Enter Plan Mode**.
 
-**If user chose `r`/`revisit`:**
+#### If user chose `r`/`revisit`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -141,11 +141,11 @@ List only concluded phases that come before `next_phase`.
 
 **STOP.** Wait for user response.
 
-**If user chose Back:**
+#### If user chose Back
 
 → Return to **C. Offer Revisit**.
 
-**If user chose a phase:**
+#### If user chose a phase
 
 Set `target_phase` = selected phase.
 
