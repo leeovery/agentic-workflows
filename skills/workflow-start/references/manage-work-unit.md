@@ -40,7 +40,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} wo
 node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase implementation status
 ```
 
-If the result is `completed`, set `implementation_completed` = true.
+**If the result is `completed`**, set `implementation_completed` = true.
 
 **If work type is `epic`:**
 
@@ -48,9 +48,9 @@ If the result is `completed`, set `implementation_completed` = true.
 node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase implementation
 ```
 
-Parse the JSON output. If any item in the `items` object has `"status": "completed"`, set `implementation_completed` = true.
+Parse the JSON output. **If any item in the `items` object has `"status": "completed"`**, set `implementation_completed` = true.
 
-If the phase doesn't exist (command errors), `implementation_completed` = false.
+**If the phase doesn't exist** (command errors), `implementation_completed` = false.
 
 > *Output the next fenced block as markdown (not a code block):*
 
