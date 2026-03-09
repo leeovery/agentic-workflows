@@ -8,55 +8,64 @@
 #
 
 WORKFLOWS_DIR="${PROJECT_DIR:-.}/.workflows"
+MANIFEST="node ${PROJECT_DIR:-.}/.claude/skills/workflow-manifest/scripts/manifest.js"
 
 if [ ! -d "$WORKFLOWS_DIR" ]; then
   exit 0
 fi
 
-for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
-  [ -f "$manifest" ] || continue
+for dir in "$WORKFLOWS_DIR"/*/; do
+  [ -d "$dir" ] || continue
+  name=$(basename "$dir")
 
-  node -e "
-    const fs = require('fs');
-    const f = process.argv[1];
-    const m = JSON.parse(fs.readFileSync(f, 'utf8'));
-    let changed = false;
+  # Skip dot-prefixed directories
+  [[ "$name" == .* ]] && continue
 
-    // Rename statuses
-    if (m.status === 'active') {
-      m.status = 'in-progress';
-      changed = true;
-    } else if (m.status === 'archived') {
-      m.status = 'cancelled';
-      changed = true;
-    }
+  [ -f "$dir/manifest.json" ] || continue
 
-    // Check if pipeline is fully done (review completed) but status is still in-progress
-    if (m.status === 'in-progress' && m.phases) {
-      const wt = m.work_type;
-      let reviewDone = false;
+  status=$($MANIFEST get "$name" status 2>/dev/null) || continue
 
-      if (wt === 'epic') {
-        const items = (m.phases.review && m.phases.review.items) || {};
-        const vals = Object.values(items);
-        if (vals.length > 0 && vals.every(i => i.status === 'completed')) {
-          reviewDone = true;
-        }
-      } else {
-        if (m.phases.review && m.phases.review.status === 'completed') {
-          reviewDone = true;
-        }
-      }
+  # Rename old statuses
+  if [ "$status" = "active" ]; then
+    $MANIFEST set "$name" status in-progress 2>/dev/null
+    status="in-progress"
+    echo "  updated: $dir/manifest.json → in-progress" >&2
+  elif [ "$status" = "archived" ]; then
+    $MANIFEST set "$name" status cancelled 2>/dev/null
+    status="cancelled"
+    echo "  updated: $dir/manifest.json → cancelled" >&2
+  fi
 
-      if (reviewDone) {
-        m.status = 'concluded';
-        changed = true;
-      }
-    }
+  # Check if pipeline is fully done but status is still in-progress
+  if [ "$status" = "in-progress" ]; then
+    work_type=$($MANIFEST get "$name" work_type 2>/dev/null) || continue
 
-    if (changed) {
-      fs.writeFileSync(f, JSON.stringify(m, null, 2) + '\n');
-      process.stderr.write('  updated: ' + f + ' → ' + m.status + '\n');
-    }
-  " "$manifest"
+    review_done=false
+
+    if [ "$work_type" = "epic" ]; then
+      # Epic: check if all review items have status completed
+      review_items=$($MANIFEST get "$name" phases.review.items 2>/dev/null) || true
+      if [ -n "$review_items" ] && [ "$review_items" != "undefined" ]; then
+        all_completed=$(node -e "
+          const items = JSON.parse(process.argv[1]);
+          const vals = Object.values(items);
+          console.log(vals.length > 0 && vals.every(i => i.status === 'completed'));
+        " "$review_items" 2>/dev/null) || true
+        if [ "$all_completed" = "true" ]; then
+          review_done=true
+        fi
+      fi
+    else
+      # Feature/bugfix: check flat review status
+      review_status=$($MANIFEST get "$name" --phase review status 2>/dev/null) || true
+      if [ "$review_status" = "completed" ]; then
+        review_done=true
+      fi
+    fi
+
+    if [ "$review_done" = "true" ]; then
+      $MANIFEST set "$name" status concluded 2>/dev/null
+      echo "  updated: $dir/manifest.json → concluded" >&2
+    fi
+  fi
 done
