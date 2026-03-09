@@ -8,7 +8,7 @@ const { setupFixture, cleanupFixture, createFile } = require('./discovery-test-u
 
 const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
-  loadManifest, loadActiveManifests,
+  loadManifest, loadActiveManifests, loadAllManifests,
   phaseStatus, phaseItems, phaseData, computeNextPhase,
 } = require('../../skills/workflow-shared/scripts/discovery-utils');
 
@@ -114,10 +114,10 @@ describe('discovery-utils', () => {
   });
 
   describe('loadActiveManifests', () => {
-    it('returns only active manifests', () => {
+    it('returns only in-progress manifests', () => {
       const { createManifest } = require('./discovery-test-utils');
-      createManifest(dir, 'active', { status: 'active' });
-      createManifest(dir, 'archived', { status: 'archived' });
+      createManifest(dir, 'active', { status: 'in-progress' });
+      createManifest(dir, 'concluded', { status: 'concluded' });
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'active');
@@ -128,6 +128,25 @@ describe('discovery-utils', () => {
       createManifest(dir, 'good', {});
       fs.mkdirSync(path.join(dir, '.workflows', '.state'), { recursive: true });
       const results = loadActiveManifests(dir);
+      assert.strictEqual(results.length, 1);
+    });
+  });
+
+  describe('loadAllManifests', () => {
+    it('returns manifests of all statuses', () => {
+      const { createManifest } = require('./discovery-test-utils');
+      createManifest(dir, 'active', { status: 'in-progress' });
+      createManifest(dir, 'done', { status: 'concluded' });
+      createManifest(dir, 'cancelled', { status: 'cancelled' });
+      const results = loadAllManifests(dir);
+      assert.strictEqual(results.length, 3);
+    });
+
+    it('skips dotfiles', () => {
+      const { createManifest } = require('./discovery-test-utils');
+      createManifest(dir, 'good', {});
+      fs.mkdirSync(path.join(dir, '.workflows', '.state'), { recursive: true });
+      const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 1);
     });
   });

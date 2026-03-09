@@ -57,6 +57,8 @@ Parse the discovery output to understand:
 **From top-level fields:**
 - `count` - number of active features
 - `summary` - human-readable state summary
+- `concluded` / `cancelled` - arrays of non-active features with name, status, last_phase
+- `concluded_count` / `cancelled_count` - counts for each
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

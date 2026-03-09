@@ -22,7 +22,7 @@ describe('continue-epic discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
-    createManifest(dir, 'old', { work_type: 'epic', status: 'archived' });
+    createManifest(dir, 'old', { work_type: 'epic', status: 'concluded' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.epics[0].name, 'v1');
@@ -53,6 +53,30 @@ describe('continue-epic discovery', () => {
     createManifest(dir, 'v2', { work_type: 'epic' });
     const r = discover(dir);
     assert.strictEqual(r.summary, '2 active epic(s)');
+  });
+
+  it('includes concluded epics in list mode', () => {
+    createManifest(dir, 'done', { work_type: 'epic', status: 'concluded', phases: { review: { items: { auth: { status: 'completed' } } } } });
+    createManifest(dir, 'active', { work_type: 'epic', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
+    const r = discover(dir);
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.concluded_count, 1);
+    assert.strictEqual(r.concluded[0].name, 'done');
+    assert.strictEqual(r.concluded[0].last_phase, 'review');
+  });
+
+  it('includes cancelled epics in list mode', () => {
+    createManifest(dir, 'stopped', { work_type: 'epic', status: 'cancelled', phases: { discussion: { items: { auth: { status: 'concluded' } } } } });
+    const r = discover(dir);
+    assert.strictEqual(r.cancelled_count, 1);
+    assert.strictEqual(r.cancelled[0].name, 'stopped');
+  });
+
+  it('does not include concluded/cancelled in detail mode', () => {
+    createManifest(dir, 'done', { work_type: 'epic', status: 'concluded' });
+    const r = discover(dir, 'done');
+    assert.strictEqual(r.count, 0);
+    assert.strictEqual(r.concluded.length, 0);
   });
 
   describe('epic detail', () => {

@@ -63,6 +63,8 @@ Parse the discovery output to understand:
 **From top-level fields:**
 - `count` - number of active epics
 - `summary` - human-readable state summary
+- `concluded` / `cancelled` - arrays of non-active epics with name, status, last_phase (list mode only)
+- `concluded_count` / `cancelled_count` - counts for each
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

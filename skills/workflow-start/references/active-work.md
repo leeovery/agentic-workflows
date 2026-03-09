@@ -39,13 +39,17 @@ Epics:
 
 @endforeach
 @endif
+
+@if(concluded_count > 0 || cancelled_count > 0)
+{concluded_count} concluded, {cancelled_count} cancelled.
+@endif
 ```
 
 Build from discovery output. Only show sections that have work units. Numbering is continuous across sections. Feature/bugfix shows `phase_label` (titlecased). Epic shows comma-separated `active_phases` (titlecased). Blank line between each numbered item.
 
 ## Menu
 
-Build a numbered menu with continue items first, then start-new options separated by a blank line.
+Build a numbered menu with continue items first, then start-new options, then lifecycle options, separated by blank lines.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -61,6 +65,11 @@ What would you like to do?
 5. Start new epic
 6. Start new bugfix
 
+@if(concluded_count > 0 || cancelled_count > 0)
+7. View concluded & cancelled work units
+@endif
+- **`m`/`manage`** — Manage a work unit's lifecycle
+
 Select an option (enter number):
 · · · · · · · · · · · ·
 ```
@@ -72,6 +81,8 @@ Select an option (enter number):
 Recreate with actual work units from discovery.
 
 **STOP.** Wait for user response.
+
+#### If user chose a continue or start-new option
 
 Invoke the selected skill:
 
@@ -85,3 +96,11 @@ Invoke the selected skill:
 | Start new bugfix | `/start-bugfix` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+#### If user chose "View concluded & cancelled"
+
+→ Load **[view-concluded.md](view-concluded.md)** with no work_type filter (unified across all types). On return, re-run discovery and redisplay from the top of this reference.
+
+#### If user chose `m`/`manage`
+
+→ Load **[manage-work-unit.md](manage-work-unit.md)**. On return, re-run discovery and redisplay from the top of this reference.

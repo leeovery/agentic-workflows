@@ -32,7 +32,7 @@ Invoke the `/migrate` skill and assess its output.
 
 Cross-topic dependency linking is only relevant to epic work units (feature and bugfix have a single plan with no cross-topic dependencies).
 
-1. **List epic work units**: Run `node .claude/skills/workflow-manifest/scripts/manifest.js list --work-type epic --status active`
+1. **List epic work units**: Run `node .claude/skills/workflow-manifest/scripts/manifest.js list --work-type epic --status in-progress`
 
 #### If no epic work units exist
 

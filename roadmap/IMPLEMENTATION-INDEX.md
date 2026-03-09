@@ -18,6 +18,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | 10th | PR 10 | Research Refactor | [Design Brief](research-refactor/DESIGN-BRIEF.md) |
 | 11th | PR 11 | Session State Removal | [Design Brief](session-state-removal/DESIGN-BRIEF.md) |
 | 12th | PR 12 | Feature Research Analysis | [PR12-FEATURE-RESEARCH-ANALYSIS.md](PR12-FEATURE-RESEARCH-ANALYSIS.md) |
+| 13th | PR 13 | Manifest CLI — Wildcard Topic | [PR13-MANIFEST-WILDCARD-TOPIC.md](PR13-MANIFEST-WILDCARD-TOPIC.md) |
 
 ## Why This Order
 

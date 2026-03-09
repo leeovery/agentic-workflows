@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Tests for the workflow manifest CLI (manifest.js)
-# Validates init, get, set, list, init-phase, archive commands.
+# Validates init, get, set, list, init-phase, push, exists commands.
 # Uses domain-aware flag syntax (--phase, --topic).
 #
 
@@ -197,7 +197,7 @@ assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json
 content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
 assert_contains "$content" '"name": "dark-mode"' "name field set"
 assert_contains "$content" '"work_type": "feature"' "work_type field set"
-assert_contains "$content" '"status": "active"' "status defaults to active"
+assert_contains "$content" '"status": "in-progress"' "status defaults to in-progress"
 assert_contains "$content" '"description": "Add dark mode"' "description set"
 assert_contains "$content" '"phases": {}' "phases initialized empty"
 assert_contains "$content" '"created":' "created date set"
@@ -252,7 +252,7 @@ setup_fixture
 run_cli init scalar-test --work-type bugfix --description "Scalar" >/dev/null 2>&1
 output=$(run_cli_stdout get scalar-test status)
 
-assert_equals "$output" "active" "Scalar value output raw"
+assert_equals "$output" "in-progress" "Scalar value output raw"
 
 echo ""
 
@@ -543,12 +543,12 @@ echo ""
 echo -e "${YELLOW}Test: list filters by status${NC}"
 setup_fixture
 run_cli init active-one --work-type feature --description "Active" >/dev/null 2>&1
-run_cli init archived-one --work-type feature --description "Archived" >/dev/null 2>&1
-run_cli set archived-one status archived >/dev/null 2>&1
-output=$(run_cli_stdout list --status active)
+run_cli init concluded-one --work-type feature --description "Concluded" >/dev/null 2>&1
+run_cli set concluded-one status concluded >/dev/null 2>&1
+output=$(run_cli_stdout list --status in-progress)
 
-assert_contains "$output" '"name": "active-one"' "Active work unit listed"
-assert_not_contains "$output" '"name": "archived-one"' "Archived work unit excluded"
+assert_contains "$output" '"name": "active-one"' "In-progress work unit listed"
+assert_not_contains "$output" '"name": "concluded-one"' "Concluded work unit excluded"
 
 echo ""
 
@@ -573,7 +573,7 @@ run_cli init visible --work-type feature --description "Visible" >/dev/null 2>&1
 # Create dot-prefixed directories that should be skipped
 mkdir -p "$TEST_DIR/.workflows/.archive/old-thing"
 cat > "$TEST_DIR/.workflows/.archive/old-thing/manifest.json" << 'EOF'
-{"name":"old-thing","work_type":"feature","status":"archived"}
+{"name":"old-thing","work_type":"feature","status":"cancelled"}
 EOF
 mkdir -p "$TEST_DIR/.workflows/.cache"
 mkdir -p "$TEST_DIR/.workflows/.state"
@@ -742,38 +742,6 @@ assert_contains "$output" '"v2"' "Second tag appended"
 echo ""
 
 # ============================================================================
-# ARCHIVE TESTS
-# ============================================================================
-
-echo -e "${YELLOW}Test: archive moves directory and updates status${NC}"
-setup_fixture
-run_cli init to-archive --work-type feature --description "Archive me" >/dev/null 2>&1
-# Add some content to verify it moves
-mkdir -p "$TEST_DIR/.workflows/to-archive/discussion"
-echo "# Test" > "$TEST_DIR/.workflows/to-archive/discussion/to-archive.md"
-
-run_cli archive to-archive >/dev/null 2>&1
-
-assert_dir_not_exists "$TEST_DIR/.workflows/to-archive" "Original directory removed"
-assert_dir_exists "$TEST_DIR/.workflows/.archive/to-archive" "Archive directory created"
-assert_file_exists "$TEST_DIR/.workflows/.archive/to-archive/manifest.json" "Manifest in archive"
-assert_file_exists "$TEST_DIR/.workflows/.archive/to-archive/discussion/to-archive.md" "Content preserved in archive"
-
-# Check status updated
-archived_content=$(cat "$TEST_DIR/.workflows/.archive/to-archive/manifest.json")
-assert_contains "$archived_content" '"status": "archived"' "Status set to archived"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: archive errors on missing work unit${NC}"
-setup_fixture
-assert_exit_nonzero "Archive of missing work unit fails" archive nonexistent
-
-echo ""
-
-# ============================================================================
 # DOMAIN ROUTING TESTS
 # ============================================================================
 
@@ -833,7 +801,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set on missing work unit errors${NC}"
 setup_fixture
-assert_exit_nonzero "Set on nonexistent work unit fails" set ghost status archived
+assert_exit_nonzero "Set on nonexistent work unit fails" set ghost status cancelled
 
 echo ""
 
@@ -966,6 +934,72 @@ echo ""
 echo -e "${YELLOW}Test: exists with no args returns non-zero exit${NC}"
 setup_fixture
 assert_exit_nonzero "exists with no args fails" exists
+
+echo ""
+
+# ============================================================================
+# WILDCARD TOPIC
+# ============================================================================
+
+echo -e "${YELLOW}Test: get with wildcard topic on epic returns all items${NC}"
+setup_fixture
+run_cli init wc-epic --work-type epic --description "Wildcard" >/dev/null 2>&1
+run_cli init-phase wc-epic --phase implementation --topic auth-flow >/dev/null 2>&1
+run_cli init-phase wc-epic --phase implementation --topic billing >/dev/null 2>&1
+run_cli set wc-epic --phase implementation --topic auth-flow status completed >/dev/null 2>&1
+output=$(run_cli_stdout get wc-epic --phase implementation --topic "*" status)
+assert_contains "$output" '"topic": "auth-flow"' "Wildcard get includes auth-flow"
+assert_contains "$output" '"value": "completed"' "Wildcard get shows completed value"
+assert_contains "$output" '"topic": "billing"' "Wildcard get includes billing"
+assert_contains "$output" '"value": "in-progress"' "Wildcard get shows in-progress value"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get with wildcard topic on feature returns single item${NC}"
+setup_fixture
+run_cli init wc-feat --work-type feature --description "Wildcard" >/dev/null 2>&1
+run_cli init-phase wc-feat --phase implementation --topic wc-feat >/dev/null 2>&1
+run_cli set wc-feat --phase implementation --topic wc-feat status completed >/dev/null 2>&1
+output=$(run_cli_stdout get wc-feat --phase implementation --topic "*" status)
+assert_contains "$output" '"topic": "wc-feat"' "Wildcard get on feature includes topic"
+assert_contains "$output" '"value": "completed"' "Wildcard get on feature shows value"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get with wildcard topic on empty phase fails${NC}"
+setup_fixture
+run_cli init wc-empty --work-type epic --description "Empty" >/dev/null 2>&1
+run_cli set wc-empty phases.implementation '{}' >/dev/null 2>&1
+assert_exit_nonzero "Wildcard on empty phase returns error" get wc-empty --phase implementation --topic "*" status
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: exists with wildcard topic returns true when items exist${NC}"
+setup_fixture
+run_cli init wc-exists --work-type epic --description "Exists" >/dev/null 2>&1
+run_cli init-phase wc-exists --phase implementation --topic topic-a >/dev/null 2>&1
+output=$(run_cli_stdout exists wc-exists --phase implementation --topic "*" status)
+exit_code=$?
+assert_equals "$output" "true" "Wildcard exists returns true when items have field"
+assert_equals "$exit_code" "0" "Wildcard exists exits 0"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: exists with wildcard topic returns false when no items${NC}"
+setup_fixture
+run_cli init wc-noitems --work-type epic --description "No items" >/dev/null 2>&1
+output=$(run_cli_stdout exists wc-noitems --phase implementation --topic "*" status)
+exit_code=$?
+assert_equals "$output" "false" "Wildcard exists returns false when no items"
+assert_equals "$exit_code" "0" "Wildcard exists on empty exits 0"
 
 echo ""
 

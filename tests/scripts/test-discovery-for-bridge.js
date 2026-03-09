@@ -102,9 +102,9 @@ describe('workflow-bridge discovery', () => {
   });
 
   it('returns status from manifest', () => {
-    createManifest(dir, 'auth', { work_type: 'feature', status: 'active' });
+    createManifest(dir, 'auth', { work_type: 'feature', status: 'in-progress' });
     const r = discover(dir, 'auth');
-    assert.strictEqual(r.status, 'active');
+    assert.strictEqual(r.status, 'in-progress');
   });
 
   it('detects research file existence', () => {

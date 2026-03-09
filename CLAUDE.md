@@ -58,7 +58,7 @@ skills/
   workflow-shared/             # Shared utilities used by other workflow skills
     scripts/discovery-utils.js #   Discovery helpers (manifest loading, phase state, checksums)
   workflow-manifest/           # Manifest CLI — single source of truth for workflow state
-    scripts/manifest.js        #   Node.js CLI (get/set/list/init/init-phase/push/archive)
+    scripts/manifest.js        #   Node.js CLI (get/set/list/init/init-phase/push/exists)
 
   # Entry-point skills (user-invocable — gather context, invoke processing skills)
   migrate/                   # Keep workflow files in sync with system design

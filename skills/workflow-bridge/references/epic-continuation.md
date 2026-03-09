@@ -18,7 +18,53 @@ node .claude/skills/continue-epic/scripts/discovery.js {work_unit}
 
 Parse the output. Use the epic's `detail` object as the discovery data for the display.
 
-## B. Display and Menu
+## B. Check All-Done
+
+Using the enriched discovery data from section A, check if ALL topics across ALL phases have review status `completed`. Specifically: check if any review items exist, and if so, whether every one has `status: completed`, and no topics in earlier phases are still `in-progress`.
+
+#### If all topics have completed review
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+All topics have completed review for "{work_unit:(titlecase)}".
+
+- **`y`/`yes`** — Mark this epic as concluded
+- **`n`/`no`** — Return to the epic menu
+
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `y`/`yes`:**
+
+Set the work unit status to concluded:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status concluded
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Epic Concluded
+
+"{work_unit:(titlecase)}" has completed all topics through review.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**If user chose `n`/`no`:**
+
+→ Proceed to **C. Display and Menu**.
+
+#### Otherwise
+
+→ Proceed to **C. Display and Menu**.
+
+## C. Display and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -30,11 +76,11 @@ Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-an
 
 **STOP.** Do not proceed until the above has returned with the user's selection.
 
-→ Proceed to **C. Enter Plan Mode**.
+→ Proceed to **D. Enter Plan Mode**.
 
 ---
 
-## C. Enter Plan Mode
+## D. Enter Plan Mode
 
 Map the selection to a skill invocation using this routing table:
 

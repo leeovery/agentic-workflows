@@ -1,8 +1,19 @@
 'use strict';
 
-const { loadActiveManifests, loadManifest, phaseItems, phaseData } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData } = require('../../workflow-shared/scripts/discovery-utils');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+
+function lastCompletedPhaseEpic(manifest) {
+  let last = null;
+  for (const phase of EPIC_PHASES) {
+    const items = phaseItems(manifest, phase);
+    if (items.length > 0 && items.some(i => i.status === 'concluded' || i.status === 'completed')) {
+      last = phase;
+    }
+  }
+  return last;
+}
 
 function resolveDeps(cwd, manifest, planItem) {
   const externalDepsObj = (planItem.external_dependencies && typeof planItem.external_dependencies === 'object' && !Array.isArray(planItem.external_dependencies))
@@ -187,9 +198,28 @@ function discover(cwd, workUnit) {
     });
   }
 
+  // Load concluded/cancelled epics (only in list mode, not detail mode)
+  const concluded = [];
+  const cancelled = [];
+  if (!workUnit) {
+    const allManifests = loadAllManifests(cwd);
+    for (const m of allManifests) {
+      if (m.work_type !== 'epic') continue;
+      if (m.status === 'concluded') {
+        concluded.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
+      } else if (m.status === 'cancelled') {
+        cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
+      }
+    }
+  }
+
   return {
     epics,
     count: epics.length,
+    concluded,
+    cancelled,
+    concluded_count: concluded.length,
+    cancelled_count: cancelled.length,
     summary: epics.length === 0
       ? 'no active epics'
       : `${epics.length} active epic(s)`,

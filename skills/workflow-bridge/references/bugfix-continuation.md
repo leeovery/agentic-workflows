@@ -25,10 +25,16 @@ Use `next_phase` from discovery output to determine the target skill:
 
 #### If `next_phase` is `done`
 
+Set the work unit status to concluded:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status concluded
+```
+
 > *Output the next fenced block as a code block:*
 
 ```
-Bugfix Complete
+Bugfix Concluded
 
 "{work_unit:(titlecase)}" has completed all pipeline phases.
 ```
@@ -39,15 +45,61 @@ Bugfix Complete
 
 Set `target_phase` = `next_phase`.
 
-→ Proceed to **B. Offer Revisit**.
+→ Proceed to **B. Offer Early Conclusion**.
 
-## B. Offer Revisit
+## B. Offer Early Conclusion
+
+#### If `next_phase` is `review`
+
+Implementation has just concluded. Offer the user a choice to skip review and conclude early.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Implementation concluded for "{work_unit:(titlecase)}".
+
+- **`y`/`yes`** — Proceed to review
+- **`d`/`done`** — Conclude without review
+
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `d`/`done`:**
+
+Set the work unit status to concluded:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status concluded
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Bugfix Concluded
+
+"{work_unit:(titlecase)}" concluded — review skipped.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**If user chose `y`/`yes`:**
+
+→ Proceed to **C. Offer Revisit**.
+
+#### Otherwise
+
+→ Proceed to **C. Offer Revisit**.
+
+## C. Offer Revisit
 
 Check if there are concluded phases earlier in the pipeline that the user could revisit. Look at the discovery output's `phases` data — any phase with status `concluded` or `completed` that comes before `next_phase` in the pipeline order.
 
 #### If no earlier concluded phases exist
 
-→ Proceed to **C. Enter Plan Mode**.
+→ Proceed to **D. Enter Plan Mode**.
 
 #### If earlier concluded phases exist
 
@@ -65,11 +117,11 @@ Check if there are concluded phases earlier in the pipeline that the user could 
 
 **STOP.** Wait for user response.
 
-**If user chose `y`/`yes`:**
+#### If user chose `y`/`yes`
 
-→ Proceed to **C. Enter Plan Mode**.
+→ Proceed to **D. Enter Plan Mode**.
 
-**If user chose `r`/`revisit`:**
+#### If user chose `r`/`revisit`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -89,17 +141,17 @@ List only concluded phases that come before `next_phase`.
 
 **STOP.** Wait for user response.
 
-**If user chose Back:**
+#### If user chose Back
 
-→ Return to **B. Offer Revisit**.
+→ Return to **C. Offer Revisit**.
 
-**If user chose a phase:**
+#### If user chose a phase
 
 Set `target_phase` = selected phase.
 
-→ Proceed to **C. Enter Plan Mode**.
+→ Proceed to **D. Enter Plan Mode**.
 
-## C. Enter Plan Mode
+## D. Enter Plan Mode
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
 

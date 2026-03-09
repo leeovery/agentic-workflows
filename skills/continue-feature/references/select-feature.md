@@ -18,6 +18,10 @@ Continue Feature
      └─ {feature.phase_label:(titlecase)}
 
 @endforeach
+
+@if(concluded_count > 0 || cancelled_count > 0)
+{concluded_count} concluded, {cancelled_count} cancelled.
+@endif
 ```
 
 Build from the discovery output's `features` array. Each feature shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
@@ -31,6 +35,11 @@ Which feature would you like to continue?
 1. Continue "{feature.name:(titlecase)}" — {feature.phase_label}
 2. ...
 
+@if(concluded_count > 0 || cancelled_count > 0)
+{N+1}. View concluded & cancelled features
+@endif
+- **`m`/`manage`** — Manage a feature's lifecycle
+
 Select an option (enter number):
 · · · · · · · · · · · ·
 ```
@@ -39,6 +48,16 @@ Recreate with actual features and `phase_label` values from discovery. No auto-s
 
 **STOP.** Wait for user response.
 
+#### If user chose a feature number
+
 Store the selected feature's name as `work_unit`.
 
 → Return to **[the skill](../SKILL.md)**.
+
+#### If user chose "View concluded & cancelled"
+
+→ Load **[../../workflow-start/references/view-concluded.md](../../workflow-start/references/view-concluded.md)** with work_type filter = `feature`. On return, re-run discovery and redisplay from the top of this reference.
+
+#### If user chose `m`/`manage`
+
+→ Load **[../../workflow-start/references/manage-work-unit.md](../../workflow-start/references/manage-work-unit.md)**. On return, re-run discovery and redisplay from the top of this reference.

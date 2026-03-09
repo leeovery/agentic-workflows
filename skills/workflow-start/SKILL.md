@@ -1,7 +1,7 @@
 ---
 name: workflow-start
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.js)
+allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 hooks:
   PreToolUse:
     - hooks:
@@ -54,6 +54,10 @@ Parse the output to understand the current workflow state:
 
 **From `bugfixes` section:**
 - `work_units` — name, next_phase, phase_label
+
+**From `concluded`/`cancelled` arrays:**
+- Non-active work units with name, work_type, status, last_phase
+- `concluded_count`, `cancelled_count`
 
 **From `state` section:**
 - Counts for each work type, `has_any_work` flag

@@ -1,8 +1,17 @@
 'use strict';
 
-const { loadActiveManifests, phaseStatus, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
+const { loadActiveManifests, loadAllManifests, phaseStatus, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
 
 const FEATURE_PIPELINE = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+
+function lastCompletedPhase(manifest) {
+  let last = null;
+  for (const phase of FEATURE_PIPELINE) {
+    const s = phaseStatus(manifest, phase);
+    if (s === 'concluded' || s === 'completed') last = phase;
+  }
+  return last;
+}
 
 function concludedPhases(manifest) {
   const concluded = [];
@@ -31,9 +40,27 @@ function discover(cwd) {
     });
   }
 
+  // Load concluded/cancelled features
+  const allManifests = loadAllManifests(cwd);
+  const concluded = [];
+  const cancelled = [];
+
+  for (const m of allManifests) {
+    if (m.work_type !== 'feature') continue;
+    if (m.status === 'concluded') {
+      concluded.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
+    } else if (m.status === 'cancelled') {
+      cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
+    }
+  }
+
   return {
     features,
     count: features.length,
+    concluded,
+    cancelled,
+    concluded_count: concluded.length,
+    cancelled_count: cancelled.length,
     summary: features.length === 0
       ? 'no active features'
       : `${features.length} active feature(s)`,
