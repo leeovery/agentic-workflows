@@ -15,17 +15,13 @@ The orchestrator owns: plan reading, task extraction, agent invocation, git oper
 
 ## Purpose in the Workflow
 
-This skill can be used:
-- **Sequentially**: To execute a plan created by technical-planning
-- **Standalone** (Contract entry): To execute any plan that follows plan-format conventions
-
-Either way: dispatch agents per task — executor implements via TDD, reviewer verifies independently.
+Follows planning. Execute the plan by dispatching agents per task — executor implements via TDD, reviewer verifies independently.
 
 ### What This Skill Needs
 
 - **Plan content** (required) - Phases, tasks, and acceptance criteria to execute
 - **Plan format** (required) - How to parse tasks (from manifest)
-- **Specification content** (optional) - For context when task rationale is unclear
+- **Specification content** (required) - The specification from the prior phase, for context when task rationale is unclear
 - **Environment setup** (optional) - First-time setup instructions
 
 **Before proceeding**, verify all required inputs are available and unambiguous. If anything is missing or unclear, **STOP** — do not proceed until resolved.

@@ -145,9 +145,7 @@ Skills are organised in two tiers:
 
 **Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). They are invoked by start/continue/bridge skills with work_type and work_unit always provided. They handle phase-specific validation, bootstrap questions for new entries, and processing skill invocation.
 
-**Processing skills** (`technical-*`) are model-invocable. They receive inputs and process them without knowing where the inputs came from. Entry-point skills are responsible for gathering inputs.
-
-**Standalone entry points** (e.g., `/start-feature`) can invoke processing skills directly without requiring previous phase files.
+**Processing skills** (`technical-*`) are model-invocable. They assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills provide all required inputs before invoking them.
 
 ### Phase Entry Skill Routing
 
@@ -161,22 +159,6 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 - Run discovery scoped to work_unit → analysis/selection flow → determine topic
 - Only used by discussion and specification (research also, but simpler — just asks seed questions)
 - Planning, implementation, review always receive a topic
-
-### Keeping Processing Skills Workflow-Agnostic (IMPORTANT)
-
-Processing skills should **never hardcode references** to specific workflow phases (e.g., "the research phase", "after discussion"). This allows them to be invoked from different entry points — whether via workflow skills or standalone skills like `/start-feature`.
-
-**In processing skills, avoid:**
-- "The research, discussion, and specification phases..."
-- "After completing discussion, you should..."
-- "Proceed to the planning phase..."
-
-**In processing skills, prefer:**
-- "The specification contains validated decisions..."
-- "Planning is complete when..."
-- Reference inputs generically (specification, plan) not how they were created
-
-**Entry-point skills set context; processing skills process inputs.** If workflow-specific language is needed, it belongs in the entry-point skill, not in the processing skill.
 
 ## Key Conventions
 

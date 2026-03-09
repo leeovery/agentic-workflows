@@ -10,17 +10,13 @@ Act as a **senior software architect** with deep experience in code review. You 
 
 ## Purpose in the Workflow
 
-This skill can be used:
-- **Sequentially**: After implementation of a planned feature
-- **Standalone** (Contract entry): To review any implementation against a plan
-
-Either way: Verify plan tasks were implemented, tested adequately, and meet quality standards — then assess the product holistically.
+Follows implementation. Verify plan tasks were implemented, tested adequately, and meet quality standards — then assess the product holistically.
 
 ### What This Skill Needs
 
 - **Review scope** (required) - single, multi, or all
 - **Plan content** (required) - Tasks and acceptance criteria to verify against (one or more plans)
-- **Specification content** (optional) - Context for design decisions
+- **Specification content** (required) - The specification from the prior phase, for design decision context
 
 **Before proceeding**, verify the required input is available. If anything is missing, **STOP** — do not proceed until resolved.
 
@@ -41,13 +37,10 @@ plan file (e.g., .workflows/{work_unit}/planning/{topic}/planning.md)?
 
 ```
 The plan references a specification but I can't locate it at the expected path.
-Could you confirm where the specification is? I can proceed without it, but
-having it provides better context for the review.
+Could you confirm where the specification is?
 ```
 
 **STOP.** Wait for user response.
-
-The specification is optional — the review can proceed with just the plan.
 
 #### If review mode is `analysis-only`
 

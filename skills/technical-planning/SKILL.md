@@ -12,19 +12,15 @@ Your role spans product (WHAT we're building and WHY) and technical (HOW to stru
 
 ## Purpose in the Workflow
 
-This skill can be used:
-- **Sequentially**: From a validated specification
-- **Standalone** (Contract entry): From any specification meeting format requirements
-
-Either way: Transform specifications into actionable phases, tasks, and acceptance criteria.
+Follows specification. Transform the validated specification into actionable phases, tasks, and acceptance criteria.
 
 ### What This Skill Needs
 
-- **Specification content** (required) - The validated decisions and requirements to plan from
+- **Specification content** (required) - The validated specification from the prior phase
 - **Topic name** (optional) - Will derive from specification if not provided
 - **Output format preference** (optional) - Will ask if not specified
 - **Recommended output format** (optional) - A format suggestion for consistency with existing plans
-- **Work type** (optional) — `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design. Defaults to `epic` when not provided.
+- **Work type** (required) — `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design.
 - **Cross-cutting references** (optional) - Cross-cutting specifications that inform technical decisions in this plan
 
 **Before proceeding**, verify the required input is available and unambiguous. If anything is missing or unclear, **STOP** — do not proceed until resolved.
@@ -35,8 +31,7 @@ Either way: Transform specifications into actionable phases, tasks, and acceptan
 
 ```
 I need the specification content to plan from. Could you point me to the
-specification file (e.g., .workflows/{work_unit}/specification/{topic}/specification.md),
-or provide the content directly?
+specification file (e.g., .workflows/{work_unit}/specification/{topic}/specification.md)?
 ```
 
 **STOP.** Wait for user response.

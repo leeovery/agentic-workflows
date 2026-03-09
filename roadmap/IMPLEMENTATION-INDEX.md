@@ -11,7 +11,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | ✅ | PR 5 | Phase Skills Internal | [PR5-PHASE-SKILLS-INTERNAL.md](PR5-PHASE-SKILLS-INTERNAL.md) |
 | ✅ | PR 2 | Bridge Always Fires | [PR2-BRIDGE-ALWAYS-FIRES.md](PR2-BRIDGE-ALWAYS-FIRES.md) |
 | ✅ | PR 3 | Bridge Epic Navigation | [PR3-BRIDGE-EPIC-NAVIGATION.md](PR3-BRIDGE-EPIC-NAVIGATION.md) |
-| 6th | PR 6 | Processing Skills Pipeline-Aware | [PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md](PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md) |
+| ✅ | PR 6 | Processing Skills Pipeline-Aware | [PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md](PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md) |
 | 7th | PR 7 | Work Unit Lifecycle | [PR7-WORK-UNIT-LIFECYCLE.md](PR7-WORK-UNIT-LIFECYCLE.md) |
 | 8th | PR 8 | Skip Review | [PR8-SKIP-REVIEW.md](PR8-SKIP-REVIEW.md) |
 | 9th | PR 9 | Normalise Terminal Status | [PR9-NORMALISE-TERMINAL-STATUS.md](PR9-NORMALISE-TERMINAL-STATUS.md) |
