@@ -28,7 +28,11 @@ Store the selected work unit. → Proceed to **B. Action Menu**.
 
 ## B. Action Menu
 
-Check if the selected work unit's implementation phase is concluded or completed (via manifest CLI or discovery data).
+Check if the selected work unit has reached implementation (at least one topic has entered the implementation phase):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name} phases.implementation
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -36,7 +40,7 @@ Check if the selected work unit's implementation phase is concluded or completed
 · · · · · · · · · · · ·
 **{selected.name:(titlecase)}** ({selected.work_type})
 
-@if(implementation_concluded_or_completed)
+@if(has_implementation)
 - **`d`/`done`** — Mark as concluded
 @endif
 - **`x`/`cancel`** — Mark as cancelled
