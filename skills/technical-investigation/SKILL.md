@@ -22,21 +22,6 @@ The output becomes source material for a specification focused on the fix approa
 - **Bug context** (optional) - Initial symptoms, error messages, reproduction steps
 - **Work type** - Always "bugfix" for investigation
 
-**Before proceeding**, confirm the required input is clear. If anything is missing or unclear, **STOP** and resolve with the user.
-
-#### If no topic provided
-
-> *Output the next fenced block as a code block:*
-
-```
-What bug would you like to investigate? Provide:
-- A short identifier or name for tracking
-- What's broken (expected vs actual behavior)
-- Any error messages or symptoms observed
-```
-
-**STOP.** Wait for user response.
-
 ---
 
 ## Resuming After Context Refresh

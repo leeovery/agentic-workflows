@@ -23,31 +23,6 @@ Follows specification. Transform the validated specification into actionable pha
 - **Work type** (required) — `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design.
 - **Cross-cutting references** (optional) - Cross-cutting specifications that inform technical decisions in this plan
 
-**Before proceeding**, verify the required input is available and unambiguous. If anything is missing or unclear, **STOP** — do not proceed until resolved.
-
-#### If no specification content provided
-
-> *Output the next fenced block as a code block:*
-
-```
-I need the specification content to plan from. Could you point me to the
-specification file (e.g., .workflows/{work_unit}/specification/{topic}/specification.md)?
-```
-
-**STOP.** Wait for user response.
-
-#### If specification seems incomplete or not concluded
-
-> *Output the next fenced block as a code block:*
-
-```
-The specification at {path} appears to be {concern — e.g., 'still in-progress'
-or 'missing sections that are referenced elsewhere'}. Should I proceed with
-this, or is there a more complete version?
-```
-
-**STOP.** Wait for user response.
-
 ---
 
 ## Resuming After Context Refresh

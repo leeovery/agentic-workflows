@@ -18,20 +18,6 @@ Follows research (or starts the pipeline for features). Debate technical decisio
 - **Context** (optional) - Prior research, constraints, existing decisions
 - **Questions to explore** (optional) - Specific architectural questions to address
 
-**Before proceeding**, confirm the required input is clear. If anything is missing or unclear, **STOP** and resolve with the user.
-
-#### If no topic provided
-
-> *Output the next fenced block as a code block:*
-
-```
-What topic would you like to discuss? This could be an architectural decision,
-a design problem, or edge cases to work through — anything that needs structured
-technical discussion.
-```
-
-**STOP.** Wait for user response.
-
 #### If topic is broad or ambiguous
 
 > *Output the next fenced block as a code block:*

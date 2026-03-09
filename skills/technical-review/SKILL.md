@@ -18,36 +18,6 @@ Follows implementation. Verify plan tasks were implemented, tested adequately, a
 - **Plan content** (required) - Tasks and acceptance criteria to verify against (one or more plans)
 - **Specification content** (required) - The specification from the prior phase, for design decision context
 
-**Before proceeding**, verify the required input is available. If anything is missing, **STOP** — do not proceed until resolved.
-
-#### If no plan provided
-
-> *Output the next fenced block as a code block:*
-
-```
-I need the implementation plan to review against. Could you point me to the
-plan file (e.g., .workflows/{work_unit}/planning/{topic}/planning.md)?
-```
-
-**STOP.** Wait for user response.
-
-#### If plan references a specification that can't be found
-
-> *Output the next fenced block as a code block:*
-
-```
-The plan references a specification but I can't locate it at the expected path.
-Could you confirm where the specification is?
-```
-
-**STOP.** Wait for user response.
-
-#### If review mode is `analysis-only`
-
-Analysis of existing review findings was requested. The review has already been completed.
-
-→ Proceed to **Step 5**.
-
 ---
 
 ## Resuming After Context Refresh

@@ -19,30 +19,6 @@ Follows discussion (or investigation for bugfix). Transform prior-phase source m
 - **Source material** (required) - Prior-phase artifacts to synthesize (discussions, research, investigation findings)
 - **Topic name** (required) - Used for the output filename
 
-**Before proceeding**, verify all required inputs are available and unambiguous. If anything is missing or unclear, **STOP** — do not proceed until resolved.
-
-#### If no source material provided
-
-> *Output the next fenced block as a code block:*
-
-```
-I need source material to build a specification from. Could you point me to the
-prior-phase artifacts (e.g., .workflows/{work_unit}/discussion/{topic}.md)?
-```
-
-**STOP.** Wait for user response.
-
-#### If no topic name provided
-
-> *Output the next fenced block as a code block:*
-
-```
-What should the specification be named? This determines the output file:
-.workflows/{work_unit}/specification/{topic}/specification.md
-```
-
-**STOP.** Wait for user response.
-
 #### If source material seems incomplete or unclear
 
 > *Output the next fenced block as a code block:*
