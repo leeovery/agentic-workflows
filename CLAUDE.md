@@ -51,7 +51,10 @@ skills/
   # Unified entry points
   workflow-start/              # Unified router — single view, routes to start/continue skills
     scripts/discovery.js       #   All active work units grouped by type
-    references/                #   Unified display and routing
+    references/                #   Display, routing, lifecycle management
+      active-work.md           #     Active work units display + selection
+      manage-work-unit.md      #     Complete/cancel work units
+      view-completed.md        #     Browse completed/cancelled work units
   workflow-bridge/             # Pipeline continuation - discovers next phase, enters plan mode
     scripts/discovery.js       #   Topic-specific or phase-centric discovery
     references/                #   Work-type-specific continuation logic (with backwards nav)
@@ -72,13 +75,13 @@ skills/
     references/              #   Bug context gathering, phase bridge
   continue-feature/          # Resume in-progress feature — phase routing + backwards nav
     scripts/discovery.js     #   Active features with phase state
-    references/              #   Display, selection, revisit phase
+    references/              #   Selection, validation, revisit phase
   continue-bugfix/           # Resume in-progress bugfix — phase routing + backwards nav
     scripts/discovery.js     #   Active bugfixes with phase state
-    references/              #   Display, selection, revisit phase
+    references/              #   Selection, validation, revisit phase
   continue-epic/             # Resume in-progress epic — full state display + interactive menu
     scripts/discovery.js     #   List mode (all epics) and detail mode (per-phase items)
-    references/              #   Epic selection, state display, menu, resume completed
+    references/              #   Selection, state display, menu, soft gates
   link-dependencies/         # Link dependencies across topics
 
   # Phase entry skills (internal — invoked by start/continue/bridge skills)
@@ -184,6 +187,15 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - Unified discovery across all phases
 - Correct pipeline routing via workflow-bridge
 - Work-type-specific behavior in processing skills
+
+**Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking its lifecycle state:
+- `in-progress` — actively being worked on (default on creation)
+- `completed` — pipeline finished (set automatically when the pipeline completes, or manually via the manage menu)
+- `cancelled` — abandoned (set manually via the manage menu)
+
+Discovery scripts filter by status — `workflow-start` and `continue-*` show active work by default, with menu options to view completed/cancelled items or manage lifecycle state. Completed/cancelled work units can be reactivated.
+
+**Epic soft gates**: When navigating forward between phases in an epic (via `continue-epic`), advisory gates warn if prerequisite phase items are still in-progress. These are informational, not blocking — the user can proceed anyway. Covers research→discussion, discussion→specification, specification→planning, and planning→implementation transitions. The system recovers gracefully via re-analysis if the user proceeds early.
 
 Commit docs frequently (natural breaks, before context refresh). Skills capture context, don't implement.
 
@@ -298,9 +310,14 @@ $MANIFEST set {work_unit} --phase discussion --topic {topic} status completed  #
 $MANIFEST init-phase {work_unit} --phase discussion --topic {topic}    # create phase entry
 $MANIFEST push {work_unit} --phase implementation --topic {topic} completed_tasks "task-1"  # append to array
 $MANIFEST exists {work_unit}                                           # existence check (exits 0, outputs true/false)
+$MANIFEST list                                                         # enumerate all work units
 $MANIFEST get {work_unit} work_type                                    # work-unit-level read
+$MANIFEST set {work_unit} status completed                             # work-unit-level status
 $MANIFEST set {work_unit} phases.research.analysis_cache '{"checksum":"..."}' # work-unit-level write (dot-path)
+$MANIFEST get {work_unit} --phase discussion --topic "*" status        # wildcard: collect from all topics
 ```
+
+**Wildcard topic**: `--topic "*"` collects values from all topics in a phase, abstracting away the epic items structure. Works with `get` and `exists` commands. For epic: iterates all items. For feature/bugfix: returns the single flat value.
 
 See `skills/workflow-manifest/SKILL.md` for the full API.
 

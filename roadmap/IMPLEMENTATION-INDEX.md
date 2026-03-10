@@ -14,7 +14,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | ✅ | PR 6 | Processing Skills Pipeline-Aware | [PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md](PR6-PROCESSING-SKILLS-PIPELINE-AWARE.md) |
 | ✅ | PR 7 | Work Unit Lifecycle (absorbed PR8) | [PR7-WORK-UNIT-LIFECYCLE.md](PR7-WORK-UNIT-LIFECYCLE.md) |
 | ~~8th~~ | ~~PR 8~~ | ~~Skip Review~~ | ~~[PR8-SKIP-REVIEW.md](PR8-SKIP-REVIEW.md)~~ (absorbed into PR 7) |
-| 9th | PR 9 | Normalise Terminal Status | [PR9-NORMALISE-TERMINAL-STATUS.md](PR9-NORMALISE-TERMINAL-STATUS.md) |
+| ✅ | PR 9 | Normalise Terminal Status | [PR9-NORMALISE-TERMINAL-STATUS.md](PR9-NORMALISE-TERMINAL-STATUS.md) |
 | 10th | PR 10 | Research Refactor | [Design Brief](research-refactor/DESIGN-BRIEF.md) |
 | 11th | PR 11 | Session State Removal | [Design Brief](session-state-removal/DESIGN-BRIEF.md) |
 | 12th | PR 12 | Feature Research Analysis | [PR12-FEATURE-RESEARCH-ANALYSIS.md](PR12-FEATURE-RESEARCH-ANALYSIS.md) |

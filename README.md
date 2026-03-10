@@ -53,18 +53,13 @@ See [Installation](#installation) for details.
 
 ### Where to Start
 
-Pick your entry point based on where you are:
+Run `/workflow-start`. It shows all active work, lets you continue where you left off, or start something new. When in doubt, this is your entry point — it routes you to the right place.
 
-- **Seeds of an idea?** → Start with `/start-feature` or `/start-epic` and choose research *(recommended)*
-  You have a rough idea but haven't explored feasibility, alternatives, or scope yet. Research lets you think freely before committing to anything.
+If you prefer to jump straight in:
 
-- **Know what you're building?** → Use `/start-feature` or `/start-epic` and choose discussion
-  You've moved past exploration and want to capture architecture decisions, edge cases, and rationale for specific topics.
-
-- **Clear feature, ready to build?** → Use `/start-feature`
-  You know what you're building. Start-feature gathers context, creates a discussion, then pipelines through specification → planning → implementation automatically via plan mode bridges.
-
-**Why research is the recommended default:** When you move from research to discussion, the discussion skill analyses your research document and automatically breaks it into focused discussion topics. Skip research and you manage topic structure yourself.
+- `/start-feature` — single feature through the full pipeline
+- `/start-epic` — multi-topic work spanning multiple sessions
+- `/start-bugfix` — fix broken behavior with investigation-first pipeline
 
 ### The Workflow
 
@@ -109,33 +104,52 @@ Each phase produces documents that feed the next. Here's the journey:
 
 **Review** — Validates the implementation against spec and plan. Catches drift, missing requirements, and quality issues. Findings can be synthesized into remediation tasks that feed back into implementation, closing the review-implementation loop.
 
-### Starting Work
-
-| Skill | What it does |
-|-------|-------------|
-| `/start-feature` | Start a feature through the full pipeline: discussion → spec → plan → impl → review |
-| `/start-bugfix` | Start a bugfix through the pipeline: investigation → spec → plan → impl → review |
-| `/start-epic` | Start an epic: multi-topic, multi-session workflow across all phases |
-| `/link-dependencies` | Wire cross-topic dependencies across plans |
-
-### Feature Pipeline
-
-`/start-feature` chains the full workflow into an automated pipeline:
+### How It Fits Together
 
 ```
-/start-feature
-    │
-    ▼
-Discussion ──▶ Specification ──▶ Planning ──▶ Implementation ──▶ Review
+                         ┌─────────────────────────────┐
+  User                   │       /workflow-start        │
+  Entry ────────────────▶│  Dashboard — shows all work  │
+                         └──────────┬──────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+            ┌──────────────┐ ┌────────────┐ ┌─────────────┐
+            │/start-feature│ │/start-epic │ │/start-bugfix│
+            │/cont-feature │ │/cont-epic  │ │/cont-bugfix │
+            └──────┬───────┘ └─────┬──────┘ └──────┬──────┘
+                   │               │               │
+                   ▼               ▼               ▼
+            ┌─────────────────────────────────────────────┐
+            │         Phase Entry Skills (internal)       │
+            │  workflow-*-entry — validate + bootstrap     │
+            └──────────────────┬──────────────────────────┘
+                               │
+                               ▼
+            ┌─────────────────────────────────────────────┐
+            │          Processing Skills (do work)        │
+            │                                             │
+            │  research → discussion → specification      │
+            │          → planning → implementation        │
+            │                    → review                 │
+            └──────────────────┬──────────────────────────┘
+                               │
+                               ▼
+            ┌─────────────────────────────────────────────┐
+            │         workflow-bridge (automatic)          │
+            │  Clears context, advances to next phase     │
+            └─────────────────────────────────────────────┘
 ```
 
-**How it works:** After each phase completes, a plan mode bridge clears context and advances to the next phase automatically. You approve each transition with "clear context and continue" — this keeps each phase in a clean context window.
+**`/workflow-start`** is the main entry point. It discovers all active work, shows a dashboard, and routes to the right skill — whether that's starting something new or continuing where you left off. When in doubt, start here.
 
-If a session is interrupted, run `/workflow-start` to pick up where you left off. It discovers artifact state and routes to the next phase.
+**Start skills** (`/start-feature`, `/start-epic`, `/start-bugfix`) create new work units and gather initial context. **Continue skills** (`/continue-feature`, `/continue-epic`, `/continue-bugfix`) resume in-progress work with phase routing and backwards navigation.
 
-### Under the Hood
+**Phase entry skills** (`workflow-*-entry`) are internal — invoked automatically to validate pipeline state and bootstrap each phase. You never call them directly.
 
-Skills are organised in three tiers. **Entry-point skills** (`/start-*`, `/continue-*`, `/status`, etc.) gather context from files, prompts, or inline input. **Phase entry skills** (`workflow-*-entry`) are the internal glue — invoked by entry-point skills to validate pipeline state and bootstrap each phase. **Processing skills** (`technical-*`) assume pipeline context and do the work — they receive validated inputs from phase entry skills and focus purely on their phase's concern.
+**Processing skills** (`technical-*`) do the actual work for each phase. They assume pipeline context — prior phases are complete, artifacts are in expected locations.
+
+**Workflow bridge** connects phases automatically. After each phase completes, it clears context and advances to the next phase. You approve each transition with "clear context and continue" — this keeps each phase in a clean context window.
 
 ### Compaction Recovery
 
@@ -147,16 +161,15 @@ Long-running skills can hit context compaction, where Claude's conversation is s
 
 Session state is ephemeral (gitignored, cleaned up on session end) and per-session — multiple concurrent sessions don't interfere.
 
-### Workflow Navigation
+### Work Unit Lifecycle
 
-| Action | Skill |
-|--------|-------|
-| Start a new feature | `/start-feature` |
-| Start a new epic | `/start-epic` |
-| Start a new bugfix | `/start-bugfix` |
-| Resume work | `/workflow-start` or `/continue-feature` / `/continue-epic` / `/continue-bugfix` |
+Work units move through a simple lifecycle: **in-progress** → **completed** or **cancelled**.
 
-Phase entry skills (`workflow-*-entry`) are internal — they're invoked automatically by the start, continue, and bridge skills. You don't need to call them directly.
+- **Completed** is set automatically when the pipeline finishes (review phase ends), or manually via the manage menu in `/workflow-start`
+- **Cancelled** is set manually for abandoned work
+- Completed and cancelled work units can be **reactivated** back to in-progress
+
+Feature and bugfix pipelines offer an early completion option after implementation (skip review). Epic work units are completed when all topics have finished review.
 
 ### Output Formats
 
@@ -190,7 +203,7 @@ npx agntc remove leeovery/claude-technical-workflows
 
 ### Output Files
 
-Documents are stored in your project using a **work-unit-first** organisation. Each work unit (epic, feature, or bugfix) gets its own directory with phase subdirectories. A `manifest.json` in each work unit is the single source of truth for all workflow state.
+Documents are stored in your project using a **work-unit-first** organisation. Each work unit (epic, feature, or bugfix) gets its own directory with phase subdirectories. A `manifest.json` in each work unit is the single source of truth for all workflow state — including the work unit's lifecycle status (`in-progress`, `completed`, `cancelled`) and per-phase progress.
 
 ```
 .workflows/
@@ -242,7 +255,7 @@ skills/
 ├── technical-review/                # Validate against artefacts
 │
 ├── # Unified entry points
-├── workflow-start/                  # Discovers state, routes by work type
+├── workflow-start/                  # Discovers state, routes by work type + lifecycle management
 ├── workflow-bridge/                 # Pipeline continuation — next phase routing
 ├── workflow-shared/                 # Shared discovery utilities
 ├── workflow-manifest/               # Manifest CLI — single source of truth for state
@@ -325,15 +338,26 @@ Helpers for navigating and maintaining the workflow.
 | [**/status**](skills/status/)                                                | Show workflow status with relationship-aware display — specification sources, unlinked discussions, plan dependencies, and suggested next steps. |
 | [**/view-plan**](skills/view-plan/)                                          | View a plan's tasks and progress, regardless of output format.                                                                              |
 
-#### Pipeline Entry Skills
+#### Start Skills
 
-These skills start a workflow pipeline. Each gathers initial context, then bridges through every subsequent phase automatically.
+Create new work units and pipeline through every phase automatically.
 
 | Skill                                                   | Description                                                                                                                                 |
 |---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| [**/start-epic**](skills/start-epic/)                    | Start an epic — multi-topic, multi-session workflow. Gathers context, routes to research or discussion, then progresses phase by phase. |
 | [**/start-feature**](skills/start-feature/)              | Start a new feature through the full pipeline. Gathers context, creates a discussion, then bridges through specification → planning → implementation → review. |
+| [**/start-epic**](skills/start-epic/)                    | Start an epic — multi-topic, multi-session workflow. Gathers context, routes to research or discussion, then progresses phase by phase. |
 | [**/start-bugfix**](skills/start-bugfix/)                | Start a bugfix through the pipeline. Gathers bug context, creates an investigation, then bridges through specification → planning → implementation → review. |
+
+#### Continue Skills
+
+Resume in-progress work with phase routing, backwards navigation, and lifecycle management.
+
+| Skill                                                   | Description                                                                                                                                 |
+|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| [**/workflow-start**](skills/workflow-start/)             | Unified dashboard — shows all active work, routes to start or continue skills, manages lifecycle (view completed/cancelled, mark done). |
+| [**/continue-feature**](skills/continue-feature/)        | Resume an in-progress feature. Shows current phase state, routes to the next phase, and offers backwards navigation to revisit earlier phases. |
+| [**/continue-epic**](skills/continue-epic/)              | Resume an in-progress epic. Full state display across all phases, interactive menu, and advisory soft gates for phase-forward navigation. |
+| [**/continue-bugfix**](skills/continue-bugfix/)          | Resume an in-progress bugfix. Shows current phase state, routes to the next phase, and offers backwards navigation. |
 | [**/link-dependencies**](skills/link-dependencies/)      | Link external dependencies across topics. Scans plans and wires up unresolved cross-topic dependencies.                                    |
 
 ## Agents
