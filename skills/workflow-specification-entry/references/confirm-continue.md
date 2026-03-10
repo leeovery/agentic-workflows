@@ -54,14 +54,14 @@ Proceed?
 · · · · · · · · · · · ·
 ```
 
-#### If spec is concluded with pending sources
+#### If spec is completed with pending sources
 
 > *Output the next fenced block as a code block:*
 
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md (concluded)
+Existing: .workflows/{work_unit}/specification/{topic}/specification.md (completed)
 
 New sources to extract:
   • {discussion-name} (pending)
@@ -84,9 +84,9 @@ Proceed?
 
 #### If user confirms (y)
 
-#### If spec is concluded with pending sources
+#### If spec is completed with pending sources
 
-→ Load **[continue-concluded.md](handoffs/continue-concluded.md)** and follow its instructions.
+→ Load **[continue-completed.md](handoffs/continue-completed.md)** and follow its instructions.
 
 #### Otherwise
 

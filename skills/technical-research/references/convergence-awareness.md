@@ -20,10 +20,10 @@
 
 #### If the user concludes
 
-Set research status to concluded via manifest CLI:
+Set research status to completed via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research status completed
 ```
 
 Invoke the `/workflow-bridge` skill:

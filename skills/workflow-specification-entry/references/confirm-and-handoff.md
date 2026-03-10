@@ -8,8 +8,8 @@
 
 - No spec exists → **"Creating"**
 - Spec is `in-progress` → **"Continuing"**
-- Spec is `concluded` with pending sources → **"Continuing"**
-- Spec is `concluded` with all sources extracted → **"Refining"**
+- Spec is `completed` with pending sources → **"Continuing"**
+- Spec is `completed` with all sources extracted → **"Refining"**
 
 ## Route
 

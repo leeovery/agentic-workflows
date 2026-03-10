@@ -52,9 +52,9 @@ Workflow Status
   Work units: {total} active ({epic} epic, {feature} feature, {bugfix} bugfix)
 
   Research:       {count} with research
-  Discussion:     {count} ({concluded} concluded, {in_progress} in-progress)
+  Discussion:     {count} ({completed} completed, {in_progress} in-progress)
   Specification:  {active} active ({feature_spec} feature, {crosscutting} cross-cutting)
-  Planning:       {count} ({concluded} concluded, {in_progress} in-progress)
+  Planning:       {count} ({completed} completed, {in_progress} in-progress)
   Implementation: {count} ({completed} completed, {in_progress} in-progress)
 ```
 
@@ -149,7 +149,7 @@ Key:
 
   Status:
     in-progress — work is ongoing
-    concluded   — complete, ready for next step
+    completed   — done, ready for next step
     superseded  — replaced by another specification
 
   Spec type:

@@ -54,7 +54,7 @@ Check research phase status via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research --topic {topic} status
 ```
 
-**If phase exists (in-progress or concluded):**
+**If phase exists (in-progress or completed):**
 
 → Proceed to **Step 2** (Validate Phase).
 

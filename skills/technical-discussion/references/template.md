@@ -36,7 +36,7 @@ What this is about, why we're discussing it, the problem or opportunity, current
 
 ---
 
-*Each question above gets its own section below. Check off as concluded.*
+*Each question above gets its own section below. Check off as completed.*
 
 ---
 
@@ -101,7 +101,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 **During discussion**:
 - Work through questions one at a time
 - Document options, journey, and decision for each
-- Check off questions as concluded
+- Check off questions as completed
 - Keep journey contextual - false paths, debates, and "aha" moments belong with the question they relate to
 
 **Per-question structure**:
@@ -119,6 +119,6 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Don't summarise the journey - document it
 
 **Complete when**:
-- Major questions concluded with rationale
+- Major questions completed with rationale
 - Trade-offs understood
 - Path forward clear

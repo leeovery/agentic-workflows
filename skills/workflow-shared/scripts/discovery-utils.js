@@ -96,14 +96,14 @@ function phaseData(manifest, phase) {
 function computeNextPhase(manifest) {
   const wt = manifest.work_type;
 
-  // For epic, aggregate item statuses: all concluded → 'concluded', any in-progress → 'in-progress'
+  // For epic, aggregate item statuses: all completed → 'completed', any in-progress → 'in-progress'
   const ps = (phase) => {
     if (wt === 'epic') {
       const items = phaseItems(manifest, phase);
       if (items.length === 0) return phaseStatus(manifest, phase); // fallback to flat if no items
       const statuses = items.map(i => i.status).filter(Boolean);
       if (statuses.length === 0) return null;
-      if (statuses.every(s => s === 'concluded' || s === 'completed')) return statuses[0];
+      if (statuses.every(s => s === 'completed')) return 'completed';
       if (statuses.some(s => s === 'in-progress')) return 'in-progress';
       return statuses[0];
     }
@@ -125,13 +125,13 @@ function computeNextPhase(manifest) {
       phase_label: 'implementation (in-progress)',
     };
   }
-  if (ps('planning') === 'concluded') {
+  if (ps('planning') === 'completed') {
     return { next_phase: 'implementation', phase_label: 'ready for implementation' };
   }
   if (ps('planning') === 'in-progress') {
     return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
   }
-  if (ps('specification') === 'concluded') {
+  if (ps('specification') === 'completed') {
     return { next_phase: 'planning', phase_label: 'ready for planning' };
   }
   if (ps('specification') === 'in-progress') {
@@ -142,7 +142,7 @@ function computeNextPhase(manifest) {
   }
 
   if (wt === 'bugfix') {
-    if (ps('investigation') === 'concluded') {
+    if (ps('investigation') === 'completed') {
       return {
         next_phase: 'specification',
         phase_label: 'ready for specification',
@@ -157,7 +157,7 @@ function computeNextPhase(manifest) {
     return { next_phase: 'investigation', phase_label: 'ready for investigation' };
   }
 
-  if (ps('discussion') === 'concluded') {
+  if (ps('discussion') === 'completed') {
     return { next_phase: 'specification', phase_label: 'ready for specification' };
   }
   if (ps('discussion') === 'in-progress') {
@@ -169,7 +169,7 @@ function computeNextPhase(manifest) {
     if (ps('research') === 'in-progress') {
       return { next_phase: 'research', phase_label: 'research (in-progress)' };
     }
-    if (ps('research') === 'concluded') {
+    if (ps('research') === 'completed') {
       return { next_phase: 'discussion', phase_label: 'ready for discussion' };
     }
   }

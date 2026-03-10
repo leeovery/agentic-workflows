@@ -11,14 +11,14 @@ function lastCompletedPhase(manifest) {
   if (manifest.work_type === 'epic') {
     for (const phase of ALL_PHASES) {
       const items = phaseItems(manifest, phase);
-      if (items.length > 0 && items.some(i => i.status === 'concluded' || i.status === 'completed')) {
+      if (items.length > 0 && items.some(i => i.status === 'completed')) {
         last = phase;
       }
     }
   } else {
     for (const phase of ALL_PHASES) {
       const s = phaseStatus(manifest, phase);
-      if (s === 'concluded' || s === 'completed') last = phase;
+      if (s === 'completed') last = phase;
     }
   }
   return last;
@@ -59,14 +59,14 @@ function discover(cwd) {
     }
   }
 
-  // Load concluded/cancelled work units across all types
+  // Load completed/cancelled work units across all types
   const allManifests = loadAllManifests(cwd);
-  const concluded = [];
+  const completed = [];
   const cancelled = [];
 
   for (const m of allManifests) {
-    if (m.status === 'concluded') {
-      concluded.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
+    if (m.status === 'completed') {
+      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
     } else if (m.status === 'cancelled') {
       cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
     }
@@ -76,9 +76,9 @@ function discover(cwd) {
     epics: { work_units: epics, count: epics.length },
     features: { work_units: features, count: features.length },
     bugfixes: { work_units: bugfixes, count: bugfixes.length },
-    concluded,
+    completed,
     cancelled,
-    concluded_count: concluded.length,
+    completed_count: completed.length,
     cancelled_count: cancelled.length,
     state: {
       has_any_work: (epics.length + features.length + bugfixes.length) > 0,

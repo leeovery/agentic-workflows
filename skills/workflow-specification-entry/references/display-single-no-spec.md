@@ -13,7 +13,7 @@ No specification exists for this discussion.
 ```
 Specification Overview
 
-Single concluded discussion found.
+Single completed discussion found.
 
 1. {work_unit:(titlecase)}
    └─ Spec: (no spec)
@@ -27,7 +27,7 @@ Single concluded discussion found.
 
 ```
 Discussions not ready for specification:
-These discussions are still in progress and must be concluded
+These discussions are still in progress and must be completed
 before they can be included in a specification.
 
   • {discussion-name}
@@ -43,7 +43,7 @@ No `---` separator before this section.
 Key:
 
   Discussion status:
-    ready — concluded and available to be specified
+    ready — completed and available to be specified
 ```
 
 ## After Display

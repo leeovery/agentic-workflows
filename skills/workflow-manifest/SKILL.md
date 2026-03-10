@@ -101,12 +101,12 @@ Write a value. Two modes:
 **Work-unit level** (no flags):
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set <name> description "Updated description"
-node .claude/skills/workflow-manifest/scripts/manifest.js set <name> status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name> status completed
 ```
 
 **Phase level** (with flags):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase discussion --topic auth-flow status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase discussion --topic auth-flow status completed
 node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase planning --topic auth-flow task_list_gate_mode auto
 ```
 
@@ -116,7 +116,7 @@ Values are parsed as JSON first (for arrays, objects, numbers, booleans), fallin
 - **phase names**: `research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`
 - **phase statuses**: per-phase valid values (see Validation section)
 - **gate modes**: `gated`, `auto`
-- **work unit status**: `in-progress`, `concluded`, `cancelled`
+- **work unit status**: `in-progress`, `completed`, `cancelled`
 
 ### `list`
 
@@ -191,12 +191,12 @@ The CLI validates structural values to prevent invalid state:
 | Field                          | Valid Values                             |
 |--------------------------------|------------------------------------------|
 | `work_type`                    | `epic`, `feature`, `bugfix`              |
-| `status` (work unit)           | `in-progress`, `concluded`, `cancelled`  |
-| `phases.research.status`       | `in-progress`, `concluded`               |
-| `phases.discussion.status`     | `in-progress`, `concluded`               |
-| `phases.investigation.status`  | `in-progress`, `concluded`               |
-| `phases.specification.status`  | `in-progress`, `concluded`, `superseded` |
-| `phases.planning.status`       | `in-progress`, `concluded`               |
+| `status` (work unit)           | `in-progress`, `completed`, `cancelled`  |
+| `phases.research.status`       | `in-progress`, `completed`               |
+| `phases.discussion.status`     | `in-progress`, `completed`               |
+| `phases.investigation.status`  | `in-progress`, `completed`               |
+| `phases.specification.status`  | `in-progress`, `completed`, `superseded` |
+| `phases.planning.status`       | `in-progress`, `completed`               |
 | `phases.implementation.status` | `in-progress`, `completed`               |
 | `phases.review.status`         | `in-progress`, `completed`               |
 | Gate modes (`*_gate_mode`)     | `gated`, `auto`                          |
@@ -205,7 +205,7 @@ Item-level statuses within epic phases follow the same phase-level rules.
 
 ## Output Conventions
 
-- **Scalar values**: raw to stdout, no quotes (e.g., `in-progress`, `concluded`)
+- **Scalar values**: raw to stdout, no quotes (e.g., `in-progress`, `completed`)
 - **Subtrees and lists**: formatted JSON to stdout
 - **Errors**: message to stderr, non-zero exit code
 

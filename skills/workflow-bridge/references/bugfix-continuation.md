@@ -25,16 +25,16 @@ Use `next_phase` from discovery output to determine the target skill:
 
 #### If `next_phase` is `done`
 
-Set the work unit status to concluded:
+Set the work unit status to completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status completed
 ```
 
 > *Output the next fenced block as a code block:*
 
 ```
-Bugfix Concluded
+Bugfix Completed
 
 "{work_unit:(titlecase)}" has completed all pipeline phases.
 ```
@@ -45,22 +45,22 @@ Bugfix Concluded
 
 Set `target_phase` = `next_phase`.
 
-→ Proceed to **B. Offer Early Conclusion**.
+→ Proceed to **B. Offer Early Completion**.
 
-## B. Offer Early Conclusion
+## B. Offer Early Completion
 
 #### If `next_phase` is `review`
 
-Implementation has just concluded. Offer the user a choice to skip review and conclude early.
+Implementation has just completed. Offer the user a choice to skip review and complete early.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Implementation concluded for "{work_unit:(titlecase)}".
+Implementation completed for "{work_unit:(titlecase)}".
 
 - **`y`/`yes`** — Proceed to review
-- **`d`/`done`** — Conclude without review
+- **`d`/`done`** — Complete without review
 
 · · · · · · · · · · · ·
 ```
@@ -69,18 +69,18 @@ Implementation concluded for "{work_unit:(titlecase)}".
 
 **If user chose `d`/`done`:**
 
-Set the work unit status to concluded:
+Set the work unit status to completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status completed
 ```
 
 > *Output the next fenced block as a code block:*
 
 ```
-Bugfix Concluded
+Bugfix Completed
 
-"{work_unit:(titlecase)}" concluded — review skipped.
+"{work_unit:(titlecase)}" completed — review skipped.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -95,19 +95,19 @@ Bugfix Concluded
 
 ## C. Offer Revisit
 
-Check if there are concluded phases earlier in the pipeline that the user could revisit. Look at the discovery output's `phases` data — any phase with status `concluded` or `completed` that comes before `next_phase` in the pipeline order.
+Check if there are completed phases earlier in the pipeline that the user could revisit. Look at the discovery output's `phases` data — any phase with status `completed` that comes before `next_phase` in the pipeline order.
 
-#### If no earlier concluded phases exist
+#### If no earlier completed phases exist
 
 → Proceed to **D. Enter Plan Mode**.
 
-#### If earlier concluded phases exist
+#### If earlier completed phases exist
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-{previous_phase:(titlecase)} concluded for "{work_unit:(titlecase)}".
+{previous_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
 
 - **`y`/`yes`** — Proceed to {next_phase}
 - **`r`/`revisit`** — Revisit an earlier phase
@@ -129,7 +129,7 @@ Check if there are concluded phases earlier in the pipeline that the user could 
 · · · · · · · · · · · ·
 Which phase would you like to revisit?
 
-1. {phase:(titlecase)} — concluded
+1. {phase:(titlecase)} — completed
 2. ...
 {N}. Back
 
@@ -137,7 +137,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-List only concluded phases that come before `next_phase`.
+List only completed phases that come before `next_phase`.
 
 **STOP.** Wait for user response.
 
@@ -158,7 +158,7 @@ Call the `EnterPlanMode` tool to enter plan mode. Then write the following conte
 ```
 # Continue Bugfix: {work_unit}
 
-@if(target_phase == next_phase) The previous phase has concluded. Continue the pipeline. @else Revisiting an earlier phase. @endif
+@if(target_phase == next_phase) The previous phase has completed. Continue the pipeline. @else Revisiting an earlier phase. @endif
 
 ## Next Step
 

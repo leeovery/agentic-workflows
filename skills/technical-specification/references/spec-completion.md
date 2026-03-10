@@ -75,7 +75,7 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Conclude specification and mark as concluded
+- **`y`/`yes`** — Conclude specification and mark as completed
 - **Comment** — Add context before concluding
 · · · · · · · · · · · ·
 ```
@@ -97,7 +97,7 @@ Discuss the user's context, apply any changes, then re-present the sign-off prom
 Update the specification metadata via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status completed
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} type {type}  # feature or cross-cutting, as confirmed in Section A
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} date $(date +%Y-%m-%d)
 ```
@@ -141,7 +141,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 > *Output the next fenced block as a code block:*
 
 ```
-Cross-cutting specification concluded: {topic}
+Cross-cutting specification completed: {topic}
 
 This specification defines patterns/policies referenced by feature plans.
 It does not proceed to planning independently.

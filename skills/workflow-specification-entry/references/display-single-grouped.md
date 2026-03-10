@@ -7,7 +7,7 @@
 This discussion is covered by a specification with multiple sources.
 
 Use the spec for display. Show the spec name as the title. Show ALL the spec's sources (not just this discussion) with their statuses:
-- `incorporated` + `discussion_status: concluded` or `not-found` → `(extracted)`
+- `incorporated` + `discussion_status: completed` or `not-found` → `(extracted)`
 - `incorporated` + `discussion_status: other` (e.g. `in-progress`) → `(extracted, reopened)`
 - `pending` → `(pending)`
 
@@ -20,10 +20,10 @@ Extraction count: X = sources with `status: incorporated`, Y = total source coun
 ```
 Specification Overview
 
-Single concluded discussion found with existing multi-source specification.
+Single completed discussion found with existing multi-source specification.
 
 1. {work_unit:(titlecase)}
-   └─ Spec: {spec_status:[in-progress|concluded]} ({X} of {Y} sources extracted)
+   └─ Spec: {spec_status:[in-progress|completed]} ({X} of {Y} sources extracted)
    └─ Discussions:
       ├─ {source-name} (extracted)
       └─ {source-name} (extracted, reopened)
@@ -35,7 +35,7 @@ Single concluded discussion found with existing multi-source specification.
 
 ```
 Discussions not ready for specification:
-These discussions are still in progress and must be concluded
+These discussions are still in progress and must be completed
 before they can be included in a specification.
 
   • {discussion-name}
@@ -57,7 +57,7 @@ Key:
 
   Spec status:
     in-progress — specification work is ongoing
-    concluded   — specification is complete
+    completed   — specification is done
 ```
 
 ## After Display
@@ -70,7 +70,7 @@ Automatically proceeding with "{work_unit:(titlecase)}".
 
 Auto-proceed uses the spec name. Verb rule:
 - Spec is `in-progress` → **"Continuing"**
-- Spec is `concluded` with pending sources → **"Continuing"**
-- Spec is `concluded` with all sources extracted → **"Refining"**
+- Spec is `completed` with pending sources → **"Continuing"**
+- Spec is `completed` with all sources extracted → **"Refining"**
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions.

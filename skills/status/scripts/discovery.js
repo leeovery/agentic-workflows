@@ -11,9 +11,9 @@ function discover(cwd) {
       counts: {
         by_work_type: { epic: 0, feature: 0, bugfix: 0 },
         research: 0,
-        discussion: { total: 0, concluded: 0, in_progress: 0 },
+        discussion: { total: 0, completed: 0, in_progress: 0 },
         specification: { active: 0, feature: 0, crosscutting: 0 },
-        planning: { total: 0, concluded: 0, in_progress: 0 },
+        planning: { total: 0, completed: 0, in_progress: 0 },
         implementation: { total: 0, completed: 0, in_progress: 0 },
       },
       state: { has_any_work: false },
@@ -26,9 +26,9 @@ function discover(cwd) {
   // Aggregated counts
   const byType = { epic: 0, feature: 0, bugfix: 0 };
   let researchCount = 0;
-  let discTotal = 0, discConcluded = 0, discInProgress = 0;
+  let discTotal = 0, discCompleted = 0, discInProgress = 0;
   let specActive = 0, specFeature = 0, specCrosscutting = 0;
-  let planTotal = 0, planConcluded = 0, planInProgress = 0;
+  let planTotal = 0, planCompleted = 0, planInProgress = 0;
   let implTotal = 0, implCompleted = 0, implInProgressCount = 0;
 
   for (const m of manifests) {
@@ -47,12 +47,12 @@ function discover(cwd) {
     }
 
     // Helper: aggregate item statuses into a single representative status
-    // all concluded → 'concluded', any in-progress → 'in-progress', otherwise first item's status
+    // all completed → 'completed', any in-progress → 'in-progress', otherwise first item's status
     function aggregateStatus(items) {
       if (items.length === 0) return null;
       const statuses = items.map(i => i.status).filter(Boolean);
       if (statuses.length === 0) return null;
-      if (statuses.every(s => s === 'concluded' || s === 'completed')) return statuses[0];
+      if (statuses.every(s => s === 'completed')) return 'completed';
       if (statuses.some(s => s === 'in-progress')) return 'in-progress';
       return statuses[0];
     }
@@ -66,7 +66,7 @@ function discover(cwd) {
         discItemCount = items.length;
         discStatus = aggregateStatus(items);
         discTotal += items.length;
-        discConcluded += items.filter(i => i.status === 'concluded').length;
+        discCompleted += items.filter(i => i.status === 'completed').length;
         discInProgress += items.filter(i => i.status === 'in-progress').length;
       }
     } else {
@@ -74,7 +74,7 @@ function discover(cwd) {
       discStatus = disc.status || null;
       if (discStatus) {
         discTotal++;
-        if (discStatus === 'concluded') discConcluded++;
+        if (discStatus === 'completed') discCompleted++;
         if (discStatus === 'in-progress') discInProgress++;
       }
     }
@@ -133,7 +133,7 @@ function discover(cwd) {
         planItemCount = items.length;
         planStatus = aggregateStatus(items);
         planTotal += items.length;
-        planConcluded += items.filter(i => i.status === 'concluded').length;
+        planCompleted += items.filter(i => i.status === 'completed').length;
         planInProgress += items.filter(i => i.status === 'in-progress').length;
         // Use format from first item that has one
         const withFmt = items.find(i => i.format);
@@ -152,7 +152,7 @@ function discover(cwd) {
       planFormat = plan.format || null;
       if (planStatus) {
         planTotal++;
-        if (planStatus === 'concluded') planConcluded++;
+        if (planStatus === 'completed') planCompleted++;
         if (planStatus === 'in-progress') planInProgress++;
       }
       externalDepsObj = (plan.external_dependencies && typeof plan.external_dependencies === 'object' && !Array.isArray(plan.external_dependencies))
@@ -261,9 +261,9 @@ function discover(cwd) {
     counts: {
       by_work_type: byType,
       research: researchCount,
-      discussion: { total: discTotal, concluded: discConcluded, in_progress: discInProgress },
+      discussion: { total: discTotal, completed: discCompleted, in_progress: discInProgress },
       specification: { active: specActive, feature: specFeature, crosscutting: specCrosscutting },
-      planning: { total: planTotal, concluded: planConcluded, in_progress: planInProgress },
+      planning: { total: planTotal, completed: planCompleted, in_progress: planInProgress },
       implementation: { total: implTotal, completed: implCompleted, in_progress: implInProgressCount },
     },
     state: { has_any_work: true },
@@ -303,9 +303,9 @@ function format(result) {
   lines.push('=== COUNTS ===');
   const c = result.counts;
   lines.push(`by_type: ${c.by_work_type.epic} epic, ${c.by_work_type.feature} feature, ${c.by_work_type.bugfix} bugfix`);
-  lines.push(`discussion: ${c.discussion.total} (${c.discussion.concluded} concluded, ${c.discussion.in_progress} in-progress)`);
+  lines.push(`discussion: ${c.discussion.total} (${c.discussion.completed} completed, ${c.discussion.in_progress} in-progress)`);
   lines.push(`specification: ${c.specification.active} active (${c.specification.feature} feature, ${c.specification.crosscutting} cross-cutting)`);
-  lines.push(`planning: ${c.planning.total} (${c.planning.concluded} concluded)`);
+  lines.push(`planning: ${c.planning.total} (${c.planning.completed} completed)`);
   lines.push(`implementation: ${c.implementation.total} (${c.implementation.completed} completed, ${c.implementation.in_progress} in-progress)`);
   lines.push('');
 

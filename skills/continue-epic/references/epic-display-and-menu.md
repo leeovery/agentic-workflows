@@ -73,11 +73,11 @@ No work started yet.
 | Condition | Recommendation |
 |-----------|---------------|
 | In-progress items across multiple phases | No recommendation |
-| Some research in-progress, some concluded | "Consider concluding remaining research before starting discussion. Topic analysis works best with all research available." |
-| Some discussions in-progress, some concluded | "Consider concluding remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
-| All discussions concluded, specs not started | "All discussions are concluded. Specification will analyze and group them." |
-| Some specs concluded, some in-progress | "Concluding all specifications before planning helps identify cross-cutting dependencies." |
-| Some plans concluded, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
+| Some research in-progress, some completed | "Consider completing remaining research before starting discussion. Topic analysis works best with all research available." |
+| Some discussions in-progress, some completed | "Consider completing remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
+| All discussions completed, specs not started | "All discussions are completed. Specification will analyze and group them." |
+| Some specs completed, some in-progress | "Completing all specifications before planning helps identify cross-cutting dependencies." |
+| Some plans completed, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
 
 **Not-ready block:** After the main state display, check for plans with `deps_blocking` entries. If any exist, show in a separate code block:
@@ -110,7 +110,7 @@ Key:
 
   Status:
     in-progress — work is ongoing
-    concluded   — phase complete
+    completed   — phase done
     completed   — all tasks implemented
 
   Blocking reason:
@@ -135,18 +135,18 @@ Build a numbered menu with three sections:
 
 **Section 2 — Next-phase-ready items:**
 - From `next_phase_ready` in discovery output
-- Concluded spec with no plan: `Start planning for "{topic:(titlecase)}" — spec concluded`
+- Completed spec with no plan: `Start planning for "{topic:(titlecase)}" — spec completed`
 - Concluded plan with no implementation:
   - If `blocked`: show but mark as not selectable: `Start implementation of "{topic:(titlecase)}" — blocked by {dep_topic}:{task_id}`
-  - Otherwise: `Start implementation of "{topic:(titlecase)}" — plan concluded`
+  - Otherwise: `Start implementation of "{topic:(titlecase)}" — plan completed`
 - Completed implementation with no review: `Start review for "{topic:(titlecase)}" — implementation completed`
 - Unaccounted discussions (from `unaccounted_discussions`): `Start specification — {N} discussion(s) not yet in a spec`
-  - Only show if `gating.can_start_specification` is true (at least one concluded discussion)
+  - Only show if `gating.can_start_specification` is true (at least one completed discussion)
 
 **Section 3 — Standing options:**
 - `Start new discussion topic` (always present)
 - `Start new research` (always present)
-- `Resume a concluded topic` (only shown when `concluded` items exist)
+- `Resume a completed topic` (only shown when `completed` items exist)
 - `Stop here — resume later with /workflow-start` (always present)
 
 **Phase-forward gating:**
@@ -156,9 +156,9 @@ Build a numbered menu with three sections:
 - No "Start specification" unless `gating.can_start_specification` is true
 
 **Recommendation marking:** Mark one item as `(recommended)` based on phase completion state:
-- All discussions concluded, no specifications exist → "Start specification (recommended)"
-- All feature-type specifications concluded, some without plans → first plannable spec "(recommended)"
-- All plans concluded (and deps satisfied), some without implementations → first implementable plan "(recommended)"
+- All discussions completed, no specifications exist → "Start specification (recommended)"
+- All feature-type specifications completed, some without plans → first plannable spec "(recommended)"
+- All plans completed (and deps satisfied), some without implementations → first implementable plan "(recommended)"
 - All implementations completed, some without reviews → first reviewable implementation "(recommended)"
 - Otherwise → no recommendation (complete in-progress work first)
 
@@ -172,14 +172,14 @@ What would you like to do?
 
 1. Continue "Auth Flow" — discussion (in-progress)
 2. Continue "Data Model" — specification (in-progress)
-3. Start planning for "User Profiles" — spec concluded
+3. Start planning for "User Profiles" — spec completed
 4. Continue "Caching" — planning (in-progress)
-5. Start implementation of "Notifications" — plan concluded (recommended)
+5. Start implementation of "Notifications" — plan completed (recommended)
 6. Start implementation of "Reporting" — blocked by core-features:core-2-3
 7. Start specification — 3 discussion(s) not yet in a spec
 8. Start new discussion topic
 9. Start new research
-10. Resume a concluded topic
+10. Resume a completed topic
 11. Stop here — resume later with /workflow-start
 
 Select an option (enter number):
@@ -246,9 +246,9 @@ Commit the change. Then re-present the menu from **C. Menu** (the item may now b
 
 → Return to **C. Menu**.
 
-#### If user chose `Resume a concluded topic`
+#### If user chose `Resume a completed topic`
 
-→ Proceed to **E. Resume Concluded**.
+→ Proceed to **E. Resume Completed**.
 
 #### Otherwise
 
@@ -258,7 +258,7 @@ Commit the change. Then re-present the menu from **C. Menu** (the item may now b
 |---------------------|-----------|--------------|
 | discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Discussion topic analysis works best with all research available." |
 | specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Specification grouping analysis works best with all discussions available." |
-| planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all concluded." |
+| planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all completed." |
 | implementation | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 
 **If a soft gate condition matches:**
@@ -311,29 +311,29 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 
 ---
 
-## E. Resume Concluded
+## E. Resume Completed
 
-Display all concluded items across all phases and let the user select one to resume.
+Display all completed items across all phases and let the user select one to resume.
 
-Using the `concluded` items from discovery output, group by phase:
+Using the `completed` items from discovery output, group by phase:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Concluded Topics
+Completed Topics
 
 @foreach(phase in phases)
-@if(phase.concluded_items)
+@if(phase.completed_items)
   {phase:(titlecase)}
-@foreach(item in concluded where item.phase == phase)
-    └─ {item.name:(titlecase)} (concluded)
+@foreach(item in completed where item.phase == phase)
+    └─ {item.name:(titlecase)} (completed)
 @endforeach
 @endif
 
 @endforeach
 ```
 
-Only show phases with concluded items. Blank line between phase sections.
+Only show phases with completed items. Blank line between phase sections.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -349,7 +349,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-List all concluded items across all phases.
+List all completed items across all phases.
 
 **STOP.** Wait for user response.
 

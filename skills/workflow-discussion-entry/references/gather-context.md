@@ -16,7 +16,7 @@ Check research status via manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research status
 ```
 
-**If research status is `concluded`:**
+**If research status is `completed`:**
 
 Read `.workflows/{work_unit}/research/*.md` for context to include in the handoff.
 

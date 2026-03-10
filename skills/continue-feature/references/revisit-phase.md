@@ -4,19 +4,19 @@
 
 ---
 
-Offer the user a choice between proceeding to the next phase or revisiting an earlier concluded phase.
+Offer the user a choice between proceeding to the next phase or revisiting an earlier completed phase.
 
 ## Check for Earlier Phases
 
-Using the selected feature's `concluded_phases` list, determine if there are any concluded phases that come before `next_phase` in the pipeline.
+Using the selected feature's `completed_phases` list, determine if there are any completed phases that come before `next_phase` in the pipeline.
 
-#### If no earlier concluded phases exist
+#### If no earlier completed phases exist
 
 Skip this step — route directly to the next phase.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If earlier concluded phases exist
+#### If earlier completed phases exist
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -38,7 +38,7 @@ Continuing "{feature.name:(titlecase)}" — {feature.phase_label}.
 
 #### If user chose `r`/`revisit`
 
-Show the concluded phases:
+Show the completed phases:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -46,7 +46,7 @@ Show the concluded phases:
 · · · · · · · · · · · ·
 Which phase would you like to revisit?
 
-1. {phase:(titlecase)} — concluded
+1. {phase:(titlecase)} — completed
 2. ...
 {N}. Back
 
@@ -54,7 +54,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-List only phases from `concluded_phases`. "Back" returns to the proceed/revisit prompt above.
+List only phases from `completed_phases`. "Back" returns to the proceed/revisit prompt above.
 
 **STOP.** Wait for user response.
 

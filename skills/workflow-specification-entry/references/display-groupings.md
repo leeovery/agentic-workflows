@@ -29,7 +29,7 @@ Spec status: show actual status with extraction count `({X} of {Y} sources extra
 
 **Regressed sources:** After processing the grouping's discussions, check the spec's
 `sources` array from discovery. For any source where `discussion_status` is neither
-`concluded` nor `not-found`, and the source is not already in the grouping:
+`completed` nor `not-found`, and the source is not already in the grouping:
 - Add it to the discussion tree with status `(extracted, reopened)`
 
 These represent sources that were incorporated but whose discussions have since
@@ -58,7 +58,7 @@ Specification Overview
 Recommended breakdown for specifications with their source discussions.
 
 1. {grouping_name:(titlecase)}
-   └─ Spec: @if(has_spec) {spec_status:[in-progress|concluded]} ({extraction_summary}) @else (no spec) @endif
+   └─ Spec: @if(has_spec) {spec_status:[in-progress|completed]} ({extraction_summary}) @else (no spec) @endif
    └─ Discussions:
       ├─ {discussion} ({status:[extracted|pending|ready|reopened]})
       └─ ...
@@ -72,7 +72,7 @@ Recommended breakdown for specifications with their source discussions.
 
 ```
 Discussions not ready for specification:
-These discussions are still in progress and must be concluded
+These discussions are still in progress and must be completed
 before they can be included in a specification.
 
   • {discussion-name}
@@ -90,12 +90,12 @@ Key:
   Discussion status:
     extracted — content has been incorporated into the specification
     pending   — listed as source but content not yet extracted
-    ready     — concluded and available to be specified
+    ready     — completed and available to be specified
     reopened  — was extracted but discussion has regressed to in-progress
 
   Spec status:
     in-progress — specification work is ongoing
-    concluded   — specification is complete
+    completed   — specification is done
 ```
 
 ### Tip (show when 2+ groupings)
@@ -120,8 +120,8 @@ Present one numbered menu entry per grouping. The verb and description depend on
 - No spec exists → **Start** "{Name}" — {N} ready discussions
 - Spec is `in-progress` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
 - Spec is `in-progress` with all extracted → **Continue** "{Name}" — all sources extracted
-- Spec is `concluded` with no pending sources → **Refine** "{Name}" — concluded spec
-- Spec is `concluded` with pending sources → **Continue** "{Name}" — {N} new source(s) to extract
+- Spec is `completed` with no pending sources → **Refine** "{Name}" — completed spec
+- Spec is `completed` with pending sources → **Continue** "{Name}" — {N} new source(s) to extract
 
 After all grouping entries, append meta options:
 
@@ -160,9 +160,9 @@ Every meta option (Unify, Re-analyze) MUST include its description lines.
 
 #### If user picks `Unify all`
 
-Update the cache: rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all concluded discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`
+Update the cache: rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all completed discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`
 
-Spec name: "Unified". Sources: all concluded discussions.
+Spec name: "Unified". Sources: all completed discussions.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions.
 

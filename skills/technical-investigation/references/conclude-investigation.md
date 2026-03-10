@@ -32,9 +32,9 @@ Incorporate the user's context into the investigation file and commit. Re-presen
 
 #### If `yes`
 
-1. Set investigation status to concluded via manifest CLI:
+1. Set investigation status to completed via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase investigation --topic {topic} status concluded
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase investigation --topic {topic} status completed
    ```
 2. Final commit
 3. Display conclusion:
@@ -42,12 +42,12 @@ Incorporate the user's context into the investigation file and commit. Re-presen
 > *Output the next fenced block as a code block:*
 
 ```
-Investigation concluded: {work_unit}
+Investigation completed: {work_unit}
 
 Root cause: {brief summary}
 Fix direction: {chosen approach}
 
-The investigation is concluded. Root cause and fix direction are documented.
+The investigation is completed. Root cause and fix direction are documented.
 ```
 
 4. Invoke the bridge:

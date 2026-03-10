@@ -1,4 +1,4 @@
-# Handoff: Continue Concluded Specification
+# Handoff: Continue Completed Specification
 
 *Reference for **[confirm-continue.md](../confirm-continue.md)***
 
@@ -30,7 +30,7 @@ This skill's purpose is now fulfilled. Invoke the [technical-specification](../.
 ```
 Specification session for: {Title Case Name}
 
-Continuing existing: .workflows/{work_unit}/specification/{topic}/specification.md (concluded)
+Continuing existing: .workflows/{work_unit}/specification/{topic}/specification.md (completed)
 
 New sources to extract:
 - .workflows/{work_unit}/discussion/{new-discussion-name}.md
@@ -38,7 +38,7 @@ New sources to extract:
 Previously extracted (for reference):
 - .workflows/{work_unit}/discussion/{existing-discussion-name}.md
 
-Context: This specification was previously concluded. New source discussions have been identified. Extract and incorporate their content while maintaining consistency with the existing specification.
+Context: This specification was previously completed. New source discussions have been identified. Extract and incorporate their content while maintaining consistency with the existing specification.
 
 ---
 Invoke the technical-specification skill.

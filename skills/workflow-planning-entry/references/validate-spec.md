@@ -19,7 +19,7 @@ Specification Missing
 
 No specification found for "{topic:(titlecase)}".
 
-The specification must be concluded before planning can begin.
+The specification must be completed before planning can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -31,14 +31,14 @@ The specification must be concluded before planning can begin.
 ```
 Specification In Progress
 
-The specification for "{topic:(titlecase)}" is not yet concluded.
+The specification for "{topic:(titlecase)}" is not yet completed.
 
-The specification must be concluded before planning can begin.
+The specification must be completed before planning can begin.
 ```
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If specification exists and status is `concluded`
+#### If specification exists and status is `completed`
 
 **If work_type is `epic`:**
 

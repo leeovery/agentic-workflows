@@ -24,7 +24,7 @@ Set source="continue".
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If discussion exists and status is `concluded`
+#### If discussion exists and status is `completed`
 
 Reset to in-progress:
 

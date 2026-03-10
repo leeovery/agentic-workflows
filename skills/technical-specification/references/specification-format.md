@@ -25,13 +25,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} sources.{source-name}.status
 
 # Write fields
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status completed
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} sources.{source-name}.status incorporated
 ```
 
 | Field | Set when |
 |-------|----------|
-| `status` | Spec creation → `in-progress`; conclusion → `concluded` |
+| `status` | Spec creation → `in-progress`; completion → `completed` |
 | `type` | Spec creation → `feature` (default); completion → `feature` or `cross-cutting` |
 | `date` | Spec creation — today's date; update on each commit |
 | `review_cycle` | Starts at 0; incremented each review cycle. Missing field treated as 0. |
@@ -89,12 +89,12 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**Important**: The specification's overall status should only be set to `concluded` (via `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status concluded`) when:
+**Important**: The specification's overall status should only be set to `completed` (via `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status completed`) when:
 - All sources are marked as `incorporated`
 - Both review phases are complete
 - User has signed off
 
-If a new source is added to a concluded specification (via grouping analysis), the specification effectively needs updating — even if the manifest still shows `status: concluded`, the presence of `pending` sources indicates work remains.
+If a new source is added to a completed specification (via grouping analysis), the specification effectively needs updating — even if the manifest still shows `status: completed`, the presence of `pending` sources indicates work remains.
 
 ---
 

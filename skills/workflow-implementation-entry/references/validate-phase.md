@@ -21,24 +21,24 @@ Plan Missing
 
 No plan found for "{topic:(titlecase)}".
 
-A concluded plan is required for implementation.
+A completed plan is required for implementation.
 ```
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists but status is not `concluded`
+#### If plan exists but status is not `completed`
 
 > *Output the next fenced block as a code block:*
 
 ```
-Plan Not Concluded
+Plan Not Completed
 
-The plan for "{topic:(titlecase)}" is not yet concluded.
+The plan for "{topic:(titlecase)}" is not yet completed.
 ```
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists and status is `concluded`
+#### If plan exists and status is `completed`
 
 Check implementation's own status:
 

@@ -8,7 +8,7 @@ function lastCompletedPhaseEpic(manifest) {
   let last = null;
   for (const phase of EPIC_PHASES) {
     const items = phaseItems(manifest, phase);
-    if (items.length > 0 && items.some(i => i.status === 'concluded' || i.status === 'completed')) {
+    if (items.length > 0 && items.some(i => i.status === 'completed')) {
       last = phase;
     }
   }
@@ -49,7 +49,7 @@ function resolveDeps(cwd, manifest, planItem) {
 function buildEpicDetail(cwd, manifest) {
   const phases = {};
   const allSourcedDiscussions = new Set();
-  const concludedItems = [];
+  const completedItems = [];
   const inProgressItems = [];
   const nextPhaseReady = [];
 
@@ -88,8 +88,8 @@ function buildEpicDetail(cwd, manifest) {
       if (item.status === 'in-progress') {
         inProgressItems.push({ name: item.name, phase });
       }
-      if (item.status === 'concluded' || item.status === 'completed') {
-        concludedItems.push({ name: item.name, phase });
+      if (item.status === 'completed') {
+        completedItems.push({ name: item.name, phase });
       }
     }
 
@@ -100,7 +100,7 @@ function buildEpicDetail(cwd, manifest) {
   const discussionItems = phaseItems(manifest, 'discussion');
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
-    if (d.status === 'concluded' && !allSourcedDiscussions.has(d.name)) {
+    if (d.status === 'completed' && !allSourcedDiscussions.has(d.name)) {
       unaccountedDiscussions.push(d.name);
     }
   }
@@ -118,21 +118,21 @@ function buildEpicDetail(cwd, manifest) {
 
   const planTopics = new Set(planItems.map(i => i.name));
   for (const s of specItems) {
-    if (s.status === 'concluded' && !planTopics.has(s.name)) {
-      nextPhaseReady.push({ name: s.name, action: 'start_planning', label: 'spec concluded' });
+    if (s.status === 'completed' && !planTopics.has(s.name)) {
+      nextPhaseReady.push({ name: s.name, action: 'start_planning', label: 'spec completed' });
     }
   }
 
   const implTopics = new Set(implItems.map(i => i.name));
   for (const p of planItems) {
-    if (p.status === 'concluded' && !implTopics.has(p.name)) {
+    if (p.status === 'completed' && !implTopics.has(p.name)) {
       // Check deps before marking as ready for implementation
       const { deps_satisfied, deps_blocking } = resolveDeps(cwd, manifest, p);
       if (deps_satisfied) {
-        nextPhaseReady.push({ name: p.name, action: 'start_implementation', label: 'plan concluded' });
+        nextPhaseReady.push({ name: p.name, action: 'start_implementation', label: 'plan completed' });
       } else {
         nextPhaseReady.push({
-          name: p.name, action: 'start_implementation', label: 'plan concluded',
+          name: p.name, action: 'start_implementation', label: 'plan completed',
           blocked: true, deps_blocking,
         });
       }
@@ -148,25 +148,25 @@ function buildEpicDetail(cwd, manifest) {
   }
 
   const hasResearch = researchItems.length > 0;
-  const hasConcludedResearch = researchItems.some(r => r.status === 'concluded');
-  const hasConcludedSpec = specItems.some(s => s.status === 'concluded');
-  const hasConcludedPlan = planItems.some(p => p.status === 'concluded');
-  const hasConcludedDiscussion = discussionItems.some(d => d.status === 'concluded');
+  const hasCompletedResearch = researchItems.some(r => r.status === 'completed');
+  const hasCompletedSpec = specItems.some(s => s.status === 'completed');
+  const hasCompletedPlan = planItems.some(p => p.status === 'completed');
+  const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
   return {
     phases,
     in_progress: inProgressItems,
-    concluded: concludedItems,
+    completed: completedItems,
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
     gating: {
       has_research: hasResearch,
-      can_start_discussion: hasConcludedResearch,
-      can_start_specification: hasConcludedDiscussion,
-      can_start_planning: hasConcludedSpec,
-      can_start_implementation: hasConcludedPlan,
+      can_start_discussion: hasCompletedResearch,
+      can_start_specification: hasCompletedDiscussion,
+      can_start_planning: hasCompletedSpec,
+      can_start_implementation: hasCompletedPlan,
       can_start_review: hasCompletedImpl,
     },
   };
@@ -198,15 +198,15 @@ function discover(cwd, workUnit) {
     });
   }
 
-  // Load concluded/cancelled epics (only in list mode, not detail mode)
-  const concluded = [];
+  // Load completed/cancelled epics (only in list mode, not detail mode)
+  const completed = [];
   const cancelled = [];
   if (!workUnit) {
     const allManifests = loadAllManifests(cwd);
     for (const m of allManifests) {
       if (m.work_type !== 'epic') continue;
-      if (m.status === 'concluded') {
-        concluded.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
+      if (m.status === 'completed') {
+        completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
       } else if (m.status === 'cancelled') {
         cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
       }
@@ -216,9 +216,9 @@ function discover(cwd, workUnit) {
   return {
     epics,
     count: epics.length,
-    concluded,
+    completed,
     cancelled,
-    concluded_count: concluded.length,
+    completed_count: completed.length,
     cancelled_count: cancelled.length,
     summary: epics.length === 0
       ? 'no active epics'
@@ -273,9 +273,9 @@ function format(result) {
     if (d.reopened_discussions.length > 0) {
       lines.push(`    reopened_discussions: ${d.reopened_discussions.join(', ')}`);
     }
-    if (d.concluded.length > 0) {
-      lines.push('    concluded:');
-      for (const c of d.concluded) lines.push(`      - ${c.name} (${c.phase})`);
+    if (d.completed.length > 0) {
+      lines.push('    completed:');
+      for (const c of d.completed) lines.push(`      - ${c.name} (${c.phase})`);
     }
   }
 

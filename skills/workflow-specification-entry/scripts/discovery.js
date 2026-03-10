@@ -13,7 +13,7 @@ function discover(cwd, workUnit) {
 
   // --- Discussions ---
   const discussions = [];
-  let discCount = 0, concludedCount = 0, inProgressCount = 0;
+  let discCount = 0, completedCount = 0, inProgressCount = 0;
 
   for (const m of manifests) {
     const dp = phaseData(m, 'discussion');
@@ -24,7 +24,7 @@ function discover(cwd, workUnit) {
       const items = phaseItems(m, 'discussion');
       for (const item of items) {
         discCount++;
-        if (item.status === 'concluded') concludedCount++;
+        if (item.status === 'completed') completedCount++;
         else if (item.status === 'in-progress') inProgressCount++;
 
         // Check if this discussion has an individual spec via sources
@@ -48,7 +48,7 @@ function discover(cwd, workUnit) {
       }
     } else if (dp.status) {
       discCount++;
-      if (dp.status === 'concluded') concludedCount++;
+      if (dp.status === 'completed') completedCount++;
       else if (dp.status === 'in-progress') inProgressCount++;
 
       let hasIndividualSpec = false;
@@ -192,11 +192,11 @@ function discover(cwd, workUnit) {
     current_state: {
       discussions_checksum: discussionsChecksum,
       discussion_count: discCount,
-      concluded_count: concludedCount,
+      completed_count: completedCount,
       in_progress_count: inProgressCount,
       spec_count: specCount,
       has_discussions: discCount > 0,
-      has_concluded: concludedCount > 0,
+      has_completed: completedCount > 0,
       has_specs: specCount > 0,
     },
   };
@@ -246,8 +246,8 @@ function format(result) {
 
   lines.push('=== STATE ===');
   const cs = result.current_state;
-  lines.push(`discussions: ${cs.discussion_count} (${cs.concluded_count} concluded, ${cs.in_progress_count} in-progress)`);
-  lines.push(`specs: ${cs.spec_count}, has_discussions: ${cs.has_discussions}, has_concluded: ${cs.has_concluded}`);
+  lines.push(`discussions: ${cs.discussion_count} (${cs.completed_count} completed, ${cs.in_progress_count} in-progress)`);
+  lines.push(`specs: ${cs.spec_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
   if (cs.discussions_checksum) lines.push(`checksum: ${cs.discussions_checksum}`);
 
   return lines.join('\n') + '\n';

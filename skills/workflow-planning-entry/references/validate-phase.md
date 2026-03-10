@@ -12,7 +12,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 
 #### If existing plan (continue or review)
 
-**If status is `concluded`:**
+**If status is `completed`:**
 
 Reset to in-progress:
 
@@ -42,7 +42,7 @@ Set source="existing".
 
 ```
 · · · · · · · · · · · ·
-Any additional context since the specification was concluded?
+Any additional context since the specification was completed?
 
 - **`c`/`continue`** — Continue with the specification as-is
 - Or provide additional context (priorities, constraints, new considerations)

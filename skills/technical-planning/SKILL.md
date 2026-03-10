@@ -268,7 +268,7 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Conclude plan and mark as concluded
+- **`y`/`yes`** — Conclude plan and mark as completed
 - **Comment** — Add context before concluding
 · · · · · · · · · · · ·
 ```
@@ -283,9 +283,9 @@ Discuss the user's context. If additional work is needed, route back to **Step 6
 
 1. **Update plan status** via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} status concluded
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} status completed
    ```
-2. **Final commit** — Commit the concluded plan: `planning({work_unit}): conclude plan`
+2. **Final commit** — Commit the completed plan: `planning({work_unit}): complete plan`
 3. **Present completion summary**:
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -295,7 +295,7 @@ Planning is complete for **{work_unit}**.
 
 The plan contains **{N} phases** with **{M} tasks** total, reviewed for traceability against the specification and structural integrity.
 
-Status has been marked as `concluded`. The plan is ready for implementation.
+Status has been marked as `completed`. The plan is ready for implementation.
 ```
 
 4. **Pipeline continuation** — Invoke the bridge:

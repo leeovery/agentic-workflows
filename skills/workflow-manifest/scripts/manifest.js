@@ -22,18 +22,18 @@ const VALID_PHASES = [
 const TOPICLESS_PHASES = [];
 
 const VALID_PHASE_STATUSES = {
-  research:       ['in-progress', 'concluded'],
-  discussion:     ['in-progress', 'concluded'],
-  investigation:  ['in-progress', 'concluded'],
-  specification:  ['in-progress', 'concluded', 'superseded'],
-  planning:       ['in-progress', 'concluded'],
+  research:       ['in-progress', 'completed'],
+  discussion:     ['in-progress', 'completed'],
+  investigation:  ['in-progress', 'completed'],
+  specification:  ['in-progress', 'completed', 'superseded'],
+  planning:       ['in-progress', 'completed'],
   implementation: ['in-progress', 'completed'],
   review:         ['in-progress', 'completed'],
 };
 
 const VALID_GATE_MODES = ['gated', 'auto'];
 
-const VALID_WORK_UNIT_STATUSES = ['in-progress', 'concluded', 'cancelled'];
+const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
 const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;

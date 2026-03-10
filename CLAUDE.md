@@ -78,7 +78,7 @@ skills/
     references/              #   Display, selection, revisit phase
   continue-epic/             # Resume in-progress epic — full state display + interactive menu
     scripts/discovery.js     #   List mode (all epics) and detail mode (per-phase items)
-    references/              #   Epic selection, state display, menu, resume concluded
+    references/              #   Epic selection, state display, menu, resume completed
   link-dependencies/         # Link dependencies across topics
 
   # Phase entry skills (internal — invoked by start/continue/bridge skills)
@@ -290,7 +290,7 @@ Domain-aware CLI grammar:
 ```bash
 MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 $MANIFEST get {work_unit} --phase discussion --topic {topic} status    # phase-level read
-$MANIFEST set {work_unit} --phase discussion --topic {topic} status concluded  # phase-level write
+$MANIFEST set {work_unit} --phase discussion --topic {topic} status completed  # phase-level write
 $MANIFEST init-phase {work_unit} --phase discussion --topic {topic}    # create phase entry
 $MANIFEST push {work_unit} --phase implementation --topic {topic} completed_tasks "task-1"  # append to array
 $MANIFEST exists {work_unit}                                           # existence check (exits 0, outputs true/false)
@@ -351,7 +351,7 @@ Each part is optional — use only what's needed for clarity.
 @if(condition) truthy content @else falsy content @endif
 ```
 
-Example: `@if(has_discussion) {topic}.md ({status:[in-progress|concluded]}) @else (no discussion) @endif`
+Example: `@if(has_discussion) {topic}.md ({status:[in-progress|completed]}) @else (no discussion) @endif`
 
 **Loop directives** for iterating over collections:
 
@@ -371,8 +371,8 @@ Every actionable item gets a numbered entry with `└─` branches showing its s
 
 ```
 1. {topic:(titlecase)}
-   └─ Plan: @if(has_plan) {plan_status:[in-progress|concluded]} @else (no plan) @endif
-   └─ Spec: {spec_status:[in-progress|concluded]}
+   └─ Plan: @if(has_plan) {plan_status:[in-progress|completed]} @else (no plan) @endif
+   └─ Spec: {spec_status:[in-progress|completed]}
 
 2. ...
 ```
@@ -381,7 +381,7 @@ For richer hierarchies (specification phase):
 
 ```
 1. {topic:(titlecase)}
-   └─ Spec: {spec_status:[in-progress|concluded]} ({extraction_summary})
+   └─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
    └─ Discussions:
       ├─ {discussion} ({status:[extracted|pending]})
       └─ ...
@@ -391,7 +391,7 @@ For richer hierarchies (specification phase):
 
 Always parenthetical `(term)`. Never brackets or dash-separated.
 
-Core vocabulary: `in-progress`, `concluded`, `ready`, `completed`, `extracted`, `pending`, `reopened`. Phase-specific terms are fine but format is always `(term)`.
+Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`. Phase-specific terms are fine but format is always `(term)`.
 
 ### Cross-Plan References
 
@@ -412,7 +412,7 @@ Specifications not ready for planning:
 These specifications are either still in progress or cross-cutting
 and cannot be planned directly.
 
-  • caching-strategy (cross-cutting, concluded)
+  • caching-strategy (cross-cutting, completed)
   • rate-limiting (cross-cutting, in-progress)
 ```
 
@@ -425,7 +425,7 @@ Key:
 
   Plan status:
     in-progress — planning work is ongoing
-    concluded   — plan is complete
+    completed   — plan is done
 
   Spec type:
     cross-cutting — architectural policy, not directly plannable
@@ -440,9 +440,9 @@ Rendered as markdown (not code blocks). Framed with dot separators. Verb-based l
 
 ```
 · · · · · · · · · · · ·
-1. Create "Auth Flow" — concluded spec, no plan
+1. Create "Auth Flow" — completed spec, no plan
 2. Continue "Data Model" — plan in-progress
-3. Review "Billing" — plan concluded
+3. Review "Billing" — plan completed
 
 Select an option (enter number):
 · · · · · · · · · · · ·
@@ -495,7 +495,7 @@ Planning Overview
 
 No specification found in .workflows/{work_unit}/specification/{topic}/
 
-The planning phase requires a concluded specification.
+The planning phase requires a completed specification.
 ```
 
 ### Bullet Characters
@@ -589,11 +589,11 @@ Use H4 headings for if/else branches within a step:
 
 Rules:
 - Never use else-if chains — each condition gets its own `#### If` heading
-- Lowercase after "If" (e.g., `#### If concluded_count == 1`)
+- Lowercase after "If" (e.g., `#### If completed_count == 1`)
 - Use `#### Otherwise` for else branches
 - Use backticks around specific values, variables, and statuses in H4 headings (e.g., `` #### If `STATUS` is `clean` ``, `` #### If work type is `feature` ``). Natural language conditions stay plain text (e.g., `#### If no plan provided`)
 - Use "and" between conditions, not commas
-- Drop implied conditions (e.g., if Step 2 already gates on `concluded_count >= 1`, Step 3 doesn't need to repeat it on every branch)
+- Drop implied conditions (e.g., if Step 2 already gates on `completed_count >= 1`, Step 3 doesn't need to repeat it on every branch)
 - H4 for top-level conditionals, bold text for nested — never use H5/H6 for conditional nesting
 - If double-nesting would occur, flatten by combining the parent and child conditions into a single bold conditional
 
@@ -798,7 +798,7 @@ Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge
 | `gather-context.md` | User interview / context gathering questions |
 | `invoke-skill.md` | Handoff to processing skill |
 | `route-scenario.md` | Scenario routing (for skills with branching) |
-| `validate-{thing}.md` | Pre-flight validation (plan exists, spec concluded, etc.) |
+| `validate-{thing}.md` | Pre-flight validation (plan exists, spec completed, etc.) |
 | `display-{variant}.md` | Display outputs (for skills with multiple displays) |
 | `analysis-flow.md` | Multi-step analysis logic |
 | `confirm-and-handoff.md` | Confirmation prompt + skill invocation combined |

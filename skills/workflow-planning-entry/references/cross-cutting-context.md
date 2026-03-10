@@ -48,9 +48,9 @@ These may contain architectural decisions relevant to this plan.
 
 If the user chooses to stop, end here. If they choose to continue, proceed.
 
-### Summarize concluded cross-cutting specs
+### Summarize completed cross-cutting specs
 
-If any **concluded** cross-cutting specifications exist, identify which are relevant to the feature being planned and summarize for handoff:
+If any **completed** cross-cutting specifications exist, identify which are relevant to the feature being planned and summarize for handoff:
 
 > *Output the next fenced block as a code block:*
 

@@ -43,7 +43,7 @@ Archive the existing spec.
 
 → Return to **[the skill](../SKILL.md)** with verb="Creating".
 
-#### If specification exists with status `concluded`
+#### If specification exists with status `completed`
 
 Reset to in-progress:
 

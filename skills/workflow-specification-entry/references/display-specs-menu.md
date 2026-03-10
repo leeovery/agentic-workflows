@@ -4,7 +4,7 @@
 
 ---
 
-Shows when multiple concluded discussions exist, specifications exist, and cache is none or stale. Displays existing specs from discovery manifest data (NOT from cache), lists unassigned discussions, and offers analysis or continue options.
+Shows when multiple completed discussions exist, specifications exist, and cache is none or stale. Displays existing specs from discovery manifest data (NOT from cache), lists unassigned discussions, and offers analysis or continue options.
 
 ## A. Display
 
@@ -13,7 +13,7 @@ Shows when multiple concluded discussions exist, specifications exist, and cache
 ```
 Specification Overview
 
-{N} concluded discussions found. {M} specifications exist.
+{N} completed discussions found. {M} specifications exist.
 
 Existing specifications:
 ```
@@ -24,14 +24,14 @@ For each non-superseded specification from discovery output, display as nested t
 
 ```
 1. {work_unit:(titlecase)}
-   └─ Spec: {spec_status:[in-progress|concluded]} ({X} of {Y} sources extracted)
+   └─ Spec: {spec_status:[in-progress|completed]} ({X} of {Y} sources extracted)
    └─ Discussions:
       ├─ {source-name} (extracted)
       └─ {source-name} (extracted)
 ```
 
 Determine discussion status from the spec's `sources` array:
-- `incorporated` + `discussion_status: concluded` or `not-found` → `extracted`
+- `incorporated` + `discussion_status: completed` or `not-found` → `extracted`
 - `incorporated` + `discussion_status: other` (e.g. `in-progress`) → `extracted, reopened`
 - `pending` → `pending`
 
@@ -39,12 +39,12 @@ Extraction count: X = sources with `status: incorporated`, Y = total source coun
 
 ### Unassigned Discussions
 
-List concluded discussions that are not in any specification's `sources` array:
+List completed discussions that are not in any specification's `sources` array:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Concluded discussions not in a specification:
+Completed discussions not in a specification:
   • {discussion-name}
   • {discussion-name}
 ```
@@ -55,7 +55,7 @@ Concluded discussions not in a specification:
 
 ```
 Discussions not ready for specification:
-These discussions are still in progress and must be concluded
+These discussions are still in progress and must be completed
 before they can be included in a specification.
 
   • {discussion-name}
@@ -76,7 +76,7 @@ Key:
 
   Spec status:
     in-progress — specification work is ongoing
-    concluded   — specification is complete
+    completed   — specification is done
 ```
 
 ### Cache-Aware Message
@@ -109,8 +109,8 @@ have changed since it was created. Re-analysis is required.
 List "Analyze for groupings (recommended)" first, then one entry per existing non-superseded specification. The verb depends on the spec's state:
 
 - Spec is `in-progress` → **Continue** "{Name}" — in-progress
-- Spec is `concluded` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
-- Spec is `concluded` with no pending sources → **Refine** "{Name}" — concluded
+- Spec is `completed` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
+- Spec is `completed` with no pending sources → **Refine** "{Name}" — completed
 
 **Example assembled menu** (2 specs exist):
 
@@ -123,7 +123,7 @@ List "Analyze for groupings (recommended)" first, then one entry per existing no
    `specification names are preserved. You can provide guidance`
    `in the next step.`
 2. Continue "Auth Flow" — in-progress
-3. Refine "Data Model" — concluded
+3. Refine "Data Model" — completed
 
 Select an option (enter number):
 · · · · · · · · · · · ·

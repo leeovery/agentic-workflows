@@ -31,7 +31,7 @@ function discover(cwd, workUnit) {
   // --- Discussions from manifests ---
   const discussions = [];
   let inProgress = 0;
-  let concluded = 0;
+  let completed = 0;
 
   for (const m of manifests) {
     const dp = phaseData(m, 'discussion');
@@ -43,17 +43,17 @@ function discover(cwd, workUnit) {
         for (const item of items) {
           discussions.push({ name: item.name, work_unit: m.name, status: item.status || 'unknown', work_type: m.work_type });
           if (item.status === 'in-progress') inProgress++;
-          else if (item.status === 'concluded') concluded++;
+          else if (item.status === 'completed') completed++;
         }
       } else if (dp.status) {
         discussions.push({ name: m.name, work_unit: m.name, status: dp.status, work_type: m.work_type });
         if (dp.status === 'in-progress') inProgress++;
-        else if (dp.status === 'concluded') concluded++;
+        else if (dp.status === 'completed') completed++;
       }
     } else if (dp.status) {
       discussions.push({ name: m.name, work_unit: m.name, status: dp.status, work_type: m.work_type });
       if (dp.status === 'in-progress') inProgress++;
-      else if (dp.status === 'concluded') concluded++;
+      else if (dp.status === 'completed') completed++;
     }
   }
 
@@ -108,7 +108,7 @@ function discover(cwd, workUnit) {
     discussions: {
       exists: hasDiscussions,
       files: discussions,
-      counts: { in_progress: inProgress, concluded },
+      counts: { in_progress: inProgress, completed },
     },
     cache: { entries: cacheEntries },
     state: { has_research: hasResearch, has_discussions: hasDiscussions, scenario },
@@ -136,7 +136,7 @@ function format(result) {
     for (const d of result.discussions.files) {
       lines.push(`  ${d.work_unit}/${d.name} (${d.work_type}): ${d.status}`);
     }
-    lines.push(`  counts: ${result.discussions.counts.in_progress} in-progress, ${result.discussions.counts.concluded} concluded`);
+    lines.push(`  counts: ${result.discussions.counts.in_progress} in-progress, ${result.discussions.counts.completed} completed`);
   }
   lines.push('');
 

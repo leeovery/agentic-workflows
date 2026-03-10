@@ -19,7 +19,7 @@ Plan Missing
 
 No plan found for "{topic:(titlecase)}".
 
-A concluded plan and completed implementation are required for review.
+A completed plan and completed implementation are required for review.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -62,7 +62,7 @@ Check review's own phase status:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} status
 ```
 
-**If status is `concluded`:**
+**If status is `completed`:**
 
 Reset to in-progress:
 

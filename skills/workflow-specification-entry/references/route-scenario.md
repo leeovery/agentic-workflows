@@ -6,7 +6,7 @@
 
 Based on discovery state, load exactly ONE reference file:
 
-#### If `concluded_count` == 1
+#### If `completed_count` == 1
 
 → Load **[display-single.md](display-single.md)** and follow its instructions.
 

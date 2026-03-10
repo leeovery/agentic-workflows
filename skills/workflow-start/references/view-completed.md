@@ -1,19 +1,19 @@
-# View Concluded & Cancelled
+# View Completed & Cancelled
 
 *Reference for **[workflow-start](../SKILL.md)***
 
 ---
 
-Display concluded and cancelled work units. Self-contained — receives context from caller (concluded/cancelled arrays, optional work_type filter).
+Display completed and cancelled work units. Self-contained — receives context from caller (completed/cancelled arrays, optional work_type filter).
 
 ## A. Display List
 
-#### If no concluded or cancelled work units exist
+#### If no completed or cancelled work units exist
 
 > *Output the next fenced block as a code block:*
 
 ```
-No concluded or cancelled work units found.
+No completed or cancelled work units found.
 ```
 
 → Return to caller.
@@ -25,9 +25,9 @@ No concluded or cancelled work units found.
 ```
 Concluded & Cancelled @if(work_type_filter) {work_type_filter:(titlecase)}s @else Work Units @endif
 
-@if(concluded.length > 0)
+@if(completed.length > 0)
 Concluded:
-@foreach(item in concluded)
+@foreach(item in completed)
   {N}. {item.name:(titlecase)}
      └─ Concluded after: {item.last_phase}
 
@@ -44,7 +44,7 @@ Cancelled:
 @endif
 ```
 
-Build from the concluded and cancelled arrays passed by the caller. Numbering is continuous across both sections. Blank line between each numbered item.
+Build from the completed and cancelled arrays passed by the caller. Numbering is continuous across both sections. Blank line between each numbered item.
 
 → Proceed to **B. Select**.
 

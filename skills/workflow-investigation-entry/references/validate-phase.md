@@ -22,7 +22,7 @@ Set source="continue".
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If status is `concluded`
+#### If status is `completed`
 
 Reset to in-progress:
 

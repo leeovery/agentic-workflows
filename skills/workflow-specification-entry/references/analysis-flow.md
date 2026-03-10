@@ -28,9 +28,9 @@ Your context (or 'none'):
 
 ## B. Analyze Discussions
 
-**This step is critical. You MUST read every concluded discussion document thoroughly.**
+**This step is critical. You MUST read every completed discussion document thoroughly.**
 
-For each concluded discussion:
+For each completed discussion:
 1. Read the ENTIRE document using the Read tool (not just the header)
 2. Understand the decisions, systems, and concepts it defines
 3. Note dependencies on or references to other discussions

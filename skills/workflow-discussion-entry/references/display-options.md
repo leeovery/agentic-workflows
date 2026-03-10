@@ -19,7 +19,7 @@ Research topics:
 
 1. {theme_name}
    └─ Source: {filename}.md (lines {start}-{end})
-   └─ Discussion: @if(has_discussion) {work_unit}/{topic} ({status:[in-progress|concluded]}) @else (no discussion) @endif
+   └─ Discussion: @if(has_discussion) {work_unit}/{topic} ({status:[in-progress|completed]}) @else (no discussion) @endif
    └─ "{summary}"
 
 2. ...
@@ -32,7 +32,7 @@ If discussions exist that are NOT linked to a research topic, list them separate
 ```
 Existing discussions:
 
-  • {work_unit}/{topic} ({status:[in-progress|concluded]}, {work_type:[epic|feature|bugfix]})
+  • {work_unit}/{topic} ({status:[in-progress|completed]}, {work_type:[epic|feature|bugfix]})
 ```
 
 ### Key/Legend
@@ -46,7 +46,7 @@ Key:
 
   Discussion status:
     in-progress — discussion is ongoing
-    concluded   — discussion is complete
+    completed   — discussion is done
 ```
 
 **Then present the options based on what exists:**

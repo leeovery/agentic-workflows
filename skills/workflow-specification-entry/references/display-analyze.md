@@ -4,7 +4,7 @@
 
 ---
 
-Prompted when multiple concluded discussions exist, no specifications exist, and cache is none or stale.
+Prompted when multiple completed discussions exist, no specifications exist, and cache is none or stale.
 
 ## Display
 
@@ -13,15 +13,15 @@ Prompted when multiple concluded discussions exist, no specifications exist, and
 ```
 Specification Overview
 
-{N} concluded discussions found. No specifications exist yet.
+{N} completed discussions found. No specifications exist yet.
 
-Concluded discussions:
+Completed discussions:
   • {discussion-name}
   • {discussion-name}
   • {discussion-name}
 ```
 
-List all concluded discussions from discovery output.
+List all completed discussions from discovery output.
 
 #### If in-progress discussions exist
 
@@ -29,7 +29,7 @@ List all concluded discussions from discovery output.
 
 ```
 Discussions not ready for specification:
-These discussions are still in progress and must be concluded
+These discussions are still in progress and must be completed
 before they can be included in a specification.
 
   • {discussion-name}

@@ -52,13 +52,13 @@ Parse the discovery output to understand:
 - `name` - the work unit name
 - `next_phase` - the phase to route to
 - `phase_label` - human-readable phase status
-- `concluded_phases` - list of concluded/completed phases (for backwards navigation)
+- `completed_phases` - list of completed phases (for backwards navigation)
 
 **From top-level fields:**
 - `count` - number of active features
 - `summary` - human-readable state summary
-- `concluded` / `cancelled` - arrays of non-active features with name, status, last_phase
-- `concluded_count` / `cancelled_count` - counts for each
+- `completed` / `cancelled` - arrays of non-active features with name, status, last_phase
+- `completed_count` / `cancelled_count` - counts for each
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
@@ -133,6 +133,6 @@ Using the selected feature's `next_phase`, invoke the appropriate phase skill:
 
 Skills receive positional arguments: `$0` = work_type (`feature`), `$1` = work_unit. Topic is inferred from work_unit.
 
-If the user chose to revisit a concluded phase in Step 5, use that phase instead of `next_phase`.
+If the user chose to revisit a completed phase in Step 5, use that phase instead of `next_phase`.
 
 Invoke the skill. This is terminal — do not return to the backbone.

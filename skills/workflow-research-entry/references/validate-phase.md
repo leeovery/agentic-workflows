@@ -10,7 +10,7 @@ Check research status via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research --topic {topic} status
 ```
 
-#### If status is `concluded`
+#### If status is `completed`
 
 Reset to in-progress:
 

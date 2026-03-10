@@ -4,7 +4,7 @@
 
 ---
 
-Auto-proceed path — only one concluded discussion exists, so no selection menu is needed.
+Auto-proceed path — only one completed discussion exists, so no selection menu is needed.
 
 ## Route by Spec Coverage
 

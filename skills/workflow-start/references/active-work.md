@@ -40,8 +40,8 @@ Epics:
 @endforeach
 @endif
 
-@if(concluded_count > 0 || cancelled_count > 0)
-{concluded_count} concluded, {cancelled_count} cancelled.
+@if(completed_count > 0 || cancelled_count > 0)
+{completed_count} completed, {cancelled_count} cancelled.
 @endif
 ```
 
@@ -65,8 +65,8 @@ What would you like to do?
 5. Start new epic
 6. Start new bugfix
 
-@if(concluded_count > 0 || cancelled_count > 0)
-7. View concluded & cancelled work units
+@if(completed_count > 0 || cancelled_count > 0)
+7. View completed & cancelled work units
 @endif
 - **`m`/`manage`** — Manage a work unit's lifecycle
 
@@ -97,9 +97,9 @@ Invoke the selected skill:
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
-#### If user chose "View concluded & cancelled"
+#### If user chose "View completed & cancelled"
 
-→ Load **[view-concluded.md](view-concluded.md)** with no work_type filter (unified across all types). On return, re-run discovery and redisplay from the top of this reference.
+→ Load **[view-completed.md](view-completed.md)** with no work_type filter (unified across all types). On return, re-run discovery and redisplay from the top of this reference.
 
 #### If user chose `m`/`manage`
 

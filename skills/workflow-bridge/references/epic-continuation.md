@@ -30,7 +30,7 @@ Using the enriched discovery data from section A, check if ALL topics across ALL
 · · · · · · · · · · · ·
 All topics have completed review for "{work_unit:(titlecase)}".
 
-- **`y`/`yes`** — Mark this epic as concluded
+- **`y`/`yes`** — Mark this epic as completed
 - **`n`/`no`** — Return to the epic menu
 
 · · · · · · · · · · · ·
@@ -40,16 +40,16 @@ All topics have completed review for "{work_unit:(titlecase)}".
 
 **If user chose `y`/`yes`:**
 
-Set the work unit status to concluded:
+Set the work unit status to completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status completed
 ```
 
 > *Output the next fenced block as a code block:*
 
 ```
-Epic Concluded
+Epic Completed
 
 "{work_unit:(titlecase)}" has completed all topics through review.
 ```
@@ -69,7 +69,7 @@ Epic Concluded
 > *Output the next fenced block as a code block:*
 
 ```
-{completed_phase:(titlecase)} concluded for "{work_unit:(titlecase)}".
+{completed_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
 ```
 
 Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.

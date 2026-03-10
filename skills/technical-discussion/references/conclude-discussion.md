@@ -10,7 +10,7 @@ When the user indicates they want to conclude:
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Conclude discussion and mark as concluded
+- **`y`/`yes`** — Conclude discussion and mark as completed
 - **Comment** — Add context before concluding
 · · · · · · · · · · · ·
 ```
@@ -23,9 +23,9 @@ Incorporate the user's context into the discussion, commit, then re-present the 
 
 #### If `yes`
 
-1. Set discussion status to concluded via manifest CLI:
+1. Set discussion status to completed via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase discussion --topic {topic} status concluded
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase discussion --topic {topic} status completed
    ```
 2. Final commit
 3. Invoke the bridge:

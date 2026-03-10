@@ -22,7 +22,7 @@ Work through questions one at a time. For each:
 - Explore options and trade-offs
 - Capture the journey — false paths, debates, what changed thinking
 - Document the decision and rationale when reached
-- Check off concluded questions in the Questions list
+- Check off completed questions in the Questions list
 
 ## When the User Signals Conclusion
 

@@ -55,9 +55,9 @@ Parse the output to understand the current workflow state:
 **From `bugfixes` section:**
 - `work_units` — name, next_phase, phase_label
 
-**From `concluded`/`cancelled` arrays:**
+**From `completed`/`cancelled` arrays:**
 - Non-active work units with name, work_type, status, last_phase
-- `concluded_count`, `cancelled_count`
+- `completed_count`, `cancelled_count`
 
 **From `state` section:**
 - Counts for each work type, `has_any_work` flag

@@ -14,7 +14,7 @@ This skill is invoked by processing skills (technical-discussion, technical-spec
 
 This skill receives context from the calling processing skill:
 - **Work unit**: The work unit name (directory under `.workflows/`) = `{work_unit}`
-- **Completed phase**: The phase that just concluded = `{completed_phase}`
+- **Completed phase**: The phase that just completed = `{completed_phase}`
 
 ---
 

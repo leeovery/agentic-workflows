@@ -8,20 +8,20 @@ function lastCompletedPhase(manifest) {
   let last = null;
   for (const phase of FEATURE_PIPELINE) {
     const s = phaseStatus(manifest, phase);
-    if (s === 'concluded' || s === 'completed') last = phase;
+    if (s === 'completed') last = phase;
   }
   return last;
 }
 
-function concludedPhases(manifest) {
-  const concluded = [];
+function completedPhases(manifest) {
+  const completed = [];
   for (const phase of FEATURE_PIPELINE) {
     const s = phaseStatus(manifest, phase);
-    if (s === 'concluded' || s === 'completed') {
-      concluded.push(phase);
+    if (s === 'completed') {
+      completed.push(phase);
     }
   }
-  return concluded;
+  return completed;
 }
 
 function discover(cwd) {
@@ -36,19 +36,19 @@ function discover(cwd) {
       name: m.name,
       next_phase: state.next_phase,
       phase_label: state.phase_label,
-      concluded_phases: concludedPhases(m),
+      completed_phases: completedPhases(m),
     });
   }
 
-  // Load concluded/cancelled features
+  // Load completed/cancelled features
   const allManifests = loadAllManifests(cwd);
-  const concluded = [];
+  const completed = [];
   const cancelled = [];
 
   for (const m of allManifests) {
     if (m.work_type !== 'feature') continue;
-    if (m.status === 'concluded') {
-      concluded.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
+    if (m.status === 'completed') {
+      completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
     } else if (m.status === 'cancelled') {
       cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
     }
@@ -57,9 +57,9 @@ function discover(cwd) {
   return {
     features,
     count: features.length,
-    concluded,
+    completed,
     cancelled,
-    concluded_count: concluded.length,
+    completed_count: completed.length,
     cancelled_count: cancelled.length,
     summary: features.length === 0
       ? 'no active features'
@@ -72,7 +72,7 @@ function format(result) {
   lines.push(`=== FEATURES (${result.count}) ===`);
   lines.push(`summary: ${result.summary}`);
   for (const f of result.features) {
-    lines.push(`  ${f.name}: ${f.phase_label} [concluded: ${f.concluded_phases.join(', ') || 'none'}]`);
+    lines.push(`  ${f.name}: ${f.phase_label} [completed: ${f.completed_phases.join(', ') || 'none'}]`);
   }
   return lines.join('\n') + '\n';
 }

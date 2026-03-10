@@ -68,7 +68,7 @@ All metadata is managed via the manifest CLI (`node .claude/skills/workflow-mani
 
 | Field (via `--phase planning --topic {topic}`) | Set when |
 |------------|----------|
-| `status` | Plan creation -> `in-progress`; conclusion -> `concluded` |
+| `status` | Plan creation -> `in-progress`; completion -> `completed` |
 | `format` | Plan creation -- user-chosen output format |
 | `spec_commit` | Plan creation -- `git rev-parse HEAD`; updated on continue if spec changed |
 | `ext_id` | First task authored -- external identifier for the plan |

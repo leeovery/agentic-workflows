@@ -73,7 +73,7 @@ Set `implementation_completed` = true.
 **{selected.name:(titlecase)}** ({selected.work_type})
 
 @if(implementation_completed)
-- **`d`/`done`** — Mark as concluded
+- **`d`/`done`** — Mark as completed
 @endif
 - **`x`/`cancel`** — Mark as cancelled
 - **`b`/`back`** — Return
@@ -86,13 +86,13 @@ Set `implementation_completed` = true.
 #### If user chose `d`/`done`
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status concluded
+node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status completed
 ```
 
 > *Output the next fenced block as a code block:*
 
 ```
-"{selected.name:(titlecase)}" marked as concluded.
+"{selected.name:(titlecase)}" marked as completed.
 ```
 
 → Return to caller to redisplay main view (re-run discovery, re-render from top).

@@ -54,7 +54,7 @@ Check discussion phase status via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase discussion --topic {topic} status
 ```
 
-**If phase exists (in-progress or concluded):**
+**If phase exists (in-progress or completed):**
 
 → Proceed to **Step 2** (Validate Phase).
 
@@ -80,7 +80,7 @@ Parse the discovery output to understand:
 **From `discussions` section:**
 - `exists` - whether discussion entries exist (from manifests)
 - `files` - each discussion's name, work_unit, status, and work_type
-- `counts.in_progress` and `counts.concluded` - totals for routing
+- `counts.in_progress` and `counts.completed` - totals for routing
 
 **From `cache` section:**
 - `entries` - array of cache entries (empty if no cache exists). Each entry has:
