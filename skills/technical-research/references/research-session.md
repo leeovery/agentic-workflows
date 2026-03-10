@@ -16,6 +16,12 @@ Research is a conversation. Follow this loop:
 
 ## Convergence Detection
 
+Read `work_type` from the manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
+
 #### If work_type is `epic`
 
 Research threads naturally converge. As you explore a topic, options narrow, tradeoffs clarify, and opinions start forming. This is healthy — but it's also a signal.

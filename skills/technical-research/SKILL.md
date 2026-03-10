@@ -49,58 +49,13 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ---
 
-## Step 0: Read Work Type and Resume Detection
-
-Read `work_type` from the manifest for context-refresh safety:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
+## Step 0: Resume Detection
 
 Check if research files exist in `.workflows/{work_unit}/research/`.
 
-#### If work_type is `epic` and files exist
+#### If files exist
 
-Read all research files. Query manifest for each file's status:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research --topic "*" status
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-Research files for {work_unit:(titlecase)}:
-
-@foreach(file in research_files)
-  • {file.topic:(titlecase)} ({file.status:[in-progress|completed]})
-@endforeach
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which topic would you like to work on?
-
-@foreach(file in research_files where status is in-progress)
-**{N}. Continue "{file.topic:(titlecase)}"**
-@endforeach
-**{N}. Start new topic**
-
-Select an option (enter number):
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If continuing an existing topic**: Read that file, announce what's been explored and what themes have emerged. → Proceed to **Step 2**.
-
-**If starting new topic**: → Proceed to **Step 1**.
-
-#### If work_type is `feature` and files exist
-
-Read the file. Announce what's been explored so far and what themes have emerged. Ask the user whether to continue or start fresh.
+Read them. Announce what's been explored so far and what themes have emerged. Ask the user whether to continue or start fresh.
 
 **STOP.** Wait for user response.
 

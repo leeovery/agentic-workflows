@@ -42,6 +42,12 @@ Ask one question at a time. Wait for the answer. Document. Then ask the next.
 
 **Template**: Use **[template.md](template.md)** for document structure.
 
+Read `work_type` from the manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
+
 #### If work_type is `feature`
 
 Single file: `.workflows/{work_unit}/research/{work_unit}.md`
