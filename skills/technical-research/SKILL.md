@@ -14,19 +14,10 @@ First phase in the pipeline — explore feasibility (technical, business, market
 
 ### What This Skill Needs
 
-- **Topic or idea** (required) - What to research/explore
-- **Existing context** (optional) - Any prior research or constraints
-
-#### If topic is vague or could go many directions
-
-> *Output the next fenced block as a code block:*
-
-```
-You mentioned {work_unit}. That could cover a lot of ground — is there a specific
-angle you'd like to start with, or should I explore broadly?
-```
-
-**STOP.** Wait for user response.
+- **Topic** (required) - What to research/explore
+- **Output path** (required) - Research file path from the handoff
+- **Work type** (required) - `epic` or `feature`. Determines file strategy and convergence behaviour
+- **Context** (optional) - Prior research, constraints, starting direction
 
 ---
 
