@@ -117,7 +117,7 @@ describe('discovery-utils', () => {
     it('returns only in-progress manifests', () => {
       const { createManifest } = require('./discovery-test-utils');
       createManifest(dir, 'active', { status: 'in-progress' });
-      createManifest(dir, 'concluded', { status: 'concluded' });
+      createManifest(dir, 'done', { status: 'completed' });
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'active');
@@ -136,7 +136,7 @@ describe('discovery-utils', () => {
     it('returns manifests of all statuses', () => {
       const { createManifest } = require('./discovery-test-utils');
       createManifest(dir, 'active', { status: 'in-progress' });
-      createManifest(dir, 'done', { status: 'concluded' });
+      createManifest(dir, 'done', { status: 'completed' });
       createManifest(dir, 'cancelled', { status: 'cancelled' });
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 3);
@@ -153,7 +153,7 @@ describe('discovery-utils', () => {
 
   describe('phaseStatus', () => {
     it('extracts phase status', () => {
-      assert.strictEqual(phaseStatus({ phases: { discussion: { status: 'concluded' } } }, 'discussion'), 'concluded');
+      assert.strictEqual(phaseStatus({ phases: { discussion: { status: 'completed' } } }, 'discussion'), 'completed');
     });
 
     it('returns null for missing phase', () => {
@@ -167,14 +167,14 @@ describe('discovery-utils', () => {
 
   describe('phaseItems', () => {
     it('extracts items', () => {
-      const items = phaseItems({ phases: { discussion: { items: { auth: { status: 'concluded' } } } } }, 'discussion');
+      const items = phaseItems({ phases: { discussion: { items: { auth: { status: 'completed' } } } } }, 'discussion');
       assert.strictEqual(items.length, 1);
       assert.strictEqual(items[0].name, 'auth');
-      assert.strictEqual(items[0].status, 'concluded');
+      assert.strictEqual(items[0].status, 'completed');
     });
 
     it('returns empty for no items', () => {
-      assert.deepStrictEqual(phaseItems({ phases: { discussion: { status: 'concluded' } } }, 'discussion'), []);
+      assert.deepStrictEqual(phaseItems({ phases: { discussion: { status: 'completed' } } }, 'discussion'), []);
     });
 
     it('returns empty for missing phase', () => {
@@ -196,8 +196,8 @@ describe('discovery-utils', () => {
 
   describe('phaseData', () => {
     it('returns phase object', () => {
-      const data = phaseData({ phases: { discussion: { status: 'concluded', format: 'md' } } }, 'discussion');
-      assert.strictEqual(data.status, 'concluded');
+      const data = phaseData({ phases: { discussion: { status: 'completed', format: 'md' } } }, 'discussion');
+      assert.strictEqual(data.status, 'completed');
       assert.strictEqual(data.format, 'md');
     });
 
@@ -217,18 +217,18 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.next_phase, 'review');
     });
 
-    it('returns implementation when planning concluded', () => {
-      const r = computeNextPhase({ work_type: 'feature', phases: { planning: { status: 'concluded' } } });
+    it('returns implementation when planning completed', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { planning: { status: 'completed' } } });
       assert.strictEqual(r.next_phase, 'implementation');
     });
 
-    it('returns planning when spec concluded', () => {
-      const r = computeNextPhase({ work_type: 'feature', phases: { specification: { status: 'concluded' } } });
+    it('returns planning when spec completed', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { specification: { status: 'completed' } } });
       assert.strictEqual(r.next_phase, 'planning');
     });
 
-    it('returns specification when discussion concluded', () => {
-      const r = computeNextPhase({ work_type: 'feature', phases: { discussion: { status: 'concluded' } } });
+    it('returns specification when discussion completed', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { discussion: { status: 'completed' } } });
       assert.strictEqual(r.next_phase, 'specification');
     });
 
@@ -247,13 +247,13 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.next_phase, 'investigation');
     });
 
-    it('returns specification when investigation concluded (bugfix)', () => {
-      const r = computeNextPhase({ work_type: 'bugfix', phases: { investigation: { status: 'concluded' } } });
+    it('returns specification when investigation completed (bugfix)', () => {
+      const r = computeNextPhase({ work_type: 'bugfix', phases: { investigation: { status: 'completed' } } });
       assert.strictEqual(r.next_phase, 'specification');
     });
 
-    it('returns discussion when research concluded (epic)', () => {
-      const r = computeNextPhase({ work_type: 'epic', phases: { research: { status: 'concluded' } } });
+    it('returns discussion when research completed (epic)', () => {
+      const r = computeNextPhase({ work_type: 'epic', phases: { research: { status: 'completed' } } });
       assert.strictEqual(r.next_phase, 'discussion');
     });
 
@@ -305,8 +305,8 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.phase_label, 'research (in-progress)');
     });
 
-    it('returns discussion when research concluded (feature)', () => {
-      const r = computeNextPhase({ work_type: 'feature', phases: { research: { status: 'concluded' } } });
+    it('returns discussion when research completed (feature)', () => {
+      const r = computeNextPhase({ work_type: 'feature', phases: { research: { status: 'completed' } } });
       assert.strictEqual(r.next_phase, 'discussion');
     });
 
@@ -321,14 +321,14 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.next_phase, 'done');
     });
 
-    it('epic: returns specification when all discussion items concluded', () => {
+    it('epic: returns specification when all discussion items completed', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
           discussion: {
             items: {
-              'auth': { status: 'concluded' },
-              'billing': { status: 'concluded' },
+              'auth': { status: 'completed' },
+              'billing': { status: 'completed' },
             },
           },
         },
@@ -337,13 +337,13 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.phase_label, 'ready for specification');
     });
 
-    it('epic: returns discussion in-progress when some items not concluded', () => {
+    it('epic: returns discussion in-progress when some items not completed', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
           discussion: {
             items: {
-              'auth': { status: 'concluded' },
+              'auth': { status: 'completed' },
               'billing': { status: 'in-progress' },
             },
           },
@@ -353,12 +353,12 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.phase_label, 'discussion (in-progress)');
     });
 
-    it('epic: returns planning when all spec items concluded', () => {
+    it('epic: returns planning when all spec items completed', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
-          discussion: { items: { 'auth': { status: 'concluded' } } },
-          specification: { items: { 'auth-spec': { status: 'concluded' } } },
+          discussion: { items: { 'auth': { status: 'completed' } } },
+          specification: { items: { 'auth-spec': { status: 'completed' } } },
         },
       });
       assert.strictEqual(r.next_phase, 'planning');
@@ -368,7 +368,7 @@ describe('discovery-utils', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
-          discussion: { items: { 'auth': { status: 'concluded' }, 'billing': { status: 'in-progress' } } },
+          discussion: { items: { 'auth': { status: 'completed' }, 'billing': { status: 'in-progress' } } },
           specification: { items: { 'auth-spec': { status: 'in-progress' } } },
         },
       });
@@ -392,7 +392,7 @@ describe('discovery-utils', () => {
         phases: {
           research: {
             items: {
-              'exploration': { status: 'concluded' },
+              'exploration': { status: 'completed' },
               'architecture': { status: 'in-progress' },
             },
           },
@@ -402,13 +402,13 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.phase_label, 'research (in-progress)');
     });
 
-    it('epic: research concluded with items advances to discussion', () => {
+    it('epic: research completed with items advances to discussion', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
           research: {
             items: {
-              'exploration': { status: 'concluded' },
+              'exploration': { status: 'completed' },
             },
           },
         },
@@ -423,17 +423,17 @@ describe('discovery-utils', () => {
         phases: {
           discussion: {
             items: {
-              'auth': { status: 'concluded' },
+              'auth': { status: 'completed' },
               'billing': {},
             },
           },
         },
       });
-      // Only 'concluded' is present (billing has no status), so aggregation sees only concluded
+      // Only 'completed' is present (billing has no status), so aggregation sees only completed
       assert.strictEqual(r.next_phase, 'specification');
     });
 
-    it('epic: mixed concluded and completed items returns first status', () => {
+    it('epic: mixed completed and completed items returns first status', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {

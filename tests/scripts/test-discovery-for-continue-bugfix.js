@@ -19,7 +19,7 @@ describe('continue-bugfix discovery', () => {
 
   it('lists active bugfixes only', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
-    createManifest(dir, 'old', { work_type: 'bugfix', status: 'concluded' });
+    createManifest(dir, 'old', { work_type: 'bugfix', status: 'completed' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.bugfixes[0].name, 'crash');
@@ -36,9 +36,9 @@ describe('continue-bugfix discovery', () => {
     createManifest(dir, 'done', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        investigation: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -47,16 +47,16 @@ describe('continue-bugfix discovery', () => {
     assert.strictEqual(r.count, 0);
   });
 
-  it('includes concluded_phases', () => {
+  it('includes completed_phases', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'concluded' },
+        investigation: { status: 'completed' },
         specification: { status: 'in-progress' },
       },
     });
     const r = discover(dir);
-    assert.deepStrictEqual(r.bugfixes[0].concluded_phases, ['investigation']);
+    assert.deepStrictEqual(r.bugfixes[0].completed_phases, ['investigation']);
   });
 
   it('returns summary with count', () => {
@@ -66,18 +66,18 @@ describe('continue-bugfix discovery', () => {
     assert.strictEqual(r.summary, '2 active bugfix(es)');
   });
 
-  it('includes concluded bugfixes in separate array', () => {
-    createManifest(dir, 'done', { work_type: 'bugfix', status: 'concluded', phases: { review: { status: 'completed' } } });
+  it('includes completed bugfixes in separate array', () => {
+    createManifest(dir, 'done', { work_type: 'bugfix', status: 'completed', phases: { review: { status: 'completed' } } });
     createManifest(dir, 'active', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.concluded_count, 1);
-    assert.strictEqual(r.concluded[0].name, 'done');
-    assert.strictEqual(r.concluded[0].last_phase, 'review');
+    assert.strictEqual(r.completed_count, 1);
+    assert.strictEqual(r.completed[0].name, 'done');
+    assert.strictEqual(r.completed[0].last_phase, 'review');
   });
 
   it('includes cancelled bugfixes in separate array', () => {
-    createManifest(dir, 'stopped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { status: 'concluded' } } });
+    createManifest(dir, 'stopped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { status: 'completed' } } });
     const r = discover(dir);
     assert.strictEqual(r.cancelled_count, 1);
     assert.strictEqual(r.cancelled[0].name, 'stopped');
@@ -85,28 +85,28 @@ describe('continue-bugfix discovery', () => {
   });
 
   describe('edge cases', () => {
-    it('recognizes completed as concluded in concluded_phases', () => {
+    it('recognizes completed as completed in completed_phases', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          investigation: { status: 'concluded' },
-          specification: { status: 'concluded' },
-          planning: { status: 'concluded' },
+          investigation: { status: 'completed' },
+          specification: { status: 'completed' },
+          planning: { status: 'completed' },
           implementation: { status: 'completed' },
           review: { status: 'in-progress' },
         },
       });
       const r = discover(dir);
-      assert.ok(r.bugfixes[0].concluded_phases.includes('implementation'));
+      assert.ok(r.bugfixes[0].completed_phases.includes('implementation'));
     });
 
     it('bugfix in review in-progress is listed (not filtered as done)', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          investigation: { status: 'concluded' },
-          specification: { status: 'concluded' },
-          planning: { status: 'concluded' },
+          investigation: { status: 'completed' },
+          specification: { status: 'completed' },
+          planning: { status: 'completed' },
           implementation: { status: 'completed' },
           review: { status: 'in-progress' },
         },
@@ -116,16 +116,16 @@ describe('continue-bugfix discovery', () => {
       assert.strictEqual(r.bugfixes[0].next_phase, 'review');
     });
 
-    it('research is not in bugfix concluded_phases even if present', () => {
+    it('research is not in bugfix completed_phases even if present', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          research: { status: 'concluded' },
+          research: { status: 'completed' },
           investigation: { status: 'in-progress' },
         },
       });
       const r = discover(dir);
-      assert.ok(!r.bugfixes[0].concluded_phases.includes('research'));
+      assert.ok(!r.bugfixes[0].completed_phases.includes('research'));
     });
   });
 });

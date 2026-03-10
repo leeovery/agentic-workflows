@@ -20,7 +20,7 @@ describe('workflow-discussion-entry discovery', () => {
   it('detects research files', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { status: 'concluded' } },
+      phases: { research: { status: 'completed' } },
     });
     createFile(dir, '.workflows/v1/research/market-analysis.md', '# Market Analysis');
     const r = discover(dir);
@@ -51,7 +51,7 @@ describe('workflow-discussion-entry discovery', () => {
         discussion: {
           status: 'in-progress',
           items: {
-            'auth-design': { status: 'concluded' },
+            'auth-design': { status: 'completed' },
             'data-model': { status: 'in-progress' },
           },
         },
@@ -59,7 +59,7 @@ describe('workflow-discussion-entry discovery', () => {
     });
     const r = discover(dir);
     assert.strictEqual(r.discussions.files.length, 2);
-    assert.strictEqual(r.discussions.counts.concluded, 1);
+    assert.strictEqual(r.discussions.counts.completed, 1);
     assert.strictEqual(r.discussions.counts.in_progress, 1);
   });
 
@@ -67,7 +67,7 @@ describe('workflow-discussion-entry discovery', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: { status: 'concluded' },
+        research: { status: 'completed' },
         discussion: { status: 'in-progress' },
       },
     });
@@ -86,7 +86,7 @@ describe('workflow-discussion-entry discovery', () => {
       work_type: 'epic',
       phases: {
         research: {
-          status: 'concluded',
+          status: 'completed',
           analysis_cache: { checksum, generated: '2026-01-01', files: ['notes.md'] },
         },
       },
@@ -103,7 +103,7 @@ describe('workflow-discussion-entry discovery', () => {
       work_type: 'epic',
       phases: {
         research: {
-          status: 'concluded',
+          status: 'completed',
           analysis_cache: { checksum: 'old-checksum', generated: '2026-01-01', files: ['notes.md'] },
         },
       },
@@ -139,7 +139,7 @@ describe('workflow-discussion-entry discovery', () => {
       work_type: 'epic',
       phases: {
         research: {
-          status: 'concluded',
+          status: 'completed',
           analysis_cache: { checksum, generated: '2026-01-01', files: ['notes.md'] },
         },
       },
@@ -152,7 +152,7 @@ describe('workflow-discussion-entry discovery', () => {
   });
 
   it('computes research checksum', () => {
-    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'concluded' } } });
+    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { status: 'completed' } } });
     createFile(dir, '.workflows/v1/research/a.md', 'content a');
     createFile(dir, '.workflows/v1/research/b.md', 'content b');
     const r = discover(dir);

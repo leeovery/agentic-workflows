@@ -22,7 +22,7 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
+        discussion: { status: 'completed' },
         specification: { status: 'in-progress' },
       },
     });
@@ -30,16 +30,16 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.discussions.length, 1);
     assert.strictEqual(r.discussions[0].has_individual_spec, true);
     assert.strictEqual(r.discussions[0].spec_status, 'in-progress');
-    assert.strictEqual(r.current_state.concluded_count, 1);
+    assert.strictEqual(r.current_state.completed_count, 1);
   });
 
   it('finds specifications with sources', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
+        discussion: { status: 'completed' },
         specification: {
-          status: 'concluded',
+          status: 'completed',
           type: 'feature',
           sources: { 'auth': { status: 'incorporated' } },
         },
@@ -48,10 +48,10 @@ describe('workflow-specification-entry discovery', () => {
     createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
     const r = discover(dir);
     assert.strictEqual(r.specifications.length, 1);
-    assert.strictEqual(r.specifications[0].status, 'concluded');
+    assert.strictEqual(r.specifications[0].status, 'completed');
     assert.strictEqual(r.specifications[0].sources.length, 1);
     assert.strictEqual(r.specifications[0].sources[0].name, 'auth');
-    assert.strictEqual(r.specifications[0].sources[0].discussion_status, 'concluded');
+    assert.strictEqual(r.specifications[0].sources[0].discussion_status, 'completed');
   });
 
   it('skips superseded specifications', () => {
@@ -73,7 +73,7 @@ describe('workflow-specification-entry discovery', () => {
         discussion: {
           status: 'in-progress',
           items: {
-            'auth-design': { status: 'concluded' },
+            'auth-design': { status: 'completed' },
             'data-model': { status: 'in-progress' },
           },
         },
@@ -101,14 +101,14 @@ describe('workflow-specification-entry discovery', () => {
       phases: {
         discussion: {
           items: {
-            'auth-design': { status: 'concluded' },
-            'data-model': { status: 'concluded' },
+            'auth-design': { status: 'completed' },
+            'data-model': { status: 'completed' },
           },
         },
         specification: {
           items: {
             'auth-spec': {
-              status: 'concluded',
+              status: 'completed',
               type: 'feature',
               sources: { 'auth-design': { status: 'incorporated' } },
             },
@@ -126,11 +126,11 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.specifications.length, 2);
     const authSpec = r.specifications.find(s => s.name === 'auth-spec');
     assert.strictEqual(authSpec.work_unit, 'v1');
-    assert.strictEqual(authSpec.status, 'concluded');
+    assert.strictEqual(authSpec.status, 'completed');
     assert.strictEqual(authSpec.work_type, 'epic');
     assert.strictEqual(authSpec.sources.length, 1);
     assert.strictEqual(authSpec.sources[0].name, 'auth-design');
-    assert.strictEqual(authSpec.sources[0].discussion_status, 'concluded');
+    assert.strictEqual(authSpec.sources[0].discussion_status, 'completed');
     const dataSpec = r.specifications.find(s => s.name === 'data-spec');
     assert.strictEqual(dataSpec.status, 'in-progress');
   });
@@ -157,7 +157,7 @@ describe('workflow-specification-entry discovery', () => {
   it('computes discussion counts correctly', () => {
     createManifest(dir, 'a', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     createManifest(dir, 'b', {
       work_type: 'feature',
@@ -165,11 +165,11 @@ describe('workflow-specification-entry discovery', () => {
     });
     createManifest(dir, 'c', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     const r = discover(dir);
     assert.strictEqual(r.current_state.discussion_count, 3);
-    assert.strictEqual(r.current_state.concluded_count, 2);
+    assert.strictEqual(r.current_state.completed_count, 2);
     assert.strictEqual(r.current_state.in_progress_count, 1);
   });
 
@@ -180,7 +180,7 @@ describe('workflow-specification-entry discovery', () => {
       work_type: 'feature',
       phases: {
         discussion: {
-          status: 'concluded',
+          status: 'completed',
           analysis_cache: { checksum: null, generated: '2026-01-01' },
         },
       },
@@ -194,7 +194,7 @@ describe('workflow-specification-entry discovery', () => {
       work_type: 'feature',
       phases: {
         discussion: {
-          status: 'concluded',
+          status: 'completed',
           analysis_cache: { checksum, generated: '2026-01-01' },
         },
       },
@@ -219,7 +219,7 @@ describe('workflow-specification-entry discovery', () => {
   it('computes discussions checksum', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth discussion');
     const r = discover(dir);
@@ -229,7 +229,7 @@ describe('workflow-specification-entry discovery', () => {
   it('returns null checksum when no discussion files', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     const r = discover(dir);
     assert.strictEqual(r.current_state.discussions_checksum, null);
@@ -251,7 +251,7 @@ describe('workflow-specification-entry discovery', () => {
   it('feature without spec shows has_individual_spec false', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     const r = discover(dir);
     assert.strictEqual(r.discussions[0].has_individual_spec, false);
@@ -261,7 +261,7 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
+        discussion: { status: 'completed' },
         specification: { status: 'in-progress' },
       },
     });
@@ -276,7 +276,7 @@ describe('workflow-specification-entry discovery', () => {
       work_type: 'feature',
       phases: {
         discussion: {
-          status: 'concluded',
+          status: 'completed',
           analysis_cache: { checksum: 'stale-hash', generated: '2026-01-01' },
         },
       },
@@ -290,7 +290,7 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'concluded' },
+        investigation: { status: 'completed' },
         specification: { status: 'in-progress' },
       },
     });

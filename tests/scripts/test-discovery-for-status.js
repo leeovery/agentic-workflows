@@ -21,9 +21,9 @@ describe('status discovery', () => {
       work_type: 'feature',
       description: 'Auth flow',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded', type: 'feature' },
-        planning: { status: 'concluded', format: 'local-markdown' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed', type: 'feature' },
+        planning: { status: 'completed', format: 'local-markdown' },
         implementation: {
           status: 'in-progress',
           current_phase: 1,
@@ -38,8 +38,8 @@ describe('status discovery', () => {
     assert.strictEqual(r.state.has_any_work, true);
     const u = r.work_units[0];
     assert.strictEqual(u.name, 'auth');
-    assert.strictEqual(u.discussion.status, 'concluded');
-    assert.strictEqual(u.specification.status, 'concluded');
+    assert.strictEqual(u.discussion.status, 'completed');
+    assert.strictEqual(u.specification.status, 'completed');
     assert.strictEqual(u.specification.type, 'feature');
     assert.strictEqual(u.planning.format, 'local-markdown');
     assert.strictEqual(u.implementation.status, 'in-progress');
@@ -62,7 +62,7 @@ describe('status discovery', () => {
   it('counts research files', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { status: 'concluded' } },
+      phases: { research: { status: 'completed' } },
     });
     createFile(dir, '.workflows/v1/research/market.md', '# Market');
     createFile(dir, '.workflows/v1/research/tech.md', '# Tech');
@@ -75,7 +75,7 @@ describe('status discovery', () => {
   it('counts discussion statuses', () => {
     createManifest(dir, 'a', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     createManifest(dir, 'b', {
       work_type: 'feature',
@@ -84,18 +84,18 @@ describe('status discovery', () => {
 
     const r = discover(dir);
     assert.strictEqual(r.counts.discussion.total, 2);
-    assert.strictEqual(r.counts.discussion.concluded, 1);
+    assert.strictEqual(r.counts.discussion.completed, 1);
     assert.strictEqual(r.counts.discussion.in_progress, 1);
   });
 
   it('separates feature and cross-cutting specs', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { specification: { status: 'concluded', type: 'feature' } },
+      phases: { specification: { status: 'completed', type: 'feature' } },
     });
     createManifest(dir, 'caching', {
       work_type: 'feature',
-      phases: { specification: { status: 'concluded', type: 'cross-cutting' } },
+      phases: { specification: { status: 'completed', type: 'cross-cutting' } },
     });
 
     const r = discover(dir);
@@ -118,7 +118,7 @@ describe('status discovery', () => {
       work_type: 'feature',
       phases: {
         planning: {
-          status: 'concluded',
+          status: 'completed',
           format: 'local-markdown',
           external_dependencies: {
             core: { state: 'unresolved', task_id: 'core-1' },
@@ -136,7 +136,7 @@ describe('status discovery', () => {
       work_type: 'feature',
       phases: {
         specification: {
-          status: 'concluded',
+          status: 'completed',
           type: 'feature',
           sources: { 'auth-discussion': { status: 'incorporated' } },
         },
@@ -163,10 +163,10 @@ describe('status discovery', () => {
   it('handles investigation status for bugfix', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
-      phases: { investigation: { status: 'concluded' } },
+      phases: { investigation: { status: 'completed' } },
     });
     const r = discover(dir);
-    assert.strictEqual(r.work_units[0].investigation.status, 'concluded');
+    assert.strictEqual(r.work_units[0].investigation.status, 'completed');
   });
 
   it('tracks review status', () => {
@@ -183,7 +183,7 @@ describe('status discovery', () => {
       work_type: 'feature',
       phases: {
         specification: {
-          status: 'concluded',
+          status: 'completed',
           type: 'feature',
           sources: [{ name: 'auth-disc', status: 'incorporated' }],
         },
@@ -238,7 +238,7 @@ describe('status discovery', () => {
       work_type: 'epic',
       phases: {
         research: {
-          items: { 'exploration': { status: 'concluded' } },
+          items: { 'exploration': { status: 'completed' } },
         },
       },
     });
@@ -276,23 +276,23 @@ describe('status discovery', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: { status: 'concluded' },
+        research: { status: 'completed' },
         discussion: {
           items: {
-            'auth': { status: 'concluded' },
+            'auth': { status: 'completed' },
             'billing': { status: 'in-progress' },
-            'data': { status: 'concluded' },
+            'data': { status: 'completed' },
           },
         },
         specification: {
           items: {
-            'auth-spec': { status: 'concluded', type: 'feature' },
+            'auth-spec': { status: 'completed', type: 'feature' },
             'billing-spec': { status: 'in-progress', type: 'feature' },
           },
         },
         planning: {
           items: {
-            'auth-spec': { status: 'concluded', format: 'local-markdown' },
+            'auth-spec': { status: 'completed', format: 'local-markdown' },
           },
         },
         implementation: {
@@ -306,25 +306,25 @@ describe('status discovery', () => {
     const r = discover(dir);
     const wu = r.work_units[0];
     assert.strictEqual(wu.work_type, 'epic');
-    // Discussion: 3 items, 2 concluded + 1 in-progress → aggregate 'in-progress'
+    // Discussion: 3 items, 2 completed + 1 in-progress → aggregate 'in-progress'
     assert.strictEqual(wu.discussion.status, 'in-progress');
     assert.strictEqual(wu.discussion.item_count, 3);
-    // Specification: 2 items, 1 concluded + 1 in-progress → aggregate 'in-progress'
+    // Specification: 2 items, 1 completed + 1 in-progress → aggregate 'in-progress'
     assert.strictEqual(wu.specification.status, 'in-progress');
     assert.strictEqual(wu.specification.item_count, 2);
-    // Planning: 1 item, concluded
-    assert.strictEqual(wu.planning.status, 'concluded');
+    // Planning: 1 item, completed
+    assert.strictEqual(wu.planning.status, 'completed');
     assert.strictEqual(wu.planning.item_count, 1);
     // Implementation: 1 item, completed
     assert.strictEqual(wu.implementation.status, 'completed');
     assert.strictEqual(wu.implementation.completed_tasks, 2);
     // Global counts
     assert.strictEqual(r.counts.discussion.total, 3);
-    assert.strictEqual(r.counts.discussion.concluded, 2);
+    assert.strictEqual(r.counts.discussion.completed, 2);
     assert.strictEqual(r.counts.discussion.in_progress, 1);
     assert.strictEqual(r.counts.specification.active, 2);
     assert.strictEqual(r.counts.planning.total, 1);
-    assert.strictEqual(r.counts.planning.concluded, 1);
+    assert.strictEqual(r.counts.planning.completed, 1);
     assert.strictEqual(r.counts.implementation.total, 1);
     assert.strictEqual(r.counts.implementation.completed, 1);
   });

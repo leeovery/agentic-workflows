@@ -22,7 +22,7 @@ describe('continue-epic discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
-    createManifest(dir, 'old', { work_type: 'epic', status: 'concluded' });
+    createManifest(dir, 'old', { work_type: 'epic', status: 'completed' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.epics[0].name, 'v1');
@@ -39,7 +39,7 @@ describe('continue-epic discovery', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { exploration: { status: 'concluded' } } },
+        research: { items: { exploration: { status: 'completed' } } },
         discussion: { items: { auth: { status: 'in-progress' } } },
         specification: { items: { auth: { status: 'in-progress' } } },
       },
@@ -55,28 +55,28 @@ describe('continue-epic discovery', () => {
     assert.strictEqual(r.summary, '2 active epic(s)');
   });
 
-  it('includes concluded epics in list mode', () => {
-    createManifest(dir, 'done', { work_type: 'epic', status: 'concluded', phases: { review: { items: { auth: { status: 'completed' } } } } });
+  it('includes completed epics in list mode', () => {
+    createManifest(dir, 'done', { work_type: 'epic', status: 'completed', phases: { review: { items: { auth: { status: 'completed' } } } } });
     createManifest(dir, 'active', { work_type: 'epic', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.concluded_count, 1);
-    assert.strictEqual(r.concluded[0].name, 'done');
-    assert.strictEqual(r.concluded[0].last_phase, 'review');
+    assert.strictEqual(r.completed_count, 1);
+    assert.strictEqual(r.completed[0].name, 'done');
+    assert.strictEqual(r.completed[0].last_phase, 'review');
   });
 
   it('includes cancelled epics in list mode', () => {
-    createManifest(dir, 'stopped', { work_type: 'epic', status: 'cancelled', phases: { discussion: { items: { auth: { status: 'concluded' } } } } });
+    createManifest(dir, 'stopped', { work_type: 'epic', status: 'cancelled', phases: { discussion: { items: { auth: { status: 'completed' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.cancelled_count, 1);
     assert.strictEqual(r.cancelled[0].name, 'stopped');
   });
 
-  it('does not include concluded/cancelled in detail mode', () => {
-    createManifest(dir, 'done', { work_type: 'epic', status: 'concluded' });
+  it('does not include completed/cancelled in detail mode', () => {
+    createManifest(dir, 'done', { work_type: 'epic', status: 'completed' });
     const r = discover(dir, 'done');
     assert.strictEqual(r.count, 0);
-    assert.strictEqual(r.concluded.length, 0);
+    assert.strictEqual(r.completed.length, 0);
   });
 
   describe('epic detail', () => {
@@ -86,7 +86,7 @@ describe('continue-epic discovery', () => {
         phases: {
           discussion: {
             items: {
-              auth: { status: 'concluded' },
+              auth: { status: 'completed' },
               payments: { status: 'in-progress' },
             },
           },
@@ -112,17 +112,17 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.in_progress[0].phase, 'discussion');
     });
 
-    it('tracks concluded items', () => {
+    it('tracks completed items', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'concluded' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
         },
       });
       const r = discover(dir);
       const d = r.epics[0].detail;
-      assert.strictEqual(d.concluded.length, 1);
-      assert.strictEqual(d.concluded[0].name, 'auth');
+      assert.strictEqual(d.completed.length, 1);
+      assert.strictEqual(d.completed[0].name, 'auth');
     });
 
     it('detects unaccounted discussions', () => {
@@ -131,8 +131,8 @@ describe('continue-epic discovery', () => {
         phases: {
           discussion: {
             items: {
-              auth: { status: 'concluded' },
-              payments: { status: 'concluded' },
+              auth: { status: 'completed' },
+              payments: { status: 'completed' },
             },
           },
           specification: {
@@ -172,11 +172,11 @@ describe('continue-epic discovery', () => {
       assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
     });
 
-    it('computes next-phase-ready: spec concluded no plan', () => {
+    it('computes next-phase-ready: spec completed no plan', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          specification: { items: { auth: { status: 'concluded' } } },
+          specification: { items: { auth: { status: 'completed' } } },
         },
       });
       const r = discover(dir);
@@ -185,11 +185,11 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.next_phase_ready[0].action, 'start_planning');
     });
 
-    it('computes next-phase-ready: plan concluded no impl', () => {
+    it('computes next-phase-ready: plan completed no impl', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          planning: { items: { auth: { status: 'concluded' } } },
+          planning: { items: { auth: { status: 'completed' } } },
         },
       });
       const r = discover(dir);
@@ -211,7 +211,7 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          specification: { items: { auth: { status: 'concluded' } } },
+          specification: { items: { auth: { status: 'completed' } } },
           planning: { items: { auth: { status: 'in-progress' } } },
         },
       });
@@ -223,10 +223,10 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          research: { items: { 'market-analysis': { status: 'concluded' } } },
-          discussion: { items: { auth: { status: 'concluded' } } },
-          specification: { items: { auth: { status: 'concluded' } } },
-          planning: { items: { auth: { status: 'concluded' } } },
+          research: { items: { 'market-analysis': { status: 'completed' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: { items: { auth: { status: 'completed' } } },
+          planning: { items: { auth: { status: 'completed' } } },
           implementation: { items: { auth: { status: 'completed' } } },
         },
       });
@@ -240,7 +240,7 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(g.can_start_review, true);
     });
 
-    it('gating is false when no concluded items', () => {
+    it('gating is false when no completed items', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -260,7 +260,7 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'concluded' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
         },
       });
       const r = discover(dir);
@@ -298,7 +298,7 @@ describe('continue-epic discovery', () => {
       const d = r.epics[0].detail;
       assert.deepStrictEqual(d.phases, {});
       assert.strictEqual(d.in_progress.length, 0);
-      assert.strictEqual(d.concluded.length, 0);
+      assert.strictEqual(d.completed.length, 0);
     });
   });
 
@@ -307,7 +307,7 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'concluded' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
           specification: {
             items: {
               'auth-spec': {
@@ -326,7 +326,7 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'concluded' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
           specification: {
             items: {
               'auth-spec': { status: 'in-progress', sources: [] },
@@ -342,7 +342,7 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'concluded' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
           specification: {
             items: {
               'auth-spec': { status: 'in-progress' },
@@ -360,13 +360,13 @@ describe('continue-epic discovery', () => {
         phases: {
           specification: {
             items: {
-              auth: { status: 'concluded' },
-              billing: { status: 'concluded' },
+              auth: { status: 'completed' },
+              billing: { status: 'completed' },
             },
           },
           planning: {
             items: {
-              payments: { status: 'concluded' },
+              payments: { status: 'completed' },
             },
           },
           implementation: {
@@ -389,8 +389,8 @@ describe('continue-epic discovery', () => {
         phases: {
           discussion: {
             items: {
-              auth: { status: 'concluded' },
-              billing: { status: 'concluded' },
+              auth: { status: 'completed' },
+              billing: { status: 'completed' },
             },
           },
           specification: {
@@ -416,7 +416,7 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(g.can_start_review, false);
     });
 
-    it('concluded discussion that is in-progress is not both reopened and unaccounted', () => {
+    it('completed discussion that is in-progress is not both reopened and unaccounted', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -488,8 +488,8 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'concluded' } } },
-          specification: { items: { auth: { status: 'concluded' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: { items: { auth: { status: 'completed' } } },
         },
       });
       createManifest(dir, 'v2', {
@@ -499,7 +499,7 @@ describe('continue-epic discovery', () => {
       const r = discover(dir, 'v1');
       assert.strictEqual(r.count, 1);
       const d = r.epics[0].detail;
-      assert.strictEqual(d.concluded.length, 2);
+      assert.strictEqual(d.completed.length, 2);
       assert.strictEqual(d.gating.can_start_specification, true);
       assert.strictEqual(d.gating.can_start_planning, true);
     });

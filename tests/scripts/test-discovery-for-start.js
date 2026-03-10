@@ -35,7 +35,7 @@ describe('workflow-start discovery', () => {
   it('computes next_phase for feature pipeline', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     const r = discover(dir);
     assert.strictEqual(r.features.work_units[0].next_phase, 'specification');
@@ -56,9 +56,9 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'done-feature', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -69,7 +69,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('skips archived work units', () => {
-    createManifest(dir, 'old', { work_type: 'feature', status: 'concluded' });
+    createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
     createManifest(dir, 'active', { work_type: 'feature' });
     const r = discover(dir);
     assert.strictEqual(r.state.feature_count, 1);
@@ -78,7 +78,7 @@ describe('workflow-start discovery', () => {
 
   it('handles multiple features', () => {
     createManifest(dir, 'a', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
-    createManifest(dir, 'b', { work_type: 'feature', phases: { specification: { status: 'concluded' } } });
+    createManifest(dir, 'b', { work_type: 'feature', phases: { specification: { status: 'completed' } } });
     const r = discover(dir);
     assert.strictEqual(r.state.feature_count, 2);
     assert.strictEqual(r.features.work_units.length, 2);
@@ -88,7 +88,7 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { exploration: { status: 'concluded' } } },
+        research: { items: { exploration: { status: 'completed' } } },
         discussion: { items: { auth: { status: 'in-progress' } } },
         specification: { items: { auth: { status: 'in-progress' } } },
       },
@@ -110,7 +110,7 @@ describe('workflow-start discovery', () => {
     });
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
-      phases: { investigation: { status: 'concluded' } },
+      phases: { investigation: { status: 'completed' } },
     });
     const r = discover(dir);
     assert.strictEqual(r.features.work_units[0].phase_label, 'discussion (in-progress)');
@@ -125,9 +125,9 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'done-feat', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -137,14 +137,14 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.features.work_units[0].name, 'active-feat');
   });
 
-  it('has_any_work is false when only concluded and done exist', () => {
-    createManifest(dir, 'archived', { work_type: 'feature', status: 'concluded' });
+  it('has_any_work is false when only completed and done exist', () => {
+    createManifest(dir, 'archived', { work_type: 'feature', status: 'completed' });
     createManifest(dir, 'done', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        investigation: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -162,28 +162,28 @@ describe('workflow-start discovery', () => {
     assert.deepStrictEqual(r.epics.work_units[0].active_phases, ['research']);
   });
 
-  it('includes concluded work units in separate array', () => {
-    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'concluded', phases: { review: { status: 'completed' } } });
+  it('includes completed work units in separate array', () => {
+    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { status: 'completed' } } });
     createManifest(dir, 'active-feat', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
     const r = discover(dir);
-    assert.strictEqual(r.concluded_count, 1);
-    assert.strictEqual(r.concluded[0].name, 'done-feat');
-    assert.strictEqual(r.concluded[0].work_type, 'feature');
-    assert.strictEqual(r.concluded[0].last_phase, 'review');
+    assert.strictEqual(r.completed_count, 1);
+    assert.strictEqual(r.completed[0].name, 'done-feat');
+    assert.strictEqual(r.completed[0].work_type, 'feature');
+    assert.strictEqual(r.completed[0].last_phase, 'review');
   });
 
   it('includes cancelled work units in separate array', () => {
-    createManifest(dir, 'cancelled-bug', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { status: 'concluded' } } });
+    createManifest(dir, 'cancelled-bug', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { status: 'completed' } } });
     const r = discover(dir);
     assert.strictEqual(r.cancelled_count, 1);
     assert.strictEqual(r.cancelled[0].name, 'cancelled-bug');
     assert.strictEqual(r.cancelled[0].last_phase, 'investigation');
   });
 
-  it('concluded and cancelled counts are zero when none exist', () => {
+  it('completed and cancelled counts are zero when none exist', () => {
     createManifest(dir, 'active', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
     const r = discover(dir);
-    assert.strictEqual(r.concluded_count, 0);
+    assert.strictEqual(r.completed_count, 0);
     assert.strictEqual(r.cancelled_count, 0);
   });
 
@@ -191,9 +191,9 @@ describe('workflow-start discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'in-progress' },
       },

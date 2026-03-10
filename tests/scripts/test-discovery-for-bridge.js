@@ -18,19 +18,19 @@ describe('workflow-bridge discovery', () => {
   it('returns basic feature state', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     const r = discover(dir, 'auth');
     assert.strictEqual(r.work_unit, 'auth');
     assert.strictEqual(r.work_type, 'feature');
     assert.strictEqual(r.next_phase, 'specification');
-    assert.strictEqual(r.phases.discussion.status, 'concluded');
+    assert.strictEqual(r.phases.discussion.status, 'completed');
   });
 
   it('detects file existence', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'concluded' } },
+      phases: { discussion: { status: 'completed' } },
     });
     createFile(dir, '.workflows/auth/discussion/auth.md', '# Discussion');
     const r = discover(dir, 'auth');
@@ -42,9 +42,9 @@ describe('workflow-bridge discovery', () => {
     createManifest(dir, 'done', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -59,7 +59,7 @@ describe('workflow-bridge discovery', () => {
       phases: {
         discussion: {
           status: 'in-progress',
-          items: { 'auth-design': { status: 'concluded' }, 'data-model': { status: 'in-progress' } },
+          items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'in-progress' } },
         },
       },
     });
@@ -71,7 +71,7 @@ describe('workflow-bridge discovery', () => {
   it('computes bugfix pipeline correctly', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
-      phases: { investigation: { status: 'concluded' } },
+      phases: { investigation: { status: 'completed' } },
     });
     const r = discover(dir, 'crash');
     assert.strictEqual(r.next_phase, 'specification');
@@ -81,9 +81,9 @@ describe('workflow-bridge discovery', () => {
     createManifest(dir, 'full', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -144,7 +144,7 @@ describe('workflow-bridge discovery', () => {
       phases: {
         research: {
           items: {
-            'exploration': { status: 'concluded' },
+            'exploration': { status: 'completed' },
             'architecture': { status: 'in-progress' },
           },
         },

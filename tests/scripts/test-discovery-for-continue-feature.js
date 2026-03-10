@@ -19,7 +19,7 @@ describe('continue-feature discovery', () => {
 
   it('lists active features only', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
-    createManifest(dir, 'old', { work_type: 'feature', status: 'concluded' });
+    createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.features[0].name, 'auth');
@@ -38,9 +38,9 @@ describe('continue-feature discovery', () => {
     createManifest(dir, 'done', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
-        planning: { status: 'concluded' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
+        planning: { status: 'completed' },
         implementation: { status: 'completed' },
         review: { status: 'completed' },
       },
@@ -49,31 +49,31 @@ describe('continue-feature discovery', () => {
     assert.strictEqual(r.count, 0);
   });
 
-  it('includes phase_label and concluded_phases', () => {
+  it('includes phase_label and completed_phases', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'concluded' },
+        discussion: { status: 'completed' },
         specification: { status: 'in-progress' },
       },
     });
     const r = discover(dir);
     assert.strictEqual(r.features[0].phase_label, 'specification (in-progress)');
-    assert.deepStrictEqual(r.features[0].concluded_phases, ['discussion']);
+    assert.deepStrictEqual(r.features[0].completed_phases, ['discussion']);
   });
 
-  it('returns multiple concluded phases', () => {
+  it('returns multiple completed phases', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        research: { status: 'concluded' },
-        discussion: { status: 'concluded' },
-        specification: { status: 'concluded' },
+        research: { status: 'completed' },
+        discussion: { status: 'completed' },
+        specification: { status: 'completed' },
         planning: { status: 'in-progress' },
       },
     });
     const r = discover(dir);
-    assert.deepStrictEqual(r.features[0].concluded_phases, ['research', 'discussion', 'specification']);
+    assert.deepStrictEqual(r.features[0].completed_phases, ['research', 'discussion', 'specification']);
   });
 
   it('returns summary with count', () => {
@@ -83,53 +83,53 @@ describe('continue-feature discovery', () => {
     assert.strictEqual(r.summary, '2 active feature(s)');
   });
 
-  it('includes concluded features in separate array', () => {
-    createManifest(dir, 'done', { work_type: 'feature', status: 'concluded', phases: { review: { status: 'completed' } } });
+  it('includes completed features in separate array', () => {
+    createManifest(dir, 'done', { work_type: 'feature', status: 'completed', phases: { review: { status: 'completed' } } });
     createManifest(dir, 'active', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
-    assert.strictEqual(r.concluded_count, 1);
-    assert.strictEqual(r.concluded[0].name, 'done');
-    assert.strictEqual(r.concluded[0].last_phase, 'review');
+    assert.strictEqual(r.completed_count, 1);
+    assert.strictEqual(r.completed[0].name, 'done');
+    assert.strictEqual(r.completed[0].last_phase, 'review');
   });
 
   it('includes cancelled features in separate array', () => {
-    createManifest(dir, 'stopped', { work_type: 'feature', status: 'cancelled', phases: { specification: { status: 'concluded' } } });
+    createManifest(dir, 'stopped', { work_type: 'feature', status: 'cancelled', phases: { specification: { status: 'completed' } } });
     const r = discover(dir);
     assert.strictEqual(r.cancelled_count, 1);
     assert.strictEqual(r.cancelled[0].name, 'stopped');
     assert.strictEqual(r.cancelled[0].last_phase, 'specification');
   });
 
-  it('excludes non-feature concluded work units', () => {
-    createManifest(dir, 'done-bug', { work_type: 'bugfix', status: 'concluded', phases: { review: { status: 'completed' } } });
+  it('excludes non-feature completed work units', () => {
+    createManifest(dir, 'done-bug', { work_type: 'bugfix', status: 'completed', phases: { review: { status: 'completed' } } });
     const r = discover(dir);
-    assert.strictEqual(r.concluded_count, 0);
+    assert.strictEqual(r.completed_count, 0);
   });
 
   describe('edge cases', () => {
-    it('recognizes completed as concluded in concluded_phases', () => {
+    it('recognizes completed as completed in completed_phases', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
         phases: {
-          discussion: { status: 'concluded' },
-          specification: { status: 'concluded' },
-          planning: { status: 'concluded' },
+          discussion: { status: 'completed' },
+          specification: { status: 'completed' },
+          planning: { status: 'completed' },
           implementation: { status: 'completed' },
           review: { status: 'in-progress' },
         },
       });
       const r = discover(dir);
-      assert.ok(r.features[0].concluded_phases.includes('implementation'));
+      assert.ok(r.features[0].completed_phases.includes('implementation'));
     });
 
     it('feature in review in-progress is listed (not filtered as done)', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
         phases: {
-          discussion: { status: 'concluded' },
-          specification: { status: 'concluded' },
-          planning: { status: 'concluded' },
+          discussion: { status: 'completed' },
+          specification: { status: 'completed' },
+          planning: { status: 'completed' },
           implementation: { status: 'completed' },
           review: { status: 'in-progress' },
         },
@@ -139,13 +139,13 @@ describe('continue-feature discovery', () => {
       assert.strictEqual(r.features[0].next_phase, 'review');
     });
 
-    it('feature with only research concluded has it in concluded_phases', () => {
+    it('feature with only research completed has it in completed_phases', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
-        phases: { research: { status: 'concluded' } },
+        phases: { research: { status: 'completed' } },
       });
       const r = discover(dir);
-      assert.deepStrictEqual(r.features[0].concluded_phases, ['research']);
+      assert.deepStrictEqual(r.features[0].completed_phases, ['research']);
     });
   });
 });

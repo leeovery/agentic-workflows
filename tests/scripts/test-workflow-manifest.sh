@@ -329,10 +329,10 @@ echo -e "${YELLOW}Test: set phase-level value for feature${NC}"
 setup_fixture
 run_cli init feat-set --work-type feature --description "Set" >/dev/null 2>&1
 run_cli init-phase feat-set --phase discussion --topic feat-set >/dev/null 2>&1
-run_cli set feat-set --phase discussion --topic feat-set status concluded >/dev/null 2>&1
+run_cli set feat-set --phase discussion --topic feat-set status completed >/dev/null 2>&1
 output=$(run_cli_stdout get feat-set --phase discussion --topic feat-set status)
 
-assert_equals "$output" "concluded" "Feature phase-level set works (flat routing)"
+assert_equals "$output" "completed" "Feature phase-level set works (flat routing)"
 
 echo ""
 
@@ -342,10 +342,10 @@ echo -e "${YELLOW}Test: set phase-level value for epic${NC}"
 setup_fixture
 run_cli init epic-set --work-type epic --description "Set" >/dev/null 2>&1
 run_cli init-phase epic-set --phase discussion --topic my-topic >/dev/null 2>&1
-run_cli set epic-set --phase discussion --topic my-topic status concluded >/dev/null 2>&1
+run_cli set epic-set --phase discussion --topic my-topic status completed >/dev/null 2>&1
 output=$(run_cli_stdout get epic-set --phase discussion --topic my-topic status)
 
-assert_equals "$output" "concluded" "Epic phase-level set routes through items"
+assert_equals "$output" "completed" "Epic phase-level set routes through items"
 
 echo ""
 
@@ -379,10 +379,10 @@ echo -e "${YELLOW}Test: set --phase research with --topic for epic uses items${N
 setup_fixture
 run_cli init topicful2 --work-type epic --description "Topic research epic" >/dev/null 2>&1
 run_cli init-phase topicful2 --phase research --topic exploration >/dev/null 2>&1
-run_cli set topicful2 --phase research --topic exploration status concluded >/dev/null 2>&1
+run_cli set topicful2 --phase research --topic exploration status completed >/dev/null 2>&1
 output=$(run_cli_stdout get topicful2 --phase research --topic exploration status)
 
-assert_equals "$output" "concluded" "Epic research with topic uses items path"
+assert_equals "$output" "completed" "Epic research with topic uses items path"
 
 echo ""
 
@@ -391,10 +391,10 @@ echo ""
 echo -e "${YELLOW}Test: get --phase without --topic returns whole phase object${NC}"
 setup_fixture
 run_cli init topicful3 --work-type feature --description "Topic get" >/dev/null 2>&1
-run_cli set topicful3 --phase research --topic exploration status concluded >/dev/null 2>&1
+run_cli set topicful3 --phase research --topic exploration status completed >/dev/null 2>&1
 output=$(run_cli_stdout get topicful3 --phase research)
 
-assert_contains "$output" '"status": "concluded"' "Get phase without topic returns phase object"
+assert_contains "$output" '"status": "completed"' "Get phase without topic returns phase object"
 
 echo ""
 
@@ -427,7 +427,7 @@ echo ""
 echo -e "${YELLOW}Test: set rejects invalid phase status${NC}"
 setup_fixture
 run_cli init status-check --work-type feature --description "Status" >/dev/null 2>&1
-assert_exit_nonzero "Invalid status for discussion rejected" set status-check --phase discussion --topic status-check status completed
+assert_exit_nonzero "Invalid status for discussion rejected" set status-check --phase discussion --topic status-check status concluded
 assert_exit_nonzero "Invalid status for implementation rejected" set status-check --phase implementation --topic status-check status concluded
 
 echo ""
@@ -437,13 +437,13 @@ echo ""
 echo -e "${YELLOW}Test: set validates correct phase statuses${NC}"
 setup_fixture
 run_cli init valid-status --work-type feature --description "Valid" >/dev/null 2>&1
-run_cli set valid-status --phase discussion --topic valid-status status concluded >/dev/null 2>&1
+run_cli set valid-status --phase discussion --topic valid-status status completed >/dev/null 2>&1
 run_cli set valid-status --phase implementation --topic valid-status status completed >/dev/null 2>&1
 
 disc_status=$(run_cli_stdout get valid-status --phase discussion --topic valid-status status)
 impl_status=$(run_cli_stdout get valid-status --phase implementation --topic valid-status status)
 
-assert_equals "$disc_status" "concluded" "Discussion accepts concluded"
+assert_equals "$disc_status" "completed" "Discussion accepts completed"
 assert_equals "$impl_status" "completed" "Implementation accepts completed"
 
 echo ""
@@ -543,12 +543,12 @@ echo ""
 echo -e "${YELLOW}Test: list filters by status${NC}"
 setup_fixture
 run_cli init active-one --work-type feature --description "Active" >/dev/null 2>&1
-run_cli init concluded-one --work-type feature --description "Concluded" >/dev/null 2>&1
-run_cli set concluded-one status concluded >/dev/null 2>&1
+run_cli init completed-one --work-type feature --description "Completed" >/dev/null 2>&1
+run_cli set completed-one status completed >/dev/null 2>&1
 output=$(run_cli_stdout list --status in-progress)
 
 assert_contains "$output" '"name": "active-one"' "In-progress work unit listed"
-assert_not_contains "$output" '"name": "concluded-one"' "Concluded work unit excluded"
+assert_not_contains "$output" '"name": "completed-one"' "Completed work unit excluded"
 
 echo ""
 
@@ -749,12 +749,12 @@ echo -e "${YELLOW}Test: feature get/set routes to flat structure${NC}"
 setup_fixture
 run_cli init routing-feat --work-type feature --description "Routing" >/dev/null 2>&1
 run_cli init-phase routing-feat --phase discussion --topic routing-feat >/dev/null 2>&1
-run_cli set routing-feat --phase discussion --topic routing-feat status concluded >/dev/null 2>&1
+run_cli set routing-feat --phase discussion --topic routing-feat status completed >/dev/null 2>&1
 
 # Verify internal structure is flat
 content=$(cat "$TEST_DIR/.workflows/routing-feat/manifest.json")
 assert_contains "$content" '"discussion"' "Discussion phase exists"
-assert_contains "$content" '"status": "concluded"' "Status set to concluded"
+assert_contains "$content" '"status": "completed"' "Status set to completed"
 assert_not_contains "$content" '"items"' "No items in feature manifest"
 
 echo ""
@@ -766,7 +766,7 @@ setup_fixture
 run_cli init routing-epic --work-type epic --description "Routing" >/dev/null 2>&1
 run_cli init-phase routing-epic --phase discussion --topic topic-a >/dev/null 2>&1
 run_cli init-phase routing-epic --phase discussion --topic topic-b >/dev/null 2>&1
-run_cli set routing-epic --phase discussion --topic topic-a status concluded >/dev/null 2>&1
+run_cli set routing-epic --phase discussion --topic topic-a status completed >/dev/null 2>&1
 
 # Verify internal structure has items
 content=$(cat "$TEST_DIR/.workflows/routing-epic/manifest.json")
@@ -777,7 +777,7 @@ assert_contains "$content" '"topic-b"' "topic-b exists"
 # Get specific item
 topic_a=$(run_cli_stdout get routing-epic --phase discussion --topic topic-a status)
 topic_b=$(run_cli_stdout get routing-epic --phase discussion --topic topic-b status)
-assert_equals "$topic_a" "concluded" "topic-a status is concluded"
+assert_equals "$topic_a" "completed" "topic-a status is completed"
 assert_equals "$topic_b" "in-progress" "topic-b status is in-progress"
 
 echo ""
@@ -828,12 +828,12 @@ echo -e "${YELLOW}Test: epic item-level status validation${NC}"
 setup_fixture
 run_cli init epic-validation --work-type epic --description "Validate items" >/dev/null 2>&1
 run_cli init-phase epic-validation --phase discussion --topic my-topic >/dev/null 2>&1
-assert_exit_nonzero "Invalid item status rejected" set epic-validation --phase discussion --topic my-topic status completed
+assert_exit_nonzero "Invalid item status rejected" set epic-validation --phase discussion --topic my-topic status concluded
 
 # Valid item status should work
-run_cli set epic-validation --phase discussion --topic my-topic status concluded >/dev/null 2>&1
+run_cli set epic-validation --phase discussion --topic my-topic status completed >/dev/null 2>&1
 output=$(run_cli_stdout get epic-validation --phase discussion --topic my-topic status)
-assert_equals "$output" "concluded" "Valid item status accepted"
+assert_equals "$output" "completed" "Valid item status accepted"
 
 echo ""
 
