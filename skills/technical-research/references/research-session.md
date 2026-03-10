@@ -16,6 +16,8 @@ Research is a conversation. Follow this loop:
 
 ## Convergence Detection
 
+#### If work_type is `epic`
+
 Research threads naturally converge. As you explore a topic, options narrow, tradeoffs clarify, and opinions start forming. This is healthy — but it's also a signal.
 
 Watch for these signals that a thread is moving from exploration toward decision-making:
@@ -26,10 +28,32 @@ Watch for these signals that a thread is moving from exploration toward decision
 - Discussion shifting from "what are the options?" to "which option?"
 - You or the user starting to advocate for a particular approach
 
+Remember the convergence posture loaded in Step 2 — both topic splitting and per-topic completion are possibilities. Be aware of both.
+
 When you notice convergence, **flag it and give the user options**:
 
-This thread seems to be converging — we've explored {work_unit} enough that the tradeoffs are clear and it's approaching decision territory.
+This thread seems to be converging — we've explored {topic} enough that the tradeoffs are clear and it's approaching decision territory.
 
 → Load **[convergence-awareness.md](convergence-awareness.md)** and follow its instructions.
 
 After convergence handling (if the user chooses to keep digging), resume the session loop above.
+
+#### If work_type is `feature`
+
+## Research Complete
+
+Feature research has no convergence monitoring or topic splitting. When the topic feels well-explored or the user indicates they're done:
+
+1. Set research status to completed:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status completed
+   ```
+2. Invoke the `/workflow-bridge` skill:
+   ```
+   Pipeline bridge for: {work_unit}
+   Completed phase: research
+
+   Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
+   ```
+
+**STOP.** Do not proceed — terminal condition.
