@@ -64,17 +64,17 @@ Deferred — gather-context will resolve it.
 
 #### If `topic` resolved
 
-Check research phase status via manifest CLI:
+Check if the research phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase research --topic {topic}
 ```
 
-**If phase exists (in-progress or completed):**
+**If exists (`true`):**
 
 → Proceed to **Step 2** (Validate Phase).
 
-**If phase not found (new entry):**
+**If not exists (`false`):**
 
 → Proceed to **Step 3** (Gather Context).
 
