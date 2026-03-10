@@ -155,8 +155,20 @@ Session state is ephemeral (gitignored, cleaned up on session end) and per-sessi
 | Start a new epic | `/start-epic` |
 | Start a new bugfix | `/start-bugfix` |
 | Resume work | `/workflow-start` or `/continue-feature` / `/continue-epic` / `/continue-bugfix` |
+| View completed/cancelled work | `/workflow-start` → menu option |
+| Mark work done or cancelled | `/workflow-start` → manage option |
 
 Phase entry skills (`workflow-*-entry`) are internal — they're invoked automatically by the start, continue, and bridge skills. You don't need to call them directly.
+
+### Work Unit Lifecycle
+
+Work units move through a simple lifecycle: **in-progress** → **completed** or **cancelled**.
+
+- **Completed** is set automatically when the pipeline finishes (review phase ends), or manually via the manage menu in `/workflow-start`
+- **Cancelled** is set manually for abandoned work
+- Completed and cancelled work units can be **reactivated** back to in-progress
+
+Feature and bugfix pipelines offer an early completion option after implementation (skip review). Epic work units are completed when all topics have finished review.
 
 ### Output Formats
 
@@ -190,7 +202,7 @@ npx agntc remove leeovery/claude-technical-workflows
 
 ### Output Files
 
-Documents are stored in your project using a **work-unit-first** organisation. Each work unit (epic, feature, or bugfix) gets its own directory with phase subdirectories. A `manifest.json` in each work unit is the single source of truth for all workflow state.
+Documents are stored in your project using a **work-unit-first** organisation. Each work unit (epic, feature, or bugfix) gets its own directory with phase subdirectories. A `manifest.json` in each work unit is the single source of truth for all workflow state — including the work unit's lifecycle status (`in-progress`, `completed`, `cancelled`) and per-phase progress.
 
 ```
 .workflows/
@@ -242,7 +254,7 @@ skills/
 ├── technical-review/                # Validate against artefacts
 │
 ├── # Unified entry points
-├── workflow-start/                  # Discovers state, routes by work type
+├── workflow-start/                  # Discovers state, routes by work type + lifecycle management
 ├── workflow-bridge/                 # Pipeline continuation — next phase routing
 ├── workflow-shared/                 # Shared discovery utilities
 ├── workflow-manifest/               # Manifest CLI — single source of truth for state
