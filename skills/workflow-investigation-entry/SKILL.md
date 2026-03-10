@@ -43,17 +43,17 @@ Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, top
 
 Investigation is always bugfix work_type. Store work_unit for the handoff.
 
-Check investigation phase status via manifest CLI:
+Check if the investigation phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase investigation --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase investigation --topic {topic}
 ```
 
-**If phase exists (in-progress or completed):**
+**If exists (`true`):**
 
 → Proceed to **Step 2** (Validate Phase).
 
-**If phase not found (new entry):**
+**If not exists (`false`):**
 
 Set source="new".
 
