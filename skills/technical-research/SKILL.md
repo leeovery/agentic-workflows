@@ -49,7 +49,13 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ---
 
-## Step 0: Resume Detection
+## Step 0: Read Work Type and Resume Detection
+
+Read `work_type` from the manifest for context-refresh safety:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
 Check if research files exist in `.workflows/{work_unit}/research/`.
 
@@ -68,13 +74,13 @@ Read them. Announce what's been explored so far and what themes have emerged. As
 ## Step 1: Initialize Research
 
 1. Ensure the research directory exists: `.workflows/{work_unit}/research/`
-2. Load **[template.md](references/template.md)** — use it to create `.workflows/{work_unit}/research/exploration.md`
+2. Load **[template.md](references/template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`)
 3. Populate the Starting Point section with context from the user
 4. Set research status via manifest CLI:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status in-progress
    ```
-   Where `{topic}` is derived from the research file name (e.g., "exploration" for `exploration.md`).
+   Where `{topic}` is derived from the research file name (e.g., "exploration" for `exploration.md`, the work unit name for features).
 5. Commit the initial file
 
 → Proceed to **Step 2**.
