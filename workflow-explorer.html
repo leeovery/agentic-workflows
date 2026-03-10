@@ -3045,62 +3045,98 @@ const FLOWCHARTS = {
 
 // ── Next-phase navigation mapping for skill flowcharts ──
 const SKILL_NEXT_PHASE = {
-  'skill-research':       { label: 'Invoke /start-discussion',       target: 'discussion',      color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-discussion':     { label: 'Invoke /start-specification',    target: 'specification',   color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-specification':  { label: 'Invoke /start-planning',         target: 'planning',        color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-planning':       { label: 'Invoke /start-implementation',   target: 'implementation',  color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-implementation': { label: 'Invoke /start-review',           target: 'review',          color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-research':       { label: 'Invoke discussion entry',       target: 'discussion',      color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-discussion':     { label: 'Invoke specification entry',    target: 'specification',   color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-investigation':  { label: 'Invoke specification entry',    target: 'specification',   color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-specification':  { label: 'Invoke planning entry',         target: 'planning',        color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-planning':       { label: 'Invoke implementation entry',   target: 'implementation',  color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-implementation': { label: 'Invoke review entry',           target: 'review',          color: 'var(--next)', bg: 'var(--next-bg)' },
 };
 
 // Info bar descriptions — richer content per flowchart
 const FLOWCHART_DESCS = {
+  // ── Phase entry skills ──
   research: {
-    summary: 'Explore ideas, feasibility, and validate concepts across technical, business, and market domains.',
-    body: `<p>The simplest command — no discovery script, no prerequisites, no cache. Gathers context through 4 sequential questions (seed idea, existing knowledge, starting direction, constraints) then hands off to the <strong>technical-research</strong> skill.</p>
-<p>The skill acts as a research partner, looping through <strong>Ask → Discuss → Document → Commit</strong>. Output starts as a single file and splits as themes emerge. Research completes when the user parks a topic as discussion-ready.</p>`,
+    summary: 'Phase entry for research — parse args, check manifest, gather context, invoke processing skill.',
+    body: `<p>The simplest phase entry. Parses arguments (work_type, work_unit, topic), checks the manifest for existing phase status. <strong>Topic resolved</strong>: routes to validate-phase (resume/reopen) or gather-context (4 seed questions). <strong>No topic</strong> (epic scoped): asks seed questions directly.</p>
+<p>Writes session state before invoking the <strong>technical-research</strong> skill.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', skill: 'technical-research', complexity: 'Simple' }
   },
   discussion: {
-    summary: 'Capture architecture decisions, debates, edge cases, and rationale through structured dialogue.',
-    body: `<p>Moderate complexity. A discovery script scans research files, existing discussions, and cache, then classifies the scenario: <strong>fresh</strong>, <strong>research_only</strong>, <strong>discussions_only</strong>, or <strong>research_and_discussions</strong>.</p>
-<p>Research analysis is <strong>cache-aware</strong> — checksums detect stale analysis. The options menu adapts based on what exists (2–4 options). After user selection, context is gathered and the <strong>technical-discussion</strong> skill runs a loop: <strong>Engage → Capture decisions → Document → Commit</strong> until the discussion is completed.</p>`,
-    meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', skill: 'technical-discussion', discovery: 'discovery-for-discussion.sh', cache: '{work_unit}/.state/research-analysis.md' }
+    summary: 'Phase entry for discussion — manifest routing or discovery-based scenario flow.',
+    body: `<p>Two paths based on argument resolution. <strong>Topic resolved</strong> (feature/bugfix, or epic with topic): checks manifest → validate-phase or gather-context → invoke skill. <strong>No topic</strong> (epic scoped): runs <code>discovery.js</code> scoped to the work unit.</p>
+<p>Discovery classifies scenario: <strong>fresh</strong>, <strong>research_only</strong>, <strong>discussions_only</strong>, or <strong>research_and_discussions</strong>. Research analysis is <strong>cache-aware</strong> — checksums detect stale analysis. The options menu adapts based on what exists (2–4 options). After user selection, context is gathered and the <strong>technical-discussion</strong> skill is invoked.</p>`,
+    meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', skill: 'technical-discussion', discovery: 'discovery.js', cache: '{work_unit}/.state/research-analysis.md' }
+  },
+  investigation: {
+    summary: 'Phase entry for investigation — bugfix-only, parse args, gather bug context, invoke processing skill.',
+    body: `<p>Bugfix-only phase entry. Always has topic (topic = work_unit). Parses arguments, checks manifest for existing phase status.</p>
+<p><strong>New entry</strong>: gathers bug context (symptoms, error messages, reproduction steps). <strong>Existing</strong>: validate-phase (resume or reopen). Invokes the <strong>technical-investigation</strong> skill.</p>`,
+    meta: { output: '.workflows/{work_unit}/investigation/{topic}.md', skill: 'technical-investigation', complexity: 'Simple' }
   },
   specification: {
-    summary: 'Analyse discussion coupling, group into features, and build validated specifications.',
-    body: `<p>Cache-first routing with progressive disclosure. Two prerequisite gates (discussions must exist and be completed), then a priority chain: single discussion auto-selects, valid cache shows groupings directly, stale/none cache checks for existing specs before offering analysis.</p>
-<p>The <strong>analysis flow</strong> gathers context about topic relationships, reads all completed discussions, analyses <strong>data, behavioural, and conceptual coupling</strong>, and caches the result. The <strong>groupings menu</strong> offers per-grouping actions (Start/Continue/Refine), Unify all, and Re-analyze. A separate <strong>specs menu</strong> appears when specs exist but cache is stale — showing existing specs alongside an analyze option.</p>
-<p>The <strong>technical-specification</strong> skill is collaborative — it extracts, filters hallucinations, enriches gaps, presents for approval, and waits for explicit sign-off before writing.</p>`,
-    meta: { output: '.workflows/{work_unit}/specification/{topic}/specification.md', skill: 'technical-specification', discovery: 'discovery.sh', cache: '{work_unit}/.state/discussion-consolidation-analysis.md' }
+    summary: 'Phase entry for specification — source validation or discovery-based state routing.',
+    body: `<p>Two paths. <strong>Topic resolved</strong>: validates source material (discussion/investigation completed?), validates phase state, then invokes skill. <strong>No topic</strong> (epic scoped): runs <code>discovery.js</code>, checks prerequisites, routes by state.</p>
+<p>State routing handles: single completed discussion (auto-select), valid cache (show groupings), stale cache with/without specs, and multi-discussion analysis flow with coupling analysis and grouping menus.</p>`,
+    meta: { output: '.workflows/{work_unit}/specification/{topic}/specification.md', skill: 'technical-specification', discovery: 'discovery.js', cache: '{work_unit}/.state/discussion-consolidation-analysis.md' }
   },
   planning: {
-    summary: 'Transform specifications into phased implementation plans with tasks and acceptance criteria.',
-    body: `<p>Discovery classifies into 3 scenarios: <strong>no_specs</strong>, <strong>nothing_actionable</strong>, or <strong>has_options</strong>. After selection, a plan-state check routes new plans through context gathering and cross-cutting spec surfacing, while existing plans skip straight to the skill.</p>
-<p>The <strong>technical-planning</strong> skill runs a structured process with three nested loops. <strong>Plan construction</strong> is the core: the <strong>planning-phase-designer</strong> agent designs the phase structure (user approval gate with revision loop), then for each phase the <strong>planning-task-designer</strong> agent breaks it into tasks (approval gate), then for each task the <strong>planning-task-author</strong> agent writes full detail (approval gate, logged on approval). After construction, the <strong>planning-dependency-grapher</strong> agent analyzes the task graph for dependencies and cycles. Finally, a two-part <strong>plan review</strong> — traceability (spec↔plan completeness and anti-hallucination) then integrity (structural quality) — processes findings one at a time with per-finding approval gates.</p>`,
-    meta: { output: '.workflows/{work_unit}/planning/{topic}/planning.md', skill: 'technical-planning', discovery: 'discovery-for-planning.sh' }
+    summary: 'Phase entry for planning — validate spec, check plan state, surface cross-cutting context.',
+    body: `<p>Validates specification is completed, then checks plan state (new vs existing). <strong>Fresh plans</strong>: loads cross-cutting spec context (epic only) before invoking. <strong>Existing plans</strong>: skips directly to skill invocation.</p>`,
+    meta: { output: '.workflows/{work_unit}/planning/{topic}/planning.md', skill: 'technical-planning' }
   },
   implementation: {
-    summary: 'Discover plans, classify readiness, gate on dependencies, and hand off to agent-based implementation.',
-    body: `<p>Discovery classifies plans into three sections: <strong>Implementable</strong> (▶ in-progress or + ready to start), <strong>Implemented</strong> (> completed), and <strong>Not implementable</strong> (· blocked deps or plan not completed). Plan presentation includes an <strong>unblock escape hatch</strong> — users can mark blocked deps as externally satisfied without leaving the selection step. Two gates follow: <strong>external dependencies</strong> (confirmation) and <strong>environment setup</strong> (info gathering only, does not execute setup).</p>
-<p>Hands off to the <strong>technical-implementation</strong> skill, which dispatches executor and reviewer agents per task with a configurable approval gate (gated or auto mode). Scope selection is handled within the skill, not the command.</p>`,
-    meta: { output: 'Code changes (tracked in plan)', skill: 'technical-implementation', discovery: 'discovery-for-implementation-and-review.sh' }
+    summary: 'Phase entry for implementation — validate plan, check dependencies, check environment.',
+    body: `<p>Validates plan is completed, then runs two gates: <strong>external dependencies</strong> (confirms all resolved or satisfied) and <strong>environment setup</strong> (info gathering only — does not execute setup). Invokes the <strong>technical-implementation</strong> skill with plan, format, spec, and environment info.</p>`,
+    meta: { output: 'Code changes (tracked in plan)', skill: 'technical-implementation' }
   },
   review: {
-    summary: 'Validate implementation with scope selection, reviewability gating, and all-reviewed routing.',
-    body: `<p>Discovery scans plans, implementation status, and existing reviews. Routes <strong>all-reviewed</strong> state to an analysis/re-review menu — analysis synthesizes existing findings without re-running verifiers, re-review increments the version.</p>
-<p>For pending reviews: displays all plans with implementation status — plans without implementations are shown as not-ready. If <strong>no plans are reviewable</strong>, STOP (terminal). Single reviewable plan auto-selects with <strong>scope=single</strong>. Multiple reviewable plans prompt for <strong>scope</strong>: single (one plan), multi (selected plans), all (full product), or analysis (if applicable). Then specific plans are selected and the <strong>technical-review</strong> skill is invoked.</p>`,
-    meta: { output: 'Review feedback', skill: 'technical-review', discovery: 'discovery.sh' }
+    summary: 'Phase entry for review — validate plan + implementation, determine review version.',
+    body: `<p>Validates plan exists and implementation is completed. Determines review version (r1, r2, etc.) by scanning existing review directories. Invokes the <strong>technical-review</strong> skill with version and scope.</p>`,
+    meta: { output: 'Review feedback', skill: 'technical-review' }
+  },
+  // ── Entry point skills ──
+  'workflow-start': {
+    summary: 'Unified entry point — discover all work, route to start or continue skills.',
+    body: `<p>Runs migrations, then <code>discovery.js</code> to scan all work units. Displays active work grouped by type (epics, features, bugfixes) with phase state. Routes user choice to <strong>/start-feature</strong>, <strong>/start-bugfix</strong>, <strong>/start-epic</strong>, or the appropriate <strong>/continue-*</strong> skill.</p>
+<p>Empty state offers quick-start options. Also surfaces completed/cancelled work units with lifecycle management.</p>`,
+    meta: { complexity: 'Unified router' }
   },
   'start-feature': {
-    summary: 'Pipeline entry — gather context, create discussion, then bridge to continue-feature.',
-    body: `<p>Runs migrations, gathers feature context inline (what, scope, constraints), suggests a topic name, and checks for existing discussions. If a discussion exists, offers to <strong>resume</strong> (in-progress → invoke discussion, completed → skip to bridge) or choose a <strong>new name</strong>.</p>
-<p>Invokes the <strong>technical-discussion</strong> skill with the gathered context. When the discussion completes, a <strong>phase bridge</strong> enters plan mode with instructions to invoke <code>/continue-feature</code> in the next session for specification, planning, implementation, and review.</p>`,
-    meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', skill: 'technical-discussion', complexity: 'Pipeline' }
+    summary: 'Pipeline entry — gather context, name check, research gating, invoke phase entry.',
+    body: `<p>Runs migrations, gathers feature context inline (what, scope, constraints), suggests a kebab-case name, and checks for conflicts. If a name conflict exists, loops until a unique name is chosen.</p>
+<p><strong>Research gating</strong>: asks user whether to start with research or jump to discussion. Routes to <strong>workflow-research-entry</strong> or <strong>workflow-discussion-entry</strong> accordingly.</p>`,
+    meta: { complexity: 'Pipeline' }
+  },
+  'start-bugfix': {
+    summary: 'Pipeline entry — gather bug context, name check, invoke investigation entry.',
+    body: `<p>Runs migrations, gathers bug context (brief description), suggests a name, checks for conflicts (loops if conflict). Creates the work unit and invokes <strong>workflow-investigation-entry</strong>.</p>`,
+    meta: { complexity: 'Pipeline' }
+  },
+  'start-epic': {
+    summary: 'Pipeline entry — gather epic context, name check, route to first phase.',
+    body: `<p>Runs migrations, gathers epic context (what initiative, scope), suggests a name, checks for conflicts. Routes to first phase — either research or discussion — and invokes the appropriate <strong>workflow-*-entry</strong> skill.</p>`,
+    meta: { complexity: 'Pipeline' }
+  },
+  'continue-feature': {
+    summary: 'Resume an in-progress feature — discovery, selection, backwards nav, phase routing.',
+    body: `<p>Runs migrations, then <code>discovery.js</code> to find active features with phase state. Auto-selects if single, otherwise presents selection menu. Validates the selection, offers backwards navigation to revisit completed phases, then routes to the appropriate <strong>workflow-*-entry</strong> phase skill.</p>`,
+    meta: { complexity: 'Router' }
+  },
+  'continue-bugfix': {
+    summary: 'Resume an in-progress bugfix — discovery, selection, backwards nav, phase routing.',
+    body: `<p>Same pattern as continue-feature but for the bugfix pipeline (investigation → specification → planning → implementation → review).</p>`,
+    meta: { complexity: 'Router' }
+  },
+  'continue-epic': {
+    summary: 'Resume an in-progress epic — full state display, interactive menu, phase routing.',
+    body: `<p>Runs migrations, then <code>discovery.js</code>. More complex than feature/bugfix: shows full phase-by-phase state with per-phase items, soft gates for phase-forward navigation, and an interactive menu with options to continue existing topics, start new topics, or enter any phase.</p>`,
+    meta: { complexity: 'Router' }
   },
   'link-deps': {
     summary: 'Wire up cross-topic dependencies across all plans with bidirectional linking.',
-    body: `<p>Works across all plans simultaneously. Requires 2+ plans with the same output format. Three terminal gates: insufficient plans, inconsistent formats, and no unresolved dependencies.</p>
-<p>Extracts external dependencies from all plans, matches unresolved deps to tasks in other plans, wires up bidirectional links (both the depending and depended-upon plans are updated), and commits the changes. Dependency states: <strong>unresolved</strong> → <strong>resolved</strong> (matched to task ID) or <strong>satisfied externally</strong> (manually marked).</p>`,
+    body: `<p>Runs migrations, selects work unit (auto-select if single epic). Requires 2+ plans with the same output format. Three terminal gates: insufficient plans, inconsistent formats, and no unresolved dependencies.</p>
+<p>Extracts external dependencies from all plans, matches unresolved deps to tasks in other plans, wires up bidirectional links, and commits. Dependency states: <strong>unresolved</strong> → <strong>resolved</strong> or <strong>satisfied externally</strong>.</p>`,
     meta: { complexity: 'Cross-plan utility' }
   },
   'skill-research': {
@@ -3116,18 +3152,19 @@ const FLOWCHART_DESCS = {
     meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', complexity: 'Looping skill' }
   },
   'skill-specification': {
-    summary: 'The specification skill — collaborative refinement that filters hallucinations and enriches gaps.',
-    body: `<p>Processes each topic through: <strong>Extract → Filter (validate against source) → Enrich (fill gaps) → Present → STOP &amp; WAIT for approval → Log</strong>. The skill is collaborative, not autonomous — it must wait for explicit user approval before writing anything.</p>
-<p>Self-check before every write: "Was this presented? Was it approved?" Final review includes source traceability and supersede handling for replaced specifications.</p>`,
-    meta: { output: '.workflows/{work_unit}/specification/{topic}/specification.md', complexity: 'Collaborative skill' }
+    summary: 'The specification skill — collaborative refinement with agent-driven review cycle.',
+    body: `<p><strong>Resume detection</strong> checks for existing spec — continue or restart. <strong>Verify source material</strong> confirms sources exist. The core construction loop processes each topic through: <strong>Extract → Filter (validate against source) → Enrich (fill gaps) → Present → STOP &amp; WAIT for approval → Log</strong>.</p>
+<p><strong>Document dependencies</strong>: identifies prerequisites, presents for approval. <strong>Specification review cycle</strong>: dispatches <strong>specification-review-input</strong> agent (compares against source material) and <strong>specification-review-gap-analysis</strong> agent (standalone completeness). Findings processed per-finding with approval gates. Re-loop prompt after each cycle (capped at 5).</p>
+<p><strong>Type assessment</strong>: determines feature vs cross-cutting. Feature → invoke bridge → next phase. Cross-cutting → terminal END.</p>`,
+    meta: { output: '.workflows/{work_unit}/specification/{topic}/specification.md', complexity: 'Collaborative skill', agents: 'specification-review-input, specification-review-gap-analysis' }
   },
   'skill-planning': {
-    summary: 'The planning skill — three nested loops with agent-driven phase design, task design, and task authoring.',
-    body: `<p>Setup: <strong>Resume detection</strong> (existing plan? continue/restart? spec-change detection) → <strong>Initialise</strong> (choose output format, create plan index) → <strong>Load principles</strong> → <strong>Verify source material</strong>.</p>
-<p><strong>Plan construction</strong> is a three-level nested loop. Outer: invoke <strong>planning-phase-designer</strong> agent → user approval gate (revise backloop). Middle: for each phase, invoke <strong>planning-task-designer</strong> agent → approval gate. Inner: for each task, invoke <strong>planning-task-author</strong> agent → approval gate → log task + commit. Independent tasks may be authored in parallel. User can navigate to any position at any approval gate.</p>
-<p>Post-construction: <strong>planning-dependency-grapher</strong> agent analyzes the full task graph (dependencies, priorities, cycle detection) → approval gate. <strong>External dependencies</strong> are matched to tasks in other plans or left unresolved for <code>/link-dependencies</code>.</p>
-<p><strong>Plan review</strong> runs two sequential reviews. <strong>Traceability</strong>: spec→plan completeness + plan→spec fidelity (anti-hallucination gate). <strong>Integrity</strong>: standalone structural quality (templates, slicing, dependencies, self-containment, criteria quality). Both create tracking files and process findings one-at-a-time with per-finding approval gates (approve/skip/revise).</p>`,
-    meta: { output: '.workflows/{work_unit}/planning/{topic}/planning.md', complexity: 'Multi-loop skill', agents: 'phase-designer, task-designer, task-author, dependency-grapher' }
+    summary: 'The planning skill — three nested loops with agent-driven construction and review.',
+    body: `<p>Setup: <strong>Resume detection</strong> (existing plan? continue/restart? spec-change detection) → <strong>Format selection</strong> (recommended format or see all) → <strong>Initialise</strong> → <strong>Load principles</strong> → <strong>Verify source material</strong>.</p>
+<p><strong>Plan construction</strong> is a three-level nested loop. Outer: invoke <strong>planning-phase-designer</strong> agent → approval gate. Middle: per-phase <strong>planning-task-designer</strong> → approval. Inner: per-task <strong>planning-task-author</strong> → approval → log + commit.</p>
+<p>Post-construction: <strong>planning-dependency-grapher</strong> agent analyzes the task graph. <strong>External dependencies</strong> matched or left unresolved.</p>
+<p><strong>Plan review</strong>: <strong>planning-review-traceability</strong> agent (spec↔plan completeness) → per-finding approval (with re-loop). <strong>planning-review-integrity</strong> agent (structural quality) → per-finding approval (with re-loop). <strong>Sign-off gate</strong> before completion.</p>`,
+    meta: { output: '.workflows/{work_unit}/planning/{topic}/planning.md', complexity: 'Multi-loop skill', agents: 'phase-designer, task-designer, task-author, dependency-grapher, review-traceability, review-integrity' }
   },
   'skill-implementation': {
     summary: 'The implementation skill — agent-based TDD with per-task executor/reviewer, linting, and analysis cycle.',
@@ -3185,6 +3222,37 @@ const FLOWCHART_DESCS = {
     body: `<p>Reads format adapters (reading.md + graph.md), then the plan index and all authored task files. <strong>Clears existing graph data</strong> before re-analysis to ensure a clean state.</p>
 <p>For each task, extracts what it produces and requires, then matches across all tasks to build a dependency graph. Classifies tasks as <strong>bottleneck</strong>, <strong>foundation</strong>, or <strong>leaf</strong>. If <strong>cycles are detected</strong>, reports the cycle chain and does NOT apply changes — a hard stop. Otherwise, writes dependency and priority data back to tasks.</p>`,
     meta: { model: 'Opus', invokedBy: 'technical-planning', complexity: 'Subagent' }
+  },
+  'planning-review-traceability': {
+    summary: 'Verify spec→plan completeness and plan→spec fidelity (anti-hallucination).',
+    body: `<p>Performs <strong>two-direction traceability</strong>. <strong>Spec→Plan</strong>: every decision, requirement, and edge case in the spec has plan coverage. <strong>Plan→Spec</strong>: everything in the plan traces back to the spec — the anti-hallucination gate.</p>
+<p>Creates a tracking file with findings containing full Current/Proposed content. Commits the tracking file. Returns status to the orchestrator for per-finding approval.</p>`,
+    meta: { model: 'Opus', invokedBy: 'technical-planning', complexity: 'Review agent' }
+  },
+  'planning-review-integrity': {
+    summary: 'Review plan structural quality, implementation readiness, and standards adherence.',
+    body: `<p>Reviews the plan as a standalone document — structural quality without comparing to the spec. Evaluates: task template compliance, vertical slicing, phase structure, dependency ordering, task self-containment, granularity, and acceptance criteria quality.</p>
+<p>Creates a tracking file with findings. Commits. Returns status to the orchestrator. Proportional — prioritizes by impact, not cosmetics.</p>`,
+    meta: { model: 'Opus', invokedBy: 'technical-planning', complexity: 'Review agent' }
+  },
+  'specification-review-input': {
+    summary: 'Compare specification against all source material to catch missed content.',
+    body: `<p>Reads the specification, then <strong>re-reads ALL source material</strong> (discussions, research, references). Compares systematically for each source: what topics does it cover? Are those fully captured? Are there details, edge cases, or decisions that didn't make it?</p>
+<p>Categorizes findings as <strong>enhancement to existing topic</strong> or <strong>new topic</strong>. Writes findings to a tracking file using the review tracking format.</p>`,
+    meta: { model: 'Opus', invokedBy: 'technical-specification', complexity: 'Review agent' }
+  },
+  'specification-review-gap-analysis': {
+    summary: 'Review specification as standalone document for completeness, clarity, and planning readiness.',
+    body: `<p>Looks <strong>inward</strong> at the specification only — not outward at source material. Reads the spec end-to-end and assesses each section for internal completeness, clarity, consistency, and ambiguity.</p>
+<p>Analyzes: insufficient detail that would force implementers to guess, contradictions between sections, edge cases within scope boundaries, and planning readiness. Prioritizes findings as critical/important/minor.</p>`,
+    meta: { model: 'Opus', invokedBy: 'technical-specification', complexity: 'Review agent' }
+  },
+  'skill-investigation': {
+    summary: 'The investigation skill — symptom gathering, code analysis, and root cause identification for bugfixes.',
+    body: `<p>Acts as expert debugger, documentation assistant, and collaborative advisor. <strong>Resume detection</strong> checks for existing investigation file — if found, announces progress and offers continue/restart.</p>
+<p><strong>Symptom gathering</strong>: structured questions about what's broken, reproduction steps, error messages. <strong>Code analysis</strong>: traces code paths, challenges assumptions, explores related areas. <strong>Root cause synthesis</strong>: clear cause statement, contributing factors, why it wasn't caught, fix direction.</p>
+<p><strong>Findings review</strong>: presents analysis to user for validation before concluding. Investigation file is the memory — what's not on disk is lost to context compaction.</p>`,
+    meta: { output: '.workflows/{work_unit}/investigation/{topic}.md', complexity: 'Investigation skill' }
   },
   'implementation-task-executor': {
     summary: 'Implement a single task via strict TDD — RED/GREEN/REFACTOR/LINT cycle per acceptance criterion.',
