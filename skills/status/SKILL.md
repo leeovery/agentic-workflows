@@ -169,10 +169,10 @@ Omit categories with no entries.
 
 Based on gaps in the workflow, briefly suggest 2-3 most relevant actions:
 
-- Concluded discussions not in any spec → use `/continue-feature` or `/continue-epic` to proceed
+- Completed discussions not in any spec → use `/continue-feature` or `/continue-epic` to proceed
 - In-progress specs → use `/continue-feature` or `/continue-epic` to continue
-- Concluded feature specs without plans → use `/continue-feature` or `/continue-epic` to start planning
-- Concluded plans not yet implemented → use `/continue-feature` or `/continue-epic` to start implementation
+- Completed feature specs without plans → use `/continue-feature` or `/continue-epic` to start planning
+- Completed plans not yet implemented → use `/continue-feature` or `/continue-epic` to start implementation
 - Completed implementations → use `/continue-feature` or `/continue-epic` to start review
 
 If plans exist, mention `/view-plan` for detailed plan viewing.

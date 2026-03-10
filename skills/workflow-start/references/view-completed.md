@@ -23,13 +23,13 @@ No completed or cancelled work units found.
 > *Output the next fenced block as a code block:*
 
 ```
-Concluded & Cancelled @if(work_type_filter) {work_type_filter:(titlecase)}s @else Work Units @endif
+Completed & Cancelled @if(work_type_filter) {work_type_filter:(titlecase)}s @else Work Units @endif
 
 @if(completed.length > 0)
-Concluded:
+Completed:
 @foreach(item in completed)
   {N}. {item.name:(titlecase)}
-     └─ Concluded after: {item.last_phase}
+     └─ Completed after: {item.last_phase}
 
 @endforeach
 @endif
