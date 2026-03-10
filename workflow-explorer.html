@@ -1690,32 +1690,32 @@ const FLOWCHARTS = {
       { id: 'discovery', label: 'Run discovery script', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery.sh. Scans discussions (with has_individual_spec check), specifications, and cache.' },
       { id: 'gate-disc', label: 'Discussions?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2 Gate: Do any discussions exist? If not, STOP.' },
       { id: 'stop-no-disc', label: 'STOP: No discussions', shape: 'stop', w: 170, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No discussions found. User must run /start-discussion first.' },
-      { id: 'gate-concluded', label: 'Concluded?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2 Gate: Are any discussions concluded? If not, STOP.' },
-      { id: 'stop-no-conc', label: 'STOP: None concluded', shape: 'stop', w: 170, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: Discussions exist but none concluded. Complete discussion phase first.' },
-      { id: 'count', label: 'How many?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 3: Route based on concluded discussion count. 1 = auto-select, multiple = check cache.' },
-      { id: 'auto-select', label: 'Auto-select single', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Only one concluded discussion. Routes by spec coverage (no spec, individual spec, grouped spec) for display, then auto-proceeds to confirmation.' },
-      { id: 'cache-check', label: 'Cache valid?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Multiple concluded discussions: Check consolidation analysis cache. Valid = show groupings directly. Stale/none = check for existing specs.' },
+      { id: 'gate-completed', label: 'Completed?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2 Gate: Are any discussions completed? If not, STOP.' },
+      { id: 'stop-no-comp', label: 'STOP: None completed', shape: 'stop', w: 170, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: Discussions exist but none completed. Complete discussion phase first.' },
+      { id: 'count', label: 'How many?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 3: Route based on completed discussion count. 1 = auto-select, multiple = check cache.' },
+      { id: 'auto-select', label: 'Auto-select single', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Only one completed discussion. Routes by spec coverage (no spec, individual spec, grouped spec) for display, then auto-proceeds to confirmation.' },
+      { id: 'cache-check', label: 'Cache valid?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Multiple completed discussions: Check consolidation analysis cache. Valid = show groupings directly. Stale/none = check for existing specs.' },
       { id: 'specs-check', label: 'Specs exist?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Cache stale/none: Do specifications already exist? Routes to different entry points.' },
-      { id: 'ask-analyze', label: 'Analyze?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'No specs exist, cache stale/none. Lists concluded discussions and asks user whether to proceed with coupling analysis.' },
+      { id: 'ask-analyze', label: 'Analyze?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'No specs exist, cache stale/none. Lists completed discussions and asks user whether to proceed with coupling analysis.' },
       { id: 'stop-decline', label: 'STOP: Declined', shape: 'stop', w: 150, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: User declined analysis. Can re-run /start-specification when ready.' },
       { id: 'specs-menu', label: 'Present specs menu', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Specs exist but cache stale/none. Shows existing specs with extraction status and unassigned discussions. Menu: Analyze for groupings (recommended) + per-spec Continue/Refine.' },
       { id: 'gather-ctx', label: 'ASK: Analysis context', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Before analyzing, ask about topic relationships — part of same feature, dependencies, topics that must stay separate.' },
-      { id: 'analyze', label: 'Analyze discussions', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read ALL concluded discussions. Analyze coupling (data, behavioral, conceptual). Group into specifications. Preserve anchored spec names. Save to cache.' },
+      { id: 'analyze', label: 'Analyze discussions', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read ALL completed discussions. Analyze coupling (data, behavioral, conceptual). Group into specifications. Preserve anchored spec names. Save to cache.' },
       { id: 'show-groups', label: 'Present groupings menu', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Display cached groupings with discussion status (extracted/pending/ready/reopened). Per-grouping menu items with verb (Start/Continue/Refine) plus Unify all and Re-analyze options.' },
       { id: 'menu-choice', label: 'Menu choice?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route based on user menu selection from groupings display.' },
-      { id: 'unify', label: 'Unify all', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Combine ALL concluded discussions into one "Unified" specification. Only offered when 2+ groupings. Rewrites cache with single grouping.' },
+      { id: 'unify', label: 'Unify all', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Combine ALL completed discussions into one "Unified" specification. Only offered when 2+ groupings. Rewrites cache with single grouping.' },
       { id: 'refresh', label: 'Re-analyze', w: 180, h: 44, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Delete cache. User can provide guidance for new groupings. Existing spec names are preserved.' },
-      { id: 'confirm', label: 'ASK: Confirm selection', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Show spec name, sources, output path, supersession info. Verb varies: Creating (new), Continuing (in-progress/pending), or Refining (concluded). Wait for y/n. Decline returns to previous menu.' },
+      { id: 'confirm', label: 'ASK: Confirm selection', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Show spec name, sources, output path, supersession info. Verb varies: Creating (new), Continuing (in-progress/pending), or Refining (completed). Wait for y/n. Decline returns to previous menu.' },
       { id: 'skill', label: 'Invoke specification skill', w: 210, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Invoke technical-specification skill with sources and output path.', skillLink: 'skill-specification' },
     ],
     connections: [
       { from: 'start', to: 'migrate' },
       { from: 'migrate', to: 'discovery' },
       { from: 'discovery', to: 'gate-disc' },
-      { from: 'gate-disc', to: 'gate-concluded', type: 'yes', label: 'exist', weight: 2 },
+      { from: 'gate-disc', to: 'gate-completed', type: 'yes', label: 'exist', weight: 2 },
       { from: 'gate-disc', to: 'stop-no-disc', type: 'no', label: 'none' },
-      { from: 'gate-concluded', to: 'count', type: 'yes', label: 'yes', weight: 2 },
-      { from: 'gate-concluded', to: 'stop-no-conc', type: 'no', label: 'none' },
+      { from: 'gate-completed', to: 'count', type: 'yes', label: 'yes', weight: 2 },
+      { from: 'gate-completed', to: 'stop-no-comp', type: 'no', label: 'none' },
       { from: 'count', to: 'auto-select', label: 'one' },
       { from: 'count', to: 'cache-check', label: 'multi' },
       // Cache-first routing
@@ -1757,7 +1757,7 @@ const FLOWCHARTS = {
       { id: 'present', label: 'Present options', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 3: Show workflow state. If nothing actionable → STOP. If single → auto-select. If multiple → present menu with Create/Continue/Review verbs.' },
       { id: 'plan-state', label: 'Existing plan?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 4: Route by plan state. New plan gathers context first; existing plan skips straight to skill invocation.' },
       { id: 'gather', label: 'ASK: Additional context', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 5: Gather additional context, priorities, or constraint changes. Only for new plans.' },
-      { id: 'cross-cut', label: 'Surface cross-cutting specs', w: 215, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 6: Read concluded cross-cutting specs and surface relevant ones as reference context for planning. Only for new plans.' },
+      { id: 'cross-cut', label: 'Surface cross-cutting specs', w: 215, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 6: Read completed cross-cutting specs and surface relevant ones as reference context for planning. Only for new plans.' },
       { id: 'skill', label: 'Invoke planning skill', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 7: Invoke technical-planning skill. Handles format selection, phases, tasks, dependencies.', skillLink: 'skill-planning' },
     ],
     connections: [
@@ -1781,7 +1781,7 @@ const FLOWCHARTS = {
       { id: 'discovery', label: 'Run discovery script', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery-for-implementation-and-review.sh. Scans plans, implementation tracking, dependencies, and environment setup.' },
       { id: 'scenario', label: 'Plans?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Route on scenario — no_plans, single_plan, or multiple_plans.' },
       { id: 'stop-no-plan', label: 'STOP: No plans', shape: 'stop', w: 150, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No plans found. Run /start-planning first.' },
-      { id: 'present', label: 'Present plans', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 3: Classify plans into Implementable (▶ in-progress, + new), Implemented (> completed), and Not implementable (· blocked/not concluded). Number selectable entries. Includes unblock escape hatch for externally satisfied deps.' },
+      { id: 'present', label: 'Present plans', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 3: Classify plans into Implementable (▶ in-progress, + new), Implemented (> completed), and Not implementable (· blocked/not completed). Number selectable entries. Includes unblock escape hatch for externally satisfied deps.' },
       { id: 'select', label: 'Select plan', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Single implementable = auto-select, otherwise ask user. Implemented plans can be re-selected.' },
       { id: 'unblock', label: 'ASK: Unblock dep', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'User requests unblock: identify plan and dep, confirm, mark satisfied_externally in frontmatter, commit, re-present.' },
       { id: 'gate-deps', label: 'Ext deps OK?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 4: Confirm external dependencies satisfied. Pre-analyzed by discovery script. Escape hatch: mark as satisfied externally.' },
@@ -1856,10 +1856,10 @@ const FLOWCHARTS = {
       { id: 'name', label: 'ASK: Suggest topic name', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 2: Suggest a kebab-case topic name for the discussion file.' },
       { id: 'check', label: 'Discussion exists?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Check .workflows/{work_unit}/discussion/ for existing discussion file ({topic}.md).' },
       { id: 'conflict', label: 'ASK: Resume / new name', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Discussion exists: resume the existing discussion or choose a different name.' },
-      { id: 'status-check', label: 'Concluded?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'If resuming: check discussion status. Concluded → skip to bridge. In-progress → invoke discussion.' },
-      { id: 'disc-skill', label: 'Invoke discussion skill', w: 210, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 3: Invoke technical-discussion skill. When discussion concludes, proceed to phase bridge.', skillLink: 'skill-discussion' },
+      { id: 'status-check', label: 'Completed?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'If resuming: check discussion status. Completed → skip to bridge. In-progress → invoke discussion.' },
+      { id: 'disc-skill', label: 'Invoke discussion skill', w: 210, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 3: Invoke technical-discussion skill. When discussion completes, proceed to phase bridge.', skillLink: 'skill-discussion' },
       { id: 'bridge', label: 'Phase bridge', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 4: Enter plan mode with handoff to continue-feature for specification, planning, implementation, and review.' },
-      { id: 'end', label: 'Pipeline handoff', shape: 'pill', w: 150, h: 40, color: '#818cf8', bg: 'rgba(129,140,248,0.12)', desc: 'Output: Discussion concluded. Plan mode handoff to continue-feature for remaining phases.' },
+      { id: 'end', label: 'Pipeline handoff', shape: 'pill', w: 150, h: 40, color: '#818cf8', bg: 'rgba(129,140,248,0.12)', desc: 'Output: Discussion completed. Plan mode handoff to continue-feature for remaining phases.' },
     ],
     connections: [
       { from: 'start', to: 'migrate' },
@@ -1870,7 +1870,7 @@ const FLOWCHARTS = {
       { from: 'check', to: 'disc-skill', type: 'no', label: 'new', weight: 2 },
       { from: 'conflict', to: 'status-check', label: 'resume' },
       { from: 'conflict', to: 'name', type: 'backloop', label: 'new name' },
-      { from: 'status-check', to: 'bridge', type: 'yes', label: 'concluded' },
+      { from: 'status-check', to: 'bridge', type: 'yes', label: 'completed' },
       { from: 'status-check', to: 'disc-skill', type: 'no', label: 'in-progress', weight: 2 },
       { from: 'disc-skill', to: 'bridge', type: 'transition' },
       { from: 'bridge', to: 'end' },
@@ -1919,7 +1919,7 @@ const FLOWCHARTS = {
       { id: 'more', label: 'More to explore?', shape: 'diamond', w: 120, h: 120, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Periodic review: more questions? Themes emerging? Ready for discussion/spec?' },
       { id: 'split', label: 'Themes emerging?', shape: 'diamond', w: 120, h: 120, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Over multiple sessions, topics may become distinct. Split if so.' },
       { id: 'split-files', label: 'Split into files', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Split exploration.md into semantic files (market-landscape.md, technical-feasibility.md, etc).' },
-      { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research concludes when parked as discussion-ready.' },
+      { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research completes when parked as discussion-ready.' },
       { id: 'next', label: 'Invoke /start-discussion', desc: 'Navigate to the discussion command to begin capturing architecture decisions from research output.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'discussion' },
     ],
     connections: [
@@ -1948,9 +1948,9 @@ const FLOWCHARTS = {
       { id: 'document', label: 'Write to disk', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Write reasoning and context to the discussion file. Not a verbatim transcript — capture the journey, not the dialogue.' },
       { id: 'commit', label: 'Commit & push', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Commit at natural breaks. Never batch — context refresh loses unpushed work.' },
       { id: 'more', label: 'More topics?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Are there more topics to discuss?' },
-      { id: 'conclude', label: 'Conclude discussion', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set status: concluded. All decisions documented. Ready for specification.' },
-      { id: 'end', label: '{work_unit}/discussion/{topic}.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Concluded discussion document ready for specification phase.' },
-      { id: 'next', label: 'Invoke /start-specification', desc: 'Navigate to the specification command to build a validated spec from concluded discussions.', w: 210, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'specification' },
+      { id: 'complete', label: 'Complete discussion', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set status: completed. All decisions documented. Ready for specification.' },
+      { id: 'end', label: '{work_unit}/discussion/{topic}.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Completed discussion document ready for specification phase.' },
+      { id: 'next', label: 'Invoke /start-specification', desc: 'Navigate to the specification command to build a validated spec from completed discussions.', w: 210, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'specification' },
     ],
     connections: [
       { from: 'start', to: 'validate' },
@@ -1961,8 +1961,8 @@ const FLOWCHARTS = {
       { from: 'document', to: 'commit' },
       { from: 'commit', to: 'more' },
       { from: 'more', to: 'engage', type: 'backloop', label: 'yes', port: 'right' },
-      { from: 'more', to: 'conclude', type: 'no', label: 'done' },
-      { from: 'conclude', to: 'end' },
+      { from: 'more', to: 'complete', type: 'no', label: 'done' },
+      { from: 'complete', to: 'end' },
       { from: 'end', to: 'next', type: 'transition' },
     ]
   },
@@ -2034,7 +2034,7 @@ const FLOWCHARTS = {
       { id: 'integrity', label: 'Integrity review', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 7b: Standalone plan quality — task template compliance, vertical slicing, phase structure, dependency ordering, task self-containment, granularity, acceptance criteria quality, external dependencies.' },
       { id: 'integ-finding', label: 'ASK: Approve fix?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Process findings one at a time (Critical/Important/Minor). Present finding + proposed fix. User: approve (y — applies verbatim), skip, or request changes. Commits after each. Tracking file deleted when complete.' },
       // Conclusion
-      { id: 'conclude', label: 'Conclude plan', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 8: Set status: concluded. Checkpoint: all tasks must be authored before concluding.' },
+      { id: 'complete', label: 'Complete plan', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 8: Set status: completed. Checkpoint: all tasks must be authored before completing.' },
       { id: 'end', label: '{work_unit}/planning/{topic}/planning.md', shape: 'pill', w: 190, h: 40, color: 'var(--planning)', bg: 'var(--planning-bg)', desc: 'Output: Plan index + authored tasks in chosen output format.' },
       { id: 'next', label: 'Invoke /start-implementation', desc: 'Navigate to the implementation command to execute the plan via strict TDD.', w: 215, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'implementation' },
     ],
@@ -2076,9 +2076,9 @@ const FLOWCHARTS = {
       // Review — integrity
       { from: 'integrity', to: 'integ-finding' },
       { from: 'integ-finding', to: 'integrity', type: 'backloop', label: 'more findings' },
-      { from: 'integ-finding', to: 'conclude', label: 'all processed' },
+      { from: 'integ-finding', to: 'complete', label: 'all processed' },
       // Conclusion
-      { from: 'conclude', to: 'end' },
+      { from: 'complete', to: 'end' },
       { from: 'end', to: 'next', type: 'transition' },
     ]
   },
@@ -2613,19 +2613,19 @@ const FLOWCHART_DESCS = {
   research: {
     summary: 'Explore ideas, feasibility, and validate concepts across technical, business, and market domains.',
     body: `<p>The simplest command — no discovery script, no prerequisites, no cache. Gathers context through 4 sequential questions (seed idea, existing knowledge, starting direction, constraints) then hands off to the <strong>technical-research</strong> skill.</p>
-<p>The skill acts as a research partner, looping through <strong>Ask → Discuss → Document → Commit</strong>. Output starts as a single file and splits as themes emerge. Research concludes when the user parks a topic as discussion-ready.</p>`,
+<p>The skill acts as a research partner, looping through <strong>Ask → Discuss → Document → Commit</strong>. Output starts as a single file and splits as themes emerge. Research completes when the user parks a topic as discussion-ready.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', skill: 'technical-research', complexity: 'Simple' }
   },
   discussion: {
     summary: 'Capture architecture decisions, debates, edge cases, and rationale through structured dialogue.',
     body: `<p>Moderate complexity. A discovery script scans research files, existing discussions, and cache, then classifies the scenario: <strong>fresh</strong>, <strong>research_only</strong>, <strong>discussions_only</strong>, or <strong>research_and_discussions</strong>.</p>
-<p>Research analysis is <strong>cache-aware</strong> — checksums detect stale analysis. The options menu adapts based on what exists (2–4 options). After user selection, context is gathered and the <strong>technical-discussion</strong> skill runs a loop: <strong>Engage → Capture decisions → Document → Commit</strong> until the discussion is concluded.</p>`,
+<p>Research analysis is <strong>cache-aware</strong> — checksums detect stale analysis. The options menu adapts based on what exists (2–4 options). After user selection, context is gathered and the <strong>technical-discussion</strong> skill runs a loop: <strong>Engage → Capture decisions → Document → Commit</strong> until the discussion is completed.</p>`,
     meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', skill: 'technical-discussion', discovery: 'discovery-for-discussion.sh', cache: '{work_unit}/.state/research-analysis.md' }
   },
   specification: {
     summary: 'Analyse discussion coupling, group into features, and build validated specifications.',
-    body: `<p>Cache-first routing with progressive disclosure. Two prerequisite gates (discussions must exist and be concluded), then a priority chain: single discussion auto-selects, valid cache shows groupings directly, stale/none cache checks for existing specs before offering analysis.</p>
-<p>The <strong>analysis flow</strong> gathers context about topic relationships, reads all concluded discussions, analyses <strong>data, behavioural, and conceptual coupling</strong>, and caches the result. The <strong>groupings menu</strong> offers per-grouping actions (Start/Continue/Refine), Unify all, and Re-analyze. A separate <strong>specs menu</strong> appears when specs exist but cache is stale — showing existing specs alongside an analyze option.</p>
+    body: `<p>Cache-first routing with progressive disclosure. Two prerequisite gates (discussions must exist and be completed), then a priority chain: single discussion auto-selects, valid cache shows groupings directly, stale/none cache checks for existing specs before offering analysis.</p>
+<p>The <strong>analysis flow</strong> gathers context about topic relationships, reads all completed discussions, analyses <strong>data, behavioural, and conceptual coupling</strong>, and caches the result. The <strong>groupings menu</strong> offers per-grouping actions (Start/Continue/Refine), Unify all, and Re-analyze. A separate <strong>specs menu</strong> appears when specs exist but cache is stale — showing existing specs alongside an analyze option.</p>
 <p>The <strong>technical-specification</strong> skill is collaborative — it extracts, filters hallucinations, enriches gaps, presents for approval, and waits for explicit sign-off before writing.</p>`,
     meta: { output: '.workflows/{work_unit}/specification/{topic}/specification.md', skill: 'technical-specification', discovery: 'discovery.sh', cache: '{work_unit}/.state/discussion-consolidation-analysis.md' }
   },
@@ -2637,7 +2637,7 @@ const FLOWCHART_DESCS = {
   },
   implementation: {
     summary: 'Discover plans, classify readiness, gate on dependencies, and hand off to agent-based implementation.',
-    body: `<p>Discovery classifies plans into three sections: <strong>Implementable</strong> (▶ in-progress or + ready to start), <strong>Implemented</strong> (> completed), and <strong>Not implementable</strong> (· blocked deps or plan not concluded). Plan presentation includes an <strong>unblock escape hatch</strong> — users can mark blocked deps as externally satisfied without leaving the selection step. Two gates follow: <strong>external dependencies</strong> (confirmation) and <strong>environment setup</strong> (info gathering only, does not execute setup).</p>
+    body: `<p>Discovery classifies plans into three sections: <strong>Implementable</strong> (▶ in-progress or + ready to start), <strong>Implemented</strong> (> completed), and <strong>Not implementable</strong> (· blocked deps or plan not completed). Plan presentation includes an <strong>unblock escape hatch</strong> — users can mark blocked deps as externally satisfied without leaving the selection step. Two gates follow: <strong>external dependencies</strong> (confirmation) and <strong>environment setup</strong> (info gathering only, does not execute setup).</p>
 <p>Hands off to the <strong>technical-implementation</strong> skill, which dispatches executor and reviewer agents per task with a configurable approval gate (gated or auto mode). Scope selection is handled within the skill, not the command.</p>`,
     meta: { output: 'Code changes (tracked in plan)', skill: 'technical-implementation', discovery: 'discovery-for-implementation-and-review.sh' }
   },
@@ -2649,8 +2649,8 @@ const FLOWCHART_DESCS = {
   },
   'start-feature': {
     summary: 'Pipeline entry — gather context, create discussion, then bridge to continue-feature.',
-    body: `<p>Runs migrations, gathers feature context inline (what, scope, constraints), suggests a topic name, and checks for existing discussions. If a discussion exists, offers to <strong>resume</strong> (in-progress → invoke discussion, concluded → skip to bridge) or choose a <strong>new name</strong>.</p>
-<p>Invokes the <strong>technical-discussion</strong> skill with the gathered context. When the discussion concludes, a <strong>phase bridge</strong> enters plan mode with instructions to invoke <code>/continue-feature</code> in the next session for specification, planning, implementation, and review.</p>`,
+    body: `<p>Runs migrations, gathers feature context inline (what, scope, constraints), suggests a topic name, and checks for existing discussions. If a discussion exists, offers to <strong>resume</strong> (in-progress → invoke discussion, completed → skip to bridge) or choose a <strong>new name</strong>.</p>
+<p>Invokes the <strong>technical-discussion</strong> skill with the gathered context. When the discussion completes, a <strong>phase bridge</strong> enters plan mode with instructions to invoke <code>/continue-feature</code> in the next session for specification, planning, implementation, and review.</p>`,
     meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', skill: 'technical-discussion', complexity: 'Pipeline' }
   },
   'link-deps': {
@@ -2662,13 +2662,13 @@ const FLOWCHART_DESCS = {
   'skill-research': {
     summary: 'The research skill — an interactive exploration loop across technical, product, and market domains.',
     body: `<p>Acts as a research partner. Uses structured questioning from <code>references/interview.md</code> to guide exploration. The core loop: <strong>Ask → Discuss → Document → Commit → Repeat</strong>.</p>
-<p>Output starts as a single <code>exploration.md</code> file and splits into separate files as distinct themes emerge. Research concludes when the user parks a topic as discussion-ready. If they return to it, research reopens — same lifecycle as any other phase.</p>`,
+<p>Output starts as a single <code>exploration.md</code> file and splits into separate files as distinct themes emerge. Research completes when the user parks a topic as discussion-ready. If they return to it, research reopens — same lifecycle as any other phase.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', complexity: 'Looping skill' }
   },
   'skill-discussion': {
     summary: 'The discussion skill — captures decisions, debates, and edge cases through structured dialogue.',
-    body: `<p>Engages as an expert architect and meeting assistant. The core loop: <strong>Engage → Capture decisions → Write to disk → Commit → Repeat</strong> until the discussion is concluded. Writes happen at natural pauses — partial and provisional documentation is expected and valuable.</p>
-<p>Each question is structured as <strong>Options → Journey → Decision</strong>. The skill documents competing solutions and why choices were made, capturing the full reasoning trail. The file on disk is the defence against context compaction — what's not written is lost. Frontmatter status progresses from <code>in-progress</code> to <code>concluded</code>.</p>`,
+    body: `<p>Engages as an expert architect and meeting assistant. The core loop: <strong>Engage → Capture decisions → Write to disk → Commit → Repeat</strong> until the discussion is completed. Writes happen at natural pauses — partial and provisional documentation is expected and valuable.</p>
+<p>Each question is structured as <strong>Options → Journey → Decision</strong>. The skill documents competing solutions and why choices were made, capturing the full reasoning trail. The file on disk is the defence against context compaction — what's not written is lost. Frontmatter status progresses from <code>in-progress</code> to <code>completed</code>.</p>`,
     meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', complexity: 'Looping skill' }
   },
   'skill-specification': {
