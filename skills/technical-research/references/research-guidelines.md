@@ -29,14 +29,22 @@ Don't constrain yourself. Research goes wherever it needs to go.
 
 ## Questioning
 
-For structured questioning, use the interview reference (**[interview.md](interview.md)**). Good research questions:
+Before interviewing, read docs in `.workflows/{work_unit}/research/` to understand what's already been explored.
+
+Ask one question at a time. Wait for the answer. Document. Then ask the next. Go where it leads — follow tangents if they reveal something valuable. This isn't a checklist, it's a conversation.
+
+Good research questions:
 
 - Reveal hidden complexity
 - Surface concerns early
 - Challenge comfortable assumptions
 - Probe the "why" behind ideas
 
-Ask one question at a time. Wait for the answer. Document. Then ask the next.
+Avoid:
+
+- Restating what's already documented
+- Obvious surface-level questions
+- Leading questions that assume an answer
 
 ## File Strategy
 
