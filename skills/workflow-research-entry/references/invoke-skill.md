@@ -19,9 +19,10 @@ Construct the handoff.
 ```
 Research session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 
 Source: existing research
-Output: .workflows/{work_unit}/research/exploration.md
+Output: .workflows/{work_unit}/research/{resolved_filename}
 
 Invoke the technical-research skill.
 ```
@@ -31,8 +32,9 @@ Invoke the technical-research skill.
 ```
 Research session for: {topic}
 Work unit: {work_unit}
+Work type: {work_type}
 
-Output: .workflows/{work_unit}/research/exploration.md
+Output: .workflows/{work_unit}/research/{resolved_filename}
 
 Context:
 - Prompted by: {problem, opportunity, or curiosity}
