@@ -920,7 +920,7 @@
     background: rgba(52, 211, 153, 0.1);
   }
 
-  /* Wrap connector */
+  /* Wrap connector (legacy, kept for compatibility) */
   .ov-connector-row {
     width: 100%; height: 56px;
     display: flex; align-items: center; justify-content: center;
@@ -933,10 +933,18 @@
 
   /* Layer labels */
   .ov-layer-label {
-    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--text-dim); opacity: 0.6;
-    margin: 20px 0 10px; padding-left: 4px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
+    color: var(--accent); opacity: 0.5;
+    margin: 28px 0 12px; padding-left: 4px;
+    border-left: 2px solid rgba(108,138,255,0.3);
+    padding-left: 10px;
   }
+
+  /* Vertical flow arrow between sections */
+  .ov-flow-down {
+    display: flex; justify-content: center; padding: 6px 0;
+  }
+  .ov-flow-down svg { overflow: visible; }
 
   /* Centered row */
   .ov-row-center { justify-content: center; }
@@ -1175,6 +1183,8 @@
           </div>
         </div>
 
+        <div class="ov-flow-down"><svg width="12" height="28" viewBox="0 0 12 28"><line x1="6" y1="2" x2="6" y2="20" stroke="#8b90a0" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,20 6,28 10,20" fill="#8b90a0" fill-opacity="0.3"/></svg></div>
+
         <!-- Layer 2: Work-type Entry -->
         <div class="ov-layer-label">Layer 2 &mdash; Work-type Entry</div>
         <div class="ov-row ov-row-center">
@@ -1242,30 +1252,39 @@
           </div>
         </div>
 
-        <!-- Convergence: shared phases -->
+        <div class="ov-flow-down"><svg width="12" height="28" viewBox="0 0 12 28"><line x1="6" y1="2" x2="6" y2="20" stroke="#8b90a0" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,20 6,28 10,20" fill="#8b90a0" fill-opacity="0.3"/></svg></div>
+
+        <!-- Convergence: shared phases (vertical flow) -->
         <div class="ov-layer-label">Convergence &mdash; Shared Phases</div>
-        <div class="ov-row">
-          <div class="ov-card" data-phase="specification" onclick="selectPhase('specification')">
+
+        <div class="ov-row ov-row-center">
+          <div class="ov-card" data-phase="specification" onclick="selectPhase('specification')" style="max-width: 400px">
             <span class="ov-watermark">S</span>
             <div class="ov-phase-name">Specification</div>
             <div class="ov-phase-desc">Build validated specifications &mdash; filter hallucinations, enrich gaps</div>
             <div class="ov-badges">
               <span class="ov-badge ov-badge-skill ov-badge-link" onclick="event.stopPropagation(); selectPhase('skill-specification')"><span class="ov-badge-label">skill</span>technical-specification</span>
-              <span class="ov-badge ov-badge-output"><span class="ov-badge-label">output</span>.workflows/{work_unit}/specification/</span>
             </div>
           </div>
-          <div class="ov-arrow-h"><svg width="48" height="12" viewBox="0 0 48 12"><line x1="4" y1="6" x2="38" y2="6" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="38,2 46,6 38,10" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
-          <div class="ov-card" data-phase="planning" onclick="selectPhase('planning')">
+        </div>
+
+        <div class="ov-flow-down"><svg width="12" height="32" viewBox="0 0 12 32"><line x1="6" y1="2" x2="6" y2="24" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,24 6,32 10,24" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
+
+        <div class="ov-row ov-row-center">
+          <div class="ov-card" data-phase="planning" onclick="selectPhase('planning')" style="max-width: 400px">
             <span class="ov-watermark">P</span>
             <div class="ov-phase-name">Planning</div>
             <div class="ov-phase-desc">Transform specs into phased plans with tasks and acceptance criteria</div>
             <div class="ov-badges">
               <span class="ov-badge ov-badge-skill ov-badge-link" onclick="event.stopPropagation(); selectPhase('skill-planning')"><span class="ov-badge-label">skill</span>technical-planning</span>
-              <span class="ov-badge ov-badge-output"><span class="ov-badge-label">output</span>.workflows/{work_unit}/planning/</span>
             </div>
           </div>
-          <div class="ov-arrow-h"><svg width="48" height="12" viewBox="0 0 48 12"><line x1="4" y1="6" x2="38" y2="6" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="38,2 46,6 38,10" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
-          <div class="ov-card" data-phase="implementation" onclick="selectPhase('implementation')">
+        </div>
+
+        <div class="ov-flow-down"><svg width="12" height="32" viewBox="0 0 12 32"><line x1="6" y1="2" x2="6" y2="24" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,24 6,32 10,24" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
+
+        <div class="ov-row ov-row-center">
+          <div class="ov-card" data-phase="implementation" onclick="selectPhase('implementation')" style="max-width: 400px">
             <span class="ov-watermark">I</span>
             <div class="ov-phase-name">Implementation</div>
             <div class="ov-phase-desc">Execute plan via agent-based TDD &mdash; executor and reviewer per task</div>
@@ -1275,21 +1294,15 @@
           </div>
         </div>
 
-        <div class="ov-connector-row">
-          <svg width="816" height="56" viewBox="0 0 816 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs><marker id="ov-arrow-wrap" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#8b90a0" fill-opacity="0.4"/></marker></defs>
-            <path d="M 696 0 L 696 18 Q 696 28 686 28 L 130 28 Q 120 28 120 38 L 120 56" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#ov-arrow-wrap)"/>
-          </svg>
-        </div>
+        <div class="ov-flow-down"><svg width="12" height="32" viewBox="0 0 12 32"><line x1="6" y1="2" x2="6" y2="24" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,24 6,32 10,24" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
 
         <div class="ov-row ov-row-center">
-          <div class="ov-card" data-phase="review" onclick="selectPhase('review')">
+          <div class="ov-card" data-phase="review" onclick="selectPhase('review')" style="max-width: 400px">
             <span class="ov-watermark">R</span>
             <div class="ov-phase-name">Review</div>
             <div class="ov-phase-desc">Verify implementation against plan using parallel verification agents</div>
             <div class="ov-badges">
               <span class="ov-badge ov-badge-skill ov-badge-link" onclick="event.stopPropagation(); selectPhase('skill-review')"><span class="ov-badge-label">skill</span>technical-review</span>
-              <span class="ov-badge ov-badge-output"><span class="ov-badge-label">output</span>review verdicts</span>
             </div>
           </div>
         </div>
