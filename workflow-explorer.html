@@ -940,11 +940,20 @@
     padding-left: 10px;
   }
 
-  /* Vertical flow arrow between sections */
+  /* Vertical flow arrow between sections (pure CSS) */
   .ov-flow-down {
-    display: flex; justify-content: center; padding: 6px 0;
+    display: flex; flex-direction: column; align-items: center; padding: 4px 0;
   }
-  .ov-flow-down svg { overflow: visible; }
+  .ov-flow-down-line {
+    width: 1.5px; height: 18px;
+    background: repeating-linear-gradient(to bottom, rgba(139,144,160,0.35) 0 4px, transparent 4px 7px);
+  }
+  .ov-flow-down-head {
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid rgba(139,144,160,0.35);
+  }
 
   /* Centered row */
   .ov-row-center { justify-content: center; }
@@ -1183,7 +1192,7 @@
           </div>
         </div>
 
-        <div class="ov-flow-down"><svg width="12" height="28" viewBox="0 0 12 28"><line x1="6" y1="2" x2="6" y2="20" stroke="#8b90a0" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,20 6,28 10,20" fill="#8b90a0" fill-opacity="0.3"/></svg></div>
+        <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <!-- Layer 2: Work-type Entry -->
         <div class="ov-layer-label">Layer 2 &mdash; Work-type Entry</div>
@@ -1252,7 +1261,7 @@
           </div>
         </div>
 
-        <div class="ov-flow-down"><svg width="12" height="28" viewBox="0 0 12 28"><line x1="6" y1="2" x2="6" y2="20" stroke="#8b90a0" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,20 6,28 10,20" fill="#8b90a0" fill-opacity="0.3"/></svg></div>
+        <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <!-- Convergence: shared phases (vertical flow) -->
         <div class="ov-layer-label">Convergence &mdash; Shared Phases</div>
@@ -1268,7 +1277,7 @@
           </div>
         </div>
 
-        <div class="ov-flow-down"><svg width="12" height="32" viewBox="0 0 12 32"><line x1="6" y1="2" x2="6" y2="24" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,24 6,32 10,24" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
+        <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <div class="ov-row ov-row-center">
           <div class="ov-card" data-phase="planning" onclick="selectPhase('planning')" style="max-width: 400px">
@@ -1281,7 +1290,7 @@
           </div>
         </div>
 
-        <div class="ov-flow-down"><svg width="12" height="32" viewBox="0 0 12 32"><line x1="6" y1="2" x2="6" y2="24" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,24 6,32 10,24" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
+        <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <div class="ov-row ov-row-center">
           <div class="ov-card" data-phase="implementation" onclick="selectPhase('implementation')" style="max-width: 400px">
@@ -1294,7 +1303,7 @@
           </div>
         </div>
 
-        <div class="ov-flow-down"><svg width="12" height="32" viewBox="0 0 12 32"><line x1="6" y1="2" x2="6" y2="24" stroke="#8b90a0" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="4,3"/><polygon points="2,24 6,32 10,24" fill="#8b90a0" fill-opacity="0.4"/></svg></div>
+        <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <div class="ov-row ov-row-center">
           <div class="ov-card" data-phase="review" onclick="selectPhase('review')" style="max-width: 400px">
@@ -2919,14 +2928,22 @@ const FLOWCHARTS = {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /continue-epic.' },
       { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
-      { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery script. Returns epics with full phase-by-phase detail.' },
+      { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery script. Returns epics with full phase-by-phase detail including items, statuses, sources, deps, gating flags.' },
       { id: 'count', label: 'Count = 0?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Are there any active epics?' },
       { id: 'stop-none', label: 'STOP: No epics', shape: 'stop', w: 160, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No epics in progress. Run /start-epic.' },
       { id: 'arg-check', label: 'Arg provided?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if work_unit argument $0 was provided.' },
       { id: 'select', label: 'ASK: Select epic', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 3: Load select-epic.md — present epic list (auto-select if single).' },
       { id: 'validate', label: 'Validate selection', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 4: Load validate-selection.md — confirm work unit exists and is active.' },
-      { id: 'display-menu', label: 'Display state + menu', w: 210, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 5: Load epic-display-and-menu.md — show full phase-by-phase state with interactive menu. Includes soft gate warnings.' },
-      { id: 'route', label: 'Route to phase entry', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 6: Invoke /workflow-{phase}-entry epic {work_unit} {topic} based on menu selection.' },
+      // Display state + menu (expanded)
+      { id: 'display-state', label: 'Display phase state', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'A. Show full phase-by-phase breakdown: research, discussion, specification, planning, implementation items with status, sources, progress. Show recommendations and not-ready blocks for blocked plans.' },
+      { id: 'menu', label: 'ASK: Interactive menu', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'C. 3-section numbered menu: (1) in-progress items, (2) next-phase-ready items with gating, (3) standing options (new discussion, new research, resume completed, stop). Recommendation marking. Blocked items shown but not selectable.' },
+      { id: 'choice', label: 'User choice?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'D. Route based on menu selection.' },
+      { id: 'stop-here', label: 'STOP: Paused', shape: 'stop', w: 150, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'User chose "Stop here". Session paused, resume with /workflow-start.' },
+      { id: 'blocked', label: 'Show blocked deps', w: 200, h: 44, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'User picked a blocked item. Show blocking dependencies. Options: unblock (mark satisfied externally) or back to menu.' },
+      { id: 'resume-completed', label: 'ASK: Resume completed', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'E. Show all completed items across phases. User picks one or goes back to menu.' },
+      { id: 'soft-gate', label: 'Soft gate?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Advisory check: does selection conflict with phase-completion recommendation? E.g., starting spec while discussions still in-progress. User can proceed anyway or go back.' },
+      { id: 'gate-warn', label: 'ASK: Proceed anyway?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Soft gate warning: "{N} of {M} items still in-progress. Re-analysis will happen if you revisit later." Options: yes (proceed) or back (return to menu).' },
+      { id: 'route', label: 'Route to phase entry', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 6: Invoke /workflow-{phase}-entry epic {work_unit} {topic} based on selection. Topic provided for continue/start items, omitted for new discussion/research/specification.' },
     ],
     connections: [
       { from: 'start', to: 'migrate' },
@@ -2934,11 +2951,27 @@ const FLOWCHARTS = {
       { from: 'discovery', to: 'count' },
       { from: 'count', to: 'stop-none', type: 'no', label: 'none' },
       { from: 'count', to: 'arg-check', type: 'yes', label: 'has epics', weight: 2 },
-      { id: 'arg-yes', from: 'arg-check', to: 'validate', type: 'yes', label: 'provided' },
+      { from: 'arg-check', to: 'validate', type: 'yes', label: 'provided' },
       { from: 'arg-check', to: 'select', type: 'no', label: 'none' },
       { from: 'select', to: 'validate' },
-      { from: 'validate', to: 'display-menu' },
-      { from: 'display-menu', to: 'route', type: 'transition' },
+      { from: 'validate', to: 'display-state' },
+      { from: 'display-state', to: 'menu' },
+      { from: 'menu', to: 'choice' },
+      // Choice routing
+      { from: 'choice', to: 'stop-here', label: 'stop' },
+      { from: 'choice', to: 'blocked', label: 'blocked item' },
+      { from: 'choice', to: 'resume-completed', label: 'resume' },
+      { from: 'choice', to: 'soft-gate', label: 'action', weight: 2 },
+      // Blocked → back to menu
+      { from: 'blocked', to: 'menu', type: 'backloop', label: 'back / unblock' },
+      // Resume completed → back to menu or select
+      { from: 'resume-completed', to: 'menu', type: 'backloop', label: 'back' },
+      { from: 'resume-completed', to: 'soft-gate', label: 'selected' },
+      // Soft gate check
+      { from: 'soft-gate', to: 'route', type: 'yes', label: 'clear', weight: 2 },
+      { from: 'soft-gate', to: 'gate-warn', type: 'no', label: 'warning' },
+      { from: 'gate-warn', to: 'route', type: 'yes', label: 'proceed' },
+      { from: 'gate-warn', to: 'menu', type: 'backloop', label: 'back' },
     ]
   },
   // ── Investigation Processing Skill ──
