@@ -42,15 +42,37 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if the research file from the handoff's Output path exists.
+Check if the research file exists at the handoff's Output path.
+
+#### If no file exists
+
+→ Proceed to **Step 1**.
 
 #### If file exists
 
-Read it. Announce what's been explored so far and what themes have emerged. Ask the user whether to continue or start fresh.
+Read the file.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found existing research for **{topic:(titlecase)}**.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Pick up where you left off
+- **`r`/`restart`** — Delete the research file and start fresh
+· · · · · · · · · · · ·
+```
 
 **STOP.** Wait for user response.
 
-#### If file does not exist
+#### If `continue`
+
+→ Proceed to **Step 2**.
+
+#### If `restart`
+
+1. Delete the research file
+2. Commit: `research({work_unit}): restart research`
 
 → Proceed to **Step 1**.
 
@@ -60,7 +82,7 @@ Read it. Announce what's been explored so far and what themes have emerged. Ask 
 
 1. Ensure the research directory exists: `.workflows/{work_unit}/research/`
 2. Load **[template.md](references/template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`)
-3. Populate the Starting Point section with context from the user
+3. Populate the Starting Point section with context from the handoff. If restarting (no Context in handoff), create with a minimal Starting Point — the session will gather context naturally
 4. Set research status via manifest CLI:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status in-progress

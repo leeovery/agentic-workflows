@@ -52,15 +52,37 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if the discussion file already exists at `.workflows/{work_unit}/discussion/{topic}.md`.
+Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
 
-#### If the file exists
+#### If no file exists
 
-Read it. Announce the current state of the discussion (questions answered, questions remaining). Ask the user whether to continue or restart.
+→ Proceed to **Step 1**.
+
+#### If file exists
+
+Read the file.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found existing discussion for **{topic:(titlecase)}**.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Pick up where you left off
+- **`r`/`restart`** — Delete the discussion file and start fresh
+· · · · · · · · · · · ·
+```
 
 **STOP.** Wait for user response.
 
-#### If the file does not exist
+#### If `continue`
+
+→ Proceed to **Step 2**.
+
+#### If `restart`
+
+1. Delete the discussion file
+2. Commit: `discussion({work_unit}): restart discussion`
 
 → Proceed to **Step 1**.
 

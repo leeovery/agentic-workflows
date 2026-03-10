@@ -64,15 +64,37 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 ## Step 0: Resume Detection
 
-Check if `.workflows/{work_unit}/investigation/{topic}.md` already exists.
+Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
 
-#### If the file exists
+#### If no file exists
 
-Read it. Announce what's been documented so far and what phase the investigation is in (symptoms, analysis, root cause, or findings review). Ask the user whether to continue or restart.
+→ Proceed to **Step 1**.
+
+#### If file exists
+
+Read the file.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found existing investigation for **{topic:(titlecase)}**.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Pick up where you left off
+- **`r`/`restart`** — Delete the investigation file and start fresh
+· · · · · · · · · · · ·
+```
 
 **STOP.** Wait for user response.
 
-#### If the file does not exist
+#### If `continue`
+
+→ Proceed to **Step 2**.
+
+#### If `restart`
+
+1. Delete the investigation file
+2. Commit: `investigation({work_unit}): restart investigation`
 
 → Proceed to **Step 1**.
 
