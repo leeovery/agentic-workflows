@@ -1,7 +1,7 @@
 ---
 name: workflow-planning-entry
 user-invocable: false
-allowed-tools: Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 Invoke the **technical-planning** skill for this conversation.

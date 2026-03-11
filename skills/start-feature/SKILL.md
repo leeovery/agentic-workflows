@@ -1,12 +1,6 @@
 ---
 name: start-feature
 allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/)
-hooks:
-  PreToolUse:
-    - hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/workflows/system-check.sh"
-          once: true
 ---
 
 Start a new feature. Gather a brief description, create the work unit, and route to the first phase.

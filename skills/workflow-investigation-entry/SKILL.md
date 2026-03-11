@@ -1,7 +1,7 @@
 ---
 name: workflow-investigation-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(.claude/hooks/workflows/write-session-state.sh)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 Invoke the **technical-investigation** skill for this conversation.

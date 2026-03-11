@@ -151,16 +151,6 @@ Each phase produces documents that feed the next. Here's the journey:
 
 **Workflow bridge** connects phases automatically. After each phase completes, it clears context and advances to the next phase. You approve each transition with "clear context and continue" — this keeps each phase in a clean context window.
 
-### Compaction Recovery
-
-Long-running skills can hit context compaction, where Claude's conversation is summarized and procedural detail is lost. The hook system provides automatic recovery:
-
-- **Project-level hooks** installed in `.claude/settings.json` persist through compaction events
-- On compaction, the recovery hook reads session state from disk and injects authoritative context — the skill to re-read, the artifact to resume, and pipeline instructions
-- On first run, a bootstrap hook detects missing configuration and installs it automatically (requires one Claude restart)
-
-Session state is ephemeral (gitignored, cleaned up on session end) and per-session — multiple concurrent sessions don't interfere.
-
 ### Work Unit Lifecycle
 
 Work units move through a simple lifecycle: **in-progress** → **completed** or **cancelled**.
@@ -234,7 +224,7 @@ Documents are stored in your project using a **work-unit-first** organisation. E
           review.md                      #   Review summary and verdict
           qa-task-1.md                   #   Per-task QA verification
   .state/                                # Global state (migrations, env setup)
-  .cache/                                # Ephemeral (sessions, planning scratch)
+  .cache/                                # Ephemeral (planning scratch)
 ```
 
 For feature/bugfix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase (e.g., `payment-processing` within the `payments-overhaul` epic).

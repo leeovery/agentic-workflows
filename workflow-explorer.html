@@ -1818,7 +1818,6 @@ const FLOWCHARTS = {
       { id: 'phase-exists', label: 'Phase exists?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Does a research phase entry exist in the manifest for this topic?' },
       { id: 'validate', label: 'Validate phase', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 2: Load validate-phase.md — handle in-progress/completed/reopened states.' },
       { id: 'gather', label: 'ASK: Gather context', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 3: Load gather-context.md — 4 questions: seed idea, current knowledge, starting point, constraints.' },
-      { id: 'session', label: 'Write session state', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Save session bookmark for compaction recovery before invoking the processing skill.' },
       { id: 'skill', label: 'Invoke research skill', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 4: Load invoke-skill.md — invoke technical-research with all gathered context.', skillLink: 'skill-research' },
     ],
     connections: [
@@ -1829,9 +1828,8 @@ const FLOWCHARTS = {
       { from: 'manifest-check', to: 'phase-exists' },
       { from: 'phase-exists', to: 'validate', type: 'yes', label: 'exists' },
       { from: 'phase-exists', to: 'gather', type: 'no', label: 'new', weight: 2 },
-      { from: 'validate', to: 'session' },
-      { from: 'gather', to: 'session' },
-      { from: 'session', to: 'skill', type: 'transition' },
+      { from: 'validate', to: 'skill', type: 'transition' },
+      { from: 'gather', to: 'skill', type: 'transition' },
     ]
   },
   discussion: {
@@ -1869,8 +1867,6 @@ const FLOWCHARTS = {
       { id: 'gather-fresh', label: 'ASK: Gather fresh context', w: 210, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'gather-context-fresh.md — problem/decision, constraints, codebase files.' },
       { id: 'gather-research', label: 'ASK: Gather research ctx', w: 210, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'gather-context-research.md — context for starting from a research topic.' },
       { id: 'gather-continue', label: 'ASK: Gather continue ctx', w: 210, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'gather-context-continue.md — context for continuing an existing discussion.' },
-      // Common exit
-      { id: 'session', label: 'Write session state', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Save session bookmark for compaction recovery.' },
       { id: 'skill', label: 'Invoke discussion skill', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 8: Load invoke-skill.md — invoke technical-discussion with gathered context.', skillLink: 'skill-discussion' },
     ],
     connections: [
@@ -1919,13 +1915,11 @@ const FLOWCHARTS = {
       { from: 'gather-src', to: 'gather-continue', label: 'continue' },
       { from: 'check-research', to: 'gather-with-res', type: 'yes', label: 'completed' },
       { from: 'check-research', to: 'gather-fresh', type: 'no', label: 'no research' },
-      { from: 'gather-with-res', to: 'session' },
+      { from: 'gather-with-res', to: 'skill', type: 'transition' },
       { from: 'name-topic', to: 'gather-fresh' },
-      { from: 'gather-fresh', to: 'session' },
-      { from: 'gather-research', to: 'session' },
-      { from: 'gather-continue', to: 'session' },
-      // Common exit
-      { from: 'session', to: 'skill', type: 'transition' },
+      { from: 'gather-fresh', to: 'skill', type: 'transition' },
+      { from: 'gather-research', to: 'skill', type: 'transition' },
+      { from: 'gather-continue', to: 'skill', type: 'transition' },
     ]
   },
   specification: {
@@ -1945,7 +1939,6 @@ const FLOWCHARTS = {
       { id: 'spec-status', label: 'Spec status?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route by spec status: in-progress or completed.' },
       { id: 'ask-resume', label: 'ASK: Resume/fresh?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Spec is in-progress: ask whether to resume or start fresh.' },
       { id: 'reopen-spec', label: 'Reopen specification', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Spec is completed: reset status to in-progress. Verb = "Continuing".' },
-      { id: 'session', label: 'Write session state', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Save session bookmark for compaction recovery before invoking the processing skill.' },
       { id: 'skill', label: 'Invoke specification skill', w: 210, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 4: Load invoke-skill.md — invoke technical-specification with sources and verb.', skillLink: 'skill-specification' },
       // ── Epic scoped path (no topic) ──
       { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Run scoped discovery for this work_unit. Returns discussions, specifications, cache, and current_state counts.' },
@@ -1975,7 +1968,7 @@ const FLOWCHARTS = {
       // Confirm and handoff
       { id: 'confirm', label: 'ASK: Confirm?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'confirm-and-handoff.md — show sources, output path, and any supersession. Ask y/n.' },
       { id: 'confirm-ok', label: 'Confirmed?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Did user confirm (y) or decline (n)?' },
-      { id: 'handoff', label: 'Init phase + handoff', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Initialize manifest phase entry, set sources, write session state.' },
+      { id: 'handoff', label: 'Init phase + handoff', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Initialize manifest phase entry, set sources.' },
     ],
     connections: [
       { from: 'start', to: 'parse' },
@@ -1991,14 +1984,13 @@ const FLOWCHARTS = {
       { from: 'src-ok', to: 'stop-no-src', type: 'no', label: 'missing' },
       { from: 'src-ok', to: 'stop-src-ip', label: 'in-progress' },
       { from: 'src-ok', to: 'spec-exists', type: 'yes', label: 'completed', weight: 2 },
-      { from: 'spec-exists', to: 'session', type: 'no', label: 'new', weight: 2 },
+      { from: 'spec-exists', to: 'skill', type: 'no', label: 'new', weight: 2 },
       { from: 'spec-exists', to: 'spec-status', type: 'yes', label: 'exists' },
       { from: 'spec-status', to: 'ask-resume', label: 'in-progress' },
       { from: 'spec-status', to: 'reopen-spec', label: 'completed' },
-      { from: 'ask-resume', to: 'session', label: 'resume', weight: 2 },
-      { from: 'ask-resume', to: 'session', label: 'start-fresh' },
-      { from: 'reopen-spec', to: 'session' },
-      { from: 'session', to: 'skill', type: 'transition' },
+      { from: 'ask-resume', to: 'skill', label: 'resume', type: 'transition', weight: 2 },
+      { from: 'ask-resume', to: 'skill', label: 'start-fresh', type: 'transition' },
+      { from: 'reopen-spec', to: 'skill', type: 'transition' },
       // ── Epic scoped path (no topic) ──
       { from: 'topic-resolved', to: 'discovery', type: 'no', label: 'no (epic)' },
       { from: 'discovery', to: 'has-disc' },
@@ -2063,7 +2055,6 @@ const FLOWCHARTS = {
       { id: 'stop-xcut', label: 'STOP: Complete cross-cut', shape: 'stop', w: 200, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: User chose to stop and complete cross-cutting specs first.' },
       { id: 'summarize-xcut', label: 'Summarize cross-cutting', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Summarize completed cross-cutting specs for the handoff.' },
       // ── Invoke skill ──
-      { id: 'session', label: 'Write session state', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Save session bookmark for compaction recovery.' },
       { id: 'skill', label: 'Invoke planning skill', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 5: Load invoke-skill.md — invoke technical-planning with spec, context, and cross-cutting refs.', skillLink: 'skill-planning' },
     ],
     connections: [
@@ -2078,20 +2069,18 @@ const FLOWCHARTS = {
       // Validate phase
       { from: 'plan-exists', to: 'ask-context', type: 'no', label: 'new', weight: 2 },
       { from: 'plan-exists', to: 'plan-status', type: 'yes', label: 'exists' },
-      { from: 'plan-status', to: 'session', label: 'in-progress\n(source=existing)' },
+      { from: 'plan-status', to: 'skill', label: 'in-progress\n(source=existing)', type: 'transition' },
       { from: 'plan-status', to: 'reopen-plan', label: 'completed' },
-      { from: 'reopen-plan', to: 'session' },
+      { from: 'reopen-plan', to: 'skill', type: 'transition' },
       { from: 'ask-context', to: 'is-epic' },
       // Cross-cutting context
-      { from: 'is-epic', to: 'session', type: 'no', label: 'feature/bugfix', weight: 2 },
+      { from: 'is-epic', to: 'skill', type: 'no', label: 'feature/bugfix', weight: 2 },
       { from: 'is-epic', to: 'has-ip-xcut', type: 'yes', label: 'epic' },
       { from: 'has-ip-xcut', to: 'ask-xcut', type: 'yes', label: 'relevant' },
       { from: 'has-ip-xcut', to: 'summarize-xcut', type: 'no', label: 'none', weight: 2 },
       { from: 'ask-xcut', to: 'stop-xcut', type: 'no', label: 'stop' },
       { from: 'ask-xcut', to: 'summarize-xcut', type: 'yes', label: 'continue', weight: 2 },
-      { from: 'summarize-xcut', to: 'session' },
-      // Invoke skill
-      { from: 'session', to: 'skill', type: 'transition' },
+      { from: 'summarize-xcut', to: 'skill', type: 'transition' },
     ]
   },
   implementation: {
@@ -2139,7 +2128,7 @@ const FLOWCHARTS = {
       { id: 'scan-dirs', label: 'Scan review dirs', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 3: determine-review-version.md — scan .workflows/{work_unit}/review/{topic}/ for existing r* directories.' },
       { id: 'set-version', label: 'Set review version', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set review_version = latest rN + 1, or 1 if none exist.' },
       // ── Invoke skill ──
-      { id: 'init-phase', label: 'Init phase + session', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Initialize review phase in manifest. Write session state for compaction recovery.' },
+      { id: 'init-phase', label: 'Init phase', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Initialize review phase in manifest.' },
       { id: 'skill', label: 'Invoke review skill', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', desc: 'Step 4: Load invoke-skill.md — invoke technical-review with plan, spec, format, and review version.', skillLink: 'skill-review' },
     ],
     connections: [
@@ -2253,7 +2242,7 @@ const FLOWCHARTS = {
       { id: 'init', label: 'Initialize doc', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 1: Create research file using template. Register in manifest. Commit.' },
       { id: 'file-strategy', label: 'Load file strategy', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Load file-strategy.md — single file for feature, multi-file for epic.' },
       { id: 'guidelines', label: 'Load guidelines', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 3: Load research-guidelines.md — questioning techniques, convergence awareness, documentation discipline.' },
-      { id: 'work-type', label: 'Work type?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 4: Read work_type from manifest to determine session path.' },
+      { id: 'work-type', label: 'Work type?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 4: Read work_type from manifest to determine research path.' },
       // Feature path
       { id: 'feat-session', label: 'Feature session', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Feature research session: Explore → Engage → Synthesize → Document → Commit → Continue. Single-topic, no splitting.' },
       { id: 'feat-complete', label: 'ASK: Conclude/keep?', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Topic converging. Conclude to move forward, or keep digging.' },
@@ -3410,8 +3399,7 @@ const FLOWCHART_DESCS = {
   // ── Phase entry skills ──
   research: {
     summary: 'Phase entry for research — parse args, check manifest, gather context, invoke processing skill.',
-    body: `<p>The simplest phase entry. Parses arguments (work_type, work_unit, topic), checks the manifest for existing phase status. <strong>Topic resolved</strong>: routes to validate-phase (resume/reopen) or gather-context (4 seed questions). <strong>No topic</strong> (epic scoped): asks seed questions directly.</p>
-<p>Writes session state before invoking the <strong>technical-research</strong> skill.</p>`,
+    body: `<p>The simplest phase entry. Parses arguments (work_type, work_unit, topic), checks the manifest for existing phase status. <strong>Topic resolved</strong>: routes to validate-phase (resume/reopen) or gather-context (4 seed questions). <strong>No topic</strong> (epic scoped): asks seed questions directly.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', skill: 'technical-research', complexity: 'Simple' }
   },
   discussion: {

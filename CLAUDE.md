@@ -131,13 +131,6 @@ agents/
 tests/
   scripts/                   # Tests for discovery scripts and migrations
 
-hooks/
-  workflows/
-    system-check.sh      # Bootstrap: install project-level hooks
-    session-env.sh       # Export CLAUDE_SESSION_ID on session start
-    compact-recovery.sh  # Read session state, inject recovery context
-    session-cleanup.sh   # Delete session state on session end
-    write-session-state.sh # Helper: write session state YAML
 ```
 
 ## Skill Architecture
@@ -181,7 +174,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - Review: `.workflows/{work_unit}/review/{topic}/r{N}/review.md`
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
-- Cache: `.workflows/.cache/` (sessions, planning scratch)
+- Cache: `.workflows/.cache/` (planning scratch)
 
 **work_type field**: Each work unit's `work_type` (epic, feature, or bugfix) is stored in its `manifest.json` — the single source of truth for all workflow state. This enables:
 - Unified discovery across all phases
@@ -267,28 +260,6 @@ Also avoid BSD sed incompatibilities: `sed '/range/{cmd1;cmd2}'` syntax fails on
 **Critical: Migration scripts must not use the manifest CLI**
 
 Migration scripts are point-in-time snapshots. The manifest CLI validates values against the current schema, which changes over time (e.g., valid statuses). A migration that uses the CLI today may break silently when validation rules change in a later release. Always read and write `manifest.json` directly using `node` (or `jq`) — never via the manifest CLI. This ensures migrations remain stable regardless of future schema changes.
-
-## Compaction Recovery
-
-Processing skills run long and may hit context compaction. The hook system provides deterministic recovery.
-
-**How it works:**
-- Project-level hooks in `.claude/settings.json` are snapshotted at session startup and persist through compaction
-- `SessionStart` (compact) hook reads session state from `.workflows/.cache/sessions/{session_id}.yaml` and injects recovery context as additionalContext
-- Entry-point skills write session state (topic, skill, artifact) before invoking processing skills
-- `SessionEnd` hook cleans up session state files
-
-**Session state files:**
-- Stored at `.workflows/.cache/sessions/{session_id}.yaml`
-- Created by entry-point skills before invoking processing skills
-- Contain: topic, skill path, artifact path
-- Ephemeral — cleaned up on session end, gitignored
-
-**First-run bootstrap:**
-- Skill-level `PreToolUse` hook (`system-check.sh`) detects missing project hooks
-- Installs hooks into `.claude/settings.json` (appends to existing settings, preserving user configuration) and stops with restart message
-- Uses jq if available for merging, falls back to node, then to manual instructions
-- One-time cost; self-healing if hooks are removed
 
 ## Manifest CLI
 

@@ -1,7 +1,7 @@
 ---
 name: workflow-specification-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md), Bash(.claude/hooks/workflows/write-session-state.sh)
+allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
 ---
 
 Invoke the **technical-specification** skill for this conversation.

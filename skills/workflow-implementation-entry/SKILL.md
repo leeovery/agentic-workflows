@@ -1,7 +1,7 @@
 ---
 name: workflow-implementation-entry
 user-invocable: false
-allowed-tools: Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(cat .workflows/.state/environment-setup.md)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(cat .workflows/.state/environment-setup.md)
 ---
 
 Invoke the **technical-implementation** skill for this conversation.

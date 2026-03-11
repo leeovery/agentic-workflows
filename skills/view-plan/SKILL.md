@@ -2,12 +2,6 @@
 name: view-plan
 disable-model-invocation: true
 allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
-hooks:
-  PreToolUse:
-    - hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/workflows/system-check.sh"
-          once: true
 ---
 
 Display a readable summary of a plan's phases, tasks, and status.

@@ -10,23 +10,6 @@
 node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase review --topic {topic}
 ```
 
-## Save Session Bookmark
-
-> *Output the next fenced block as a code block:*
-
-```
-Saving session state so Claude can pick up where it left off if the conversation is compacted.
-```
-
-```bash
-.claude/hooks/workflows/write-session-state.sh \
-  "{work_unit}" \
-  "skills/technical-review/SKILL.md" \
-  ".workflows/{work_unit}/review/{topic}/r{review_version}/review.md"
-```
-
----
-
 ## Invoke the Skill
 
 Invoke the [technical-review](../../technical-review/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.

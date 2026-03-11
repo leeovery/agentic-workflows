@@ -2,12 +2,6 @@
 name: continue-epic
 disable-model-invocation: true
 allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
-hooks:
-  PreToolUse:
-    - hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/workflows/system-check.sh"
-          once: true
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.

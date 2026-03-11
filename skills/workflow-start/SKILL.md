@@ -2,12 +2,6 @@
 name: workflow-start
 disable-model-invocation: true
 allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
-hooks:
-  PreToolUse:
-    - hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/workflows/system-check.sh"
-          once: true
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.

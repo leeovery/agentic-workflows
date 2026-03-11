@@ -1,7 +1,7 @@
 ---
 name: workflow-review-entry
 user-invocable: false
-allowed-tools: Bash(.claude/hooks/workflows/write-session-state.sh), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/)
 ---
 
 Invoke the **technical-review** skill for this conversation.

@@ -1,7 +1,7 @@
 ---
 name: workflow-research-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(.claude/hooks/workflows/write-session-state.sh)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 Invoke the **technical-research** skill for this conversation.
@@ -101,20 +101,5 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 ---
 
 ## Step 4: Invoke the Skill
-
-Before invoking the processing skill, save a session bookmark.
-
-> *Output the next fenced block as a code block:*
-
-```
-Saving session state so Claude can pick up where it left off if the conversation is compacted.
-```
-
-```bash
-.claude/hooks/workflows/write-session-state.sh \
-  "{topic}" \
-  "skills/technical-research/SKILL.md" \
-  ".workflows/{work_unit}/research/{resolved_filename}"
-```
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

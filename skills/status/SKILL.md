@@ -2,12 +2,6 @@
 name: status
 disable-model-invocation: true
 allowed-tools: Bash(node .claude/skills/status/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
-hooks:
-  PreToolUse:
-    - hooks:
-        - type: command
-          command: "$CLAUDE_PROJECT_DIR/.claude/hooks/workflows/system-check.sh"
-          once: true
 ---
 
 Show the current state of the workflow for this project.
