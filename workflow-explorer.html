@@ -2661,6 +2661,7 @@ const FLOWCHARTS = {
       { id: 'to-planning', label: 'Planning entry', w: 150, h: 40, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'planning', desc: 'Route to workflow-planning-entry.' },
       { id: 'to-implementation', label: 'Implementation entry', w: 165, h: 40, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'implementation', desc: 'Route to workflow-implementation-entry.' },
       { id: 'to-review', label: 'Review entry', w: 150, h: 40, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'review', desc: 'Route to workflow-review-entry.' },
+      { id: 'to-investigation', label: 'Investigation entry', w: 165, h: 40, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'investigation', desc: 'Route to workflow-investigation-entry (bugfix revisit only).' },
     ],
     connections: [
       { from: 'start', to: 'work-type' },
@@ -2682,6 +2683,7 @@ const FLOWCHARTS = {
       // Plan mode → phase entries
       { from: 'plan-mode', to: 'to-research', type: 'transition' },
       { from: 'plan-mode', to: 'to-discussion', type: 'transition' },
+      { from: 'plan-mode', to: 'to-investigation', type: 'transition' },
       { from: 'plan-mode', to: 'to-specification', type: 'transition' },
       { from: 'plan-mode', to: 'to-planning', type: 'transition' },
       { from: 'plan-mode', to: 'to-implementation', type: 'transition' },
