@@ -1,6 +1,6 @@
 # Topic Completion
 
-*Reference for **[research-session.md](research-session.md)***
+*Reference for **[epic-session.md](epic-session.md)***
 
 ---
 
@@ -23,49 +23,13 @@ The current topic is converging — tradeoffs are clear, it's approaching decisi
 
 #### If the user concludes
 
-Set this topic's research status to completed:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status completed
-```
-
-Check if ALL research topics are now completed:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research --topic "*" status
-```
-
-**If all topics completed**: Invoke the `/workflow-bridge` skill:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: research
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-**If some topics still in-progress**:
-
-> *Output the next fenced block as a code block:*
-
-```
-Completed: {topic:(titlecase)}
-
-Still in progress:
-@foreach(item in remaining_topics)
-  • {item.topic:(titlecase)}
-@endforeach
-```
-
-→ Return to **[research-session.md](research-session.md)** and resume the **Session Loop**.
+→ Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
 
 #### If the user keeps digging
 
 Continue exploring. The convergence signal isn't a stop sign — it's an awareness check. The user might want to stress-test the emerging conclusion, explore edge cases, or understand the problem more deeply before moving on.
 
-→ Return to **[research-session.md](research-session.md)** and resume the **Session Loop**.
+→ Return to **[epic-session.md](epic-session.md)** and resume the **Session Loop**.
 
 #### If the user splits
 

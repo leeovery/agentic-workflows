@@ -100,26 +100,26 @@ Load **[file-strategy.md](references/file-strategy.md)** and follow its instruct
 
 ---
 
-## Step 3: Epic Research Posture
+## Step 3: Research Guidelines
 
-#### If work_type is `epic`
-
-Load **[convergence-posture.md](references/convergence-posture.md)** and follow its instructions as written.
-
-#### If work_type is `feature`
+Load **[research-guidelines.md](references/research-guidelines.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Load Research Guidelines
+## Step 4: Research Session
 
-Load **[research-guidelines.md](references/research-guidelines.md)** and follow its instructions as written.
+Read `work_type` from the manifest:
 
-→ Proceed to **Step 5**.
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
+```
 
----
+#### If work_type is `feature`
 
-## Step 5: Research Session
+Load **[feature-session.md](references/feature-session.md)** and follow its instructions as written.
 
-Load **[research-session.md](references/research-session.md)** and follow its instructions as written.
+#### If work_type is `epic`
+
+Load **[epic-session.md](references/epic-session.md)** and follow its instructions as written.

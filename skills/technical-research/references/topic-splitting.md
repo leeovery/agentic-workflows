@@ -1,6 +1,6 @@
 # Topic Splitting
 
-*Reference for **[research-session.md](research-session.md)***
+*Reference for **[epic-session.md](epic-session.md)***
 
 ---
 
@@ -65,8 +65,8 @@ Select an option (enter number):
 
 **STOP.** Wait for user response.
 
-→ Return to **[research-session.md](research-session.md)** and resume the **Session Loop**.
+→ Return to **[epic-session.md](epic-session.md)** and resume the **Session Loop**.
 
 #### If no
 
-→ Return to **[research-session.md](research-session.md)** and resume the **Session Loop**.
+→ Return to **[epic-session.md](epic-session.md)** and resume the **Session Loop**.
