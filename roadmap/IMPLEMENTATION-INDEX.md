@@ -15,7 +15,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | ✅ | PR 7 | Work Unit Lifecycle (absorbed PR8) | [PR7-WORK-UNIT-LIFECYCLE.md](PR7-WORK-UNIT-LIFECYCLE.md) |
 | ~~8th~~ | ~~PR 8~~ | ~~Skip Review~~ | ~~[PR8-SKIP-REVIEW.md](PR8-SKIP-REVIEW.md)~~ (absorbed into PR 7) |
 | ✅ | PR 9 | Normalise Terminal Status | [PR9-NORMALISE-TERMINAL-STATUS.md](PR9-NORMALISE-TERMINAL-STATUS.md) |
-| 10th | PR 10 | Research Refactor | [Design Brief](research-refactor/DESIGN-BRIEF.md) |
+| ✅ | PR 10 | Research Refactor | [Design Brief](research-refactor/DESIGN-BRIEF.md) |
 | 11th | PR 11 | Session State Removal | [Design Brief](session-state-removal/DESIGN-BRIEF.md) |
 | 12th | PR 12 | Feature Research Analysis | [PR12-FEATURE-RESEARCH-ANALYSIS.md](PR12-FEATURE-RESEARCH-ANALYSIS.md) |
 | 13th | PR 13 | Manifest CLI — Wildcard Topic | [PR13-MANIFEST-WILDCARD-TOPIC.md](PR13-MANIFEST-WILDCARD-TOPIC.md) |
