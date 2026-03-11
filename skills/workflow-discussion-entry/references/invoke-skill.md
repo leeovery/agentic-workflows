@@ -23,9 +23,10 @@ Discussion session for: {topic}
 Work unit: {work_unit}
 Output: {output_path}
 
-Research reference:
-Source: .workflows/{work_unit}/research/{filename}.md (lines {start}-{end})
-Summary: {the 1-2 sentence summary from the research analysis}
+Research files:
+- .workflows/{work_unit}/research/{filename1}.md
+- .workflows/{work_unit}/research/{filename2}.md
+Topic context: {summary from analysis cache}
 
 Invoke the technical-discussion skill.
 ```
@@ -37,9 +38,10 @@ Discussion session for: {topic}
 Work unit: {work_unit}
 Output: {output_path}
 
-Research reference:
-Source: .workflows/{work_unit}/research/{research_filename}.md
-Summary: {the discussion-ready summary from the research file}
+Research files:
+- .workflows/{work_unit}/research/{filename1}.md
+- .workflows/{work_unit}/research/{filename2}.md
+Topic context: {brief orientation from user context}
 
 Invoke the technical-discussion skill.
 ```

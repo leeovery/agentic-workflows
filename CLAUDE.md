@@ -285,6 +285,7 @@ $MANIFEST list                                                         # enumera
 $MANIFEST get {work_unit} work_type                                    # work-unit-level read
 $MANIFEST set {work_unit} status completed                             # work-unit-level status
 $MANIFEST set {work_unit} phases.research.analysis_cache '{"checksum":"..."}' # work-unit-level write (dot-path)
+$MANIFEST delete {work_unit} phases.research.analysis_cache             # delete a key (work-unit-level)
 $MANIFEST get {work_unit} --phase discussion --topic "*" status        # wildcard: collect from all topics
 ```
 

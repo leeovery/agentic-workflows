@@ -27,9 +27,8 @@ Analyzing research documents...
 ```
 
 Read each research file and extract key themes and potential discussion topics. For each theme:
-- Note the source file and relevant line numbers
-- Summarize what the theme is about in 1-2 sentences
-- Identify key questions or decisions that need discussion
+- Note the source file(s) that contributed to it
+- Summarize what the theme covers (as long as needed to convey the topic — no length constraint)
 
 **Be thorough**: This analysis will be cached, so identify ALL potential topics:
 - Major architectural decisions
@@ -63,14 +62,12 @@ Create/update `.workflows/{work_unit}/.state/research-analysis.md` (pure markdow
 ## Topics
 
 ### {Theme name}
-- **Source**: {filename}.md (lines {start}-{end})
-- **Summary**: {1-2 sentence summary}
-- **Key questions**: {what needs deciding}
+- **Summary**: {as long as needed to convey what this topic covers}
+- **Sources**: {filename1}.md, {filename2}.md
 
 ### {Another theme}
-- **Source**: {filename}.md (lines {start}-{end})
-- **Summary**: {1-2 sentence summary}
-- **Key questions**: {what needs deciding}
+- **Summary**: {as long as needed to convey what this topic covers}
+- **Sources**: {filename1}.md, {filename2}.md
 ```
 
 **Cross-reference**: For each topic, note if a discussion already exists (from `discussions.files` in discovery).

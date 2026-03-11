@@ -1004,6 +1004,135 @@ assert_equals "$exit_code" "0" "Wildcard exists on empty exits 0"
 echo ""
 
 # ============================================================================
+# DELETE TESTS
+# ============================================================================
+
+echo -e "${YELLOW}Test: delete work-unit-level field${NC}"
+setup_fixture
+run_cli init del-wu --work-type feature --description "Delete WU" >/dev/null 2>&1
+run_cli set del-wu phases.research.analysis_cache '{"checksum":"abc","generated":"2026-01-01"}' >/dev/null 2>&1
+run_cli delete del-wu phases.research.analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-wu phases.research.analysis_cache)
+
+assert_equals "$output" "false" "Deleted field no longer exists"
+
+# Verify sibling fields preserved
+run_cli set del-wu phases.research.status completed >/dev/null 2>&1
+
+# Re-create and delete to check siblings
+run_cli set del-wu phases.research.analysis_cache '{"checksum":"xyz"}' >/dev/null 2>&1
+run_cli delete del-wu phases.research.analysis_cache >/dev/null 2>&1
+research_status=$(run_cli_stdout get del-wu --phase research --topic del-wu status 2>/dev/null || run_cli_stdout get del-wu phases.research.status)
+
+assert_equals "$research_status" "completed" "Sibling fields preserved after delete"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete phase-level field for feature${NC}"
+setup_fixture
+run_cli init del-feat --work-type feature --description "Delete feat" >/dev/null 2>&1
+run_cli init-phase del-feat --phase planning --topic del-feat >/dev/null 2>&1
+run_cli set del-feat --phase planning --topic del-feat task_gate_mode auto >/dev/null 2>&1
+run_cli delete del-feat --phase planning --topic del-feat task_gate_mode >/dev/null 2>&1
+output=$(run_cli_stdout exists del-feat --phase planning --topic del-feat task_gate_mode)
+
+assert_equals "$output" "false" "Deleted phase-level field gone"
+
+# Verify status preserved
+plan_status=$(run_cli_stdout get del-feat --phase planning --topic del-feat status)
+assert_equals "$plan_status" "in-progress" "Phase status preserved after delete"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete phase-level field for epic${NC}"
+setup_fixture
+run_cli init del-epic --work-type epic --description "Delete epic" >/dev/null 2>&1
+run_cli init-phase del-epic --phase implementation --topic auth >/dev/null 2>&1
+run_cli push del-epic --phase implementation --topic auth completed_tasks "task-1" >/dev/null 2>&1
+run_cli delete del-epic --phase implementation --topic auth completed_tasks >/dev/null 2>&1
+output=$(run_cli_stdout exists del-epic --phase implementation --topic auth completed_tasks)
+
+assert_equals "$output" "false" "Deleted epic item field gone"
+
+# Verify status preserved
+impl_status=$(run_cli_stdout get del-epic --phase implementation --topic auth status)
+assert_equals "$impl_status" "in-progress" "Epic item status preserved after delete"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete nested dot-path field${NC}"
+setup_fixture
+run_cli init del-nested --work-type feature --description "Nested" >/dev/null 2>&1
+run_cli set del-nested phases.research.analysis_cache.checksum "abc123" >/dev/null 2>&1
+run_cli set del-nested phases.research.analysis_cache.generated "2026-01-01" >/dev/null 2>&1
+run_cli delete del-nested phases.research.analysis_cache.checksum >/dev/null 2>&1
+
+checksum_exists=$(run_cli_stdout exists del-nested phases.research.analysis_cache.checksum)
+generated_exists=$(run_cli_stdout exists del-nested phases.research.analysis_cache.generated)
+
+assert_equals "$checksum_exists" "false" "Nested field deleted"
+assert_equals "$generated_exists" "true" "Sibling nested field preserved"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete entire subtree${NC}"
+setup_fixture
+run_cli init del-tree --work-type feature --description "Tree" >/dev/null 2>&1
+run_cli set del-tree phases.research.analysis_cache '{"checksum":"abc","generated":"2026-01-01","files":["a.md","b.md"]}' >/dev/null 2>&1
+run_cli delete del-tree phases.research.analysis_cache >/dev/null 2>&1
+
+cache_exists=$(run_cli_stdout exists del-tree phases.research.analysis_cache)
+research_exists=$(run_cli_stdout exists del-tree phases.research)
+
+assert_equals "$cache_exists" "false" "Entire subtree deleted"
+assert_equals "$research_exists" "true" "Parent key preserved"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete errors on missing path${NC}"
+setup_fixture
+run_cli init del-missing --work-type feature --description "Missing" >/dev/null 2>&1
+assert_exit_nonzero "Delete missing path errors" delete del-missing nonexistent.deep.path
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete errors on missing work unit${NC}"
+setup_fixture
+assert_exit_nonzero "Delete missing work unit errors" delete ghost-unit some.field
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete requires --topic for topic-required phases${NC}"
+setup_fixture
+run_cli init del-notopic --work-type feature --description "No topic" >/dev/null 2>&1
+assert_exit_nonzero "Delete without topic errors" delete del-notopic --phase discussion status
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete rejects invalid phase${NC}"
+setup_fixture
+run_cli init del-badphase --work-type feature --description "Bad phase" >/dev/null 2>&1
+assert_exit_nonzero "Delete invalid phase errors" delete del-badphase --phase cooking --topic del-badphase status
+
+echo ""
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 

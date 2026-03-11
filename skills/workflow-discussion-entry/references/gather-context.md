@@ -18,15 +18,18 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 
 **If research status is `completed`:**
 
-Read `.workflows/{work_unit}/research/*.md` for context to include in the handoff.
+List the research files via `ls .workflows/{work_unit}/research/*.md`.
 
 > *Output the next fenced block as a code block:*
 
 ```
 Starting discussion: {topic:(titlecase)}
 
-Research context:
-{key findings and context from research files}
+Research available:
+  • .workflows/{work_unit}/research/{filename1}.md
+  • .workflows/{work_unit}/research/{filename2}.md
+
+These will be read when the discussion begins.
 
 Anything to add or adjust before we begin, or "go" to proceed:
 ```

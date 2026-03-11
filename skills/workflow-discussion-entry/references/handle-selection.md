@@ -64,9 +64,10 @@ Set source="fresh".
 Refreshing analysis...
 ```
 
-Delete the cache file:
+Clear the cache metadata from the manifest and delete the cache file:
 ```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} phases.research.analysis_cache
 rm .workflows/{work_unit}/.state/research-analysis.md
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 4**.

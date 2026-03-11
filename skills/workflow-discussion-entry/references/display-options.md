@@ -18,7 +18,7 @@ Discussion Overview
 Research topics:
 
 1. {theme_name}
-   └─ Source: {filename}.md (lines {start}-{end})
+   └─ Sources: {filename1}.md, {filename2}.md
    └─ Discussion: @if(has_discussion) {work_unit}/{topic} ({status:[in-progress|completed]}) @else (no discussion) @endif
    └─ "{summary}"
 

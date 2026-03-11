@@ -4,16 +4,18 @@
 
 ---
 
-Summarise the selected research topic in 2-5 lines, drawing from the source, summary, and key questions in the research analysis.
+Present the analysis summary and source files as-is — do not re-summarize.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 New discussion: {topic}
 
-Based on research: .workflows/{work_unit}/research/{filename}.md (lines {start}-{end})
+Research sources:
+  • .workflows/{work_unit}/research/{filename1}.md
+  • .workflows/{work_unit}/research/{filename2}.md
 
-{2-5 line summary of the topic and what needs discussing}
+Topic: {summary from analysis cache}
 
 · · · · · · · · · · · ·
 Do you have anything to add? Extra context, files, or additional
