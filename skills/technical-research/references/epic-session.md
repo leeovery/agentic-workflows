@@ -24,4 +24,4 @@ When you notice convergence signals (from the research guidelines), flag it and 
 
 → Load **[topic-completion.md](topic-completion.md)** and follow its instructions as written.
 
-After handling, both reference files route back to the session loop when appropriate (splitting always returns; completion returns for keep/split, bridges out for conclude).
+After handling, both reference files route back to the session loop when appropriate (splitting always returns; completion returns for keep, bridges out for conclude).

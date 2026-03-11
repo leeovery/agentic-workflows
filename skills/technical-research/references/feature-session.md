@@ -12,21 +12,4 @@ Load **[session-loop.md](session-loop.md)** and follow its conversation process.
 
 When the topic feels well-explored or the user indicates they're done:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-- **`y`/`yes`** — Conclude research and move forward
-- **Comment** — Add context before concluding
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `comment`
-
-Incorporate the user's context into the research file, commit, then re-present the sign-off prompt above.
-
-#### If `yes`
-
-→ Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
+→ Load **[topic-completion.md](topic-completion.md)** and follow its instructions as written.
