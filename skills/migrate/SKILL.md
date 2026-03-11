@@ -10,11 +10,13 @@ Keeps your workflow files up to date with how the system is designed to work. Ru
 
 ## Instructions
 
-Run the migration script:
+Run the migration script with sandbox disabled (migrations may need to modify `.claude/settings.json`):
 
 ```bash
 .claude/skills/migrate/scripts/migrate.sh
 ```
+
+**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command.
 
 #### If files were updated
 
