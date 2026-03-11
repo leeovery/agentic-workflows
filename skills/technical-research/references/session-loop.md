@@ -29,5 +29,3 @@ Guidance on when to go deeper vs move on, when to challenge vs accept, when to s
 - **Challenge** when: something contradicts earlier statements, an assumption is unstated, a risk is being glossed over, the user seems too certain too quickly
 - **Synthesize** when: multiple threads are accumulating without connection, the conversation has been divergent for a while, you notice a pattern forming across different topics
 - **Bookmark for later** when: something interesting comes up but you're mid-thread on something else — note it in the research file and return when the current thread concludes
-
-→ Return to the calling session file.

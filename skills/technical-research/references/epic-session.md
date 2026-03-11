@@ -16,11 +16,11 @@ When working in a specific topic file and content drifts to another topic's scop
 
 When you notice convergence signals (from the research guidelines), flag it and route to the appropriate action:
 
-**If threads are emerging as distinct topics** (different scopes, stakeholders, or timelines):
+#### If threads are emerging as distinct topics (different scopes, stakeholders, or timelines)
 
 → Load **[topic-splitting.md](topic-splitting.md)** and follow its instructions as written.
 
-**If the current topic is converging** (tradeoffs clear, approaching decision territory):
+#### If the current topic is converging (tradeoffs clear, approaching decision territory)
 
 → Load **[topic-completion.md](topic-completion.md)** and follow its instructions as written.
 
