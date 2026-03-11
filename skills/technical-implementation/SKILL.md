@@ -314,6 +314,8 @@ Discuss the user's context. If additional work is needed, route back to **Step 6
 Update implementation status via manifest CLI:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0
 ```
 
 Commit: `impl({work_unit}): complete implementation`
