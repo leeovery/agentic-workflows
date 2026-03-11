@@ -57,6 +57,7 @@ For each plan:
 1. Read the plan — understand phases, tasks, and acceptance criteria
 2. Read the linked specification — load design context
 3. Extract all tasks across all phases
+4. Load the format's reading adapter from `../technical-planning/references/output-formats/{format}/reading.md` — this tells you how to locate and read individual task files
 
 → Proceed to **Step 2**.
 
@@ -100,7 +101,15 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 
 ---
 
-## Step 5: Review Actions
+## Step 5: Present Review
+
+Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
+
+→ Proceed to **Step 6**.
+
+---
+
+## Step 6: Review Actions
 
 Load **[review-actions-loop.md](references/review-actions-loop.md)** and follow its instructions.
 

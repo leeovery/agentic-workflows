@@ -22,7 +22,7 @@ This captures all files touched by implementation commits for the topic.
 
 ## Extract All Tasks
 
-From each plan in scope, list every task across all phases:
+Using the format reading adapter loaded in Step 1, extract every task across all phases from each plan in scope:
 - Note each task's description
 - Note each task's acceptance criteria
 - Note expected micro acceptance (test name)
