@@ -48,17 +48,17 @@ Store work_unit for the handoff.
 
 #### If `topic` resolved
 
-Check discussion phase status via manifest CLI:
+Check if discussion phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase discussion --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase discussion --topic {topic}
 ```
 
-**If phase exists (in-progress or completed):**
+**If exists (`true`):**
 
 → Proceed to **Step 2** (Validate Phase).
 
-**If phase not found (new entry):**
+**If not exists (`false` — new entry):**
 
 → Proceed to **Step 7** (Gather Context) with source="new".
 

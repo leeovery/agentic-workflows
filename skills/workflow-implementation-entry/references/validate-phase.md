@@ -40,7 +40,13 @@ The plan for "{topic:(titlecase)}" is not yet completed.
 
 #### If plan exists and status is `completed`
 
-Check implementation's own status:
+Check if implementation phase entry exists:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase implementation --topic {topic}
+```
+
+**If exists (`true`):**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} status
@@ -62,8 +68,14 @@ Reopening implementation: {topic:(titlecase)}
 
 → Return to **[the skill](../SKILL.md)**.
 
-**If status is `in-progress` or not found:**
+**If status is `in-progress`:**
 
 Proceed normally.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+**If not exists (`false`):**
+
+Proceed normally (new entry).
 
 → Return to **[the skill](../SKILL.md)**.

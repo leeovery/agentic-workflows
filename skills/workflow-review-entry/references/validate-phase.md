@@ -56,7 +56,13 @@ The implementation for "{topic:(titlecase)}" is not yet completed.
 
 #### If plan and implementation are both ready
 
-Check review's own phase status:
+Check if review phase entry exists:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
+```
+
+**If exists (`true`):**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} status
@@ -78,8 +84,14 @@ Reopening review: {topic:(titlecase)}
 
 → Return to **[the skill](../SKILL.md)**.
 
-**If status is `in-progress` or not found:**
+**If status is `in-progress`:**
 
 Proceed normally.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+**If not exists (`false`):**
+
+Proceed normally (new entry).
 
 → Return to **[the skill](../SKILL.md)**.

@@ -7,10 +7,14 @@
 Check whether a plan already exists for this topic.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase planning --topic {topic}
 ```
 
-#### If existing plan (continue or review)
+#### If exists (`true`)
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
+```
 
 **If status is `completed`:**
 
@@ -36,7 +40,7 @@ Set source="existing".
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If no existing plan (fresh start)
+#### If not exists (`false` — fresh start)
 
 > *Output the next fenced block as markdown (not a code block):*
 
