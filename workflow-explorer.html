@@ -2241,37 +2241,52 @@ const FLOWCHARTS = {
   'skill-research': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry: technical-research skill receives gathered context from entry skill.' },
-      { id: 'resume', label: 'Existing research?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 0: Check if research files exist in .workflows/{work_unit}/research/.' },
-      { id: 'resume-ask', label: 'ASK: Continue/restart?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Research exists: announce what has been explored, ask whether to continue or start fresh.' },
-      { id: 'init', label: 'Initialize doc', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 1: Create exploration.md using template. Set research status via manifest CLI. Commit.' },
-      { id: 'guidelines', label: 'Load guidelines', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Load research-guidelines.md — internalize research session rules.' },
-      { id: 'ask', label: 'ASK question', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 3: Ask one research question at a time. Probe feasibility, hidden complexity, assumptions.' },
-      { id: 'discuss', label: 'Discuss answer', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Engage with the answer. Follow tangents. Challenge assumptions. Be honest about risks.' },
-      { id: 'document', label: 'Document insight', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Capture the insight in the research file. Only what was discussed, no embellishment.' },
-      { id: 'commit', label: 'Commit & push', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Commit immediately. Every insight pushed before the next question. Unpushed work is lost.' },
-      { id: 'more', label: 'More to explore?', shape: 'diamond', w: 120, h: 120, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Periodic review: more questions? Themes emerging? Ready for discussion/spec?' },
-      { id: 'split', label: 'Themes emerging?', shape: 'diamond', w: 120, h: 120, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Over multiple sessions, topics may become distinct. Split if so.' },
-      { id: 'split-files', label: 'Split into files', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Split exploration.md into semantic files (market-landscape.md, technical-feasibility.md, etc).' },
-      { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research completes when parked as discussion-ready.' },
-      { id: 'next', label: 'Invoke /start-discussion', desc: 'Navigate to the discussion command to begin capturing architecture decisions from research output.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'discussion' },
+      { id: 'resume', label: 'Existing research?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 0: Check if research file exists at the handoff output path.' },
+      { id: 'resume-ask', label: 'ASK: Continue/restart?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Research exists: ask whether to continue or start fresh.' },
+      { id: 'init', label: 'Initialize doc', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 1: Create research file using template. Register in manifest. Commit.' },
+      { id: 'file-strategy', label: 'Load file strategy', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Load file-strategy.md — single file for feature, multi-file for epic.' },
+      { id: 'guidelines', label: 'Load guidelines', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 3: Load research-guidelines.md — questioning techniques, convergence awareness, documentation discipline.' },
+      { id: 'work-type', label: 'Work type?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 4: Read work_type from manifest to determine session path.' },
+      // Feature path
+      { id: 'feat-session', label: 'Feature session', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Feature research session: Explore → Engage → Synthesize → Document → Commit → Continue. Single-topic, no splitting.' },
+      { id: 'feat-complete', label: 'ASK: Conclude/keep?', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Topic converging. Conclude to move forward, or keep digging.' },
+      // Epic path
+      { id: 'epic-session', label: 'Epic session', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Epic research session: Explore → Engage → Synthesize → Document → Commit → Continue. Multi-file with topic awareness.' },
+      { id: 'convergence', label: 'Convergence type?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Convergence signal detected. Route based on type: threads emerging or topic converging.' },
+      { id: 'split-ask', label: 'ASK: Split topics?', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Threads have different scopes/stakeholders/timelines. Offer to split into separate files.' },
+      { id: 'split-files', label: 'Split into files', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Create new research files for each topic. Move content. Init manifest items. Pick topic to continue.' },
+      { id: 'epic-complete', label: 'ASK: Conclude/keep?', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Topic converging. Conclude to mark complete, or keep digging.' },
+      // Shared conclusion
+      { id: 'conclude', label: 'Conclude research', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set research status to completed via manifest. Final commit. Invoke workflow-bridge.' },
+      { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research complete.' },
+      { id: 'next', label: 'Invoke discussion entry', desc: 'Navigate to the discussion entry to begin capturing architecture decisions from research output.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'discussion' },
     ],
     connections: [
       { from: 'start', to: 'resume' },
       { from: 'resume', to: 'resume-ask', type: 'yes', label: 'exists' },
       { from: 'resume', to: 'init', type: 'no', label: 'new', weight: 2 },
       { from: 'resume-ask', to: 'init', label: 'restart' },
-      { from: 'resume-ask', to: 'guidelines', label: 'continue', weight: 2 },
-      { from: 'init', to: 'guidelines' },
-      { from: 'guidelines', to: 'ask' },
-      { from: 'ask', to: 'discuss' },
-      { from: 'discuss', to: 'document' },
-      { from: 'document', to: 'commit' },
-      { from: 'commit', to: 'more' },
-      { from: 'more', to: 'ask', type: 'backloop', label: 'yes' },
-      { from: 'more', to: 'split', type: 'no', label: 'done' },
-      { from: 'split', to: 'split-files', type: 'yes', label: 'yes' },
-      { from: 'split', to: 'end', type: 'no', label: 'no' },
-      { from: 'split-files', to: 'end' },
+      { from: 'resume-ask', to: 'file-strategy', label: 'continue', weight: 2 },
+      { from: 'init', to: 'file-strategy' },
+      { from: 'file-strategy', to: 'guidelines' },
+      { from: 'guidelines', to: 'work-type' },
+      // Feature path
+      { from: 'work-type', to: 'feat-session', label: 'feature' },
+      { from: 'feat-session', to: 'feat-complete' },
+      { from: 'feat-complete', to: 'feat-session', type: 'backloop', label: 'keep' },
+      { from: 'feat-complete', to: 'conclude', label: 'conclude' },
+      // Epic path
+      { from: 'work-type', to: 'epic-session', label: 'epic' },
+      { from: 'epic-session', to: 'convergence' },
+      { from: 'convergence', to: 'split-ask', label: 'threads' },
+      { from: 'convergence', to: 'epic-complete', label: 'topic' },
+      { from: 'split-ask', to: 'split-files', type: 'yes', label: 'yes' },
+      { from: 'split-ask', to: 'epic-session', type: 'backloop', label: 'no' },
+      { from: 'split-files', to: 'epic-session', type: 'backloop' },
+      { from: 'epic-complete', to: 'conclude', label: 'conclude' },
+      { from: 'epic-complete', to: 'epic-session', type: 'backloop', label: 'keep' },
+      // Shared conclusion
+      { from: 'conclude', to: 'end' },
       { from: 'end', to: 'next', type: 'transition' },
     ]
   },
@@ -3418,9 +3433,10 @@ const FLOWCHART_DESCS = {
     meta: { complexity: 'Cross-plan utility' }
   },
   'skill-research': {
-    summary: 'The research skill — an interactive exploration loop across technical, product, and market domains.',
-    body: `<p>Acts as a research partner. Uses structured questioning from <code>references/interview.md</code> to guide exploration. The core loop: <strong>Ask → Discuss → Document → Commit → Repeat</strong>.</p>
-<p>Output starts as a single <code>exploration.md</code> file and splits into separate files as distinct themes emerge. Research completes when the user parks a topic as discussion-ready. If they return to it, research reopens — same lifecycle as any other phase.</p>`,
+    summary: 'The research skill — an interactive exploration session with work-type-specific conclusion paths.',
+    body: `<p>Acts as a research partner. The session loop: <strong>Explore → Engage → Synthesize → Document → Commit → Continue</strong>. Guidelines cover funnel technique, probe types, active listening, divergent/convergent rhythm, and documentation discipline.</p>
+<p><strong>Feature path</strong>: Single-topic session. When converging, a conclude/keep prompt leads to bridge-out or continued exploration.</p>
+<p><strong>Epic path</strong>: Multi-file with topic awareness. Convergence routing detects two signal types — <strong>threads emerging</strong> (offer topic splitting) and <strong>topic converging</strong> (conclude/keep menu). Splitting creates new files and returns to session. Conclusion bridges out via shared conclude-research sequence.</p>`,
     meta: { output: '.workflows/{work_unit}/research/', complexity: 'Looping skill' }
   },
   'skill-discussion': {
