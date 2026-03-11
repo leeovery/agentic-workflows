@@ -311,6 +311,20 @@ function setByPath(obj, segments, value) {
   current[segments[segments.length - 1]] = value;
 }
 
+function deleteByPath(obj, segments) {
+  let current = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    if (current == null || typeof current !== 'object') return false;
+    current = current[seg];
+  }
+  if (current == null || typeof current !== 'object') return false;
+  const last = segments[segments.length - 1];
+  if (!(last in current)) return false;
+  delete current[last];
+  return true;
+}
+
 function parseValue(raw) {
   try {
     return JSON.parse(raw);
@@ -477,6 +491,57 @@ function cmdSet(args) {
     const fresh = readManifest(name);
     setByPath(fresh, segments, value);
     writeManifestAtomic(name, fresh);
+  });
+}
+
+function cmdDelete(args) {
+  const { phase, topic, positional } = parseFlags(args);
+
+  if (!phase) {
+    // Work-unit-level: delete <name> <field.path>
+    if (positional.length !== 2) die('Usage: delete <name> <field.path>');
+
+    const name = positional[0];
+    const segments = positional[1].split('.');
+
+    if (!fs.existsSync(manifestPath(name))) {
+      die(`Work unit "${name}" not found`);
+    }
+
+    withLock(name, () => {
+      const manifest = readManifest(name);
+      if (!deleteByPath(manifest, segments)) {
+        die(`Path "${positional[1]}" not found in "${name}"`);
+      }
+      writeManifestAtomic(name, manifest);
+    });
+    return;
+  }
+
+  // Phase-level: delete <name> --phase <phase> [--topic <topic>] <field.path>
+  if (positional.length !== 2) {
+    die('Usage: delete <name> --phase <phase> [--topic <topic>] <field.path>');
+  }
+
+  const name = positional[0];
+  validatePhase(phase);
+  if (!topic && !TOPICLESS_PHASES.includes(phase)) {
+    die(`--topic is required for phase "${phase}"`);
+  }
+
+  const fieldSegments = positional[1].split('.');
+
+  if (!fs.existsSync(manifestPath(name))) {
+    die(`Work unit "${name}" not found`);
+  }
+
+  withLock(name, () => {
+    const manifest = readManifest(name);
+    const segments = resolvePhaseSegments(manifest.work_type, phase, topic, fieldSegments);
+    if (!deleteByPath(manifest, segments)) {
+      die(`Path "${segments.join('.')}" not found in "${name}"`);
+    }
+    writeManifestAtomic(name, manifest);
   });
 }
 
@@ -691,13 +756,14 @@ function cmdExists(args) {
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
-  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, list, init-phase, push, exists');
+  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, delete, list, init-phase, push, exists');
 }
 
 switch (command) {
   case 'init':     cmdInit(args); break;
   case 'get':      cmdGet(args); break;
   case 'set':      cmdSet(args); break;
+  case 'delete':   cmdDelete(args); break;
   case 'list':     cmdList(args); break;
   case 'init-phase': cmdInitPhase(args); break;
   case 'push':     cmdPush(args); break;

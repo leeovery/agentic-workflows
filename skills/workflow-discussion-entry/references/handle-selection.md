@@ -66,7 +66,7 @@ Refreshing analysis...
 
 Clear the cache metadata from the manifest and delete the cache file:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} phases.research.analysis_cache null
+node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} phases.research.analysis_cache
 rm .workflows/{work_unit}/.state/research-analysis.md
 ```
 

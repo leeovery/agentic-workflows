@@ -31,6 +31,7 @@ $MANIFEST init-phase {work_unit} --phase discussion --topic {topic}
 # Work-unit operations (no flags):
 $MANIFEST get {work_unit} [field]
 $MANIFEST set {work_unit} field value
+$MANIFEST delete {work_unit} field.path
 
 # Existence checks (always exit 0, outputs true/false):
 $MANIFEST exists {work_unit}
@@ -117,6 +118,22 @@ Values are parsed as JSON first (for arrays, objects, numbers, booleans), fallin
 - **phase statuses**: per-phase valid values (see Validation section)
 - **gate modes**: `gated`, `auto`
 - **work unit status**: `in-progress`, `completed`, `cancelled`
+
+### `delete`
+
+Remove a key from the manifest. Two modes:
+
+**Work-unit level** (no flags):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js delete <name> <field.path>
+```
+
+**Phase level** (with flags):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js delete <name> --phase research --topic <topic> analysis_cache
+```
+
+Errors if the path does not exist. Deletes the key entirely (not just setting to null). Parent keys are preserved.
 
 ### `list`
 
