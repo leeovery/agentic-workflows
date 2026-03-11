@@ -15,7 +15,6 @@ The current topic is converging — tradeoffs are clear, it's approaching decisi
 - **`c`/`conclude`** — Mark this topic as complete, ready for discussion
 - **`k`/`keep`** — Keep digging, there's more to understand
 - **`s`/`split`** — Split emerging threads into their own topics first
-- Comment — your call
 · · · · · · · · · · · ·
 ```
 
