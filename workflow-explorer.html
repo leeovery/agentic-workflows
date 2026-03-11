@@ -4473,6 +4473,7 @@ function getLinkType(key) {
   if (key.startsWith('skill-') || key === 'workflow-bridge') return { type: 'skl', label: 'Go to skill \u2192', badge: 'skl' };
   const p = phases[key];
   if (p && p.cmd && p.cmd.startsWith('/')) return { type: 'cmd', label: 'Go to command \u2192', badge: 'cmd' };
+  if (p && p.skill) return { type: 'skl', label: 'Go to skill \u2192', badge: 'skl' };
   return { type: 'agt', label: 'Go to agent \u2192', badge: 'agt' };
 }
 
