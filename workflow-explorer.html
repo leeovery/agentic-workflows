@@ -1098,6 +1098,7 @@
       <button class="nav-btn dropdown-btn" onclick="selectPhase('view-plan',this)" id="btn-view-plan"><span class="badge badge-cmd">cmd</span><span class="btn-label">/view-plan</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('link-deps',this)" id="btn-link-deps"><span class="badge badge-cmd">cmd</span><span class="btn-label">/link-dependencies</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('migrate',this)" id="btn-migrate"><span class="badge badge-cmd">cmd</span><span class="btn-label">/migrate</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-bridge',this)" id="btn-workflow-bridge"><span class="badge badge-skl">skl</span><span class="btn-label">workflow-bridge</span></button>
     </div>
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Agents</div>
@@ -1582,6 +1583,12 @@ const phases = {
     label: 'Migrate', cmd: '/migrate',
     complexity: 'System',
     desc: 'Runs as Step 0 of every workflow command. Keeps workflow files in sync with system design.',
+  },
+  'workflow-bridge': {
+    color: '#f97316', bg: 'rgba(249,115,22,0.12)',
+    label: 'Workflow Bridge',
+    complexity: 'Router',
+    desc: 'Internal skill invoked by processing skills on phase completion. Determines next phase and enters plan mode.',
   },
   // ── Processing skills (Layer 4) ──
   'skill-research': {
@@ -2259,7 +2266,7 @@ const FLOWCHARTS = {
       // Shared conclusion
       { id: 'conclude', label: 'Conclude research', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set research status to completed via manifest. Final commit. Invoke workflow-bridge.' },
       { id: 'end', label: 'research/ output', shape: 'pill', w: 150, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: .workflows/{work_unit}/research/ files. Research complete.' },
-      { id: 'next', label: 'Invoke discussion entry', desc: 'Navigate to the discussion entry to begin capturing architecture decisions from research output.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'discussion' },
+      { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
       { from: 'start', to: 'resume' },
@@ -2304,7 +2311,7 @@ const FLOWCHARTS = {
       { id: 'more', label: 'More topics?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Are there more topics to discuss?' },
       { id: 'complete', label: 'Conclude discussion', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 4: Load conclude-discussion.md — set status completed, final commit.' },
       { id: 'end', label: '{work_unit}/discussion/{topic}.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Completed discussion document ready for specification phase.' },
-      { id: 'next', label: 'Invoke /start-specification', desc: 'Navigate to the specification command to build a validated spec from completed discussions.', w: 210, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'specification' },
+      { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
       { from: 'start', to: 'resume' },
@@ -2354,7 +2361,7 @@ const FLOWCHARTS = {
       { id: 'type-assess', label: 'Assess type', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 7: Determine spec type — feature (plannable) or cross-cutting (architectural policy). Route completion accordingly.' },
       { id: 'conclude', label: 'Conclude specification', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set status: completed. Final commit.' },
       { id: 'end', label: 'specification.md', shape: 'pill', w: 220, h: 40, color: 'var(--specification)', bg: 'var(--specification-bg)', desc: 'Output: Validated, standalone specification — the golden document.' },
-      { id: 'next', label: 'Invoke /start-planning', desc: 'Navigate to the planning command to create phased implementation tasks from the specification.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'planning' },
+      { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
       // Resume
@@ -2427,7 +2434,7 @@ const FLOWCHARTS = {
       { id: 'signoff', label: 'ASK: Sign off plan?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 8: Final sign-off gate. User: approve (y) to conclude, or comment to route back to review.' },
       { id: 'complete', label: 'Complete plan', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set status: completed. Checkpoint: all tasks must be authored. Final commit.' },
       { id: 'end', label: '{work_unit}/planning/{topic}/planning.md', shape: 'pill', w: 190, h: 40, color: 'var(--planning)', bg: 'var(--planning-bg)', desc: 'Output: Plan index + authored tasks in chosen output format.' },
-      { id: 'next', label: 'Invoke /start-implementation', desc: 'Navigate to the implementation command to execute the plan via strict TDD.', w: 215, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'implementation' },
+      { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
       // Setup flow
@@ -2514,7 +2521,7 @@ const FLOWCHARTS = {
       { id: 'f-task-writer', label: 'F. Create plan tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Analysis Stage F: Invoke task-writer agent to create approved tasks in the plan as a new phase. Commit.', skillLink: 'implementation-analysis-task-writer' },
       // Completion (Step 8)
       { id: 'end', label: 'Implementation complete', shape: 'pill', w: 190, h: 40, color: 'var(--implementation)', bg: 'var(--implementation-bg)', desc: 'Step 8: Set tracking status: completed. Final commit.' },
-      { id: 'next', label: 'Invoke /start-review', desc: 'Navigate to the review command to validate implementation against the plan and specification.', w: 200, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'review' },
+      { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
       // Setup flow (Steps 1-5)
@@ -2629,6 +2636,56 @@ const FLOWCHARTS = {
       // Task creation and reopen
       { from: 'task-writer', to: 'reopen' },
       { from: 'reopen', to: 'end' },
+    ]
+  },
+  'workflow-bridge': {
+    nodes: [
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry: workflow-bridge receives work_unit and completed_phase from a processing skill.' },
+      { id: 'work-type', label: 'Work type?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 1: Read work_type from manifest. Routes to work-type-specific continuation.' },
+      // Feature/Bugfix path
+      { id: 'fb-discover', label: 'Run discovery', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Run discovery.js to compute next_phase from pipeline state.' },
+      { id: 'fb-done', label: 'Pipeline done?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if next_phase is "done" — all pipeline phases completed.' },
+      { id: 'fb-options', label: 'ASK: Options gate', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'If next is review: offer early completion (skip review). If earlier phases completed: offer to revisit.' },
+      // Epic path
+      { id: 'epic-discover', label: 'Run epic discovery', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Run continue-epic discovery.js for enriched state across all topics and phases.' },
+      { id: 'epic-done', label: 'All topics done?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if all review items are completed with no in-progress items in earlier phases.' },
+      { id: 'epic-ask-done', label: 'ASK: Mark complete?', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'All topics done. Ask user whether to mark the epic as completed.' },
+      { id: 'epic-menu', label: 'ASK: Select action', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Display epic state summary. User selects which phase/topic to continue or start.' },
+      // Shared
+      { id: 'complete', label: 'COMPLETE', shape: 'stop', w: 150, h: 40, rx: 3, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Mark work unit as completed. Terminal condition.' },
+      { id: 'plan-mode', label: 'Enter plan mode', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write plan file with /workflow-{phase}-entry invocation. Call EnterPlanMode + ExitPlanMode for user approval.' },
+      // Phase entry targets
+      { id: 'to-research', label: 'Research entry', w: 150, h: 40, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'research', desc: 'Route to workflow-research-entry (epic only).' },
+      { id: 'to-discussion', label: 'Discussion entry', w: 150, h: 40, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'discussion', desc: 'Route to workflow-discussion-entry.' },
+      { id: 'to-specification', label: 'Specification entry', w: 155, h: 40, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'specification', desc: 'Route to workflow-specification-entry.' },
+      { id: 'to-planning', label: 'Planning entry', w: 150, h: 40, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'planning', desc: 'Route to workflow-planning-entry.' },
+      { id: 'to-implementation', label: 'Implementation entry', w: 165, h: 40, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'implementation', desc: 'Route to workflow-implementation-entry.' },
+      { id: 'to-review', label: 'Review entry', w: 150, h: 40, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'review', desc: 'Route to workflow-review-entry.' },
+    ],
+    connections: [
+      { from: 'start', to: 'work-type' },
+      // Feature/Bugfix path
+      { from: 'work-type', to: 'fb-discover', label: 'feature / bugfix' },
+      { from: 'fb-discover', to: 'fb-done' },
+      { from: 'fb-done', to: 'complete', type: 'yes', label: 'done' },
+      { from: 'fb-done', to: 'fb-options', type: 'no', label: 'continue', weight: 2 },
+      { from: 'fb-options', to: 'complete', label: 'skip review' },
+      { from: 'fb-options', to: 'plan-mode', weight: 2 },
+      // Epic path
+      { from: 'work-type', to: 'epic-discover', label: 'epic' },
+      { from: 'epic-discover', to: 'epic-done' },
+      { from: 'epic-done', to: 'epic-ask-done', type: 'yes', label: 'all done' },
+      { from: 'epic-done', to: 'epic-menu', type: 'no', label: 'in progress', weight: 2 },
+      { from: 'epic-ask-done', to: 'complete', type: 'yes', label: 'yes' },
+      { from: 'epic-ask-done', to: 'epic-menu', type: 'no', label: 'no' },
+      { from: 'epic-menu', to: 'plan-mode' },
+      // Plan mode → phase entries
+      { from: 'plan-mode', to: 'to-research', type: 'transition' },
+      { from: 'plan-mode', to: 'to-discussion', type: 'transition' },
+      { from: 'plan-mode', to: 'to-specification', type: 'transition' },
+      { from: 'plan-mode', to: 'to-planning', type: 'transition' },
+      { from: 'plan-mode', to: 'to-implementation', type: 'transition' },
+      { from: 'plan-mode', to: 'to-review', type: 'transition' },
     ]
   },
   'status': {
@@ -3234,7 +3291,7 @@ const FLOWCHARTS = {
       { id: 'findings', label: 'Findings review', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 5: Load findings-review.md — present analysis, discuss fix direction with user.' },
       { id: 'conclude', label: 'Conclude investigation', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 6: Load conclude-investigation.md — set status completed, final commit.' },
       { id: 'end', label: 'investigation/{topic}.md', shape: 'pill', w: 180, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Completed investigation document ready for specification phase.' },
-      { id: 'next', label: 'Invoke /start-specification', desc: 'Navigate to the specification command to build a fix specification from investigation findings.', w: 210, h: 44, color: 'var(--next)', bg: 'var(--next-bg)', skillLink: 'specification' },
+      { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
       { from: 'start', to: 'resume' },
@@ -3338,12 +3395,12 @@ const FLOWCHARTS = {
 
 // ── Next-phase navigation mapping for skill flowcharts ──
 const SKILL_NEXT_PHASE = {
-  'skill-research':       { label: 'Invoke discussion entry',       target: 'discussion',      color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-discussion':     { label: 'Invoke specification entry',    target: 'specification',   color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-investigation':  { label: 'Invoke specification entry',    target: 'specification',   color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-specification':  { label: 'Invoke planning entry',         target: 'planning',        color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-planning':       { label: 'Invoke implementation entry',   target: 'implementation',  color: 'var(--next)', bg: 'var(--next-bg)' },
-  'skill-implementation': { label: 'Invoke review entry',           target: 'review',          color: 'var(--next)', bg: 'var(--next-bg)' },
+  'skill-research':       { label: 'Invoke workflow-bridge', target: 'workflow-bridge', color: 'var(--skill)', bg: 'var(--skill-bg)' },
+  'skill-discussion':     { label: 'Invoke workflow-bridge', target: 'workflow-bridge', color: 'var(--skill)', bg: 'var(--skill-bg)' },
+  'skill-investigation':  { label: 'Invoke workflow-bridge', target: 'workflow-bridge', color: 'var(--skill)', bg: 'var(--skill-bg)' },
+  'skill-specification':  { label: 'Invoke workflow-bridge', target: 'workflow-bridge', color: 'var(--skill)', bg: 'var(--skill-bg)' },
+  'skill-planning':       { label: 'Invoke workflow-bridge', target: 'workflow-bridge', color: 'var(--skill)', bg: 'var(--skill-bg)' },
+  'skill-implementation': { label: 'Invoke workflow-bridge', target: 'workflow-bridge', color: 'var(--skill)', bg: 'var(--skill-bg)' },
 };
 
 // Info bar descriptions — richer content per flowchart
@@ -3493,6 +3550,13 @@ const FLOWCHART_DESCS = {
 <p>Runs automatically as <strong>Step 0 of every workflow command</strong>. If files were updated, shows changes and waits for user review via git diff. Delete the log file to force re-running all migrations.</p>`,
     meta: { complexity: 'System' }
   },
+  'workflow-bridge': {
+    summary: 'Pipeline bridge — determines next phase and enters plan mode for continuation.',
+    body: `<p>Invoked by every processing skill on phase completion. Reads work_type from the manifest and routes to work-type-specific continuation logic.</p>
+<p><strong>Feature/Bugfix</strong>: Runs discovery to compute next_phase. If pipeline is done, marks work unit completed. Otherwise offers optional gates — <strong>early completion</strong> (skip review after implementation) and <strong>revisit</strong> (return to an earlier completed phase). Then enters plan mode with the target phase entry invocation.</p>
+<p><strong>Epic</strong>: Runs enriched discovery across all topics. If all topics are done, offers to mark the epic completed. Otherwise displays epic state and presents an interactive menu for selecting the next phase/topic. Enters plan mode with the selected action.</p>`,
+    meta: { complexity: 'Router' }
+  },
   'planning-phase-designer': {
     summary: 'Design implementation phases from a specification — goals, sequencing, and acceptance criteria.',
     body: `<p>Reads the specification via ingestion protocol, then loads phase and task design principles. Designs a phased implementation structure with clear goals and acceptance criteria for each phase.</p>
@@ -3623,6 +3687,8 @@ const SOURCE_MAP = {
   'planning':             'skills/workflow-planning-entry/SKILL.md',
   'implementation':       'skills/workflow-implementation-entry/SKILL.md',
   'review':               'skills/workflow-review-entry/SKILL.md',
+  // Bridge
+  'workflow-bridge':      'skills/workflow-bridge/SKILL.md',
   // Processing skills (Layer 4)
   'skill-research':       'skills/technical-research/SKILL.md',
   'skill-discussion':     'skills/technical-discussion/SKILL.md',
@@ -4404,7 +4470,7 @@ function renderSVG() {
 
 // ── Flowchart Tooltip ──
 function getLinkType(key) {
-  if (key.startsWith('skill-')) return { type: 'skl', label: 'Go to skill \u2192', badge: 'skl' };
+  if (key.startsWith('skill-') || key === 'workflow-bridge') return { type: 'skl', label: 'Go to skill \u2192', badge: 'skl' };
   const p = phases[key];
   if (p && p.cmd && p.cmd.startsWith('/')) return { type: 'cmd', label: 'Go to command \u2192', badge: 'cmd' };
   return { type: 'agt', label: 'Go to agent \u2192', badge: 'agt' };
