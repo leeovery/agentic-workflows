@@ -104,10 +104,11 @@ Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specifi
 ```
 · · · · · · · · · · · ·
 **Finding {N} of {total}: {brief_title:(titlecase)}**
-- **`y`/`yes`** — Approved. Add to the specification verbatim.
+
+- **`y`/`yes`** — Add to the specification verbatim
 - **`a`/`auto`** — Approve this and all remaining findings automatically
-- **`s`/`skip`** — Leave as-is, move to next finding.
-- **Or provide feedback** to adjust.
+- **`s`/`skip`** — Leave as-is, move to next finding
+- **Provide feedback** — Adjust before approving
 · · · · · · · · · · · ·
 ```
 

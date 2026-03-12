@@ -60,10 +60,10 @@ Synthesizing findings into actionable tasks is recommended.
 
 ```
 · · · · · · · · · · · ·
+Proceed with synthesis?
+
 - **`y`/`yes`** — Synthesize findings into tasks *(recommended)*
 - **`n`/`no`** — Skip synthesis
-
-Proceed with synthesis?
 · · · · · · · · · · · ·
 ```
 
@@ -105,10 +105,10 @@ You can synthesize these into tasks or skip.
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Synthesize findings into tasks
-- **`n`/`no`** — Skip synthesis *(default)*
-
 Synthesize non-blocking findings?
+
+- **`y`/`yes`** — Synthesize findings into tasks
+- **`n`/`no`** — Skip synthesis
 · · · · · · · · · · · ·
 ```
 

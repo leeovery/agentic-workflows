@@ -75,7 +75,7 @@ Set `implementation_completed` = true.
 @if(implementation_completed)
 - **`d`/`done`** — Mark as completed
 @endif
-- **`x`/`cancel`** — Mark as cancelled
+- **`c`/`cancel`** — Mark as cancelled
 - **`b`/`back`** — Return
 - **Ask** — Ask a question about this work unit
 · · · · · · · · · · · ·
@@ -97,7 +97,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 
 → Return to caller to redisplay main view (re-run discovery, re-render from top).
 
-#### If user chose `x`/`cancel`
+#### If user chose `c`/`cancel`
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status cancelled

@@ -71,10 +71,11 @@ Present the phase structure to the user as rendered markdown (not in a code bloc
 
 ```
 · · · · · · · · · · · ·
-**To proceed:**
-- **`y`/`yes`** — Approved. I'll proceed to task breakdown.
-- **Or tell me what to change** — reorder, split, merge, add, edit, or remove phases.
-- **Or navigate** — a different phase or task, or the leading edge.
+Approve this phase structure?
+
+- **`y`/`yes`** — Proceed to task breakdown
+- **Tell me what to change** — reorder, split, merge, add, edit, or remove phases
+- **Navigate** — a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 

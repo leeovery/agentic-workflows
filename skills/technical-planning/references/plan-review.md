@@ -101,7 +101,9 @@ with fresh context — 2-3 cycles typically surface anything cascading.
 
 ```
 · · · · · · · · · · · ·
-- **`r`/`reanalyse`** — Run another round of review (traceability + integrity)
+Run another review round?
+
+- **`r`/`reanalyse`** — Run another round (traceability + integrity)
 - **`p`/`proceed`** — Proceed to conclusion
 · · · · · · · · · · · ·
 ```

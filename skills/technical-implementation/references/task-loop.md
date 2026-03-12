@@ -52,6 +52,8 @@ Task {id}: {Task Name} — {blocked/failed}
 
 ```
 · · · · · · · · · · · ·
+Task failed. How would you like to proceed?
+
 - **`r`/`retry`** — Re-invoke the executor with your comments (provide below)
 - **`s`/`skip`** — Skip this task and move to the next
 - **`t`/`stop`** — Stop implementation entirely
@@ -112,11 +114,13 @@ Check `fix_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/s
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Accept the review and fix analysis, pass to executor
+Accept the reviewer's fix analysis?
+
+- **`y`/`yes`** — Pass to executor
 - **`a`/`auto`** — Accept and auto-approve future fix analyses
 - **`s`/`skip`** — Override the reviewer and proceed as-is
 - **Ask** — Ask questions about the review (doesn't accept or reject)
-- **Comment** — Accept with adjustments — pass your own direction to the executor alongside the review
+- **Comment** — Accept with adjustments — pass your own direction alongside the review
 · · · · · · · · · · · ·
 ```
 
@@ -155,11 +159,12 @@ Check the `task_gate_mode` via manifest CLI (`node .claude/skills/workflow-manif
 
 ```
 · · · · · · · · · · · ·
-**Options:**
-- **`y`/`yes`** — Approve, commit, continue to next task
-- **`a`/`auto`** — Approve this and all future tasks automatically (skips review prompts and questions)
+Approve this task?
+
+- **`y`/`yes`** — Commit and continue to next task
+- **`a`/`auto`** — Approve this and all future tasks automatically
 - **Ask** — Ask questions about the implementation (doesn't approve or reject)
-- **Comment** — Request changes — pass feedback or commentary (triggers a fix round)
+- **Comment** — Request changes (triggers a fix round)
 · · · · · · · · · · · ·
 ```
 

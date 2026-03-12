@@ -427,7 +427,7 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). Framed with dot separators. Verb-based labels for selection menus. No single-character icons.
+Rendered as markdown (not code blocks). Framed with `· · · · · · · · · · · ·` dot separators at top and bottom — no blank lines between the dots and the content they frame. A question or contextual label appears first inside the dots, followed by a blank line, then the options. Verb-based labels for selection menus. No single-character icons.
 
 **Option types** — menus contain two kinds of option:
 

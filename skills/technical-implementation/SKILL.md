@@ -175,7 +175,9 @@ Previous session used these project skills:
 - ...
 
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Keep these, proceed
+Keep these project skills?
+
+- **`y`/`yes`** — Keep and proceed
 - **`c`/`change`** — Re-discover and choose skills
 · · · · · · · · · · · ·
 ```
@@ -208,9 +210,11 @@ Found these project skills that may be relevant to implementation:
 - ...
 
 · · · · · · · · · · · ·
+Which project skills should be used?
+
 - **`a`/`all`** — Use all listed skills
 - **`n`/`none`** — Skip project skills
-- **Or list the ones you want** — e.g. "golang-pro, react-patterns"
+- **List the ones you want** — e.g. "golang-pro, react-patterns"
 · · · · · · · · · · · ·
 ```
 
@@ -244,7 +248,9 @@ Otherwise, present discovery findings to the user:
 Recommendations: {any suggested tools with install commands}
 
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Approve these linter commands
+Approve these linters?
+
+- **`y`/`yes`** — Approve and proceed
 - **`c`/`change`** — Modify the linter list
 - **`s`/`skip`** — Skip linter setup (no linting during TDD)
 · · · · · · · · · · · ·
@@ -298,7 +304,9 @@ Before marking complete, present the sign-off:
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Mark implementation as completed
+Ready to mark implementation as completed?
+
+- **`y`/`yes`** — Mark as completed
 - **Comment** — Add context before completing
 · · · · · · · · · · · ·
 ```

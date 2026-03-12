@@ -111,10 +111,11 @@ Finding {N} of {total}: {Brief Title} — approved. Applied to plan.
 ```
 · · · · · · · · · · · ·
 **Finding {N} of {total}: {Brief Title}**
-- **`y`/`yes`** — Approved. Apply to the plan verbatim.
+
+- **`y`/`yes`** — Apply to the plan verbatim
 - **`a`/`auto`** — Approve this and all remaining findings automatically
-- **`s`/`skip`** — Leave as-is, move to next finding.
-- **Or provide feedback** to adjust the fix.
+- **`s`/`skip`** — Leave as-is, move to next finding
+- **Provide feedback** — Adjust before approving
 · · · · · · · · · · · ·
 ```
 
