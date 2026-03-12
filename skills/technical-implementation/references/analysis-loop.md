@@ -45,10 +45,17 @@ Continue with analysis?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user choice. You MUST NOT choose on the user's behalf.
+You MUST NOT choose on the user's behalf.
 
-- **`proceed`**: → Proceed to **B. Git Checkpoint**.
-- **`skip`**: → Return to **[the skill](../SKILL.md)** for **Step 8**.
+**STOP.** Wait for user response.
+
+#### If `proceed`
+
+→ Proceed to **B. Git Checkpoint**.
+
+#### If `skip`
+
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 ---
 
@@ -83,7 +90,7 @@ Include unexpected files in the checkpoint commit?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user choice.
+**STOP.** Wait for user response.
 
 Commit included files:
 
@@ -97,9 +104,9 @@ impl({work_unit}): pre-analysis checkpoint
 
 ## C. Dispatch Analysis Agents
 
-Load **[invoke-analysis.md](invoke-analysis.md)** and follow its instructions.
+Load **[invoke-analysis.md](invoke-analysis.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until all agents have returned.
+> **CHECKPOINT**: Do not proceed until all agents have returned.
 
 Commit the analysis findings:
 
@@ -119,9 +126,9 @@ impl({work_unit}): analysis cycle {N} — findings
 
 ## D. Dispatch Synthesis Agent
 
-Load **[invoke-synthesizer.md](invoke-synthesizer.md)** and follow its instructions.
+Load **[invoke-synthesizer.md](invoke-synthesizer.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until the synthesizer has returned.
+> **CHECKPOINT**: Do not proceed until the synthesizer has returned.
 
 Commit the synthesis output:
 
@@ -189,11 +196,11 @@ Approve this task?
 - **`y`/`yes`** — Approve this task
 - **`a`/`auto`** — Approve this and all remaining tasks automatically
 - **`s`/`skip`** — Skip this task
-- **Revise** — Provide feedback to adjust
+- **Comment** — Provide feedback to adjust
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user input.
+**STOP.** Wait for user response.
 
 #### If `analysis_gate_mode: auto`
 
@@ -229,7 +236,7 @@ Update `status: skipped` in the staging file.
 
 → Present the next pending task, or proceed to routing below if all tasks processed.
 
-#### If `comment`
+#### If comment
 
 Revise the task content in the staging file based on the user's feedback. Re-present this task.
 
@@ -255,9 +262,9 @@ impl({work_unit}): analysis cycle {N} — tasks skipped
 
 ## F. Create Tasks in Plan
 
-Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructions.
+Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until the task writer has returned.
+> **CHECKPOINT**: Do not proceed until the task writer has returned.
 
 Commit all analysis and plan changes (staging file, plan tasks, Plan Index File, and manifest if `analysis_gate_mode` was updated):
 

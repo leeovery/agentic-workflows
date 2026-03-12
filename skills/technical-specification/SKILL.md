@@ -19,7 +19,7 @@ Follows discussion (or investigation for bugfix). Transform prior-phase source m
 - **Source material** (required) - Prior-phase artifacts to synthesize (discussions, research, investigation findings)
 - **Topic name** (required) - Used for the output filename
 
-#### If source material seems incomplete or unclear
+**If source material seems incomplete or unclear:**
 
 > *Output the next fenced block as a code block:*
 
@@ -74,12 +74,18 @@ Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
 
 Read the specification status via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} status`).
 
+> *Output the next fenced block as a code block:*
+
+```
+Found existing specification for {work_unit}.
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Found existing specification for **{work_unit}**.
-
 · · · · · · · · · · · ·
+Continue or restart?
+
 - **`c`/`continue`** — Walk through the specification from its current state. You can review, amend, or navigate at any point.
 - **`r`/`restart`** — Delete the specification and all review tracking files. Start fresh.
 · · · · · · · · · · · ·
@@ -88,8 +94,6 @@ Found existing specification for **{work_unit}**.
 **STOP.** Wait for user response.
 
 #### If `continue`
-
-Reset `finding_gate_mode` to `gated` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated`) (fresh invocation = fresh gates).
 
 → Proceed to **Step 3** (skipping Steps 1–2).
 
@@ -112,7 +116,7 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 
 ## Step 2: Initialize Specification
 
-Load **[specification-format.md](references/specification-format.md)** for the template.
+Load **[specification-format.md](references/specification-format.md)** and follow its instructions as written.
 
 Create the specification file at `.workflows/{work_unit}/specification/{topic}/specification.md`:
 
@@ -136,39 +140,50 @@ Commit: `spec({work_unit}): initialize specification`
 
 ---
 
-## Step 3: Load Specification Principles
+## Step 3: Session Setup
 
-Load **[specification-principles.md](references/specification-principles.md)** and internalize the rules. These principles govern every subsequent step.
+Reset `finding_gate_mode` to `gated` via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated
+```
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Spec Construction
+## Step 4: Load Specification Principles
 
-Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
+Load **[specification-principles.md](references/specification-principles.md)** and follow its instructions as written. These principles govern every subsequent step.
 
 → Proceed to **Step 5**.
 
 ---
 
-## Step 5: Document Dependencies
+## Step 5: Spec Construction
 
-Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
+Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Specification Review
+## Step 6: Document Dependencies
 
-Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
+Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 7**.
 
 ---
 
-## Step 7: Assess Type & Conclude
+## Step 7: Specification Review
+
+Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
+
+→ Proceed to **Step 8**.
+
+---
+
+## Step 8: Assess Type & Conclude
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.
 

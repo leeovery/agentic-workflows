@@ -139,9 +139,9 @@ Invoke the workflow-bridge skill to enter plan mode with completion confirmation
 
 ## B. Dispatch Review Synthesizer
 
-Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions.
+Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until the synthesizer has returned.
+> **CHECKPOINT**: Do not proceed until the synthesizer has returned.
 
 #### If `STATUS` is `clean`
 
@@ -226,7 +226,7 @@ Approve this task?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user input.
+**STOP.** Wait for user response.
 
 #### If `gate_mode` is `auto`
 
@@ -302,10 +302,9 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 For approved tasks in the staging file, invoke the task writer.
 
 1. Filter staging file to tasks with `status: approved`
-2. Load **[invoke-review-task-writer.md](invoke-review-task-writer.md)** and follow its instructions
-3. Wait for the task writer to return
+2. Load **[invoke-review-task-writer.md](invoke-review-task-writer.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until the task writer has returned.
+> **CHECKPOINT**: Do not proceed until the task writer has returned.
 
 Commit all changes (staging file, plan tasks, Plan Index Files):
 

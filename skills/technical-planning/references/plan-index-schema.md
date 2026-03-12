@@ -72,7 +72,7 @@ All metadata is managed via the manifest CLI (`node .claude/skills/workflow-mani
 | `format` | Plan creation -- user-chosen output format |
 | `spec_commit` | Plan creation -- `git rev-parse HEAD`; updated on continue if spec changed |
 | `external_id` | First task authored -- external identifier for the plan |
-| `external_dependencies` | Dependency resolution (Step 6) |
+| `external_dependencies` | Dependency resolution (Step 7) |
 | `task_list_gate_mode` | Plan creation -> `gated`; user opts in -> `auto` |
 | `author_gate_mode` | Plan creation -> `gated`; user opts in -> `auto` |
 | `finding_gate_mode` | Plan creation -> `gated`; user opts in -> `auto` |

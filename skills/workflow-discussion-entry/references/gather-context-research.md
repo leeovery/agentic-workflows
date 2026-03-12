@@ -26,4 +26,4 @@ research you'd like to include — drop them in now.
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.

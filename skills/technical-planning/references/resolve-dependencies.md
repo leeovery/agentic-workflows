@@ -56,7 +56,7 @@ Approve the dependency resolution?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for the user's response.
+**STOP.** Wait for user response.
 
 #### If the user provides feedback
 

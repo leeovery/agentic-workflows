@@ -61,7 +61,7 @@ Approve the dependency graph?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for the user's response.
+**STOP.** Wait for user response.
 
 #### If the agent reports a cycle (`STATUS: blocked`)
 
@@ -77,7 +77,7 @@ The dependency analysis found a circular dependency:
 This must be resolved before continuing. The cycle usually means two tasks each assume the other is done first — one needs to be restructured or the dependency removed.
 ```
 
-**STOP.** Wait for the user to decide how to resolve.
+**STOP.** Wait for user response.
 
 Options include adjusting task scope, merging tasks, or removing a dependency. Re-invoke the agent after changes.
 
@@ -110,7 +110,7 @@ Approve the updated graph?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for the user's response.
+**STOP.** Wait for user response.
 
 #### If the user provides feedback
 

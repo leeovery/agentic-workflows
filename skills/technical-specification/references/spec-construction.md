@@ -19,7 +19,7 @@ F. Topic complete → loop back to A or exit
 
 ## A. Exhaustive Extraction
 
-Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions for the current topic.
+Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 
 When working with multiple sources, search each one — information about a single topic may be scattered across documents.
 
@@ -103,8 +103,8 @@ This is the end of this iteration.
 
 #### If additional topics remain
 
-→ Proceed to **A. Exhaustive Extraction** and follow the instructions as written.
+→ Return to **A. Exhaustive Extraction**.
 
 #### If all topics are covered
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.

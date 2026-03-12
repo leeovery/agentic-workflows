@@ -30,7 +30,9 @@ The script will list which files were updated. Present this to the user:
 Review changes with `git diff`, then restart Claude to pick up the changes.
 ```
 
-**STOP.** Wait for user response. Do not proceed — the user needs to restart Claude.
+The user needs to restart Claude before proceeding.
+
+**STOP.** Wait for user response.
 
 #### If no updates needed
 

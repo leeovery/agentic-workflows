@@ -61,11 +61,11 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 Check if a Plan Index File already exists at `.workflows/{work_unit}/planning/{topic}/planning.md`.
 
-#### If no Plan Index File exists
+#### If no plan index file exists
 
 → Proceed to **Step 1**.
 
-#### If Plan Index File exists
+#### If plan index file exists
 
 Check the planning status via manifest CLI:
 ```bash
@@ -83,7 +83,7 @@ Check `spec_commit` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} spec_commit
 ```
 
-Load **[spec-change-detection.md](references/spec-change-detection.md)** to check whether the specification has changed since planning started. Then present the user with an informed choice:
+Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the user with an informed choice:
 
 > *Output the next fenced block as a code block:*
 
@@ -97,6 +97,8 @@ Found existing plan for {work_unit} (previously reached phase {N}, task {M}).
 
 ```
 · · · · · · · · · · · ·
+Continue or restart?
+
 - **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.
 - **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the Plan Index File and any Authored Tasks. Other topics are unaffected.
 · · · · · · · · · · · ·
@@ -106,19 +108,7 @@ Found existing plan for {work_unit} (previously reached phase {N}, task {M}).
 
 #### If `continue`
 
-If the specification changed, update `spec_commit` in the manifest:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} spec_commit $(git rev-parse HEAD)
-```
-
-Reset gate modes to `gated` in the manifest (fresh invocation = fresh gates):
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task_list_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} author_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} finding_gate_mode gated
-```
-
-→ Proceed to **Step 1**.
+→ Proceed to **Step 2**.
 
 #### If `restart`
 
@@ -138,22 +128,9 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 
 ## Step 1: Initialize Plan
 
-#### If Plan Index File already exists
+Choose the Output Format.
 
-Read the `format` from the manifest:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
-```
-
-Read **[output-formats.md](references/output-formats.md)**, find the entry matching the format, and load the format's **[about.md](references/output-formats/{format}/about.md)** and **[authoring.md](references/output-formats/{format}/authoring.md)**.
-
-→ Proceed to **Step 2**.
-
-#### If no Plan Index File exists
-
-First, choose the Output Format.
-
-**If a recommended output format was provided** (non-empty, not "none"):
+#### If a recommended output format was provided (non-empty, not `none`)
 
 Present the recommendation:
 
@@ -168,9 +145,9 @@ Existing plans use **{format}**. Use the same format for consistency?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user choice. If declined, fall through to the full list below.
+**STOP.** Wait for user response.
 
-#### If no recommendation, or user declined
+#### If no recommendation or user declined
 
 Read **[output-formats.md](references/output-formats.md)** and present each format to the user.
 
@@ -187,14 +164,13 @@ Select a format (enter number):
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for the user to choose.
+**STOP.** Wait for user response.
 
 Once selected:
 
-1. Read **[output-formats.md](references/output-formats.md)**, find the chosen format entry, and load the format's **[about.md](references/output-formats/{format}/about.md)** and **[authoring.md](references/output-formats/{format}/authoring.md)**
-2. Capture the current git commit hash: `git rev-parse HEAD`
-3. Create the Plan Index File at `.workflows/{work_unit}/planning/{topic}/planning.md` using the **Title** template from **[plan-index-schema.md](references/plan-index-schema.md)**.
-4. Register planning and set metadata in the manifest:
+1. Capture the current git commit hash: `git rev-parse HEAD`
+2. Create the Plan Index File at `.workflows/{work_unit}/planning/{topic}/planning.md` using the **Title** template from **[plan-index-schema.md](references/plan-index-schema.md)**.
+3. Register planning and set metadata in the manifest:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase planning --topic {topic}
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} format {chosen-format}
@@ -206,61 +182,83 @@ Once selected:
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task ~
    ```
 
-5. Commit: `planning({work_unit}): initialize plan`
+4. Commit: `planning({work_unit}): initialize plan`
 
 → Proceed to **Step 2**.
 
 ---
 
-## Step 2: Load Planning Principles
+## Step 2: Session Setup
 
-Load **[planning-principles.md](references/planning-principles.md)** and follow its instructions as written.
+1. Read the `format` from the manifest:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
+   ```
+2. Read **[output-formats.md](references/output-formats.md)**, find the entry matching the format, and load the format's **[about.md](references/output-formats/{format}/about.md)** and **[authoring.md](references/output-formats/{format}/authoring.md)**
+3. Reset gate modes to `gated` in the manifest:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task_list_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} author_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} finding_gate_mode gated
+   ```
+4. Update `spec_commit` to current HEAD:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} spec_commit $(git rev-parse HEAD)
+   ```
 
 → Proceed to **Step 3**.
 
 ---
 
-## Step 3: Verify Source Material
+## Step 3: Load Planning Principles
 
-Load **[verify-source-material.md](references/verify-source-material.md)** and follow its instructions as written.
+Load **[planning-principles.md](references/planning-principles.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Plan Construction
+## Step 4: Verify Source Material
 
-Load **[plan-construction.md](references/plan-construction.md)** and follow its instructions as written.
+Load **[verify-source-material.md](references/verify-source-material.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 
 ---
 
-## Step 5: Analyze Task Graph
+## Step 5: Plan Construction
 
-Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow its instructions as written.
+Load **[plan-construction.md](references/plan-construction.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Resolve External Dependencies
+## Step 6: Analyze Task Graph
 
-Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follow its instructions as written.
+Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow its instructions as written.
 
 → Proceed to **Step 7**.
 
 ---
 
-## Step 7: Plan Review
+## Step 7: Resolve External Dependencies
 
-Load **[plan-review.md](references/plan-review.md)** and follow its instructions as written.
+Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 8**.
 
 ---
 
-## Step 8: Conclude the Plan
+## Step 8: Plan Review
+
+Load **[plan-review.md](references/plan-review.md)** and follow its instructions as written.
+
+→ Proceed to **Step 9**.
+
+---
+
+## Step 9: Conclude the Plan
 
 > **CHECKPOINT**: Do not conclude if any tasks in the Plan Index File show `status: pending`. All tasks must be `authored` before concluding.
 
@@ -268,6 +266,8 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 ```
 · · · · · · · · · · · ·
+Ready to conclude?
+
 - **`y`/`yes`** — Conclude plan and mark as completed
 - **Comment** — Add context before concluding
 · · · · · · · · · · · ·
@@ -275,9 +275,17 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 **STOP.** Wait for user response.
 
-#### If `comment`
+#### If comment
 
-Discuss the user's context. If additional work is needed, route back to **Step 6** or **Step 7** as appropriate. Otherwise, re-present the sign-off prompt above.
+Discuss the user's context.
+
+**If additional work is needed:**
+
+→ Return to **Step 7** or **Step 8** as appropriate.
+
+**Otherwise:**
+
+Re-present the sign-off prompt above.
 
 #### If `yes`
 

@@ -16,4 +16,4 @@ I've read the existing discussion.
 What would you like to focus on in this session?
 ```
 
-**STOP.** Wait for response before proceeding.
+**STOP.** Wait for user response.

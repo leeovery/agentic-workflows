@@ -108,7 +108,7 @@ Approve this task?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for the user's response.
+**STOP.** Wait for user response.
 
 #### If approved (`y`/`yes`)
 

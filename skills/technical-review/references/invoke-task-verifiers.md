@@ -22,7 +22,7 @@ This captures all files touched by implementation commits for the topic.
 
 ## Extract All Tasks
 
-Using the format reading adapter loaded in Step 1, extract every task across all phases from each plan in scope:
+Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope:
 - Note each task's description
 - Note each task's acceptance criteria
 - Note expected micro acceptance (test name)
@@ -70,7 +70,7 @@ Each verifier receives:
 1. **Plan task** — the specific task with acceptance criteria
 2. **Specification path** — from the manifest (if available)
 3. **Plan path** — the full plan for phase context
-4. **Project skill paths** — from Step 2 discovery
+4. **Project skill paths** — from Step 3 discovery
 5. **Review checklist path** — `skills/technical-review/references/review-checklist.md`
 6. **Work unit** — the work unit name (for path construction)
 7. **Topic** — the plan topic name (used for output directory)

@@ -72,7 +72,7 @@ The official Linear MCP server does not support deletion. Ask the user to delete
 
 > "The Linear project **{project name}** needs to be deleted before restarting. Please delete it in the Linear UI (Project Settings → Delete project), then confirm so I can proceed."
 
-**STOP.** Wait for the user to confirm.
+**STOP.** Wait for user response.
 
 ### Fallback
 

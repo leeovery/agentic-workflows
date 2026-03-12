@@ -32,9 +32,11 @@ E. Update progress + phase check + commit
 
 ## B. Execute Task
 
-1. Load **[invoke-executor.md](invoke-executor.md)** and follow its instructions. Pass the normalised task content.
-2. **STOP.** Do not proceed until the executor has returned its result.
-3. On receipt of result, route on STATUS:
+1. Load **[invoke-executor.md](invoke-executor.md)** and follow its instructions as written. Pass the normalised task content.
+
+> **CHECKPOINT**: Do not proceed until the executor has returned its result.
+
+2. On receipt of result, route on STATUS:
    - `blocked` or `failed` → follow **Executor Blocked** below
    - `complete` → proceed to **C. Review Task**
 
@@ -60,7 +62,7 @@ Task failed. How would you like to proceed?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user choice.
+**STOP.** Wait for user response.
 
 #### If `retry`
 
@@ -78,9 +80,11 @@ Task failed. How would you like to proceed?
 
 ## C. Review Task
 
-1. Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its instructions. Pass the executor's result.
-2. **STOP.** Do not proceed until the reviewer has returned its result.
-3. On receipt of result, route on VERDICT:
+1. Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its instructions as written. Pass the executor's result.
+
+> **CHECKPOINT**: Do not proceed until the reviewer has returned its result.
+
+2. On receipt of result, route on VERDICT:
    - `needs-changes` → follow **Review Changes** below
    - `approved` → proceed to **D. Task Gate**
 
@@ -124,7 +128,7 @@ Accept the reviewer's fix analysis?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user choice.
+**STOP.** Wait for user response.
 
 - **`y`/`yes`**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
 - **`auto`**: Note that `fix_gate_mode` should be updated to `auto` via manifest CLI during the next commit step. → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
@@ -168,7 +172,7 @@ Approve this task?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user input.
+**STOP.** Wait for user response.
 
 - **`y`/`yes`**: → Proceed to **E. Update Progress and Commit**.
 - **`auto`**: Note that `task_gate_mode` should be updated to `auto` via manifest CLI during the commit step. → Proceed to **E. Update Progress and Commit**.

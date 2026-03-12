@@ -23,4 +23,4 @@ Is this name okay?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.

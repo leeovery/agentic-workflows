@@ -89,7 +89,7 @@ Approve this task list?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for the user's response.
+**STOP.** Wait for user response.
 
 **If the user wants changes:**
 

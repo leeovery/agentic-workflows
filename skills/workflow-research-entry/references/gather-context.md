@@ -62,7 +62,7 @@ What's on your mind?
 - What prompted this - a problem, opportunity, curiosity?
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.
 
 ---
 
@@ -77,7 +77,7 @@ What do you already know?
 - Constraints or context I should be aware of?
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.
 
 ---
 
@@ -92,7 +92,7 @@ Where should we start?
 - Or just talk it through and see where it goes?
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.
 
 ---
 
@@ -106,4 +106,4 @@ Any constraints or context I should know about upfront?
 (Or "none" if we're starting fresh)
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.

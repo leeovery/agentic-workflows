@@ -18,7 +18,7 @@ New discussion: {topic}
 What's the core problem or decision we need to work through?
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.
 
 ---
 
@@ -30,7 +30,7 @@ What's the core problem or decision we need to work through?
 Any constraints or context I should know about?
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.
 
 ---
 
@@ -44,4 +44,4 @@ Are there specific files in the codebase I should review first?
 (Or "none" if not applicable)
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.

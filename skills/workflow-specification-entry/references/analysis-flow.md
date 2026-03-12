@@ -20,7 +20,7 @@ For example:
 Your context (or 'none'):
 ```
 
-**STOP.** Wait for user response. Note their input for the analysis.
+**STOP.** Wait for user response.
 
 → Proceed to **B. Analyze Discussions**.
 

@@ -68,7 +68,9 @@ Continue with review?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user choice. You MUST NOT choose on the user's behalf.
+You MUST NOT choose on the user's behalf.
+
+**STOP.** Wait for user response.
 
 #### If `proceed`
 
@@ -170,7 +172,7 @@ Review cycle {N}
 Auto-review has not converged after 5 cycles — escalating for human review.
 ```
 
-→ Present the gated re-loop prompt below.
+Present the gated re-loop prompt below.
 
 #### If `finding_gate_mode: gated`
 
@@ -211,4 +213,4 @@ Run another review cycle?
 Specification review complete — {N} cycle(s), all tracking files finalised.
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 7**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.

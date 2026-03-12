@@ -49,6 +49,6 @@ Each agent knows its own output path convention and writes findings independentl
 
 ## Wait for Completion
 
-**STOP.** Do not proceed until all three agents have returned.
+> **CHECKPOINT**: Do not proceed until all three agents have returned.
 
 Each agent writes its findings to its own output file and returns a brief status. If any agent fails (error, timeout), record the failure and continue — the synthesizer works with whatever findings files are available.

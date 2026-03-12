@@ -93,4 +93,4 @@ How would you like to proceed?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user response before proceeding.
+**STOP.** Wait for user response.

@@ -74,7 +74,7 @@ Epic Completed
 
 Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until the above has returned with the user's selection.
+> **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
 → Proceed to **D. Enter Plan Mode**.
 

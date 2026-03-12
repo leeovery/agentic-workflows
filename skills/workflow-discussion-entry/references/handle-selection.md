@@ -25,7 +25,7 @@ Set source="research".
 Which research topic would you like to discuss? (Enter a number or topic name)
 ```
 
-**STOP.** Wait for response.
+**STOP.** Wait for user response.
 
 #### If user chose `Continue discussion`
 
@@ -46,7 +46,7 @@ Set source="continue".
 Which discussion would you like to continue?
 ```
 
-**STOP.** Wait for response.
+**STOP.** Wait for user response.
 
 #### If user chose `Fresh topic`
 
