@@ -55,6 +55,35 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ---
 
+## Step 0: Resume Detection
+
+Check if an implementation file exists at `.workflows/{work_unit}/implementation/{topic}/implementation.md`.
+
+#### If no implementation file exists
+
+→ Proceed to **Step 1**.
+
+#### If implementation file exists
+
+> *Output the next fenced block as a code block:*
+
+```
+Found existing implementation for "{topic:(titlecase)}". Resuming from previous session.
+```
+
+Reset gate modes and counters via manifest CLI (fresh session = fresh gates/cycles):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} task_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0
+```
+
+→ Proceed to **Step 1**.
+
+---
+
 ## Step 1: Environment Setup
 
 Run setup commands EXACTLY as written, one step at a time.
@@ -116,15 +145,6 @@ Save their instructions to `.workflows/.state/environment-setup.md` (or "No spec
 ## Step 3: Initialize Implementation Tracking
 
 #### If `.workflows/{work_unit}/implementation/{topic}/implementation.md` already exists
-
-Reset gate modes and counters via manifest CLI (fresh session = fresh gates/cycles):
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} task_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0
-```
 
 → Proceed to **Step 4**.
 

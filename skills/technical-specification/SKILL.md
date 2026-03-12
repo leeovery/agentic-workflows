@@ -89,8 +89,6 @@ Found existing specification for **{work_unit}**.
 
 #### If `continue`
 
-Reset `finding_gate_mode` to `gated` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated`) (fresh invocation = fresh gates).
-
 → Proceed to **Step 3** (skipping Steps 1–2).
 
 #### If `restart`
@@ -136,39 +134,50 @@ Commit: `spec({work_unit}): initialize specification`
 
 ---
 
-## Step 3: Load Specification Principles
+## Step 3: Session Setup
 
-Load **[specification-principles.md](references/specification-principles.md)** and internalize the rules. These principles govern every subsequent step.
+Reset `finding_gate_mode` to `gated` via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated
+```
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Spec Construction
+## Step 4: Load Specification Principles
 
-Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
+Load **[specification-principles.md](references/specification-principles.md)** and internalize the rules. These principles govern every subsequent step.
 
 → Proceed to **Step 5**.
 
 ---
 
-## Step 5: Document Dependencies
+## Step 5: Spec Construction
 
-Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
+Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Specification Review
+## Step 6: Document Dependencies
 
-Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
+Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 7**.
 
 ---
 
-## Step 7: Assess Type & Conclude
+## Step 7: Specification Review
+
+Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
+
+→ Proceed to **Step 8**.
+
+---
+
+## Step 8: Assess Type & Conclude
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.
 

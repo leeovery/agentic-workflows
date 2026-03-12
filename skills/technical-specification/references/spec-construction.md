@@ -107,4 +107,4 @@ This is the end of this iteration.
 
 #### If all topics are covered
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.

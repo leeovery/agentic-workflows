@@ -8,7 +8,7 @@ Aggregate QA findings into a review document using the **[template.md](template.
 
 Write the review to `.workflows/{work_unit}/review/{topic}/review.md`. The review is always per-plan.
 
-**QA Verdict** (from Step 3):
+**QA Verdict** (from Step 4):
 - **Approve** — All acceptance criteria met, no blocking issues
 - **Request Changes** — Missing requirements, broken functionality, inadequate tests
 - **Comments Only** — Minor suggestions, non-blocking observations
