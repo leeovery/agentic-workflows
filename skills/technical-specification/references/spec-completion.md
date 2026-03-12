@@ -39,6 +39,8 @@ of functionality to build."}
 
 ```
 · · · · · · · · · · · ·
+Confirm this type assessment?
+
 - **`y`/`yes`** — Confirm type assessment
 - **Comment** — Suggest a different classification
 · · · · · · · · · · · ·
@@ -46,7 +48,7 @@ of functionality to build."}
 
 **STOP.** Wait for user response.
 
-#### If `comment`
+#### If comment
 
 Discuss the user's suggested classification, re-assess, and re-present the assessment display and prompt above.
 
@@ -67,6 +69,8 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 > **CHECKPOINT**: Do not proceed to sign-off if any tracking files still show `status: in-progress`. They indicate incomplete review work.
 
+→ Proceed to **C. Sign-Off**.
+
 ---
 
 ## C. Sign-Off
@@ -75,6 +79,8 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 ```
 · · · · · · · · · · · ·
+Ready to conclude?
+
 - **`y`/`yes`** — Conclude specification and mark as completed
 - **Comment** — Add context before concluding
 · · · · · · · · · · · ·
@@ -82,7 +88,7 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 **STOP.** Wait for user response.
 
-#### If `comment`
+#### If comment
 
 Discuss the user's context, apply any changes, then re-present the sign-off prompt above.
 
@@ -113,6 +119,8 @@ Specification is complete when:
 
 Commit: `spec({work_unit}): conclude specification`
 
+→ Proceed to **E. Handle Source Specifications**.
+
 ---
 
 ## E. Handle Source Specifications
@@ -126,6 +134,8 @@ If any of your sources were **existing specifications** (as opposed to discussio
    ```
 2. Inform the user which topics were updated
 3. Commit: `spec({work_unit}): mark source specifications as superseded`
+
+→ Proceed to **F. Pipeline Continuation**.
 
 ---
 

@@ -37,9 +37,11 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 ## B. Traceability Review
 
-1. Load **[invoke-review-traceability.md](invoke-review-traceability.md)** and follow its instructions to dispatch the agent.
-2. **STOP.** Do not proceed until the agent has returned its result.
-3. On receipt of result, load **[process-review-findings.md](process-review-findings.md)** and follow its instructions to process the findings with the user.
+1. Load **[invoke-review-traceability.md](invoke-review-traceability.md)** and follow its instructions as written.
+
+> **CHECKPOINT**: Do not proceed until the agent has returned its result.
+
+2. On receipt of result, load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
 → Proceed to **C. Plan Integrity Review**.
 
@@ -47,9 +49,11 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 ## C. Plan Integrity Review
 
-1. Load **[invoke-review-integrity.md](invoke-review-integrity.md)** and follow its instructions to dispatch the agent.
-2. **STOP.** Do not proceed until the agent has returned its result.
-3. On receipt of result, load **[process-review-findings.md](process-review-findings.md)** and follow its instructions to process the findings with the user.
+1. Load **[invoke-review-integrity.md](invoke-review-integrity.md)** and follow its instructions as written.
+
+> **CHECKPOINT**: Do not proceed until the agent has returned its result.
+
+2. On receipt of result, load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
 → Proceed to **D. Re-Loop Prompt**.
 
@@ -85,7 +89,7 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 Review has auto-cycled 5 times without converging. Escalating for human review.
 
-→ Present the gated re-loop prompt below.
+Present the gated re-loop prompt below.
 
 #### If `finding_gate_mode: gated`
 

@@ -170,7 +170,7 @@ Review cycle {N}
 Auto-review has not converged after 5 cycles — escalating for human review.
 ```
 
-→ Present the gated re-loop prompt below.
+Present the gated re-loop prompt below.
 
 #### If `finding_gate_mode: gated`
 

@@ -350,7 +350,15 @@ Ready to mark implementation as completed?
 
 #### If comment
 
-Discuss the user's context. If additional work is needed, → Return to **Step 6** or **Step 7** as appropriate. Otherwise, re-present the sign-off prompt above.
+Discuss the user's context.
+
+**If additional work is needed:**
+
+→ Return to **Step 6** or **Step 7** as appropriate.
+
+**Otherwise:**
+
+Re-present the sign-off prompt above.
 
 #### If `yes`
 

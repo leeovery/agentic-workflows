@@ -74,11 +74,15 @@ Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
 
 Read the specification status via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} status`).
 
+> *Output the next fenced block as a code block:*
+
+```
+Found existing specification for {work_unit}.
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Found existing specification for **{work_unit}**.
-
 · · · · · · · · · · · ·
 Continue or restart?
 

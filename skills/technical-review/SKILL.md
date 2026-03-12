@@ -59,11 +59,15 @@ Check if a review file exists at `.workflows/{work_unit}/review/{topic}/review.m
 
 #### If review file exists
 
+> *Output the next fenced block as a code block:*
+
+```
+Found existing review for "{topic:(titlecase)}".
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Found existing review for **{topic:(titlecase)}**.
-
 · · · · · · · · · · · ·
 Continue or restart?
 
@@ -95,13 +99,15 @@ Check if review phase is registered in manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
 ```
 
-**If `false`:**
+#### If `false`
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase review --topic {topic}
 ```
 
-**If `true`:** Phase already registered (e.g. reopened review). Skip init-phase.
+#### If `true`
+
+Phase already registered (e.g. reopened review). Skip init-phase.
 
 Now determine review mode. Check if the review file exists at `.workflows/{work_unit}/review/{topic}/review.md`.
 

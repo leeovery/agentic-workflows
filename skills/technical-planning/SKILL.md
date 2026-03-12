@@ -145,7 +145,7 @@ Existing plans use **{format}**. Use the same format for consistency?
 · · · · · · · · · · · ·
 ```
 
-**STOP.** Wait for user response. If declined, fall through to the full list below.
+**STOP.** Wait for user response.
 
 #### If no recommendation or user declined
 
@@ -277,7 +277,15 @@ Ready to conclude?
 
 #### If comment
 
-Discuss the user's context. If additional work is needed, → Return to **Step 7** or **Step 8** as appropriate. Otherwise, re-present the sign-off prompt above.
+Discuss the user's context.
+
+**If additional work is needed:**
+
+→ Return to **Step 7** or **Step 8** as appropriate.
+
+**Otherwise:**
+
+Re-present the sign-off prompt above.
 
 #### If `yes`
 
