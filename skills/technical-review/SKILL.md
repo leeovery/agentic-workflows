@@ -93,15 +93,13 @@ Check if review phase is registered in manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
 ```
 
-#### If `false`
+**If `false`:**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase review --topic {topic}
 ```
 
-#### If `true`
-
-Phase already registered (e.g. reopened review). Skip init-phase.
+**If `true`:** Phase already registered (e.g. reopened review). Skip init-phase.
 
 Now determine review mode. Check if the review file exists at `.workflows/{work_unit}/review/{topic}/review.md`.
 
@@ -129,15 +127,13 @@ No prior review tracking. Store `review_mode = full`.
 
 → Proceed to **Step 2**.
 
-**If `reviewed_tasks` exists:**
+**If `reviewed_tasks` exists and no unreviewed tasks (arrays match):**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} reviewed_tasks
 ```
 
-Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `completed_tasks` but not in `reviewed_tasks` is unreviewed.
-
-**If no unreviewed tasks** (arrays match):
+Compare `completed_tasks` against `reviewed_tasks`.
 
 > *Output the next fenced block as a code block:*
 
@@ -163,7 +159,13 @@ Commit: `review({work_unit}): clear review data for full re-review`
 
 → Proceed to **Step 2**.
 
-**If unreviewed tasks exist:**
+**If `reviewed_tasks` exists and unreviewed tasks exist:**
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} reviewed_tasks
+```
+
+Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `completed_tasks` but not in `reviewed_tasks` is unreviewed.
 
 > *Output the next fenced block as a code block:*
 

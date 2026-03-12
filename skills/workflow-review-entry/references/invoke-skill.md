@@ -4,8 +4,6 @@
 
 ---
 
-## Invoke the Skill
-
 Invoke the [technical-review](../../technical-review/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
 
 Query format from manifest:
