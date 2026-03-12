@@ -39,6 +39,15 @@ Read each research file and extract key themes and potential discussion topics. 
 - Security or performance considerations
 - Edge cases or error handling mentioned
 
+### Anchor to Existing Discussions
+
+**CRITICAL**: Check `discussions.files` from discovery. These are discussion filenames that already exist for this work unit.
+
+When naming themes:
+- If a theme clearly maps to an existing discussion, you MUST use that discussion's filename (converted from kebab-case) as the theme name. E.g., if `data-schema-design.md` exists and you identify a matching theme, name it "Data Schema Design" — not "Database Schema Architecture" or any variation.
+- Only create new names for themes with no matching existing discussion.
+- For each topic, note if a discussion already exists.
+
 **Save to cache:**
 
 Write cache metadata to manifest:
@@ -69,7 +78,5 @@ Create/update `.workflows/{work_unit}/.state/research-analysis.md` (pure markdow
 - **Summary**: {as long as needed to convey what this topic covers}
 - **Sources**: {filename1}.md, {filename2}.md
 ```
-
-**Cross-reference**: For each topic, note if a discussion already exists (from `discussions.files` in discovery).
 
 → Return to **[the skill](../SKILL.md)**.
