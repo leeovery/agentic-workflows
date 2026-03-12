@@ -154,10 +154,10 @@ Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
 
 ```
 · · · · · · · · · · · ·
+Review mode?
+
 - **`i`/`incremental`** — Review only new tasks ({U} tasks)
 - **`f`/`full`** — Re-review all tasks
-
-Review mode?
 · · · · · · · · · · · ·
 ```
 
