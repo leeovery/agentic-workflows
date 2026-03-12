@@ -55,25 +55,9 @@ Check if a review file exists at `.workflows/{work_unit}/review/{topic}/review.m
 
 #### If no review file exists
 
-Store `review_mode = full`.
-
 → Proceed to **Step 1**.
 
 #### If review file exists
-
-Determine whether new tasks have been implemented since the last review.
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} completed_tasks
-```
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic} reviewed_tasks
-```
-
-**If `reviewed_tasks` does not exist:**
-
-No prior review tracking. Store `review_mode = full`.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -90,16 +74,60 @@ Found existing review for **{topic:(titlecase)}**.
 
 #### If `continue`
 
-→ Proceed to **Step 2**.
+→ Proceed to **Step 1**.
 
 #### If `restart`
 
 1. Delete the review file and all QA files (`qa-task-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
 2. Commit: `review({work_unit}): restart review`
 
+→ Proceed to **Step 1**.
+
+---
+
+## Step 1: Initialize Review
+
+Check if review phase is registered in manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
+```
+
+#### If `false`
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase review --topic {topic}
+```
+
+#### If `true`
+
+Phase already registered (e.g. reopened review). Skip init-phase.
+
+Now determine review mode. Check if the review file exists at `.workflows/{work_unit}/review/{topic}/review.md`.
+
+#### If no review file exists
+
 Store `review_mode = full`.
 
-→ Proceed to **Step 1**.
+→ Proceed to **Step 2**.
+
+#### If review file exists
+
+Continuing from a previous session — determine scope.
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} completed_tasks
+```
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic} reviewed_tasks
+```
+
+**If `reviewed_tasks` does not exist:**
+
+No prior review tracking. Store `review_mode = full`.
+
+→ Proceed to **Step 2**.
 
 **If `reviewed_tasks` exists:**
 
@@ -111,7 +139,7 @@ Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `complete
 
 **If no unreviewed tasks** (arrays match):
 
-> *Output the next fenced block as code block:*
+> *Output the next fenced block as a code block:*
 
 ```
 Reopening review: {topic:(titlecase)}
@@ -131,10 +159,9 @@ node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} --p
 rm .workflows/{work_unit}/review/{topic}/qa-task-*.md
 ```
 
-1. Delete the review file
-2. Commit: `review({work_unit}): restart review for full re-review`
+Commit: `review({work_unit}): clear review data for full re-review`
 
-→ Proceed to **Step 1**.
+→ Proceed to **Step 2**.
 
 **If unreviewed tasks exist:**
 
@@ -179,32 +206,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} --p
 rm .workflows/{work_unit}/review/{topic}/qa-task-*.md
 ```
 
-1. Delete the review file
-2. Commit: `review({work_unit}): restart review for full re-review`
-
-→ Proceed to **Step 1**.
-
----
-
-## Step 1: Initialize Review
-
-Check if review phase is registered in manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
-```
-
-#### If `false`
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase review --topic {topic}
-```
-
-→ Proceed to **Step 2**.
-
-#### If `true`
-
-Phase already registered (e.g. reopened review). Skip init-phase.
+Commit: `review({work_unit}): clear review data for full re-review`
 
 → Proceed to **Step 2**.
 
