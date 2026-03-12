@@ -19,7 +19,7 @@ You receive:
 5. **Review checklist path**: Path to the review checklist (`skills/technical-review/references/review-checklist.md`) — read this for detailed verification criteria
 6. **Work unit**: The work unit name (for path construction)
 7. **Topic**: The plan topic name (used for output directory)
-8. **Task ID**: The internal task ID (for output file naming, e.g., `my-feature-1-1`)
+8. **Task ID**: The internal task ID (for output file naming, e.g., `cli-enhancements-1-1`)
 
 ## Your Task
 

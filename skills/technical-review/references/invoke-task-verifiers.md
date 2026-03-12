@@ -74,7 +74,7 @@ Each verifier receives:
 5. **Review checklist path** — `skills/technical-review/references/review-checklist.md`
 6. **Work unit** — the work unit name (for path construction)
 7. **Topic** — the plan topic name (used for output directory)
-8. **Task ID** — the internal task ID (for output file naming, e.g., `my-feature-1-1`)
+8. **Task ID** — the internal task ID (for output file naming, e.g., `cli-enhancements-1-1`)
 
 If any verifier fails (error, timeout), record the failure and continue — aggregate what's available.
 

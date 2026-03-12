@@ -184,7 +184,7 @@ Approve this task?
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress:
 - If the format's updating.md includes a **Phase / Parent Status** section, follow its phase completion instructions
 
-**Task ID convention**: `{task-id}` in `completed_tasks`, `current_task`, and commit messages MUST be the **internal task ID** (format: `{work_unit}-{phase}-{seq}`, e.g., `my-feature-1-1`). If the format adapter returns an external ID (e.g., tick ID `tick-928bf7` or Linear ID `PROJ-42`), resolve the internal ID from the plan index table's `ID` column. The plan table maps internal IDs to external IDs via the `Ext ID` column.
+**Task ID convention**: `{task-id}` in `completed_tasks`, `current_task`, and commit messages MUST be the **internal task ID** (format: `{work_unit}-{phase}-{seq}`, e.g., `cli-enhancements-1-1`). If the format adapter returns an external ID (e.g., tick ID `tick-928bf7` or Linear ID `PROJ-42`), resolve the internal ID from the plan index table's `ID` column. The plan table maps internal IDs to external IDs via the `Ext ID` column.
 
 **Update implementation state via manifest CLI**:
 ```bash
