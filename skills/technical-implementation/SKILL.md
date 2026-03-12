@@ -91,7 +91,7 @@ Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).
 Do NOT parallelize steps — execute each command sequentially.
 Complete ALL setup steps before proceeding.
 
-Load **[environment-setup.md](references/environment-setup.md)** and follow its instructions.
+Load **[environment-setup.md](references/environment-setup.md)** and follow its instructions as written.
 
 #### If `.workflows/.state/environment-setup.md` states `No special setup required`
 
@@ -204,8 +204,13 @@ Keep these project skills?
 
 **STOP.** Wait for user choice.
 
-- **`yes`**: → Proceed to **Step 5**.
-- **`change`**: Clear `project_skills` and fall through to discovery below.
+#### If `yes`
+
+→ Proceed to **Step 5**.
+
+#### If `change`
+
+Clear `project_skills` and fall through to discovery below.
 
 #### If `.claude/skills/` does not exist or is empty
 
@@ -252,7 +257,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --pha
 
 ## Step 5: Linter Discovery
 
-Load **[linter-setup.md](references/linter-setup.md)** and follow its discovery process to identify project linters.
+Load **[linter-setup.md](references/linter-setup.md)** and follow its instructions as written.
 
 Check `linters` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} linters`). If already populated, present the existing configuration for confirmation (same pattern as project skills in Step 4). If confirmed, skip discovery and proceed.
 
@@ -278,9 +283,19 @@ Approve these linters?
 
 **STOP.** Wait for user choice.
 
-- **`yes`**: Store the approved linter commands via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters [...]`).
-- **`change`**: Adjust based on user input, re-present for confirmation.
-- **`skip`**: Store empty linters array via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters []`).
+#### If `yes`
+
+Store the approved linter commands via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters [...]`).
+
+→ Proceed to **Step 6**.
+
+#### If `change`
+
+Adjust based on user input, re-present for confirmation.
+
+#### If `skip`
+
+Store empty linters array via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters []`).
 
 → Proceed to **Step 6**.
 
@@ -333,7 +348,7 @@ Ready to mark implementation as completed?
 
 **STOP.** Wait for user response.
 
-#### If `comment`
+#### If comment
 
 Discuss the user's context. If additional work is needed, route back to **Step 6** or **Step 7** as appropriate. Otherwise, re-present the sign-off prompt above.
 

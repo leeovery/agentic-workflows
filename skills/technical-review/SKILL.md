@@ -65,6 +65,8 @@ Check if a review file exists at `.workflows/{work_unit}/review/{topic}/review.m
 Found existing review for **{topic:(titlecase)}**.
 
 · · · · · · · · · · · ·
+Continue or restart?
+
 - **`c`/`continue`** — Continue the review from its current state
 - **`r`/`restart`** — Delete the review and all QA files. Start fresh.
 · · · · · · · · · · · ·
@@ -252,7 +254,7 @@ Scan `.claude/skills/` for project-specific skill directories. Note which are re
 
 Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and follow its instructions as written.
 
-**STOP.** Do not proceed until ALL task verifiers have returned and findings are aggregated.
+> **CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.
 
 → Proceed to **Step 5**.
 

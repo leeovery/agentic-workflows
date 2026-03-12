@@ -97,6 +97,8 @@ Found existing plan for {work_unit} (previously reached phase {N}, task {M}).
 
 ```
 · · · · · · · · · · · ·
+Continue or restart?
+
 - **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.
 - **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the Plan Index File and any Authored Tasks. Other topics are unaffected.
 · · · · · · · · · · · ·
@@ -128,7 +130,7 @@ Found existing plan for {work_unit} (previously reached phase {N}, task {M}).
 
 Choose the Output Format.
 
-**If a recommended output format was provided** (non-empty, not "none"):
+#### If a recommended output format was provided (non-empty, not "none")
 
 Present the recommendation:
 
@@ -145,7 +147,7 @@ Existing plans use **{format}**. Use the same format for consistency?
 
 **STOP.** Wait for user choice. If declined, fall through to the full list below.
 
-#### If no recommendation, or user declined
+#### If no recommendation or user declined
 
 Read **[output-formats.md](references/output-formats.md)** and present each format to the user.
 
@@ -264,6 +266,8 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 ```
 · · · · · · · · · · · ·
+Ready to conclude?
+
 - **`y`/`yes`** — Conclude plan and mark as completed
 - **Comment** — Add context before concluding
 · · · · · · · · · · · ·
@@ -271,7 +275,7 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 **STOP.** Wait for user response.
 
-#### If `comment`
+#### If comment
 
 Discuss the user's context. If additional work is needed, route back to **Step 7** or **Step 8** as appropriate. Otherwise, re-present the sign-off prompt above.
 

@@ -66,13 +66,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --p
 
 → Return to **[the skill](../SKILL.md)**.
 
-**If exists (`true`):**
+**If exists and status is `completed`:**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} status
 ```
-
-**If status is `completed`:**
 
 Reset to in-progress:
 
@@ -82,6 +80,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 
 → Return to **[the skill](../SKILL.md)**.
 
-**If status is `in-progress`:**
+**If exists and status is `in-progress`:**
 
 → Return to **[the skill](../SKILL.md)**.

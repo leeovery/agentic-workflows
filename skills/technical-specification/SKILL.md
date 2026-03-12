@@ -19,7 +19,7 @@ Follows discussion (or investigation for bugfix). Transform prior-phase source m
 - **Source material** (required) - Prior-phase artifacts to synthesize (discussions, research, investigation findings)
 - **Topic name** (required) - Used for the output filename
 
-#### If source material seems incomplete or unclear
+**If source material seems incomplete or unclear:**
 
 > *Output the next fenced block as a code block:*
 
@@ -80,6 +80,8 @@ Read the specification status via manifest CLI (`node .claude/skills/workflow-ma
 Found existing specification for **{work_unit}**.
 
 · · · · · · · · · · · ·
+Continue or restart?
+
 - **`c`/`continue`** — Walk through the specification from its current state. You can review, amend, or navigate at any point.
 - **`r`/`restart`** — Delete the specification and all review tracking files. Start fresh.
 · · · · · · · · · · · ·
