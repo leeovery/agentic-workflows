@@ -49,9 +49,10 @@ Present a summary of the dependency state: what was documented, what was resolve
 
 ```
 · · · · · · · · · · · ·
-**To proceed:**
-- **`y`/`yes`** — Approved.
-- **Or tell me what to change.**
+Approve the dependency resolution?
+
+- **`y`/`yes`** — Proceed
+- **Tell me what to change** — Adjust resolutions or add missing links
 · · · · · · · · · · · ·
 ```
 

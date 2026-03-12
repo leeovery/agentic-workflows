@@ -37,7 +37,7 @@ Why It Wasn't Caught:
 Do these findings match your understanding?
 
 - **`y`/`yes`** — Findings are correct, discuss fix direction
-- **Or provide feedback** on what's off or unclear.
+- **Provide feedback** — Tell me what's off or unclear
 · · · · · · · · · · · ·
 ```
 
@@ -80,7 +80,7 @@ multiple approaches benefit from comparison structure.}
 What are your thoughts?
 
 - **`y`/`yes`** — Agree with this direction
-- **Or provide feedback** to discuss, challenge, or suggest alternatives.
+- **Provide feedback** — Discuss, challenge, or suggest alternatives
 · · · · · · · · · · · ·
 ```
 

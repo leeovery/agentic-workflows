@@ -38,7 +38,9 @@ Analysis has run {N-1} times so far. You can continue (recommended if issues wer
 
 ```
 · · · · · · · · · · · ·
-- **`p`/`proceed`** — Continue analysis *(default)*
+Continue with analysis?
+
+- **`p`/`proceed`** — Continue analysis
 - **`s`/`skip`** — Skip analysis, proceed to completion
 · · · · · · · · · · · ·
 ```
@@ -73,7 +75,9 @@ Categorize them:
 
 ```
 · · · · · · · · · · · ·
-- **`y`/`yes`** — Include all in the checkpoint commit
+Include unexpected files in the checkpoint commit?
+
+- **`y`/`yes`** — Include all
 - **`s`/`skip`** — Exclude unexpected files, commit only implementation files
 - **Comment** — Specify which to include
 · · · · · · · · · · · ·
@@ -185,7 +189,7 @@ Approve this task?
 - **`y`/`yes`** — Approve this task
 - **`a`/`auto`** — Approve this and all remaining tasks automatically
 - **`s`/`skip`** — Skip this task
-- **Comment** — Revise based on feedback
+- **Revise** — Provide feedback to adjust
 · · · · · · · · · · · ·
 ```
 

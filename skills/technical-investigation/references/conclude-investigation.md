@@ -13,22 +13,15 @@ The user has already reviewed findings and agreed on fix direction. This step co
 Investigation complete. Ready to conclude?
 
 - **`y`/`yes`** — Conclude investigation
-- **Comment** — Add context before concluding
-- **`r`/`reopen`** — Reopen investigation (more analysis needed)
+- **Keep going** — Continue discussing to explore further
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-#### If `reopen`
-
-Ask what aspects need more analysis.
+#### If keep going
 
 → Return to **[the skill](../SKILL.md)** for **Step 3**.
-
-#### If `comment`
-
-Incorporate the user's context into the investigation file and commit. Re-present the same conclusion prompt.
 
 #### If `yes`
 

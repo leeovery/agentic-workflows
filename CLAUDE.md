@@ -427,7 +427,25 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). Framed with dot separators. Verb-based labels for selection menus. No single-character icons.
+Rendered as markdown (not code blocks). Framed with `· · · · · · · · · · · ·` dot separators at top and bottom — no blank lines between the dots and the content they frame. A question or contextual label appears first inside the dots, followed by a blank line, then the options. Verb-based labels for selection menus. No single-character icons.
+
+**Option types** — menus contain two kinds of option:
+
+- **Command option** (explicit): A discrete input the user types verbatim. Formatted with backtick-wrapped shorthand: **`y`/`yes`**, **`s`/`single`**, **`a`/`auto`**. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a`/`approve`** and **`b`/`abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``).
+- **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish.
+
+Both types use `— description` to explain what the option does (unless self-evident, as with yes/no).
+
+**Mixed prompt** — command and prompt options together:
+
+```
+· · · · · · · · · · · ·
+Investigation complete. Ready to conclude?
+
+- **`y`/`yes`** — Conclude investigation
+- **Keep going** — Continue discussing to explore further
+· · · · · · · · · · · ·
+```
 
 **Selection menu** — use concrete examples showing verb-to-state mapping:
 

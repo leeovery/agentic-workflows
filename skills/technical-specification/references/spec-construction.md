@@ -53,9 +53,10 @@ Then, **separately from the content above** (clear visual break):
 
 ```
 · · · · · · · · · · · ·
-**To proceed:**
-- **`y`/`yes`** — Approved. I'll add the above to the specification **verbatim** (exactly as shown, no modifications).
-- **Or tell me what to change.**
+Record this to the specification verbatim?
+
+- **`y`/`yes`** — Add exactly as shown, no modifications
+- **Tell me what to change** — Revise before recording
 · · · · · · · · · · · ·
 ```
 

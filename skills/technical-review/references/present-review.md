@@ -61,8 +61,10 @@ Comments:
 
 ```
 · · · · · · · · · · · ·
+Any questions before proceeding?
+
 - **`c`/`continue`** — Proceed to review actions
-- **Or ask a question** about the review findings
+- **Ask a question** — Ask about the review findings
 · · · · · · · · · · · ·
 ```
 

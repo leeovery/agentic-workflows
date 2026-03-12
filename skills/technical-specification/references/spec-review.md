@@ -61,7 +61,9 @@ were still found last cycle) or skip to completion.
 
 ```
 · · · · · · · · · · · ·
-- **`p`/`proceed`** — Continue review *(default)*
+Continue with review?
+
+- **`p`/`proceed`** — Continue review
 - **`s`/`skip`** — Skip review, proceed to completion
 · · · · · · · · · · · ·
 ```
@@ -176,6 +178,8 @@ Auto-review has not converged after 5 cycles — escalating for human review.
 
 ```
 · · · · · · · · · · · ·
+Run another review cycle?
+
 - **`r`/`reanalyse`** — Run another review cycle (Phase 1 + Phase 2)
 - **`p`/`proceed`** — Proceed to completion
 · · · · · · · · · · · ·
