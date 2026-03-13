@@ -92,12 +92,12 @@ Tasks are created with `open` status by default.
 
 ### Phase Grouping
 
-Phases are represented as parent tasks. Each task belongs to a phase by being a child of that phase's task. Use `--parent <phase-id>` during creation.
+Phases are represented as parent tasks. Each task belongs to a phase by being a child of that phase's task. Use `--parent <phase-tick-id>` during creation.
 
 To list tasks within a phase:
 
 ```bash
-tick list --parent <phase-id>
+tick list --parent <phase-tick-id>
 ```
 
 ### Type
@@ -135,7 +135,7 @@ tick create "[NEEDS INFO] Rate limiting strategy" \
 Remove the topic task and all its descendants:
 
 ```bash
-tick remove <topic-id> --force
+tick remove <topic-tick-id> --force
 ```
 
 Removing a parent cascades to all children (phases and tasks). Dependency references to removed tasks are auto-cleaned from surviving tasks.
