@@ -71,7 +71,7 @@ See **Task Properties** below for details on each flag.
 
 ## Post-Creation Verification
 
-After every `tick create`, run `tick show <task-tick-id>` and confirm that the title, description, and parent were all set correctly.
+After every `tick create`, run `tick show <tick-id>` and confirm that the title, description, and parent were all set correctly.
 
 #### If any field is empty or wrong
 
