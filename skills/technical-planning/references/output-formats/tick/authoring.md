@@ -122,13 +122,23 @@ tick ready --parent <phase-id> --tag security
 
 ### References
 
-Link tasks to external resources (spec sections, discussion topics, tickets):
+Use `--refs` to store the workflow's internal ID on each task. This links the tick task (external ID) back to the planning system's internal ID:
 
 ```bash
-tick create "Implement caching layer" --parent <phase-id> --refs "spec:caching,discussion:performance"
+tick create "Implement authentication middleware" \
+  --parent <phase-id> \
+  --refs "auth-flow-1-1"
 ```
 
-References are comma-separated free-form strings.
+The internal ID format is `{topic}-{phase_id}-{task_id}` (e.g., `auth-flow-1-1`, `auth-flow-2-3`). Set `--refs` on every task during authoring so that the internal-to-external ID mapping is stored directly in tick.
+
+For phase parent tasks, use the phase portion of the internal ID:
+
+```bash
+tick create "Phase 1: Core Setup" --parent <topic-id> --refs "auth-flow-1"
+```
+
+References are comma-separated if multiple are needed.
 
 ## Flagging
 

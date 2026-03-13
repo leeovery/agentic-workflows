@@ -34,34 +34,21 @@ To update a task's properties:
 
 After every `tick update`, run `tick show <task-id>` and confirm that the updated fields were set correctly. If any field is empty or wrong, re-run the update.
 
-## Phase / Parent Status
+## Phase / Parent Status (Auto-Cascade)
 
-Phase tasks are parent tasks in the tick hierarchy. Update their status to reflect child task progress.
+Tick automatically cascades status changes through the parent/child hierarchy. **Do not manually update phase or topic parent status** — tick handles it.
 
-### Start Phase
+### How cascading works
 
-When the first task in a phase begins and the phase parent is still `open`:
+| Command | Downward cascade | Upward cascade |
+|---------|-----------------|----------------|
+| `tick start <id>` | — | Starts any `open` ancestors |
+| `tick done <id>` | Marks all non-terminal descendants as `done` | If all siblings are now terminal, auto-completes the parent (recursively upward) |
+| `tick cancel <id>` | Cancels all non-terminal descendants | If all siblings are now terminal, auto-completes the parent (`done` or `cancel` as appropriate) |
+| `tick reopen <id>` | — | Reopens any `done` ancestors (blocked if parent is `cancelled`) |
 
-```bash
-tick start <phase-id>
-```
-
-Check the phase parent's status with `tick show <phase-id>`. If status is `open`, start it.
-
-### Complete Phase
-
-When all child tasks in a phase are `done` or `cancelled` (none remain `open` or `in_progress`):
-
-```bash
-tick done <phase-id>
-```
-
-After completing a task, check: `tick list --parent <phase-id> --status open` and `tick list --parent <phase-id> --status in_progress`. If both return empty, the phase is complete.
-
-### Cancel Phase
-
-If all child tasks are `cancelled` (none `done`):
-
-```bash
-tick cancel <phase-id>
-```
+This means:
+- Starting a task automatically starts its phase and topic parents
+- Completing the last task in a phase automatically completes the phase
+- Cancelling a task may auto-complete the phase if all siblings are now terminal
+- Reopening a task reopens its completed ancestors so the hierarchy stays consistent
