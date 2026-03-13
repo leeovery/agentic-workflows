@@ -288,6 +288,60 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: abbreviated ID prefix — suffix still derived correctly${NC}"
+setup_fixture
+
+create_manifest "auto-cascade-parent-status" '{"name":"auto-cascade-parent-status","work_type":"feature","status":"in-progress","phases":{}}'
+# Plan uses abbreviated prefix "acps-" instead of full topic name
+create_plan_with_tasks "auto-cascade-parent-status" "auto-cascade-parent-status" \
+    "acps-1-1" "acps-1-2" "acps-2-1"
+create_review_files "auto-cascade-parent-status" "auto-cascade-parent-status" t1 t2 t3
+
+run_migration > /dev/null
+
+assert_file_exists "$TEST_DIR/.workflows/auto-cascade-parent-status/review/auto-cascade-parent-status/report-1-1.md" "Abbreviated prefix: correct suffix 1-1"
+assert_file_exists "$TEST_DIR/.workflows/auto-cascade-parent-status/review/auto-cascade-parent-status/report-1-2.md" "Abbreviated prefix: correct suffix 1-2"
+assert_file_exists "$TEST_DIR/.workflows/auto-cascade-parent-status/review/auto-cascade-parent-status/report-2-1.md" "Abbreviated prefix: correct suffix 2-1"
+assert_file_not_exists "$TEST_DIR/.workflows/auto-cascade-parent-status/review/auto-cascade-parent-status/qa-task-1.md" "Old qa-task-1 removed"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: plan with changelog dates — dates not mistaken for task IDs${NC}"
+setup_fixture
+
+create_manifest "with-log" '{"name":"with-log","work_type":"feature","status":"in-progress","phases":{}}'
+mkdir -p "$TEST_DIR/.workflows/with-log/planning/with-log"
+cat > "$TEST_DIR/.workflows/with-log/planning/with-log/planning.md" <<'PLAN'
+# Plan
+
+| Internal ID | Task | Phase |
+|-------------|------|-------|
+| with-log-1-1 | First task | Phase 1 |
+| with-log-1-2 | Second task | Phase 1 |
+
+## Changelog
+
+| Date | Note |
+|------|------|
+| 2026-01-27 | Created from specification |
+| 2026-01-30 | Migrated to updated plan format |
+| 2026-02-10 | Phase 2 added |
+PLAN
+
+create_review_files "with-log" "with-log" t1 t2
+
+run_migration > /dev/null
+
+assert_file_exists "$TEST_DIR/.workflows/with-log/review/with-log/report-1-1.md" "Task 1 renamed correctly"
+assert_file_exists "$TEST_DIR/.workflows/with-log/review/with-log/report-1-2.md" "Task 2 renamed correctly"
+assert_file_not_exists "$TEST_DIR/.workflows/with-log/review/with-log/qa-task-1.md" "Old file removed"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: idempotent — running twice produces same result${NC}"
 setup_fixture
 
