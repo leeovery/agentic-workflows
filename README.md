@@ -26,17 +26,23 @@
 
 A complete development workflow for Claude Code: explore ideas, capture decisions, build actionable plans, implement via strict TDD, and validate the result.
 
-A **six-phase workflow** where each phase feeds the next:
+**Three work types, each with its own pipeline:**
 
 ```
-Research → Discussion → Specification → Planning → Implementation → Review
+Epic:    Research → Discussion → Specification → Planning → Implementation → Review
+Feature:           Discussion → Specification → Planning → Implementation → Review
+Bugfix:          Investigation → Specification → Planning → Implementation → Review
 ```
 
-**Why this matters:** Complex features benefit from thorough discussion before implementation. This toolkit documents the *what* and *why* before diving into the *how*, preserving architectural decisions, edge cases, and the reasoning behind choices that would otherwise be lost.
+**Epics** are for multi-topic work spanning multiple sessions — new products, large initiatives, architectural overhauls. Topics move independently within phases: 10 discussions might yield 5 specifications, each planned and implemented separately.
 
-**Flexible entry points:** Start at Research for early exploration, or jump to Discussion when you know what you're building. `/start-feature` gathers context and pipelines through every phase automatically. Entry-point skills gather context and feed it to processing skills.
+**Features** are for adding functionality to an existing product. Single topic, linear pipeline. Optional research step if uncertainties exist.
 
-**Engineered like software.** This isn't a collection of prompts — it's built with the same discipline you'd apply to code. Entry-point skills gather context, phase entry skills validate and route, processing skills do the work. Output formats implement a [5-file adapter contract](#output-formats), so planning works identically regardless of where tasks end up. Agents handle isolated concerns. The result is a natural language workflow that's modular, extensible, and maintainable — software engineering principles applied to agentic workflows.
+**Bugfixes** are for fixing broken behavior. Investigation replaces discussion — it combines symptom gathering with code analysis to identify the root cause before specifying the fix.
+
+**Why this matters:** Complex work benefits from thorough discussion before implementation. This toolkit documents the *what* and *why* before diving into the *how*, preserving architectural decisions, edge cases, and the reasoning behind choices that would otherwise be lost.
+
+**Engineered like software.** This isn't a collection of prompts — it's built with the same discipline you'd apply to code. Entry-point skills gather context, phase entry skills validate and route, processing skills do the work. Output formats implement a [5-file adapter contract](#output-formats), so planning works identically regardless of where tasks end up. 17 specialized agents handle isolated concerns in parallel. The result is a natural language workflow that's modular, extensible, and maintainable.
 
 > [!NOTE]
 > **Work in progress.** The workflow is being refined through real-world usage. Expect updates as patterns evolve.
@@ -61,48 +67,23 @@ If you prefer to jump straight in:
 - `/start-epic` — multi-topic work spanning multiple sessions
 - `/start-bugfix` — fix broken behavior with investigation-first pipeline
 
-### The Workflow
+### The Phases
 
-```
-┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│   Research    │──▶│  Discussion   │──▶│ Specification │
-│   (Phase 1)   │   │   (Phase 2)   │   │   (Phase 3)   │
-├───────────────┤   ├───────────────┤   ├───────────────┤
-│ EXPLORING     │   │ WHAT & WHY    │   │ REFINING      │
-│               │   │               │   │               │
-│ • Ideas       │   │ • Architecture│   │ • Validate    │
-│ • Market      │   │ • Decisions   │   │ • Filter      │
-│ • Viability   │   │ • Edge cases  │   │ • Enrich      │
-│               │   │ • Rationale   │   │ • Standalone  │
-└───────────────┘   └───────────────┘   └───────────────┘
-                                                │
-                                                ▼
-┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│    Review     │◀──│Implementation │◀──│   Planning    │
-│   (Phase 6)   │   │   (Phase 5)   │   │   (Phase 4)   │
-├───────────────┤   ├───────────────┤   ├───────────────┤
-│ VALIDATING    │   │ DOING         │   │ HOW           │
-│               │   │               │   │               │
-│ • Plan check  │   │ • Tests first │   │ • Phases      │
-│ • Specs check │   │ • Then code   │   │ • Tasks       │
-│ • Test quality│   │ • Commit often│   │ • Criteria    │
-│ • Code quality│   │ • Task gates  │   │ • Outputs     │
-└───────────────┘   └───────────────┘   └───────────────┘
-```
+Each phase produces artifacts that feed the next. Here's what each phase does and why it exists:
 
-Each phase produces documents that feed the next. Here's the journey:
+**Research** — Free-form exploration. Investigate ideas, market fit, technical feasibility, business viability. The output is a research document capturing everything you've explored. When you move to discussion, the system analyses this document and breaks it into focused topics automatically. *(Epic always, feature optionally, bugfix never.)*
 
-**Research** — Free-form exploration. Investigate ideas, market fit, technical feasibility, business viability. The output is a research document capturing everything you've explored. The key benefit: when you move to discussion, the skill analyses this document and breaks it into focused topics automatically.
+**Discussion** — Per-topic deep dives into architecture, edge cases, competing approaches, and rationale. Each topic gets its own document. This captures not just decisions, but *why* you made them — the alternatives considered, the trade-offs weighed, the journey to the decision. *(Epic and feature.)*
 
-**Discussion** — Per-topic deep dives into architecture, edge cases, competing approaches, and rationale. Each topic gets its own document. This captures not just decisions, but *why* you made them — the alternatives considered, the trade-offs weighed, the journey to the decision. Conclude each topic when its decisions are made.
+**Investigation** — The bugfix alternative to discussion. Structured symptom gathering (environment, reproduction steps, expected vs actual behavior) combined with code analysis (scope, impact, patterns) to identify root cause. *(Bugfix only.)*
 
-**Specification** — This is where the magic happens. The skill analyses *all* your discussions and creates intelligent groupings — 10 discussions might become 3–5 specifications, or you can unify everything into one. It filters hallucinations, enriches gaps, and validates decisions against each other. The spec becomes the golden document: planning only references this, not earlier phases.
+**Specification** — Where the magic happens. The system analyses *all* your discussions (or investigation) and creates intelligent groupings — 10 discussions might become 3–5 specifications, or you can unify everything into one. It filters hallucinations, enriches gaps, and validates decisions against each other. The spec becomes the golden document: planning only references this, not earlier phases. *(All work types.)*
 
-**Planning** — Converts each specification into phased implementation plans with tasks, acceptance criteria, and dependency ordering. Supports [multiple output formats](#output-formats) — from local markdown files to CLI tools with native dependency graphs. Task authoring has per-item approval gates (with auto-mode for faster flow).
+**Planning** — Converts each specification into phased implementation plans with tasks, acceptance criteria, and dependency ordering. Supports [multiple output formats](#output-formats). Task authoring has per-item approval gates (with auto-mode for faster flow). *(All work types.)*
 
-**Implementation** — Executes plans via strict TDD. Tests first, then code, commit after each task. Per-task approval gates keep you in control, with auto-mode available when you trust the flow.
+**Implementation** — Executes plans via strict TDD. Tests first, then code, commit after each task. Per-task approval gates keep you in control, with auto-mode available when you trust the flow. Post-implementation analysis agents check architecture conformance, duplication, and coding standards — findings become remediation tasks. *(All work types.)*
 
-**Review** — Validates the implementation against spec and plan. Catches drift, missing requirements, and quality issues. Findings can be synthesized into remediation tasks that feed back into implementation, closing the review-implementation loop.
+**Review** — Validates the implementation against spec and plan. Parallel subagents verify each task independently. Catches drift, missing requirements, and quality issues. Findings can be synthesized into remediation tasks that feed back into implementation, closing the review-implementation loop. *(All work types.)*
 
 ### How It Fits Together
 
@@ -129,9 +110,10 @@ Each phase produces documents that feed the next. Here's the journey:
             ┌─────────────────────────────────────────────┐
             │          Processing Skills (do work)        │
             │                                             │
-            │  research → discussion → specification      │
-            │          → planning → implementation        │
-            │                    → review                 │
+            │  research ─┐                                │
+            │  discussion ├─▶ specification → planning    │
+            │  investigation┘        → implementation     │
+            │                              → review       │
             └──────────────────┬──────────────────────────┘
                                │
                                ▼
@@ -151,6 +133,26 @@ Each phase produces documents that feed the next. Here's the journey:
 
 **Workflow bridge** connects phases automatically. After each phase completes, it clears context and advances to the next phase. You approve each transition with "clear context and continue" — this keeps each phase in a clean context window.
 
+### Work Types in Detail
+
+#### Epic — Multi-Topic, Multi-Session
+
+Epics are phase-centric: topics move independently within each phase. Research produces a single document; the system analyses it to derive discussion topics. Discussions are grouped into specifications (many-to-many: 10 discussions might become 3–5 specs). Each spec is planned and implemented independently.
+
+**Soft gates** provide advisory warnings when navigating between phases if prerequisite items are still in-progress (e.g., discussions not yet complete when entering specification). These are informational, not blocking — proceed anyway and the system recovers via re-analysis.
+
+**Cross-topic dependencies** can be linked via `/link-dependencies` when plans reference work from other topics.
+
+#### Feature — Single Topic, Linear Pipeline
+
+A feature creates one topic that moves through every phase. Research is optional (gated at the start — skip it if you know what you're building). The topic name equals the work unit name throughout.
+
+**Feature-to-epic pivot:** If a feature grows beyond its original scope, convert it to an epic via the manage menu in `/workflow-start`. All existing progress is preserved — continue immediately as an epic to add new topics.
+
+#### Bugfix — Investigation-First
+
+Bugfixes replace discussion with investigation. The investigation phase combines structured symptom gathering with code analysis to identify the root cause. From specification onward, the pipeline is identical to feature.
+
 ### Work Unit Lifecycle
 
 Work units move through a simple lifecycle: **in-progress** → **completed** or **cancelled**.
@@ -160,8 +162,6 @@ Work units move through a simple lifecycle: **in-progress** → **completed** or
 - Completed and cancelled work units can be **reactivated** back to in-progress
 
 Feature and bugfix pipelines offer an early completion option after implementation (skip review). Epic work units are completed when all topics have finished review.
-
-**Feature-to-epic pivot:** If a feature grows beyond its original scope, convert it to an epic via the manage menu. All existing progress is preserved. After pivoting, continue immediately as an epic to add new topics.
 
 ### Output Formats
 
@@ -256,6 +256,9 @@ skills/
 ├── start-epic/                      # Pipeline: multi-topic, multi-session workflow
 ├── start-feature/                   # Pipeline: discussion → spec → plan → impl → review
 ├── start-bugfix/                    # Pipeline: investigation → spec → plan → impl → review
+├── continue-feature/                # Resume in-progress feature with phase routing
+├── continue-bugfix/                 # Resume in-progress bugfix with phase routing
+├── continue-epic/                   # Resume in-progress epic with full state display
 ├── link-dependencies/               # Wire cross-topic dependencies
 ├── status/                          # Show workflow status
 ├── view-plan/                       # View plan tasks
@@ -270,16 +273,30 @@ skills/
 └── workflow-review-entry/           # Review phase — validate impl + invoke
 
 agents/
-├── review-task-verifier.md           # Verifies single task implementation for review
-├── review-findings-synthesizer.md   # Synthesizes review findings into remediation tasks
-├── implementation-task-executor.md  # TDD executor for single plan tasks
-├── implementation-task-reviewer.md  # Post-task review for spec conformance
+├── # Planning (6 agents)
 ├── planning-phase-designer.md       # Design phases from specification
 ├── planning-task-designer.md        # Break phases into task lists
 ├── planning-task-author.md          # Write full task detail
 ├── planning-dependency-grapher.md   # Analyze task dependencies and priorities
 ├── planning-review-traceability.md  # Spec-to-plan traceability analysis
-└── planning-review-integrity.md     # Plan structural quality review
+├── planning-review-integrity.md     # Plan structural quality review
+│
+├── # Specification (2 agents)
+├── specification-review-input.md    # Review spec against source material
+├── specification-review-gap-analysis.md # Standalone spec gap analysis
+│
+├── # Implementation (7 agents)
+├── implementation-task-executor.md   # TDD executor for single plan tasks
+├── implementation-task-reviewer.md   # Post-task review for spec conformance
+├── implementation-analysis-architecture.md # Architecture conformance analysis
+├── implementation-analysis-duplication.md  # Duplication and DRY analysis
+├── implementation-analysis-standards.md    # Coding standards analysis
+├── implementation-analysis-synthesizer.md  # Synthesize analysis findings
+├── implementation-analysis-task-writer.md  # Write tasks from analysis findings
+│
+├── # Review (2 agents)
+├── review-task-verifier.md           # Verifies single task implementation
+└── review-findings-synthesizer.md    # Synthesizes findings into remediation tasks
 
 tests/
 └── scripts/                         # Tests for discovery scripts and migrations
@@ -291,19 +308,51 @@ tests/
 
 Processing skills assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills validate and provide all required inputs before invoking them.
 
-| Skill                                                            | Description                                                                                                                                                                                                  |
-|------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [**workflow-research-process**](skills/workflow-research-process/)             | Explore ideas from their earliest seed. Investigate market fit, technical feasibility, business viability. Free-flowing exploration across technical, business, and market domains.                          |
-| [**workflow-discussion-process**](skills/workflow-discussion-process/)         | Document technical discussions as expert architect and meeting assistant. Captures context, decisions, edge cases, competing solutions, debates, and rationale.                                              |
-| [**workflow-investigation-process**](skills/workflow-investigation-process/)   | Investigate bugs through symptom gathering and code analysis. Combines context collection with root cause identification for the bugfix pipeline.                                                            |
-| [**workflow-specification-process**](skills/workflow-specification-process/)   | Build validated specifications from source material through collaborative refinement. Filters hallucinations, enriches gaps, produces standalone spec.                                                       |
-| [**workflow-planning-process**](skills/workflow-planning-process/)             | Transform specifications into actionable implementation plans with phases, tasks, and acceptance criteria. Supports multiple output formats.                                                                 |
-| [**workflow-implementation-process**](skills/workflow-implementation-process/) | Execute implementation plans using strict TDD workflow. Writes tests first, implements to pass, commits frequently, and gates phases on user approval.                                                       |
-| [**workflow-review-process**](skills/workflow-review-process/)                 | Review completed implementation against specification requirements and plan acceptance criteria. Uses parallel subagents for efficient chain verification. Produces structured feedback without fixing code. |
+| Skill | Description |
+|-------|-------------|
+| [**workflow-research-process**](skills/workflow-research-process/) | Explore ideas from their earliest seed. Investigate market fit, technical feasibility, business viability. Free-flowing exploration across technical, business, and market domains. |
+| [**workflow-discussion-process**](skills/workflow-discussion-process/) | Document technical discussions as expert architect and meeting assistant. Captures context, decisions, edge cases, competing solutions, debates, and rationale. |
+| [**workflow-investigation-process**](skills/workflow-investigation-process/) | Investigate bugs through symptom gathering and code analysis. Combines context collection with root cause identification for the bugfix pipeline. |
+| [**workflow-specification-process**](skills/workflow-specification-process/) | Build validated specifications from source material through collaborative refinement. Filters hallucinations, enriches gaps, produces standalone spec. |
+| [**workflow-planning-process**](skills/workflow-planning-process/) | Transform specifications into actionable implementation plans with phases, tasks, and acceptance criteria. Supports multiple output formats. |
+| [**workflow-implementation-process**](skills/workflow-implementation-process/) | Execute implementation plans using strict TDD workflow. Writes tests first, implements to pass, commits frequently, and gates phases on user approval. |
+| [**workflow-review-process**](skills/workflow-review-process/) | Review completed implementation against specification requirements and plan acceptance criteria. Uses parallel subagents for efficient chain verification. Produces structured feedback without fixing code. |
 
 ### Entry-Point Skills
 
 Entry-point skills are the input layer: they gather context and pass it to processing skills.
+
+#### Start Skills
+
+Create new work units and pipeline through every phase automatically.
+
+| Skill | Description |
+|-------|-------------|
+| [**/start-feature**](skills/start-feature/) | Start a new feature through the full pipeline. Gathers context, creates a discussion, then bridges through specification → planning → implementation → review. |
+| [**/start-epic**](skills/start-epic/) | Start an epic — multi-topic, multi-session workflow. Gathers context, routes to research or discussion, then progresses phase by phase. |
+| [**/start-bugfix**](skills/start-bugfix/) | Start a bugfix through the pipeline. Gathers bug context, creates an investigation, then bridges through specification → planning → implementation → review. |
+
+#### Continue Skills
+
+Resume in-progress work with phase routing, backwards navigation, and lifecycle management.
+
+| Skill | Description |
+|-------|-------------|
+| [**/workflow-start**](skills/workflow-start/) | Unified dashboard — shows all active work, routes to start or continue skills, manages lifecycle (view completed/cancelled, mark done, pivot). |
+| [**/continue-feature**](skills/continue-feature/) | Resume an in-progress feature. Shows current phase state, routes to the next phase, and offers backwards navigation to revisit earlier phases. |
+| [**/continue-epic**](skills/continue-epic/) | Resume an in-progress epic. Full state display across all phases, interactive menu, and advisory soft gates for phase-forward navigation. |
+| [**/continue-bugfix**](skills/continue-bugfix/) | Resume an in-progress bugfix. Shows current phase state, routes to the next phase, and offers backwards navigation. |
+
+#### Utility Skills
+
+Helpers for navigating and maintaining the workflow.
+
+| Skill | Description |
+|-------|-------------|
+| [**/migrate**](skills/migrate/) | Keep workflow files in sync with the current system design. Runs automatically at the start of every workflow skill. |
+| [**/status**](skills/status/) | Show workflow status with relationship-aware display — specification sources, unlinked discussions, plan dependencies, and suggested next steps. |
+| [**/view-plan**](skills/view-plan/) | View a plan's tasks and progress, regardless of output format. |
+| [**/link-dependencies**](skills/link-dependencies/) | Link external dependencies across topics. Scans plans and wires up unresolved cross-topic dependencies. |
 
 #### Phase Entry Skills (Internal)
 
@@ -319,60 +368,45 @@ Phase entry skills are invoked automatically by start/continue/bridge skills. Th
 | **workflow-implementation-entry** | Implementation phase — validate plan, check deps/env + invoke |
 | **workflow-review-entry** | Review phase — validate impl, determine version + invoke |
 
-#### Utility Skills
-
-Helpers for navigating and maintaining the workflow.
-
-| Skill                                                                        | Description                                                                                                                                 |
-|------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| [**/migrate**](skills/migrate/)                                              | Keep workflow files in sync with the current system design. Runs automatically at the start of every workflow skill.                        |
-| [**/status**](skills/status/)                                                | Show workflow status with relationship-aware display — specification sources, unlinked discussions, plan dependencies, and suggested next steps. |
-| [**/view-plan**](skills/view-plan/)                                          | View a plan's tasks and progress, regardless of output format.                                                                              |
-
-#### Start Skills
-
-Create new work units and pipeline through every phase automatically.
-
-| Skill                                                   | Description                                                                                                                                 |
-|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| [**/start-feature**](skills/start-feature/)              | Start a new feature through the full pipeline. Gathers context, creates a discussion, then bridges through specification → planning → implementation → review. |
-| [**/start-epic**](skills/start-epic/)                    | Start an epic — multi-topic, multi-session workflow. Gathers context, routes to research or discussion, then progresses phase by phase. |
-| [**/start-bugfix**](skills/start-bugfix/)                | Start a bugfix through the pipeline. Gathers bug context, creates an investigation, then bridges through specification → planning → implementation → review. |
-
-#### Continue Skills
-
-Resume in-progress work with phase routing, backwards navigation, and lifecycle management.
-
-| Skill                                                   | Description                                                                                                                                 |
-|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| [**/workflow-start**](skills/workflow-start/)             | Unified dashboard — shows all active work, routes to start or continue skills, manages lifecycle (view completed/cancelled, mark done). |
-| [**/continue-feature**](skills/continue-feature/)        | Resume an in-progress feature. Shows current phase state, routes to the next phase, and offers backwards navigation to revisit earlier phases. |
-| [**/continue-epic**](skills/continue-epic/)              | Resume an in-progress epic. Full state display across all phases, interactive menu, and advisory soft gates for phase-forward navigation. |
-| [**/continue-bugfix**](skills/continue-bugfix/)          | Resume an in-progress bugfix. Shows current phase state, routes to the next phase, and offers backwards navigation. |
-| [**/link-dependencies**](skills/link-dependencies/)      | Link external dependencies across topics. Scans plans and wires up unresolved cross-topic dependencies.                                    |
-
 ## Agents
 
 Subagents that skills can spawn for parallel task execution.
 
+### Planning Agents
+
 | Agent | Used By | Description |
 |-------|---------|-------------|
-| [**review-task-verifier**](agents/review-task-verifier.md) | workflow-review-process | Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality. Multiple run in parallel. |
-| [**implementation-task-executor**](agents/implementation-task-executor.md) | workflow-implementation-process | Implements a single plan task via strict TDD. |
-| [**implementation-task-reviewer**](agents/implementation-task-reviewer.md) | workflow-implementation-process | Reviews a completed task for spec conformance, acceptance criteria, and architectural quality. |
 | [**planning-phase-designer**](agents/planning-phase-designer.md) | workflow-planning-process | Designs implementation phases from a specification. |
 | [**planning-task-designer**](agents/planning-task-designer.md) | workflow-planning-process | Breaks a single phase into a task list with edge cases. |
 | [**planning-task-author**](agents/planning-task-author.md) | workflow-planning-process | Writes full detail for a single plan task. |
 | [**planning-dependency-grapher**](agents/planning-dependency-grapher.md) | workflow-planning-process | Analyzes authored tasks to establish internal dependencies and priorities. |
 | [**planning-review-traceability**](agents/planning-review-traceability.md) | workflow-planning-process | Spec-to-plan traceability analysis. |
 | [**planning-review-integrity**](agents/planning-review-integrity.md) | workflow-planning-process | Plan structural quality review. |
+
+### Specification Agents
+
+| Agent | Used By | Description |
+|-------|---------|-------------|
 | [**specification-review-input**](agents/specification-review-input.md) | workflow-specification-process | Reviews specification against source material for completeness and accuracy. |
 | [**specification-review-gap-analysis**](agents/specification-review-gap-analysis.md) | workflow-specification-process | Analyses specification as a standalone document for gaps, ambiguity, and missing detail. |
+
+### Implementation Agents
+
+| Agent | Used By | Description |
+|-------|---------|-------------|
+| [**implementation-task-executor**](agents/implementation-task-executor.md) | workflow-implementation-process | Implements a single plan task via strict TDD. |
+| [**implementation-task-reviewer**](agents/implementation-task-reviewer.md) | workflow-implementation-process | Reviews a completed task for spec conformance, acceptance criteria, and architectural quality. |
 | [**implementation-analysis-architecture**](agents/implementation-analysis-architecture.md) | workflow-implementation-process | Architecture conformance analysis of completed implementation. |
 | [**implementation-analysis-duplication**](agents/implementation-analysis-duplication.md) | workflow-implementation-process | Duplication and DRY analysis of completed implementation. |
 | [**implementation-analysis-standards**](agents/implementation-analysis-standards.md) | workflow-implementation-process | Coding standards analysis of completed implementation. |
 | [**implementation-analysis-synthesizer**](agents/implementation-analysis-synthesizer.md) | workflow-implementation-process | Synthesizes analysis findings from architecture, duplication, and standards agents. |
 | [**implementation-analysis-task-writer**](agents/implementation-analysis-task-writer.md) | workflow-implementation-process | Writes remediation tasks from synthesized analysis findings into the plan. |
+
+### Review Agents
+
+| Agent | Used By | Description |
+|-------|---------|-------------|
+| [**review-task-verifier**](agents/review-task-verifier.md) | workflow-review-process | Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality. Multiple run in parallel. |
 | [**review-findings-synthesizer**](agents/review-findings-synthesizer.md) | workflow-review-process | Synthesizes review findings into normalized remediation tasks for plan integration. |
 
 ## Requirements
