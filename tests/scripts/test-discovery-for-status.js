@@ -211,9 +211,9 @@ describe('status discovery', () => {
     });
     const r = discover(dir);
     // All items are superseded → activeItems is empty → specStatus is null
-    // superseded_by is only included when specStatus is truthy, so it's absent
+    // superseded_by is still included so consumers know where to look
     assert.strictEqual(r.work_units[0].specification.status, null);
-    assert.strictEqual(r.work_units[0].specification.superseded_by, undefined);
+    assert.strictEqual(r.work_units[0].specification.superseded_by, 'new-spec');
   });
 
   it('planning in-progress counted', () => {

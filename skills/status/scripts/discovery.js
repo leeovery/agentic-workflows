@@ -176,9 +176,9 @@ function discover(cwd) {
       investigation: { status: invStatus },
       specification: {
         status: specStatus,
+        ...(singleSpec && singleSpec.superseded_by && { superseded_by: singleSpec.superseded_by }),
         ...(specStatus && {
           type: specItemCount > 1 ? 'mixed' : specType,
-          ...(singleSpec && singleSpec.superseded_by && { superseded_by: singleSpec.superseded_by }),
           ...(specItemCount <= 1 && { sources }),
           ...(specItemCount > 1 && { item_count: specItemCount }),
         }),
