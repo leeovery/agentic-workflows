@@ -1,6 +1,6 @@
 ---
 name: planning-review-integrity
-description: Reviews plan structural quality, implementation readiness, and standards adherence. Invoked by technical-planning skill during plan review.
+description: Reviews plan structural quality, implementation readiness, and standards adherence. Invoked by workflow-planning-process skill during plan review.
 tools: Read, Glob, Grep, Write, Bash
 model: opus
 ---

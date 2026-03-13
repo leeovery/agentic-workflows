@@ -1,6 +1,6 @@
 ---
 name: implementation-analysis-standards
-description: Analyzes implementation for specification conformance and project convention compliance. Invoked by technical-implementation skill during analysis cycle.
+description: Analyzes implementation for specification conformance and project convention compliance. Invoked by workflow-implementation-process skill during analysis cycle.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

@@ -4,7 +4,7 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
 ---
 
-Invoke the **technical-specification** skill for this conversation.
+Invoke the **workflow-specification-process** skill for this conversation.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 

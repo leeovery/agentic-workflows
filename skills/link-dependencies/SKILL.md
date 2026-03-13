@@ -180,7 +180,7 @@ For each unresolved dependency:
 
 2. **If plan exists**: Load the format's reading reference
    - Read `format` from the dependency plan's manifest
-   - Load `../technical-planning/references/output-formats/{format}/reading.md`
+   - Load `../workflow-planning-process/references/output-formats/{format}/reading.md`
    - Use the task extraction instructions to search for matching tasks
 
 3. **Handle ambiguous matches**:
@@ -196,7 +196,7 @@ For each resolved match:
    - Set `task_id`: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.{dep-topic}.task_id {internal_id}`
 
 2. **Create dependency in output format**:
-   - Load `../technical-planning/references/output-formats/{format}/graph.md`
+   - Load `../workflow-planning-process/references/output-formats/{format}/graph.md`
    - Follow the "Adding a Dependency" section to create the blocking relationship
 
 ## Step 7: Bidirectional Check

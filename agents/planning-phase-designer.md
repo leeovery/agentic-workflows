@@ -1,6 +1,6 @@
 ---
 name: planning-phase-designer
-description: Designs implementation phases from a specification. Invoked by technical-planning skill during plan construction.
+description: Designs implementation phases from a specification. Invoked by workflow-planning-process skill during plan construction.
 tools: Read, Glob, Grep
 model: opus
 ---

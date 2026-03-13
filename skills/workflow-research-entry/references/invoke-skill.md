@@ -6,7 +6,7 @@
 
 This skill's purpose is now fulfilled.
 
-Invoke the [technical-research](../../technical-research/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+Invoke the [workflow-research-process](../../workflow-research-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
 
 ---
 
@@ -23,7 +23,7 @@ Work unit: {work_unit}
 Source: existing research
 Output: .workflows/{work_unit}/research/{resolved_filename}
 
-Invoke the technical-research skill.
+Invoke the workflow-research-process skill.
 ```
 
 #### Otherwise
@@ -40,5 +40,5 @@ Context:
 - Starting point: {technical feasibility, market, business model, or "open exploration"}
 - Constraints: {any constraints mentioned, or "none"}
 
-Invoke the technical-research skill.
+Invoke the workflow-research-process skill.
 ```

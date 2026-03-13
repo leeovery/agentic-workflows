@@ -1,6 +1,6 @@
 ---
 name: implementation-analysis-duplication
-description: Analyzes implementation for cross-file duplication, near-duplicate logic, and extraction candidates. Invoked by technical-implementation skill during analysis cycle.
+description: Analyzes implementation for cross-file duplication, near-duplicate logic, and extraction candidates. Invoked by workflow-implementation-process skill during analysis cycle.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

@@ -1,6 +1,6 @@
 ---
 name: planning-review-traceability
-description: Analyzes plan traceability against specification in both directions. Invoked by technical-planning skill during plan review.
+description: Analyzes plan traceability against specification in both directions. Invoked by workflow-planning-process skill during plan review.
 tools: Read, Glob, Grep, Write, Bash
 model: opus
 ---

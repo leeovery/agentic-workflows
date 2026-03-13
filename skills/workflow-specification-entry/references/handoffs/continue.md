@@ -10,7 +10,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 ```
 Commit if changed: `spec({work_unit}): reset gate mode`
 
-This skill's purpose is now fulfilled. Invoke the [technical-specification](../../../technical-specification/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled. Invoke the [workflow-specification-process](../../../workflow-specification-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
 
 ```
 Specification session for: {Title Case Name}
@@ -24,5 +24,5 @@ Sources for reference:
 Context: This specification already exists. Review and refine it based on the source discussions.
 
 ---
-Invoke the technical-specification skill.
+Invoke the workflow-specification-process skill.
 ```

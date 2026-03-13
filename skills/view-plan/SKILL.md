@@ -33,7 +33,7 @@ Read the plan file from `.workflows/{work_unit}/planning/{topic}/planning.md` an
 Load the format's reading reference:
 
 ```
-../technical-planning/references/output-formats/{format}/reading.md
+../workflow-planning-process/references/output-formats/{format}/reading.md
 ```
 
 This file contains instructions for reading plans in that format.

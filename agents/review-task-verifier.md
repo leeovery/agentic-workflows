@@ -16,7 +16,7 @@ You receive:
 2. **Specification path**: For loading context about this task's feature/requirement
 3. **Plan path**: The full plan for additional context
 4. **Project skill paths**: Relevant `.claude/skills/` paths for framework conventions
-5. **Review checklist path**: Path to the review checklist (`skills/technical-review/references/review-checklist.md`) — read this for detailed verification criteria
+5. **Review checklist path**: Path to the review checklist (`skills/workflow-review-process/references/review-checklist.md`) — read this for detailed verification criteria
 6. **Work unit**: The work unit name (for path construction)
 7. **Topic**: The plan topic name (used for output directory)
 8. **Task suffix**: The `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)

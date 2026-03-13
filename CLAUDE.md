@@ -27,26 +27,26 @@ The workflow system supports three work types, each with its own pipeline:
 
 ## Workflow Phases
 
-1. **Research** (`technical-research` skill): EXPLORE - feasibility, market, viability, early ideas
-2. **Discussion** (`technical-discussion` skill): Capture WHAT and WHY - decisions, architecture, edge cases, debates
-3. **Investigation** (`technical-investigation` skill): Bugfix-specific - symptom gathering + code analysis → root cause
-4. **Specification** (`technical-specification` skill): Validate and refine into standalone spec
-5. **Planning** (`technical-planning` skill): Define HOW - phases, tasks, acceptance criteria
-6. **Implementation** (`technical-implementation` skill): Execute plan via strict TDD
-7. **Review** (`technical-review` skill): Validate work against discussion, specification, and plan
+1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas
+2. **Discussion** (`workflow-discussion-process` skill): Capture WHAT and WHY - decisions, architecture, edge cases, debates
+3. **Investigation** (`workflow-investigation-process` skill): Bugfix-specific - symptom gathering + code analysis → root cause
+4. **Specification** (`workflow-specification-process` skill): Validate and refine into standalone spec
+5. **Planning** (`workflow-planning-process` skill): Define HOW - phases, tasks, acceptance criteria
+6. **Implementation** (`workflow-implementation-process` skill): Execute plan via strict TDD
+7. **Review** (`workflow-review-process` skill): Validate work against discussion, specification, and plan
 
 ## Structure
 
 ```
 skills/
   # Processing skills (model-invocable — do the work)
-  technical-research/        # Explore and validate ideas
-  technical-discussion/      # Document discussions (feature/epic)
-  technical-investigation/   # Investigate bugs (bugfix pipeline)
-  technical-specification/   # Build validated specifications
-  technical-planning/        # Create implementation plans
-  technical-implementation/  # Execute via TDD
-  technical-review/          # Validate against artifacts
+  workflow-research-process/        # Explore and validate ideas
+  workflow-discussion-process/      # Document discussions (feature/epic)
+  workflow-investigation-process/   # Investigate bugs (bugfix pipeline)
+  workflow-specification-process/   # Build validated specifications
+  workflow-planning-process/        # Create implementation plans
+  workflow-implementation-process/  # Execute via TDD
+  workflow-review-process/          # Validate against artifacts
 
   # Unified entry points
   workflow-start/              # Unified router — single view, routes to start/continue skills
@@ -141,7 +141,7 @@ Skills are organised in two tiers:
 
 **Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). They are invoked by start/continue/bridge skills with work_type and work_unit always provided. They handle phase-specific validation, bootstrap questions for new entries, and processing skill invocation.
 
-**Processing skills** (`technical-*`) are model-invocable. They assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills provide all required inputs before invoking them.
+**Processing skills** (`workflow-*-process`) are model-invocable. They assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills provide all required inputs before invoking them.
 
 ### Phase Entry Skill Routing
 
@@ -199,7 +199,7 @@ Commit docs frequently (natural breaks, before context refresh). Skills capture 
 Use the `/create-output-format` skill to scaffold a new format adapter. Each format is a directory of 5 files:
 
 ```
-skills/technical-planning/references/output-formats/{format}/
+skills/workflow-planning-process/references/output-formats/{format}/
 ├── about.md        # Benefits, setup, output location
 ├── authoring.md    # Task storage, flagging, cleanup
 ├── reading.md      # Extracting tasks, next available task
@@ -212,8 +212,8 @@ The contract and scaffolding templates live in `.claude/skills/create-output-for
 ## Output Format References (IMPORTANT)
 
 **NEVER list output format names (linear, local-markdown, etc.) anywhere except:**
-- `skills/technical-planning/references/output-formats.md` - the authoritative list
-- `skills/technical-planning/references/output-formats/{format}/` - individual format directories
+- `skills/workflow-planning-process/references/output-formats.md` - the authoritative list
+- `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
 
 **Why this matters:** Listing formats elsewhere creates maintenance dependencies. If a format is added or removed, we should only need to update the planning references - not hunt through other skills or documentation.

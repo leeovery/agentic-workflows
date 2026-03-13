@@ -55,12 +55,12 @@ For each in-scope flowchart key, read its source file(s) and extract the logical
 | `planning` | `skills/start-planning/SKILL.md` |
 | `implementation` | `skills/start-implementation/SKILL.md` |
 | `review` | `skills/start-review/SKILL.md` |
-| `skill-research` | `skills/technical-research/SKILL.md` |
-| `skill-discussion` | `skills/technical-discussion/SKILL.md` |
-| `skill-specification` | `skills/technical-specification/SKILL.md` + `skills/technical-specification/references/*.md` |
-| `skill-planning` | `skills/technical-planning/SKILL.md` + `skills/technical-planning/references/*.md` |
-| `skill-implementation` | `skills/technical-implementation/SKILL.md` + `skills/technical-implementation/references/*.md` |
-| `skill-review` | `skills/technical-review/SKILL.md` + `agents/review-task-verifier.md` |
+| `skill-research` | `skills/workflow-research-process/SKILL.md` |
+| `skill-discussion` | `skills/workflow-discussion-process/SKILL.md` |
+| `skill-specification` | `skills/workflow-specification-process/SKILL.md` + `skills/workflow-specification-process/references/*.md` |
+| `skill-planning` | `skills/workflow-planning-process/SKILL.md` + `skills/workflow-planning-process/references/*.md` |
+| `skill-implementation` | `skills/workflow-implementation-process/SKILL.md` + `skills/workflow-implementation-process/references/*.md` |
+| `skill-review` | `skills/workflow-review-process/SKILL.md` + `agents/review-task-verifier.md` |
 | `start-feature` | `skills/start-feature/SKILL.md` |
 | `link-deps` | `skills/link-dependencies/SKILL.md` |
 | `status` | `skills/status/SKILL.md` |

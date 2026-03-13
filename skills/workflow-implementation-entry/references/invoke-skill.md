@@ -6,7 +6,7 @@
 
 This skill's purpose is now fulfilled.
 
-Invoke the [technical-implementation](../../technical-implementation/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+Invoke the [workflow-implementation-process](../../workflow-implementation-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
 
 ---
 
@@ -38,5 +38,5 @@ Implementation: {exists | new} (status: {in-progress | not-started | completed})
 Dependencies: {All satisfied | List any notes}
 Environment: {Setup required | No special setup required}
 
-Invoke the technical-implementation skill.
+Invoke the workflow-implementation-process skill.
 ```

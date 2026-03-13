@@ -1,6 +1,6 @@
 ---
 name: implementation-task-executor
-description: Implements a single task via strict TDD. Invoked by technical-implementation skill for each task.
+description: Implements a single task via strict TDD. Invoked by workflow-implementation-process skill for each task.
 tools: Read, Glob, Grep, Edit, Write, Bash
 model: opus
 ---

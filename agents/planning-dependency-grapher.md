@@ -1,6 +1,6 @@
 ---
 name: planning-dependency-grapher
-description: Analyzes authored tasks to establish internal dependencies and priorities. Invoked by technical-planning skill after plan construction.
+description: Analyzes authored tasks to establish internal dependencies and priorities. Invoked by workflow-planning-process skill after plan construction.
 tools: Read, Glob, Grep, Edit
 model: opus
 ---

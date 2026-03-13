@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Create Output Format
 
-Scaffold a new output format adapter for the technical-planning workflow. Each format adapter is a directory of 5 files, one per concern.
+Scaffold a new output format adapter for the workflow-planning-process workflow. Each format adapter is a directory of 5 files, one per concern.
 
 ## Step 1: Gather Information
 
@@ -48,7 +48,7 @@ Read **[references/contract.md](references/contract.md)** — this defines the 5
 Create the directory at:
 
 ```
-skills/technical-planning/references/output-formats/{format-key}/
+skills/workflow-planning-process/references/output-formats/{format-key}/
 ```
 
 ## Step 4: Write the Files
@@ -72,7 +72,7 @@ For each file:
 
 ## Step 5: Register the Format
 
-Add an entry to `skills/technical-planning/references/output-formats.md` following the existing pattern:
+Add an entry to `skills/workflow-planning-process/references/output-formats.md` following the existing pattern:
 
 ```markdown
 ### {Format Name}

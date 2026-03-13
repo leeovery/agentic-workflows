@@ -6,7 +6,7 @@
 
 This skill's purpose is now fulfilled.
 
-Invoke the [technical-planning](../../technical-planning/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+Invoke the [workflow-planning-process](../../workflow-planning-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
 
 ---
 
@@ -31,7 +31,7 @@ Additional context: {summary of user's additional context, or "none"}
 Cross-cutting references: {list of applicable cross-cutting specs with brief summaries, or "none"}
 Recommended output format: {format from manifest if found, otherwise "none"}
 
-Invoke the technical-planning skill.
+Invoke the workflow-planning-process skill.
 ```
 
 #### If continuing or reviewing existing plan
@@ -43,5 +43,5 @@ Work unit: {work_unit}
 Specification: .workflows/{work_unit}/specification/{topic}/specification.md
 Existing plan: .workflows/{work_unit}/planning/{topic}/planning.md
 
-Invoke the technical-planning skill.
+Invoke the workflow-planning-process skill.
 ```

@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), 
 
 Enter plan mode with deterministic continuation instructions.
 
-This skill is invoked by processing skills (technical-discussion, technical-specification, etc.) when a pipeline phase concludes. It discovers the next phase and creates a plan mode handoff that survives context compaction.
+This skill is invoked by processing skills (workflow-discussion-process, workflow-specification-process, etc.) when a pipeline phase concludes. It discovers the next phase and creates a plan mode handoff that survives context compaction.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 

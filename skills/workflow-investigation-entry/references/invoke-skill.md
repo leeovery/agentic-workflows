@@ -6,7 +6,7 @@
 
 This skill's purpose is now fulfilled.
 
-Invoke the [technical-investigation](../../technical-investigation/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+Invoke the [workflow-investigation-process](../../workflow-investigation-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
 
 ---
 
@@ -26,7 +26,7 @@ Bug context:
 - Actual behavior: {from user's description}
 - Initial context: {error messages, reproduction steps, etc.}
 
-Invoke the technical-investigation skill.
+Invoke the workflow-investigation-process skill.
 ```
 
 #### If source is `continue`
@@ -37,5 +37,5 @@ Investigation session for: {work_unit}
 Source: existing investigation
 Output: .workflows/{work_unit}/investigation/{topic}.md
 
-Invoke the technical-investigation skill.
+Invoke the workflow-investigation-process skill.
 ```

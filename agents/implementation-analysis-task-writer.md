@@ -1,6 +1,6 @@
 ---
 name: implementation-analysis-task-writer
-description: Creates plan tasks from approved analysis findings. Reads the staging file, extracts approved tasks, and creates them in the plan using the format's authoring adapter. Invoked by technical-implementation skill after user approves analysis tasks.
+description: Creates plan tasks from approved analysis findings. Reads the staging file, extracts approved tasks, and creates them in the plan using the format's authoring adapter. Invoked by workflow-implementation-process skill after user approves analysis tasks.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: opus
 ---

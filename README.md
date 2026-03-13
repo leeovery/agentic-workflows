@@ -147,7 +147,7 @@ Each phase produces documents that feed the next. Here's the journey:
 
 **Phase entry skills** (`workflow-*-entry`) are internal — invoked automatically to validate pipeline state and bootstrap each phase. You never call them directly.
 
-**Processing skills** (`technical-*`) do the actual work for each phase. They assume pipeline context — prior phases are complete, artifacts are in expected locations.
+**Processing skills** (`workflow-*-process`) do the actual work for each phase. They assume pipeline context — prior phases are complete, artifacts are in expected locations.
 
 **Workflow bridge** connects phases automatically. After each phase completes, it clears context and advances to the next phase. You approve each transition with "clear context and continue" — this keeps each phase in a clean context window.
 
@@ -237,13 +237,13 @@ Each work unit starts with just a manifest. Phase directories are created as you
 ```
 skills/
 ├── # Processing skills (model-invocable)
-├── technical-research/              # Explore and validate ideas
-├── technical-discussion/            # Document discussions
-├── technical-investigation/         # Investigate bugs (bugfix pipeline)
-├── technical-specification/         # Build validated specifications
-├── technical-planning/              # Create implementation plans
-├── technical-implementation/        # Execute via TDD
-├── technical-review/                # Validate against artefacts
+├── workflow-research-process/              # Explore and validate ideas
+├── workflow-discussion-process/            # Document discussions
+├── workflow-investigation-process/         # Investigate bugs (bugfix pipeline)
+├── workflow-specification-process/         # Build validated specifications
+├── workflow-planning-process/              # Create implementation plans
+├── workflow-implementation-process/        # Execute via TDD
+├── workflow-review-process/                # Validate against artefacts
 │
 ├── # Unified entry points
 ├── workflow-start/                  # Discovers state, routes by work type + lifecycle management
@@ -293,13 +293,13 @@ Processing skills assume pipeline context — work_type is set, prior phases are
 
 | Skill                                                            | Description                                                                                                                                                                                                  |
 |------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [**technical-research**](skills/technical-research/)             | Explore ideas from their earliest seed. Investigate market fit, technical feasibility, business viability. Free-flowing exploration across technical, business, and market domains.                          |
-| [**technical-discussion**](skills/technical-discussion/)         | Document technical discussions as expert architect and meeting assistant. Captures context, decisions, edge cases, competing solutions, debates, and rationale.                                              |
-| [**technical-investigation**](skills/technical-investigation/)   | Investigate bugs through symptom gathering and code analysis. Combines context collection with root cause identification for the bugfix pipeline.                                                            |
-| [**technical-specification**](skills/technical-specification/)   | Build validated specifications from source material through collaborative refinement. Filters hallucinations, enriches gaps, produces standalone spec.                                                       |
-| [**technical-planning**](skills/technical-planning/)             | Transform specifications into actionable implementation plans with phases, tasks, and acceptance criteria. Supports multiple output formats.                                                                 |
-| [**technical-implementation**](skills/technical-implementation/) | Execute implementation plans using strict TDD workflow. Writes tests first, implements to pass, commits frequently, and gates phases on user approval.                                                       |
-| [**technical-review**](skills/technical-review/)                 | Review completed implementation against specification requirements and plan acceptance criteria. Uses parallel subagents for efficient chain verification. Produces structured feedback without fixing code. |
+| [**workflow-research-process**](skills/workflow-research-process/)             | Explore ideas from their earliest seed. Investigate market fit, technical feasibility, business viability. Free-flowing exploration across technical, business, and market domains.                          |
+| [**workflow-discussion-process**](skills/workflow-discussion-process/)         | Document technical discussions as expert architect and meeting assistant. Captures context, decisions, edge cases, competing solutions, debates, and rationale.                                              |
+| [**workflow-investigation-process**](skills/workflow-investigation-process/)   | Investigate bugs through symptom gathering and code analysis. Combines context collection with root cause identification for the bugfix pipeline.                                                            |
+| [**workflow-specification-process**](skills/workflow-specification-process/)   | Build validated specifications from source material through collaborative refinement. Filters hallucinations, enriches gaps, produces standalone spec.                                                       |
+| [**workflow-planning-process**](skills/workflow-planning-process/)             | Transform specifications into actionable implementation plans with phases, tasks, and acceptance criteria. Supports multiple output formats.                                                                 |
+| [**workflow-implementation-process**](skills/workflow-implementation-process/) | Execute implementation plans using strict TDD workflow. Writes tests first, implements to pass, commits frequently, and gates phases on user approval.                                                       |
+| [**workflow-review-process**](skills/workflow-review-process/)                 | Review completed implementation against specification requirements and plan acceptance criteria. Uses parallel subagents for efficient chain verification. Produces structured feedback without fixing code. |
 
 ### Entry-Point Skills
 
@@ -357,23 +357,23 @@ Subagents that skills can spawn for parallel task execution.
 
 | Agent | Used By | Description |
 |-------|---------|-------------|
-| [**review-task-verifier**](agents/review-task-verifier.md) | technical-review | Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality. Multiple run in parallel. |
-| [**implementation-task-executor**](agents/implementation-task-executor.md) | technical-implementation | Implements a single plan task via strict TDD. |
-| [**implementation-task-reviewer**](agents/implementation-task-reviewer.md) | technical-implementation | Reviews a completed task for spec conformance, acceptance criteria, and architectural quality. |
-| [**planning-phase-designer**](agents/planning-phase-designer.md) | technical-planning | Designs implementation phases from a specification. |
-| [**planning-task-designer**](agents/planning-task-designer.md) | technical-planning | Breaks a single phase into a task list with edge cases. |
-| [**planning-task-author**](agents/planning-task-author.md) | technical-planning | Writes full detail for a single plan task. |
-| [**planning-dependency-grapher**](agents/planning-dependency-grapher.md) | technical-planning | Analyzes authored tasks to establish internal dependencies and priorities. |
-| [**planning-review-traceability**](agents/planning-review-traceability.md) | technical-planning | Spec-to-plan traceability analysis. |
-| [**planning-review-integrity**](agents/planning-review-integrity.md) | technical-planning | Plan structural quality review. |
-| [**specification-review-input**](agents/specification-review-input.md) | technical-specification | Reviews specification against source material for completeness and accuracy. |
-| [**specification-review-gap-analysis**](agents/specification-review-gap-analysis.md) | technical-specification | Analyses specification as a standalone document for gaps, ambiguity, and missing detail. |
-| [**implementation-analysis-architecture**](agents/implementation-analysis-architecture.md) | technical-implementation | Architecture conformance analysis of completed implementation. |
-| [**implementation-analysis-duplication**](agents/implementation-analysis-duplication.md) | technical-implementation | Duplication and DRY analysis of completed implementation. |
-| [**implementation-analysis-standards**](agents/implementation-analysis-standards.md) | technical-implementation | Coding standards analysis of completed implementation. |
-| [**implementation-analysis-synthesizer**](agents/implementation-analysis-synthesizer.md) | technical-implementation | Synthesizes analysis findings from architecture, duplication, and standards agents. |
-| [**implementation-analysis-task-writer**](agents/implementation-analysis-task-writer.md) | technical-implementation | Writes remediation tasks from synthesized analysis findings into the plan. |
-| [**review-findings-synthesizer**](agents/review-findings-synthesizer.md) | technical-review | Synthesizes review findings into normalized remediation tasks for plan integration. |
+| [**review-task-verifier**](agents/review-task-verifier.md) | workflow-review-process | Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality. Multiple run in parallel. |
+| [**implementation-task-executor**](agents/implementation-task-executor.md) | workflow-implementation-process | Implements a single plan task via strict TDD. |
+| [**implementation-task-reviewer**](agents/implementation-task-reviewer.md) | workflow-implementation-process | Reviews a completed task for spec conformance, acceptance criteria, and architectural quality. |
+| [**planning-phase-designer**](agents/planning-phase-designer.md) | workflow-planning-process | Designs implementation phases from a specification. |
+| [**planning-task-designer**](agents/planning-task-designer.md) | workflow-planning-process | Breaks a single phase into a task list with edge cases. |
+| [**planning-task-author**](agents/planning-task-author.md) | workflow-planning-process | Writes full detail for a single plan task. |
+| [**planning-dependency-grapher**](agents/planning-dependency-grapher.md) | workflow-planning-process | Analyzes authored tasks to establish internal dependencies and priorities. |
+| [**planning-review-traceability**](agents/planning-review-traceability.md) | workflow-planning-process | Spec-to-plan traceability analysis. |
+| [**planning-review-integrity**](agents/planning-review-integrity.md) | workflow-planning-process | Plan structural quality review. |
+| [**specification-review-input**](agents/specification-review-input.md) | workflow-specification-process | Reviews specification against source material for completeness and accuracy. |
+| [**specification-review-gap-analysis**](agents/specification-review-gap-analysis.md) | workflow-specification-process | Analyses specification as a standalone document for gaps, ambiguity, and missing detail. |
+| [**implementation-analysis-architecture**](agents/implementation-analysis-architecture.md) | workflow-implementation-process | Architecture conformance analysis of completed implementation. |
+| [**implementation-analysis-duplication**](agents/implementation-analysis-duplication.md) | workflow-implementation-process | Duplication and DRY analysis of completed implementation. |
+| [**implementation-analysis-standards**](agents/implementation-analysis-standards.md) | workflow-implementation-process | Coding standards analysis of completed implementation. |
+| [**implementation-analysis-synthesizer**](agents/implementation-analysis-synthesizer.md) | workflow-implementation-process | Synthesizes analysis findings from architecture, duplication, and standards agents. |
+| [**implementation-analysis-task-writer**](agents/implementation-analysis-task-writer.md) | workflow-implementation-process | Writes remediation tasks from synthesized analysis findings into the plan. |
+| [**review-findings-synthesizer**](agents/review-findings-synthesizer.md) | workflow-review-process | Synthesizes review findings into normalized remediation tasks for plan integration. |
 
 ## Requirements
 

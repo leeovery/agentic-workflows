@@ -1,6 +1,6 @@
 ---
 name: review-findings-synthesizer
-description: Synthesizes review findings into normalized tasks. Reads QA verification files, deduplicates, groups, normalizes using task template, and writes a staging file for orchestrator approval. Invoked by technical-review skill after review actions are initiated.
+description: Synthesizes review findings into normalized tasks. Reads QA verification files, deduplicates, groups, normalizes using task template, and writes a staging file for orchestrator approval. Invoked by workflow-review-process skill after review actions are initiated.
 tools: Read, Write, Glob, Grep
 model: opus
 ---
