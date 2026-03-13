@@ -23,6 +23,7 @@ tick list --parent <topic-id> --status open       # only open tasks
 tick list --parent <topic-id> --ready              # ready tasks only
 tick list --parent <topic-id> --blocked            # blocked tasks only
 tick list --parent <topic-id> --priority 0         # critical tasks only
+tick list --parent <topic-id> --count 5            # limit to 5 results
 ```
 
 ## Extracting a Task
@@ -40,22 +41,22 @@ Returns: id, title, status, priority, created/updated timestamps, parent, blocke
 To find the next task to implement:
 
 ```bash
-tick ready --parent <phase-id>
+tick ready --parent <phase-id> --count 1
 ```
 
-This returns tasks that are:
+This returns the single next task that is:
 
 1. Status is `open` (not started, not done, not cancelled)
 2. No unresolved blockers (all `blocked_by` tasks are `done`)
 3. No open children (leaf tasks, or parent tasks whose children are all complete)
 4. Within the specified phase (scoped by `--parent`)
 
-Results are sorted by priority (lower number = higher priority), then creation date. The first result is the next task.
+Results are sorted by priority (lower number = higher priority), then creation date. `--count 1` limits output to the first result.
 
 To find the next task across all phases of a topic:
 
 ```bash
-tick ready --parent <topic-id>
+tick ready --parent <topic-id> --count 1
 ```
 
 If `tick ready` returns no results, either all tasks are complete or remaining tasks are blocked.

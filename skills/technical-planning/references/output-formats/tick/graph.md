@@ -57,6 +57,8 @@ tick dep add tick-e5f6 tick-a1b2
 tick dep add tick-e5f6 tick-c3d4
 ```
 
+**Note**: Dependencies can also be set at creation time via `--blocked-by <id,...>` and `--blocks <id,...>` on `tick create`. This is useful when the blocking relationship is known upfront, but the typical workflow authors all tasks first, then adds dependencies in a separate graphing pass.
+
 ### Removing a Dependency
 
 ```bash

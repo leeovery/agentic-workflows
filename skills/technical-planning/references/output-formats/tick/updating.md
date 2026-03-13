@@ -24,6 +24,10 @@ To update a task's properties:
 - **Description**: `tick update <task-id> --description "New description"`
 - **Priority**: `tick update <task-id> --priority 1`
 - **Parent**: `tick update <task-id> --parent <new-parent-id>` (pass empty string to clear)
+- **Type**: `tick update <task-id> --type feature` (clear with `--clear-type`)
+- **Tags**: `tick update <task-id> --tags "api,security"` (replaces all tags; clear with `--clear-tags`)
+- **Refs**: `tick update <task-id> --refs "spec:caching"` (replaces all refs; clear with `--clear-refs`)
+- **Blocks**: `tick update <task-id> --blocks <id,...>` (set task IDs this blocks)
 - **Dependencies**: See [graph.md](graph.md)
 
 ## Post-Update Verification

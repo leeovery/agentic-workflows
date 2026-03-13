@@ -92,9 +92,43 @@ To list tasks within a phase:
 tick list --parent <phase-id>
 ```
 
-### Labels / Tags
+### Type
 
-Tick does not have a native label or tag system. Categorisation is handled through the parent/child hierarchy.
+Set the task type during creation to reflect the work type:
+
+```bash
+tick create "Fix null pointer in auth handler" --parent <phase-id> --type bug
+tick create "Add OAuth2 support" --parent <phase-id> --type feature
+tick create "Refactor database connection pool" --parent <phase-id> --type task
+tick create "Update CI pipeline config" --parent <phase-id> --type chore
+```
+
+Valid types: `bug`, `feature`, `task`, `chore`. Use `bug` for bugfix work types, `feature` for feature work types, and `task` or `chore` as appropriate for individual tasks within any work type.
+
+### Tags
+
+Tags provide additional categorisation beyond the parent/child hierarchy:
+
+```bash
+tick create "Add rate limiting" --parent <phase-id> --tags "api,security"
+```
+
+Tags are comma-separated, kebab-case. Filter tasks by tag:
+
+```bash
+tick list --parent <topic-id> --tag api
+tick ready --parent <phase-id> --tag security
+```
+
+### References
+
+Link tasks to external resources (spec sections, discussion topics, tickets):
+
+```bash
+tick create "Implement caching layer" --parent <phase-id> --refs "spec:caching,discussion:performance"
+```
+
+References are comma-separated free-form strings.
 
 ## Flagging
 
