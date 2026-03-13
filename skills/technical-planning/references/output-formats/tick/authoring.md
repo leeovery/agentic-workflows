@@ -10,11 +10,11 @@ tick create "Title" --parent <id> --description "Full description here.
 Multi-line content works fine inside double quotes."
 ```
 
-**Do NOT**:
-- Use heredocs (`<<'EOF'`) — sandbox blocks the temp files they create
-- Use the Write tool to create temp files — triggers approval prompts outside the project directory
-- Use Bash functions, variables, or subshells to construct the description
-- Write temp files anywhere (including `$TMPDIR`, `/tmp`, or the working directory)
+You should never do the following:
+- Do not use heredocs (`<<'EOF'`) — sandbox blocks the temp files they create
+- Do not use the Write tool to create temp files — triggers approval prompts outside the project directory
+- Do not use Bash functions, variables, or subshells to construct the description
+- Do not write temp files anywhere (including `$TMPDIR`, `/tmp`, or the working directory)
 
 If a description contains double quotes, escape them with `\"`. That's it.
 
