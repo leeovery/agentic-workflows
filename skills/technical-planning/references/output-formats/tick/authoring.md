@@ -41,7 +41,10 @@ tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2  # returns tick-e5
 
 ```bash
 tick create "{task:(titlecase)}" --parent tick-c3d4 \
-  --description "{description}"
+  --description "{description}
+
+Acceptance criteria, edge cases, and implementation
+details go here. Supports multi-line text."
 ```
 
 Complete example — creating a task under Phase 1:
