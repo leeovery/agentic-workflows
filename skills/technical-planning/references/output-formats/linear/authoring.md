@@ -24,8 +24,8 @@ For each task, create a Linear issue via MCP:
 linear_createIssue(
   teamId: "{team_id}",
   projectId: "{project_id}",
-  title: "{Task title}",
-  description: "{Task description content}",
+  title: "{task:(titlecase)}",
+  description: "{description}",
   labelIds: ["{phase_label_id}", ...]
 )
 ```
@@ -70,7 +70,7 @@ When creating issues, if something is unclear:
 
 The official Linear MCP server does not support deletion. Ask the user to delete the Linear project manually via the Linear UI.
 
-> "The Linear project **{project name}** needs to be deleted before restarting. Please delete it in the Linear UI (Project Settings → Delete project), then confirm so I can proceed."
+> "The Linear project **{project:(titlecase)}** needs to be deleted before restarting. Please delete it in the Linear UI (Project Settings → Delete project), then confirm so I can proceed."
 
 **STOP.** Wait for user response.
 

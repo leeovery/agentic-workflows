@@ -25,7 +25,7 @@ Tasks are created using the `tick create` command. Before creating individual ta
 **1. Create the topic task:**
 
 ```bash
-tick create "{Topic Name}"
+tick create "{topic:(titlecase)}"
 ```
 
 This returns the topic task ID (e.g., `tick-a1b2`).
@@ -33,14 +33,14 @@ This returns the topic task ID (e.g., `tick-a1b2`).
 **2. Create phase tasks as children of the topic:**
 
 ```bash
-tick create "Phase 1: {Phase Name}" --parent tick-a1b2
-tick create "Phase 2: {Phase Name}" --parent tick-a1b2
+tick create "Phase 1: {phase:(titlecase)}" --parent tick-a1b2
+tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2
 ```
 
 **3. Create tasks as children of their phase:**
 
 ```bash
-tick create "{Task Title}" --parent tick-c3d4 \
+tick create "{task:(titlecase)}" --parent tick-c3d4 \
   --description "{Task description content.
 
 Acceptance criteria, edge cases, and implementation
