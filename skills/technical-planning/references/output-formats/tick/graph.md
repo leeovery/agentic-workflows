@@ -19,7 +19,7 @@ Lower number = higher priority. Tasks are created with priority `2` (medium) by 
 ### Setting Priority
 
 ```bash
-tick update <task-id> --priority 1
+tick update <tick-id> --priority 1
 ```
 
 ### Removing Priority
@@ -27,7 +27,7 @@ tick update <task-id> --priority 1
 Reset to the default medium priority:
 
 ```bash
-tick update <task-id> --priority 2
+tick update <tick-id> --priority 2
 ```
 
 Tick does not support unsetting priority — every task has a priority level. Use `2` (medium) as the neutral default.
@@ -41,7 +41,7 @@ Tick validates all dependency changes: prevents cycles, self-references, and chi
 Declare that a task is blocked by another task:
 
 ```bash
-tick dep add <task-id> <blocked-by-id>
+tick dep add <tick-id> <blocked-by-tick-id>
 ```
 
 Example — task `tick-e5f6` depends on `tick-a1b2`:
@@ -57,8 +57,10 @@ tick dep add tick-e5f6 tick-a1b2
 tick dep add tick-e5f6 tick-c3d4
 ```
 
+**Note**: Dependencies can also be set at creation time via `--blocked-by <tick-id,...>` and `--blocks <tick-id,...>` on `tick create`. This is useful when the blocking relationship is known upfront, but the typical workflow authors all tasks first, then adds dependencies in a separate graphing pass.
+
 ### Removing a Dependency
 
 ```bash
-tick dep rm <task-id> <blocked-by-id>
+tick dep rm <tick-id> <blocked-by-tick-id>
 ```

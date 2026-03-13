@@ -15,7 +15,7 @@ Update the `status` field in the task file frontmatter at `.workflows/{work_unit
 
 Edit the task file directly:
 
-- **Title**: Change the `# {Title}` heading in the body
+- **Title**: Change the `# {task:(titlecase)}` heading in the body
 - **Description**: Edit the body content below the title
 - **Priority**: Set or change the `priority:` field in frontmatter
 - **Tags**: Set or change the `tags:` field in frontmatter

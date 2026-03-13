@@ -5,53 +5,59 @@
 **CRITICAL**: Always pass descriptions directly as inline quoted strings. Never use workarounds.
 
 ```bash
-tick create "Title" --parent <id> --description "Full description here.
+tick create "Title" --parent <tick-id> --description "Full description here.
 
 Multi-line content works fine inside double quotes."
 ```
 
-**Do NOT**:
-- Use heredocs (`<<'EOF'`) — sandbox blocks the temp files they create
-- Use the Write tool to create temp files — triggers approval prompts outside the project directory
-- Use Bash functions, variables, or subshells to construct the description
-- Write temp files anywhere (including `$TMPDIR`, `/tmp`, or the working directory)
+You should never do the following:
+- Do not use heredocs (`<<'EOF'`) — sandbox blocks the temp files they create
+- Do not use the Write tool to create temp files — triggers approval prompts outside the project directory
+- Do not use Bash functions, variables, or subshells to construct the description
+- Do not write temp files anywhere (including `$TMPDIR`, `/tmp`, or the working directory)
 
 If a description contains double quotes, escape them with `\"`. That's it.
 
 ## Task Storage
 
-Tasks are created using the `tick create` command. Before creating individual tasks, establish the topic and phase parent tasks.
+Tasks are created using the `tick create` command. Always set `--refs` to store the workflow's internal ID — this links every tick task back to the planning system. Before creating individual tasks, establish the topic and phase parent tasks.
 
 **1. Create the topic task:**
 
 ```bash
-tick create "{Topic Name}"
+tick create "{topic:(titlecase)}" --refs "{topic}"
 ```
 
 This returns the topic task ID (e.g., `tick-a1b2`).
 
 **2. Create phase tasks as children of the topic:**
 
+The `--refs` value follows the internal ID format: `{topic}-{phase_id}`.
+
 ```bash
-tick create "Phase 1: {Phase Name}" --parent tick-a1b2
-tick create "Phase 2: {Phase Name}" --parent tick-a1b2
+tick create "Phase 1: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-1"  # returns tick-c3d4
+tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-2"  # returns tick-e5f6
 ```
 
 **3. Create tasks as children of their phase:**
 
 ```bash
-tick create "{Task Title}" --parent tick-c3d4 \
-  --description "{Task description content.
+tick create "{task:(titlecase)}" --parent tick-c3d4 \
+  --refs "{internal_id}" \
+  --description "{description}
 
 Acceptance criteria, edge cases, and implementation
-details go here. Supports multi-line text.}"
+details go here. Supports multi-line text."
 ```
 
-Complete example — creating a task under a phase:
+Complete example — creating a task under Phase 1:
 
 ```bash
 tick create "Implement authentication middleware" \
   --parent tick-c3d4 \
+  --type task \
+  --tags "api,auth" \
+  --refs "auth-flow-1-1" \
   --description "Create Express middleware that validates JWT tokens on protected routes.
 
 Acceptance criteria:
@@ -61,9 +67,11 @@ Acceptance criteria:
 - Passes user context to downstream handlers"
 ```
 
+See **Task Properties** below for details on each flag.
+
 ## Post-Creation Verification
 
-After every `tick create`, run `tick show <task-id>` and confirm that the title, description, and parent were all set correctly.
+After every `tick create`, run `tick show <tick-id>` and confirm that the title, description, and parent were all set correctly.
 
 #### If any field is empty or wrong
 
@@ -84,17 +92,30 @@ Tasks are created with `open` status by default.
 
 ### Phase Grouping
 
-Phases are represented as parent tasks. Each task belongs to a phase by being a child of that phase's task. Use `--parent <phase-id>` during creation.
+Phases are represented as parent tasks. Each task belongs to a phase by being a child of that phase's task. Use `--parent <phase-tick-id>` during creation.
 
 To list tasks within a phase:
 
 ```bash
-tick list --parent <phase-id>
+tick list --parent <phase-tick-id>
 ```
 
-### Labels / Tags
+### Type
 
-Tick does not have a native label or tag system. Categorisation is handled through the parent/child hierarchy.
+Optional. Set via `--type`. Valid types: `bug`, `feature`, `task`, `chore`. Use `bug` for bugfix work types, `feature` for feature work types, and `task` or `chore` as appropriate for individual tasks within any work type. Doesn't hurt to set — adds useful categorisation at no cost.
+
+### Tags
+
+Optional — not necessary in most cases, but available if needed. Set via `--tags` with comma-separated, kebab-case values. Tags provide additional categorisation beyond the parent/child hierarchy. Filter tasks by tag:
+
+```bash
+tick list --parent <tick-id> --tag api
+tick ready --parent <tick-id> --tag security
+```
+
+### References
+
+Set via `--refs` to store the internal ID on each tick task, linking it back to the planning system. Set at all levels — topic, phase, and task — as shown in the Task Storage examples above. References are comma-separated if multiple are needed.
 
 ## Flagging
 
@@ -114,7 +135,7 @@ tick create "[NEEDS INFO] Rate limiting strategy" \
 Remove the topic task and all its descendants:
 
 ```bash
-tick remove <topic-id> --force
+tick remove <topic-tick-id> --force
 ```
 
 Removing a parent cascades to all children (phases and tasks). Dependency references to removed tasks are auto-cleaned from surviving tasks.

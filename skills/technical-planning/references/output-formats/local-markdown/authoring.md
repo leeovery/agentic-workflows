@@ -12,12 +12,12 @@ status: pending
 created: YYYY-MM-DD
 ---
 
-# {Task Title}
+# {task:(titlecase)}
 
-{Task description content}
+{description}
 ```
 
-**Required**: title (`# {Task Title}`) and description (body content). Everything else supports the format's storage mechanics.
+**Required**: title (`# {task:(titlecase)}`) and description (body content). Everything else supports the format's storage mechanics.
 
 ## Task Properties
 
