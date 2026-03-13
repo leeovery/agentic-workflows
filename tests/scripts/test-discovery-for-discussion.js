@@ -35,7 +35,7 @@ describe('workflow-discussion-entry discovery', () => {
   it('detects discussions from feature manifest', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'in-progress' } },
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
     const r = discover(dir);
     assert.strictEqual(r.state.scenario, 'discussions_only');
@@ -68,7 +68,7 @@ describe('workflow-discussion-entry discovery', () => {
       work_type: 'epic',
       phases: {
         research: { status: 'completed' },
-        discussion: { status: 'in-progress' },
+        discussion: { items: { v1: { status: 'in-progress' } } },
       },
     });
     createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
@@ -120,15 +120,13 @@ describe('workflow-discussion-entry discovery', () => {
     assert.strictEqual(r.cache.entries.length, 0);
   });
 
-  it('epic with no items but with discussion status', () => {
+  it('epic with flat discussion status but no items returns no discussions', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { status: 'in-progress' } },
     });
     const r = discover(dir);
-    assert.strictEqual(r.discussions.files.length, 1);
-    assert.strictEqual(r.discussions.files[0].name, 'v1');
-    assert.strictEqual(r.discussions.files[0].work_type, 'epic');
+    assert.strictEqual(r.discussions.files.length, 0);
   });
 
   it('reads research_files from manifest analysis_cache', () => {
