@@ -6,11 +6,11 @@ Tick uses dedicated commands for each status transition:
 
 | Transition | Command |
 |------------|---------|
-| Start | `tick start <task-id>` (open → in_progress) |
-| Complete | `tick done <task-id>` (in_progress → done) |
-| Cancelled | `tick cancel <task-id>` (any → cancelled) |
-| Reopen | `tick reopen <task-id>` (done/cancelled → open) |
-| Skipped | `tick cancel <task-id>` (no separate skipped status — use cancel) |
+| Start | `tick start <task-tick-id>` (open → in_progress) |
+| Complete | `tick done <task-tick-id>` (in_progress → done) |
+| Cancelled | `tick cancel <task-tick-id>` (any → cancelled) |
+| Reopen | `tick reopen <task-tick-id>` (done/cancelled → open) |
+| Skipped | `tick cancel <task-tick-id>` (no separate skipped status — use cancel) |
 
 `done` and `cancel` set a closed timestamp. `reopen` clears it.
 
@@ -20,19 +20,19 @@ Tick uses dedicated commands for each status transition:
 
 To update a task's properties:
 
-- **Title**: `tick update <task-id> --title "New title"`
-- **Description**: `tick update <task-id> --description "New description"`
-- **Priority**: `tick update <task-id> --priority 1`
-- **Parent**: `tick update <task-id> --parent <new-parent-id>` (pass empty string to clear)
-- **Type**: `tick update <task-id> --type feature` (clear with `--clear-type`)
-- **Tags**: `tick update <task-id> --tags "api,security"` (replaces all tags; clear with `--clear-tags`)
-- **Refs**: `tick update <task-id> --refs "spec:caching"` (replaces all refs; clear with `--clear-refs`)
-- **Blocks**: `tick update <task-id> --blocks <id,...>` (set task IDs this blocks)
+- **Title**: `tick update <task-tick-id> --title "New title"`
+- **Description**: `tick update <task-tick-id> --description "New description"`
+- **Priority**: `tick update <task-tick-id> --priority 1`
+- **Parent**: `tick update <task-tick-id> --parent <new-parent-id>` (pass empty string to clear)
+- **Type**: `tick update <task-tick-id> --type feature` (clear with `--clear-type`)
+- **Tags**: `tick update <task-tick-id> --tags "api,security"` (replaces all tags; clear with `--clear-tags`)
+- **Refs**: `tick update <task-tick-id> --refs "spec:caching"` (replaces all refs; clear with `--clear-refs`)
+- **Blocks**: `tick update <task-tick-id> --blocks <id,...>` (set task IDs this blocks)
 - **Dependencies**: See [graph.md](graph.md)
 
 ## Post-Update Verification
 
-After every `tick update`, run `tick show <task-id>` and confirm that the updated fields were set correctly. If any field is empty or wrong, re-run the update.
+After every `tick update`, run `tick show <task-tick-id>` and confirm that the updated fields were set correctly. If any field is empty or wrong, re-run the update.
 
 ## Phase / Parent Status (Auto-Cascade)
 

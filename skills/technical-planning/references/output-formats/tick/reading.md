@@ -31,7 +31,7 @@ tick list --parent <topic-tick-id> --count 5            # limit to 5 results
 To read full task detail including description, blockers, and children:
 
 ```bash
-tick show <task-id>
+tick show <task-tick-id>
 ```
 
 Returns: id, title, status, priority, created/updated timestamps, parent, blocked_by list, children list, and full description.
