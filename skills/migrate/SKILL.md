@@ -1,7 +1,7 @@
 ---
 name: migrate
 user-invocable: false
-allowed-tools: Bash(.claude/skills/migrate/scripts/migrate.sh)
+allowed-tools: Bash(.claude/skills/migrate/scripts/migrate.sh), Bash(git diff), Bash(git status), Bash(git add), Bash(git commit)
 ---
 
 # Migrate
@@ -18,21 +18,29 @@ Run the migration script with sandbox disabled (migrations may need to modify `.
 
 **CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command.
 
-#### If files were updated
+#### If the output contains `---STOP_GATE: FILES_UPDATED---`
 
-The script will list which files were updated. Present the list and a prompt:
+Files were updated. You MUST complete the steps below before returning to the calling skill.
+
+1. Run `git diff` to see what changed.
+2. Write a brief natural language summary of what the migrations did (e.g., "Restructured workflow directories, created manifest files, renamed tracking artifacts"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
+3. Display the summary and prompt:
 
 > *Output the next fenced block as a code block:*
 
 ```
-{list from script output}
+Migrations Applied
+
+{your natural language summary}
+
+{N} migration(s), {M} file(s) updated.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Migrations applied. Review with `git diff` if needed.
+Ready to continue?
 
 - **`c`/`continue`** — Proceed
 - **Ask** — Ask questions about the changes
@@ -42,6 +50,8 @@ Migrations applied. Review with `git diff` if needed.
 **STOP.** Wait for user response.
 
 **If `continue`:**
+
+Check `git status`. If migration changes are uncommitted, stage and commit them with the message `chore: apply workflow migrations` before returning.
 
 → Return to the calling skill.
 

@@ -90,7 +90,6 @@ MIGRATIONS_RUN=0
 report_update() {
     local filepath="$1"
     local description="$2"
-    echo "  ✓ $filepath ($description)"
     FILES_UPDATED=$((FILES_UPDATED + 1))
 }
 
@@ -153,7 +152,11 @@ done
 # Report results
 if [ "$FILES_UPDATED" -gt 0 ]; then
     echo ""
-    echo "$FILES_UPDATED file(s) migrated. Review with \`git diff\`, then proceed."
+    echo "$MIGRATIONS_RUN migration(s) applied, $FILES_UPDATED file(s) updated."
+    echo ""
+    echo "---STOP_GATE: FILES_UPDATED---"
+    echo "You MUST now follow the migration skill instructions to STOP and let the user review."
+    echo "Follow the explicit instructions in the migration skill before proceeding."
 else
     echo "[SKIP] No changes needed"
 fi
