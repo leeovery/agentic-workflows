@@ -20,12 +20,12 @@ If a description contains double quotes, escape them with `\"`. That's it.
 
 ## Task Storage
 
-Tasks are created using the `tick create` command. Before creating individual tasks, establish the topic and phase parent tasks.
+Tasks are created using the `tick create` command. Always set `--refs` to store the workflow's internal ID — this links every tick task back to the planning system. Before creating individual tasks, establish the topic and phase parent tasks.
 
 **1. Create the topic task:**
 
 ```bash
-tick create "{topic:(titlecase)}"
+tick create "{topic:(titlecase)}" --refs "{topic:(kebabcase)}"
 ```
 
 This returns the topic task ID (e.g., `tick-a1b2`).
@@ -33,14 +33,15 @@ This returns the topic task ID (e.g., `tick-a1b2`).
 **2. Create phase tasks as children of the topic:**
 
 ```bash
-tick create "Phase 1: {phase:(titlecase)}" --parent tick-a1b2  # returns tick-c3d4
-tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2  # returns tick-e5f6
+tick create "Phase 1: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-1"  # returns tick-c3d4
+tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-2"  # returns tick-e5f6
 ```
 
 **3. Create tasks as children of their phase:**
 
 ```bash
 tick create "{task:(titlecase)}" --parent tick-c3d4 \
+  --refs "{topic}-1-1" \
   --description "{description}
 
 Acceptance criteria, edge cases, and implementation
