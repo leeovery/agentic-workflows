@@ -115,9 +115,7 @@ tick ready --parent <parent-id> --tag security
 
 ### References
 
-Set via `--refs` to store the workflow's internal ID on each task. This links the tick task (external ID) back to the planning system's internal ID.
-
-The internal ID format is `{topic}-{phase_id}-{task_id}` (e.g., `auth-flow-1-1`, `auth-flow-2-3`). Set `--refs` on every task during authoring so that the internal-to-external ID mapping is stored directly in tick. For phase parent tasks, use the phase portion of the internal ID (e.g., `auth-flow-1`). References are comma-separated if multiple are needed.
+Set via `--refs` to store the internal ID on each tick task, linking it back to the planning system. Set at all levels: `{topic}` on the topic task, `{topic}-{phase_id}` on phase tasks, `{topic}-{phase_id}-{task_id}` on tasks. References are comma-separated if multiple are needed.
 
 ## Flagging
 
