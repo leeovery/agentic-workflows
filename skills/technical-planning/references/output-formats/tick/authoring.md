@@ -47,11 +47,14 @@ Acceptance criteria, edge cases, and implementation
 details go here. Supports multi-line text.}"
 ```
 
-Complete example — creating a task under a phase:
+Complete example — creating a task with all properties:
 
 ```bash
 tick create "Implement authentication middleware" \
   --parent tick-c3d4 \
+  --type task \
+  --tags "api,auth" \
+  --refs "auth-flow-1-1" \
   --description "Create Express middleware that validates JWT tokens on protected routes.
 
 Acceptance criteria:
@@ -60,6 +63,8 @@ Acceptance criteria:
 - Returns 401 for missing or invalid tokens
 - Passes user context to downstream handlers"
 ```
+
+See **Task Properties** below for details on each flag.
 
 ## Post-Creation Verification
 
@@ -94,51 +99,22 @@ tick list --parent <phase-id>
 
 ### Type
 
-Set the task type during creation to reflect the work type:
-
-```bash
-tick create "Fix null pointer in auth handler" --parent <phase-id> --type bug
-tick create "Add OAuth2 support" --parent <phase-id> --type feature
-tick create "Refactor database connection pool" --parent <phase-id> --type task
-tick create "Update CI pipeline config" --parent <phase-id> --type chore
-```
-
-Valid types: `bug`, `feature`, `task`, `chore`. Use `bug` for bugfix work types, `feature` for feature work types, and `task` or `chore` as appropriate for individual tasks within any work type.
+Set via `--type`. Valid types: `bug`, `feature`, `task`, `chore`. Use `bug` for bugfix work types, `feature` for feature work types, and `task` or `chore` as appropriate for individual tasks within any work type.
 
 ### Tags
 
-Tags provide additional categorisation beyond the parent/child hierarchy:
+Set via `--tags` with comma-separated, kebab-case values. Tags provide additional categorisation beyond the parent/child hierarchy. Filter tasks by tag:
 
 ```bash
-tick create "Add rate limiting" --parent <phase-id> --tags "api,security"
-```
-
-Tags are comma-separated, kebab-case. Filter tasks by tag:
-
-```bash
-tick list --parent <topic-id> --tag api
-tick ready --parent <phase-id> --tag security
+tick list --parent <parent-id> --tag api
+tick ready --parent <parent-id> --tag security
 ```
 
 ### References
 
-Use `--refs` to store the workflow's internal ID on each task. This links the tick task (external ID) back to the planning system's internal ID:
+Set via `--refs` to store the workflow's internal ID on each task. This links the tick task (external ID) back to the planning system's internal ID.
 
-```bash
-tick create "Implement authentication middleware" \
-  --parent <phase-id> \
-  --refs "auth-flow-1-1"
-```
-
-The internal ID format is `{topic}-{phase_id}-{task_id}` (e.g., `auth-flow-1-1`, `auth-flow-2-3`). Set `--refs` on every task during authoring so that the internal-to-external ID mapping is stored directly in tick.
-
-For phase parent tasks, use the phase portion of the internal ID:
-
-```bash
-tick create "Phase 1: Core Setup" --parent <topic-id> --refs "auth-flow-1"
-```
-
-References are comma-separated if multiple are needed.
+The internal ID format is `{topic}-{phase_id}-{task_id}` (e.g., `auth-flow-1-1`, `auth-flow-2-3`). Set `--refs` on every task during authoring so that the internal-to-external ID mapping is stored directly in tick. For phase parent tasks, use the phase portion of the internal ID (e.g., `auth-flow-1`). References are comma-separated if multiple are needed.
 
 ## Flagging
 
