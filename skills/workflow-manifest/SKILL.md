@@ -25,6 +25,7 @@ MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 
 # Phase operations (--phase and --topic flags):
 $MANIFEST get {work_unit} --phase discussion --topic {topic} [field.path]
+$MANIFEST get {work_unit} --phase discussion --topic "*" [field.path]   # wildcard: all topics
 $MANIFEST set {work_unit} --phase discussion --topic {topic} field.path value
 $MANIFEST init-phase {work_unit} --phase discussion --topic {topic}
 
@@ -37,6 +38,7 @@ $MANIFEST delete {work_unit} field.path
 $MANIFEST exists {work_unit}
 $MANIFEST exists {work_unit} [field.path]
 $MANIFEST exists {work_unit} --phase <phase> [--topic <topic>] [field.path]
+$MANIFEST exists {work_unit} --phase <phase> --topic "*" [field.path]   # wildcard: any topic
 
 # Management (unchanged):
 $MANIFEST init name --work-type type --description "..."
@@ -48,6 +50,8 @@ $MANIFEST list [--status s] [--work-type t]
 $MANIFEST get {work_unit} --phase discussion              # whole phase (for iteration)
 $MANIFEST get {work_unit} --phase discussion --topic {topic} status  # specific item field
 ```
+
+**`--topic "*"` (wildcard)** — collects values from all topics in a phase, abstracting away the epic items structure. Supported by `get` and `exists` only. For epic: iterates all items. For feature/bugfix: returns the single flat value.
 
 **Internal routing (CLI handles, skills don't know):**
 - Feature/bugfix: `--phase discussion --topic auth-flow status` → `phases.discussion.status`
@@ -67,7 +71,7 @@ Creates `.workflows/<name>/manifest.json` with identity fields and empty phases.
 
 ### `get`
 
-Read a value or subtree. Two modes:
+Read a value or subtree. Three modes:
 
 **Work-unit level** (no flags):
 ```bash
@@ -92,6 +96,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase dis
 # Nested field path
 node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase specification --topic auth-flow sources.auth-api.status
 ```
+
+**Wildcard topic** (`--topic "*"`):
+```bash
+# Collect status from all topics in a phase
+node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase discussion --topic "*" status
+```
+
+Output is a JSON array of `{topic, value}` objects:
+```json
+[
+  { "topic": "auth-flow", "value": "completed" },
+  { "topic": "data-model", "value": "in-progress" }
+]
+```
+
+For feature/bugfix, returns a single-element array (topic equals work unit name). Errors if the phase has no items.
 
 Errors to stderr with non-zero exit if the path does not exist.
 
@@ -198,9 +218,15 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> phases.d
 # Does a phase/topic entry exist?
 node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic auth-flow
 node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic auth-flow status
+
+# Wildcard: does any topic in the phase have this field?
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic "*"
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic "*" status
 ```
 
 If the work unit doesn't exist and a deeper path is requested, outputs `false` (no error). Actual usage errors (missing args, invalid phase name) still use `die()`.
+
+**Wildcard topic** (`--topic "*"`) — outputs `true` if any topic in the phase matches (has the field, or exists at all if no field specified), `false` otherwise. Always exits 0.
 
 ## Validation
 
