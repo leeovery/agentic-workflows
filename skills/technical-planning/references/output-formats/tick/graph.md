@@ -41,7 +41,7 @@ Tick validates all dependency changes: prevents cycles, self-references, and chi
 Declare that a task is blocked by another task:
 
 ```bash
-tick dep add <tick-id> <tick-id>
+tick dep add <tick-id> <blocked-by-tick-id>
 ```
 
 Example — task `tick-e5f6` depends on `tick-a1b2`:
@@ -62,5 +62,5 @@ tick dep add tick-e5f6 tick-c3d4
 ### Removing a Dependency
 
 ```bash
-tick dep rm <tick-id> <tick-id>
+tick dep rm <tick-id> <blocked-by-tick-id>
 ```
