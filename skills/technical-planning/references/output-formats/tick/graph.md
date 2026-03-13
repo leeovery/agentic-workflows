@@ -41,7 +41,7 @@ Tick validates all dependency changes: prevents cycles, self-references, and chi
 Declare that a task is blocked by another task:
 
 ```bash
-tick dep add <task-tick-id> <blocked-by-id>
+tick dep add <task-tick-id> <tick-id>
 ```
 
 Example — task `tick-e5f6` depends on `tick-a1b2`:
@@ -57,10 +57,10 @@ tick dep add tick-e5f6 tick-a1b2
 tick dep add tick-e5f6 tick-c3d4
 ```
 
-**Note**: Dependencies can also be set at creation time via `--blocked-by <id,...>` and `--blocks <id,...>` on `tick create`. This is useful when the blocking relationship is known upfront, but the typical workflow authors all tasks first, then adds dependencies in a separate graphing pass.
+**Note**: Dependencies can also be set at creation time via `--blocked-by <tick-id,...>` and `--blocks <tick-id,...>` on `tick create`. This is useful when the blocking relationship is known upfront, but the typical workflow authors all tasks first, then adds dependencies in a separate graphing pass.
 
 ### Removing a Dependency
 
 ```bash
-tick dep rm <task-tick-id> <blocked-by-id>
+tick dep rm <task-tick-id> <tick-id>
 ```

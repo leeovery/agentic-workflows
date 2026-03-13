@@ -5,7 +5,7 @@
 **CRITICAL**: Always pass descriptions directly as inline quoted strings. Never use workarounds.
 
 ```bash
-tick create "Title" --parent <id> --description "Full description here.
+tick create "Title" --parent <tick-id> --description "Full description here.
 
 Multi-line content works fine inside double quotes."
 ```
@@ -109,8 +109,8 @@ Optional. Set via `--type`. Valid types: `bug`, `feature`, `task`, `chore`. Use 
 Optional — not necessary in most cases, but available if needed. Set via `--tags` with comma-separated, kebab-case values. Tags provide additional categorisation beyond the parent/child hierarchy. Filter tasks by tag:
 
 ```bash
-tick list --parent <parent-id> --tag api
-tick ready --parent <parent-id> --tag security
+tick list --parent <tick-id> --tag api
+tick ready --parent <tick-id> --tag security
 ```
 
 ### References
