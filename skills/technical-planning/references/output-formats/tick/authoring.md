@@ -32,7 +32,7 @@ This returns the topic task ID (e.g., `tick-a1b2`).
 
 **2. Create phase tasks as children of the topic:**
 
-The `--refs` value is the topic name followed by the phase number (e.g., `{topic}-1`, `{topic}-2`).
+The `--refs` value follows the internal ID format: `{topic}-{phase_id}`.
 
 ```bash
 tick create "Phase 1: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-1"  # returns tick-c3d4
@@ -43,7 +43,7 @@ tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-2"
 
 ```bash
 tick create "{task:(titlecase)}" --parent tick-c3d4 \
-  --refs "{topic}-1-1" \
+  --refs "{topic}-{phase_id}-{task_id}" \
   --description "{description}
 
 Acceptance criteria, edge cases, and implementation
