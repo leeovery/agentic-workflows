@@ -10,7 +10,7 @@ Show the current state of the workflow for this project.
 
 **This step is mandatory. You must complete it before proceeding.**
 
-Invoke the `/migrate` skill and assess its output.
+Invoke the `/migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
 
 ---
 

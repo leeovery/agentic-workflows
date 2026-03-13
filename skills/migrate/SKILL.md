@@ -20,17 +20,34 @@ Run the migration script with sandbox disabled (migrations may need to modify `.
 
 #### If files were updated
 
-The script will list which files were updated. Present this to the user:
+The script will list which files were updated. Present the list and a prompt:
 
 > *Output the next fenced block as a code block:*
 
 ```
 {list from script output}
-
-Review changes with `git diff`, then restart Claude to pick up the changes.
 ```
 
-The user needs to restart Claude before proceeding.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Migrations applied. Review with `git diff` if needed.
+
+- **`c`/`continue`** — Proceed
+- **Ask** — Ask questions about the changes
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `continue`:**
+
+→ Return to the calling skill.
+
+**If ask:**
+
+Answer the user's question, then re-display the prompt above.
 
 **STOP.** Wait for user response.
 
@@ -42,7 +59,7 @@ The user needs to restart Claude before proceeding.
 All documents up to date.
 ```
 
-Return control silently - no user interaction needed.
+→ Return to the calling skill.
 
 ## Notes
 
