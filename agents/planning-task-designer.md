@@ -59,6 +59,8 @@ Phase {N}: {Phase Name}
 
 Follow the **Task Table** template from plan-index-schema. Use placeholder IDs `{topic}-{phase_id}-{task_id}`. Set `Status` to `pending`. Leave `External ID` empty.
 
+**CRITICAL**: `{topic}` must be the **exact, full topic name** — never abbreviate or shorten it. The topic name is used for path construction and positional mapping across phases.
+
 The orchestrator will use the topic name from the Plan Index File.
 
 ## Rules

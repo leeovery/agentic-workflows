@@ -19,7 +19,7 @@ You receive:
 5. **Review checklist path**: Path to the review checklist (`skills/technical-review/references/review-checklist.md`) — read this for detailed verification criteria
 6. **Work unit**: The work unit name (for path construction)
 7. **Topic**: The plan topic name (used for output directory)
-8. **Internal ID**: The internal ID (for output file naming, e.g., `{topic}-1-1`)
+8. **Task suffix**: The `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
 
 ## Your Task
 
@@ -87,7 +87,7 @@ Review the implementation as a senior architect would:
 
 ## Output File Format
 
-Write to `.workflows/{work_unit}/review/{topic}/qa-task-{internal_id}.md`:
+Write to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md`:
 
 ```
 TASK: [Task name/description]

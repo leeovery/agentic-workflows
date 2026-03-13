@@ -21,8 +21,8 @@ You receive via the orchestrator's prompt:
 
 ## Your Process
 
-1. **Read review summary** — extract verdict, required changes, recommendations from `review.md`
-2. **Read all QA files** — read every `qa-task-*.md` in the review path. Extract BLOCKING ISSUES and significant NON-BLOCKING NOTES with their file:line references
+1. **Read review summary** — extract verdict, required changes, recommendations from `report.md`
+2. **Read all report files** — read every `report-*.md` in the review path. Extract BLOCKING ISSUES and significant NON-BLOCKING NOTES with their file:line references
 3. **Deduplicate** — same issue found across multiple QA files → one finding, note all sources
 4. **Group related findings** — multiple findings about the same concern become one task (e.g., 3 QA findings about missing error handling in the same module = 1 "add error handling" task)
 5. **Filter** — discard low-severity non-blocking findings unless they cluster into a pattern. Never discard high-severity or blocking findings.
@@ -69,7 +69,7 @@ gate_mode: gated
 ## Task 1: {title}
 status: pending
 severity: high
-sources: qa-task-3, qa-task-7
+sources: report-1-3, report-2-1
 
 **Problem**: {what the review found}
 **Solution**: {what to fix}

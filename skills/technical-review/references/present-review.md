@@ -4,7 +4,7 @@
 
 ---
 
-Read the review file at `.workflows/{work_unit}/review/{topic}/review.md`.
+Read the review file at `.workflows/{work_unit}/review/{topic}/report.md`.
 
 Present a structured summary to the user:
 

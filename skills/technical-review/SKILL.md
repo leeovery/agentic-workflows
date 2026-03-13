@@ -25,7 +25,7 @@ Follows implementation. Verify plan tasks were implemented, tested adequately, a
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read review and synthesis files** for the current topic. Review documents are at `.workflows/{work_unit}/review/{topic}/review.md` with per-task QA files alongside (`qa-task-{internal_id}.md`). Synthesis staging files are at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`. These are your source of truth for progress.
+2. **Read review and synthesis files** for the current topic. Review documents are at `.workflows/{work_unit}/review/{topic}/report.md` with per-task report files alongside (`report-{phase_id}-{task_id}.md`). Synthesis staging files are at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`. These are your source of truth for progress.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
@@ -51,7 +51,7 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if a review file exists at `.workflows/{work_unit}/review/{topic}/review.md`.
+Check if a review file exists at `.workflows/{work_unit}/review/{topic}/report.md`.
 
 #### If no review file exists
 
@@ -72,7 +72,7 @@ Found existing review for "{topic:(titlecase)}".
 Continue or restart?
 
 - **`c`/`continue`** — Continue the review from its current state
-- **`r`/`restart`** — Delete the review and all QA files. Start fresh.
+- **`r`/`restart`** — Delete the review and all report files. Start fresh.
 · · · · · · · · · · · ·
 ```
 
@@ -84,7 +84,7 @@ Continue or restart?
 
 #### If `restart`
 
-1. Delete the review file and all QA files (`qa-task-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
+1. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
 2. Commit: `review({work_unit}): restart review`
 
 → Proceed to **Step 1**.
@@ -109,7 +109,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}
 
 Phase already registered (e.g. reopened review). Skip init-phase.
 
-Now determine review mode. Check if the review file exists at `.workflows/{work_unit}/review/{topic}/review.md`.
+Now determine review mode. Check if the review file exists at `.workflows/{work_unit}/review/{topic}/report.md`.
 
 #### If no review file exists
 
@@ -160,7 +160,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} --p
 ```
 
 ```bash
-rm .workflows/{work_unit}/review/{topic}/qa-task-*.md
+rm .workflows/{work_unit}/review/{topic}/report-*.md
 ```
 
 Commit: `review({work_unit}): clear review data for full re-review`
@@ -213,7 +213,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} --p
 ```
 
 ```bash
-rm .workflows/{work_unit}/review/{topic}/qa-task-*.md
+rm .workflows/{work_unit}/review/{topic}/report-*.md
 ```
 
 Commit: `review({work_unit}): clear review data for full re-review`

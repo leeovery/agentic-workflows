@@ -54,7 +54,7 @@ approved_at: {YYYY-MM-DD}
 
 | Field | Set when |
 |-------|----------|
-| `Internal ID` | Task design -- format: `{topic}-{phase_id}-{task_id}` |
+| `Internal ID` | Task design -- format: `{topic}-{phase_id}-{task_id}` (full topic name, never abbreviated) |
 | `Name` | Task design -- descriptive task name |
 | `Edge Cases` | Task design -- curated list scoping which edge cases this task handles |
 | `Status` | Task design -> `pending`; authoring -> `authored` |

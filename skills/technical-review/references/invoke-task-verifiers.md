@@ -26,7 +26,7 @@ Using the format reading adapter loaded in Step 2, extract every task across all
 - Note each task's description
 - Note each task's acceptance criteria
 - Note expected micro acceptance (test name)
-- Note each task's **internal ID** (format: `{topic}-{phase_id}-{task_id}`) for file naming
+- Note each task's **internal ID** (format: `{topic}-{phase_id}-{task_id}`) — derive the **task suffix** by stripping the topic prefix (e.g., `auth-flow-1-1` → `1-1`)
 
 ---
 
@@ -74,7 +74,7 @@ Each verifier receives:
 5. **Review checklist path** — `skills/technical-review/references/review-checklist.md`
 6. **Work unit** — the work unit name (for path construction)
 7. **Topic** — the plan topic name (used for output directory)
-8. **Internal ID** — the internal ID (for output file naming, e.g., `{topic}-1-1`)
+8. **Task suffix** — the `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
 
 If any verifier fails (error, timeout), record the failure and continue — aggregate what's available.
 
@@ -90,7 +90,7 @@ FINDINGS_COUNT: {N blocking issues}
 SUMMARY: {1 sentence}
 ```
 
-Full findings are written to `.workflows/{work_unit}/review/{topic}/qa-task-{internal_id}.md`.
+Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md`.
 
 ---
 
@@ -110,7 +110,7 @@ This enables incremental review detection on subsequent review sessions.
 
 Once all batches have completed:
 
-1. Read all `.workflows/{work_unit}/review/{topic}/qa-task-*.md` files
+1. Read all `.workflows/{work_unit}/review/{topic}/report-*.md` files
 2. Synthesize findings from file contents:
    - Collect all tasks with `STATUS: Incomplete` or `STATUS: Issues Found` as blocking issues
    - Collect all test issues (under/over-tested)
