@@ -25,7 +25,7 @@ Tasks are created using the `tick create` command. Always set `--refs` to store 
 **1. Create the topic task:**
 
 ```bash
-tick create "{topic:(titlecase)}" --refs "{topic:(kebabcase)}"
+tick create "{topic:(titlecase)}" --refs "{topic}"
 ```
 
 This returns the topic task ID (e.g., `tick-a1b2`).
