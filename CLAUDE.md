@@ -188,7 +188,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 
 Discovery scripts filter by status — `workflow-start` and `continue-*` show active work by default, with menu options to view completed/cancelled items or manage lifecycle state. Completed/cancelled work units can be reactivated.
 
-**Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). Since all work types use the same `items` manifest structure, pivot just changes `work_type` — no data restructuring needed. After pivot, the user can continue immediately as an epic or return to the previous view.
+**Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). After pivot, the user can continue immediately as an epic or return to the previous view.
 
 **Epic soft gates**: When navigating forward between phases in an epic (via `continue-epic`), advisory gates warn if prerequisite phase items are still in-progress. These are informational, not blocking — the user can proceed anyway. Covers research→discussion, discussion→specification, specification→planning, and planning→implementation transitions. The system recovers gracefully via re-analysis if the user proceeds early.
 
@@ -244,7 +244,7 @@ The `/migrate` skill keeps workflow files in sync with the current system design
 Migration 016 converts phase-first directories to work-unit-first, creates `manifest.json` files from artifact frontmatter, renames `plan.md` to `planning.md` and `tracking.md` to `implementation.md`, and updates `work_type: greenfield` to `epic`. Frontmatter is preserved in migrated artifacts as a safety net — a follow-up migration will strip it once the manifest system is proven.
 
 **Migration 025 — Unified manifest items:**
-Migration 025 wraps flat feature/bugfix phase data into the `items[manifest.name]` structure, unifying all work types to use the same `phases.<phase>.items.<topic>` layout. Phase-level keys (`analysis_cache`) stay at phase level. Epics are skipped (already use items). This makes the manifest structure uniform and enables feature-to-epic pivot (just change `work_type`).
+Migration 025 ensures all work types use the `phases.<phase>.items.<topic>` layout. For feature/bugfix manifests with legacy flat phase data, it wraps fields into `items[manifest.name]`. Phase-level keys (`analysis_cache`) stay at phase level. Epics are unaffected.
 
 **Critical: Frontmatter extraction in bash scripts**
 

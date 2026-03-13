@@ -161,7 +161,7 @@ Work units move through a simple lifecycle: **in-progress** → **completed** or
 
 Feature and bugfix pipelines offer an early completion option after implementation (skip review). Epic work units are completed when all topics have finished review.
 
-**Feature-to-epic pivot:** If a feature grows beyond its original scope, convert it to an epic via the manage menu. All existing progress is preserved — the unified manifest structure means no data migration is needed. After pivoting, continue immediately as an epic to add new topics.
+**Feature-to-epic pivot:** If a feature grows beyond its original scope, convert it to an epic via the manage menu. All existing progress is preserved. After pivoting, continue immediately as an epic to add new topics.
 
 ### Output Formats
 
