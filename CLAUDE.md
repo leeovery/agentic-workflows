@@ -171,7 +171,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - Specification: `.workflows/{work_unit}/specification/{topic}/specification.md`
 - Planning: `.workflows/{work_unit}/planning/{topic}/planning.md` + `tasks/`
 - Implementation: `.workflows/{work_unit}/implementation/{topic}/implementation.md`
-- Review: `.workflows/{work_unit}/review/{topic}/review.md`
+- Review: `.workflows/{work_unit}/review/{topic}/report.md`
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/` (planning scratch)

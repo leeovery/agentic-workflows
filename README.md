@@ -222,8 +222,8 @@ Documents are stored in your project using a **work-unit-first** organisation. E
         implementation.md                #   Progress, gates, current task
     review/
       {topic}/
-        review.md                        #   Review summary and verdict
-        qa-task-{internal_id}.md             #   Per-task QA verification
+        report.md                        #   Review summary and verdict
+        report-{phase_id}-{task_id}.md   #   Per-task verification report
   .state/                                # Global state (migrations, env setup)
   .cache/                                # Ephemeral (planning scratch)
 ```

@@ -2580,7 +2580,7 @@ const FLOWCHARTS = {
       { id: 'v1', label: 'Verify task 1', w: 140, h: 44, color: 'var(--action)', bg: 'rgba(56,189,248,0.08)', desc: 'Check: implementation, acceptance criteria, tests, code quality.' },
       { id: 'v2', label: 'Verify task 2', w: 140, h: 44, color: 'var(--action)', bg: 'rgba(56,189,248,0.08)', desc: 'Same checks, different task. Batches of 5 run in parallel.' },
       { id: 'vn', label: 'Verify task N', w: 140, h: 44, color: 'var(--action)', bg: 'rgba(56,189,248,0.08)', desc: 'One per task. All within a batch run simultaneously.' },
-      { id: 'aggregate', label: 'Aggregate QA findings', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 3: Read all qa-task-*.md files. Collect blocking issues, test issues, and code quality concerns.' },
+      { id: 'aggregate', label: 'Aggregate QA findings', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 3: Read all report-*.md files. Collect blocking issues, test issues, and code quality concerns.' },
       { id: 'produce', label: 'Produce review', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 4: Aggregate QA findings into structured review document. Determine verdict (approve/changes/comments). Write to .workflows/{work_unit}/review/{topic}/.' },
       // Review Actions Loop (Step 5)
       { id: 'verdict', label: 'Verdict?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 5A: Route on QA verdict — approve (terminal), request-changes (synthesize recommended), comments-only (synthesize optional).' },
@@ -3017,8 +3017,8 @@ const FLOWCHARTS = {
   'review-findings-synthesizer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by technical-review skill during review actions loop.' },
-      { id: 'read-review', label: 'Read review summary', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review.md — extract verdict, required changes, and recommendations.' },
-      { id: 'read-qa', label: 'Read all QA files', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read every qa-task-*.md in the review path. Extract BLOCKING ISSUES and significant NON-BLOCKING NOTES with file:line refs.' },
+      { id: 'read-review', label: 'Read review summary', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read report.md — extract verdict, required changes, and recommendations.' },
+      { id: 'read-qa', label: 'Read all QA files', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read every report-*.md in the review path. Extract BLOCKING ISSUES and significant NON-BLOCKING NOTES with file:line refs.' },
       { id: 'dedup', label: 'Deduplicate findings', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Same issue from multiple QA files → one finding, noting all sources.' },
       { id: 'group', label: 'Group related findings', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Multiple findings about the same concern become one task (e.g., 3 findings about missing error handling = 1 task).' },
       { id: 'filter', label: 'Filter by severity', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Discard low-severity non-blocking unless they cluster. Never discard high-severity or blocking.' },
@@ -3618,7 +3618,7 @@ const FLOWCHART_DESCS = {
   },
   'review-task-verifier': {
     summary: 'Verify a single task\'s implementation, tests, and code quality against the plan and spec.',
-    body: `<p>Dispatched <strong>in batches of 5</strong> by the technical-review skill during QA verification. Each verifier writes findings to <code>.workflows/{work_unit}/review/{topic}/qa-task-{index}.md</code>.</p>
+    body: `<p>Dispatched <strong>in batches of 5</strong> by the technical-review skill during QA verification. Each verifier writes findings to <code>.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md</code>.</p>
 <p>Three verification stages: <strong>implementation</strong> (exists, matches criteria, aligns with spec), <strong>tests</strong> (adequate coverage, edge cases, not over/under-tested), and <strong>code quality</strong> (conventions, SOLID, DRY, complexity, security, performance). Receives review checklist, topic name, and task index. Compiles a structured finding with blocking issues and non-blocking notes.</p>`,
     meta: { model: 'Opus', invokedBy: 'technical-review', complexity: 'Subagent' }
   },
