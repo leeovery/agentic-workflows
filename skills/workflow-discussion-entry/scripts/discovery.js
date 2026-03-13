@@ -34,26 +34,11 @@ function discover(cwd, workUnit) {
   let completed = 0;
 
   for (const m of manifests) {
-    const dp = phaseData(m, 'discussion');
-    if (!dp) continue;
-
-    if (m.work_type === 'epic') {
-      const items = phaseItems(m, 'discussion');
-      if (items.length > 0) {
-        for (const item of items) {
-          discussions.push({ name: item.name, work_unit: m.name, status: item.status || 'unknown', work_type: m.work_type });
-          if (item.status === 'in-progress') inProgress++;
-          else if (item.status === 'completed') completed++;
-        }
-      } else if (dp.status) {
-        discussions.push({ name: m.name, work_unit: m.name, status: dp.status, work_type: m.work_type });
-        if (dp.status === 'in-progress') inProgress++;
-        else if (dp.status === 'completed') completed++;
-      }
-    } else if (dp.status) {
-      discussions.push({ name: m.name, work_unit: m.name, status: dp.status, work_type: m.work_type });
-      if (dp.status === 'in-progress') inProgress++;
-      else if (dp.status === 'completed') completed++;
+    const items = phaseItems(m, 'discussion');
+    for (const item of items) {
+      discussions.push({ name: item.name, work_unit: m.name, status: item.status || 'unknown', work_type: m.work_type });
+      if (item.status === 'in-progress') inProgress++;
+      else if (item.status === 'completed') completed++;
     }
   }
 

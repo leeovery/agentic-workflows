@@ -18,7 +18,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js <command> [args]
 
 ## Domain-Aware Flag Syntax
 
-Skills provide logical coordinates via `--phase` and `--topic` flags. The CLI routes to the correct JSON path internally based on work_type. Skills never know or care about the manifest's internal structure (flat for feature/bugfix, items for epic).
+Skills provide logical coordinates via `--phase` and `--topic` flags. The CLI routes to the correct JSON path internally. All work types use the same `items` structure — skills never need to know the manifest's internal layout.
 
 ```bash
 MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
@@ -51,11 +51,10 @@ $MANIFEST get {work_unit} --phase discussion              # whole phase (for ite
 $MANIFEST get {work_unit} --phase discussion --topic {topic} status  # specific item field
 ```
 
-**`--topic "*"` (wildcard)** — collects values from all topics in a phase, abstracting away the epic items structure. Supported by `get` and `exists` only. For epic: iterates all items. For feature/bugfix: returns the single flat value.
+**`--topic "*"` (wildcard)** — collects values from all topics in a phase. Supported by `get` and `exists` only. For epic: iterates all items. For feature/bugfix: returns the single item (topic matches work unit name).
 
 **Internal routing (CLI handles, skills don't know):**
-- Feature/bugfix: `--phase discussion --topic auth-flow status` → `phases.discussion.status`
-- Epic: `--phase discussion --topic payment-processing status` → `phases.discussion.items.payment-processing.status`
+- All work types: `--phase discussion --topic auth-flow status` → `phases.discussion.items.auth-flow.status`
 
 ## Commands
 
@@ -111,7 +110,7 @@ Output is a JSON array of `{topic, value}` objects:
 ]
 ```
 
-For feature/bugfix, returns a single-element array (topic equals work unit name). Errors if the phase has no items.
+For feature/bugfix, returns a single-element array (topic matches work unit name). Errors if the phase has no items.
 
 Errors to stderr with non-zero exit if the path does not exist.
 
@@ -177,10 +176,7 @@ Output: JSON array of manifest objects.
 
 ### `init-phase`
 
-Register a topic within a phase. Behavior varies by work type:
-
-- **Epic**: creates `phases.<phase>.items.<topic>` with `{ "status": "in-progress" }`
-- **Feature/bugfix**: creates `phases.<phase>` with `{ "status": "in-progress" }` (flat — topic is implicit)
+Register a topic within a phase. All work types create `phases.<phase>.items.<topic>` with `{ "status": "in-progress" }`.
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js init-phase <name> --phase discussion --topic <topic>
@@ -258,4 +254,4 @@ Item-level statuses within epic phases follow the same phase-level rules.
 - **File locking**: `.lock` file next to manifest, exclusive create (`wx` flag), 30s stale detection. Prevents concurrent session conflicts.
 - **Atomic writes**: write to `.tmp` then `fs.renameSync`. No partial writes.
 - **Auto-creation**: `init` creates the work unit directory. Phase directories are created by skills when they enter that phase, not by the CLI.
-- **Domain routing**: `--phase` and `--topic` flags let skills use logical coordinates. The CLI resolves to the correct internal JSON path based on work_type (flat for feature/bugfix, items for epic).
+- **Domain routing**: `--phase` and `--topic` flags let skills use logical coordinates. The CLI resolves to the correct internal JSON path — all work types use `items` structure.

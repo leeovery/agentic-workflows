@@ -154,9 +154,9 @@ function parseFlags(args) {
 
 /**
  * Resolve the internal JSON path segments for a phase+topic operation.
- * Routes based on work_type: feature/bugfix → flat, epic → items.
+ * All work types route through items when topic is provided.
  *
- * @param {string} workType - The work unit's work_type
+ * @param {string} workType - The work unit's work_type (kept for call-site compat)
  * @param {string} phase - The phase name
  * @param {string|null} topic - The topic name (null = whole phase)
  * @param {string[]} fieldSegments - Additional field path segments
@@ -164,24 +164,13 @@ function parseFlags(args) {
  */
 function resolvePhaseSegments(workType, phase, topic, fieldSegments) {
   const base = ['phases', phase];
-
-  if (!topic) {
-    // No topic — return the whole phase object (+ any field path)
-    return [...base, ...fieldSegments];
-  }
-
-  if (workType === 'epic') {
-    // Epic: phases.<phase>.items.<topic>[.field.path]
-    return [...base, 'items', topic, ...fieldSegments];
-  }
-
-  // Feature/bugfix: phases.<phase>[.field.path] (flat — topic is implicit)
-  return [...base, ...fieldSegments];
+  if (!topic) return [...base, ...fieldSegments];
+  return [...base, 'items', topic, ...fieldSegments];
 }
 
 /**
  * Resolve wildcard topic — collect field values from all topics in a phase.
- * For epic: iterates all items. For feature/bugfix: returns the single flat value.
+ * All work types use items structure.
  *
  * @param {object} manifest - The full manifest object
  * @param {string} phase - The phase name
@@ -192,20 +181,13 @@ function resolveWildcardTopic(manifest, phase, fieldSegments) {
   const phaseData = getByPath(manifest, ['phases', phase]);
   if (!phaseData) return [];
 
-  if (manifest.work_type === 'epic') {
-    const items = phaseData.items;
-    if (!items || typeof items !== 'object') return [];
+  const items = phaseData.items;
+  if (!items || typeof items !== 'object') return [];
 
-    return Object.keys(items).map(topic => ({
-      topic,
-      value: fieldSegments.length ? getByPath(items[topic], fieldSegments) : items[topic],
-    })).filter(entry => entry.value !== undefined);
-  }
-
-  // Feature/bugfix: single implicit topic
-  const value = fieldSegments.length ? getByPath(phaseData, fieldSegments) : phaseData;
-  if (value === undefined) return [];
-  return [{ topic: manifest.name, value }];
+  return Object.keys(items).map(topic => ({
+    topic,
+    value: fieldSegments.length ? getByPath(items[topic], fieldSegments) : items[topic],
+  })).filter(entry => entry.value !== undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -605,26 +587,14 @@ function cmdInitPhase(args) {
     const manifest = readManifest(name);
 
     if (!manifest.phases) manifest.phases = {};
+    if (!manifest.phases[phase]) manifest.phases[phase] = {};
+    if (!manifest.phases[phase].items) manifest.phases[phase].items = {};
 
-    if (manifest.work_type === 'epic') {
-      // Epic: create phases.<phase>.items.<topic> = { status: "in-progress" }
-      if (!manifest.phases[phase]) manifest.phases[phase] = {};
-      if (!manifest.phases[phase].items) manifest.phases[phase].items = {};
-
-      if (manifest.phases[phase].items[topic]) {
-        die(`Item "${topic}" already exists in phase "${phase}" of "${name}"`);
-      }
-
-      manifest.phases[phase].items[topic] = { status: 'in-progress' };
-    } else {
-      // Feature/bugfix: create phases.<phase> = { status: "in-progress" }
-      if (manifest.phases[phase] && manifest.phases[phase].status) {
-        die(`Phase "${phase}" already exists in "${name}"`);
-      }
-
-      if (!manifest.phases[phase]) manifest.phases[phase] = {};
-      manifest.phases[phase].status = 'in-progress';
+    if (manifest.phases[phase].items[topic]) {
+      die(`Item "${topic}" already exists in phase "${phase}" of "${name}"`);
     }
+
+    manifest.phases[phase].items[topic] = { status: 'in-progress' };
 
     writeManifestAtomic(name, manifest);
   });

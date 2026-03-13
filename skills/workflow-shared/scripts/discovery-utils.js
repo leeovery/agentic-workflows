@@ -80,7 +80,18 @@ function loadAllManifests(cwd) {
 }
 
 function phaseStatus(manifest, phase) {
-  return ((manifest.phases || {})[phase] || {}).status || null;
+  const p = (manifest.phases || {})[phase] || {};
+  if (p.items && typeof p.items === 'object') {
+    const keys = Object.keys(p.items);
+    if (keys.length === 0) return null;
+    if (keys.length === 1) return (p.items[keys[0]] || {}).status || null;
+    const statuses = keys.map(k => (p.items[k] || {}).status).filter(Boolean);
+    if (statuses.length === 0) return null;
+    if (statuses.every(s => s === 'completed')) return 'completed';
+    if (statuses.some(s => s === 'in-progress')) return 'in-progress';
+    return statuses[0];
+  }
+  return p.status || null;
 }
 
 function phaseItems(manifest, phase) {
@@ -96,19 +107,7 @@ function phaseData(manifest, phase) {
 function computeNextPhase(manifest) {
   const wt = manifest.work_type;
 
-  // For epic, aggregate item statuses: all completed → 'completed', any in-progress → 'in-progress'
-  const ps = (phase) => {
-    if (wt === 'epic') {
-      const items = phaseItems(manifest, phase);
-      if (items.length === 0) return phaseStatus(manifest, phase); // fallback to flat if no items
-      const statuses = items.map(i => i.status).filter(Boolean);
-      if (statuses.length === 0) return null;
-      if (statuses.every(s => s === 'completed')) return 'completed';
-      if (statuses.some(s => s === 'in-progress')) return 'in-progress';
-      return statuses[0];
-    }
-    return phaseStatus(manifest, phase);
-  };
+  const ps = (phase) => phaseStatus(manifest, phase);
 
   if (ps('review') === 'completed') {
     return { next_phase: 'done', phase_label: 'pipeline complete' };

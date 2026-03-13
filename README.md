@@ -161,6 +161,8 @@ Work units move through a simple lifecycle: **in-progress** → **completed** or
 
 Feature and bugfix pipelines offer an early completion option after implementation (skip review). Epic work units are completed when all topics have finished review.
 
+**Feature-to-epic pivot:** If a feature grows beyond its original scope, convert it to an epic via the manage menu. All existing progress is preserved. After pivoting, continue immediately as an epic to add new topics.
+
 ### Output Formats
 
 Planning supports multiple output formats through an adapter pattern. Each format implements a 5-file contract — about, authoring, reading, updating, and graph — so the planning workflow works identically regardless of where tasks are stored.

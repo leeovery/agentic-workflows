@@ -53,7 +53,7 @@ skills/
     scripts/discovery.js       #   All active work units grouped by type
     references/                #   Display, routing, lifecycle management
       active-work.md           #     Active work units display + selection
-      manage-work-unit.md      #     Complete/cancel work units
+      manage-work-unit.md      #     Complete/cancel/pivot work units
       view-completed.md        #     Browse completed/cancelled work units
   workflow-bridge/             # Pipeline continuation - discovers next phase, enters plan mode
     scripts/discovery.js       #   Topic-specific or phase-centric discovery
@@ -160,12 +160,12 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 
 **Work types and work units**: A *work type* is one of three pipeline shapes: epic, feature, or bugfix. A *work unit* is a named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" is an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
-**Topics**: A *topic* is the item within a phase. For feature/bugfix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All phases use per-topic items in the manifest for epic (including research). For feature/bugfix, research uses flat phase-level status. The discussion phase analyses all research files collectively to derive discussion topics.
+**Topics**: A *topic* is the item within a phase. For feature/bugfix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All work types use per-topic items in the manifest (unified structure). The discussion phase analyses all research files collectively to derive discussion topics.
 
 Work-unit-first directory structure with uniform `{topic}` in all paths. For feature/bugfix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase.
 
 - Manifest: `.workflows/{work_unit}/manifest.json`
-- Research: `.workflows/{work_unit}/research/` (items for epic, flat for feature/bugfix)
+- Research: `.workflows/{work_unit}/research/`
 - Discussion: `.workflows/{work_unit}/discussion/{topic}.md` (flat file)
 - Investigation: `.workflows/{work_unit}/investigation/{topic}.md` (flat file)
 - Specification: `.workflows/{work_unit}/specification/{topic}/specification.md`
@@ -187,6 +187,8 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - `cancelled` — abandoned (set manually via the manage menu)
 
 Discovery scripts filter by status — `workflow-start` and `continue-*` show active work by default, with menu options to view completed/cancelled items or manage lifecycle state. Completed/cancelled work units can be reactivated.
+
+**Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). After pivot, the user can continue immediately as an epic or return to the previous view.
 
 **Epic soft gates**: When navigating forward between phases in an epic (via `continue-epic`), advisory gates warn if prerequisite phase items are still in-progress. These are informational, not blocking — the user can proceed anyway. Covers research→discussion, discussion→specification, specification→planning, and planning→implementation transitions. The system recovers gracefully via re-analysis if the user proceeds early.
 
@@ -241,6 +243,9 @@ The `/migrate` skill keeps workflow files in sync with the current system design
 **Migration 016 — Work-unit restructure:**
 Migration 016 converts phase-first directories to work-unit-first, creates `manifest.json` files from artifact frontmatter, renames `plan.md` to `planning.md` and `tracking.md` to `implementation.md`, and updates `work_type: greenfield` to `epic`. Frontmatter is preserved in migrated artifacts as a safety net — a follow-up migration will strip it once the manifest system is proven.
 
+**Migration 025 — Unified manifest items:**
+Migration 025 ensures all work types use the `phases.<phase>.items.<topic>` layout. For feature/bugfix manifests with legacy flat phase data, it wraps fields into `items[manifest.name]`. Phase-level keys (`analysis_cache`) stay at phase level. Epics are unaffected.
+
 **Critical: Frontmatter extraction in bash scripts**
 
 Workflow documents may contain `---` horizontal rules in body content. NEVER use `sed -n '/^---$/,/^---$/p'` to extract frontmatter — it matches ALL `---` pairs, not just the first frontmatter block, causing body content to leak into extraction results and potential content loss during file rewrites.
@@ -268,7 +273,7 @@ The manifest CLI at `skills/workflow-manifest/scripts/manifest.js` is the single
 Key properties:
 - JSON format, zero dependencies (Node handles JSON natively)
 - Domain-aware flag syntax: `--phase` and `--topic` flags route to correct internal path based on work_type
-- Skills never know manifest internal structure (flat for feature/bugfix, items for epic)
+- Skills never know manifest internal structure — all work types use items
 - File locking for concurrent session safety
 - Validation of structural values (work_type, phase names, statuses, gate modes)
 - Manifest location: `.workflows/{work_unit}/manifest.json`
@@ -289,7 +294,7 @@ $MANIFEST delete {work_unit} phases.research.analysis_cache             # delete
 $MANIFEST get {work_unit} --phase discussion --topic "*" status        # wildcard: collect from all topics
 ```
 
-**Wildcard topic**: `--topic "*"` collects values from all topics in a phase, abstracting away the epic items structure. Works with `get` and `exists` commands. For epic: iterates all items. For feature/bugfix: returns the single flat value.
+**Wildcard topic**: `--topic "*"` collects values from all topics in a phase. Works with `get` and `exists` commands. Iterates all items for any work type. For feature/bugfix: returns the single item (topic matches work unit name).
 
 See `skills/workflow-manifest/SKILL.md` for the full API.
 

@@ -600,7 +600,7 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase for feature creates flat phase status${NC}"
+echo -e "${YELLOW}Test: init-phase for feature creates items structure${NC}"
 setup_fixture
 run_cli init my-feat --work-type feature --description "My Feature" >/dev/null 2>&1
 run_cli init-phase my-feat --phase discussion --topic my-feat >/dev/null 2>&1
@@ -608,15 +608,16 @@ output=$(run_cli_stdout get my-feat --phase discussion --topic my-feat status)
 
 assert_equals "$output" "in-progress" "Feature phase created with in-progress status"
 
-# Verify internal structure is flat (no items key)
+# Verify internal structure uses items (unified with epic)
 content=$(cat "$TEST_DIR/.workflows/my-feat/manifest.json")
-assert_not_contains "$content" '"items"' "Feature manifest has no items key"
+assert_contains "$content" '"items"' "Feature manifest has items key"
+assert_contains "$content" '"my-feat"' "Feature items key matches work unit name"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase for bugfix creates flat phase status${NC}"
+echo -e "${YELLOW}Test: init-phase for bugfix creates items structure${NC}"
 setup_fixture
 run_cli init my-bug --work-type bugfix --description "My Bug" >/dev/null 2>&1
 run_cli init-phase my-bug --phase investigation --topic my-bug >/dev/null 2>&1
@@ -745,17 +746,18 @@ echo ""
 # DOMAIN ROUTING TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: feature get/set routes to flat structure${NC}"
+echo -e "${YELLOW}Test: feature get/set routes through items (unified)${NC}"
 setup_fixture
 run_cli init routing-feat --work-type feature --description "Routing" >/dev/null 2>&1
 run_cli init-phase routing-feat --phase discussion --topic routing-feat >/dev/null 2>&1
 run_cli set routing-feat --phase discussion --topic routing-feat status completed >/dev/null 2>&1
 
-# Verify internal structure is flat
+# Verify internal structure uses items (same as epic)
 content=$(cat "$TEST_DIR/.workflows/routing-feat/manifest.json")
 assert_contains "$content" '"discussion"' "Discussion phase exists"
+assert_contains "$content" '"items"' "Feature manifest has items key"
+assert_contains "$content" '"routing-feat"' "Items key matches work unit name"
 assert_contains "$content" '"status": "completed"' "Status set to completed"
-assert_not_contains "$content" '"items"' "No items in feature manifest"
 
 echo ""
 

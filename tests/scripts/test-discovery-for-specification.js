@@ -22,8 +22,15 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
-        specification: { status: 'in-progress' },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: {
+              status: 'in-progress',
+              sources: { auth: { status: 'extracted' } },
+            },
+          },
+        },
       },
     });
     const r = discover(dir);
@@ -37,11 +44,15 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
+        discussion: { items: { auth: { status: 'completed' } } },
         specification: {
-          status: 'completed',
-          type: 'feature',
-          sources: { 'auth': { status: 'incorporated' } },
+          items: {
+            auth: {
+              status: 'completed',
+              type: 'feature',
+              sources: { 'auth': { status: 'incorporated' } },
+            },
+          },
         },
       },
     });
@@ -58,7 +69,7 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'old', {
       work_type: 'feature',
       phases: {
-        specification: { status: 'superseded', superseded_by: 'new-spec' },
+        specification: { items: { old: { status: 'superseded', superseded_by: 'new-spec' } } },
       },
     });
     createFile(dir, '.workflows/old/specification/old/specification.md', '# Old');
@@ -157,15 +168,15 @@ describe('workflow-specification-entry discovery', () => {
   it('computes discussion counts correctly', () => {
     createManifest(dir, 'a', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { a: { status: 'completed' } } } },
     });
     createManifest(dir, 'b', {
       work_type: 'feature',
-      phases: { discussion: { status: 'in-progress' } },
+      phases: { discussion: { items: { b: { status: 'in-progress' } } } },
     });
     createManifest(dir, 'c', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { c: { status: 'completed' } } } },
     });
     const r = discover(dir);
     assert.strictEqual(r.current_state.discussion_count, 3);
@@ -180,8 +191,8 @@ describe('workflow-specification-entry discovery', () => {
       work_type: 'feature',
       phases: {
         discussion: {
-          status: 'completed',
           analysis_cache: { checksum: null, generated: '2026-01-01' },
+          items: { auth: { status: 'completed' } },
         },
       },
     });
@@ -194,8 +205,8 @@ describe('workflow-specification-entry discovery', () => {
       work_type: 'feature',
       phases: {
         discussion: {
-          status: 'completed',
           analysis_cache: { checksum, generated: '2026-01-01' },
+          items: { auth: { status: 'completed' } },
         },
       },
     });
@@ -219,7 +230,7 @@ describe('workflow-specification-entry discovery', () => {
   it('computes discussions checksum', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth discussion');
     const r = discover(dir);
@@ -229,7 +240,7 @@ describe('workflow-specification-entry discovery', () => {
   it('returns null checksum when no discussion files', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     const r = discover(dir);
     assert.strictEqual(r.current_state.discussions_checksum, null);
@@ -239,7 +250,7 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'old', {
       work_type: 'feature',
       phases: {
-        specification: { status: 'superseded', superseded_by: 'new-spec' },
+        specification: { items: { old: { status: 'superseded', superseded_by: 'new-spec' } } },
       },
     });
     createFile(dir, '.workflows/old/specification/old/specification.md', '# Old');
@@ -251,7 +262,7 @@ describe('workflow-specification-entry discovery', () => {
   it('feature without spec shows has_individual_spec false', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     const r = discover(dir);
     assert.strictEqual(r.discussions[0].has_individual_spec, false);
@@ -261,8 +272,8 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
-        specification: { status: 'in-progress' },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
       },
     });
     createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
@@ -276,8 +287,8 @@ describe('workflow-specification-entry discovery', () => {
       work_type: 'feature',
       phases: {
         discussion: {
-          status: 'completed',
           analysis_cache: { checksum: 'stale-hash', generated: '2026-01-01' },
+          items: { auth: { status: 'completed' } },
         },
       },
     });
@@ -290,8 +301,8 @@ describe('workflow-specification-entry discovery', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'completed' },
-        specification: { status: 'in-progress' },
+        investigation: { items: { 'login-crash': { status: 'completed' } } },
+        specification: { items: { 'login-crash': { status: 'in-progress' } } },
       },
     });
     createFile(dir, '.workflows/login-crash/specification/login-crash/specification.md', '# Spec');
