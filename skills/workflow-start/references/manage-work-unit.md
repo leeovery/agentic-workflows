@@ -106,12 +106,24 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} work_type epic
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-"{selected.name:(titlecase)}" converted from feature to epic.
-Continue it with /continue-epic.
+· · · · · · · · · · · ·
+**{selected.name:(titlecase)}** converted from feature to epic.
+
+- **`c`/`continue`** — Continue working on this epic now
+- **`b`/`back`** — Return to previous view
+· · · · · · · · · · · ·
 ```
+
+**STOP.** Wait for user response.
+
+**If user chose `c`/`continue`:**
+
+Invoke the `/continue-epic` skill. This is terminal — do not return to the caller.
+
+**If user chose `b`/`back`:**
 
 → Return to caller to redisplay main view (re-run discovery, re-render from top).
 
