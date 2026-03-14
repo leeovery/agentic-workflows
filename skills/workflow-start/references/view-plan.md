@@ -8,13 +8,13 @@ Display a readable summary of a plan's phases, tasks, and status.
 
 ## A. Determine Topic
 
-**If work_type is `feature` or `bugfix`:**
+#### If work_type is `feature` or `bugfix`
 
 Set `topic` = `selected.name`.
 
 → Proceed to **B. Read Plan**.
 
-**If work_type is `epic`:**
+#### If work_type is `epic`
 
 Query manifest for all planning topics:
 
@@ -22,7 +22,7 @@ Query manifest for all planning topics:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase planning --topic "*" status
 ```
 
-#### If only one topic exists
+**If only one topic exists:**
 
 > *Output the next fenced block as a code block:*
 
@@ -34,7 +34,7 @@ Set `topic` to that topic.
 
 → Proceed to **B. Read Plan**.
 
-#### If multiple topics exist
+**If multiple topics exist:**
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -58,13 +58,13 @@ Set `topic` to the selected topic.
 
 ## B. Read Plan
 
-Get the format:
+Read the `format` from the manifest:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase planning --topic {topic} format
 ```
 
-Load **[output-formats/{format}/reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions to read all tasks for the plan.
+Load **[reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.
 
 → Proceed to **C. Display Summary**.
 
