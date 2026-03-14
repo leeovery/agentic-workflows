@@ -164,6 +164,21 @@ function resolvePhaseSegments(phase, topic, fieldSegments) {
 }
 
 /**
+ * Resolve field segments to full manifest path.
+ * At work-unit level (no phase), field maps directly to manifest root.
+ * At phase/topic level, field is prepended with the phase path.
+ */
+function resolveSegments(phase, topic, fieldSegments) {
+  return phase ? resolvePhaseSegments(phase, topic, fieldSegments) : fieldSegments;
+}
+
+function requireWorkUnit(workUnit) {
+  if (!fs.existsSync(manifestPath(workUnit))) {
+    die(`Work unit "${workUnit}" not found`);
+  }
+}
+
+/**
  * Resolve wildcard topic — collect field values from all topics in a phase.
  * All work types use items structure.
  *
@@ -415,14 +430,9 @@ function cmdSet(args) {
   const fieldSegments = args[1].split('.');
   const value = parseValue(args[2]);
 
-  if (!fs.existsSync(manifestPath(workUnit))) {
-    die(`Work unit "${workUnit}" not found`);
-  }
+  requireWorkUnit(workUnit);
 
-  // Resolve segments: work-unit level uses field directly, phase/topic level prepends phase path
-  const segments = phase
-    ? resolvePhaseSegments(phase, topic, fieldSegments)
-    : fieldSegments;
+  const segments = resolveSegments(phase, topic, fieldSegments);
 
   if (typeof value === 'string') {
     validateSet(segments, value);
@@ -441,13 +451,9 @@ function cmdDelete(args) {
   const { workUnit, phase, topic } = parsePath(args[0]);
   const fieldSegments = args[1].split('.');
 
-  if (!fs.existsSync(manifestPath(workUnit))) {
-    die(`Work unit "${workUnit}" not found`);
-  }
+  requireWorkUnit(workUnit);
 
-  const segments = phase
-    ? resolvePhaseSegments(phase, topic, fieldSegments)
-    : fieldSegments;
+  const segments = resolveSegments(phase, topic, fieldSegments);
 
   withLock(workUnit, () => {
     const manifest = readManifest(workUnit);
@@ -509,9 +515,7 @@ function cmdInitPhase(args) {
     die('Usage: init-phase <work-unit>.<phase>.<topic>');
   }
 
-  if (!fs.existsSync(manifestPath(workUnit))) {
-    die(`Work unit "${workUnit}" not found`);
-  }
+  requireWorkUnit(workUnit);
 
   withLock(workUnit, () => {
     const manifest = readManifest(workUnit);
@@ -539,13 +543,9 @@ function cmdPush(args) {
   const fieldSegments = args[1].split('.');
   const value = parseValue(args[2]);
 
-  if (!fs.existsSync(manifestPath(workUnit))) {
-    die(`Work unit "${workUnit}" not found`);
-  }
+  requireWorkUnit(workUnit);
 
-  const segments = phase
-    ? resolvePhaseSegments(phase, topic, fieldSegments)
-    : fieldSegments;
+  const segments = resolveSegments(phase, topic, fieldSegments);
 
   withLock(workUnit, () => {
     const manifest = readManifest(workUnit);
