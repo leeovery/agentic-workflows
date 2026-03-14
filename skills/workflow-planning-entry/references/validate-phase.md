@@ -7,13 +7,13 @@
 Check whether a plan already exists for this topic.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase planning --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic}
 ```
 
 #### If exists (`true`)
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
 ```
 
 **If status is `completed`:**
@@ -21,7 +21,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} status in-progress
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

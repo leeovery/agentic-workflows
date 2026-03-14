@@ -56,7 +56,7 @@ Re-invoke the agent with the same inputs.
 
 Check `author_gate_mode` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} author_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} author_gate_mode
 ```
 
 #### If `author_gate_mode: auto`
@@ -118,7 +118,7 @@ Mark the task `approved` in the scratch file. Continue to the next task.
 
 Mark the task `approved` in the scratch file. Set all remaining `pending` tasks to `approved`. Update `author_gate_mode` in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} author_gate_mode auto
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} author_gate_mode auto
 ```
 
 → Proceed to **F. Write to Plan**.
@@ -175,12 +175,12 @@ For each approved task in the scratch file, in order:
 3. Update the task table in the Plan Index File: set `status: authored` and set `External ID` to the external identifier for the task as exposed by the output format
 4. If the manifest's `external_id` is empty, set it to the external identifier for the plan as exposed by the output format:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_id {external_id}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_id {external_id}
    ```
 5. If the current phase's `external_id` is empty, set it to the external identifier for the phase as exposed by the output format
 6. Advance the manifest planning position to the next pending task (or next phase if this was the last task):
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task {next_task_id}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task {next_task_id}
    ```
 7. Commit: `planning({work_unit}): author task {internal_id} ({task name})`
 

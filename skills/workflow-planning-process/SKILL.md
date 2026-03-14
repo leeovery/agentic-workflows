@@ -34,9 +34,9 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 5. **Check gate modes** via manifest CLI — if `auto`, the user previously opted in during this session. Preserve these values.
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} task_list_gate_mode`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} author_gate_mode`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} finding_gate_mode`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_list_gate_mode`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} author_gate_mode`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} finding_gate_mode`
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -69,18 +69,18 @@ Check if a Plan Index File already exists at `.workflows/{work_unit}/planning/{t
 
 Check the planning status via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
 ```
 
 Note the current phase and task position from the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} phase
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} task
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} phase
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task
 ```
 
 Check `spec_commit` from the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} spec_commit
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} spec_commit
 ```
 
 Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the user with an informed choice:
@@ -114,7 +114,7 @@ Continue or restart?
 
 1. Read the `format` from the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
    ```
 2. Read **[output-formats.md](references/output-formats.md)**, find the entry matching the format, and load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
 3. Follow the authoring file's cleanup instructions to remove Authored Tasks for this topic
@@ -172,15 +172,15 @@ Once selected:
 2. Create the Plan Index File at `.workflows/{work_unit}/planning/{topic}/planning.md` using the **Title** template from **[plan-index-schema.md](references/plan-index-schema.md)**.
 3. Register planning and set metadata in the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase planning --topic {topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} format {chosen-format}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning format {chosen-format}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} spec_commit {commit-hash}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task_list_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} author_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} finding_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} phase 1
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task ~
+   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.planning.{topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} format {chosen-format}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning format {chosen-format}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} spec_commit {commit-hash}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_list_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} author_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} finding_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase 1
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
    ```
 
 4. Commit: `planning({work_unit}): initialize plan`
@@ -193,18 +193,18 @@ Once selected:
 
 1. Read the `format` from the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
    ```
 2. Read **[output-formats.md](references/output-formats.md)**, find the entry matching the format, and load the format's **[about.md](references/output-formats/{format}/about.md)** and **[authoring.md](references/output-formats/{format}/authoring.md)**
 3. Reset gate modes to `gated` in the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task_list_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} author_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} finding_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_list_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} author_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} finding_gate_mode gated
    ```
 4. Update `spec_commit` to current HEAD:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} spec_commit $(git rev-parse HEAD)
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} spec_commit $(git rev-parse HEAD)
    ```
 
 → Proceed to **Step 3**.
@@ -292,7 +292,7 @@ Re-present the sign-off prompt above.
 
 1. **Update plan status** via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} status completed
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} status completed
    ```
 2. **Final commit** — Commit the completed plan: `planning({work_unit}): complete plan`
 3. **Present completion summary**:

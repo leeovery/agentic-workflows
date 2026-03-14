@@ -92,7 +92,7 @@ Found existing discussion for **{topic:(titlecase)}**.
    Populate from handoff context and user input as before.
 4. Register discussion in manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase discussion --topic {topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.discussion.{topic}
    ```
 5. Commit the initial file
 

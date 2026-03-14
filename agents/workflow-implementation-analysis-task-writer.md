@@ -47,11 +47,11 @@ Append at the end of the Plan Index File body, following the **Phase Entry** and
 - Internal IDs must match the IDs used in the created task files
 - Check the planning `external_id` via the manifest CLI:
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} external_id
+  node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_id
   ```
   If the command errors (field doesn't exist) or returns empty, set it to the external identifier for the plan from the output format:
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_id "{external_id_value}"
+  node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_id "{external_id_value}"
   ```
 
 ## Hard Rules

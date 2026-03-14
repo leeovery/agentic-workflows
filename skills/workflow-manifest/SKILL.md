@@ -16,45 +16,66 @@ CLI tool for reading and writing work unit manifest files. Single source of trut
 node .claude/skills/workflow-manifest/scripts/manifest.js <command> [args]
 ```
 
-## Domain-Aware Flag Syntax
+## Dot-Path Syntax
 
-Skills provide logical coordinates via `--phase` and `--topic` flags. The CLI routes to the correct JSON path internally. All work types use the same `items` structure — skills never need to know the manifest's internal layout.
+Every command follows: `command path [field] [value]`
+
+The path joins work unit, phase, and topic with dots. The field is always a separate argument. Segment count in the path determines the access level:
+
+| Segments | Level | Path | Field | Resolves to |
+|----------|-------|------|-------|-------------|
+| 1 | Work unit | `my-epic` | `work_type` | `work_type` |
+| 2 | Phase | `my-epic.planning` | `format` | `phases.planning.format` |
+| 3 | Topic | `my-epic.discussion.auth-flow` | `status` | `phases.discussion.items.auth-flow.status` |
 
 ```bash
 MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
 
-# Phase operations (--phase and --topic flags):
-$MANIFEST get {work_unit} --phase discussion --topic {topic} [field.path]
-$MANIFEST get {work_unit} --phase discussion --topic "*" [field.path]   # wildcard: all topics
-$MANIFEST set {work_unit} --phase discussion --topic {topic} field.path value
-$MANIFEST init-phase {work_unit} --phase discussion --topic {topic}
-
-# Work-unit operations (no flags):
+# Work-unit level (1 segment):
 $MANIFEST get {work_unit} [field]
 $MANIFEST set {work_unit} field value
 $MANIFEST delete {work_unit} field.path
+$MANIFEST exists {work_unit} [field.path]
+
+# Phase level (2 segments):
+$MANIFEST get {work_unit}.{phase} [field]
+$MANIFEST set {work_unit}.{phase} field value
+$MANIFEST delete {work_unit}.{phase} field.path
+
+# Topic level (3 segments):
+$MANIFEST get {work_unit}.{phase}.{topic} [field.path]
+$MANIFEST set {work_unit}.{phase}.{topic} field.path value
+$MANIFEST delete {work_unit}.{phase}.{topic} field.path
+$MANIFEST init-phase {work_unit}.{phase}.{topic}
+
+# Wildcard (3 segments, * as topic):
+$MANIFEST get {work_unit}.{phase}.* [field.path]
+$MANIFEST exists {work_unit}.{phase}.* [field.path]
 
 # Existence checks (always exit 0, outputs true/false):
 $MANIFEST exists {work_unit}
 $MANIFEST exists {work_unit} [field.path]
-$MANIFEST exists {work_unit} --phase <phase> [--topic <topic>] [field.path]
-$MANIFEST exists {work_unit} --phase <phase> --topic "*" [field.path]   # wildcard: any topic
+$MANIFEST exists {work_unit}.{phase} [field.path]
+$MANIFEST exists {work_unit}.{phase}.{topic} [field.path]
 
 # Management (unchanged):
 $MANIFEST init name --work-type type --description "..."
 $MANIFEST list [--status s] [--work-type t]
 ```
 
-**`--topic` is optional for get** — if omitted, returns the whole phase object. Discovery scripts use this to iterate items:
-```bash
-$MANIFEST get {work_unit} --phase discussion              # whole phase (for iteration)
-$MANIFEST get {work_unit} --phase discussion --topic {topic} status  # specific item field
-```
+**Phase-level access** (2-segment path) — accesses fields directly on the phase object (`phases.{phase}.{field}`). Useful for phase-wide metadata like `format`, `analysis_cache`, etc.
 
-**`--topic "*"` (wildcard)** — collects values from all topics in a phase. Supported by `get` and `exists` only. For epic: iterates all items. For feature/bugfix: returns the single item (topic matches work unit name).
+**Topic-level access** (3-segment path) — routes through items: `phases.{phase}.items.{topic}.{field}`. Used for per-topic state like `status`, gate modes, etc.
+
+**Wildcard topic** (`*` as third segment) — collects values from all topics in a phase. Supported by `get` and `exists` only. For epic: iterates all items. For feature/bugfix: returns the single item.
 
 **Internal routing (CLI handles, skills don't know):**
-- All work types: `--phase discussion --topic auth-flow status` → `phases.discussion.items.auth-flow.status`
+- `my-epic.discussion.auth-flow status` → `phases.discussion.items.auth-flow.status`
+
+### Naming Constraints
+
+- **Work unit names must not contain dots** — dots are the path separator
+- **Work unit names must not match phase names** (`research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`)
 
 ## Commands
 
@@ -66,13 +87,13 @@ Create a new work unit manifest.
 node .claude/skills/workflow-manifest/scripts/manifest.js init <name> --work-type <epic|feature|bugfix> --description "..."
 ```
 
-Creates `.workflows/<name>/manifest.json` with identity fields and empty phases. Errors if manifest already exists.
+Creates `.workflows/<name>/manifest.json` with identity fields and empty phases. Errors if manifest already exists. Rejects names containing dots or matching phase names.
 
 ### `get`
 
-Read a value or subtree. Three modes:
+Read a value or subtree. Three levels:
 
-**Work-unit level** (no flags):
+**Work-unit level** (1 segment):
 ```bash
 # Full manifest
 node .claude/skills/workflow-manifest/scripts/manifest.js get <name>
@@ -84,22 +105,28 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get <name> status
 node .claude/skills/workflow-manifest/scripts/manifest.js get <name> phases
 ```
 
-**Phase level** (with flags):
+**Phase level** (2 segments):
 ```bash
 # Whole phase object
-node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase discussion
+node .claude/skills/workflow-manifest/scripts/manifest.js get <name>.discussion
 
-# Specific field within phase+topic context
-node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase discussion --topic auth-flow status
-
-# Nested field path
-node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase specification --topic auth-flow sources.auth-api.status
+# Specific field within phase
+node .claude/skills/workflow-manifest/scripts/manifest.js get <name>.planning format
 ```
 
-**Wildcard topic** (`--topic "*"`):
+**Topic level** (3 segments):
+```bash
+# Specific field within topic
+node .claude/skills/workflow-manifest/scripts/manifest.js get <name>.discussion.auth-flow status
+
+# Nested field path
+node .claude/skills/workflow-manifest/scripts/manifest.js get <name>.specification.auth-flow sources.auth-api.status
+```
+
+**Wildcard topic** (3 segments, `*` as topic):
 ```bash
 # Collect status from all topics in a phase
-node .claude/skills/workflow-manifest/scripts/manifest.js get <name> --phase discussion --topic "*" status
+node .claude/skills/workflow-manifest/scripts/manifest.js get <name>.discussion.* status
 ```
 
 Output is a JSON array of `{topic, value}` objects:
@@ -116,18 +143,24 @@ Errors to stderr with non-zero exit if the path does not exist.
 
 ### `set`
 
-Write a value. Two modes:
+Write a value. Three levels:
 
-**Work-unit level** (no flags):
+**Work-unit level** (1 segment):
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set <name> description "Updated description"
 node .claude/skills/workflow-manifest/scripts/manifest.js set <name> status completed
 ```
 
-**Phase level** (with flags):
+**Phase level** (2 segments):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase discussion --topic auth-flow status completed
-node .claude/skills/workflow-manifest/scripts/manifest.js set <name> --phase planning --topic auth-flow task_list_gate_mode auto
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name>.planning format local-markdown
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name>.research analysis_cache '{"checksum":"..."}'
+```
+
+**Topic level** (3 segments):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name>.discussion.auth-flow status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set <name>.planning.auth-flow task_list_gate_mode auto
 ```
 
 Values are parsed as JSON first (for arrays, objects, numbers, booleans), falling back to string. Validates structural fields:
@@ -140,16 +173,21 @@ Values are parsed as JSON first (for arrays, objects, numbers, booleans), fallin
 
 ### `delete`
 
-Remove a key from the manifest. Two modes:
+Remove a key from the manifest. Three levels:
 
-**Work-unit level** (no flags):
+**Work-unit level** (1 segment):
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js delete <name> <field.path>
 ```
 
-**Phase level** (with flags):
+**Phase level** (2 segments):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete <name> --phase research --topic <topic> analysis_cache
+node .claude/skills/workflow-manifest/scripts/manifest.js delete <name>.research analysis_cache
+```
+
+**Topic level** (3 segments):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js delete <name>.implementation.auth completed_tasks
 ```
 
 Errors if the path does not exist. Deletes the key entirely (not just setting to null). Parent keys are preserved.
@@ -176,28 +214,33 @@ Output: JSON array of manifest objects.
 
 ### `init-phase`
 
-Register a topic within a phase. All work types create `phases.<phase>.items.<topic>` with `{ "status": "in-progress" }`.
+Register a topic within a phase. Creates `phases.<phase>.items.<topic>` with `{ "status": "in-progress" }`. Requires a 3-segment path.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init-phase <name> --phase discussion --topic <topic>
+node .claude/skills/workflow-manifest/scripts/manifest.js init-phase <name>.discussion.<topic>
 ```
 
 Errors if item/phase already exists.
 
 ### `push`
 
-Append a value to an array field. Creates the array if it doesn't exist. Errors if the field exists but is not an array. Two modes:
+Append a value to an array field. Creates the array if it doesn't exist. Errors if the field exists but is not an array. Three levels:
 
-**Work-unit level** (no flags):
+**Work-unit level** (1 segment):
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js push <name> tags "v1"
 ```
 
-**Phase level** (with flags):
+**Phase level** (2 segments):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js push <name> --phase implementation --topic <topic> completed_tasks "{topic}-1-1"
-node .claude/skills/workflow-manifest/scripts/manifest.js push <name> --phase implementation --topic <topic> completed_phases 1
-node .claude/skills/workflow-manifest/scripts/manifest.js push <name> --phase review --topic <topic> reviewed_tasks "{topic}-1-1"
+node .claude/skills/workflow-manifest/scripts/manifest.js push <name>.research analysis_cache.files "a.md"
+```
+
+**Topic level** (3 segments):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js push <name>.implementation.{topic} completed_tasks "{topic}-1-1"
+node .claude/skills/workflow-manifest/scripts/manifest.js push <name>.implementation.{topic} completed_phases 1
+node .claude/skills/workflow-manifest/scripts/manifest.js push <name>.review.{topic} reviewed_tasks "{topic}-1-1"
 ```
 
 ### `exists`
@@ -208,21 +251,24 @@ Check whether a work unit, field, or phase entry exists. Always exits 0 — both
 # Does the work unit exist?
 node .claude/skills/workflow-manifest/scripts/manifest.js exists <name>
 
-# Does a field path exist?
-node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> phases.discussion
+# Does a field path exist? (work-unit level)
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> work_type
 
-# Does a phase/topic entry exist?
-node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic auth-flow
-node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic auth-flow status
+# Does a phase-level field exist?
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name>.discussion
+
+# Does a topic entry exist?
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name>.discussion.auth-flow
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name>.discussion.auth-flow status
 
 # Wildcard: does any topic in the phase have this field?
-node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic "*"
-node .claude/skills/workflow-manifest/scripts/manifest.js exists <name> --phase discussion --topic "*" status
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name>.discussion.*
+node .claude/skills/workflow-manifest/scripts/manifest.js exists <name>.discussion.* status
 ```
 
 If the work unit doesn't exist and a deeper path is requested, outputs `false` (no error). Actual usage errors (missing args, invalid phase name) still use `die()`.
 
-**Wildcard topic** (`--topic "*"`) — outputs `true` if any topic in the phase matches (has the field, or exists at all if no field specified), `false` otherwise. Always exits 0.
+**Wildcard topic** (`*` as third segment) — outputs `true` if any topic in the phase matches (has the field, or exists at all if no field specified), `false` otherwise. Always exits 0.
 
 ## Validation
 
@@ -254,4 +300,4 @@ Item-level statuses within epic phases follow the same phase-level rules.
 - **File locking**: `.lock` file next to manifest, exclusive create (`wx` flag), 30s stale detection. Prevents concurrent session conflicts.
 - **Atomic writes**: write to `.tmp` then `fs.renameSync`. No partial writes.
 - **Auto-creation**: `init` creates the work unit directory. Phase directories are created by skills when they enter that phase, not by the CLI.
-- **Domain routing**: `--phase` and `--topic` flags let skills use logical coordinates. The CLI resolves to the correct internal JSON path — all work types use `items` structure.
+- **Domain routing**: The dot-path syntax lets skills use logical coordinates. The CLI resolves to the correct internal JSON path — all work types use `items` structure.

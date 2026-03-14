@@ -24,8 +24,8 @@ Context: This consolidates all discussions into a single unified specification. 
 
 After the unified specification is complete, mark the incorporated specs as superseded via manifest CLI:
 
-    set {source-work-unit} --phase specification --topic {source-topic} status superseded
-    set {source-work-unit} --phase specification --topic {source-topic} superseded_by unified
+    set {source-work-unit}.specification.{source-topic} status superseded
+    set {source-work-unit}.specification.{source-topic} superseded_by unified
 
 ---
 Invoke the workflow-specification-process skill.

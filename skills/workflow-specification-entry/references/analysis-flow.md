@@ -65,8 +65,8 @@ When forming groupings:
 
 Write cache metadata to manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} phases.discussion.analysis_cache.checksum "{checksum from current_state.discussions_checksum}"
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} phases.discussion.analysis_cache.generated "{ISO date}"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.discussion analysis_cache.checksum "{checksum from current_state.discussions_checksum}"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.discussion analysis_cache.generated "{ISO date}"
 ```
 
 Create the cache directory if needed:

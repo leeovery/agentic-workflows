@@ -51,7 +51,7 @@ Store work_unit for the handoff.
 Check if discussion phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase discussion --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.discussion.{topic}
 ```
 
 **If exists (`true`):**

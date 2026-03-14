@@ -15,14 +15,14 @@ Invoke the [workflow-implementation-process](../../workflow-implementation-proce
 Query format and external_id from manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} external_id
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_id
 ```
 
 Check implementation status:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} status
 ```
 
 ```

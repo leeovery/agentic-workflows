@@ -20,7 +20,7 @@ F. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle {N}`).
+Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_cycle {N}`).
 
 #### If `analysis_cycle` <= 3
 
@@ -150,7 +150,7 @@ impl({work_unit}): analysis cycle {N} — synthesis
 
 Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md`.
 
-Check `analysis_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} analysis_gate_mode`).
+Check `analysis_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} analysis_gate_mode`).
 
 Present an overview:
 

@@ -13,7 +13,7 @@ New discussion entry: topic was provided by the caller.
 Check research status via manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.research status
 ```
 
 **If research status is `completed`:**

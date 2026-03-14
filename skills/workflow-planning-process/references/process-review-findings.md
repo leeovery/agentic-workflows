@@ -87,7 +87,7 @@ Show the finding with its full fix content, read directly from the tracking file
 
 Check `finding_gate_mode` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} finding_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} finding_gate_mode
 ```
 
 #### If `finding_gate_mode: auto`
@@ -144,7 +144,7 @@ Incorporate feedback and re-present the proposed fix **in full**. Update the tra
 2. Update the tracking file: set resolution to "Fixed"
 3. Update `finding_gate_mode` in the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} finding_gate_mode auto
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} finding_gate_mode auto
    ```
 4. Commit
 5. Process all remaining findings using the auto-mode flow above

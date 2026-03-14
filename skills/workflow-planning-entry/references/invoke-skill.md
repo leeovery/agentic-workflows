@@ -19,7 +19,7 @@ Construct the handoff based on the plan state.
 Query the manifest for any existing plan format preference:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning format
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning format
 ```
 
 ```

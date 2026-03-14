@@ -20,7 +20,7 @@ Overview of remaining PRs for the work-type architecture. PR 1 (Big Bang) is the
 | ✅ | PR 12 | Research-to-Discussion Handoff | [PR12-FEATURE-RESEARCH-ANALYSIS.md](PR12-FEATURE-RESEARCH-ANALYSIS.md) |
 | ✅ | PR 13 | Manifest CLI — Wildcard Topic | [PR13-MANIFEST-WILDCARD-TOPIC.md](PR13-MANIFEST-WILDCARD-TOPIC.md) |
 | ✅ | PR 15 | Default Plan Format Inheritance | [PR15-DEFAULT-PLAN-FORMAT.md](PR15-DEFAULT-PLAN-FORMAT.md) |
-| | PR 14 | Manifest CLI — Dot-Path Syntax | [PR14-MANIFEST-DOT-PATH-SYNTAX.md](PR14-MANIFEST-DOT-PATH-SYNTAX.md) |
+| ✅ | PR 14 | Manifest CLI — Dot-Path Syntax | [PR14-MANIFEST-DOT-PATH-SYNTAX.md](PR14-MANIFEST-DOT-PATH-SYNTAX.md) |
 
 ## Why This Order
 

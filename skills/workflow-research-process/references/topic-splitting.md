@@ -40,7 +40,7 @@ For each split topic:
 3. Remove the extracted content from the source file
 4. Init manifest item for the new topic:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase research --topic {topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.research.{topic}
    ```
 
 Commit after splitting.

@@ -18,9 +18,6 @@ const VALID_PHASES = [
   'review'
 ];
 
-// Phases that have no topics — --topic is not required for these
-const TOPICLESS_PHASES = [];
-
 const VALID_PHASE_STATUSES = {
   research:       ['in-progress', 'completed'],
   discussion:     ['in-progress', 'completed'],
@@ -127,45 +124,58 @@ function withLock(name, fn) {
 }
 
 // ---------------------------------------------------------------------------
-// Flag Parsing
+// Path Parsing
 // ---------------------------------------------------------------------------
 
 /**
- * Extract --phase and --topic flags from args.
- * Returns { phase, topic, positional } where positional is remaining args.
+ * Parse a dot-path argument into work unit, phase, and topic.
+ * Segment count determines the access level:
+ *   1 segment  → work-unit level
+ *   2 segments → phase level
+ *   3 segments → topic level
  */
-function parseFlags(args) {
-  let phase = null;
-  let topic = null;
-  const positional = [];
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--phase' && i + 1 < args.length) {
-      phase = args[++i];
-    } else if (args[i] === '--topic' && i + 1 < args.length) {
-      topic = args[++i];
-    } else {
-      positional.push(args[i]);
-    }
+function parsePath(pathArg) {
+  const parts = pathArg.split('.');
+  if (parts.length === 1) return { workUnit: parts[0], phase: null, topic: null };
+  if (parts.length === 2) {
+    validatePhase(parts[1]);
+    return { workUnit: parts[0], phase: parts[1], topic: null };
   }
-
-  return { phase, topic, positional };
+  if (parts.length === 3) {
+    validatePhase(parts[1]);
+    return { workUnit: parts[0], phase: parts[1], topic: parts[2] };
+  }
+  die(`Invalid path "${pathArg}". Expected: <work-unit>[.<phase>[.<topic>]]`);
 }
 
 /**
  * Resolve the internal JSON path segments for a phase+topic operation.
  * All work types route through items when topic is provided.
  *
- * @param {string} workType - The work unit's work_type (kept for call-site compat)
  * @param {string} phase - The phase name
  * @param {string|null} topic - The topic name (null = whole phase)
  * @param {string[]} fieldSegments - Additional field path segments
  * @returns {string[]} Full path segments from manifest root
  */
-function resolvePhaseSegments(workType, phase, topic, fieldSegments) {
+function resolvePhaseSegments(phase, topic, fieldSegments) {
   const base = ['phases', phase];
   if (!topic) return [...base, ...fieldSegments];
   return [...base, 'items', topic, ...fieldSegments];
+}
+
+/**
+ * Resolve field segments to full manifest path.
+ * At work-unit level (no phase), field maps directly to manifest root.
+ * At phase/topic level, field is prepended with the phase path.
+ */
+function resolveSegments(phase, topic, fieldSegments) {
+  return phase ? resolvePhaseSegments(phase, topic, fieldSegments) : fieldSegments;
+}
+
+function requireWorkUnit(workUnit) {
+  if (!fs.existsSync(manifestPath(workUnit))) {
+    die(`Work unit "${workUnit}" not found`);
+  }
 }
 
 /**
@@ -344,6 +354,8 @@ function cmdInit(args) {
 
   if (!name) die('Usage: init <name> --work-type <type> --description "..."');
   if (!workType) die('--work-type is required');
+  if (name.includes('.')) die(`Work unit name "${name}" must not contain dots`);
+  if (VALID_PHASES.includes(name)) die(`Work unit name "${name}" conflicts with a phase name`);
 
   validateWorkType(workType);
 
@@ -370,160 +382,85 @@ function cmdInit(args) {
 }
 
 function cmdGet(args) {
-  const { phase, topic, positional } = parseFlags(args);
+  if (args.length < 1) die('Usage: get <path> [field.path]');
 
-  if (positional.length < 1) die('Usage: get <name> [--phase <phase>] [--topic <topic>] [field.path]');
-
-  const name = positional[0];
-  const manifest = readManifest(name);
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const manifest = readManifest(workUnit);
 
   if (!phase) {
-    // Work-unit-level: get <name> [field]
-    if (positional.length === 1) {
+    // Work-unit-level: get <wu> [field]
+    if (args.length === 1) {
       process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
       return;
     }
-
-    const segments = positional[1].split('.');
+    const segments = args[1].split('.');
     const value = getByPath(manifest, segments);
     if (value === undefined) {
-      die(`Path "${positional[1]}" not found in "${name}"`);
+      die(`Path "${args[1]}" not found in "${workUnit}"`);
     }
     outputValue(value);
     return;
   }
 
-  // Phase-level: get <name> --phase <phase> [--topic <topic>] [field.path]
-  validatePhase(phase);
-
-  const fieldSegments = positional.length > 1 ? positional[1].split('.') : [];
+  // Phase/topic level
+  const fieldSegments = args.length > 1 ? args[1].split('.') : [];
 
   // Wildcard topic: collect values from all topics
   if (topic === '*') {
     const results = resolveWildcardTopic(manifest, phase, fieldSegments);
     if (results.length === 0) {
-      die(`No items found in phase "${phase}" of "${name}"`);
+      die(`No items found in phase "${phase}" of "${workUnit}"`);
     }
     process.stdout.write(JSON.stringify(results, null, 2) + '\n');
     return;
   }
 
-  const segments = resolvePhaseSegments(manifest.work_type, phase, topic, fieldSegments);
-
+  const segments = resolvePhaseSegments(phase, topic, fieldSegments);
   const value = getByPath(manifest, segments);
   if (value === undefined) {
-    die(`Path "${segments.join('.')}" not found in "${name}"`);
+    die(`Path "${segments.join('.')}" not found in "${workUnit}"`);
   }
   outputValue(value);
 }
 
 function cmdSet(args) {
-  const { phase, topic, positional } = parseFlags(args);
+  if (args.length < 3) die('Usage: set <path> <field> <value>');
 
-  if (!phase) {
-    // Work-unit-level: set <name> <field> <value>
-    if (positional.length !== 3) die('Usage: set <name> <field> <value>');
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+  const value = parseValue(args[2]);
 
-    const name = positional[0];
-    const segments = positional[1].split('.');
-    const value = parseValue(positional[2]);
+  requireWorkUnit(workUnit);
 
-    if (typeof value === 'string') {
-      validateSet(segments, value);
-    }
-
-    if (!fs.existsSync(manifestPath(name))) {
-      die(`Work unit "${name}" not found`);
-    }
-
-    withLock(name, () => {
-      const manifest = readManifest(name);
-      setByPath(manifest, segments, value);
-      writeManifestAtomic(name, manifest);
-    });
-    return;
-  }
-
-  // Phase-level: set <name> --phase <phase> [--topic <topic>] <field.path> <value>
-  if (positional.length !== 3) {
-    die('Usage: set <name> --phase <phase> [--topic <topic>] <field.path> <value>');
-  }
-
-  const name = positional[0];
-  validatePhase(phase);
-  if (!topic && !TOPICLESS_PHASES.includes(phase)) {
-    die(`--topic is required for phase "${phase}"`);
-  }
-
-  const fieldSegments = positional[1].split('.');
-  const value = parseValue(positional[2]);
-
-  if (!fs.existsSync(manifestPath(name))) {
-    die(`Work unit "${name}" not found`);
-  }
-
-  const manifest = readManifest(name);
-  const segments = resolvePhaseSegments(manifest.work_type, phase, topic, fieldSegments);
+  const segments = resolveSegments(phase, topic, fieldSegments);
 
   if (typeof value === 'string') {
     validateSet(segments, value);
   }
 
-  withLock(name, () => {
-    const fresh = readManifest(name);
-    setByPath(fresh, segments, value);
-    writeManifestAtomic(name, fresh);
+  withLock(workUnit, () => {
+    const manifest = readManifest(workUnit);
+    setByPath(manifest, segments, value);
+    writeManifestAtomic(workUnit, manifest);
   });
 }
 
 function cmdDelete(args) {
-  const { phase, topic, positional } = parseFlags(args);
+  if (args.length < 2) die('Usage: delete <path> <field.path>');
 
-  if (!phase) {
-    // Work-unit-level: delete <name> <field.path>
-    if (positional.length !== 2) die('Usage: delete <name> <field.path>');
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
 
-    const name = positional[0];
-    const segments = positional[1].split('.');
+  requireWorkUnit(workUnit);
 
-    if (!fs.existsSync(manifestPath(name))) {
-      die(`Work unit "${name}" not found`);
-    }
+  const segments = resolveSegments(phase, topic, fieldSegments);
 
-    withLock(name, () => {
-      const manifest = readManifest(name);
-      if (!deleteByPath(manifest, segments)) {
-        die(`Path "${positional[1]}" not found in "${name}"`);
-      }
-      writeManifestAtomic(name, manifest);
-    });
-    return;
-  }
-
-  // Phase-level: delete <name> --phase <phase> [--topic <topic>] <field.path>
-  if (positional.length !== 2) {
-    die('Usage: delete <name> --phase <phase> [--topic <topic>] <field.path>');
-  }
-
-  const name = positional[0];
-  validatePhase(phase);
-  if (!topic && !TOPICLESS_PHASES.includes(phase)) {
-    die(`--topic is required for phase "${phase}"`);
-  }
-
-  const fieldSegments = positional[1].split('.');
-
-  if (!fs.existsSync(manifestPath(name))) {
-    die(`Work unit "${name}" not found`);
-  }
-
-  withLock(name, () => {
-    const manifest = readManifest(name);
-    const segments = resolvePhaseSegments(manifest.work_type, phase, topic, fieldSegments);
+  withLock(workUnit, () => {
+    const manifest = readManifest(workUnit);
     if (!deleteByPath(manifest, segments)) {
-      die(`Path "${segments.join('.')}" not found in "${name}"`);
+      die(`Path "${segments.join('.')}" not found in "${workUnit}"`);
     }
-    writeManifestAtomic(name, manifest);
+    writeManifestAtomic(workUnit, manifest);
   });
 }
 
@@ -570,93 +507,48 @@ function cmdList(args) {
 }
 
 function cmdInitPhase(args) {
-  const { phase, topic, positional } = parseFlags(args);
+  if (args.length !== 1) die('Usage: init-phase <work-unit>.<phase>.<topic>');
 
-  if (positional.length !== 1 || !phase || !topic) {
-    die('Usage: init-phase <name> --phase <phase> --topic <topic>');
+  const { workUnit, phase, topic } = parsePath(args[0]);
+
+  if (!phase || !topic) {
+    die('Usage: init-phase <work-unit>.<phase>.<topic>');
   }
 
-  const name = positional[0];
-  validatePhase(phase);
+  requireWorkUnit(workUnit);
 
-  if (!fs.existsSync(manifestPath(name))) {
-    die(`Work unit "${name}" not found`);
-  }
-
-  withLock(name, () => {
-    const manifest = readManifest(name);
+  withLock(workUnit, () => {
+    const manifest = readManifest(workUnit);
 
     if (!manifest.phases) manifest.phases = {};
     if (!manifest.phases[phase]) manifest.phases[phase] = {};
     if (!manifest.phases[phase].items) manifest.phases[phase].items = {};
 
     if (manifest.phases[phase].items[topic]) {
-      die(`Item "${topic}" already exists in phase "${phase}" of "${name}"`);
+      die(`Item "${topic}" already exists in phase "${phase}" of "${workUnit}"`);
     }
 
     manifest.phases[phase].items[topic] = { status: 'in-progress' };
 
-    writeManifestAtomic(name, manifest);
+    writeManifestAtomic(workUnit, manifest);
   });
 
-  process.stdout.write(`Initialized ${phase} phase for "${topic}" in "${name}"\n`);
+  process.stdout.write(`Initialized ${phase} phase for "${topic}" in "${workUnit}"\n`);
 }
 
 function cmdPush(args) {
-  const { phase, topic, positional } = parseFlags(args);
+  if (args.length < 3) die('Usage: push <path> <field> <value>');
 
-  if (!phase) {
-    // Work-unit-level: push <name> <field> <value>
-    if (positional.length !== 3) die('Usage: push <name> <field> <value>');
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+  const value = parseValue(args[2]);
 
-    const name = positional[0];
-    const segments = positional[1].split('.');
-    const value = parseValue(positional[2]);
+  requireWorkUnit(workUnit);
 
-    if (!fs.existsSync(manifestPath(name))) {
-      die(`Work unit "${name}" not found`);
-    }
+  const segments = resolveSegments(phase, topic, fieldSegments);
 
-    withLock(name, () => {
-      const manifest = readManifest(name);
-      const current = getByPath(manifest, segments);
-
-      if (current !== undefined && !Array.isArray(current)) {
-        die(`Path "${positional[1]}" is not an array`);
-      }
-
-      if (current === undefined) {
-        setByPath(manifest, segments, [value]);
-      } else {
-        current.push(value);
-      }
-
-      writeManifestAtomic(name, manifest);
-    });
-    return;
-  }
-
-  // Phase-level: push <name> --phase <phase> [--topic <topic>] <field.path> <value>
-  if (positional.length !== 3) {
-    die('Usage: push <name> --phase <phase> [--topic <topic>] <field.path> <value>');
-  }
-
-  const name = positional[0];
-  validatePhase(phase);
-  if (!topic && !TOPICLESS_PHASES.includes(phase)) {
-    die(`--topic is required for phase "${phase}"`);
-  }
-
-  const fieldSegments = positional[1].split('.');
-  const value = parseValue(positional[2]);
-
-  if (!fs.existsSync(manifestPath(name))) {
-    die(`Work unit "${name}" not found`);
-  }
-
-  withLock(name, () => {
-    const manifest = readManifest(name);
-    const segments = resolvePhaseSegments(manifest.work_type, phase, topic, fieldSegments);
+  withLock(workUnit, () => {
+    const manifest = readManifest(workUnit);
     const current = getByPath(manifest, segments);
 
     if (current !== undefined && !Array.isArray(current)) {
@@ -669,20 +561,18 @@ function cmdPush(args) {
       current.push(value);
     }
 
-    writeManifestAtomic(name, manifest);
+    writeManifestAtomic(workUnit, manifest);
   });
 }
 
 function cmdExists(args) {
-  const { phase, topic, positional } = parseFlags(args);
+  if (args.length < 1) die('Usage: exists <path> [field.path]');
 
-  if (positional.length < 1) die('Usage: exists <name> [--phase <phase>] [--topic <topic>] [field.path]');
-
-  const name = positional[0];
-  const mp = manifestPath(name);
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const mp = manifestPath(workUnit);
 
   // Work-unit level, no field path — just check if manifest file exists
-  if (!phase && positional.length === 1) {
+  if (!phase && args.length === 1) {
     process.stdout.write(fs.existsSync(mp) ? 'true\n' : 'false\n');
     return;
   }
@@ -697,15 +587,14 @@ function cmdExists(args) {
 
   if (!phase) {
     // Work-unit level with field path
-    const segments = positional[1].split('.');
+    const segments = args[1].split('.');
     const value = getByPath(manifest, segments);
     process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
     return;
   }
 
-  // Phase-level
-  validatePhase(phase);
-  const fieldSegments = positional.length > 1 ? positional[1].split('.') : [];
+  // Phase/topic level
+  const fieldSegments = args.length > 1 ? args[1].split('.') : [];
 
   // Wildcard topic: check if any topic has the specified field
   if (topic === '*') {
@@ -714,7 +603,7 @@ function cmdExists(args) {
     return;
   }
 
-  const segments = resolvePhaseSegments(manifest.work_type, phase, topic, fieldSegments);
+  const segments = resolvePhaseSegments(phase, topic, fieldSegments);
   const value = getByPath(manifest, segments);
   process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
 }

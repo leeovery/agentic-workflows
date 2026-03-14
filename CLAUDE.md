@@ -124,7 +124,7 @@ Migration scripts are point-in-time snapshots. The manifest CLI validates values
 
 ## Manifest CLI
 
-The manifest CLI at `skills/workflow-manifest/scripts/manifest.js` is the single source of truth for all workflow state. See `skills/workflow-manifest/SKILL.md` for the full API.
+The manifest CLI at `skills/workflow-manifest/scripts/manifest.js` is the single source of truth for all workflow state. Uses dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). See `skills/workflow-manifest/SKILL.md` for the full API.
 
 ## Display & Output Conventions (MANDATORY)
 

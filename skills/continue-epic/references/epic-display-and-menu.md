@@ -237,7 +237,7 @@ Blocking dependencies:
 Ask which dependency to mark as satisfied. Update via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.{dep_topic}.state satisfied_externally
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
 ```
 
 Commit the change. Then re-present the menu from **C. Menu** (the item may now be unblocked).

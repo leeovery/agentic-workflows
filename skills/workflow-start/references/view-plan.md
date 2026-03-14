@@ -19,7 +19,7 @@ Set `topic` = `selected.name`.
 Query manifest for all planning topics:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase planning --topic "*" status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name}.planning.* status
 ```
 
 **If only one topic exists:**
@@ -61,7 +61,7 @@ Set `topic` to the selected topic.
 Read the `format` from the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase planning --topic {topic} format
+node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name}.planning.{topic} format
 ```
 
 Load **[reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.

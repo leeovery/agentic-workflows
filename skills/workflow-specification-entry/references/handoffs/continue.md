@@ -6,7 +6,7 @@
 
 Before invoking the skill, reset `finding_gate_mode` to `gated` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} finding_gate_mode gated
 ```
 Commit if changed: `spec({work_unit}): reset gate mode`
 

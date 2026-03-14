@@ -18,15 +18,15 @@ Specification metadata is stored in the work-unit manifest, not in file frontmat
 
 ```bash
 # Read fields
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} status
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} type
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} review_cycle
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} sources.{source-name}.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} type
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} review_cycle
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} finding_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} sources.{source-name}.status
 
 # Write fields
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} sources.{source-name}.status incorporated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
 ```
 
 | Field | Set when |
@@ -65,10 +65,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phas
 Track each source with its incorporation status via the manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} sources.auth-flow.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} sources.auth-flow.status
 # → incorporated
 
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} sources.api-design.status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} sources.api-design.status
 # → pending
 ```
 
@@ -78,8 +78,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 
 **When to update source status:**
 
-1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} sources.{source-name}.status pending`
-2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} sources.{source-name}.status incorporated`
+1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} sources.{source-name}.status pending`
+2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`
 3. **When adding a new source to an existing spec**: Add it with `status: pending` via the same command
 
 **How to determine if a source is incorporated:**
@@ -89,7 +89,7 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**Important**: The specification's overall status should only be set to `completed` (via `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status completed`) when:
+**Important**: The specification's overall status should only be set to `completed` (via `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} status completed`) when:
 - All sources are marked as `incorporated`
 - Both review phases are complete
 - User has signed off

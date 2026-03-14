@@ -84,7 +84,7 @@ Found existing research for **{topic:(titlecase)}**.
 2. Populate the Starting Point section with context from the handoff. If restarting (no Context in handoff), create with a minimal Starting Point — the session will gather context naturally
 3. Register in manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase research --topic {topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.research.{topic}
    ```
 4. Commit the initial file
 

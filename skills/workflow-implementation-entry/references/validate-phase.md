@@ -7,7 +7,7 @@
 Check if plan exists and is ready.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
 ```
 
 Also verify the plan file exists at `.workflows/{work_unit}/planning/{topic}/planning.md`.
@@ -43,13 +43,13 @@ The plan for "{topic:(titlecase)}" is not yet completed.
 Check if implementation phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase implementation --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.implementation.{topic}
 ```
 
 **If exists (`true`):**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} status
 ```
 
 **If status is `completed`:**
@@ -57,7 +57,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} status in-progress
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

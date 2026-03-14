@@ -66,7 +66,7 @@ approved_at: {YYYY-MM-DD}
 
 All metadata is managed via the manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js`). The following fields are set during planning:
 
-| Field (via `--phase planning --topic {topic}`) | Set when |
+| Field (via `planning.{topic}`) | Set when |
 |------------|----------|
 | `status` | Plan creation -> `in-progress`; completion -> `completed` |
 | `format` | Plan creation -- user-chosen output format |

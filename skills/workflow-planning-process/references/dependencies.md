@@ -18,7 +18,7 @@ External dependencies are things a feature needs from other topics or systems th
 
 ## Format
 
-External dependencies are stored in the **manifest** as `external_dependencies` (under `--phase planning --topic {topic}`), keyed by topic:
+External dependencies are stored in the **manifest** as `external_dependencies` (under `planning.{topic}`), keyed by topic:
 
 ```json
 {
@@ -41,14 +41,14 @@ External dependencies are stored in the **manifest** as `external_dependencies` 
 Set individual dependencies via dot-path:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.billing-system.description "Invoice generation"
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies.billing-system.state unresolved
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.billing-system.description "Invoice generation"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.billing-system.state unresolved
 ```
 
 If there are no external dependencies, use an empty object:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies '{}'
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies '{}'
 ```
 
 This makes it explicit for downstream stages that dependencies were considered and none exist.

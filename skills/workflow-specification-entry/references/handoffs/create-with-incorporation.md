@@ -22,8 +22,8 @@ Context: This consolidates multiple sources. The existing specification should b
 
 After the specification is complete, mark the incorporated specs as superseded via manifest CLI:
 
-    set {source-work-unit} --phase specification --topic {source-topic} status superseded
-    set {source-work-unit} --phase specification --topic {source-topic} superseded_by {work_unit}
+    set {source-work-unit}.specification.{source-topic} status superseded
+    set {source-work-unit}.specification.{source-topic} superseded_by {work_unit}
 
 ---
 Invoke the workflow-specification-process skill.

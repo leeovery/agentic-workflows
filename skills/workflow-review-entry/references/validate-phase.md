@@ -7,7 +7,7 @@
 Check if plan and implementation exist and are ready via manifest CLI.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
 ```
 
 #### If plan doesn't exist
@@ -25,7 +25,7 @@ A completed plan and completed implementation are required for review.
 **STOP.** Do not proceed — terminal condition.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} status
 ```
 
 #### If implementation doesn't exist
@@ -59,7 +59,7 @@ The implementation for "{topic:(titlecase)}" is not yet completed.
 Check if review phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic}
 ```
 
 **If not exists (`false`):**
@@ -69,13 +69,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --p
 **If exists and status is `completed`:**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} status
 ```
 
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status in-progress
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status in-progress
 ```
 
 → Return to **[the skill](../SKILL.md)**.

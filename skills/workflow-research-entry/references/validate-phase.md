@@ -7,7 +7,7 @@
 Check research status via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase research --topic {topic} status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.research.{topic} status
 ```
 
 #### If status is `completed`
@@ -15,7 +15,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phas
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status in-progress
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.research.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

@@ -103,9 +103,9 @@ Discuss the user's context, apply any changes, then re-present the sign-off prom
 Update the specification metadata via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} type {type}  # feature or cross-cutting, as confirmed in Section A
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} date $(date +%Y-%m-%d)
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} type {type}  # feature or cross-cutting, as confirmed in Section A
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
 Specification is complete when:
@@ -129,8 +129,8 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 1. Mark each source specification as superseded via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {source-topic} status superseded
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {source-topic} superseded_by {topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{source-topic} status superseded
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{source-topic} superseded_by {topic}
    ```
 2. Inform the user which topics were updated
 3. Commit: `spec({work_unit}): mark source specifications as superseded`
@@ -143,7 +143,7 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 Read the specification type from the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} type
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} type
 ```
 
 #### If `type` is `cross-cutting`

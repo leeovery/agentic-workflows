@@ -48,7 +48,7 @@ Archive the existing spec.
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} status in-progress
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

@@ -34,7 +34,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Also read the implementation file and any other working documents for additional context.
 3. **Check gate modes and progress** via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic}
    ```
    Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle` — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
@@ -73,11 +73,11 @@ Found existing implementation for "{topic:(titlecase)}". Resuming from previous 
 
 Reset gate modes and counters via manifest CLI (fresh session = fresh gates/cycles):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} task_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} task_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_cycle 0
 ```
 
 → Proceed to **Step 1**.
@@ -125,11 +125,11 @@ Save their instructions to `.workflows/.state/environment-setup.md` (or "No spec
 1. Read the plan from the provided location (typically `.workflows/{work_unit}/planning/{topic}/planning.md`)
 2. Plans can be stored in various formats. Read the `format` via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} format
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} format
    ```
    If not set in the implementation phase, check the planning phase:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
+   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
    ```
 3. Load the format's per-concern adapter files from `../workflow-planning-process/references/output-formats/{format}/`:
    - **reading.md** — how to read tasks from the plan
@@ -152,17 +152,17 @@ Save their instructions to `.workflows/.state/environment-setup.md` (or "No spec
 
 1. Set implementation state via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase implementation --topic {topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} format {format from plan}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} task_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters []
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} project_skills []
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} current_phase 1
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} current_task ~
+   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.implementation.{topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} format {format from plan}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} task_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts 0
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_cycle 0
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters []
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} current_phase 1
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} current_task ~
    ```
 
 2. Create `.workflows/{work_unit}/implementation/{topic}/implementation.md`:
@@ -181,7 +181,7 @@ Save their instructions to `.workflows/.state/environment-setup.md` (or "No spec
 
 ## Step 4: Project Skills Discovery
 
-Check `project_skills` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} project_skills`).
+Check `project_skills` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} project_skills`).
 
 #### If `project_skills` is populated
 
@@ -247,8 +247,8 @@ Which project skills should be used?
 
 Store the selected skill paths via manifest CLI, pushing each path individually:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --phase implementation --topic {topic} project_skills "{path1}"
-node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --phase implementation --topic {topic} project_skills "{path2}"
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path1}"
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path2}"
 ```
 
 → Proceed to **Step 5**.
@@ -259,7 +259,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --pha
 
 Load **[linter-setup.md](references/linter-setup.md)** and follow its instructions as written.
 
-Check `linters` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} linters`). If already populated, present the existing configuration for confirmation (same pattern as project skills in Step 4). If confirmed, skip discovery and proceed.
+Check `linters` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} linters`). If already populated, present the existing configuration for confirmation (same pattern as project skills in Step 4). If confirmed, skip discovery and proceed.
 
 Otherwise, present discovery findings to the user:
 
@@ -285,7 +285,7 @@ Approve these linters?
 
 #### If `yes`
 
-Store the approved linter commands via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters [...]`).
+Store the approved linter commands via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters [...]`).
 
 → Proceed to **Step 6**.
 
@@ -295,7 +295,7 @@ Adjust based on user input, re-present for confirmation.
 
 #### If `skip`
 
-Store empty linters array via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} linters []`).
+Store empty linters array via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters []`).
 
 → Proceed to **Step 6**.
 
@@ -364,9 +364,9 @@ Re-present the sign-off prompt above.
 
 Update implementation status via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_cycle 0
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts 0
 ```
 
 Commit: `impl({work_unit}): complete implementation`

@@ -53,8 +53,8 @@ The agent returns a complete phase structure. Write it directly to the Plan Inde
 
 Update the manifest planning position:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} phase 1
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task ~
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase 1
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
 ```
 
 Commit: `planning({work_unit}): draft phase structure`

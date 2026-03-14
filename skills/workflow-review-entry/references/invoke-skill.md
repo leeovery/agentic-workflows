@@ -9,7 +9,7 @@ Invoke the [workflow-review-process](../../workflow-review-process/SKILL.md) ski
 Query format from manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
 ```
 
 **Handoff:**

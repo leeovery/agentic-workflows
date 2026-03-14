@@ -27,7 +27,7 @@ Investigation complete. Ready to conclude?
 
 1. Set investigation status to completed via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase investigation --topic {topic} status completed
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.investigation.{topic} status completed
    ```
 2. Final commit
 3. Display conclusion:

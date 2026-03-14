@@ -13,13 +13,13 @@ dependencies — things this plan needs from other topics or systems.
 
 Handle external dependencies — things this plan needs from other topics or systems.
 
-Dependencies are stored in the **manifest** as `external_dependencies` (under `--phase planning --topic {topic}`). See [dependencies.md](dependencies.md) for the format and states.
+Dependencies are stored in the **manifest** as `external_dependencies` (under `planning.{topic}`). See [dependencies.md](dependencies.md) for the format and states.
 
 #### If the specification has a Dependencies section
 
 The specification's Dependencies section lists what this feature needs from outside its own scope. These must be documented in the plan so implementation knows what is blocked and what is available.
 
-1. **Document each dependency** in the manifest's `external_dependencies` field (under `--phase planning --topic {topic}`) using the format described in [dependencies.md](dependencies.md). Initially, record each as `state: unresolved`.
+1. **Document each dependency** in the manifest's `external_dependencies` field (under `planning.{topic}`) using the format described in [dependencies.md](dependencies.md). Initially, record each as `state: unresolved`.
 
 2. **Resolve where possible** — For each dependency, check whether a plan already exists for that topic:
    - If a plan exists, identify the specific task(s) that satisfy the dependency. Query the output format to find relevant tasks. If ambiguous, ask the user which tasks apply. Update the dependency entry from `state: unresolved` → `state: resolved` with the `task_id`.
@@ -36,7 +36,7 @@ The specification's Dependencies section lists what this feature needs from outs
 Set the manifest field to an empty object:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} external_dependencies '{}'
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies '{}'
 ```
 
 This makes it clear that dependencies were considered and none exist — not that they were overlooked.

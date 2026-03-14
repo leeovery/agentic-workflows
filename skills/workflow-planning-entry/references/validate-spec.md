@@ -7,7 +7,7 @@
 Check if specification exists and is ready using the manifest CLI.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic}
 ```
 
 #### If specification phase doesn't exist or has no status
@@ -45,7 +45,7 @@ The specification must be completed before planning can begin.
 Query all specification entries to identify cross-cutting specs:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification
 ```
 
 Parse the output to identify any items with `type: cross-cutting`. Store these for the cross-cutting context step.

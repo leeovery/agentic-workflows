@@ -6,7 +6,7 @@
 
 1. Set research status to completed:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase research --topic {topic} status completed
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.research.{topic} status completed
    ```
 2. Final commit: `research({work_unit}): complete {topic} research`
 3. Invoke the `/workflow-bridge` skill:

@@ -46,7 +46,7 @@ Investigation is always bugfix work_type. Store work_unit for the handoff.
 Check if the investigation phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase investigation --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.investigation.{topic}
 ```
 
 **If exists (`true`):**

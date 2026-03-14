@@ -12,7 +12,7 @@ This step constructs the complete plan — defining phases, designing task lists
 
 At any approval gate during plan construction, the user can navigate. They may describe where they want to go in their own words — a specific phase, a specific task, "the beginning", "the leading edge", or any point in the plan.
 
-The **leading edge** is where new work begins — the first phase, task list, or task that hasn't been completed yet. It is tracked by the manifest (`phase` and `task` fields under `--phase planning --topic {topic}`). To find the leading edge, read those values. If all phases and tasks are complete, the leading edge is the end of plan construction.
+The **leading edge** is where new work begins — the first phase, task list, or task that hasn't been completed yet. It is tracked by the manifest (`phase` and `task` fields under `planning.{topic}`). To find the leading edge, read those values. If all phases and tasks are complete, the leading edge is the end of plan construction.
 
 The manifest planning position always tracks the leading edge. It is only advanced when work is completed — never when the user navigates. Navigation moves the user's position, not the leading edge.
 
@@ -62,7 +62,7 @@ After **A. Define Tasks** returns with an approved task table, proceed to **Auth
 
 Check `task_list_gate_mode` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} task_list_gate_mode
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_list_gate_mode
 ```
 
 **If `task_list_gate_mode` is `auto`:**
@@ -129,8 +129,8 @@ If the user navigates mid-approval, the scratch file preserves approval state. O
 
 Advance the manifest planning position to the next phase:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} phase {N+1}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task ~
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase {N+1}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
 ```
 
 Commit: `planning({work_unit}): complete Phase {N} tasks`

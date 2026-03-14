@@ -24,7 +24,7 @@ E. Update progress + phase check + commit
 1. Follow the format's **reading.md** instructions to determine the next available task.
 2. If no available tasks remain → skip to **When All Tasks Are Complete**.
 3. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-4. Reset `fix_attempts` to `0` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts 0`).
+4. Reset `fix_attempts` to `0` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts 0`).
 5. Mark the task as **in-progress** — follow the format's **updating.md** "In Progress" status transition.
 6. If the format's updating.md includes a **Phase / Parent Status** section: check whether the task's phase parent needs to be started. If so, follow the format's phase start instructions.
 
@@ -90,7 +90,7 @@ Task failed. How would you like to proceed?
 
 ### Review Changes
 
-Increment `fix_attempts` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_attempts {N}`).
+Increment `fix_attempts` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts {N}`).
 
 > *Output the next fenced block as a code block:*
 
@@ -106,7 +106,7 @@ Notes (non-blocking):
 {NOTES from reviewer}
 ```
 
-Check `fix_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} fix_gate_mode`).
+Check `fix_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} fix_gate_mode`).
 
 #### If `fix_gate_mode: auto` and `fix_attempts < 3`
 
@@ -151,7 +151,7 @@ Phase: {phase number} — {phase name}
 {executor's SUMMARY — brief commentary, decisions, implementation notes}
 ```
 
-Check the `task_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} task_gate_mode`).
+Check the `task_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} task_gate_mode`).
 
 #### If `task_gate_mode: auto`
 
@@ -192,13 +192,13 @@ Approve this task?
 
 **Update implementation state via manifest CLI**:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} current_phase {N}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} current_task {next_task_id or ~}
-node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --phase implementation --topic {topic} completed_tasks "{internal_id}"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} current_phase {N}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} current_task {next_task_id or ~}
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} completed_tasks "{internal_id}"
 ```
-- If the current phase has no remaining open/in-progress tasks: `node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit} --phase implementation --topic {topic} completed_phases {N}`
-- If user chose `auto` at the task gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} task_gate_mode auto`
-- If user chose `auto` at the fix gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} fix_gate_mode auto`
+- If the current phase has no remaining open/in-progress tasks: `node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} completed_phases {N}`
+- If user chose `auto` at the task gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} task_gate_mode auto`
+- If user chose `auto` at the fix gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_gate_mode auto`
 
 **Commit all changes** in a single commit:
 

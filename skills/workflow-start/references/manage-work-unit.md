@@ -35,7 +35,7 @@ Default `implementation_completed` = false, `has_plan` = false.
 Check whether the planning phase exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name} phases.planning
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name}.planning
 ```
 
 If the result is `true`, set `has_plan` = true.
@@ -43,7 +43,7 @@ If the result is `true`, set `has_plan` = true.
 Check whether the implementation phase exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name} phases.implementation
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name}.implementation
 ```
 
 #### If the result is `false`
@@ -57,7 +57,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {selected.name}
 ## C. Completion Check
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name} --phase implementation --topic "*" status
+node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name}.implementation.* status
 ```
 
 This returns all topic statuses in the implementation phase.

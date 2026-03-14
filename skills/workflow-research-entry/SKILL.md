@@ -67,7 +67,7 @@ Deferred — gather-context will resolve it.
 Check if the research phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase research --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.research.{topic}
 ```
 
 **If exists (`true`):**

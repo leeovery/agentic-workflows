@@ -8,7 +8,7 @@ Check if source material exists and is ready.
 
 #### If `work_type` is `feature`
 
-Check if discussion exists and is completed. Read status via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase discussion --topic {topic} status`.
+Check if discussion exists and is completed. Read status via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.discussion.{topic} status`.
 
 **If discussion doesn't exist:**
 
@@ -44,7 +44,7 @@ The discussion must be completed before specification can begin.
 
 #### If `work_type` is `bugfix`
 
-Check if investigation exists and is completed. Read status via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase investigation --topic {topic} status`.
+Check if investigation exists and is completed. Read status via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.investigation.{topic} status`.
 
 **If investigation doesn't exist:**
 
@@ -80,7 +80,7 @@ The investigation must be completed before specification can begin.
 
 #### If `work_type` is `epic`
 
-Check if at least one completed discussion exists for this work unit. Read discussion phase items via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase discussion`.
+Check if at least one completed discussion exists for this work unit. Read discussion phase items via manifest CLI: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.discussion`.
 
 **If no discussions exist:**
 
