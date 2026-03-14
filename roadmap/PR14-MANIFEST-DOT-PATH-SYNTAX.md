@@ -2,7 +2,7 @@
 
 ## Summary
 
-Replace `--phase`/`--topic` flags and raw work-unit-level phase paths with a unified dot-path convention. The CLI recognises phase names as the first segment and routes through domain-aware resolution — callers never see `phases`, `items`, or internal structure, regardless of access level.
+Replace `--phase`/`--topic` flags and raw work-unit-level phase paths with a unified dot-path convention. The work unit, phase, and topic are joined into a single path argument. The field is always a separate argument. Segment count determines the access level — no disambiguation or manifest lookup needed.
 
 ## Background
 
@@ -31,75 +31,80 @@ $MANIFEST delete my-epic phases.research.analysis_cache
 
 ## Design
 
-### Three Access Levels, One Syntax
+### Unified Path + Field Syntax
 
-All manifest access normalises into dot paths with smart routing:
+Every command follows: `command path [field] [value]`
 
-| Level | Syntax | Resolves to |
-|-------|--------|-------------|
-| Work unit | `work_type`, `status` | Top-level manifest field |
-| Phase | `research.analysis_cache` | `phases.research.analysis_cache` |
-| Topic | `discussion.auth-flow.status` | `phases.discussion.items.auth-flow.status` |
+The path joins work unit, phase, and topic with dots. The field is always a separate argument. Segment count in the path determines the access level:
+
+| Segments | Level | Path | Field | Resolves to |
+|----------|-------|------|-------|-------------|
+| 1 | Work unit | `my-epic` | `work_type` | `work_type` |
+| 2 | Phase | `my-epic.planning` | `format` | `phases.planning.format` |
+| 3 | Topic | `my-epic.discussion.auth-flow` | `status` | `phases.discussion.items.auth-flow.status` |
 
 ```bash
-# Work-unit level — no phase prefix
+# Work-unit level (1 segment)
 $MANIFEST get my-epic work_type
 $MANIFEST set my-epic status completed
 $MANIFEST exists my-epic
 
-# Phase level — phase prefix, no topic
-$MANIFEST get my-epic research.analysis_cache
-$MANIFEST set my-epic research.analysis_cache '{"checksum":"..."}'
-$MANIFEST delete my-epic research.analysis_cache
+# Phase level (2 segments)
+$MANIFEST get my-epic.planning format
+$MANIFEST set my-epic.research analysis_cache '{"checksum":"..."}'
+$MANIFEST delete my-epic.research analysis_cache
 
-# Topic level — phase.topic.field
-$MANIFEST get my-epic discussion.auth-flow.status
-$MANIFEST set my-epic discussion.auth-flow.status completed
-$MANIFEST init-phase my-epic discussion.auth-flow
+# Topic level (3 segments)
+$MANIFEST get my-epic.discussion.auth-flow status
+$MANIFEST set my-epic.discussion.auth-flow status completed
+$MANIFEST set my-epic.planning.auth-flow external_dependencies.billing.state resolved
 
-# Wildcard — phase.*.field
-$MANIFEST get my-epic discussion.*.status
+# Wildcard (3 segments, * as topic)
+$MANIFEST get my-epic.discussion.* status
+
+# Topic init (3 segments, no field)
+$MANIFEST init-phase my-epic.discussion.auth-flow
 
 # Push to array
-$MANIFEST push my-epic implementation.auth-flow.completed_tasks "auth-1-1"
+$MANIFEST push my-epic.implementation.auth-flow completed_tasks "auth-1-1"
 
-# Enumerate
+# Work-unit creation and enumeration (unchanged)
+$MANIFEST init my-epic --work-type feature --description "..."
 $MANIFEST list
+$MANIFEST list --status in-progress --work-type epic
 ```
 
 ### Resolution Rules
 
-1. Split the path by `.`
-2. If the first segment is a known phase name (`research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`):
-   - Route into `phases.{phase}`
-   - If the second segment matches a key in `phases.{phase}.items` → **topic-level**: route through `resolvePhaseSegments` (inserts `items`)
-   - If the second segment is `*` → **wildcard**: iterate all items
-   - Otherwise → **phase-level**: append remaining segments directly under `phases.{phase}`
-3. If the first segment is NOT a known phase name → **work-unit-level**: standard dot-path traversal from manifest root
+1. Split the path argument by `.`
+2. Count segments:
+   - **1 segment** → work-unit level. Field argument accesses top-level manifest fields.
+   - **2 segments** → phase level. Second segment is the phase name. Field argument accesses `phases.{phase}.{field}`.
+   - **3 segments** → topic level. Second segment is the phase, third is the topic (or `*` for wildcard). Field argument accesses `phases.{phase}.items.{topic}.{field}`.
+3. No field argument → return the whole object at that level (`get`) or check existence (`exists`).
 
-### Disambiguation: Phase-Level vs Topic-Level
+No manifest lookup, no disambiguation heuristics. The position tells you everything.
 
-The second segment after a phase name could be either a phase-level field (`analysis_cache`) or a topic name (`auth-flow`). The CLI disambiguates by checking the manifest:
+### Validation
 
-- If `phases.{phase}.items.{second_segment}` exists → topic route
-- Otherwise → phase-level field route
-
-**Safety net — reserved field names**: Topic name validation rejects names that collide with known phase-level field names (e.g., `analysis_cache`, `items`). This is a small addition to the existing validation that already checks topic names. Prevents a future topic from accidentally shadowing a structural field.
+- **Work unit names** must not contain dots (enforced in `init`). Already satisfied by kebab-case convention.
+- **Work unit names** must not match phase names (`research`, `discussion`, etc.) — prevents confusion even though the CLI would technically handle it.
+- **Phase names** are validated against the known set (existing behaviour, unchanged).
 
 ### Migration
 
 - Clean break — `--phase` and `--topic` flags removed entirely (no deprecation period)
-- All skill files updated to dot-path syntax
-- Raw `phases.x.y` paths in skill files updated to normalised `x.y` paths
+- All skill files updated to unified path + field syntax
+- Raw `phases.x.y` paths in skill files normalised (e.g., `phases.research.analysis_cache` → field `analysis_cache` on path `{wu}.research`)
 - CLAUDE.md grammar examples updated
 - Migration scripts left as-is (point-in-time snapshots per existing convention)
 
 ## Touch Points
 
-- `skills/workflow-manifest/scripts/manifest.js` — dot-path parsing, phase detection, manifest lookup disambiguation, remove flag parsing
+- `skills/workflow-manifest/scripts/manifest.js` — path parsing by segment count, remove flag parsing, add work-unit name validation
 - `skills/workflow-manifest/SKILL.md` — full API docs update
 - All skill files using `--phase`/`--topic` (~221 invocations) — syntax migration
-- All skill files using raw `phases.x.y` paths (~30 invocations) — normalise to `x.y`
+- All skill files using raw `phases.x.y` paths (~30 invocations) — normalise to path + field
 - All agent files using manifest CLI — syntax migration
-- `tests/scripts/test-workflow-manifest.sh` — dot-path tests, disambiguation tests
+- `tests/scripts/test-workflow-manifest.sh` — path-based tests (all three levels, wildcards, nested fields, edge cases)
 - `CLAUDE.md` — update CLI grammar section
