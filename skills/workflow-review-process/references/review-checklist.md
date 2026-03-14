@@ -6,7 +6,7 @@
 
 ## Per-Task Verification Criteria
 
-For each task, the review-task-verifier checks:
+For each task, the workflow-review-task-verifier checks:
 
 ### Implementation
 

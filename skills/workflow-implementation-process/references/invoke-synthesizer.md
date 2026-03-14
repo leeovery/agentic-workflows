@@ -10,7 +10,7 @@ This step invokes the synthesis agent to read analysis findings, deduplicate, an
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/implementation-analysis-synthesizer.md`
+**Agent path**: `../../../agents/workflow-implementation-analysis-synthesizer.md`
 
 Pass via the orchestrator's prompt:
 

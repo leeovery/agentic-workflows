@@ -7,7 +7,7 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MIGRATION_SCRIPT="$SCRIPT_DIR/../../skills/migrate/scripts/migrations/007-tasks-subdirectory.sh"
+MIGRATION_SCRIPT="$SCRIPT_DIR/../../skills/workflow-migrate/scripts/migrations/007-tasks-subdirectory.sh"
 
 # Colors for output
 RED='\033[0;31m'

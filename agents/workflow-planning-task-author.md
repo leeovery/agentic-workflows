@@ -1,5 +1,5 @@
 ---
-name: planning-task-author
+name: workflow-planning-task-author
 description: Writes full detail for all plan tasks in a phase. Invoked by workflow-planning-process skill during plan construction.
 tools: Read, Glob, Grep, Write
 model: opus

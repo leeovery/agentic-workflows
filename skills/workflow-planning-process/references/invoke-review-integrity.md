@@ -4,13 +4,13 @@
 
 ---
 
-This step invokes the `planning-review-integrity` agent (`../../../agents/planning-review-integrity.md`) to review plan structural quality and implementation readiness.
+This step invokes the `workflow-planning-review-integrity` agent (`../../../agents/workflow-planning-review-integrity.md`) to review plan structural quality and implementation readiness.
 
 ---
 
 ## Invoke the Agent
 
-Invoke `planning-review-integrity` with:
+Invoke `workflow-planning-review-integrity` with:
 
 1. **Review criteria path**: `review-integrity.md` (in this directory)
 2. **Plan path**: `.workflows/{work_unit}/planning/{topic}/planning.md`

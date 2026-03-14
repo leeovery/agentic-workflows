@@ -60,19 +60,17 @@ For each in-scope flowchart key, read its source file(s) and extract the logical
 | `skill-specification` | `skills/workflow-specification-process/SKILL.md` + `skills/workflow-specification-process/references/*.md` |
 | `skill-planning` | `skills/workflow-planning-process/SKILL.md` + `skills/workflow-planning-process/references/*.md` |
 | `skill-implementation` | `skills/workflow-implementation-process/SKILL.md` + `skills/workflow-implementation-process/references/*.md` |
-| `skill-review` | `skills/workflow-review-process/SKILL.md` + `agents/review-task-verifier.md` |
+| `skill-review` | `skills/workflow-review-process/SKILL.md` + `agents/workflow-review-task-verifier.md` |
 | `start-feature` | `skills/start-feature/SKILL.md` |
 | `link-deps` | `skills/link-dependencies/SKILL.md` |
-| `status` | `skills/status/SKILL.md` |
-| `view-plan` | `skills/view-plan/SKILL.md` |
-| `migrate` | `skills/migrate/SKILL.md` |
-| `planning-phase-designer` | `agents/planning-phase-designer.md` |
-| `planning-task-designer` | `agents/planning-task-designer.md` |
-| `planning-task-author` | `agents/planning-task-author.md` |
-| `planning-dependency-grapher` | `agents/planning-dependency-grapher.md` |
-| `implementation-task-executor` | `agents/implementation-task-executor.md` |
-| `implementation-task-reviewer` | `agents/implementation-task-reviewer.md` |
-| `review-task-verifier` | `agents/review-task-verifier.md` |
+| `workflow-migrate` | `skills/workflow-migrate/SKILL.md` |
+| `workflow-planning-phase-designer` | `agents/workflow-planning-phase-designer.md` |
+| `workflow-planning-task-designer` | `agents/workflow-planning-task-designer.md` |
+| `workflow-planning-task-author` | `agents/workflow-planning-task-author.md` |
+| `workflow-planning-dependency-grapher` | `agents/workflow-planning-dependency-grapher.md` |
+| `workflow-implementation-task-executor` | `agents/workflow-implementation-task-executor.md` |
+| `workflow-implementation-task-reviewer` | `agents/workflow-implementation-task-reviewer.md` |
+| `workflow-review-task-verifier` | `agents/workflow-review-task-verifier.md` |
 
 Use parallel reads (Task tool with Explore agents or multiple Read calls) to gather sources efficiently.
 

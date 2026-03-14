@@ -1,5 +1,5 @@
 ---
-name: specification-review-gap-analysis
+name: workflow-specification-review-gap-analysis
 description: Reviews specification as a standalone document for internal completeness, clarity, ambiguity, and planning readiness. Invoked by workflow-specification-process skill during review cycle.
 tools: Read, Write, Glob, Grep, Bash
 model: opus

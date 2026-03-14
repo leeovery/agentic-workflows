@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `planning-dependency-grapher` agent (`../../../agents/planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
+This step uses the `workflow-planning-dependency-grapher` agent (`../../../agents/workflow-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
 
 ---
 
@@ -26,7 +26,7 @@ Read **[output-formats.md](output-formats.md)**, find the entry matching the for
 
 ### Invoke the Agent
 
-Invoke `planning-dependency-grapher` with these file paths:
+Invoke `workflow-planning-dependency-grapher` with these file paths:
 
 1. **Plan Index File path**: `.workflows/{work_unit}/planning/{topic}/planning.md`
 2. **reading.md**: the format's reading reference loaded above
@@ -114,7 +114,7 @@ Approve the updated graph?
 
 #### If the user provides feedback
 
-Re-invoke `planning-dependency-grapher` with all original inputs PLUS:
+Re-invoke `workflow-planning-dependency-grapher` with all original inputs PLUS:
 - **Previous output**: the current analysis
 - **User feedback**: what to change
 

@@ -1,7 +1,7 @@
 ---
-name: migrate
+name: workflow-migrate
 user-invocable: false
-allowed-tools: Bash(.claude/skills/migrate/scripts/migrate.sh), Bash(git diff), Bash(git status), Bash(git add), Bash(git commit)
+allowed-tools: Bash(.claude/skills/workflow-migrate/scripts/migrate.sh), Bash(git diff), Bash(git status), Bash(git add), Bash(git commit)
 ---
 
 # Migrate
@@ -13,7 +13,7 @@ Keeps your workflow files up to date with how the system is designed to work. Ru
 Run the migration script with sandbox disabled (migrations may need to modify `.claude/settings.json`):
 
 ```bash
-.claude/skills/migrate/scripts/migrate.sh
+.claude/skills/workflow-migrate/scripts/migrate.sh
 ```
 
 **CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command.

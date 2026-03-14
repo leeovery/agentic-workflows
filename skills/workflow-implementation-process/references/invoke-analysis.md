@@ -35,15 +35,15 @@ Each agent knows its own output path convention and writes findings independentl
 
 ### Agent 1: Duplication
 
-- **Agent path**: `../../../agents/implementation-analysis-duplication.md`
+- **Agent path**: `../../../agents/workflow-implementation-analysis-duplication.md`
 
 ### Agent 2: Standards
 
-- **Agent path**: `../../../agents/implementation-analysis-standards.md`
+- **Agent path**: `../../../agents/workflow-implementation-analysis-standards.md`
 
 ### Agent 3: Architecture
 
-- **Agent path**: `../../../agents/implementation-analysis-architecture.md`
+- **Agent path**: `../../../agents/workflow-implementation-analysis-architecture.md`
 
 ---
 

@@ -4,7 +4,7 @@
 
 ---
 
-This step dispatches a `review-findings-synthesizer` agent to read review findings, deduplicate, group, and normalize them into proposed tasks.
+This step dispatches a `workflow-review-findings-synthesizer` agent to read review findings, deduplicate, group, and normalize them into proposed tasks.
 
 ---
 
@@ -20,7 +20,7 @@ ls .workflows/{work_unit}/implementation/{topic}/review-tasks-c*.md 2>/dev/null 
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/review-findings-synthesizer.md`
+**Agent path**: `../../../agents/workflow-review-findings-synthesizer.md`
 
 Dispatch **one agent** via the Task tool.
 

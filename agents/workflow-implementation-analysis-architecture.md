@@ -1,5 +1,5 @@
 ---
-name: implementation-analysis-architecture
+name: workflow-implementation-analysis-architecture
 description: Analyzes implementation for API surface quality, module structure, integration gaps, and seam quality. Invoked by workflow-implementation-process skill during analysis cycle.
 tools: Read, Write, Glob, Grep, Bash
 model: opus

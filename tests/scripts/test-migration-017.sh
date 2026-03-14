@@ -7,7 +7,7 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MIGRATION_SCRIPT="$SCRIPT_DIR/../../skills/migrate/scripts/migrations/017-external-deps-object.sh"
+MIGRATION_SCRIPT="$SCRIPT_DIR/../../skills/workflow-migrate/scripts/migrations/017-external-deps-object.sh"
 
 # Colors for output
 RED='\033[0;31m'

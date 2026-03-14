@@ -8,8 +8,8 @@ allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 
 Orchestrate implementation by dispatching **executor** and **reviewer** agents per task. Each agent invocation starts fresh — flat context, no accumulated state.
 
-- **Executor** (`../../agents/implementation-task-executor.md`) — implements one task via strict TDD
-- **Reviewer** (`../../agents/implementation-task-reviewer.md`) — independently verifies the task (opus)
+- **Executor** (`../../agents/workflow-implementation-task-executor.md`) — implements one task via strict TDD
+- **Reviewer** (`../../agents/workflow-implementation-task-reviewer.md`) — independently verifies the task (opus)
 
 The orchestrator owns: plan reading, task extraction, agent invocation, git operations, tracking, task gates.
 

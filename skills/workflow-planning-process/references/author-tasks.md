@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `planning-task-author` agent (`../../../agents/planning-task-author.md`) to write full detail for all tasks in a phase. One sub-agent authors all tasks, writing to a scratch file. The orchestrator then handles per-task approval and format-specific writing to the plan.
+This step uses the `workflow-planning-task-author` agent (`../../../agents/workflow-planning-task-author.md`) to write full detail for all tasks in a phase. One sub-agent authors all tasks, writing to a scratch file. The orchestrator then handles per-task approval and format-specific writing to the plan.
 
 ---
 
@@ -24,7 +24,7 @@ Create the `.workflows/.cache/planning/{work_unit}/{topic}/` directory if it doe
 Authoring {count} tasks for Phase {N}: {Phase Name}...
 ```
 
-Invoke `planning-task-author` with these file paths:
+Invoke `workflow-planning-task-author` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`

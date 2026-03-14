@@ -1,5 +1,5 @@
 ---
-name: implementation-analysis-duplication
+name: workflow-implementation-analysis-duplication
 description: Analyzes implementation for cross-file duplication, near-duplicate logic, and extraction candidates. Invoked by workflow-implementation-process skill during analysis cycle.
 tools: Read, Write, Glob, Grep, Bash
 model: opus

@@ -4,13 +4,13 @@
 
 ---
 
-This step invokes the `planning-review-traceability` agent (`../../../agents/planning-review-traceability.md`) to analyze plan traceability against the specification.
+This step invokes the `workflow-planning-review-traceability` agent (`../../../agents/workflow-planning-review-traceability.md`) to analyze plan traceability against the specification.
 
 ---
 
 ## Invoke the Agent
 
-Invoke `planning-review-traceability` with:
+Invoke `workflow-planning-review-traceability` with:
 
 1. **Review criteria path**: `review-traceability.md` (in this directory)
 2. **Specification path**: `.workflows/{work_unit}/specification/{topic}/specification.md`

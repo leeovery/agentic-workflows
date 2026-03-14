@@ -53,7 +53,8 @@ skills/
     scripts/discovery.js       #   All active work units grouped by type
     references/                #   Display, routing, lifecycle management
       active-work.md           #     Active work units display + selection
-      manage-work-unit.md      #     Complete/cancel/pivot work units
+      manage-work-unit.md      #     Complete/cancel/pivot/view-plan work units
+      view-plan.md             #     View plan summary from manage menu
       view-completed.md        #     Browse completed/cancelled work units
   workflow-bridge/             # Pipeline continuation - discovers next phase, enters plan mode
     scripts/discovery.js       #   Topic-specific or phase-centric discovery
@@ -64,7 +65,7 @@ skills/
     scripts/manifest.js        #   Node.js CLI (get/set/delete/list/init/init-phase/push/exists)
 
   # Entry-point skills (user-invocable — gather context, invoke processing skills)
-  migrate/                   # Keep workflow files in sync with system design
+  workflow-migrate/          # Keep workflow files in sync with system design
     scripts/migrate.sh       #   Migration orchestrator
     scripts/migrations/      #   Individual migration scripts (numbered)
   start-epic/                # Create new epic (create only, no resume)
@@ -101,32 +102,28 @@ skills/
     references/                  #   Dependency checking, environment check
   workflow-review-entry/         # Review phase — validate impl + invoke
     references/                  #   Review version, handoffs
-  status/                    # Show workflow status and next steps
-    scripts/discovery.js     #   Discovery script
-  view-plan/                 # View plan tasks and progress
-
 .claude/skills/
   create-output-format/      # Dev-time skill: scaffold new output format adapters
   update-workflow-explorer/  # Dev-time skill: sync workflow-explorer.html with source
 
 agents/
-  review-task-verifier.md                # Verifies single task implementation for review
-  review-findings-synthesizer.md         # Synthesizes QA findings into remediation tasks
-  implementation-task-executor.md        # TDD executor for single plan tasks
-  implementation-task-reviewer.md        # Post-task review for spec conformance
-  implementation-analysis-architecture.md # Architecture conformance analysis
-  implementation-analysis-duplication.md  # Duplication and DRY analysis
-  implementation-analysis-standards.md    # Coding standards analysis
-  implementation-analysis-synthesizer.md  # Synthesize analysis findings
-  implementation-analysis-task-writer.md  # Write tasks from analysis findings
-  planning-phase-designer.md             # Design phases from specification
-  planning-task-designer.md              # Break phases into task lists
-  planning-task-author.md                # Write full task detail
-  planning-dependency-grapher.md         # Analyze task dependencies and priorities
-  planning-review-traceability.md        # Spec-to-plan traceability analysis
-  planning-review-integrity.md           # Plan structural quality review
-  specification-review-gap-analysis.md   # Specification gap analysis
-  specification-review-input.md          # Specification input review
+  workflow-review-task-verifier.md                # Verifies single task implementation for review
+  workflow-review-findings-synthesizer.md         # Synthesizes QA findings into remediation tasks
+  workflow-implementation-task-executor.md        # TDD executor for single plan tasks
+  workflow-implementation-task-reviewer.md        # Post-task review for spec conformance
+  workflow-implementation-analysis-architecture.md # Architecture conformance analysis
+  workflow-implementation-analysis-duplication.md  # Duplication and DRY analysis
+  workflow-implementation-analysis-standards.md    # Coding standards analysis
+  workflow-implementation-analysis-synthesizer.md  # Synthesize analysis findings
+  workflow-implementation-analysis-task-writer.md  # Write tasks from analysis findings
+  workflow-planning-phase-designer.md             # Design phases from specification
+  workflow-planning-task-designer.md              # Break phases into task lists
+  workflow-planning-task-author.md                # Write full task detail
+  workflow-planning-dependency-grapher.md         # Analyze task dependencies and priorities
+  workflow-planning-review-traceability.md        # Spec-to-plan traceability analysis
+  workflow-planning-review-integrity.md           # Plan structural quality review
+  workflow-specification-review-gap-analysis.md   # Specification gap analysis
+  workflow-specification-review-input.md          # Specification input review
 
 tests/
   scripts/                   # Tests for discovery scripts and migrations
@@ -137,7 +134,7 @@ tests/
 
 Skills are organised in two tiers:
 
-**Entry-point skills** (`/start-*`, `/continue-*`, `/status`, `/migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/status`, `/view-plan`, `/link-dependencies`, `/workflow-start`) have `disable-model-invocation: true`. `/migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every user-invocable entry-point skill).
+**Entry-point skills** (`/start-*`, `/continue-*`, `/workflow-migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/link-dependencies`, `/workflow-start`) have `disable-model-invocation: true`. `/workflow-migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every user-invocable entry-point skill).
 
 **Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). They are invoked by start/continue/bridge skills with work_type and work_unit always provided. They handle phase-specific validation, bootstrap questions for new entries, and processing skill invocation.
 
@@ -226,16 +223,16 @@ This keeps format knowledge centralized in the planning phase where it belongs.
 
 ## Migrations
 
-The `/migrate` skill keeps workflow files in sync with the current system design. It runs via Step 0 at the start of every entry-point skill.
+The `/workflow-migrate` skill keeps workflow files in sync with the current system design. It runs via Step 0 at the start of every entry-point skill.
 
 **How it works:**
-- `skills/migrate/scripts/migrate.sh` runs all migration scripts in `skills/migrate/scripts/migrations/` in numeric order
+- `skills/workflow-migrate/scripts/migrate.sh` runs all migration scripts in `skills/workflow-migrate/scripts/migrations/` in numeric order
 - Each migration is idempotent - safe to run multiple times
 - Progress is tracked in `.workflows/.state/migrations`
 - Delete the log file to force re-running all migrations
 
 **Adding new migrations:**
-1. Create `skills/migrate/scripts/migrations/NNN-description.sh` (e.g., `002-spec-frontmatter.sh`)
+1. Create `skills/workflow-migrate/scripts/migrations/NNN-description.sh` (e.g., `002-spec-frontmatter.sh`)
 2. The script will be run automatically in numeric order
 3. The orchestrator handles tracking — once a migration ID appears in the log, the script never runs again
 4. Use helper functions: `report_update`, `report_skip` (for display only)

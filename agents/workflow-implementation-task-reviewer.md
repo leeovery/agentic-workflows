@@ -1,5 +1,5 @@
 ---
-name: implementation-task-reviewer
+name: workflow-implementation-task-reviewer
 description: Reviews a single implemented task for spec conformance, acceptance criteria, and architectural quality. Invoked by workflow-implementation-process skill after each task.
 tools: Read, Glob, Grep, Bash
 model: opus
