@@ -1,21 +1,23 @@
-# Project Skills Discovery
+# Load Project Skills
 
 *Reference for **[workflow-review-process](../SKILL.md)***
 
 ---
 
-#### If `.claude/skills/` does not exist or is empty
+Read the project skills used during implementation via manifest CLI:
 
-> *Output the next fenced block as a code block:*
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} project_skills
+```
 
-```
-No project skills found. Proceeding without project-specific conventions.
-```
+#### If populated
+
+Load each skill path. These are the same skills the implementation phase used — the review should apply the same conventions.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If project skills exist
+#### If empty
 
-Scan `.claude/skills/` for project-specific skill directories. Note which are relevant to the review (framework guidelines, code style, architecture patterns).
+No project skills were used during implementation. Proceed without project-specific conventions.
 
 → Return to **[the skill](../SKILL.md)**.
