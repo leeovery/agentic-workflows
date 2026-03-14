@@ -152,9 +152,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 #### Otherwise
 
-Store the selected skill paths at both levels:
+Store the selected skill paths via manifest CLI, pushing each path individually to topic level and setting phase level:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills ["{path1}","{path2}"]
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path1}"
+node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path2}"
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills ["{path1}","{path2}"]
 ```
 
