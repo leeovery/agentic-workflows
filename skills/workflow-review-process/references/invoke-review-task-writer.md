@@ -10,7 +10,7 @@ This step invokes the task writer agent to create plan tasks from approved revie
 
 ## Determine Format
 
-Read the `format` field from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase planning --topic {topic} format`). This determines which output format adapters to pass to the agent.
+Read the `format` field from the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format`). This determines which output format adapters to pass to the agent.
 
 ---
 

@@ -96,13 +96,13 @@ Continue or restart?
 Check if review phase is registered in manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic}
 ```
 
 #### If `false`
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase review --topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.review.{topic}
 ```
 
 #### If `true`
@@ -122,11 +122,11 @@ Store `review_mode = full`.
 Continuing from a previous session — determine scope.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase implementation --topic {topic} completed_tasks
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} completed_tasks
 ```
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit} --phase review --topic {topic} reviewed_tasks
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic} reviewed_tasks
 ```
 
 **If `reviewed_tasks` does not exist:**
@@ -138,7 +138,7 @@ No prior review tracking. Store `review_mode = full`.
 **If `reviewed_tasks` exists and no unreviewed tasks (arrays match):**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} reviewed_tasks
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} reviewed_tasks
 ```
 
 Compare `completed_tasks` against `reviewed_tasks`.
@@ -156,7 +156,7 @@ Store `review_mode = full`.
 Clear prior review data for a clean slate:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} --phase review --topic {topic} reviewed_tasks
+node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
 ```
 
 ```bash
@@ -170,7 +170,7 @@ Commit: `review({work_unit}): clear review data for full re-review`
 **If `reviewed_tasks` exists and unreviewed tasks exist:**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase review --topic {topic} reviewed_tasks
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} reviewed_tasks
 ```
 
 Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `completed_tasks` but not in `reviewed_tasks` is unreviewed.
@@ -209,7 +209,7 @@ Store `review_mode = full`.
 Clear prior review data for a clean slate:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit} --phase review --topic {topic} reviewed_tasks
+node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
 ```
 
 ```bash

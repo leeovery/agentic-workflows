@@ -33,7 +33,7 @@ No actionable findings. All reviews passed with no required changes.
 Set the review phase status to completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -78,7 +78,7 @@ Proceed with synthesis?
 User has chosen to skip synthesis. Set review status to completed — the review produced a verdict, even if the user declines to act on it now.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -123,7 +123,7 @@ Synthesize non-blocking findings?
 Set review status to completed — the review produced a verdict, even if the user declines to act on non-blocking comments.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -148,7 +148,7 @@ Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow
 No actionable tasks from synthesis. Set review status to completed — the review produced a verdict and synthesis was attempted.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
 ```
 
 > *Output the next fenced block as a code block:*
@@ -277,7 +277,7 @@ After all tasks processed:
 Set review status to completed — the review produced a verdict and synthesis tasks were offered, but the user chose to skip them all.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase review --topic {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
 ```
 
 Commit the staging file updates:
@@ -322,9 +322,9 @@ For each plan that received new tasks:
 
 1. Read the implementation tracking file at `.workflows/{work_unit}/implementation/{topic}/implementation.md`
 2. Update the manifest via CLI:
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} status in-progress`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} updated {today's date}`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase implementation --topic {topic} analysis_cycle 0`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} status in-progress`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} updated {today's date}`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_cycle 0`
 3. Commit tracking changes:
 
 ```
