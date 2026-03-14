@@ -174,6 +174,7 @@ Once selected:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase planning --topic {topic}
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} format {chosen-format}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning format {chosen-format}
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} spec_commit {commit-hash}
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} task_list_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase planning --topic {topic} author_gate_mode gated

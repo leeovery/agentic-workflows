@@ -12,13 +12,13 @@ Add phase-level default format for planning. First topic's format choice is stor
 
 ### Write side
 
-When the planning process skill saves a format choice for a topic, also set it at phase level if no phase-level default exists yet:
+When the planning process skill saves a format choice for a topic, also set it at phase level (unconditional overwrite so the most recent choice becomes the new default):
 
 ```bash
 # Always set at topic level (existing behaviour)
 $MANIFEST set {work_unit} --phase planning --topic {topic} format {chosen-format}
 
-# Also set at phase level if not already set
+# Always set at phase level (overwrite — latest choice becomes the default)
 $MANIFEST set {work_unit} --phase planning format {chosen-format}
 ```
 
@@ -36,7 +36,7 @@ In the planning process skill, when determining format for a new topic:
 
 ### Override
 
-User can always choose a different format for a specific topic. The topic-level value takes precedence. Phase-level default is a recommendation, not a constraint.
+User can always choose a different format for a specific topic. The topic-level value takes precedence. Phase-level default is a recommendation, not a constraint. Choosing a different format updates the phase-level default so subsequent topics inherit the latest choice.
 
 ## Touch Points
 
