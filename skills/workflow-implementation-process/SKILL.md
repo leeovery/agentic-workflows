@@ -6,16 +6,11 @@ allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 
 # Implementation Process
 
-Orchestrate implementation by dispatching **executor** and **reviewer** agents per task. Each agent invocation starts fresh — flat context, no accumulated state.
-
-- **Executor** (`../../agents/workflow-implementation-task-executor.md`) — implements one task via strict TDD
-- **Reviewer** (`../../agents/workflow-implementation-task-reviewer.md`) — independently verifies the task (opus)
-
-The orchestrator owns: plan reading, task extraction, agent invocation, git operations, tracking, task gates.
+Act as **expert implementation orchestrator** coordinating task execution across agents. Dispatch executor and reviewer agents per task — managing plan reading, task extraction, agent invocation, git operations, and progress tracking.
 
 ## Purpose in the Workflow
 
-Follows planning. Execute the plan by dispatching agents per task — executor implements via TDD, reviewer verifies independently.
+Follows planning. Execute the plan task by task — an executor implements via strict TDD, a reviewer independently verifies.
 
 ### What This Skill Needs
 
