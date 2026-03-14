@@ -30,33 +30,27 @@ Phase already registered (e.g. reopened review).
 
 ## B. Determine Review Mode
 
-Check if the review file exists at `.workflows/{work_unit}/review/{topic}/report.md`.
-
-#### If no review file exists
-
-Set `review_mode` = `full`.
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If review file exists
-
-Read task lists to determine scope:
+Read `completed_tasks` via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} completed_tasks
 ```
 
+Check if `reviewed_tasks` exists:
+
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic} reviewed_tasks
 ```
 
-**If `reviewed_tasks` does not exist:**
+#### If `reviewed_tasks` does not exist
 
 Set `review_mode` = `full`.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to **[the skill](../SKILL.md)** for **Step 2**.
 
-Read `reviewed_tasks` (now known to exist):
+#### If `reviewed_tasks` exists
+
+Read `reviewed_tasks`:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} reviewed_tasks
@@ -64,30 +58,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review
 
 Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `completed_tasks` but not in `reviewed_tasks` is unreviewed.
 
-**If no unreviewed tasks (arrays match):**
+**If all tasks reviewed and report exists** at `.workflows/{work_unit}/review/{topic}/report.md`:
 
-> *Output the next fenced block as a code block:*
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-```
-Reopening review: {topic:(titlecase)}
+**If all tasks reviewed and no report:**
 
-All tasks have been reviewed. Starting a full re-review.
-```
-
-Clear prior review data:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
-```
-
-```bash
-rm .workflows/{work_unit}/review/{topic}/report-*.md
-```
-
-Commit: `review({work_unit}): clear review data for full re-review`
-
-Set `review_mode` = `full`.
-
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
 
 **If unreviewed tasks remain:**
 
@@ -116,21 +93,10 @@ Review mode?
 
 Set `review_mode` = `incremental` and `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to **[the skill](../SKILL.md)** for **Step 2**.
 
 #### If `full`
 
-Clear prior review data:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
-```
-
-```bash
-rm .workflows/{work_unit}/review/{topic}/report-*.md
-```
-
-Commit: `review({work_unit}): clear review data for full re-review`
-
 Set `review_mode` = `full`.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to **[the skill](../SKILL.md)** for **Step 2**.

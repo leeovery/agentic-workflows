@@ -87,7 +87,11 @@ Continue or restart?
 #### If `restart`
 
 1. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
-2. Commit: `review({work_unit}): restart review`
+2. Clear review tracking:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
+   ```
+3. Commit: `review({work_unit}): restart review`
 
 → Proceed to **Step 1**.
 
@@ -96,8 +100,6 @@ Continue or restart?
 ## Step 1: Initialize Review
 
 Load **[initialize-review.md](references/initialize-review.md)** and follow its instructions as written.
-
-→ Proceed to **Step 2**.
 
 ---
 
