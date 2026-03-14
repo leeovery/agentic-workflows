@@ -22,17 +22,24 @@ Discover and configure project linters for use during the TDD cycle's LINT step.
 
 ## Storage
 
-Linter commands are stored in the manifest as a `linters` array:
+Linter commands are stored in the manifest as a `linters` array. Write to both topic level (3-segment path) and phase level (2-segment path) so future topics receive a recommendation.
 
+Topic level:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters [{"name":"phpstan","command":"vendor/bin/phpstan analyse --memory-limit=512M"},{"name":"pint","command":"vendor/bin/pint --test"}]
+```
+
+Phase level:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation linters [{"name":"phpstan","command":"vendor/bin/phpstan analyse --memory-limit=512M"},{"name":"pint","command":"vendor/bin/pint --test"}]
 ```
 
 Each entry has:
 - **name** — identifier for display
 - **command** — the exact shell command to run (including flags)
 
-If the user skips linter setup, store an empty array:
+If the user skips linter setup, store an empty array at both levels:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters []
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation linters []
 ```

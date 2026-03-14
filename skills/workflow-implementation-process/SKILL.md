@@ -212,12 +212,77 @@ Keep these project skills?
 
 Clear `project_skills` and fall through to discovery below.
 
+#### If `project_skills` is empty
+
+Query the phase-level recommendation:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation project_skills
+```
+
+**If phase-level value is a non-empty array:**
+
+Present the shortened recommendation menu:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Previous implementations used these project skills:
+- `{skill-name}` — {path}
+- ...
+
+· · · · · · · · · · · ·
+Use the same project skills?
+
+- **`y`/`yes`** — Use the same and proceed
+- **`n`/`no`** — Analyse for project skills (picks up any changes)
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:** Copy phase-level array to topic level:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills [{phase-level values}]
+```
+→ Proceed to **Step 5**.
+
+**If `no`:** Fall through to discovery below.
+
+**If phase-level value is an empty array `[]`:**
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Previous implementations used no project skills.
+
+· · · · · · · · · · · ·
+Skip project skills again?
+
+- **`y`/`yes`** — Skip and proceed
+- **`n`/`no`** — Analyse for project skills
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:** → Proceed to **Step 5**.
+
+**If `no`:** Fall through to discovery below.
+
+**If phase-level field doesn't exist:** Fall through to discovery below.
+
 #### If `.claude/skills/` does not exist or is empty
 
 > *Output the next fenced block as a code block:*
 
 ```
 No project skills found. Proceeding without project-specific conventions.
+```
+
+Write to phase level so future topics receive a recommendation:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills []
 ```
 
 → Proceed to **Step 5**.
@@ -245,10 +310,26 @@ Which project skills should be used?
 
 **STOP.** Wait for user response.
 
+**If `none`:**
+
+Write to phase level so future topics receive a recommendation:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills []
+```
+
+→ Proceed to **Step 5**.
+
+**Otherwise:**
+
 Store the selected skill paths via manifest CLI, pushing each path individually:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path1}"
 node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path2}"
+```
+
+Write to phase level so future topics receive a recommendation:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills ["{path1}","{path2}"]
 ```
 
 → Proceed to **Step 5**.
@@ -260,6 +341,64 @@ node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.imple
 Load **[linter-setup.md](references/linter-setup.md)** and follow its instructions as written.
 
 Check `linters` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} linters`). If already populated, present the existing configuration for confirmation (same pattern as project skills in Step 4). If confirmed, skip discovery and proceed.
+
+#### If `linters` is empty
+
+Query the phase-level recommendation:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation linters
+```
+
+**If phase-level value is a non-empty array:**
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Previous implementations used these linters:
+- **{name}** — `{command}`
+- ...
+
+· · · · · · · · · · · ·
+Use the same linters?
+
+- **`y`/`yes`** — Use the same and proceed
+- **`n`/`no`** — Run full linter discovery
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:** Copy phase-level array to topic level:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters [{phase-level values}]
+```
+→ Proceed to **Step 6**.
+
+**If `no`:** Fall through to discovery below.
+
+**If phase-level value is an empty array `[]`:**
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Previous implementations skipped linters.
+
+· · · · · · · · · · · ·
+Skip linters again?
+
+- **`y`/`yes`** — Skip and proceed
+- **`n`/`no`** — Run full linter discovery
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:** → Proceed to **Step 6**.
+
+**If `no`:** Fall through to discovery below.
+
+**If phase-level field doesn't exist:** Fall through to discovery below.
 
 Otherwise, present discovery findings to the user:
 
@@ -287,6 +426,11 @@ Approve these linters?
 
 Store the approved linter commands via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters [...]`).
 
+Write to phase level so future topics receive a recommendation:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation linters [...]
+```
+
 → Proceed to **Step 6**.
 
 #### If `change`
@@ -296,6 +440,11 @@ Adjust based on user input, re-present for confirmation.
 #### If `skip`
 
 Store empty linters array via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} linters []`).
+
+Write to phase level so future topics receive a recommendation:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation linters []
+```
 
 → Proceed to **Step 6**.
 

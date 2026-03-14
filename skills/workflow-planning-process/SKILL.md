@@ -19,7 +19,6 @@ Follows specification. Transform the validated specification into actionable pha
 - **Specification content** (required) - The validated specification from the prior phase
 - **Topic name** (optional) - Will derive from specification if not provided
 - **Output format preference** (optional) - Will ask if not specified
-- **Recommended output format** (optional) - A format suggestion for consistency with existing plans
 - **Work type** (required) — `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design.
 - **Cross-cutting references** (optional) - Cross-cutting specifications that inform technical decisions in this plan
 
@@ -130,7 +129,13 @@ Continue or restart?
 
 Choose the Output Format.
 
-#### If a recommended output format was provided (non-empty, not `none`)
+Query the manifest for any existing plan format preference:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning format
+```
+
+#### If a phase-level format exists
 
 Present the recommendation:
 
@@ -147,7 +152,7 @@ Existing plans use **{format}**. Use the same format for consistency?
 
 **STOP.** Wait for user response.
 
-#### If no recommendation or user declined
+#### If no phase-level format exists or user declined
 
 Read **[output-formats.md](references/output-formats.md)** and present each format to the user.
 
