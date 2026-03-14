@@ -20,15 +20,23 @@ Set `source` = `topic`.
 
 #### Otherwise
 
+Check if phase-level `project_skills` exists via manifest CLI:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.implementation project_skills
+```
+
+**If `false`:**
+
+→ Proceed to **C. Discovery**.
+
+**If `true`:**
+
 Read phase-level `project_skills` via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation project_skills
 ```
-
-**If no phase-level field exists:**
-
-→ Proceed to **C. Discovery**.
 
 **If phase-level is populated:**
 
