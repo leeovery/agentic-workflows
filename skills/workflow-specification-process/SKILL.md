@@ -42,7 +42,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 2. **Read all tracking and state files** for the current topic — the specification file, review tracking files, or any working documents this skill creates. These are your source of truth for progress.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
-5. **Check `finding_gate_mode`** via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} finding_gate_mode`) — if `auto`, the user previously opted in during this session. Preserve this value.
+5. **Check `finding_gate_mode`** via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} finding_gate_mode`) — if `auto`, the user previously opted in during this session. Preserve this value.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -72,7 +72,7 @@ Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
 
 #### If file exists
 
-Read the specification status via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} --phase specification --topic {topic} status`).
+Read the specification status via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} status`).
 
 > *Output the next fenced block as a code block:*
 
@@ -123,15 +123,15 @@ Create the specification file at `.workflows/{work_unit}/specification/{topic}/s
 1. Use the body template from specification-format.md (title + specification section + working notes section)
 2. Register specification and initialize state via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit} --phase specification --topic {topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} type feature
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} review_cycle 0
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} date $(date +%Y-%m-%d)
+   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.specification.{topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} type feature
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} review_cycle 0
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} finding_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
    ```
 3. Add all sources with `status: pending` via manifest CLI:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} sources.{source-name}.status pending
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} sources.{source-name}.status pending
    ```
 
 Commit: `spec({work_unit}): initialize specification`
@@ -144,7 +144,7 @@ Commit: `spec({work_unit}): initialize specification`
 
 Reset `finding_gate_mode` to `gated` via manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} --phase specification --topic {topic} finding_gate_mode gated
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} finding_gate_mode gated
 ```
 
 → Proceed to **Step 4**.
