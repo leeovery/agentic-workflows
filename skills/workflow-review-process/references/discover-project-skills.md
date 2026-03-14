@@ -12,7 +12,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implem
 
 #### If populated
 
-Note the skill paths. These are the same skills the implementation phase used — the review should apply the same conventions.
+Note the skill paths for use in subsequent steps.
 
 → Return to **[the skill](../SKILL.md)**.
 
