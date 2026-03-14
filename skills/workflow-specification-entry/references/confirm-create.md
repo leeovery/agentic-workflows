@@ -63,11 +63,11 @@ Proceed?
 
 #### If any source discussions have individual specs
 
-→ Load **[create-with-incorporation.md](handoffs/create-with-incorporation.md)** and follow its instructions.
+→ Load **[create-with-incorporation.md](handoffs/create-with-incorporation.md)** and follow its instructions as written.
 
 #### Otherwise
 
-→ Load **[create.md](handoffs/create.md)** and follow its instructions.
+→ Load **[create.md](handoffs/create.md)** and follow its instructions as written.
 
 #### If user declines (n)
 

@@ -42,13 +42,13 @@ Set source="new-with-research".
 
 **Otherwise:**
 
-→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions.
+→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
 → Return to **[the skill](../SKILL.md)**.
 
 #### If source is `research`
 
-→ Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions.
+→ Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions as written.
 
 **STOP.** Wait for user response.
 
@@ -56,9 +56,9 @@ Set source="new-with-research".
 
 #### If source is `fresh`
 
-→ Load **[name-topic.md](name-topic.md)** and follow its instructions.
+→ Load **[name-topic.md](name-topic.md)** and follow its instructions as written.
 
-→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions.
+→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
 **STOP.** Wait for user response.
 
@@ -66,7 +66,7 @@ Set source="new-with-research".
 
 #### If source is `continue`
 
-→ Load **[gather-context-continue.md](gather-context-continue.md)** and follow its instructions.
+→ Load **[gather-context-continue.md](gather-context-continue.md)** and follow its instructions as written.
 
 **STOP.** Wait for user response.
 
