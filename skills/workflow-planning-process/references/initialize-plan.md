@@ -4,23 +4,31 @@
 
 ---
 
-Choose the Output Format.
+## A. Check Format Recommendation
 
-Query the manifest for any existing plan format preference:
+Check if phase-level `format` exists via manifest CLI:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning format
+```
+
+#### If `false`
+
+→ Proceed to **B. Select Format**.
+
+#### Otherwise
+
+Read phase-level `format` via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning format
 ```
 
-#### If a phase-level format exists
-
-Present the recommendation:
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Existing plans use **{format}**. Use the same format for consistency?
+Existing plans use **{format}**. Use the same format?
 
 - **`y`/`yes`** — Use {format}
 - **`n`/`no`** — See all available formats
@@ -29,7 +37,17 @@ Existing plans use **{format}**. Use the same format for consistency?
 
 **STOP.** Wait for user response.
 
-#### If no phase-level format exists or user declined
+**If `yes`:**
+
+→ Proceed to **C. Register Plan**.
+
+**If `no`:**
+
+→ Proceed to **B. Select Format**.
+
+---
+
+## B. Select Format
 
 Read **[output-formats.md](output-formats.md)** and present each format to the user.
 
@@ -48,9 +66,11 @@ Select a format (enter number):
 
 **STOP.** Wait for user response.
 
+→ Proceed to **C. Register Plan**.
+
 ---
 
-Once selected:
+## C. Register Plan
 
 1. Capture the current git commit hash: `git rev-parse HEAD`
 2. Create the Plan Index File at `.workflows/{work_unit}/planning/{topic}/planning.md` using the **Title** template from **[plan-index-schema.md](plan-index-schema.md)**.
