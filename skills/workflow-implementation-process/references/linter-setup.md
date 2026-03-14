@@ -22,7 +22,7 @@ Discover and configure project linters for use during the TDD cycle's LINT step.
 
 ## Storage
 
-Linter commands are stored in the manifest as a `linters` array. Write to both topic level (3-segment path) and phase level (2-segment path) so future topics receive a recommendation.
+Linter commands are stored in the manifest as a `linters` array. Write to both topic level and phase level so future topics receive a recommendation.
 
 Topic level:
 ```bash
