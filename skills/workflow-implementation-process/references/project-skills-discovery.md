@@ -90,6 +90,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 #### If `no`
 
+Clear topic-level `project_skills` before re-discovery:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
+```
+
 → Proceed to **C. Discovery**.
 
 ---
