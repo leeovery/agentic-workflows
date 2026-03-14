@@ -32,8 +32,8 @@ A structured development workflow for Claude Code that turns conversations into 
 - **Specifications that catch mistakes early.** The system analyses your discussions, filters hallucinations, fills gaps, and produces a validated spec before any code is written.
 - **Plans with real structure.** Specifications become phased implementation plans with tasks, acceptance criteria, and dependency ordering. Choose where tasks live — [local markdown files, Linear issues, or Tick CLI](#output-formats).
 - **Implementation via strict TDD.** Tests first, then code, commit after each task. Per-task approval gates keep you in control, or switch to auto-mode when you trust the flow.
-- **Validation at every stage.** Specifications are reviewed against source material and analysed for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
-- **Context that survives.** Each phase clears the context window and starts fresh, so you're never fighting token limits on large work. State lives in a manifest, not in conversation history.
+- **Validation at every stage.** Specifications get bidirectional review — one agent checks against source material for accuracy, another analyses the spec as a standalone document for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
+- **Context that survives.** Each phase clears the context window and starts fresh, so you're never fighting token limits on large work. All progress lives on disk — pick up exactly where you left off, even after context compaction or a new session.
 ## Getting Started
 
 ### Install
@@ -125,6 +125,26 @@ Every approval gate (task authoring, implementation, review findings) can be swi
 ### Cross-Topic Dependencies
 
 For epics with multiple plans, `/link-dependencies` scans for unresolved cross-topic references and wires them up.
+
+### Smart Fix Loops
+
+When a task reviewer finds issues, the executor re-invokes with feedback automatically. Loops cap at 3 attempts before escalating to the user — no infinite cycles, but most issues self-resolve without intervention.
+
+### Spec Change Detection
+
+Plans track which version of the specification they were built from. If the spec changes after planning, the system detects it and asks whether to continue with the existing plan or replan from the updated spec.
+
+### Environment Awareness
+
+Implementation auto-discovers linters (ESLint, Prettier, PHP CS Fixer, etc.) and project-specific skills (Laravel, Nuxt conventions) on your machine. Both are integrated into TDD cycles and enforced during review — your project's standards are applied automatically.
+
+### Structured Review Findings
+
+Reviewers identify problems but don't fix them. Each finding includes a recommended fix, optional alternative approach, and confidence level. When multiple parallel reviewers flag the same issue, findings are deduplicated — and low-severity items are discarded unless they cluster into a pattern.
+
+### Navigate Freely
+
+Revisit any completed phase before moving forward — refine a discussion, update a spec — without losing forward progress. During planning, jump to any point (leading edge, beginning, specific task) without advancing the progress tracker.
 
 ### Workflow Dashboard
 
