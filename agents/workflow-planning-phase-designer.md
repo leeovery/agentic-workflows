@@ -1,5 +1,5 @@
 ---
-name: planning-phase-designer
+name: workflow-planning-phase-designer
 description: Designs implementation phases from a specification. Invoked by workflow-planning-process skill during plan construction.
 tools: Read, Glob, Grep
 model: opus

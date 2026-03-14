@@ -4,7 +4,7 @@
 
 ---
 
-This step invokes the task writer agent to create plan tasks from approved review findings. It reuses the `implementation-analysis-task-writer` agent with a review-specific phase label.
+This step invokes the task writer agent to create plan tasks from approved review findings. It reuses the `workflow-implementation-analysis-task-writer` agent with a review-specific phase label.
 
 ---
 
@@ -16,7 +16,7 @@ Read the `format` field from the manifest (`node .claude/skills/workflow-manifes
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/implementation-analysis-task-writer.md`
+**Agent path**: `../../../agents/workflow-implementation-analysis-task-writer.md`
 
 Pass via the orchestrator's prompt:
 

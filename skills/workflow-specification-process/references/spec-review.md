@@ -84,9 +84,9 @@ You MUST NOT choose on the user's behalf.
 
 ## B. Phase 1 — Input Review
 
-Dispatch the `specification-review-input` agent via the Task tool:
+Dispatch the `workflow-specification-review-input` agent via the Task tool:
 
-- **Agent file**: `../../../agents/specification-review-input.md`
+- **Agent file**: `../../../agents/workflow-specification-review-input.md`
 - **Specification path**: the specification file path
 - **Source material paths**: resolve source names to file paths. Read source names and work type from the manifest:
   ```bash
@@ -120,9 +120,9 @@ Load **[process-review-findings.md](process-review-findings.md)** and follow its
 
 ## C. Phase 2 — Gap Analysis
 
-Dispatch the `specification-review-gap-analysis` agent via the Task tool:
+Dispatch the `workflow-specification-review-gap-analysis` agent via the Task tool:
 
-- **Agent file**: `../../../agents/specification-review-gap-analysis.md`
+- **Agent file**: `../../../agents/workflow-specification-review-gap-analysis.md`
 - **Specification path**: the specification file path
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number

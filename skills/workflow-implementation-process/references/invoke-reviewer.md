@@ -4,13 +4,13 @@
 
 ---
 
-This step invokes the `implementation-task-reviewer` agent (`../../../agents/implementation-task-reviewer.md`) to independently verify a completed task.
+This step invokes the `workflow-implementation-task-reviewer` agent (`../../../agents/workflow-implementation-task-reviewer.md`) to independently verify a completed task.
 
 ---
 
 ## Invoke the Agent
 
-Invoke `implementation-task-reviewer` with:
+Invoke `workflow-implementation-task-reviewer` with:
 
 1. **Specification path**: same path given to the executor
 2. **Task content**: same normalised task content the executor received

@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `planning-phase-designer` agent (`../../../agents/planning-phase-designer.md`) to define or review the phase structure. Whether phases are being designed for the first time or reviewed from a previous session, the process converges on the same approval gate.
+This step uses the `workflow-planning-phase-designer` agent (`../../../agents/workflow-planning-phase-designer.md`) to define or review the phase structure. Whether phases are being designed for the first time or reviewed from a previous session, the process converges on the same approval gate.
 
 ---
 
@@ -39,7 +39,7 @@ Read `work_type` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
 ```
 
-Invoke `planning-phase-designer` with these file paths:
+Invoke `workflow-planning-phase-designer` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
@@ -83,7 +83,7 @@ Approve this phase structure?
 
 #### If the user provides feedback
 
-Re-invoke `planning-phase-designer` with all original inputs PLUS:
+Re-invoke `workflow-planning-phase-designer` with all original inputs PLUS:
 - **Previous output**: the current phase structure
 - **User feedback**: what the user wants changed
 

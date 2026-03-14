@@ -4,7 +4,7 @@
 
 ---
 
-This step dispatches `review-task-verifier` agents in batches to verify tasks across the selected plan(s). Each verifier independently checks one task for implementation, tests, and code quality, writing its full findings to a file and returning a brief status.
+This step dispatches `workflow-review-task-verifier` agents in batches to verify tasks across the selected plan(s). Each verifier independently checks one task for implementation, tests, and code quality, writing its full findings to a file and returning a brief status.
 
 ---
 
@@ -56,7 +56,7 @@ mkdir -p .workflows/{work_unit}/review/{topic}
 
 Dispatch verifiers in **batches of 5** via the Task tool.
 
-- **Agent path**: `../../../agents/review-task-verifier.md`
+- **Agent path**: `../../../agents/workflow-review-task-verifier.md`
 
 1. Group tasks into batches of 5
 2. For each batch:

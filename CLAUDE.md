@@ -6,25 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Claude Code skills package for structured technical discussion and planning workflows. Installed via `npx agntc add leeovery/claude-technical-workflows`.
 
-## Work Types
-
-The workflow system supports three work types, each with its own pipeline:
-
-**Epic**: Multi-topic work spanning multiple sessions (new products, large initiatives)
-- Phase-centric, multi-session, long-running (days/weeks/months)
-- Topics move independently within phases
-- Research → Discussion → Specification → Planning → Implementation → Review
-
-**Feature**: Adding functionality to an existing product
-- Topic-centric, single-session, linear pipeline
-- Optional research step if uncertainties exist
-- Discussion → Specification → Planning → Implementation → Review
-
-**Bugfix**: Fixing broken behavior
-- Investigation-centric, single-session
-- Investigation replaces discussion (combines symptom gathering + code analysis)
-- Investigation → Specification → Planning → Implementation → Review
-
 ## Workflow Phases
 
 1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas
@@ -35,109 +16,11 @@ The workflow system supports three work types, each with its own pipeline:
 6. **Implementation** (`workflow-implementation-process` skill): Execute plan via strict TDD
 7. **Review** (`workflow-review-process` skill): Validate work against discussion, specification, and plan
 
-## Structure
-
-```
-skills/
-  # Processing skills (model-invocable — do the work)
-  workflow-research-process/        # Explore and validate ideas
-  workflow-discussion-process/      # Document discussions (feature/epic)
-  workflow-investigation-process/   # Investigate bugs (bugfix pipeline)
-  workflow-specification-process/   # Build validated specifications
-  workflow-planning-process/        # Create implementation plans
-  workflow-implementation-process/  # Execute via TDD
-  workflow-review-process/          # Validate against artifacts
-
-  # Unified entry points
-  workflow-start/              # Unified router — single view, routes to start/continue skills
-    scripts/discovery.js       #   All active work units grouped by type
-    references/                #   Display, routing, lifecycle management
-      active-work.md           #     Active work units display + selection
-      manage-work-unit.md      #     Complete/cancel/pivot work units
-      view-completed.md        #     Browse completed/cancelled work units
-  workflow-bridge/             # Pipeline continuation - discovers next phase, enters plan mode
-    scripts/discovery.js       #   Topic-specific or phase-centric discovery
-    references/                #   Work-type-specific continuation logic (with backwards nav)
-  workflow-shared/             # Shared utilities used by other workflow skills
-    scripts/discovery-utils.js #   Discovery helpers (manifest loading, phase state, checksums)
-  workflow-manifest/           # Manifest CLI — single source of truth for workflow state
-    scripts/manifest.js        #   Node.js CLI (get/set/delete/list/init/init-phase/push/exists)
-
-  # Entry-point skills (user-invocable — gather context, invoke processing skills)
-  migrate/                   # Keep workflow files in sync with system design
-    scripts/migrate.sh       #   Migration orchestrator
-    scripts/migrations/      #   Individual migration scripts (numbered)
-  start-epic/                # Create new epic (create only, no resume)
-    references/              #   Interview questions, handoffs, phase bridge
-  start-feature/             # Create new feature (create only, no resume)
-    references/              #   Interview questions, handoffs, phase bridge
-  start-bugfix/              # Create new bugfix (create only, no resume)
-    references/              #   Bug context gathering, phase bridge
-  continue-feature/          # Resume in-progress feature — phase routing + backwards nav
-    scripts/discovery.js     #   Active features with phase state
-    references/              #   Selection, validation, revisit phase
-  continue-bugfix/           # Resume in-progress bugfix — phase routing + backwards nav
-    scripts/discovery.js     #   Active bugfixes with phase state
-    references/              #   Selection, validation, revisit phase
-  continue-epic/             # Resume in-progress epic — full state display + interactive menu
-    scripts/discovery.js     #   List mode (all epics) and detail mode (per-phase items)
-    references/              #   Selection, state display, menu, soft gates
-  link-dependencies/         # Link dependencies across topics
-
-  # Phase entry skills (internal — invoked by start/continue/bridge skills)
-  workflow-research-entry/       # Research phase bootstrap + invoke
-    references/                  #   Context gathering, handoffs
-  workflow-discussion-entry/     # Discussion phase — scoped epic path or bridge
-    scripts/discovery.js         #   Scoped discovery (accepts work_unit arg)
-    references/                  #   Epic flow, context gathering
-  workflow-investigation-entry/  # Investigation phase bootstrap + invoke
-    references/                  #   Bug context gathering, handoffs
-  workflow-specification-entry/  # Specification phase — scoped epic path or bridge
-    scripts/discovery.js         #   Scoped discovery (accepts work_unit arg)
-    references/                  #   Epic analysis flow, grouping, handoffs
-  workflow-planning-entry/       # Planning phase — validate spec + invoke
-    references/                  #   Spec validation, cross-cutting context
-  workflow-implementation-entry/ # Implementation phase — validate plan + invoke
-    references/                  #   Dependency checking, environment check
-  workflow-review-entry/         # Review phase — validate impl + invoke
-    references/                  #   Review version, handoffs
-  status/                    # Show workflow status and next steps
-    scripts/discovery.js     #   Discovery script
-  view-plan/                 # View plan tasks and progress
-
-.claude/skills/
-  create-output-format/      # Dev-time skill: scaffold new output format adapters
-  update-workflow-explorer/  # Dev-time skill: sync workflow-explorer.html with source
-
-agents/
-  review-task-verifier.md                # Verifies single task implementation for review
-  review-findings-synthesizer.md         # Synthesizes QA findings into remediation tasks
-  implementation-task-executor.md        # TDD executor for single plan tasks
-  implementation-task-reviewer.md        # Post-task review for spec conformance
-  implementation-analysis-architecture.md # Architecture conformance analysis
-  implementation-analysis-duplication.md  # Duplication and DRY analysis
-  implementation-analysis-standards.md    # Coding standards analysis
-  implementation-analysis-synthesizer.md  # Synthesize analysis findings
-  implementation-analysis-task-writer.md  # Write tasks from analysis findings
-  planning-phase-designer.md             # Design phases from specification
-  planning-task-designer.md              # Break phases into task lists
-  planning-task-author.md                # Write full task detail
-  planning-dependency-grapher.md         # Analyze task dependencies and priorities
-  planning-review-traceability.md        # Spec-to-plan traceability analysis
-  planning-review-integrity.md           # Plan structural quality review
-  specification-review-gap-analysis.md   # Specification gap analysis
-  specification-review-input.md          # Specification input review
-
-tests/
-  scripts/                   # Tests for discovery scripts and migrations
-
-```
-
 ## Skill Architecture
 
 Skills are organised in two tiers:
 
-**Entry-point skills** (`/start-*`, `/continue-*`, `/status`, `/migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/status`, `/view-plan`, `/link-dependencies`, `/workflow-start`) have `disable-model-invocation: true`. `/migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every user-invocable entry-point skill).
+**Entry-point skills** (`/start-*`, `/continue-*`, `/workflow-migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/link-dependencies`, `/workflow-start`) have `disable-model-invocation: true`. `/workflow-migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every user-invocable entry-point skill).
 
 **Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). They are invoked by start/continue/bridge skills with work_type and work_unit always provided. They handle phase-specific validation, bootstrap questions for new entries, and processing skill invocation.
 
@@ -160,6 +43,10 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 
 **Work types and work units**: A *work type* is one of three pipeline shapes: epic, feature, or bugfix. A *work unit* is a named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" is an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
+- **Epic**: Multi-topic, multi-session, phase-centric (Research → Discussion → Specification → Planning → Implementation → Review)
+- **Feature**: Single-topic, single-session, linear (Discussion → Specification → Planning → Implementation → Review)
+- **Bugfix**: Single-topic, investigation-centric (Investigation → Specification → Planning → Implementation → Review)
+
 **Topics**: A *topic* is the item within a phase. For feature/bugfix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All work types use per-topic items in the manifest (unified structure). The discussion phase analyses all research files collectively to derive discussion topics.
 
 Work-unit-first directory structure with uniform `{topic}` in all paths. For feature/bugfix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase.
@@ -176,11 +63,6 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/` (planning scratch)
 
-**work_type field**: Each work unit's `work_type` (epic, feature, or bugfix) is stored in its `manifest.json` — the single source of truth for all workflow state. This enables:
-- Unified discovery across all phases
-- Correct pipeline routing via workflow-bridge
-- Work-type-specific behavior in processing skills
-
 **Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking its lifecycle state:
 - `in-progress` — actively being worked on (default on creation)
 - `completed` — pipeline finished (set automatically when the pipeline completes, or manually via the manage menu)
@@ -190,7 +72,7 @@ Discovery scripts filter by status — `workflow-start` and `continue-*` show ac
 
 **Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). After pivot, the user can continue immediately as an epic or return to the previous view.
 
-**Epic soft gates**: When navigating forward between phases in an epic (via `continue-epic`), advisory gates warn if prerequisite phase items are still in-progress. These are informational, not blocking — the user can proceed anyway. Covers research→discussion, discussion→specification, specification→planning, and planning→implementation transitions. The system recovers gracefully via re-analysis if the user proceeds early.
+**Epic soft gates**: When navigating forward between phases in an epic (via `continue-epic`), advisory gates warn if prerequisite phase items are still in-progress. These are informational, not blocking — the user can proceed anyway. The system recovers gracefully via re-analysis if the user proceeds early.
 
 Commit docs frequently (natural breaks, before context refresh). Skills capture context, don't implement.
 
@@ -216,51 +98,25 @@ The contract and scaffolding templates live in `.claude/skills/create-output-for
 - `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
 
-**Why this matters:** Listing formats elsewhere creates maintenance dependencies. If a format is added or removed, we should only need to update the planning references - not hunt through other skills or documentation.
-
 **How other phases reference formats:**
 - Plans include a `format` field in their manifest
 - Consumers load only the per-concern file they need (e.g., `{format}/reading.md` for implementation)
 
-This keeps format knowledge centralized in the planning phase where it belongs.
-
 ## Migrations
 
-The `/migrate` skill keeps workflow files in sync with the current system design. It runs via Step 0 at the start of every entry-point skill.
+The `/workflow-migrate` skill keeps workflow files in sync with the current system design. It runs via Step 0 at the start of every entry-point skill.
 
 **How it works:**
-- `skills/migrate/scripts/migrate.sh` runs all migration scripts in `skills/migrate/scripts/migrations/` in numeric order
+- `skills/workflow-migrate/scripts/migrate.sh` runs all migration scripts in `skills/workflow-migrate/scripts/migrations/` in numeric order
 - Each migration is idempotent - safe to run multiple times
 - Progress is tracked in `.workflows/.state/migrations`
 - Delete the log file to force re-running all migrations
 
 **Adding new migrations:**
-1. Create `skills/migrate/scripts/migrations/NNN-description.sh` (e.g., `002-spec-frontmatter.sh`)
+1. Create `skills/workflow-migrate/scripts/migrations/NNN-description.sh` (e.g., `002-spec-frontmatter.sh`)
 2. The script will be run automatically in numeric order
 3. The orchestrator handles tracking — once a migration ID appears in the log, the script never runs again
 4. Use helper functions: `report_update`, `report_skip` (for display only)
-
-**Migration 016 — Work-unit restructure:**
-Migration 016 converts phase-first directories to work-unit-first, creates `manifest.json` files from artifact frontmatter, renames `plan.md` to `planning.md` and `tracking.md` to `implementation.md`, and updates `work_type: greenfield` to `epic`. Frontmatter is preserved in migrated artifacts as a safety net — a follow-up migration will strip it once the manifest system is proven.
-
-**Migration 025 — Unified manifest items:**
-Migration 025 ensures all work types use the `phases.<phase>.items.<topic>` layout. For feature/bugfix manifests with legacy flat phase data, it wraps fields into `items[manifest.name]`. Phase-level keys (`analysis_cache`) stay at phase level. Epics are unaffected.
-
-**Critical: Frontmatter extraction in bash scripts**
-
-Workflow documents may contain `---` horizontal rules in body content. NEVER use `sed -n '/^---$/,/^---$/p'` to extract frontmatter — it matches ALL `---` pairs, not just the first frontmatter block, causing body content to leak into extraction results and potential content loss during file rewrites.
-
-Always use this awk pattern for safe frontmatter extraction:
-```bash
-awk 'BEGIN{c=0} /^---$/{c++; if(c==2) exit; next} c==1{print}' "$file"
-```
-
-For content after frontmatter (preserving all body `---`):
-```bash
-awk '/^---$/ && c<2 {c++; next} c>=2 {print}' "$file"
-```
-
-Also avoid BSD sed incompatibilities: `sed '/range/{cmd1;cmd2}'` syntax fails on macOS. Use awk or separate `sed -e` expressions instead.
 
 **Critical: Migration scripts must not use the manifest CLI**
 
@@ -268,39 +124,11 @@ Migration scripts are point-in-time snapshots. The manifest CLI validates values
 
 ## Manifest CLI
 
-The manifest CLI at `skills/workflow-manifest/scripts/manifest.js` is the single source of truth for all workflow state. It replaces YAML frontmatter for state management — artifacts are pure markdown with no frontmatter.
+The manifest CLI at `skills/workflow-manifest/scripts/manifest.js` is the single source of truth for all workflow state. See `skills/workflow-manifest/SKILL.md` for the full API.
 
-Key properties:
-- JSON format, zero dependencies (Node handles JSON natively)
-- Domain-aware flag syntax: `--phase` and `--topic` flags route to correct internal path based on work_type
-- Skills never know manifest internal structure — all work types use items
-- File locking for concurrent session safety
-- Validation of structural values (work_type, phase names, statuses, gate modes)
-- Manifest location: `.workflows/{work_unit}/manifest.json`
+## Display & Output Conventions (MANDATORY)
 
-Domain-aware CLI grammar:
-```bash
-MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.js"
-$MANIFEST get {work_unit} --phase discussion --topic {topic} status    # phase-level read
-$MANIFEST set {work_unit} --phase discussion --topic {topic} status completed  # phase-level write
-$MANIFEST init-phase {work_unit} --phase discussion --topic {topic}    # create phase entry
-$MANIFEST push {work_unit} --phase implementation --topic {topic} completed_tasks "{topic}-1-1"  # append to array (internal ID)
-$MANIFEST exists {work_unit}                                           # existence check (exits 0, outputs true/false)
-$MANIFEST list                                                         # enumerate all work units
-$MANIFEST get {work_unit} work_type                                    # work-unit-level read
-$MANIFEST set {work_unit} status completed                             # work-unit-level status
-$MANIFEST set {work_unit} phases.research.analysis_cache '{"checksum":"..."}' # work-unit-level write (dot-path)
-$MANIFEST delete {work_unit} phases.research.analysis_cache             # delete a key (work-unit-level)
-$MANIFEST get {work_unit} --phase discussion --topic "*" status        # wildcard: collect from all topics
-```
-
-**Wildcard topic**: `--topic "*"` collects values from all topics in a phase. Works with `get` and `exists` commands. Iterates all items for any work type. For feature/bugfix: returns the single item (topic matches work unit name).
-
-See `skills/workflow-manifest/SKILL.md` for the full API.
-
-## Display & Output Conventions (IMPORTANT)
-
-All entry-point skills that present discovery state, menus, or interactive choices MUST follow these conventions. This ensures a consistent, scannable experience across all phases.
+These are hard rules, not suggestions. All entry-point skills that present discovery state, menus, or interactive choices MUST follow these conventions exactly. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
 
 ### Rendering Instructions
 
@@ -528,9 +356,9 @@ Inside code blocks, maintain **one blank line** between:
 
 Between code blocks (overview → not-ready → key → menu), no `---` separators — just the natural block separation.
 
-## Structural Conventions (IMPORTANT)
+## Structural Conventions (MANDATORY)
 
-All skill files (entry-point and processing) MUST follow these structural conventions for consistency.
+These are hard rules, not suggestions. All skill files (entry-point and processing) MUST follow these conventions exactly. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
 
 ### Stop Gates
 
@@ -562,7 +390,7 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
 
-- **Step 0** runs migrations via the `/migrate` skill (mandatory in all entry-point skills)
+- **Step 0** runs migrations via the `/workflow-migrate` skill (mandatory in all entry-point skills)
 - Steps are separated by `---` horizontal rules
 - Each step completes fully before the next begins
 
@@ -699,9 +527,9 @@ What's on your mind?
 **STOP.** Wait for user response before proceeding.
 ```
 
-## Skill File Structure (Progressive Disclosure)
+## Skill File Structure (MANDATORY)
 
-All skills (entry-point and processing) use a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives.
+These are hard rules, not suggestions. All skills (entry-point and processing) use a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
 
 ### Backbone Structure
 

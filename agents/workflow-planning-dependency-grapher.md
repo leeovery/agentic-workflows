@@ -1,5 +1,5 @@
 ---
-name: planning-dependency-grapher
+name: workflow-planning-dependency-grapher
 description: Analyzes authored tasks to establish internal dependencies and priorities. Invoked by workflow-planning-process skill after plan construction.
 tools: Read, Glob, Grep, Edit
 model: opus

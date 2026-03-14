@@ -1094,36 +1094,34 @@
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Utilities</div>
     <div class="collapsible-content">
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('status',this)" id="btn-status"><span class="badge badge-cmd">cmd</span><span class="btn-label">/status</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('view-plan',this)" id="btn-view-plan"><span class="badge badge-cmd">cmd</span><span class="btn-label">/view-plan</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('link-deps',this)" id="btn-link-deps"><span class="badge badge-cmd">cmd</span><span class="btn-label">/link-dependencies</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('migrate',this)" id="btn-migrate"><span class="badge badge-cmd">cmd</span><span class="btn-label">/migrate</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-migrate',this)" id="btn-workflow-migrate"><span class="badge badge-cmd">cmd</span><span class="btn-label">/workflow-migrate</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-bridge',this)" id="btn-workflow-bridge"><span class="badge badge-skl">skl</span><span class="btn-label">workflow-bridge</span></button>
     </div>
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Agents</div>
     <div class="collapsible-content">
       <div class="dropdown-subheading">Specification</div>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('specification-review-input',this)" id="btn-specification-review-input"><span class="badge badge-agt">agt</span><span class="btn-label">review-input</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('specification-review-gap-analysis',this)" id="btn-specification-review-gap-analysis"><span class="badge badge-agt">agt</span><span class="btn-label">review-gap-analysis</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-specification-review-input',this)" id="btn-specification-review-input"><span class="badge badge-agt">agt</span><span class="btn-label">review-input</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-specification-review-gap-analysis',this)" id="btn-specification-review-gap-analysis"><span class="badge badge-agt">agt</span><span class="btn-label">review-gap-analysis</span></button>
       <div class="dropdown-subheading">Planning</div>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('planning-phase-designer',this)" id="btn-planning-phase-designer"><span class="badge badge-agt">agt</span><span class="btn-label">phase-designer</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('planning-task-designer',this)" id="btn-planning-task-designer"><span class="badge badge-agt">agt</span><span class="btn-label">task-designer</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('planning-task-author',this)" id="btn-planning-task-author"><span class="badge badge-agt">agt</span><span class="btn-label">task-author</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('planning-dependency-grapher',this)" id="btn-planning-dependency-grapher"><span class="badge badge-agt">agt</span><span class="btn-label">dependency-grapher</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('planning-review-traceability',this)" id="btn-planning-review-traceability"><span class="badge badge-agt">agt</span><span class="btn-label">review-traceability</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('planning-review-integrity',this)" id="btn-planning-review-integrity"><span class="badge badge-agt">agt</span><span class="btn-label">review-integrity</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-planning-phase-designer',this)" id="btn-planning-phase-designer"><span class="badge badge-agt">agt</span><span class="btn-label">phase-designer</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-planning-task-designer',this)" id="btn-planning-task-designer"><span class="badge badge-agt">agt</span><span class="btn-label">task-designer</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-planning-task-author',this)" id="btn-planning-task-author"><span class="badge badge-agt">agt</span><span class="btn-label">task-author</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-planning-dependency-grapher',this)" id="btn-planning-dependency-grapher"><span class="badge badge-agt">agt</span><span class="btn-label">dependency-grapher</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-planning-review-traceability',this)" id="btn-planning-review-traceability"><span class="badge badge-agt">agt</span><span class="btn-label">review-traceability</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-planning-review-integrity',this)" id="btn-planning-review-integrity"><span class="badge badge-agt">agt</span><span class="btn-label">review-integrity</span></button>
       <div class="dropdown-subheading">Implementation</div>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-task-executor',this)" id="btn-implementation-task-executor"><span class="badge badge-agt">agt</span><span class="btn-label">task-executor</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-task-reviewer',this)" id="btn-implementation-task-reviewer"><span class="badge badge-agt">agt</span><span class="btn-label">task-reviewer</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-analysis-duplication',this)" id="btn-implementation-analysis-duplication"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-duplication</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-analysis-standards',this)" id="btn-implementation-analysis-standards"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-standards</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-analysis-architecture',this)" id="btn-implementation-analysis-architecture"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-architecture</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-analysis-synthesizer',this)" id="btn-implementation-analysis-synthesizer"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-synthesizer</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('implementation-analysis-task-writer',this)" id="btn-implementation-analysis-task-writer"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-task-writer</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-task-executor',this)" id="btn-implementation-task-executor"><span class="badge badge-agt">agt</span><span class="btn-label">task-executor</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-task-reviewer',this)" id="btn-implementation-task-reviewer"><span class="badge badge-agt">agt</span><span class="btn-label">task-reviewer</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-analysis-duplication',this)" id="btn-implementation-analysis-duplication"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-duplication</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-analysis-standards',this)" id="btn-implementation-analysis-standards"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-standards</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-analysis-architecture',this)" id="btn-implementation-analysis-architecture"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-architecture</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-analysis-synthesizer',this)" id="btn-implementation-analysis-synthesizer"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-synthesizer</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-implementation-analysis-task-writer',this)" id="btn-implementation-analysis-task-writer"><span class="badge badge-agt">agt</span><span class="btn-label">analysis-task-writer</span></button>
       <div class="dropdown-subheading">Review</div>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('review-task-verifier',this)" id="btn-review-task-verifier"><span class="badge badge-agt">agt</span><span class="btn-label">task-verifier</span></button>
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('review-findings-synthesizer',this)" id="btn-review-findings-synthesizer"><span class="badge badge-agt">agt</span><span class="btn-label">findings-synthesizer</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-review-task-verifier',this)" id="btn-review-task-verifier"><span class="badge badge-agt">agt</span><span class="btn-label">task-verifier</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-review-findings-synthesizer',this)" id="btn-review-findings-synthesizer"><span class="badge badge-agt">agt</span><span class="btn-label">findings-synthesizer</span></button>
     </div>
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Legend</div>
@@ -1580,7 +1578,7 @@ const phases = {
   },
   'migrate': {
     color: '#6c8aff', bg: 'rgba(108,138,255,0.12)',
-    label: 'Migrate', cmd: '/migrate',
+    label: 'Migrate', cmd: '/workflow-migrate',
     complexity: 'System',
     desc: 'Runs as Step 0 of every workflow command. Keeps workflow files in sync with system design.',
   },
@@ -1619,88 +1617,88 @@ const phases = {
     color: '#f472b6', bg: 'rgba(244,114,182,0.12)',
     label: 'Review Skill',
   },
-  'planning-phase-designer': {
+  'workflow-planning-phase-designer': {
     color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',
     label: 'Phase Designer',
     desc: 'Subagent that designs implementation phases from a specification. Invoked during plan construction.',
   },
-  'planning-task-designer': {
+  'workflow-planning-task-designer': {
     color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',
     label: 'Task Designer',
     desc: 'Subagent that breaks phases into task lists with edge cases. Invoked during plan construction.',
   },
-  'planning-task-author': {
+  'workflow-planning-task-author': {
     color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',
     label: 'Task Author',
     desc: 'Subagent that writes full task detail in the chosen output format. Invoked during plan construction.',
   },
-  'planning-dependency-grapher': {
+  'workflow-planning-dependency-grapher': {
     color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',
     label: 'Dependency Grapher',
     desc: 'Subagent that analyzes task dependencies, detects cycles, and assigns priorities.',
   },
-  'planning-review-traceability': {
+  'workflow-planning-review-traceability': {
     color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',
     label: 'Review: Traceability',
     desc: 'Subagent that verifies spec→plan completeness and plan→spec fidelity (anti-hallucination).',
   },
-  'planning-review-integrity': {
+  'workflow-planning-review-integrity': {
     color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',
     label: 'Review: Integrity',
     desc: 'Subagent that reviews plan structural quality, implementation readiness, and standards adherence.',
   },
   // ── Specification agents ──
-  'specification-review-input': {
+  'workflow-specification-review-input': {
     color: '#34d399', bg: 'rgba(52,211,153,0.12)',
     label: 'Review: Input',
     desc: 'Subagent that compares specification against all source material to catch missed content.',
   },
-  'specification-review-gap-analysis': {
+  'workflow-specification-review-gap-analysis': {
     color: '#34d399', bg: 'rgba(52,211,153,0.12)',
     label: 'Review: Gap Analysis',
     desc: 'Subagent that reviews specification as standalone document for completeness, clarity, and planning readiness.',
   },
-  'implementation-task-executor': {
+  'workflow-implementation-task-executor': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Task Executor',
     desc: 'Subagent that implements a single task via strict TDD. Returns structured completion report.',
   },
-  'implementation-task-reviewer': {
+  'workflow-implementation-task-reviewer': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Task Reviewer',
     desc: 'Subagent that independently reviews a task for spec conformance and code quality.',
   },
-  'implementation-analysis-duplication': {
+  'workflow-implementation-analysis-duplication': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Analysis: Duplication',
     desc: 'Analysis agent that hunts for cross-file duplication, near-duplicate logic, and extraction candidates.',
   },
-  'implementation-analysis-standards': {
+  'workflow-implementation-analysis-standards': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Analysis: Standards',
     desc: 'Analysis agent that checks spec conformance and project convention compliance.',
   },
-  'implementation-analysis-architecture': {
+  'workflow-implementation-analysis-architecture': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Analysis: Architecture',
     desc: 'Analysis agent that evaluates API surface quality, module structure, and seam quality.',
   },
-  'implementation-analysis-synthesizer': {
+  'workflow-implementation-analysis-synthesizer': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Analysis: Synthesizer',
     desc: 'Synthesizes findings from 3 analysis agents into deduplicated, normalized tasks for approval.',
   },
-  'implementation-analysis-task-writer': {
+  'workflow-implementation-analysis-task-writer': {
     color: '#f97316', bg: 'rgba(249,115,22,0.12)',
     label: 'Analysis: Task Writer',
     desc: 'Creates plan tasks from approved analysis findings using the format authoring adapter.',
   },
-  'review-task-verifier': {
+  'workflow-review-task-verifier': {
     color: '#f472b6', bg: 'rgba(244,114,182,0.12)',
     label: 'Task Verifier',
     desc: 'Subagent that verifies a single task implementation against plan and spec. Dispatched in batches of 5.',
   },
-  'review-findings-synthesizer': {
+  'workflow-review-findings-synthesizer': {
     color: '#f472b6', bg: 'rgba(244,114,182,0.12)',
     label: 'Findings Synthesizer',
     desc: 'Subagent that synthesizes review findings into deduplicated, normalized remediation tasks for approval.',
@@ -2176,7 +2174,7 @@ const FLOWCHARTS = {
   'start-feature': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /start-feature.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'gather', label: 'ASK: Feature context', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 1: Load gather-feature-context.md — what feature, scope, constraints.' },
       { id: 'name', label: 'ASK: Suggest topic name', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 2: Load name-check.md — suggest kebab-case name, check for conflicts.' },
       { id: 'check', label: 'Work unit exists?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Check if work unit already exists via manifest CLI.' },
@@ -2200,7 +2198,7 @@ const FLOWCHARTS = {
   'link-deps': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /link-dependencies.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'select-wu', label: 'Select work unit', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 1: List epic work units. Auto-select if one, ask if multiple. Feature/bugfix have no cross-topic deps.' },
       { id: 'stop-no-epic', label: 'STOP: No epics', shape: 'stop', w: 160, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No active epic work units found.' },
       { id: 'discover', label: 'Discover all plans', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 2: Scan .workflows/{work_unit}/planning/ for all plan files. Extract format metadata.' },
@@ -2341,9 +2339,9 @@ const FLOWCHARTS = {
       { id: 'deps', label: 'Document dependencies', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 5: Load dependencies.md — document external and cross-cutting dependencies.' },
       // Specification review cycle
       { id: 'review-cycle', label: 'Cycle management', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 6: Manage review cycle counter. Check for cycle > 3 escalation.' },
-      { id: 'input-review', label: 'Input review agent', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Phase 1: Dispatch specification-review-input agent. Compares spec against all source material.', skillLink: 'specification-review-input' },
+      { id: 'input-review', label: 'Input review agent', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Phase 1: Dispatch specification-review-input agent. Compares spec against all source material.', skillLink: 'workflow-specification-review-input' },
       { id: 'process-input', label: 'Process input findings', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Present input review findings one at a time. User approves, skips, or comments per finding.' },
-      { id: 'gap-analysis', label: 'Gap analysis agent', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Phase 2: Dispatch specification-review-gap-analysis agent. Reviews spec as standalone document.', skillLink: 'specification-review-gap-analysis' },
+      { id: 'gap-analysis', label: 'Gap analysis agent', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Phase 2: Dispatch specification-review-gap-analysis agent. Reviews spec as standalone document.', skillLink: 'workflow-specification-review-gap-analysis' },
       { id: 'process-gaps', label: 'Process gap findings', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Present gap analysis findings one at a time. User approves, skips, or comments per finding.' },
       { id: 'reloop', label: 'Re-loop?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Both clean → completion. Findings applied → ask user: reanalyse or proceed.' },
       // Type assessment + Conclude
@@ -2399,25 +2397,25 @@ const FLOWCHARTS = {
       { id: 'principles', label: 'Load principles', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Load planning-principles.md. Internalize constraints.' },
       { id: 'verify', label: 'Verify source material', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 3: Verify specification files exist. Check cross-cutting references are accessible.' },
       // Plan construction — Phase structure
-      { id: 'define-phases', label: 'Define phases', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'planning-phase-designer', desc: 'Step 4: Invoke planning-phase-designer agent to design phase structure from specification. If phases already exist (resume), present for review instead.' },
+      { id: 'define-phases', label: 'Define phases', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-planning-phase-designer', desc: 'Step 4: Invoke planning-phase-designer agent to design phase structure from specification. If phases already exist (resume), present for review instead.' },
       { id: 'approve-phases', label: 'ASK: Approve phases?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Present phase structure. User: approve (y), provide feedback (re-invokes phase-designer agent), or navigate to a specific position.' },
       // Plan construction — Phase loop
       { id: 'next-phase', label: 'Phases remain?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if unprocessed phases remain. Iterates through each phase in order.' },
-      { id: 'define-tasks', label: 'A. Define tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'planning-task-designer', desc: 'Step A: Invoke planning-task-designer agent to break current phase into tasks with edge cases.' },
+      { id: 'define-tasks', label: 'A. Define tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-planning-task-designer', desc: 'Step A: Invoke planning-task-designer agent to break current phase into tasks with edge cases.' },
       { id: 'approve-tasks', label: 'ASK: Approve task list?', w: 210, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Present task list. User: approve (y), provide feedback, or navigate.' },
       // Plan construction — Task loop
       { id: 'next-task', label: 'Tasks remain?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check for pending tasks in current phase. Already-authored tasks are skipped.' },
-      { id: 'author-task', label: 'B. Author task', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'planning-task-author', desc: 'Step B: Invoke planning-task-author agent to write full task detail.' },
+      { id: 'author-task', label: 'B. Author task', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-planning-task-author', desc: 'Step B: Invoke planning-task-author agent to write full task detail.' },
       { id: 'approve-task', label: 'ASK: Approve task?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Present authored task. User: approve (y), provide feedback, or navigate.' },
       { id: 'log-task', label: 'Log task + commit', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Write task to output format, mark as authored, advance planning position, commit.' },
       // Post construction
-      { id: 'analyze-graph', label: 'Analyze task graph', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'planning-dependency-grapher', desc: 'Step 5: Invoke planning-dependency-grapher agent. Analyzes all tasks, assigns priorities, detects cycles.' },
+      { id: 'analyze-graph', label: 'Analyze task graph', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-planning-dependency-grapher', desc: 'Step 5: Invoke planning-dependency-grapher agent. Analyzes all tasks, assigns priorities, detects cycles.' },
       { id: 'deps', label: 'Resolve ext deps', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 6: Document external dependencies. Match to tasks in other plans if possible.' },
       // Review — Traceability
-      { id: 'traceability', label: 'Traceability review', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Step 7a: Invoke planning-review-traceability agent. Two-direction check — Spec→Plan and Plan→Spec.', skillLink: 'planning-review-traceability' },
+      { id: 'traceability', label: 'Traceability review', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Step 7a: Invoke planning-review-traceability agent. Two-direction check — Spec→Plan and Plan→Spec.', skillLink: 'workflow-planning-review-traceability' },
       { id: 'trace-finding', label: 'ASK: Approve fix?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Process findings one at a time. User: approve, skip, or comment.' },
       // Review — Integrity
-      { id: 'integrity', label: 'Integrity review', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Step 7b: Invoke planning-review-integrity agent. Standalone plan quality check.', skillLink: 'planning-review-integrity' },
+      { id: 'integrity', label: 'Integrity review', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Step 7b: Invoke planning-review-integrity agent. Standalone plan quality check.', skillLink: 'workflow-planning-review-integrity' },
       { id: 'integ-finding', label: 'ASK: Approve fix?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Process integrity findings one at a time.' },
       // Sign-off + Conclusion
       { id: 'signoff', label: 'ASK: Sign off plan?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 8: Final sign-off gate. User: approve (y) to conclude, or comment to route back to review.' },
@@ -2485,10 +2483,10 @@ const FLOWCHARTS = {
       // Task loop (Step 6) — Stages A-E
       { id: 'retrieve', label: 'A. Retrieve next task', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Task loop Stage A: Use plan adapter to get next available task. Normalise task content for agent invocation.' },
       { id: 'done-check', label: 'Tasks remain?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if any tasks remain. If none, exit loop.' },
-      { id: 'executor', label: 'B. Invoke executor', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-task-executor', desc: 'Task loop Stage B: Dispatch executor agent with TDD workflow, code quality refs, spec, project skills, linter commands, and normalised task.' },
+      { id: 'executor', label: 'B. Invoke executor', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-task-executor', desc: 'Task loop Stage B: Dispatch executor agent with TDD workflow, code quality refs, spec, project skills, linter commands, and normalised task.' },
       { id: 'exec-result', label: 'Executor result?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route on executor STATUS: complete → review, blocked/failed → present to user.' },
       { id: 'exec-blocked', label: 'Executor blocked', shape: 'stop', w: 180, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Present executor ISSUES to user. Options: retry (with comments), skip task, or stop implementation entirely.' },
-      { id: 'reviewer', label: 'C. Invoke reviewer', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-task-reviewer', desc: 'Task loop Stage C: Dispatch reviewer agent (opus). Independent verification — 5 dimensions: spec conformance, acceptance criteria, test adequacy, conventions, architecture.' },
+      { id: 'reviewer', label: 'C. Invoke reviewer', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-task-reviewer', desc: 'Task loop Stage C: Dispatch reviewer agent (opus). Independent verification — 5 dimensions: spec conformance, acceptance criteria, test adequacy, conventions, architecture.' },
       { id: 'review-result', label: 'Reviewer verdict?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route on VERDICT: approved → task gate, needs-changes → human-in-the-loop fix gate.' },
       { id: 'fix-gate', label: 'HITL: Fixes?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Human-in-the-loop gate for fixes. Auto (attempts < 3) = re-invoke executor automatically. Gated or attempts >= 3 = present to user for decision.' },
       { id: 'review-changes', label: 'ASK: Fix analysis', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Present reviewer ISSUES with FIX/ALTERNATIVE/CONFIDENCE. Options: accept (y), auto-approve future (a), skip (s), or comment.' },
@@ -2500,14 +2498,14 @@ const FLOWCHARTS = {
       // Analysis loop (Step 7) — Stages A-F
       { id: 'a-cycle-gate', label: 'A. Cycle gate', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Analysis Stage A: Increment analysis_cycle. If > 3, warn user and ask whether to skip or proceed.' },
       { id: 'b-checkpoint', label: 'B. Git checkpoint', w: 195, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Analysis Stage B: Ensure clean working tree. Commit any uncommitted implementation files.' },
-      { id: 'c-duplication', label: 'C. Duplication', w: 160, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-analysis-duplication', desc: 'Analysis agent: hunt for cross-file duplication, near-duplicate logic, extraction candidates.' },
-      { id: 'c-standards', label: 'C. Standards', w: 160, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-analysis-standards', desc: 'Analysis agent: check spec conformance, project skill compliance, missing validations.' },
-      { id: 'c-architecture', label: 'C. Architecture', w: 160, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-analysis-architecture', desc: 'Analysis agent: evaluate API surface, module structure, seam quality, over/under-engineering.' },
-      { id: 'd-synthesizer', label: 'D. Synthesizer', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-analysis-synthesizer', desc: 'Analysis Stage D: Deduplicate, group, and normalize findings into tasks. Writes staging file.' },
+      { id: 'c-duplication', label: 'C. Duplication', w: 160, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-analysis-duplication', desc: 'Analysis agent: hunt for cross-file duplication, near-duplicate logic, extraction candidates.' },
+      { id: 'c-standards', label: 'C. Standards', w: 160, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-analysis-standards', desc: 'Analysis agent: check spec conformance, project skill compliance, missing validations.' },
+      { id: 'c-architecture', label: 'C. Architecture', w: 160, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-analysis-architecture', desc: 'Analysis agent: evaluate API surface, module structure, seam quality, over/under-engineering.' },
+      { id: 'd-synthesizer', label: 'D. Synthesizer', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-analysis-synthesizer', desc: 'Analysis Stage D: Deduplicate, group, and normalize findings into tasks. Writes staging file.' },
       { id: 'd-result', label: 'Tasks proposed?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route on synthesizer STATUS: tasks_proposed → approval gate, clean → completion.' },
       { id: 'e-approval', label: 'E. Approve tasks', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Analysis Stage E: Present each proposed task one at a time. User approves, skips, or comments per task.' },
       { id: 'e-result', label: 'Any approved?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'If any tasks approved, create them in the plan. If all skipped, proceed to completion.' },
-      { id: 'f-task-writer', label: 'F. Create plan tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Analysis Stage F: Invoke task-writer agent to create approved tasks in the plan as a new phase. Commit.', skillLink: 'implementation-analysis-task-writer' },
+      { id: 'f-task-writer', label: 'F. Create plan tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Analysis Stage F: Invoke task-writer agent to create approved tasks in the plan as a new phase. Commit.', skillLink: 'workflow-implementation-analysis-task-writer' },
       // Completion (Step 8)
       { id: 'end', label: 'Implementation complete', shape: 'pill', w: 190, h: 40, color: 'var(--implementation)', bg: 'var(--implementation-bg)', desc: 'Step 8: Set tracking status: completed. Final commit.' },
       { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
@@ -2576,7 +2574,7 @@ const FLOWCHARTS = {
       { id: 'read-spec', label: 'Read specification(s)', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 1: If available, read linked specification(s) for design context.' },
       { id: 'skills-disc', label: 'Project skills discovery', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Scan .claude/skills/ for project-specific conventions, framework guidelines, and architecture patterns.' },
       { id: 'extract', label: 'Extract ALL tasks', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 3: List every task from every phase across all plans in scope.' },
-      { id: 'spawn', label: 'Spawn task verifiers', w: 180, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'review-task-verifier', desc: 'Step 3: Launch review-task-verifier agents in batches of 5. Each writes findings to file.' },
+      { id: 'spawn', label: 'Spawn task verifiers', w: 180, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-review-task-verifier', desc: 'Step 3: Launch review-task-verifier agents in batches of 5. Each writes findings to file.' },
       { id: 'v1', label: 'Verify task 1', w: 140, h: 44, color: 'var(--action)', bg: 'rgba(56,189,248,0.08)', desc: 'Check: implementation, acceptance criteria, tests, code quality.' },
       { id: 'v2', label: 'Verify task 2', w: 140, h: 44, color: 'var(--action)', bg: 'rgba(56,189,248,0.08)', desc: 'Same checks, different task. Batches of 5 run in parallel.' },
       { id: 'vn', label: 'Verify task N', w: 140, h: 44, color: 'var(--action)', bg: 'rgba(56,189,248,0.08)', desc: 'One per task. All within a batch run simultaneously.' },
@@ -2585,11 +2583,11 @@ const FLOWCHARTS = {
       // Review Actions Loop (Step 5)
       { id: 'verdict', label: 'Verdict?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 5A: Route on QA verdict — approve (terminal), request-changes (synthesize recommended), comments-only (synthesize optional).' },
       { id: 'ask-synth', label: 'ASK: Synthesize?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 5A: Ask user whether to synthesize findings into implementation tasks. Recommended for request-changes, optional for comments-only.' },
-      { id: 'synthesizer', label: 'Invoke synthesizer', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'review-findings-synthesizer', desc: 'Step 5B: Dispatch review-findings-synthesizer agent. Deduplicates, groups, normalizes findings into tasks.' },
+      { id: 'synthesizer', label: 'Invoke synthesizer', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-review-findings-synthesizer', desc: 'Step 5B: Dispatch review-findings-synthesizer agent. Deduplicates, groups, normalizes findings into tasks.' },
       { id: 'synth-result', label: 'Tasks proposed?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route on synthesizer result — clean (terminal) or tasks_proposed (approval gate).' },
       { id: 'approve-tasks', label: 'ASK: Approve tasks', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 5C: Present each proposed task individually. Per-task: approve, auto, skip, or comment. Auto mode available.' },
       { id: 'any-approved', label: 'Any approved?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Route: any tasks approved → create in plan. All skipped → terminal.' },
-      { id: 'task-writer', label: 'Create plan tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'implementation-analysis-task-writer', desc: 'Step 5D: Invoke task-writer agent to create approved tasks as a new review remediation phase in the plan.' },
+      { id: 'task-writer', label: 'Create plan tasks', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-implementation-analysis-task-writer', desc: 'Step 5D: Invoke task-writer agent to create approved tasks as a new review remediation phase in the plan.' },
       { id: 'reopen', label: 'Reopen implementation', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 5E: Update tracking to in-progress, reset analysis cycle. Enter plan mode with handoff to /start-implementation.' },
       { id: 'end', label: 'Review complete', shape: 'pill', w: 150, h: 40, color: 'var(--review)', bg: 'var(--review-bg)', desc: 'Output: QA verdict with optional remediation task creation and implementation reopening.' },
     ],
@@ -2682,7 +2680,7 @@ const FLOWCHARTS = {
   'status': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /status.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations to keep workflow files in sync.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations to keep workflow files in sync.' },
       { id: 'gate-migrate', label: 'Files updated?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if migration scripts modified any workflow files.' },
       { id: 'wait-review', label: 'STOP: Review changes', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Migration updated files. Pause for user to review changes before continuing.' },
       { id: 'scan', label: 'Run discovery script', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery.sh. Scans all workflow directories and outputs YAML with counts, specs, plans, implementations, and relationships.' },
@@ -2704,7 +2702,7 @@ const FLOWCHARTS = {
   'view-plan': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /view-plan.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'gate-plans', label: 'Plans exist?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if any plan files exist in .workflows/{work_unit}/planning/{topic}/.' },
       { id: 'stop', label: 'STOP: No plans', shape: 'stop', w: 150, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No plans found. Run /start-planning first.' },
       { id: 'count', label: 'Single plan?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if there is exactly one plan or multiple.' },
@@ -2733,8 +2731,8 @@ const FLOWCHARTS = {
   },
   'migrate': {
     nodes: [
-      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /migrate.' },
-      { id: 'run', label: 'Run migrate.sh', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Execute skills/migrate/scripts/migrate.sh — runs all numbered migration scripts in order. Idempotent.' },
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /workflow-migrate.' },
+      { id: 'run', label: 'Run migrate.sh', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Execute skills/workflow-migrate/scripts/workflow-migrate.sh — runs all numbered migration scripts in order. Idempotent.' },
       { id: 'updated', label: 'Files updated?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if any migration scripts modified workflow files.' },
       { id: 'show-changes', label: 'Show changes + review', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Display changed files and wait for user to review via git diff.' },
       { id: 'end-updated', label: 'Changes applied', shape: 'pill', w: 150, h: 40, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Migration complete — files were updated.' },
@@ -2749,7 +2747,7 @@ const FLOWCHARTS = {
     ]
   },
   // ── Agent Flowcharts ──
-  'planning-phase-designer': {
+  'workflow-planning-phase-designer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process skill during plan construction.' },
       { id: 'read-refs', label: 'Read spec ingestion', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read specification ingestion protocol and full spec. Also reads cross-cutting specs if referenced.' },
@@ -2769,7 +2767,7 @@ const FLOWCHARTS = {
       { from: 'design', to: 'end' },
     ]
   },
-  'planning-task-designer': {
+  'workflow-planning-task-designer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process skill during plan construction.' },
       { id: 'read-refs', label: 'Read spec ingestion', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read specification ingestion protocol, full spec, cross-cutting specs, and approved phases.' },
@@ -2789,7 +2787,7 @@ const FLOWCHARTS = {
       { from: 'design', to: 'end' },
     ]
   },
-  'planning-task-author': {
+  'workflow-planning-task-author': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process skill during plan construction.' },
       { id: 'read-refs', label: 'Read spec ingestion', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read specification ingestion protocol, full spec, and cross-cutting specs.' },
@@ -2811,7 +2809,7 @@ const FLOWCHARTS = {
       { from: 'author', to: 'end' },
     ]
   },
-  'planning-dependency-grapher': {
+  'workflow-planning-dependency-grapher': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process skill after plan construction.' },
       { id: 'read-format', label: 'Read format refs', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read reading.md and graph.md format adapter references.' },
@@ -2838,7 +2836,7 @@ const FLOWCHARTS = {
       { from: 'apply', to: 'end' },
     ]
   },
-  'implementation-task-executor': {
+  'workflow-implementation-task-executor': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-implementation-process skill for a single task.' },
       { id: 'read-refs', label: 'Read TDD + quality refs', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read TDD workflow reference and code quality standards. Read project skills and specification.' },
@@ -2864,7 +2862,7 @@ const FLOWCHARTS = {
       { from: 'report', to: 'end' },
     ]
   },
-  'implementation-task-reviewer': {
+  'workflow-implementation-task-reviewer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-implementation-process skill after each task.' },
       { id: 'read-spec', label: 'Read specification', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read the specification to understand the broader design intent and constraints.' },
@@ -2887,7 +2885,7 @@ const FLOWCHARTS = {
       { from: 'report', to: 'end' },
     ]
   },
-  'implementation-analysis-duplication': {
+  'workflow-implementation-analysis-duplication': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in parallel by workflow-implementation-process during analysis cycle.' },
       { id: 'read-quality', label: 'Read code quality', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read code-quality.md to understand quality standards.' },
@@ -2908,7 +2906,7 @@ const FLOWCHARTS = {
       { from: 'write', to: 'end' },
     ]
   },
-  'implementation-analysis-standards': {
+  'workflow-implementation-analysis-standards': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in parallel by workflow-implementation-process during analysis cycle.' },
       { id: 'read-quality', label: 'Read code quality', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read code-quality.md to understand quality standards.' },
@@ -2929,7 +2927,7 @@ const FLOWCHARTS = {
       { from: 'write', to: 'end' },
     ]
   },
-  'implementation-analysis-architecture': {
+  'workflow-implementation-analysis-architecture': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in parallel by workflow-implementation-process during analysis cycle.' },
       { id: 'read-quality', label: 'Read code quality', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read code-quality.md to understand quality standards.' },
@@ -2950,7 +2948,7 @@ const FLOWCHARTS = {
       { from: 'write', to: 'end' },
     ]
   },
-  'implementation-analysis-synthesizer': {
+  'workflow-implementation-analysis-synthesizer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-implementation-process after all 3 analysis agents return.' },
       { id: 'read-findings', label: 'Read all findings files', w: 210, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Locate and read analysis-duplication.md, analysis-standards.md, analysis-architecture.md from the topic directory.' },
@@ -2976,7 +2974,7 @@ const FLOWCHARTS = {
       { from: 'write-staging', to: 'end' },
     ]
   },
-  'implementation-analysis-task-writer': {
+  'workflow-implementation-analysis-task-writer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-implementation-process after user approves analysis tasks.' },
       { id: 'read-staging', label: 'Read staging file', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Extract all tasks with status: approved from the staging file.' },
@@ -2995,7 +2993,7 @@ const FLOWCHARTS = {
       { from: 'create', to: 'end' },
     ]
   },
-  'review-task-verifier': {
+  'workflow-review-task-verifier': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Dispatched in batches of 5 by workflow-review-process skill during QA verification.' },
       { id: 'read-task', label: 'Understand task', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read the task: what it does, acceptance criteria, and expected tests.' },
@@ -3016,7 +3014,7 @@ const FLOWCHARTS = {
       { from: 'compile', to: 'end' },
     ]
   },
-  'review-findings-synthesizer': {
+  'workflow-review-findings-synthesizer': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-review-process skill during review actions loop.' },
       { id: 'read-review', label: 'Read review summary', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read report.md — extract verdict, required changes, and recommendations.' },
@@ -3048,7 +3046,7 @@ const FLOWCHARTS = {
   'workflow-start': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /workflow-start — unified entry point.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery script. Returns epics, features, bugfixes with phase state, plus completed/cancelled counts.' },
       { id: 'has-work', label: 'Has work?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Check state.has_any_work flag.' },
       // ── Empty state path ──
@@ -3126,7 +3124,7 @@ const FLOWCHARTS = {
   'start-bugfix': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /start-bugfix.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'gather', label: 'ASK: Bug context', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 1: Load gather-bug-context.md — what is broken, how it manifests, reproduction steps.' },
       { id: 'name', label: 'ASK: Suggest name', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 2: Load name-check.md — suggest kebab-case name, check for conflicts.' },
       { id: 'check', label: 'Work unit exists?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if work unit already exists via manifest CLI.' },
@@ -3146,7 +3144,7 @@ const FLOWCHARTS = {
   'start-epic': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /start-epic.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'gather', label: 'ASK: Epic context', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 1: Load gather-epic-context.md — what initiative, scope, goals.' },
       { id: 'name', label: 'ASK: Suggest name', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 2: Load name-check.md — suggest kebab-case name, check for conflicts.' },
       { id: 'check', label: 'Work unit exists?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check if work unit already exists via manifest CLI.' },
@@ -3172,7 +3170,7 @@ const FLOWCHARTS = {
   'continue-feature': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /continue-feature.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery script. Returns active features with next_phase and completed_phases.' },
       { id: 'count', label: 'Count = 0?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Are there any active features?' },
       { id: 'stop-none', label: 'STOP: No features', shape: 'stop', w: 160, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No features in progress. Run /start-feature.' },
@@ -3198,7 +3196,7 @@ const FLOWCHARTS = {
   'continue-bugfix': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /continue-bugfix.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery script. Returns active bugfixes with next_phase and completed_phases.' },
       { id: 'count', label: 'Count = 0?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Are there any active bugfixes?' },
       { id: 'stop-none', label: 'STOP: No bugfixes', shape: 'stop', w: 160, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No bugfixes in progress. Run /start-bugfix.' },
@@ -3224,7 +3222,7 @@ const FLOWCHARTS = {
   'continue-epic': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /continue-epic.' },
-      { id: 'migrate', label: 'Run /migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
+      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
       { id: 'discovery', label: 'Run discovery.js', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 1: Run discovery script. Returns epics with full phase-by-phase detail including items, statuses, sources, deps, gating flags.' },
       { id: 'count', label: 'Count = 0?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 2: Are there any active epics?' },
       { id: 'stop-none', label: 'STOP: No epics', shape: 'stop', w: 160, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No epics in progress. Run /start-epic.' },
@@ -3302,7 +3300,7 @@ const FLOWCHARTS = {
     ]
   },
   // ── New Agent Flowcharts ──
-  'specification-review-input': {
+  'workflow-specification-review-input': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-specification-process during review cycle (Phase 1).' },
       { id: 'read-format', label: 'Read tracking format', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review-tracking-format.md to understand the output file structure.' },
@@ -3323,7 +3321,7 @@ const FLOWCHARTS = {
       { from: 'write', to: 'end' },
     ]
   },
-  'specification-review-gap-analysis': {
+  'workflow-specification-review-gap-analysis': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-specification-process during review cycle (Phase 2).' },
       { id: 'read-format', label: 'Read tracking format', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review-tracking-format.md to understand the output file structure.' },
@@ -3342,7 +3340,7 @@ const FLOWCHARTS = {
       { from: 'write', to: 'end' },
     ]
   },
-  'planning-review-traceability': {
+  'workflow-planning-review-traceability': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process during plan review.' },
       { id: 'read-criteria', label: 'Read review criteria', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review-traceability.md — absorb full analysis criteria before starting.' },
@@ -3365,7 +3363,7 @@ const FLOWCHARTS = {
       { from: 'commit', to: 'end' },
     ]
   },
-  'planning-review-integrity': {
+  'workflow-planning-review-integrity': {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process during plan review.' },
       { id: 'read-criteria', label: 'Read review criteria', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review-integrity.md — absorb all review dimensions before starting.' },
@@ -3526,7 +3524,7 @@ const FLOWCHART_DESCS = {
   },
   'status': {
     summary: 'Discovery-based workflow status — relationship-aware display with next step suggestions.',
-    body: `<p>Runs <code>/migrate</code> first (pausing for review if files were updated), then runs a <strong>discovery script</strong> that scans all workflow directories and outputs structured YAML.</p>
+    body: `<p>Runs <code>/workflow-migrate</code> first (pausing for review if files were updated), then runs a <strong>discovery script</strong> that scans all workflow directories and outputs structured YAML.</p>
 <p>Presents a <strong>relationship-aware display</strong>: summary counts, specifications with source discussions, plans with spec links and dependency status, implementations with progress, and unlinked discussions. Suggests next steps based on gaps in the workflow.</p>`,
     meta: { complexity: 'Utility', discovery: 'discovery.sh' }
   },
@@ -3538,7 +3536,7 @@ const FLOWCHART_DESCS = {
   },
   'migrate': {
     summary: 'Migration orchestrator — keeps workflow files in sync with the current system design.',
-    body: `<p>Executes <code>skills/migrate/scripts/migrate.sh</code>, which runs all numbered scripts in <code>skills/migrate/scripts/migrations/</code> in order. Each migration is idempotent — safe to run multiple times. Progress is tracked in <code>.workflows/.state/migrations</code>.</p>
+    body: `<p>Executes <code>skills/workflow-migrate/scripts/workflow-migrate.sh</code>, which runs all numbered scripts in <code>skills/workflow-migrate/scripts/migrations/</code> in order. Each migration is idempotent — safe to run multiple times. Progress is tracked in <code>.workflows/.state/migrations</code>.</p>
 <p>Runs automatically as <strong>Step 0 of every workflow command</strong>. If files were updated, shows changes and waits for user review via git diff. Delete the log file to force re-running all migrations.</p>`,
     meta: { complexity: 'System' }
   },
@@ -3549,49 +3547,49 @@ const FLOWCHART_DESCS = {
 <p><strong>Epic</strong>: Runs enriched discovery across all topics. If all topics are done, offers to mark the epic completed. Otherwise displays epic state and presents an interactive menu for selecting the next phase/topic. Enters plan mode with the selected action.</p>`,
     meta: { complexity: 'Router' }
   },
-  'planning-phase-designer': {
+  'workflow-planning-phase-designer': {
     summary: 'Design implementation phases from a specification — goals, sequencing, and acceptance criteria.',
     body: `<p>Reads the specification via ingestion protocol, then loads phase and task design principles. Designs a phased implementation structure with clear goals and acceptance criteria for each phase.</p>
 <p>Supports <strong>amendment rounds</strong> — if prior output and feedback are provided, the agent revises its design rather than starting fresh. Output is a human-readable phase summary.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-planning-process', complexity: 'Subagent' }
   },
-  'planning-task-designer': {
+  'workflow-planning-task-designer': {
     summary: 'Break a single phase into concrete tasks with edge cases and dependencies.',
     body: `<p>Reads the specification, approved phases, and task design principles. For the target phase, produces a detailed task list with edge cases identified per task.</p>
 <p>Supports <strong>amendment rounds</strong> — revises task list based on feedback when prior output exists. Output is a task table with IDs, names, edge cases, and status.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-planning-process', complexity: 'Subagent' }
   },
-  'planning-task-author': {
+  'workflow-planning-task-author': {
     summary: 'Author full task detail in the plan\'s output format — problem, solution, acceptance criteria, tests.',
     body: `<p>Reads specification, task template, phases, task list, and the <strong>output format adapter</strong> (authoring.md). Writes complete task detail in the exact format structure: problem, solution, outcome, do/don\'t, acceptance criteria, tests, and context.</p>
 <p>Supports <strong>amendment rounds</strong>. Format-aware — adapts to whichever output format the plan uses.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-planning-process', complexity: 'Subagent' }
   },
-  'planning-dependency-grapher': {
+  'workflow-planning-dependency-grapher': {
     summary: 'Analyze task dependencies, detect circular references, and assign priority classifications.',
     body: `<p>Reads format adapters (reading.md + graph.md), then the plan index and all authored task files. <strong>Clears existing graph data</strong> before re-analysis to ensure a clean state.</p>
 <p>For each task, extracts what it produces and requires, then matches across all tasks to build a dependency graph. Classifies tasks as <strong>bottleneck</strong>, <strong>foundation</strong>, or <strong>leaf</strong>. If <strong>cycles are detected</strong>, reports the cycle chain and does NOT apply changes — a hard stop. Otherwise, writes dependency and priority data back to tasks.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-planning-process', complexity: 'Subagent' }
   },
-  'planning-review-traceability': {
+  'workflow-planning-review-traceability': {
     summary: 'Verify spec→plan completeness and plan→spec fidelity (anti-hallucination).',
     body: `<p>Performs <strong>two-direction traceability</strong>. <strong>Spec→Plan</strong>: every decision, requirement, and edge case in the spec has plan coverage. <strong>Plan→Spec</strong>: everything in the plan traces back to the spec — the anti-hallucination gate.</p>
 <p>Creates a tracking file with findings containing full Current/Proposed content. Commits the tracking file. Returns status to the orchestrator for per-finding approval.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-planning-process', complexity: 'Review agent' }
   },
-  'planning-review-integrity': {
+  'workflow-planning-review-integrity': {
     summary: 'Review plan structural quality, implementation readiness, and standards adherence.',
     body: `<p>Reviews the plan as a standalone document — structural quality without comparing to the spec. Evaluates: task template compliance, vertical slicing, phase structure, dependency ordering, task self-containment, granularity, and acceptance criteria quality.</p>
 <p>Creates a tracking file with findings. Commits. Returns status to the orchestrator. Proportional — prioritizes by impact, not cosmetics.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-planning-process', complexity: 'Review agent' }
   },
-  'specification-review-input': {
+  'workflow-specification-review-input': {
     summary: 'Compare specification against all source material to catch missed content.',
     body: `<p>Reads the specification, then <strong>re-reads ALL source material</strong> (discussions, research, references). Compares systematically for each source: what topics does it cover? Are those fully captured? Are there details, edge cases, or decisions that didn't make it?</p>
 <p>Categorizes findings as <strong>enhancement to existing topic</strong> or <strong>new topic</strong>. Writes findings to a tracking file using the review tracking format.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-specification-process', complexity: 'Review agent' }
   },
-  'specification-review-gap-analysis': {
+  'workflow-specification-review-gap-analysis': {
     summary: 'Review specification as standalone document for completeness, clarity, and planning readiness.',
     body: `<p>Looks <strong>inward</strong> at the specification only — not outward at source material. Reads the spec end-to-end and assesses each section for internal completeness, clarity, consistency, and ambiguity.</p>
 <p>Analyzes: insufficient detail that would force implementers to guess, contradictions between sections, edge cases within scope boundaries, and planning readiness. Prioritizes findings as critical/important/minor.</p>`,
@@ -3604,61 +3602,61 @@ const FLOWCHART_DESCS = {
 <p><strong>Findings review</strong>: presents analysis to user for validation before concluding. Investigation file is the memory — what's not on disk is lost to context compaction.</p>`,
     meta: { output: '.workflows/{work_unit}/investigation/{topic}.md', complexity: 'Investigation skill' }
   },
-  'implementation-task-executor': {
+  'workflow-implementation-task-executor': {
     summary: 'Implement a single task via strict TDD — RED/GREEN/REFACTOR/LINT cycle per acceptance criterion.',
     body: `<p>Reads TDD workflow, code quality standards, project skills, and specification. Explores the codebase first to understand existing patterns.</p>
 <p>Executes a <strong>strict TDD loop</strong> per acceptance criterion: <strong>RED</strong> (write failing test) → <strong>GREEN</strong> (implement to pass) → <strong>REFACTOR</strong> (improve code, run tests) → <strong>LINT</strong> (run configured linters, fix issues, revert if tests break). Has hard stops for scope expansion, uncertainty, and untenable spec decisions — reports back rather than making autonomous choices.</p>
 <p>Returns a structured <strong>STATUS report</strong> (complete/blocked/failed) with files changed, tests written, and results.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-implementation-process', complexity: 'Subagent' }
   },
-  'implementation-task-reviewer': {
+  'workflow-implementation-task-reviewer': {
     summary: 'Independently review a task across 5 dimensions with fix recommendations — no access to executor context.',
     body: `<p>Reads the specification, then checks unstaged changes via git diff/status and reads all changed files. Loads project skills for convention checking. <strong>Independent from the executor</strong> — no shared context.</p>
 <p>Evaluates across <strong>5 dimensions</strong>: spec conformance, acceptance criteria coverage, test adequacy, convention adherence, and architectural quality. Produces a structured verdict (<strong>approved</strong> or <strong>needs-changes</strong>) with file:line references.</p>
 <p>When returning <strong>needs-changes</strong>, each issue includes <strong>FIX</strong> (recommended approach), optional <strong>ALTERNATIVE</strong> (when multiple valid approaches exist), and <strong>CONFIDENCE</strong> (high/medium/low) — giving visibility into the fix strategy before re-execution.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-implementation-process', complexity: 'Subagent' }
   },
-  'review-task-verifier': {
+  'workflow-review-task-verifier': {
     summary: 'Verify a single task\'s implementation, tests, and code quality against the plan and spec.',
     body: `<p>Dispatched <strong>in batches of 5</strong> by the workflow-review-process skill during QA verification. Each verifier writes findings to <code>.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md</code>.</p>
 <p>Three verification stages: <strong>implementation</strong> (exists, matches criteria, aligns with spec), <strong>tests</strong> (adequate coverage, edge cases, not over/under-tested), and <strong>code quality</strong> (conventions, SOLID, DRY, complexity, security, performance). Receives review checklist, topic name, and task index. Compiles a structured finding with blocking issues and non-blocking notes.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-review-process', complexity: 'Subagent' }
   },
-  'review-findings-synthesizer': {
+  'workflow-review-findings-synthesizer': {
     summary: 'Synthesize review findings into deduplicated, normalized remediation tasks for user approval.',
     body: `<p>Reads the review summary and all QA task verification files. Performs multi-step synthesis: <strong>deduplicate</strong> (same issue from multiple QA files → one finding) → <strong>group related findings</strong> into single tasks → <strong>filter by severity</strong> (never discard blocking) → <strong>normalize</strong> into canonical task template (Problem/Solution/Outcome/Do/AC/Tests).</p>
 <p>Writes two outputs: a <strong>review report</strong> (summary + discarded findings) and a <strong>staging file</strong> (proposed tasks with <code>status: pending</code>) for the orchestrator to present to the user.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-review-process', tools: 'Read, Write, Glob, Grep', complexity: 'Synthesis agent' }
   },
-  'implementation-analysis-duplication': {
+  'workflow-implementation-analysis-duplication': {
     summary: 'Hunt for cross-file duplication, near-duplicate logic, and extraction candidates.',
     body: `<p>Analyses code that was independently written by separate task executors who couldn't see each other's work. Read-only — writes only a findings file.</p>
 <p>Focus areas: <strong>cross-file repeated patterns</strong>, <strong>near-duplicate logic</strong> (slightly different implementations of the same concept), <strong>helper extraction candidates</strong> (inline code that should be shared), and <strong>copy-paste drift</strong> across task boundaries.</p>
 <p>Proportional analysis — three similar lines is not worth flagging, but three similar 20-line blocks is. Plan scope only.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-implementation-process', tools: 'Read, Write, Glob, Grep, Bash', complexity: 'Analysis agent' }
   },
-  'implementation-analysis-standards': {
+  'workflow-implementation-analysis-standards': {
     summary: 'The specification\'s advocate — find where implementation drifts from what was decided.',
     body: `<p>Analyses the implementation as the specification's advocate. Read-only — writes only a findings file.</p>
 <p>Focus areas: <strong>spec conformance</strong> (does the code match what was specified?), <strong>project skill compliance</strong> (MUST DO/MUST NOT DO rules), <strong>spec-vs-convention conflicts</strong> (when spec conflicts with language idiom, which won?), and <strong>missing validations/constraints</strong> from spec.</p>
 <p>Plan scope only — does not flag pre-existing drift in code that wasn't part of this implementation.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-implementation-process', tools: 'Read, Write, Glob, Grep, Bash', complexity: 'Analysis agent' }
   },
-  'implementation-analysis-architecture': {
+  'workflow-implementation-analysis-architecture': {
     summary: 'Review the completed implementation as an architect who didn\'t write it.',
     body: `<p>Reviews the implementation from an architectural perspective. Read-only — writes only a findings file.</p>
 <p>Focus areas: <strong>API surface quality</strong>, <strong>package/module structure</strong>, <strong>integration test gaps</strong> for cross-task workflows, <strong>seam quality</strong> between task boundaries, and <strong>over/under-engineering</strong>.</p>
 <p>Proportional and plan-scoped — focuses on high-impact issues, not cosmetic preferences.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-implementation-process', tools: 'Read, Write, Glob, Grep, Bash', complexity: 'Analysis agent' }
   },
-  'implementation-analysis-synthesizer': {
+  'workflow-implementation-analysis-synthesizer': {
     summary: 'Synthesize findings from 3 analysis agents into deduplicated, normalized tasks for user approval.',
     body: `<p>Locates findings files from the 3 analysis agents by convention (topic directory), reads them, then performs multi-step synthesis.</p>
 <p><strong>Process</strong>: deduplicate (same issue from multiple agents → one finding) → group related findings into single tasks → filter by severity (never discard high) → normalize into canonical task template (Problem/Solution/Outcome/Do/AC/Tests).</p>
 <p>Writes two outputs: an <strong>analysis report</strong> (summary + discarded findings) and a <strong>staging file</strong> (proposed tasks with <code>status: pending</code>) for the orchestrator to present to the user.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-implementation-process', tools: 'Read, Write, Glob, Grep', complexity: 'Synthesis agent' }
   },
-  'implementation-analysis-task-writer': {
+  'workflow-implementation-analysis-task-writer': {
     summary: 'Create plan tasks from approved analysis findings using the format\'s authoring adapter.',
     body: `<p>Invoked after the user approves analysis tasks. Reads the staging file, extracts tasks with <code>status: approved</code>, determines the next phase number, and creates tasks in the plan.</p>
 <p>Uses the plan format's <strong>authoring adapter</strong> to create tasks in the correct format (local-markdown file creation, Linear API calls, etc.). The topic name scopes tasks to the correct plan.</p>
@@ -3701,30 +3699,28 @@ const SOURCE_MAP = {
   'continue-epic':        'skills/continue-epic/SKILL.md',
   // Utility skills
   'link-deps':            'skills/link-dependencies/SKILL.md',
-  'status':               'skills/status/SKILL.md',
-  'view-plan':            'skills/view-plan/SKILL.md',
-  'migrate':              'skills/migrate/SKILL.md',
+  'workflow-migrate':     'skills/workflow-migrate/SKILL.md',
   // Agents — Specification
-  'specification-review-input':          'agents/specification-review-input.md',
-  'specification-review-gap-analysis':   'agents/specification-review-gap-analysis.md',
+  'workflow-specification-review-input':          'agents/workflow-specification-review-input.md',
+  'workflow-specification-review-gap-analysis':   'agents/workflow-specification-review-gap-analysis.md',
   // Agents — Planning
-  'planning-phase-designer':             'agents/planning-phase-designer.md',
-  'planning-task-designer':              'agents/planning-task-designer.md',
-  'planning-task-author':                'agents/planning-task-author.md',
-  'planning-dependency-grapher':         'agents/planning-dependency-grapher.md',
-  'planning-review-traceability':        'agents/planning-review-traceability.md',
-  'planning-review-integrity':           'agents/planning-review-integrity.md',
+  'workflow-planning-phase-designer':             'agents/workflow-planning-phase-designer.md',
+  'workflow-planning-task-designer':              'agents/workflow-planning-task-designer.md',
+  'workflow-planning-task-author':                'agents/workflow-planning-task-author.md',
+  'workflow-planning-dependency-grapher':         'agents/workflow-planning-dependency-grapher.md',
+  'workflow-planning-review-traceability':        'agents/workflow-planning-review-traceability.md',
+  'workflow-planning-review-integrity':           'agents/workflow-planning-review-integrity.md',
   // Agents — Implementation
-  'implementation-task-executor':        'agents/implementation-task-executor.md',
-  'implementation-task-reviewer':        'agents/implementation-task-reviewer.md',
-  'implementation-analysis-duplication': 'agents/implementation-analysis-duplication.md',
-  'implementation-analysis-standards':   'agents/implementation-analysis-standards.md',
-  'implementation-analysis-architecture':'agents/implementation-analysis-architecture.md',
-  'implementation-analysis-synthesizer': 'agents/implementation-analysis-synthesizer.md',
-  'implementation-analysis-task-writer': 'agents/implementation-analysis-task-writer.md',
+  'workflow-implementation-task-executor':        'agents/workflow-implementation-task-executor.md',
+  'workflow-implementation-task-reviewer':        'agents/workflow-implementation-task-reviewer.md',
+  'workflow-implementation-analysis-duplication': 'agents/workflow-implementation-analysis-duplication.md',
+  'workflow-implementation-analysis-standards':   'agents/workflow-implementation-analysis-standards.md',
+  'workflow-implementation-analysis-architecture':'agents/workflow-implementation-analysis-architecture.md',
+  'workflow-implementation-analysis-synthesizer': 'agents/workflow-implementation-analysis-synthesizer.md',
+  'workflow-implementation-analysis-task-writer': 'agents/workflow-implementation-analysis-task-writer.md',
   // Agents — Review
-  'review-task-verifier':                'agents/review-task-verifier.md',
-  'review-findings-synthesizer':         'agents/review-findings-synthesizer.md',
+  'workflow-review-task-verifier':                'agents/workflow-review-task-verifier.md',
+  'workflow-review-findings-synthesizer':         'agents/workflow-review-findings-synthesizer.md',
 };
 
 // ── Markdown Viewer ──

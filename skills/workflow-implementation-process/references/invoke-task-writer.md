@@ -10,7 +10,7 @@ This step invokes the task writer agent to create plan tasks from approved analy
 
 ## Invoke the Agent
 
-**Agent path**: `../../../agents/implementation-analysis-task-writer.md`
+**Agent path**: `../../../agents/workflow-implementation-analysis-task-writer.md`
 
 Pass via the orchestrator's prompt:
 

@@ -4,7 +4,7 @@
 
 ---
 
-This step uses the `planning-task-designer` agent (`../../../agents/planning-task-designer.md`) to design a task list for a single phase. You invoke the agent, present its output, and handle the approval gate.
+This step uses the `workflow-planning-task-designer` agent (`../../../agents/workflow-planning-task-designer.md`) to design a task list for a single phase. You invoke the agent, present its output, and handle the approval gate.
 
 ---
 
@@ -25,7 +25,7 @@ Read `work_type` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
 ```
 
-Invoke `planning-task-designer` with these file paths:
+Invoke `workflow-planning-task-designer` with these file paths:
 
 1. **read-specification.md**: `read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
@@ -53,7 +53,7 @@ Present the task overview to the user:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-{task overview from planning-task-designer agent}
+{task overview from workflow-planning-task-designer agent}
 ```
 
 Then check the gate mode.
@@ -94,7 +94,7 @@ Approve this task list?
 
 #### If the user provides feedback
 
-Re-invoke `planning-task-designer` with all original inputs PLUS:
+Re-invoke `workflow-planning-task-designer` with all original inputs PLUS:
 - **Previous output**: the current task list
 - **User feedback**: what the user wants changed
 

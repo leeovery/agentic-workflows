@@ -180,20 +180,20 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 
 **Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/)
 
-**Utilities:** [`/status`](skills/status/) | [`/view-plan`](skills/view-plan/) | [`/link-dependencies`](skills/link-dependencies/) | [`/migrate`](skills/migrate/)
+**Utilities:** [`/link-dependencies`](skills/link-dependencies/) | [`/workflow-migrate`](skills/workflow-migrate/)
 
 </details>
 
 <details>
 <summary><strong>Agents</strong> — 17 subagents for parallel task execution</summary>
 
-**Planning:** [phase-designer](agents/planning-phase-designer.md) | [task-designer](agents/planning-task-designer.md) | [task-author](agents/planning-task-author.md) | [dependency-grapher](agents/planning-dependency-grapher.md) | [review-traceability](agents/planning-review-traceability.md) | [review-integrity](agents/planning-review-integrity.md)
+**Planning:** [phase-designer](agents/workflow-planning-phase-designer.md) | [task-designer](agents/workflow-planning-task-designer.md) | [task-author](agents/workflow-planning-task-author.md) | [dependency-grapher](agents/workflow-planning-dependency-grapher.md) | [review-traceability](agents/workflow-planning-review-traceability.md) | [review-integrity](agents/workflow-planning-review-integrity.md)
 
-**Specification:** [review-input](agents/specification-review-input.md) | [review-gap-analysis](agents/specification-review-gap-analysis.md)
+**Specification:** [review-input](agents/workflow-specification-review-input.md) | [review-gap-analysis](agents/workflow-specification-review-gap-analysis.md)
 
-**Implementation:** [task-executor](agents/implementation-task-executor.md) | [task-reviewer](agents/implementation-task-reviewer.md) | [analysis-architecture](agents/implementation-analysis-architecture.md) | [analysis-duplication](agents/implementation-analysis-duplication.md) | [analysis-standards](agents/implementation-analysis-standards.md) | [analysis-synthesizer](agents/implementation-analysis-synthesizer.md) | [analysis-task-writer](agents/implementation-analysis-task-writer.md)
+**Implementation:** [task-executor](agents/workflow-implementation-task-executor.md) | [task-reviewer](agents/workflow-implementation-task-reviewer.md) | [analysis-architecture](agents/workflow-implementation-analysis-architecture.md) | [analysis-duplication](agents/workflow-implementation-analysis-duplication.md) | [analysis-standards](agents/workflow-implementation-analysis-standards.md) | [analysis-synthesizer](agents/workflow-implementation-analysis-synthesizer.md) | [analysis-task-writer](agents/workflow-implementation-analysis-task-writer.md)
 
-**Review:** [task-verifier](agents/review-task-verifier.md) | [findings-synthesizer](agents/review-findings-synthesizer.md)
+**Review:** [task-verifier](agents/workflow-review-task-verifier.md) | [findings-synthesizer](agents/workflow-review-findings-synthesizer.md)
 
 </details>
 

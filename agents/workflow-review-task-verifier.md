@@ -1,5 +1,5 @@
 ---
-name: review-task-verifier
+name: workflow-review-task-verifier
 description: Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality against the task's acceptance criteria and spec context. Writes structured findings to file, returns brief status to orchestrator.
 tools: Read, Write, Glob, Grep
 model: opus

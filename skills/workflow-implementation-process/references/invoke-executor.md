@@ -4,7 +4,7 @@
 
 ---
 
-This step invokes the `implementation-task-executor` agent (`../../../agents/implementation-task-executor.md`) to implement one task.
+This step invokes the `workflow-implementation-task-executor` agent (`../../../agents/workflow-implementation-task-executor.md`) to implement one task.
 
 ---
 
