@@ -43,6 +43,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 6. **Balanced test review** — Flag both under-testing AND over-testing
 7. **Fresh perspective** — You haven't seen this code before; question everything
 
+---
+
 ## Output Formatting
 
 When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
@@ -93,130 +95,7 @@ Continue or restart?
 
 ## Step 1: Initialize Review
 
-Check if review phase is registered in manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic}
-```
-
-#### If `false`
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.review.{topic}
-```
-
-#### If `true`
-
-Phase already registered (e.g. reopened review). Skip init-phase.
-
-Now determine review mode. Check if the review file exists at `.workflows/{work_unit}/review/{topic}/report.md`.
-
-#### If no review file exists
-
-Store `review_mode = full`.
-
-→ Proceed to **Step 2**.
-
-#### If review file exists
-
-Continuing from a previous session — determine scope.
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} completed_tasks
-```
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic} reviewed_tasks
-```
-
-**If `reviewed_tasks` does not exist:**
-
-No prior review tracking. Store `review_mode = full`.
-
-→ Proceed to **Step 2**.
-
-**If `reviewed_tasks` exists and no unreviewed tasks (arrays match):**
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} reviewed_tasks
-```
-
-Compare `completed_tasks` against `reviewed_tasks`.
-
-> *Output the next fenced block as a code block:*
-
-```
-Reopening review: {topic:(titlecase)}
-
-All tasks have been reviewed. Starting a full re-review.
-```
-
-Store `review_mode = full`.
-
-Clear prior review data for a clean slate:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
-```
-
-```bash
-rm .workflows/{work_unit}/review/{topic}/report-*.md
-```
-
-Commit: `review({work_unit}): clear review data for full re-review`
-
-→ Proceed to **Step 2**.
-
-**If `reviewed_tasks` exists and unreviewed tasks exist:**
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} reviewed_tasks
-```
-
-Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `completed_tasks` but not in `reviewed_tasks` is unreviewed.
-
-> *Output the next fenced block as a code block:*
-
-```
-New Implementation Detected
-
-Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Review mode?
-
-- **`i`/`incremental`** — Review only new tasks ({U} tasks)
-- **`f`/`full`** — Re-review all tasks
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `incremental`
-
-Store `review_mode = incremental` and `unreviewed_tasks = [{list of unreviewed internal IDs}]`.
-
-→ Proceed to **Step 2**.
-
-#### If `full`
-
-Store `review_mode = full`.
-
-Clear prior review data for a clean slate:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.review.{topic} reviewed_tasks
-```
-
-```bash
-rm .workflows/{work_unit}/review/{topic}/report-*.md
-```
-
-Commit: `review({work_unit}): clear review data for full re-review`
+Load **[initialize-review.md](references/initialize-review.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -224,13 +103,7 @@ Commit: `review({work_unit}): clear review data for full re-review`
 
 ## Step 2: Read Plan(s) and Specification(s)
 
-Read all plan(s) provided for the selected scope.
-
-For each plan:
-1. Read the plan — understand phases, tasks, and acceptance criteria
-2. Read the linked specification — load design context
-3. Extract all tasks across all phases
-4. Load the format's reading adapter from `../workflow-planning-process/references/output-formats/{format}/reading.md` — this tells you how to locate and read individual task files
+Load **[read-plans.md](references/read-plans.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
 
@@ -238,19 +111,7 @@ For each plan:
 
 ## Step 3: Project Skills Discovery
 
-#### If `.claude/skills/` does not exist or is empty
-
-> *Output the next fenced block as a code block:*
-
-```
-No project skills found. Proceeding without project-specific conventions.
-```
-
-→ Proceed to **Step 4**.
-
-#### If project skills exist
-
-Scan `.claude/skills/` for project-specific skill directories. Note which are relevant to the review (framework guidelines, code style, architecture patterns).
+Load **[discover-project-skills.md](references/discover-project-skills.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
