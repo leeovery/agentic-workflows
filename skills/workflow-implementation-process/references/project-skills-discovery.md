@@ -4,7 +4,9 @@
 
 ---
 
-Check `project_skills` via manifest CLI:
+## A. Resolve Configuration
+
+Read topic-level `project_skills` via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} project_skills
@@ -12,37 +14,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implem
 
 #### If `project_skills` is populated
 
-Present the existing configuration for confirmation:
-
-> *Output the next fenced block as a code block:*
-
-```
-Previous session used these project skills:
-
-  • {skill-name} — {path}
-  • ...
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Keep these project skills?
-
-- **`y`/`yes`** — Keep and proceed
-- **`c`/`change`** — Re-discover and choose skills
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `yes`
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If `change`
-
-Clear `project_skills` and fall through to discovery below.
+→ Proceed to **B. Confirm Skills**.
 
 #### If `project_skills` is empty
 
@@ -52,41 +24,9 @@ Query the phase-level recommendation:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation project_skills
 ```
 
-#### If phase-level is a non-empty array
+**If phase-level is populated:** → Proceed to **B. Confirm Skills**.
 
-Present the shortened recommendation menu:
-
-> *Output the next fenced block as a code block:*
-
-```
-Previous implementations used these project skills:
-
-  • {skill-name} — {path}
-  • ...
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Use the same project skills?
-
-- **`y`/`yes`** — Use the same and proceed
-- **`n`/`no`** — Analyse for project skills (picks up any changes)
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:** Copy phase-level array to topic level:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills [{phase-level values}]
-```
-→ Return to **[the skill](../SKILL.md)**.
-
-**If `no`:** Fall through to discovery below.
-
-#### If phase-level is an empty array
+**If phase-level is an empty array:**
 
 > *Output the next fenced block as a code block:*
 
@@ -109,11 +49,52 @@ Skip project skills again?
 
 **If `yes`:** → Return to **[the skill](../SKILL.md)**.
 
-**If `no`:** Fall through to discovery below.
+**If `no`:** → Proceed to **C. Discovery**.
 
-#### If no phase-level field exists
+**If no phase-level field exists:** → Proceed to **C. Discovery**.
 
-Fall through to discovery below.
+---
+
+## B. Confirm Skills
+
+> *Output the next fenced block as a code block:*
+
+```
+Project skills found:
+
+  • {skill-name} — {path}
+  • ...
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Use these project skills?
+
+- **`y`/`yes`** — Use and proceed
+- **`n`/`no`** — Re-discover and choose skills
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `yes`
+
+**If source was phase-level:** Copy to topic level:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills [{phase-level values}]
+```
+
+→ Return to **[the skill](../SKILL.md)**.
+
+#### If `no`
+
+→ Proceed to **C. Discovery**.
+
+---
+
+## C. Discovery
 
 #### If `.claude/skills/` does not exist or is empty
 
@@ -123,8 +104,9 @@ Fall through to discovery below.
 No project skills found. Proceeding without project-specific conventions.
 ```
 
-Write to phase level so future topics receive a recommendation:
+Store empty array at both levels:
 ```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills []
 ```
 
@@ -158,25 +140,21 @@ Which project skills should be used?
 
 **STOP.** Wait for user response.
 
-**If `none`:**
+#### If `none`
 
-Write to phase level so future topics receive a recommendation:
+Store empty array at both levels:
 ```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills []
 ```
 
 → Return to **[the skill](../SKILL.md)**.
 
-**Otherwise:**
+#### Otherwise
 
-Store the selected skill paths via manifest CLI, pushing each path individually:
+Store the selected skill paths at both levels:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path1}"
-node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path2}"
-```
-
-Write to phase level so future topics receive a recommendation:
-```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills ["{path1}","{path2}"]
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills ["{path1}","{path2}"]
 ```
 
