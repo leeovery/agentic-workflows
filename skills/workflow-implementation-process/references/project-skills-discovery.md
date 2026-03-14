@@ -14,13 +14,18 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implem
 
 Present the existing configuration for confirmation:
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
 Previous session used these project skills:
-- `{skill-name}` — {path}
-- ...
 
+  • {skill-name} — {path}
+  • ...
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
 · · · · · · · · · · · ·
 Keep these project skills?
 
@@ -51,13 +56,18 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implem
 
 Present the shortened recommendation menu:
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
 Previous implementations used these project skills:
-- `{skill-name}` — {path}
-- ...
 
+  • {skill-name} — {path}
+  • ...
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
 · · · · · · · · · · · ·
 Use the same project skills?
 
@@ -78,11 +88,15 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 #### If phase-level is an empty array
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
 Previous implementations used no project skills.
+```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
 · · · · · · · · · · · ·
 Skip project skills again?
 
@@ -120,14 +134,19 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 Scan `.claude/skills/` for project-specific skill directories. Present findings:
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
 Found these project skills that may be relevant to implementation:
-- `{skill-name}` — {brief description}
-- `{skill-name}` — {brief description}
-- ...
 
+  • {skill-name} — {brief description}
+  • {skill-name} — {brief description}
+  • ...
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
 · · · · · · · · · · · ·
 Which project skills should be used?
 
