@@ -94,10 +94,6 @@ The second segment after a phase name could be either a phase-level field (`anal
 - CLAUDE.md grammar examples updated
 - Migration scripts left as-is (point-in-time snapshots per existing convention)
 
-## Pre-Flight: Investigate Before Implementation
-
-- `workflow-planning-entry/references/invoke-skill.md` line 22: `get {work_unit} --phase planning format` uses `--phase` without `--topic`, but `format` appears to be stored at topic level in the manifest. Verify whether this is a bug or whether `format` is genuinely phase-level. Resolution affects how `planning.format` vs `planning.{topic}.format` routes.
-
 ## Touch Points
 
 - `skills/workflow-manifest/scripts/manifest.js` — dot-path parsing, phase detection, manifest lookup disambiguation, remove flag parsing
