@@ -37,13 +37,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
-## Output Formatting
-
-When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
-
----
-
-## Investigation Discipline
+## Hard Rules
 
 The investigation file is your memory. Context compaction is lossy — what's not on disk is lost.
 
@@ -59,6 +53,12 @@ The investigation file is your memory. Context compaction is lossy — what's no
 **Create the file early.** After understanding the initial symptoms, create the investigation file with the symptoms section.
 
 **On length**: Investigations can vary widely. Capture what's needed to fully understand the bug. Don't summarize prematurely — document the trail.
+
+---
+
+## Output Formatting
+
+When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
 
 ---
 

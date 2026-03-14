@@ -39,7 +39,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
-## Orchestrator Hard Rules
+## Hard Rules
 
 1. **No autonomous decisions on spec deviations** — when the executor reports a blocker or spec deviation, present to user and STOP. Never resolve on the user's behalf.
 2. **All git operations are the orchestrator's responsibility** — agents never commit, stage, or interact with git.
