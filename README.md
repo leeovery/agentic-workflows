@@ -130,9 +130,11 @@ For epics with multiple plans, `/link-dependencies` scans for unresolved cross-t
 
 When a task reviewer finds issues, the executor re-invokes with feedback automatically. Loops cap at 3 attempts before escalating to the user — no infinite cycles, but most issues self-resolve without intervention.
 
-### Spec Change Detection
+### Change Detection & Cached Analysis
 
-Plans track which version of the specification they were built from. If the spec changes after planning, the system detects it and asks whether to continue with the existing plan or replan from the updated spec.
+The system tracks content changes across phase boundaries using checksums. If research documents change, the discussion phase recommends reanalysing to identify new topics — anchoring against existing discussions so nothing is lost. If discussions change, the specification phase recommends regrouping. If a spec changes after planning, the system asks whether to continue or replan.
+
+Analysis results are cached — the system only reanalyses when content actually changed. This keeps behaviour deterministic across session replays and backwards navigation, avoiding redundant work when revisiting earlier phases.
 
 ### Environment Awareness
 
