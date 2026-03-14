@@ -129,15 +129,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 ## C. Discovery
 
-1. **Identify project languages** — check file extensions, package files (`composer.json`, `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, etc.), and project skills in `.claude/skills/`
-2. **Check for existing linter configs** — look for config files in the project root:
-   - PHP: `phpstan.neon`, `phpstan.neon.dist`, `pint.json`, `.php-cs-fixer.php`
-   - JavaScript/TypeScript: `.eslintrc*`, `eslint.config.*`, `biome.json`
-   - Go: `.golangci.yml`, `.golangci.yaml`
-   - Python: `pyproject.toml` (ruff/mypy sections), `setup.cfg`, `.flake8`
-   - Rust: `rustfmt.toml`, `clippy.toml`
-3. **Verify tools are installed** — run each discovered tool with `--version` or equivalent to confirm it's available
-4. **Recommend if none found** — if a language is detected but no linter is configured, suggest best-practice tools (e.g., PHPStan + Pint for PHP, ESLint for JS/TS, golangci-lint for Go). Include install commands.
+Analyse the project to determine which linters are appropriate:
+
+1. **Examine the project** — languages, frameworks, build tools, and existing configuration. Check package files, project skills in `.claude/skills/`, and any linter configs already present.
+2. **Check installed tooling** — verify availability of candidate linters via the command line (e.g., `--version`). Check common install locations including package managers (brew, npm global, pip, cargo, etc.).
+3. **Recommend a linter set** — based on project analysis and available tooling. Include install commands for any recommended tools that aren't yet installed.
 
 Present discovery findings to the user:
 
