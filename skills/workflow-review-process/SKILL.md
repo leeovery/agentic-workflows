@@ -117,7 +117,7 @@ Load **[read-plans.md](references/read-plans.md)** and follow its instructions a
 
 ## Step 3: Load Project Skills
 
-Load **[discover-project-skills.md](references/discover-project-skills.md)** and follow its instructions as written.
+Load **[load-project-skills.md](references/load-project-skills.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
