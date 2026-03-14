@@ -24,7 +24,9 @@ Query the phase-level recommendation:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation project_skills
 ```
 
-**If phase-level is populated:** → Proceed to **B. Confirm Skills**.
+**If phase-level is populated:**
+
+→ Proceed to **B. Confirm Skills**.
 
 **If phase-level is an empty array:**
 
@@ -47,11 +49,17 @@ Skip project skills again?
 
 **STOP.** Wait for user response.
 
-**If `yes`:** → Return to **[the skill](../SKILL.md)**.
+**If `yes`:**
 
-**If `no`:** → Proceed to **C. Discovery**.
+→ Return to **[the skill](../SKILL.md)**.
 
-**If no phase-level field exists:** → Proceed to **C. Discovery**.
+**If `no`:**
+
+→ Proceed to **C. Discovery**.
+
+**If no phase-level field exists:**
+
+→ Proceed to **C. Discovery**.
 
 ---
 
@@ -81,7 +89,9 @@ Use these project skills?
 
 #### If `yes`
 
-**If source was phase-level:** Copy to topic level:
+**If source was phase-level:**
+
+Copy to topic level:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills [{phase-level values}]
 ```
