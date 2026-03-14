@@ -6,7 +6,7 @@
 
 Multi-file, topic-aware session with convergence routing.
 
-Load **[session-loop.md](session-loop.md)** and follow its conversation process.
+→ Load **[session-loop.md](session-loop.md)** and follow its conversation process.
 
 ## Topic Awareness
 

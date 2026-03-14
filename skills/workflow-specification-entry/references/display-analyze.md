@@ -90,7 +90,7 @@ If cache is stale, delete it first:
 rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 ```
 
-→ Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions.
+→ Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 
 #### If user declines (n)
 

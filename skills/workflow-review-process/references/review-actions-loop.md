@@ -139,7 +139,7 @@ Invoke the workflow-bridge skill to enter plan mode with completion confirmation
 
 ## B. Dispatch Review Synthesizer
 
-Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions as written.
+→ Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the synthesizer has returned.
 

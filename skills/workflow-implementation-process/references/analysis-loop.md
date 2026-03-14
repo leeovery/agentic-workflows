@@ -104,7 +104,7 @@ impl({work_unit}): pre-analysis checkpoint
 
 ## C. Dispatch Analysis Agents
 
-Load **[invoke-analysis.md](invoke-analysis.md)** and follow its instructions as written.
+→ Load **[invoke-analysis.md](invoke-analysis.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until all agents have returned.
 
@@ -126,7 +126,7 @@ impl({work_unit}): analysis cycle {N} — findings
 
 ## D. Dispatch Synthesis Agent
 
-Load **[invoke-synthesizer.md](invoke-synthesizer.md)** and follow its instructions as written.
+→ Load **[invoke-synthesizer.md](invoke-synthesizer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the synthesizer has returned.
 
@@ -262,7 +262,7 @@ impl({work_unit}): analysis cycle {N} — tasks skipped
 
 ## F. Create Tasks in Plan
 
-Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructions as written.
+→ Load **[invoke-task-writer.md](invoke-task-writer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 

@@ -36,7 +36,7 @@ At every stop point — phases, task lists, individual tasks, dependencies — t
 - The user making a comment or observation without explicit approval
 - ANY response that isn't explicit confirmation
 
-**If you are uncertain whether the user approved, ASK:** "Ready to proceed, or do you want to change something?"
+When uncertain whether the user approved, ask: "Ready to proceed, or do you want to change something?"
 
 #### Self-Check Before Logging
 

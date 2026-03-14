@@ -112,7 +112,7 @@ Wait for the agent to return. Record its STATUS as `phase_1_status`.
 
 **If the agent created a tracking file**, commit it: `spec({work_unit}): input review cycle {N}`
 
-Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions to process findings with the user.
+→ Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
 → Proceed to **C. Phase 2 — Gap Analysis**.
 
@@ -132,7 +132,7 @@ Wait for the agent to return. Record its STATUS as `phase_2_status`.
 
 **If the agent created a tracking file**, commit it: `spec({work_unit}): gap analysis cycle {N}`
 
-Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions to process findings with the user.
+→ Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
 → Proceed to **D. Re-Loop Prompt**.
 

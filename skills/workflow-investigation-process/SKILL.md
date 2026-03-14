@@ -37,13 +37,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
-## Output Formatting
-
-When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
-
----
-
-## Investigation Discipline
+## Hard Rules
 
 The investigation file is your memory. Context compaction is lossy — what's not on disk is lost.
 
@@ -59,6 +53,12 @@ The investigation file is your memory. Context compaction is lossy — what's no
 **Create the file early.** After understanding the initial symptoms, create the investigation file with the symptoms section.
 
 **On length**: Investigations can vary widely. Capture what's needed to fully understand the bug. Don't summarize prematurely — document the trail.
+
+---
+
+## Output Formatting
+
+When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
 
 ---
 
@@ -102,14 +102,7 @@ Found existing investigation for **{topic:(titlecase)}**.
 
 ## Step 1: Initialize Investigation
 
-1. Create the investigation directory: `.workflows/{work_unit}/investigation/`
-2. Load **[template.md](references/template.md)** — use it to create `.workflows/{work_unit}/investigation/{topic}.md`
-3. Populate the Symptoms section with any context already gathered
-4. Register investigation in manifest:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.investigation.{topic}
-   ```
-5. Commit the initial file
+Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 

@@ -29,7 +29,7 @@ Proceed?
 
 #### If user confirms (y)
 
-→ Load **[continue.md](handoffs/continue.md)** and follow its instructions.
+→ Load **[continue.md](handoffs/continue.md)** and follow its instructions as written.
 
 #### If user declines (n)
 

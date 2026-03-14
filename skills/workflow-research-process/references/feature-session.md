@@ -6,7 +6,7 @@
 
 Focused, single-topic session. No splitting, no multi-file management.
 
-Load **[session-loop.md](session-loop.md)** and follow its conversation process.
+→ Load **[session-loop.md](session-loop.md)** and follow its conversation process.
 
 ## Session Conclusion
 

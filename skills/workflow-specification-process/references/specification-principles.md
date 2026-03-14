@@ -47,7 +47,7 @@ At every stop point, the user must explicitly approve before you proceed or log 
 - The user making a comment or observation without explicit approval
 - ANY response that isn't explicit confirmation
 
-**If you are uncertain whether the user approved, ASK:** "Ready to log it, or do you want to change something?"
+When uncertain whether the user approved, ask: "Ready to log it, or do you want to change something?"
 
 ❌ **NEVER:**
 - Create the specification document and then ask the user to review it

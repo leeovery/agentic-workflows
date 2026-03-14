@@ -12,12 +12,12 @@ Check if a spec covers this discussion — either by name match (`has_individual
 
 #### If a spec covers this discussion and has a single source
 
-→ Load **[display-single-has-spec.md](display-single-has-spec.md)** and follow its instructions.
+→ Load **[display-single-has-spec.md](display-single-has-spec.md)** and follow its instructions as written.
 
 #### If a spec covers this discussion and has multiple sources
 
-→ Load **[display-single-grouped.md](display-single-grouped.md)** and follow its instructions.
+→ Load **[display-single-grouped.md](display-single-grouped.md)** and follow its instructions as written.
 
 #### Otherwise
 
-→ Load **[display-single-no-spec.md](display-single-no-spec.md)** and follow its instructions.
+→ Load **[display-single-no-spec.md](display-single-no-spec.md)** and follow its instructions as written.

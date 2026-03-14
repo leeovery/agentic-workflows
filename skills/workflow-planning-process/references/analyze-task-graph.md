@@ -22,7 +22,7 @@ Read the `format` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
 ```
 
-Read **[output-formats.md](output-formats.md)**, find the entry matching the format, and load the format's **[reading.md](output-formats/{format}/reading.md)** and **[graph.md](output-formats/{format}/graph.md)**.
+Load the format's **[reading.md](output-formats/{format}/reading.md)** and **[graph.md](output-formats/{format}/graph.md)**.
 
 ### Invoke the Agent
 

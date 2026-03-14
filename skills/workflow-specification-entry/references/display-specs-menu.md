@@ -142,10 +142,10 @@ If cache is stale, delete it first:
 rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 ```
 
-→ Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions.
+→ Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 
 #### If user picks `Continue` or `Refine` for a spec
 
 The selected spec and its sources become the context for confirmation.
 
-→ Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions.
+→ Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.

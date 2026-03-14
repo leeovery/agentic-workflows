@@ -117,3 +117,7 @@ Once all batches have completed:
    - Collect all code quality concerns
    - Include specific file:line references
    - Check overall plan completion (see [review-checklist.md](review-checklist.md) — Plan Completion Check)
+
+**CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.
+
+→ Return to **[the skill](../SKILL.md)**.

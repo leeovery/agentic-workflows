@@ -80,13 +80,7 @@ Found existing research for **{topic:(titlecase)}**.
 
 ## Step 1: Initialize Research
 
-1. Load **[template.md](references/template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`)
-2. Populate the Starting Point section with context from the handoff. If restarting (no Context in handoff), create with a minimal Starting Point — the session will gather context naturally
-3. Register in manifest:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.research.{topic}
-   ```
-4. Commit the initial file
+Load **[initialize-research.md](references/initialize-research.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -110,16 +104,4 @@ Load **[research-guidelines.md](references/research-guidelines.md)** and follow 
 
 ## Step 4: Research Session
 
-Read `work_type` from the manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit} work_type
-```
-
-#### If work_type is `feature`
-
-Load **[feature-session.md](references/feature-session.md)** and follow its instructions as written.
-
-#### If work_type is `epic`
-
-Load **[epic-session.md](references/epic-session.md)** and follow its instructions as written.
+Load **[route-session.md](references/route-session.md)** and follow its instructions as written.

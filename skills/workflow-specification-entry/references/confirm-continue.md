@@ -86,11 +86,11 @@ Proceed?
 
 #### If spec is completed with pending sources
 
-→ Load **[continue-completed.md](handoffs/continue-completed.md)** and follow its instructions.
+→ Load **[continue-completed.md](handoffs/continue-completed.md)** and follow its instructions as written.
 
 #### Otherwise
 
-→ Load **[continue.md](handoffs/continue.md)** and follow its instructions.
+→ Load **[continue.md](handoffs/continue.md)** and follow its instructions as written.
 
 #### If user declines (n)
 

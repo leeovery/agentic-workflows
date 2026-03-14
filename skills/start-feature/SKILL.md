@@ -29,7 +29,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ## Step 1: Gather Feature Context
 
-Load **[gather-feature-context.md](references/gather-feature-context.md)** and follow its instructions.
+Load **[gather-feature-context.md](references/gather-feature-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -37,7 +37,7 @@ Load **[gather-feature-context.md](references/gather-feature-context.md)** and f
 
 ## Step 2: Feature Name and Conflict Check
 
-Load **[name-check.md](references/name-check.md)** and follow its instructions.
+Load **[name-check.md](references/name-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
 
@@ -45,7 +45,7 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions.
 
 ## Step 3: Route to First Phase
 
-Load **[research-gating.md](references/research-gating.md)** and follow its instructions.
+Load **[research-gating.md](references/research-gating.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 

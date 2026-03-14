@@ -100,4 +100,4 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 {Note any naming conflicts with anchored specs here}
 ```
 
-→ Load **[display-groupings.md](display-groupings.md)** and follow its instructions.
+→ Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.

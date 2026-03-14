@@ -72,7 +72,7 @@ Epic Completed
 {completed_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
 ```
 
-Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.
+→ Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 

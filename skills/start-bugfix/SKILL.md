@@ -29,7 +29,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ## Step 1: Gather Bug Context
 
-Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow its instructions.
+Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -37,7 +37,7 @@ Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow it
 
 ## Step 2: Bugfix Name and Conflict Check
 
-Load **[name-check.md](references/name-check.md)** and follow its instructions.
+Load **[name-check.md](references/name-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
 

@@ -8,7 +8,7 @@ Discovery mode — use the discovery output from Step 1 to check prerequisites.
 
 #### If `has_discussions` is false or `has_completed` is false
 
-→ Load **[display-blocks.md](display-blocks.md)** and follow its instructions.
+→ Load **[display-blocks.md](display-blocks.md)** and follow its instructions as written.
 
 #### Otherwise
 

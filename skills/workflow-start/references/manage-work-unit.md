@@ -140,7 +140,7 @@ Invoke the `/continue-epic` skill. This is terminal — do not return to the cal
 
 #### If user chose `v`/`view-plan`
 
-Load **[view-plan.md](view-plan.md)** and follow its instructions as written.
+→ Load **[view-plan.md](view-plan.md)** and follow its instructions as written.
 
 → Return to **D. Action Menu**.
 

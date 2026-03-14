@@ -4,43 +4,51 @@
 
 ---
 
-Plans can be stored in different formats. Each format is a directory of 5 files split by concern (about, authoring, reading, updating, graph).
-
 **IMPORTANT**: Only offer formats listed below. Do not invent or suggest formats that don't have corresponding directories in the [output-formats/](output-formats/) directory.
 
-## Available Formats
+> *Output the next fenced block as a code block:*
 
-### Local Markdown
-format: `local-markdown`
+```
+Available output formats:
 
-adapter: [local-markdown/](output-formats/local-markdown/)
+  1. Tick
+     CLI task management with native dependency graph and priority.
+     Requires Tick CLI installation.
+     Best for: AI-driven workflows needing structured task tracking
 
+  2. Local Markdown
+     Task files stored as markdown in the planning directory.
+     No external tools required.
+     Best for: simple features, small plans, quick iterations
 
-Plan Index File with task detail stored as individual markdown files in a `{work_unit}/` subdirectory. No external tools or setup required.
+  3. Linear
+     Tasks managed as Linear issues within a Linear project.
+     Requires Linear account and MCP server.
+     Best for: teams already using Linear, collaborative projects
+```
 
-- **Pros**: Zero setup, works offline, human-readable, easy to edit in any text editor
-- **Cons**: No visual board, everything in markdown can get long for complex features, no dependency graph
-- **Best for**: Simple features, small plans, quick iterations
+> *Output the next fenced block as markdown (not a code block):*
 
-### Linear
-format: `linear`
+```
+· · · · · · · · · · · ·
+Select a format:
 
-adapter: [linear/](output-formats/linear/)
+- **`1`** — Tick
+- **`2`** — Local Markdown
+- **`3`** — Linear
+· · · · · · · · · · · ·
+```
 
+**STOP.** Wait for user response.
 
-Tasks managed as Linear issues within a Linear project. A thin Plan Index File points to the Linear project; Linear is the source of truth.
+#### If `1`
 
-- **Pros**: Visual tracking, team collaboration, real-time updates, integrates with existing Linear workflows
-- **Cons**: Requires Linear account and MCP server, external dependency, not fully local
-- **Best for**: Teams already using Linear, collaborative projects needing shared visibility
+Set `chosen-format` = `tick`.
 
-### Tick
-format: `tick`
+#### If `2`
 
-adapter: [tick/](output-formats/tick/)
+Set `chosen-format` = `local-markdown`.
 
-CLI task management with native dependencies, priority, and token-efficient output designed for AI agents. Tasks stored in git-friendly JSONL with a SQLite cache.
+#### If `3`
 
-- **Pros**: Native dependency graph with cycle detection, `tick ready` for next-task resolution, token-efficient TOON output, git-friendly, works offline
-- **Cons**: Requires Tick CLI installation, no visual board or web UI
-- **Best for**: AI-driven workflows needing structured task tracking with dependency resolution
+Set `chosen-format` = `linear`.

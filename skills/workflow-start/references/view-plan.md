@@ -64,7 +64,7 @@ Read the `format` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {selected.name}.planning.{topic} format
 ```
 
-Load **[reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.
+→ Load **[reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.
 
 → Proceed to **C. Display Summary**.
 

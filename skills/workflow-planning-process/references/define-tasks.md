@@ -120,6 +120,6 @@ Note that `task_list_gate_mode` should be updated to `auto` in the manifest duri
    ```
 3. Commit: `planning({work_unit}): approve Phase {N} task list`
 
-**If the task list was already approved and unchanged:** No updates needed.
+If the task list was already approved and unchanged, no updates are needed.
 
 → Return to **[plan-construction.md](plan-construction.md)**.

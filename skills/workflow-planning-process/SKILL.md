@@ -19,7 +19,6 @@ Follows specification. Transform the validated specification into actionable pha
 - **Specification content** (required) - The validated specification from the prior phase
 - **Topic name** (optional) - Will derive from specification if not provided
 - **Output format preference** (optional) - Will ask if not specified
-- **Recommended output format** (optional) - A format suggestion for consistency with existing plans
 - **Work type** (required) — `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design.
 - **Cross-cutting references** (optional) - Cross-cutting specifications that inform technical decisions in this plan
 
@@ -116,7 +115,7 @@ Continue or restart?
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
    ```
-2. Read **[output-formats.md](references/output-formats.md)**, find the entry matching the format, and load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
+2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
 3. Follow the authoring file's cleanup instructions to remove Authored Tasks for this topic
 4. Delete the scratch directory if it exists: `rm -rf .workflows/.cache/planning/{work_unit}/{topic}/`
 5. Delete the Plan Index File
@@ -128,62 +127,7 @@ Continue or restart?
 
 ## Step 1: Initialize Plan
 
-Choose the Output Format.
-
-#### If a recommended output format was provided (non-empty, not `none`)
-
-Present the recommendation:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Existing plans use **{format}**. Use the same format for consistency?
-
-- **`y`/`yes`** — Use {format}
-- **`n`/`no`** — See all available formats
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If no recommendation or user declined
-
-Read **[output-formats.md](references/output-formats.md)** and present each format to the user.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-@foreach(format in output_formats)
-{N}. **{format.name}** — {format.description}
-   Best for: {format.best_for}
-@endforeach
-
-Select a format (enter number):
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-Once selected:
-
-1. Capture the current git commit hash: `git rev-parse HEAD`
-2. Create the Plan Index File at `.workflows/{work_unit}/planning/{topic}/planning.md` using the **Title** template from **[plan-index-schema.md](references/plan-index-schema.md)**.
-3. Register planning and set metadata in the manifest:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.planning.{topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} format {chosen-format}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning format {chosen-format}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} spec_commit {commit-hash}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_list_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} author_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} finding_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase 1
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
-   ```
-
-4. Commit: `planning({work_unit}): initialize plan`
+Load **[initialize-plan.md](references/initialize-plan.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -191,21 +135,7 @@ Once selected:
 
 ## Step 2: Session Setup
 
-1. Read the `format` from the manifest:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
-   ```
-2. Read **[output-formats.md](references/output-formats.md)**, find the entry matching the format, and load the format's **[about.md](references/output-formats/{format}/about.md)** and **[authoring.md](references/output-formats/{format}/authoring.md)**
-3. Reset gate modes to `gated` in the manifest:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_list_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} author_gate_mode gated
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} finding_gate_mode gated
-   ```
-4. Update `spec_commit` to current HEAD:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} spec_commit $(git rev-parse HEAD)
-   ```
+Load **[session-setup.md](references/session-setup.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
 
@@ -261,57 +191,4 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 ## Step 9: Conclude the Plan
 
-> **CHECKPOINT**: Do not conclude if any tasks in the Plan Index File show `status: pending`. All tasks must be `authored` before concluding.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Ready to conclude?
-
-- **`y`/`yes`** — Conclude plan and mark as completed
-- **Comment** — Add context before concluding
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If comment
-
-Discuss the user's context.
-
-**If additional work is needed:**
-
-→ Return to **Step 7** or **Step 8** as appropriate.
-
-**Otherwise:**
-
-Re-present the sign-off prompt above.
-
-#### If `yes`
-
-1. **Update plan status** via manifest CLI:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} status completed
-   ```
-2. **Final commit** — Commit the completed plan: `planning({work_unit}): complete plan`
-3. **Present completion summary**:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Planning is complete for **{work_unit}**.
-
-The plan contains **{N} phases** with **{M} tasks** total, reviewed for traceability against the specification and structural integrity.
-
-Status has been marked as `completed`. The plan is ready for implementation.
-```
-
-4. **Pipeline continuation** — Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: planning
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
+Load **[conclude-plan.md](references/conclude-plan.md)** and follow its instructions as written.

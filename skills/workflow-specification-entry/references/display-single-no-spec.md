@@ -56,4 +56,4 @@ Automatically proceeding with "{work_unit:(titlecase)}".
 
 Auto-proceed with verb **"Creating"**.
 
-→ Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions.
+→ Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.

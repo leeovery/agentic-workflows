@@ -19,7 +19,7 @@ F. Topic complete → loop back to A or exit
 
 ## A. Exhaustive Extraction
 
-Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
+→ Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 
 When working with multiple sources, search each one — information about a single topic may be scattered across documents.
 

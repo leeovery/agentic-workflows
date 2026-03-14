@@ -64,11 +64,11 @@ Proceed?
 
 #### If existing specifications will be superseded
 
-→ Load **[unify-with-incorporation.md](handoffs/unify-with-incorporation.md)** and follow its instructions.
+→ Load **[unify-with-incorporation.md](handoffs/unify-with-incorporation.md)** and follow its instructions as written.
 
 #### Otherwise
 
-→ Load **[unify.md](handoffs/unify.md)** and follow its instructions.
+→ Load **[unify.md](handoffs/unify.md)** and follow its instructions as written.
 
 #### If user declines (n)
 
