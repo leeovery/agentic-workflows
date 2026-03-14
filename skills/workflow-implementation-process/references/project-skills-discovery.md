@@ -26,6 +26,10 @@ Read phase-level `project_skills` via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation project_skills
 ```
 
+**If no phase-level field exists:**
+
+→ Proceed to **C. Discovery**.
+
 **If phase-level is populated:**
 
 Set `source` = `phase`.
@@ -58,10 +62,6 @@ Skip project skills again?
 → Return to **[the skill](../SKILL.md)**.
 
 **If `no`:**
-
-→ Proceed to **C. Discovery**.
-
-**If no phase-level field exists:**
 
 → Proceed to **C. Discovery**.
 
