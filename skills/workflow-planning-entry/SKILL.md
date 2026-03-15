@@ -4,7 +4,7 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
-Invoke the **workflow-planning-process** skill for this conversation.
+Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
