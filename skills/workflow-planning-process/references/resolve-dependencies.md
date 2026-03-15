@@ -25,11 +25,19 @@ No external dependencies to track — skip to the approval gate.
 
 ## A. Build Dependencies from Spec
 
-1. Read existing `external_dependencies` from the manifest:
+1. Check for existing `external_dependencies` in the manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic} external_dependencies
+```
+
+If `true`, read the current values:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_dependencies
 ```
+
+If `false`, there are no existing entries to preserve.
 
 2. Read the specification's Dependencies section.
 
@@ -70,7 +78,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planni
 
 For each other topic with a planning phase in the same work unit:
 
-1. Read their external dependencies from the manifest:
+1. Check if they have external dependencies:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{other_topic} external_dependencies
+```
+
+If `false`, skip this topic. If `true`, read them:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{other_topic} external_dependencies

@@ -4,13 +4,13 @@
 
 ---
 
-Query the planning manifest entry for external dependencies:
+Check whether external dependencies exist in the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_dependencies
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic} external_dependencies
 ```
 
-#### If no external dependencies (empty or not found)
+#### If `false`
 
 > *Output the next fenced block as a code block:*
 
@@ -20,7 +20,13 @@ External dependencies satisfied.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If external dependencies exist
+#### If `true`
+
+Query the external dependencies:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_dependencies
+```
 
 For each dependency, check its state:
 
