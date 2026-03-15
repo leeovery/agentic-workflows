@@ -24,16 +24,16 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planni
 
 For each dependency, check its state:
 
-- **`unresolved`** → blocking
-- **`resolved`** → query the dependency topic's completed tasks:
+- **`unresolved`** — blocking
+- **`resolved`** — query the dependency topic's completed tasks:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{dep_topic} completed_tasks
 ```
 
-Check if `internal_id` appears in the completed tasks list. If yes → pass. If no (or implementation entry doesn't exist) → blocking.
+If `internal_id` appears in the completed tasks list, the dependency passes. If not (or the implementation entry doesn't exist), it is blocking.
 
-- **`satisfied_externally`** → pass
+- **`satisfied_externally`** — passes
 
 **If all satisfied:**
 
