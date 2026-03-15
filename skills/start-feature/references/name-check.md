@@ -4,6 +4,8 @@
 
 ---
 
+## A. Name Suggestion
+
 Based on the feature description, suggest a name in kebab-case. Once confirmed, this becomes both `{work_unit}` and `{topic}` — for feature, they are always the same value.
 
 > *Output the next fenced block as a code block:*
@@ -25,7 +27,11 @@ Is this name okay?
 
 **STOP.** Wait for user response.
 
-Once the name is confirmed, check for naming conflicts:
+→ Proceed to **B. Conflict Check**.
+
+## B. Conflict Check
+
+Check for naming conflicts:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}
@@ -51,7 +57,7 @@ Run /continue-feature to resume, or choose a different name.
 
 **STOP.** Wait for user response.
 
-If they choose a new name, return to the name suggestion prompt above.
+→ Return to **A. Name Suggestion**.
 
 #### If no conflict
 
