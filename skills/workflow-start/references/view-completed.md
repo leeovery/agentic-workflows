@@ -108,4 +108,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 
 #### If user asked a question
 
-Answer the question, then redisplay the action menu (section C).
+Answer the question.
+
+→ Return to **C. Action Menu**.

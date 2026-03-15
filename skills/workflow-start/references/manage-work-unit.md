@@ -26,7 +26,7 @@ Which work unit would you like to manage? (enter number from list above, or **`b
 
 Store the selected work unit.
 
-→ Proceed to **B. Implementation Check**.
+→ Proceed to **B. Pre-Checks**.
 
 ## B. Pre-Checks
 
@@ -164,4 +164,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 
 #### If user asked a question
 
-Answer the question, then redisplay the action menu (section D).
+Answer the question.
+
+→ Return to **D. Action Menu**.
