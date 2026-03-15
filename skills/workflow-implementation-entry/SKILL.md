@@ -60,6 +60,12 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ## Step 3: Check Dependencies
 
+#### If work_type is not `epic`
+
+→ Proceed to **Step 4**.
+
+#### Otherwise
+
 Load **[check-dependencies.md](references/check-dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.

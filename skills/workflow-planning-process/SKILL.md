@@ -175,6 +175,12 @@ Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow it
 
 ## Step 7: Resolve External Dependencies
 
+#### If work_type is not `epic`
+
+→ Proceed to **Step 8**.
+
+#### Otherwise
+
 Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 8**.

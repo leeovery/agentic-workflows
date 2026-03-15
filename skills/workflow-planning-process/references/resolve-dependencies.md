@@ -4,18 +4,6 @@
 
 ---
 
-#### If work_type is not `epic`
-
-Set external dependencies to empty object:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies '{}'
-```
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If work_type is `epic`
-
 > *Output the next fenced block as a code block:*
 
 ```

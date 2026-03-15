@@ -152,7 +152,7 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 
 → Proceed to **Step 7**.
 
-#### If work_type is `epic`
+#### Otherwise
 
 Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
 

@@ -4,12 +4,6 @@
 
 ---
 
-#### If work_type is not `epic`
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If work_type is `epic`
-
 Query the planning manifest entry for external dependencies:
 
 ```bash
