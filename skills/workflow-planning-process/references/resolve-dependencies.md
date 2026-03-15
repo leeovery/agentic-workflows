@@ -78,21 +78,19 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planni
 
 ## C. Remove Stale Entries
 
-Compare the manifest's dependency topics against the specification's Dependencies section. For each manifest dependency topic that does not appear in the specification, delete it:
+Compare the manifest's dependency topics against the specification's Dependencies section. Any manifest entry whose topic does not appear in the specification is stale — left over from a previous planning session.
+
+#### If stale entries exist
+
+Delete each one:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
 ```
 
-The spec is the source of truth — stale entries from a previous planning session must be cleaned up.
-
-#### If no stale entries exist
+#### Otherwise
 
 Nothing to remove.
-
-→ Proceed to **D. Resolve Current Plan's Dependencies**.
-
-#### If stale entries were removed
 
 → Proceed to **D. Resolve Current Plan's Dependencies**.
 
