@@ -1,7 +1,7 @@
 ---
 name: workflow-start
 disable-model-invocation: true
-allowed-tools: Bash(bash .claude/skills/workflow-start/scripts/banner.sh), Bash(node .claude/skills/workflow-start/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
+allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.js), Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.
@@ -20,10 +20,21 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ---
 
-Run the banner script and output its result exactly as printed:
+> *Output the next fenced block as a code block:*
 
-```bash
-bash .claude/skills/workflow-start/scripts/banner.sh
+```
+    ___   _____________   __________________
+   /   | / ____/ ____/ | / /_  __/  _/ ____/
+  / /| |/ / __/ __/ /  |/ / / /  / // /
+ / ___ / /_/ / /___/ /|  / / / _/ // /___
+/_/  |_\____/_____/_/ |_/ /_/ /___/\____/
+ _       ______  ____  __ __ ________    ____ _       _______
+| |     / / __ \/ __ \/ //_// ____/ /   / __ \ |     / / ___/
+| | /| / / / / / /_/ / ,<  / /_  / /   / / / / | /| / /\__ \
+| |/ |/ / /_/ / _, _/ /| |/ __/ / /___/ /_/ /| |/ |/ /___/ /
+|__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
+
+Agentic engineering workflows — from idea to implementation.
 ```
 
 ---
