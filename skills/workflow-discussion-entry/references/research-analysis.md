@@ -16,7 +16,9 @@ Use `cache.entries` from discovery to determine the approach. Check if a cache e
 Using cached research analysis (unchanged since {entry.generated})
 ```
 
-Load the topics from `.workflows/{work_unit}/.state/research-analysis.md` and proceed.
+Load the topics from `.workflows/{work_unit}/.state/research-analysis.md`.
+
+→ Return to **[the skill](../SKILL.md)**.
 
 #### If no cache entry exists or entry `status` is `stale`
 

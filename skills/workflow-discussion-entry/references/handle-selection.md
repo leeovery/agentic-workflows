@@ -27,6 +27,8 @@ Which research topic would you like to discuss? (Enter a number or topic name)
 
 **STOP.** Wait for user response.
 
+→ Return to **[the skill](../SKILL.md)**.
+
 #### If user chose `Continue discussion`
 
 User chose to continue a discussion (e.g., "continue auth-flow" or "continue discussion").
@@ -47,6 +49,8 @@ Which discussion would you like to continue?
 ```
 
 **STOP.** Wait for user response.
+
+→ Return to **[the skill](../SKILL.md)**.
 
 #### If user chose `Fresh topic`
 

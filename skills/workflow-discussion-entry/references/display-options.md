@@ -66,6 +66,10 @@ How would you like to proceed?
 · · · · · · · · · · · ·
 ```
 
+**STOP.** Wait for user response.
+
+→ Return to **[the skill](../SKILL.md)**.
+
 #### If only research exists
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -79,6 +83,10 @@ How would you like to proceed?
 - Fresh topic — describe what you want to discuss
 · · · · · · · · · · · ·
 ```
+
+**STOP.** Wait for user response.
+
+→ Return to **[the skill](../SKILL.md)**.
 
 #### If only discussions exist
 
@@ -94,3 +102,5 @@ How would you like to proceed?
 ```
 
 **STOP.** Wait for user response.
+
+→ Return to **[the skill](../SKILL.md)**.
