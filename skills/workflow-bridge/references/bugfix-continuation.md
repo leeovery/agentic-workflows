@@ -87,21 +87,25 @@ Bugfix Completed
 
 **If user chose `y`/`yes`:**
 
-→ Proceed to **C. Offer Revisit**.
+→ Proceed to **C. Check for Earlier Phases**.
 
 #### Otherwise
 
-→ Proceed to **C. Offer Revisit**.
+→ Proceed to **C. Check for Earlier Phases**.
 
-## C. Offer Revisit
+## C. Check for Earlier Phases
 
 Check if there are completed phases earlier in the pipeline that the user could revisit. Look at the discovery output's `phases` data — any phase with status `completed` that comes before `next_phase` in the pipeline order.
 
 #### If no earlier completed phases exist
 
-→ Proceed to **D. Enter Plan Mode**.
+→ Proceed to **F. Enter Plan Mode**.
 
 #### If earlier completed phases exist
+
+→ Proceed to **D. Offer Revisit**.
+
+## D. Offer Revisit
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -119,9 +123,13 @@ Check if there are completed phases earlier in the pipeline that the user could 
 
 #### If user chose `y`/`yes`
 
-→ Proceed to **D. Enter Plan Mode**.
+→ Proceed to **F. Enter Plan Mode**.
 
 #### If user chose `r`/`revisit`
+
+→ Proceed to **E. Select Phase**.
+
+## E. Select Phase
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -143,15 +151,15 @@ List only completed phases that come before `next_phase`.
 
 #### If user chose Back
 
-→ Return to **C. Offer Revisit**.
+→ Return to **D. Offer Revisit**.
 
 #### If user chose a phase
 
 Set `target_phase` = selected phase.
 
-→ Proceed to **D. Enter Plan Mode**.
+→ Proceed to **F. Enter Plan Mode**.
 
-## D. Enter Plan Mode
+## F. Enter Plan Mode
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
 

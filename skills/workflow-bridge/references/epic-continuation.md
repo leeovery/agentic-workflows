@@ -18,6 +18,8 @@ node .claude/skills/continue-epic/scripts/discovery.js {work_unit}
 
 Parse the output. Use the epic's `detail` object as the discovery data for the display.
 
+→ Proceed to **B. Check All-Done**.
+
 ## B. Check All-Done
 
 Using the enriched discovery data from section A, check if ALL topics across ALL phases have review status `completed`. Specifically: check if any review items exist, and if so, whether every one has `status: completed`, and no topics in earlier phases are still `in-progress`.
@@ -121,6 +123,8 @@ The skill will skip discovery and proceed directly to validation.
 Clear context and continue.
 ```
 
+Call the `ExitPlanMode` tool to present the plan to the user for approval.
+
 #### If topic is absent
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
@@ -142,4 +146,4 @@ The skill will run discovery with epic context.
 Clear context and continue.
 ```
 
-Call the `ExitPlanMode` tool to present the plan to the user for approval. The user will then clear context and continue.
+Call the `ExitPlanMode` tool to present the plan to the user for approval.
