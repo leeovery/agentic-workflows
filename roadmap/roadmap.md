@@ -7,6 +7,7 @@ Ideas and planned work for the workflow system.
 | ID | Idea | Status | File |
 |----|------|--------|------|
 | 1 | Cross-Cutting Work Type | brainstorming | [cross-cutting-work-type.md](cross-cutting-work-type.md) |
+| 2 | External Dependencies Refactor | planned | [external-dependencies-refactor.md](external-dependencies-refactor.md) |
 
 ## Completed
 
