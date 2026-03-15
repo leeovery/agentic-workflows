@@ -43,6 +43,8 @@ Read the current values and note which topics have `state: satisfied_externally`
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_dependencies
 ```
 
+→ Proceed to **B. Write Spec Dependencies**.
+
 **If `false`:**
 
 No existing entries to preserve.
@@ -62,6 +64,8 @@ Preserve the existing state — only update the description:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
 ```
+
+→ Proceed to **C. Remove Stale Entries**.
 
 **Otherwise:**
 
@@ -88,6 +92,8 @@ Delete each one:
 node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
 ```
 
+→ Proceed to **D. Resolve Current Plan's Dependencies**.
+
 #### Otherwise
 
 Nothing to remove.
@@ -103,6 +109,8 @@ For each unresolved dependency, check if `.workflows/{work_unit}/planning/{dep_t
 #### If the plan does not exist
 
 Leave the dependency as `state: unresolved`. It will be resolved when that topic is planned.
+
+→ Proceed to **E. Reverse Check**.
 
 #### Otherwise
 
@@ -191,3 +199,5 @@ Incorporate feedback, re-present the updated dependency state, and ask again. Re
 **If approved:**
 
 Commit: `planning({work_unit}): resolve external dependencies`
+
+→ Return to **[the skill](../SKILL.md)**.

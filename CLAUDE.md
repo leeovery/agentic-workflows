@@ -455,6 +455,7 @@ Rules:
 - Drop implied conditions (e.g., if Step 2 already gates on `completed_count >= 1`, Step 3 doesn't need to repeat it on every branch)
 - H4 for top-level conditionals, bold text for nested — never use H5/H6 for conditional nesting
 - If double-nesting would occur, flatten by combining the parent and child conditions into a single bold conditional
+- Every conditional branch must include its own routing instruction (`→ Proceed to` or `→ Return to`). Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
 
 ### Navigation Arrows
 
