@@ -16,10 +16,10 @@ Check whether external dependencies exist in the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic} external_dependencies
 ```
 
-#### If `false`
+**If `false`:**
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If `true`
+**If `true`:**
 
 → Load **[check-dependencies.md](check-dependencies.md)** and follow its instructions as written.
