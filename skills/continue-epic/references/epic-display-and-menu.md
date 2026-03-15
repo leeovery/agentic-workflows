@@ -195,6 +195,8 @@ Recreate with actual items from discovery. Blank line between sections.
 
 **STOP.** Wait for user response.
 
+→ Proceed to **D. Handle Selection**.
+
 ---
 
 ## D. Handle Selection
@@ -245,7 +247,9 @@ Ask which dependency to mark as satisfied. Update via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
 ```
 
-Commit the change. Then re-present the menu from **C. Menu** (the item may now be unblocked).
+Commit the change.
+
+→ Return to **C. Menu**.
 
 **If user chose `back`:**
 
@@ -253,7 +257,7 @@ Commit the change. Then re-present the menu from **C. Menu** (the item may now b
 
 #### If user chose `Resume a completed topic`
 
-→ Proceed to **E. Resume Completed**.
+→ Proceed to **F. Resume Completed**.
 
 #### Otherwise
 
@@ -290,11 +294,15 @@ now is safe, but may require rework.
 
 **If user chose `yes`:**
 
-Continue to routing below.
+→ Proceed to **E. Route Selection**.
 
-**If no soft gate condition matches**, continue to routing below.
+**If no soft gate condition matches:**
+
+→ Proceed to **E. Route Selection**.
 
 ---
+
+## E. Route Selection
 
 Store the selected action, phase, and topic (if applicable). Map to a routing entry:
 
@@ -312,11 +320,11 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 | Start new discussion topic | discussion | — |
 | Start new research | research | — |
 
-→ Return to the caller with the selected phase and topic.
+→ Return to **[the skill](../SKILL.md)**.
 
 ---
 
-## E. Resume Completed
+## F. Resume Completed
 
 Display all completed items across all phases and let the user select one to resume.
 
@@ -366,4 +374,4 @@ List all completed items across all phases.
 
 Store the selected phase and topic.
 
-→ Return to the caller with the selected phase and topic.
+→ Return to **[the skill](../SKILL.md)**.
