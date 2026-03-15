@@ -66,7 +66,7 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 #### Otherwise
 
-Load **[check-dependencies.md](references/check-dependencies.md)** and follow its instructions as written.
+Load **[validate-dependencies.md](references/validate-dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
