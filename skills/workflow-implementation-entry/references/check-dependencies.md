@@ -6,12 +6,6 @@
 
 #### If work_type is not `epic`
 
-> *Output the next fenced block as a code block:*
-
-```
-External dependencies satisfied.
-```
-
 → Return to **[the skill](../SKILL.md)**.
 
 #### If work_type is `epic`
