@@ -4,15 +4,11 @@
 
 ---
 
-This skill's purpose is now fulfilled.
-
-Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
 
 ---
 
 ## Handoff
-
-Construct the handoff based on verb and source material.
 
 #### If `work_type` is `feature`
 
@@ -28,6 +24,8 @@ Action: {verb} specification
 Invoke the workflow-specification-process skill.
 ```
 
+Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
+
 #### If `work_type` is `bugfix`
 
 ```
@@ -41,6 +39,8 @@ Action: {verb} specification
 
 Invoke the workflow-specification-process skill.
 ```
+
+Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
 
 #### If `work_type` is `epic`
 
@@ -60,3 +60,5 @@ Action: {verb} specification
 
 Invoke the workflow-specification-process skill.
 ```
+
+Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
