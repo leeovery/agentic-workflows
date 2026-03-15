@@ -98,19 +98,28 @@ Nothing to remove.
 
 ## D. Resolve Current Plan's Dependencies
 
-For each unresolved dependency, check if a plan exists for that topic:
+For each unresolved dependency, check if `.workflows/{work_unit}/planning/{dep_topic}/planning.md` exists.
 
-1. Check if `.workflows/{work_unit}/planning/{dep_topic}/planning.md` exists.
-2. If yes: read the plan's task table, match a task by name against the dependency description.
-3. If a match is found: update the dependency:
+**If the plan exists:**
+
+Read the plan's task table and match a task by name against the dependency description.
+
+**If a clear match is found:**
+
+Update the dependency:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state resolved
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.internal_id {matched_id}
 ```
 
-4. If ambiguous (multiple potential matches): ask the user which task satisfies the dependency.
-5. If no plan exists for that topic: leave the dependency as `state: unresolved`.
+**If ambiguous (multiple potential matches):**
+
+Ask the user which task satisfies the dependency.
+
+**If no plan exists:**
+
+Leave the dependency as `state: unresolved`.
 
 → Proceed to **E. Reverse Check**.
 
@@ -118,9 +127,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planni
 
 ## E. Reverse Check
 
-For each other topic with a planning phase in the same work unit:
-
-1. Check if they have external dependencies:
+For each other topic with a planning phase in the same work unit, check if they have external dependencies:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{other_topic} external_dependencies
@@ -138,16 +145,17 @@ Read them:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{other_topic} external_dependencies
 ```
 
-2. **Unresolved deps matching current topic** — find the satisfying task in the current plan, resolve:
+For each dependency in the other topic's `external_dependencies`, route on state:
+
+- **`state: unresolved` matching current topic** — find the satisfying task in the current plan, resolve:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{other_topic} external_dependencies.{topic}.state resolved
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{other_topic} external_dependencies.{topic}.internal_id {matched_id}
 ```
 
-3. **Resolved deps pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference): re-resolve by finding the correct task. If ambiguous: ask the user.
-
-4. **`satisfied_externally` deps** — skip.
+- **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference): re-resolve by finding the correct task. If ambiguous: ask the user.
+- **`state: satisfied_externally`** — skip.
 
 → Proceed to **F. Summary and Commit**.
 
