@@ -82,11 +82,11 @@ How would you like to proceed?
 
 **STOP.** Wait for user response.
 
-#### If `satisfied`
+**If `satisfied`:**
 
 → Proceed to **C. Select Dependency**.
 
-#### If `implement`
+**If `implement`:**
 
 > *Output the next fenced block as a code block:*
 
