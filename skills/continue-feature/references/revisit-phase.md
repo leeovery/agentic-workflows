@@ -60,7 +60,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-List only phases from `completed_phases`. "Back" returns to the proceed/revisit prompt.
+List only phases from `completed_phases`.
 
 **STOP.** Wait for user response.
 
