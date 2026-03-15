@@ -84,15 +84,15 @@ How would you like to proceed?
 
 #### If `satisfied`
 
-→ Proceed to **C. Mark Dependency as Satisfied**.
+→ Proceed to **C. Select Dependency**.
 
 #### If `implement`
 
-→ Proceed to **D. Exit to Implement**.
+→ Proceed to **E. Exit to Implement**.
 
 ---
 
-## C. Mark Dependency as Satisfied
+## C. Select Dependency
 
 **If only one dependency in the blocking list:**
 
@@ -101,6 +101,10 @@ How would you like to proceed?
 ```
 Automatically proceeding with "{dep_topic:(titlecase)}".
 ```
+
+Set `selected_topic` = `{dep_topic}`.
+
+→ Proceed to **D. Mark as Satisfied**.
 
 **If multiple dependencies in the blocking list:**
 
@@ -119,21 +123,27 @@ Select an option (enter number):
 
 **STOP.** Wait for user response.
 
+Set `selected_topic` = the chosen dependency's topic.
+
+→ Proceed to **D. Mark as Satisfied**.
+
 ---
+
+## D. Mark as Satisfied
 
 Update the selected dependency's state via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{selected_topic}.state satisfied_externally
 ```
 
-Commit: `impl({work_unit}): mark {dep_topic} dependency as satisfied externally`
+Commit: `impl({work_unit}): mark {selected_topic} dependency as satisfied externally`
 
-→ Return to **A. Evaluate Dependencies** to re-check remaining dependencies.
+→ Return to **A. Evaluate Dependencies**.
 
 ---
 
-## D. Exit to Implement
+## E. Exit to Implement
 
 > *Output the next fenced block as a code block:*
 
