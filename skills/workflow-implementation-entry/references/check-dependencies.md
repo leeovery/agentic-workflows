@@ -4,6 +4,8 @@
 
 ---
 
+## A. Evaluate Dependencies
+
 Query the external dependencies:
 
 ```bash
@@ -42,6 +44,12 @@ External dependencies satisfied.
 
 #### If the blocking list has entries
 
+→ Proceed to **B. Present Blocking Dependencies**.
+
+---
+
+## B. Present Blocking Dependencies
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -65,8 +73,47 @@ Missing Dependencies
 
 ```
 · · · · · · · · · · · ·
-- **`i`/`implement`** — Implement the blocking dependencies first
+How would you like to proceed?
+
 - **`s`/`satisfied`** — Mark a dependency as satisfied externally
+- **`i`/`implement`** — Exit to implement blocking dependencies first
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `satisfied`
+
+→ Proceed to **C. Mark Dependency as Satisfied**.
+
+#### If `implement`
+
+→ Proceed to **D. Exit to Implement**.
+
+---
+
+## C. Mark Dependency as Satisfied
+
+**If only one dependency in the blocking list:**
+
+> *Output the next fenced block as a code block:*
+
+```
+Automatically proceeding with "{dep_topic:(titlecase)}".
+```
+
+**If multiple dependencies in the blocking list:**
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Which dependency has been satisfied?
+
+1. {dep_topic:(titlecase)} — {description}
+2. ...
+
+Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
@@ -74,18 +121,27 @@ Missing Dependencies
 
 ---
 
-## Escape Hatch
-
-If the user says a dependency has been implemented outside the workflow:
-
-1. Ask which dependency to mark as satisfied
-2. Update the dependency's `state` to `satisfied_externally` via manifest CLI:
+Update the selected dependency's state via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
 ```
 
-3. Commit the change
-4. Re-check dependencies from the top of this reference
+Commit: `impl({work_unit}): mark {dep_topic} dependency as satisfied externally`
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to **A. Evaluate Dependencies** to re-check remaining dependencies.
+
+---
+
+## D. Exit to Implement
+
+> *Output the next fenced block as a code block:*
+
+```
+Implementation Paused
+
+"{topic:(titlecase)}" is blocked until these dependencies are resolved.
+Use /workflow-start to navigate to the blocking work.
+```
+
+**STOP.** Do not proceed — terminal condition.
