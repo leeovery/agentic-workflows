@@ -137,7 +137,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.pla
 
 **If `false`:**
 
-Skip this topic.
+No external dependencies for this topic. Continue to the next topic.
 
 **If `true`:**
 
@@ -158,6 +158,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planni
 
 - **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference), re-resolve by finding the correct task and updating the `internal_id`.
 - **`state: satisfied_externally`** — skip.
+
+Continue to the next topic.
+
+After all topics have been checked:
 
 → Proceed to **F. Summary and Commit**.
 
