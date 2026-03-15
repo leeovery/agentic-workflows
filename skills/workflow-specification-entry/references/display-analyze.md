@@ -6,7 +6,7 @@
 
 Prompted when multiple completed discussions exist, no specifications exist, and cache is none or stale.
 
-## Display
+## A. Display
 
 > *Output the next fenced block as a code block:*
 
@@ -59,6 +59,10 @@ Proceed with analysis?
 · · · · · · · · · · · ·
 ```
 
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Handle Response**.
+
 #### If cache status is `stale`
 
 > *Output the next fenced block as a code block:*
@@ -82,6 +86,12 @@ Proceed with analysis?
 ```
 
 **STOP.** Wait for user response.
+
+→ Proceed to **B. Handle Response**.
+
+---
+
+## B. Handle Response
 
 #### If user confirms (y)
 
