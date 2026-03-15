@@ -74,12 +74,17 @@ For each unresolved dep: does a plan exist for that topic?
 - Yes: read the target plan's index file (`planning.md`), find matching task by name/description, set `state: resolved, internal_id: {id}`. If ambiguous, ask user.
 - No: leave `unresolved`.
 
-**Part C — Reverse check (automatic)**
+**Part C — Reverse check and stale reference validation (automatic)**
 For each other plan's topic in the same work unit: scan their manifest `external_dependencies`.
-- If any have an unresolved dep matching the current topic: find the satisfying task in the current plan, resolve it.
-- If already `resolved` or `satisfied_externally`: skip.
+- **Unresolved deps matching the current topic**: find the satisfying task in the current plan, resolve it.
+- **Resolved deps pointing at tasks in the current plan**: re-validate that the task at the stored `internal_id` still matches the dependency's `description`. If the task name no longer matches (e.g. the plan was rebuilt and that positional ID now refers to a different task), re-resolve by finding the correct task and updating the `internal_id`. If ambiguous, ask the user.
+- `satisfied_externally`: skip.
 
-Parts B and C together are comprehensive by induction. No "full sweep" (Part D) needed — every plan creation resolves forward deps (B) and reverse deps (C). Anything left unresolved has no plan yet; when that plan is created, C catches it.
+This handles stale references without any conditional logic. Internal IDs are positional (`topic-1-2` = phase 1, task 2) — a rebuilt plan will almost certainly still have the same IDs, but they may refer to entirely different tasks. Checking existence alone is insufficient; the semantic match between the task and the dependency description must be validated.
+
+On first plan creation, there are no resolved deps pointing at this topic, so the validation is a no-op. On plan rebuilds (e.g. after a spec update), it catches any references that no longer match. No harm in always running it.
+
+Parts B and C together are comprehensive by induction. No "full sweep" needed — every plan creation resolves forward deps (B), resolves reverse deps, and validates existing references (C). Anything left unresolved has no plan yet; when that plan is created, C catches it.
 
 ### Implementation Gate (check-dependencies.md)
 
@@ -111,5 +116,4 @@ Rename `task_id` → `internal_id` in existing manifest `external_dependencies` 
 
 ## Out of Scope
 
-- Stale `internal_id` detection — if a target task is renumbered/split/removed after resolution, the dep silently points at nothing. Worth addressing but separate concern.
 - Read-only dependency graph overview — could be useful as a diagnostic tool but not required for this refactor.
