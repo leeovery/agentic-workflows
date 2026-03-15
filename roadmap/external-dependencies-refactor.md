@@ -61,16 +61,24 @@ All three stages add a work-type guard at the top:
 - **Specification** (`Step 6`) — skip the Dependencies section entirely. Add a conditional: if work type is not `epic`, proceed to Step 7.
 - **Planning** (`resolve-dependencies.md`) — early return. Set `external_dependencies: {}` in manifest and proceed.
 - **Implementation** (`check-dependencies.md`) — early return with "External dependencies satisfied."
+- **Planning review** (`review-integrity.md`) — skip the external dependency checks ("All external dependencies from the specification are documented in the plan" / "No external dependencies were missed or invented") for non-epic work types.
 
 ### Enhanced Resolve Dependencies Flow
 
+`resolve-dependencies.md` is rewritten to implement this flow. It replaces the current implementation which loads output format adapters — all resolution now reads the plan index file (`planning.md`) directly, which has a standard task table regardless of output format.
+
 After a plan is created and all tasks are authored (epic work type only):
 
-**Part A — Record current plan's deps (automatic)**
-Read spec's Dependencies section. Write each as `state: unresolved` in manifest's `external_dependencies` field.
+**Part A — Build/rebuild deps from spec (automatic)**
+Read the spec's Dependencies section and rebuild `external_dependencies` in the manifest:
+1. Read existing `external_dependencies` from manifest (may be empty on first run, or populated on continue/rebuild).
+2. For each dep in the spec: if an existing entry with `state: satisfied_externally` matches, preserve it (user override). Otherwise, set to `state: unresolved`.
+3. Remove any manifest deps that no longer appear in the spec (spec may have changed).
+
+This clean-slate approach ensures deps always reflect the current spec. On first creation it builds from scratch. On continue or rebuild, it resets everything to `unresolved` (except user overrides) so Parts B and C can re-validate from a known state. If nothing changed, B will find the same matches. If the spec changed, stale deps are removed and new ones are picked up.
 
 **Part B — Resolve current plan's deps (automatic)**
-For each unresolved dep: does a plan exist for that topic?
+For each `unresolved` dep: does a plan exist for that topic?
 - Yes: read the target plan's index file (`planning.md`), find matching task by name/description, set `state: resolved, internal_id: {id}`. If ambiguous, ask user.
 - No: leave `unresolved`.
 
@@ -85,6 +93,9 @@ This handles stale references without any conditional logic. Internal IDs are po
 On first plan creation, there are no resolved deps pointing at this topic, so the validation is a no-op. On plan rebuilds (e.g. after a spec update), it catches any references that no longer match. No harm in always running it.
 
 Parts B and C together are comprehensive by induction. No "full sweep" needed — every plan creation resolves forward deps (B), resolves reverse deps, and validates existing references (C). Anything left unresolved has no plan yet; when that plan is created, C catches it.
+
+**Approval gate**
+After Parts A/B/C, present a summary of all dependency state: what was recorded, resolved, left unresolved, and any reverse resolutions or stale reference fixes made to other plans. The existing approval gate stays — user confirms before committing. This covers both the current plan's deps and any modifications Part C made to other plans' manifests.
 
 ### Implementation Gate (check-dependencies.md)
 
@@ -108,9 +119,9 @@ Remove the standalone skill and all references:
 - Remove from `workflow-explorer.html` (the `link-deps` phase mapping)
 - Remove from `update-workflow-explorer` SKILL.md (file mapping table)
 - Remove from `resolve-dependencies.md` line 26
-- Remove from `dependencies.md` lifecycle/resolution sections
+- Remove from `dependencies.md` lifecycle/resolution sections (rewrite to reflect Parts A/B/C flow)
+- Update `plan-index-schema.md` — rename `task_id` references to `internal_id` in external_dependencies documentation
 
 ### Migration
 
 Rename `task_id` → `internal_id` in existing manifest `external_dependencies` entries. Requires a numbered migration script in `skills/workflow-migrate/scripts/migrations/` with a corresponding test.
-
