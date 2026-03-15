@@ -38,8 +38,6 @@ External dependencies are stored in the **manifest** as `external_dependencies` 
 }
 ```
 
-The resolve-dependencies step handles all manifest writes — see [resolve-dependencies.md](resolve-dependencies.md) for the CLI commands.
-
 ## States
 
 | State | Format | Meaning |
