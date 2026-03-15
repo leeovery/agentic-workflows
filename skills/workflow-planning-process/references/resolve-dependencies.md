@@ -29,7 +29,9 @@ This topic has no external dependencies. Other topics may still have unresolved 
 
 ## A. Build Dependencies from Spec
 
-1. Check for existing `external_dependencies` in the manifest:
+Read the specification's Dependencies section to identify the required dependencies.
+
+Check for existing `external_dependencies` in the manifest:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic} external_dependencies
@@ -47,19 +49,31 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planni
 
 No existing entries to preserve.
 
-2. Read the specification's Dependencies section.
+For each dependency in the specification, write it to the manifest. Check whether an existing manifest entry for that topic has `state: satisfied_externally`.
 
-3. For each dependency in the specification:
-   - If an existing manifest entry for that topic has `state: satisfied_externally` → preserve it as-is
-   - Otherwise → set `state: unresolved`
+**If the existing entry has `state: satisfied_externally`:**
 
-4. Remove any manifest dependency entries that are not in the specification (the spec is the source of truth).
+Preserve the existing state — only update the description:
 
-5. Write each dependency via manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
+```
+
+**Otherwise:**
+
+Set as unresolved:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state unresolved
+```
+
+After writing all dependencies from the specification, remove any manifest entries that are no longer in the specification. The spec is the source of truth — stale entries from a previous planning session must be cleaned up.
+
+For each manifest dependency topic that does not appear in the specification:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
 ```
 
 → Proceed to **B. Resolve Current Plan's Dependencies**.
