@@ -191,9 +191,22 @@ Example with filter: `@foreach(inv in investigations.files where status is in-pr
 
 **When to use placeholders vs concrete examples:** Placeholders work well for structural templates (tree displays, status blocks) where each field has a clear source. Selection menus should use concrete examples instead — they encode conditional logic (which verb maps to which state) that placeholders obscure.
 
-### Tree Structure
+### List Display
 
-Every actionable item gets a numbered entry with `└─` branches showing its state. Depth varies by phase but structure is consistent. **Blank line between each numbered item.** Show one full entry, then `2. ...` to indicate repetition.
+Two styles, chosen by whether items have sub-detail.
+
+**Bullets (`•`)** — flat list under a shared heading. Each item is self-contained on one line with no child data.
+
+```
+Discussions not ready for specification:
+These discussions are still in progress and must be completed
+before they can be included in a specification.
+
+  • auth-flow
+  • data-model
+```
+
+**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Use `├─` for non-final children, `└─` for the last child. Depth is recursive — child items can have their own branches. **Blank line between each top-level item.** For numbered lists, show one full entry then `2. ...` to indicate repetition.
 
 ```
 1. {topic:(titlecase)}
@@ -203,7 +216,7 @@ Every actionable item gets a numbered entry with `└─` branches showing its s
 2. ...
 ```
 
-For richer hierarchies (specification phase):
+Richer hierarchies nest naturally:
 
 ```
 1. {topic:(titlecase)}
@@ -211,6 +224,21 @@ For richer hierarchies (specification phase):
    └─ Discussions:
       ├─ {discussion} ({status:[extracted|pending]})
       └─ ...
+```
+
+Unnumbered trees follow the same structure:
+
+```
+Plans not ready for implementation:
+These plans have unresolved dependencies that must be
+addressed first.
+
+  Core Features
+  └─ Blocked by data-model:data-model-1-2
+
+  Advanced Features
+  ├─ Blocked by core-features:core-2-3
+  └─ Blocked by auth
 ```
 
 ### Status Terms
@@ -228,22 +256,6 @@ Use colon notation to reference a task within a plan: `{plan}:{internal_id}`.
 ```
 
 Reads as: "advanced-features is blocked by task core-2-3 in the core-features plan."
-
-### "Not Ready" Blocks
-
-Separate code block. Descriptive heading as `{Artifacts} not ready for {phase}:`, explanatory line, then tree structure with `└─` branches. **Blank line after the explanation, before the list. Blank line between each item.**
-
-```
-Specifications not ready for planning:
-These specifications are either still in progress or cross-cutting
-and cannot be planned directly.
-
-  Caching Strategy
-  └─ Cross-cutting (completed)
-
-  Rate Limiting
-  └─ Cross-cutting (in-progress)
-```
 
 ### Key / Legend
 
