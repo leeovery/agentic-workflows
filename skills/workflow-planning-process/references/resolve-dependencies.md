@@ -53,7 +53,7 @@ No existing entries to preserve.
 
 ## B. Write Spec Dependencies
 
-Read the specification's Dependencies section. For each dependency in the specification, write it to the manifest.
+Read the specification's Dependencies section. For each dependency, derive the manifest key from the dependency name as `{dep_topic:(kebabcase)}` and use the "Why Blocked" column as `{description}`. Write each to the manifest.
 
 **If an existing entry for this topic has `state: satisfied_externally`:**
 
