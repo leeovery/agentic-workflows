@@ -17,15 +17,9 @@ Dependencies are stored in the **manifest** as `external_dependencies` (under `p
 
 #### If the specification has no Dependencies section
 
-Set the manifest field to an empty object:
+No external dependencies to track — skip to the approval gate.
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies '{}'
-```
-
-This makes it clear that dependencies were considered and none exist — not that they were overlooked.
-
-→ Proceed to the approval gate below.
+→ Proceed to **D. Summary and Approval**.
 
 #### If the specification has a Dependencies section
 
