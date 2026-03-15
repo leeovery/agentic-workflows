@@ -88,7 +88,16 @@ How would you like to proceed?
 
 #### If `implement`
 
-→ Proceed to **E. Exit to Implement**.
+> *Output the next fenced block as a code block:*
+
+```
+Implementation Paused
+
+"{topic:(titlecase)}" is blocked until these dependencies are resolved.
+Use /workflow-start to navigate to the blocking work.
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 ---
 
@@ -141,17 +150,3 @@ Commit: `impl({work_unit}): mark {selected_topic} dependency as satisfied extern
 
 → Return to **A. Evaluate Dependencies**.
 
----
-
-## E. Exit to Implement
-
-> *Output the next fenced block as a code block:*
-
-```
-Implementation Paused
-
-"{topic:(titlecase)}" is blocked until these dependencies are resolved.
-Use /workflow-start to navigate to the blocking work.
-```
-
-**STOP.** Do not proceed — terminal condition.
