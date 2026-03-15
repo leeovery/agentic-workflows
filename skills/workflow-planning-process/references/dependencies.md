@@ -38,20 +38,7 @@ External dependencies are stored in the **manifest** as `external_dependencies` 
 }
 ```
 
-Set individual dependencies via dot-path:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.billing-system.description "Invoice generation"
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.billing-system.state unresolved
-```
-
-If there are no external dependencies, use an empty object:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies '{}'
-```
-
-This makes it explicit for downstream stages that dependencies were considered and none exist.
+The resolve-dependencies step handles all manifest writes — see [resolve-dependencies.md](resolve-dependencies.md) for the CLI commands.
 
 ## States
 
