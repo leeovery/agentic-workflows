@@ -93,7 +93,7 @@ addressed first.
   • {topic} (blocked by {dep_topic})
 ```
 
-Use the `deps_blocking` array from the planning phase items. Show each blocking dependency with its cross-plan task reference using colon notation (`{plan}:{internal_id}`) when a `task_id` is present. Omit this block entirely if no plans are blocked.
+Use the `deps_blocking` array from the planning phase items. Show each blocking dependency with its cross-plan task reference using colon notation (`{plan}:{internal_id}`) when an `internal_id` is present. Omit this block entirely if no plans are blocked.
 
 → Proceed to **B. Key**.
 

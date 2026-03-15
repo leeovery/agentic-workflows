@@ -148,6 +148,12 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 
 ## Step 6: Document Dependencies
 
+#### If work_type is not `epic`
+
+→ Proceed to **Step 7**.
+
+#### If work_type is `epic`
+
 Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
 
 → Proceed to **Step 7**.

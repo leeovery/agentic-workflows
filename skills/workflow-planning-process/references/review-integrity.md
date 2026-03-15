@@ -66,7 +66,7 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
    - Edge case criteria are specific about boundary values and behaviors
    - No criteria that an implementer would have to interpret
 
-8. **External Dependencies**
+8. **External Dependencies** (epic only — skip for feature/bugfix)
    - All external dependencies from the specification are documented in the plan
    - Dependencies are in the correct state (resolved/unresolved)
    - No external dependencies were missed or invented

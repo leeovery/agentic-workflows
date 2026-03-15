@@ -4,6 +4,18 @@
 
 ---
 
+#### If work_type is not `epic`
+
+Set external dependencies to empty object:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies '{}'
+```
+
+→ Return to **[the skill](../SKILL.md)**.
+
+#### If work_type is `epic`
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -15,22 +27,6 @@ Handle external dependencies — things this plan needs from other topics or sys
 
 Dependencies are stored in the **manifest** as `external_dependencies` (under `planning.{topic}`). See [dependencies.md](dependencies.md) for the format and states.
 
-#### If the specification has a Dependencies section
-
-The specification's Dependencies section lists what this feature needs from outside its own scope. These must be documented in the plan so implementation knows what is blocked and what is available.
-
-1. **Document each dependency** in the manifest's `external_dependencies` field (under `planning.{topic}`) using the format described in [dependencies.md](dependencies.md). Initially, record each as `state: unresolved`.
-
-2. **Resolve where possible** — For each dependency, check whether a plan already exists for that topic:
-   - If a plan exists, identify the specific task(s) that satisfy the dependency. Query the output format to find relevant tasks. If ambiguous, ask the user which tasks apply. Update the dependency entry from `state: unresolved` → `state: resolved` with the `task_id`.
-   - If no plan exists, leave the dependency as `state: unresolved`. It will be linked later via `/link-dependencies` or when that topic is planned.
-   - If no other plans exist at all, skip resolution — there is nothing to resolve against. All dependencies remain unresolved.
-
-3. **Reverse check** — If other plans exist, check whether any have unresolved dependencies in their manifest `external_dependencies` that reference *this* topic. Now that this plan exists with specific tasks:
-   - Scan other work units' manifest `external_dependencies` for entries that mention this topic
-   - For each match, identify which task(s) in the current plan satisfy that dependency
-   - Update the other work unit's manifest `external_dependencies` entry with the task reference (`state: resolved`, `task_id`)
-
 #### If the specification has no Dependencies section
 
 Set the manifest field to an empty object:
@@ -41,7 +37,77 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planni
 
 This makes it clear that dependencies were considered and none exist — not that they were overlooked.
 
----
+→ Proceed to the approval gate below.
+
+#### If the specification has a Dependencies section
+
+## A. Build Dependencies from Spec
+
+1. Read existing `external_dependencies` from the manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_dependencies
+```
+
+2. Read the specification's Dependencies section.
+
+3. For each dependency in the specification:
+   - If an existing manifest entry for that topic has `state: satisfied_externally` → preserve it as-is
+   - Otherwise → set `state: unresolved`
+
+4. Remove any manifest dependency entries that are not in the specification (the spec is the source of truth).
+
+5. Write each dependency via manifest CLI:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state unresolved
+```
+
+→ Proceed to **B. Resolve Current Plan's Dependencies**.
+
+## B. Resolve Current Plan's Dependencies
+
+For each unresolved dependency:
+
+1. Check if `.workflows/{work_unit}/planning/{dep_topic}/planning.md` exists.
+2. If yes: read the plan's task table, match a task by name against the dependency description.
+3. If a match is found: update the dependency:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state resolved
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.internal_id {matched_id}
+```
+
+4. If ambiguous (multiple potential matches): ask the user which task satisfies the dependency.
+5. If no plan exists for that topic: leave the dependency as `state: unresolved`.
+
+→ Proceed to **C. Reverse Check and Stale Reference Validation**.
+
+## C. Reverse Check and Stale Reference Validation
+
+For each other topic with a planning phase in the same work unit:
+
+1. Read their external dependencies from the manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{other_topic} external_dependencies
+```
+
+2. **Unresolved deps matching current topic** → find the satisfying task in the current plan, resolve:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{other_topic} external_dependencies.{topic}.state resolved
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{other_topic} external_dependencies.{topic}.internal_id {matched_id}
+```
+
+3. **Resolved deps pointing at current plan's tasks** → validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference): re-resolve by finding the correct task. If ambiguous: ask the user.
+
+4. **`satisfied_externally` deps** → skip.
+
+→ Proceed to **D. Summary and Approval**.
+
+## D. Summary and Approval
 
 Present a summary of the dependency state: what was documented, what was resolved, what remains unresolved, and any reverse resolutions made.
 

@@ -1094,7 +1094,6 @@
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Utilities</div>
     <div class="collapsible-content">
-      <button class="nav-btn dropdown-btn" onclick="selectPhase('link-deps',this)" id="btn-link-deps"><span class="badge badge-cmd">cmd</span><span class="btn-label">/link-dependencies</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-migrate',this)" id="btn-workflow-migrate"><span class="badge badge-cmd">cmd</span><span class="btn-label">/workflow-migrate</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-bridge',this)" id="btn-workflow-bridge"><span class="badge badge-skl">skl</span><span class="btn-label">workflow-bridge</span></button>
     </div>
@@ -1557,12 +1556,6 @@ const phases = {
     desc: 'Discovery → select epic → full state display with per-phase items → interactive menu → route to workflow-*-entry.',
   },
   // ── Utility ──
-  'link-deps': {
-    color: '#94a3b8', bg: 'rgba(148,163,184,0.12)',
-    label: 'Link Dependencies', cmd: '/link-dependencies',
-    complexity: 'Cross-plan',
-    desc: 'Wire up cross-topic dependencies across all plans.',
-  },
   'status': {
     color: '#94a3b8', bg: 'rgba(148,163,184,0.12)',
     label: 'Status', cmd: '/status',
@@ -2193,43 +2186,6 @@ const FLOWCHARTS = {
       { from: 'conflict', to: 'name', type: 'backloop', label: 'new name' },
       { from: 'research-gate', to: 'invoke-research', type: 'yes', label: 'research' },
       { from: 'research-gate', to: 'invoke-discussion', type: 'no', label: 'discussion', weight: 2 },
-    ]
-  },
-  'link-deps': {
-    nodes: [
-      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry point for /link-dependencies.' },
-      { id: 'migrate', label: 'Run /workflow-migrate', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Step 0: Run migrations.' },
-      { id: 'select-wu', label: 'Select work unit', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 1: List epic work units. Auto-select if one, ask if multiple. Feature/bugfix have no cross-topic deps.' },
-      { id: 'stop-no-epic', label: 'STOP: No epics', shape: 'stop', w: 160, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: No active epic work units found.' },
-      { id: 'discover', label: 'Discover all plans', w: 180, h: 44, color: 'var(--discovery)', bg: 'var(--discovery-bg)', desc: 'Step 2: Scan .workflows/{work_unit}/planning/ for all plan files. Extract format metadata.' },
-      { id: 'gate-count', label: 'Plans >= 2?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Gate: Need at least 2 plans for cross-topic linking. 0-1 = STOP.' },
-      { id: 'stop-count', label: 'STOP: Need 2+ plans', shape: 'stop', w: 150, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: Fewer than 2 plans. Cannot link across topics.' },
-      { id: 'gate-format', label: 'Same format?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Gate: All plans must use the same output format. Mixed formats = STOP.' },
-      { id: 'stop-format', label: 'STOP: Mixed formats', shape: 'stop', w: 150, h: 40, color: 'var(--gate)', bg: 'var(--gate-bg)', desc: 'Terminal: Plans use different formats. Consolidate first.' },
-      { id: 'extract', label: 'Extract ext dependencies', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 3: Read External Dependencies section from each plan. Categorize as unresolved/resolved/satisfied.' },
-      { id: 'match', label: 'Match deps to tasks', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 4: For each unresolved dep, search other plans for matching tasks using output format querying.' },
-      { id: 'wire', label: 'Wire up dependencies', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 5: Update plan index files with resolved task IDs. Create blocking relationships.' },
-      { id: 'bidir', label: 'Bidirectional check', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 6: Check reverse dependencies. If plan X depends on Y, does Y know about it?' },
-      { id: 'report', label: 'Report results', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 7: Summary of resolved, already-resolved, satisfied, and still-unresolved deps.' },
-      { id: 'commit', label: 'ASK: Commit changes?', w: 180, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 8: Ask user to commit dependency updates.' },
-      { id: 'end', label: 'Plans updated', shape: 'pill', w: 150, h: 40, color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', desc: 'Output: Updated plan files with wired-up cross-topic dependencies.' },
-    ],
-    connections: [
-      { from: 'start', to: 'migrate' },
-      { from: 'migrate', to: 'select-wu' },
-      { from: 'select-wu', to: 'discover', weight: 2 },
-      { from: 'select-wu', to: 'stop-no-epic', type: 'no', label: 'none' },
-      { from: 'discover', to: 'gate-count' },
-      { from: 'gate-count', to: 'gate-format', type: 'yes', label: '>= 2', weight: 2 },
-      { from: 'gate-count', to: 'stop-count', type: 'no', label: '< 2' },
-      { from: 'gate-format', to: 'extract', type: 'yes', label: 'match', weight: 2 },
-      { from: 'gate-format', to: 'stop-format', type: 'no', label: 'mixed' },
-      { from: 'extract', to: 'match' },
-      { from: 'match', to: 'wire' },
-      { from: 'wire', to: 'bidir' },
-      { from: 'bidir', to: 'report' },
-      { from: 'report', to: 'commit' },
-      { from: 'commit', to: 'end' },
     ]
   },
   'skill-research': {
@@ -3473,12 +3429,6 @@ const FLOWCHART_DESCS = {
     body: `<p>Runs migrations, then <code>discovery.js</code>. More complex than feature/bugfix: shows full phase-by-phase state with per-phase items, soft gates for phase-forward navigation, and an interactive menu with options to continue existing topics, start new topics, or enter any phase.</p>`,
     meta: { complexity: 'Router' }
   },
-  'link-deps': {
-    summary: 'Wire up cross-topic dependencies across all plans with bidirectional linking.',
-    body: `<p>Runs migrations, selects work unit (auto-select if single epic). Requires 2+ plans with the same output format. Three terminal gates: insufficient plans, inconsistent formats, and no unresolved dependencies.</p>
-<p>Extracts external dependencies from all plans, matches unresolved deps to tasks in other plans, wires up bidirectional links, and commits. Dependency states: <strong>unresolved</strong> → <strong>resolved</strong> or <strong>satisfied externally</strong>.</p>`,
-    meta: { complexity: 'Cross-plan utility' }
-  },
   'skill-research': {
     summary: 'The research skill — an interactive exploration session with work-type-specific conclusion paths.',
     body: `<p>Acts as a research partner. The session loop: <strong>Explore → Engage → Synthesize → Document → Commit → Continue</strong>. Guidelines cover funnel technique, probe types, active listening, divergent/convergent rhythm, and documentation discipline.</p>
@@ -3698,7 +3648,6 @@ const SOURCE_MAP = {
   'continue-bugfix':      'skills/continue-bugfix/SKILL.md',
   'continue-epic':        'skills/continue-epic/SKILL.md',
   // Utility skills
-  'link-deps':            'skills/link-dependencies/SKILL.md',
   'workflow-migrate':     'skills/workflow-migrate/SKILL.md',
   // Agents — Specification
   'workflow-specification-review-input':          'agents/workflow-specification-review-input.md',

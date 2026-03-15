@@ -62,7 +62,6 @@ For each in-scope flowchart key, read its source file(s) and extract the logical
 | `skill-implementation` | `skills/workflow-implementation-process/SKILL.md` + `skills/workflow-implementation-process/references/*.md` |
 | `skill-review` | `skills/workflow-review-process/SKILL.md` + `agents/workflow-review-task-verifier.md` |
 | `start-feature` | `skills/start-feature/SKILL.md` |
-| `link-deps` | `skills/link-dependencies/SKILL.md` |
 | `workflow-migrate` | `skills/workflow-migrate/SKILL.md` |
 | `workflow-planning-phase-designer` | `agents/workflow-planning-phase-designer.md` |
 | `workflow-planning-task-designer` | `agents/workflow-planning-task-designer.md` |

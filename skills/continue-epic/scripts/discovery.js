@@ -29,15 +29,15 @@ function resolveDeps(cwd, manifest, planItem) {
     if (dep.state === 'unresolved') {
       depsSatisfied = false;
       depsBlocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
-    } else if (dep.state === 'resolved' && dep.task_id) {
+    } else if (dep.state === 'resolved' && dep.internal_id) {
       const depManifest = loadManifest(cwd, dep.topic);
       const depImpl = depManifest ? phaseData(depManifest, 'implementation') : {};
       const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
-      if (!completedTasks.includes(dep.task_id)) {
+      if (!completedTasks.includes(dep.internal_id)) {
         depsSatisfied = false;
-        depsBlocking.push({ topic: dep.topic, task_id: dep.task_id, reason: 'task not yet completed' });
+        depsBlocking.push({ topic: dep.topic, internal_id: dep.internal_id, reason: 'task not yet completed' });
       }
-    } else if (dep.state === 'resolved' && !dep.task_id) {
+    } else if (dep.state === 'resolved' && !dep.internal_id) {
       depsSatisfied = false;
       depsBlocking.push({ topic: dep.topic, reason: 'resolved dependency missing task reference' });
     }
@@ -244,7 +244,7 @@ function format(result) {
         }
         if (item.format) line += ` [format: ${item.format}]`;
         if (item.deps_blocking) {
-          line += ` [blocked: ${item.deps_blocking.map(b => b.topic + (b.task_id ? ':' + b.task_id : '')).join(', ')}]`;
+          line += ` [blocked: ${item.deps_blocking.map(b => b.topic + (b.internal_id ? ':' + b.internal_id : '')).join(', ')}]`;
         }
         if (item.completed_tasks) {
           line += ` [tasks: ${item.completed_tasks.length} completed]`;

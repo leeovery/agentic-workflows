@@ -126,10 +126,6 @@ Planning supports multiple output formats through an adapter pattern. Each forma
 
 Every approval gate (task authoring, implementation, review findings) can be switched to auto-mode. Choose `a`/`auto` at any gate to approve all remaining items automatically. Gates reset on fresh sessions for safety.
 
-### Cross-Topic Dependencies
-
-For epics with multiple plans, `/link-dependencies` scans for unresolved cross-topic references and wires them up.
-
 ### Smart Fix Loops
 
 When a task reviewer finds issues, the executor re-invokes with feedback automatically. Loops cap at 3 attempts before escalating to the user — no infinite cycles, but most issues self-resolve without intervention.
@@ -180,7 +176,7 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 
 **Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/)
 
-**Utilities:** [`/link-dependencies`](skills/link-dependencies/) | [`/workflow-migrate`](skills/workflow-migrate/)
+**Utilities:** [`/workflow-migrate`](skills/workflow-migrate/)
 
 </details>
 
