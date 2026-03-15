@@ -4,7 +4,7 @@
 
 ---
 
-## Research Scope
+## A. Research Scope
 
 #### If work_type is `epic` and no topic resolved
 
@@ -33,29 +33,29 @@ What topic would you like to research?
 
 User provides topic name → `resolved_filename = {topic:(kebabcase)}.md`
 
-→ Proceed to **Seed Idea**.
+→ Proceed to **B. Seed Idea**.
 
 **If `explore`:**
 
 `resolved_filename = exploration.md`
 
-→ Proceed to **Seed Idea**.
+→ Proceed to **B. Seed Idea**.
 
 #### If work_type is `feature`
 
 No question needed. `resolved_filename = {topic}.md`
 
-→ Proceed to **Seed Idea**.
+→ Proceed to **B. Seed Idea**.
 
 #### If topic already resolved
 
 Epic with topic provided via `$2` argument. `resolved_filename = {topic}.md`
 
-→ Proceed to **Seed Idea**.
+→ Proceed to **B. Seed Idea**.
 
 ---
 
-## Seed Idea
+## B. Seed Idea
 
 Ask each question below **one at a time**. After each, **STOP** and wait for the user's response before proceeding.
 
@@ -70,9 +70,11 @@ What's on your mind?
 
 **STOP.** Wait for user response.
 
+→ Proceed to **C. Current Knowledge**.
+
 ---
 
-## Current Knowledge
+## C. Current Knowledge
 
 > *Output the next fenced block as a code block:*
 
@@ -85,9 +87,11 @@ What do you already know?
 
 **STOP.** Wait for user response.
 
+→ Proceed to **D. Starting Point**.
+
 ---
 
-## Starting Point
+## D. Starting Point
 
 > *Output the next fenced block as a code block:*
 
@@ -100,9 +104,11 @@ Where should we start?
 
 **STOP.** Wait for user response.
 
+→ Proceed to **E. Final Context**.
+
 ---
 
-## Final Context
+## E. Final Context
 
 > *Output the next fenced block as a code block:*
 
