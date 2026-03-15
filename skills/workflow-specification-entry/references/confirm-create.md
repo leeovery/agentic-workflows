@@ -4,6 +4,8 @@
 
 ---
 
+## A. Display Confirmation
+
 #### If no source discussions have individual specs
 
 > *Output the next fenced block as a code block:*
@@ -27,6 +29,10 @@ Proceed?
 - **`n`/`no`**
 · · · · · · · · · · · ·
 ```
+
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Handle Response**.
 
 #### If any source discussion has an individual spec
 
@@ -59,19 +65,25 @@ Proceed?
 
 **STOP.** Wait for user response.
 
+→ Proceed to **B. Handle Response**.
+
+---
+
+## B. Handle Response
+
 #### If user confirms (y)
 
-#### If any source discussions have individual specs
+**If any source discussions have individual specs:**
 
 → Load **[create-with-incorporation.md](handoffs/create-with-incorporation.md)** and follow its instructions as written.
 
-#### Otherwise
+**Otherwise:**
 
 → Load **[create.md](handoffs/create.md)** and follow its instructions as written.
 
 #### If user declines (n)
 
-#### If single discussion (no menu to return to)
+**If single discussion (no menu to return to):**
 
 > *Output the next fenced block as a code block:*
 
@@ -82,6 +94,6 @@ command when ready.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If groupings or specs menu
+**If groupings or specs menu:**
 
-Re-display the previous menu (the display that led to this confirmation). The user can make a different choice.
+→ Return to the display menu that initiated this confirmation.
