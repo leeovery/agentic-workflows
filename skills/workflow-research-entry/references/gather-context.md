@@ -33,25 +33,31 @@ What topic would you like to research?
 
 User provides topic name → `resolved_filename = {topic:(kebabcase)}.md`
 
+→ Proceed to **Seed Idea**.
+
 **If `explore`:**
 
 `resolved_filename = exploration.md`
+
+→ Proceed to **Seed Idea**.
 
 #### If work_type is `feature`
 
 No question needed. `resolved_filename = {topic}.md`
 
+→ Proceed to **Seed Idea**.
+
 #### If topic already resolved
 
 Epic with topic provided via `$2` argument. `resolved_filename = {topic}.md`
 
----
-
-Ask each question below **one at a time**. After each, **STOP** and wait for the user's response before proceeding.
+→ Proceed to **Seed Idea**.
 
 ---
 
 ## Seed Idea
+
+Ask each question below **one at a time**. After each, **STOP** and wait for the user's response before proceeding.
 
 > *Output the next fenced block as a code block:*
 
@@ -107,3 +113,5 @@ Any constraints or context I should know about upfront?
 ```
 
 **STOP.** Wait for user response.
+
+→ Return to **[the skill](../SKILL.md)**.

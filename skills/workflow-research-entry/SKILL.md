@@ -52,17 +52,23 @@ Resolve filename:
 
 `resolved_filename = {topic}.md`
 
+→ Proceed to **Step 2**.
+
 #### If work_type is `epic` and `topic` resolved
 
 `resolved_filename = {topic}.md`
+
+→ Proceed to **Step 2**.
 
 #### If work_type is `epic` and no `topic`
 
 Deferred — gather-context will resolve it.
 
+→ Proceed to **Step 4**.
+
 ---
 
-#### If `topic` resolved
+## Step 2: Check Phase Entry
 
 Check if the research phase entry exists:
 
@@ -70,36 +76,32 @@ Check if the research phase entry exists:
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.research.{topic}
 ```
 
-**If exists (`true`):**
+#### If exists (`true`)
 
-→ Proceed to **Step 2** (Validate Phase).
+→ Proceed to **Step 3**.
 
-**If not exists (`false`):**
+#### If not exists (`false`)
 
-→ Proceed to **Step 3** (Gather Context).
-
-#### If no `topic` (epic — scoped path)
-
-→ Proceed to **Step 3** (Gather Context).
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 2: Validate Phase
+## Step 3: Validate Phase
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 ---
 
-## Step 3: Gather Context
+## Step 4: Gather Context
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 ---
 
-## Step 4: Invoke the Skill
+## Step 5: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.
