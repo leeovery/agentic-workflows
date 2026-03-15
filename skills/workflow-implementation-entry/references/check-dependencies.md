@@ -22,10 +22,10 @@ Query the external dependencies:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_dependencies
 ```
 
-For each dependency, determine whether it is blocking:
+Evaluate each dependency and collect any that are blocking into a list:
 
-- **`state: satisfied_externally`** — not blocking
-- **`state: unresolved`** — blocking
+- **`state: satisfied_externally`** — skip, not blocking
+- **`state: unresolved`** — add to the blocking list
 - **`state: resolved`** — check whether the referenced task has been completed:
 
 ```bash
@@ -34,15 +34,15 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implem
 
 **If `internal_id` is in the completed tasks list:**
 
-Not blocking.
+Skip, not blocking.
 
 **If `internal_id` is not in the list, or the implementation entry does not exist:**
 
-Blocking.
+Add to the blocking list.
 
 ---
 
-#### If no dependencies are blocking
+#### If the blocking list is empty
 
 > *Output the next fenced block as a code block:*
 
@@ -52,7 +52,7 @@ External dependencies satisfied.
 
 → Return to **[the skill](../SKILL.md)**.
 
-#### If any dependencies are blocking
+#### If the blocking list has entries
 
 > *Output the next fenced block as a code block:*
 
