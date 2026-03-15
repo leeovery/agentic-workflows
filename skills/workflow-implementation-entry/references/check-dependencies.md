@@ -47,16 +47,19 @@ External dependencies satisfied.
 ```
 Missing Dependencies
 
-Unresolved (not yet planned):
-  • {dep_topic}: {description}
-    No plan exists. Mark as satisfied externally or plan it first.
+@foreach(dep in blocking_list where state is unresolved)
+  {dep_topic:(titlecase)}
+  └─ {description}
+  └─ No plan exists
 
-Incomplete (planned but not implemented):
-  • {dep_topic}: {topic}:{internal_id} not yet completed
-    This task must be completed first.
+@endforeach
+@foreach(dep in blocking_list where state is resolved)
+  {dep_topic:(titlecase)}
+  └─ {description}
+  └─ Waiting on {topic}:{internal_id}
+
+@endforeach
 ```
-
-Show only the sections that have entries. Use colon notation (`{topic}:{internal_id}`) for resolved deps.
 
 > *Output the next fenced block as markdown (not a code block):*
 
