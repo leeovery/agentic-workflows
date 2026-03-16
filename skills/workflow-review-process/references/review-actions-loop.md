@@ -6,14 +6,16 @@
 
 After a review is complete, this loop synthesizes findings into actionable tasks.
 
-Stages A through E run sequentially. Always start at **A. Verdict Gate**.
+Stages A through G run sequentially. Always start at **A. Verdict Gate**.
 
 ```
 A. Verdict gate (check verdicts, offer synthesis)
 B. Dispatch review synthesizer → invoke-review-synthesizer.md
-C. Approval gate (present tasks, approve/skip/comment)
-D. Create tasks in plan → invoke-review-task-writer.md
-E. Re-open implementation + plan mode handoff
+C. Approval overview
+D. Process task (per-task approval loop)
+E. Route on results
+F. Create tasks in plan → invoke-review-task-writer.md
+G. Re-open implementation + plan mode handoff
 ```
 
 ---
@@ -71,13 +73,13 @@ Proceed with synthesis?
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 → Proceed to **B. Dispatch Review Synthesizer**.
 
-#### If `no`
+**If `no`:**
 
-User has chosen to skip synthesis. Set review status to completed — the review produced a verdict, even if the user declines to act on it now.
+Set review status to completed:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
@@ -118,13 +120,13 @@ Synthesize non-blocking findings?
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 → Proceed to **B. Dispatch Review Synthesizer**.
 
-#### If `no`
+**If `no`:**
 
-Set review status to completed — the review produced a verdict, even if the user declines to act on non-blocking comments.
+Set review status to completed:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
@@ -151,7 +153,7 @@ Invoke the workflow-bridge skill to enter plan mode with completion confirmation
 
 #### If `STATUS` is `clean`
 
-No actionable tasks from synthesis. Set review status to completed — the review produced a verdict and synthesis was attempted.
+No actionable tasks from synthesis. Set review status to completed:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
@@ -176,17 +178,13 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 
 #### If `STATUS` is `tasks_proposed`
 
-→ Proceed to **C. Approval Gate**.
+→ Proceed to **C. Approval Overview**.
 
 ---
 
-## C. Approval Gate
+## C. Approval Overview
 
 Read the staging file from `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle-number}.md`.
-
-Check `gate_mode` in the staging file frontmatter (`gated` or `auto`).
-
-Present an overview:
 
 > *Output the next fenced block as a code block:*
 
@@ -197,7 +195,17 @@ Review synthesis cycle {N}: {K} proposed tasks
   2. {title} ({severity})
 ```
 
-Then present each task with `status: pending` individually:
+→ Proceed to **D. Process Task**.
+
+---
+
+## D. Process Task
+
+#### If no pending tasks remain
+
+→ Proceed to **E. Route on Results**.
+
+Present the next pending task:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -219,6 +227,20 @@ Sources: {sources}
 {tests}
 ```
 
+Check `gate_mode` in the staging file frontmatter (`gated` or `auto`).
+
+#### If `gate_mode` is `auto`
+
+Update `status: approved` in the staging file.
+
+> *Output the next fenced block as a code block:*
+
+```
+Task {current} of {total}: {title} — approved (auto).
+```
+
+→ Return to **D. Process Task**.
+
 #### If `gate_mode` is `gated`
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -236,53 +258,41 @@ Approve this task?
 
 **STOP.** Wait for user response.
 
-#### If `gate_mode` is `auto`
-
-> *Output the next fenced block as a code block:*
-
-```
-Task {current} of {total}: {title} — approved (auto).
-```
-
-→ Proceed to next task without stopping.
-
----
-
-Process user input:
-
-#### If `yes`
+**If `yes`:**
 
 Update `status: approved` in the staging file.
 
-→ Present the next pending task, or proceed to routing below if all tasks processed.
+→ Return to **D. Process Task**.
 
-#### If `auto`
+**If `auto`:**
 
 Update `status: approved` in the staging file. Update `gate_mode: auto` in the staging file frontmatter.
 
-→ Continue processing remaining tasks without stopping.
+→ Return to **D. Process Task**.
 
-#### If `skip`
+**If `skip`:**
 
 Update `status: skipped` in the staging file.
 
-→ Present the next pending task, or proceed to routing below if all tasks processed.
+→ Return to **D. Process Task**.
 
-#### If `comment`
+**If comment:**
 
-Revise the task content in the staging file based on the user's feedback. Re-present this task.
+Revise the task content in the staging file based on the user's feedback.
+
+→ Return to **D. Process Task**.
 
 ---
 
-After all tasks processed:
+## E. Route on Results
 
 #### If any tasks have `status: approved`
 
-→ Proceed to **D. Create Tasks in Plan**.
+→ Proceed to **F. Create Tasks in Plan**.
 
 #### If all tasks were skipped
 
-Set review status to completed — the review produced a verdict and synthesis tasks were offered, but the user chose to skip them all.
+Set review status to completed:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status completed
@@ -307,12 +317,11 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 
 ---
 
-## D. Create Tasks in Plan
+## F. Create Tasks in Plan
 
-For approved tasks in the staging file, invoke the task writer.
+Filter staging file to tasks with `status: approved`.
 
-1. Filter staging file to tasks with `status: approved`
-2. Load **[invoke-review-task-writer.md](invoke-review-task-writer.md)** and follow its instructions as written.
+→ Load **[invoke-review-task-writer.md](invoke-review-task-writer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
@@ -322,11 +331,11 @@ Commit all changes (staging file, plan tasks, Plan Index Files):
 review({work_unit}): add review remediation ({K} tasks)
 ```
 
-→ Proceed to **E. Re-open Implementation + Plan Mode Handoff**.
+→ Proceed to **G. Re-open Implementation**.
 
 ---
 
-## E. Re-open Implementation + Plan Mode Handoff
+## G. Re-open Implementation
 
 For each plan that received new tasks:
 
