@@ -4,7 +4,7 @@
 
 ---
 
-Invoke the [workflow-review-process](../../workflow-review-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
 
 Query format from manifest:
 
@@ -25,3 +25,5 @@ Plans to review:
 
 Invoke the workflow-review-process skill.
 ```
+
+Invoke the [workflow-review-process](../../workflow-review-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
