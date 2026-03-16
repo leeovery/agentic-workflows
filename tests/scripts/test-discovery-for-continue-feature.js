@@ -18,7 +18,7 @@ describe('continue-feature discovery', () => {
   });
 
   it('lists active features only', () => {
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
@@ -26,8 +26,8 @@ describe('continue-feature discovery', () => {
   });
 
   it('excludes non-feature work types', () => {
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     createManifest(dir, 'v1', { work_type: 'epic' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
@@ -38,11 +38,11 @@ describe('continue-feature discovery', () => {
     createManifest(dir, 'done', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
-        specification: { status: 'completed' },
-        planning: { status: 'completed' },
-        implementation: { status: 'completed' },
-        review: { status: 'completed' },
+        discussion: { items: { done: { status: 'completed' } } },
+        specification: { items: { done: { status: 'completed' } } },
+        planning: { items: { done: { status: 'completed' } } },
+        implementation: { items: { done: { status: 'completed' } } },
+        review: { items: { done: { status: 'completed' } } },
       },
     });
     const r = discover(dir);
@@ -53,8 +53,8 @@ describe('continue-feature discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
-        specification: { status: 'in-progress' },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
       },
     });
     const r = discover(dir);
@@ -66,10 +66,10 @@ describe('continue-feature discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        research: { status: 'completed' },
-        discussion: { status: 'completed' },
-        specification: { status: 'completed' },
-        planning: { status: 'in-progress' },
+        research: { items: { auth: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed' } } },
+        planning: { items: { auth: { status: 'in-progress' } } },
       },
     });
     const r = discover(dir);
@@ -77,15 +77,15 @@ describe('continue-feature discovery', () => {
   });
 
   it('returns summary with count', () => {
-    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
-    createManifest(dir, 'billing', { work_type: 'feature', phases: { planning: { status: 'in-progress' } } });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
+    createManifest(dir, 'billing', { work_type: 'feature', phases: { planning: { items: { billing: { status: 'in-progress' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.summary, '2 active feature(s)');
   });
 
   it('includes completed features in separate array', () => {
-    createManifest(dir, 'done', { work_type: 'feature', status: 'completed', phases: { review: { status: 'completed' } } });
-    createManifest(dir, 'active', { work_type: 'feature', phases: { discussion: { status: 'in-progress' } } });
+    createManifest(dir, 'done', { work_type: 'feature', status: 'completed', phases: { review: { items: { done: { status: 'completed' } } } } });
+    createManifest(dir, 'active', { work_type: 'feature', phases: { discussion: { items: { active: { status: 'in-progress' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.completed_count, 1);
@@ -94,7 +94,7 @@ describe('continue-feature discovery', () => {
   });
 
   it('includes cancelled features in separate array', () => {
-    createManifest(dir, 'stopped', { work_type: 'feature', status: 'cancelled', phases: { specification: { status: 'completed' } } });
+    createManifest(dir, 'stopped', { work_type: 'feature', status: 'cancelled', phases: { specification: { items: { stopped: { status: 'completed' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.cancelled_count, 1);
     assert.strictEqual(r.cancelled[0].name, 'stopped');
@@ -102,7 +102,7 @@ describe('continue-feature discovery', () => {
   });
 
   it('excludes non-feature completed work units', () => {
-    createManifest(dir, 'done-bug', { work_type: 'bugfix', status: 'completed', phases: { review: { status: 'completed' } } });
+    createManifest(dir, 'done-bug', { work_type: 'bugfix', status: 'completed', phases: { review: { items: { 'done-bug': { status: 'completed' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.completed_count, 0);
   });
@@ -112,11 +112,11 @@ describe('continue-feature discovery', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
         phases: {
-          discussion: { status: 'completed' },
-          specification: { status: 'completed' },
-          planning: { status: 'completed' },
-          implementation: { status: 'completed' },
-          review: { status: 'in-progress' },
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: { items: { auth: { status: 'completed' } } },
+          planning: { items: { auth: { status: 'completed' } } },
+          implementation: { items: { auth: { status: 'completed' } } },
+          review: { items: { auth: { status: 'in-progress' } } },
         },
       });
       const r = discover(dir);
@@ -127,11 +127,11 @@ describe('continue-feature discovery', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
         phases: {
-          discussion: { status: 'completed' },
-          specification: { status: 'completed' },
-          planning: { status: 'completed' },
-          implementation: { status: 'completed' },
-          review: { status: 'in-progress' },
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: { items: { auth: { status: 'completed' } } },
+          planning: { items: { auth: { status: 'completed' } } },
+          implementation: { items: { auth: { status: 'completed' } } },
+          review: { items: { auth: { status: 'in-progress' } } },
         },
       });
       const r = discover(dir);
@@ -142,7 +142,7 @@ describe('continue-feature discovery', () => {
     it('feature with only research completed has it in completed_phases', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
-        phases: { research: { status: 'completed' } },
+        phases: { research: { items: { auth: { status: 'completed' } } } },
       });
       const r = discover(dir);
       assert.deepStrictEqual(r.features[0].completed_phases, ['research']);

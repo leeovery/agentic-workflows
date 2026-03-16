@@ -18,7 +18,7 @@ describe('continue-bugfix discovery', () => {
   });
 
   it('lists active bugfixes only', () => {
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     createManifest(dir, 'old', { work_type: 'bugfix', status: 'completed' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
@@ -26,7 +26,7 @@ describe('continue-bugfix discovery', () => {
   });
 
   it('excludes non-bugfix work types', () => {
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     createManifest(dir, 'auth', { work_type: 'feature' });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
@@ -36,11 +36,11 @@ describe('continue-bugfix discovery', () => {
     createManifest(dir, 'done', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'completed' },
-        specification: { status: 'completed' },
-        planning: { status: 'completed' },
-        implementation: { status: 'completed' },
-        review: { status: 'completed' },
+        investigation: { items: { done: { status: 'completed' } } },
+        specification: { items: { done: { status: 'completed' } } },
+        planning: { items: { done: { status: 'completed' } } },
+        implementation: { items: { done: { status: 'completed' } } },
+        review: { items: { done: { status: 'completed' } } },
       },
     });
     const r = discover(dir);
@@ -51,8 +51,8 @@ describe('continue-bugfix discovery', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
       phases: {
-        investigation: { status: 'completed' },
-        specification: { status: 'in-progress' },
+        investigation: { items: { crash: { status: 'completed' } } },
+        specification: { items: { crash: { status: 'in-progress' } } },
       },
     });
     const r = discover(dir);
@@ -60,15 +60,15 @@ describe('continue-bugfix discovery', () => {
   });
 
   it('returns summary with count', () => {
-    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
-    createManifest(dir, 'leak', { work_type: 'bugfix', phases: { specification: { status: 'in-progress' } } });
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    createManifest(dir, 'leak', { work_type: 'bugfix', phases: { specification: { items: { leak: { status: 'in-progress' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.summary, '2 active bugfix(es)');
   });
 
   it('includes completed bugfixes in separate array', () => {
-    createManifest(dir, 'done', { work_type: 'bugfix', status: 'completed', phases: { review: { status: 'completed' } } });
-    createManifest(dir, 'active', { work_type: 'bugfix', phases: { investigation: { status: 'in-progress' } } });
+    createManifest(dir, 'done', { work_type: 'bugfix', status: 'completed', phases: { review: { items: { done: { status: 'completed' } } } } });
+    createManifest(dir, 'active', { work_type: 'bugfix', phases: { investigation: { items: { active: { status: 'in-progress' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.count, 1);
     assert.strictEqual(r.completed_count, 1);
@@ -77,7 +77,7 @@ describe('continue-bugfix discovery', () => {
   });
 
   it('includes cancelled bugfixes in separate array', () => {
-    createManifest(dir, 'stopped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { status: 'completed' } } });
+    createManifest(dir, 'stopped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { stopped: { status: 'completed' } } } } });
     const r = discover(dir);
     assert.strictEqual(r.cancelled_count, 1);
     assert.strictEqual(r.cancelled[0].name, 'stopped');
@@ -89,11 +89,11 @@ describe('continue-bugfix discovery', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          investigation: { status: 'completed' },
-          specification: { status: 'completed' },
-          planning: { status: 'completed' },
-          implementation: { status: 'completed' },
-          review: { status: 'in-progress' },
+          investigation: { items: { crash: { status: 'completed' } } },
+          specification: { items: { crash: { status: 'completed' } } },
+          planning: { items: { crash: { status: 'completed' } } },
+          implementation: { items: { crash: { status: 'completed' } } },
+          review: { items: { crash: { status: 'in-progress' } } },
         },
       });
       const r = discover(dir);
@@ -104,11 +104,11 @@ describe('continue-bugfix discovery', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          investigation: { status: 'completed' },
-          specification: { status: 'completed' },
-          planning: { status: 'completed' },
-          implementation: { status: 'completed' },
-          review: { status: 'in-progress' },
+          investigation: { items: { crash: { status: 'completed' } } },
+          specification: { items: { crash: { status: 'completed' } } },
+          planning: { items: { crash: { status: 'completed' } } },
+          implementation: { items: { crash: { status: 'completed' } } },
+          review: { items: { crash: { status: 'in-progress' } } },
         },
       });
       const r = discover(dir);
@@ -120,8 +120,8 @@ describe('continue-bugfix discovery', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          research: { status: 'completed' },
-          investigation: { status: 'in-progress' },
+          research: { items: { crash: { status: 'completed' } } },
+          investigation: { items: { crash: { status: 'in-progress' } } },
         },
       });
       const r = discover(dir);

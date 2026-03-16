@@ -18,7 +18,7 @@ describe('workflow-bridge discovery', () => {
   it('returns basic feature state', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     const r = discover(dir, 'auth');
     assert.strictEqual(r.work_unit, 'auth');
@@ -30,7 +30,7 @@ describe('workflow-bridge discovery', () => {
   it('detects file existence', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
-      phases: { discussion: { status: 'completed' } },
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     createFile(dir, '.workflows/auth/discussion/auth.md', '# Discussion');
     const r = discover(dir, 'auth');
@@ -42,11 +42,11 @@ describe('workflow-bridge discovery', () => {
     createManifest(dir, 'done', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
-        specification: { status: 'completed' },
-        planning: { status: 'completed' },
-        implementation: { status: 'completed' },
-        review: { status: 'completed' },
+        discussion: { items: { done: { status: 'completed' } } },
+        specification: { items: { done: { status: 'completed' } } },
+        planning: { items: { done: { status: 'completed' } } },
+        implementation: { items: { done: { status: 'completed' } } },
+        review: { items: { done: { status: 'completed' } } },
       },
     });
     const r = discover(dir, 'done');
@@ -58,7 +58,6 @@ describe('workflow-bridge discovery', () => {
       work_type: 'epic',
       phases: {
         discussion: {
-          status: 'in-progress',
           items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'in-progress' } },
         },
       },
@@ -71,7 +70,7 @@ describe('workflow-bridge discovery', () => {
   it('computes bugfix pipeline correctly', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
-      phases: { investigation: { status: 'completed' } },
+      phases: { investigation: { items: { crash: { status: 'completed' } } } },
     });
     const r = discover(dir, 'crash');
     assert.strictEqual(r.next_phase, 'specification');
@@ -81,11 +80,11 @@ describe('workflow-bridge discovery', () => {
     createManifest(dir, 'full', {
       work_type: 'feature',
       phases: {
-        discussion: { status: 'completed' },
-        specification: { status: 'completed' },
-        planning: { status: 'completed' },
-        implementation: { status: 'completed' },
-        review: { status: 'completed' },
+        discussion: { items: { full: { status: 'completed' } } },
+        specification: { items: { full: { status: 'completed' } } },
+        planning: { items: { full: { status: 'completed' } } },
+        implementation: { items: { full: { status: 'completed' } } },
+        review: { items: { full: { status: 'completed' } } },
       },
     });
     createFile(dir, '.workflows/full/discussion/full.md', '');
@@ -110,7 +109,7 @@ describe('workflow-bridge discovery', () => {
   it('detects research file existence', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { status: 'in-progress' } },
+      phases: { research: { items: { exploration: { status: 'in-progress' } } } },
     });
     createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
     const r = discover(dir, 'v1');
@@ -121,7 +120,7 @@ describe('workflow-bridge discovery', () => {
   it('detects investigation file existence', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
-      phases: { investigation: { status: 'in-progress' } },
+      phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
     });
     createFile(dir, '.workflows/crash/investigation/crash.md', '# Investigation');
     const r = discover(dir, 'crash');
@@ -132,10 +131,20 @@ describe('workflow-bridge discovery', () => {
   it('reports false for missing research files', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { status: 'in-progress' } },
+      phases: { research: { items: { exploration: { status: 'in-progress' } } } },
     });
     const r = discover(dir, 'v1');
     assert.strictEqual(r.phases.research.exists, false);
+  });
+
+  it('ignores flat phase status (returns null)', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { status: 'completed' } },
+    });
+    const r = discover(dir, 'auth');
+    assert.strictEqual(r.phases.discussion.status, 'none');
+    assert.strictEqual(r.next_phase, 'discussion');
   });
 
   it('epic returns phases and next_phase without epic_detail', () => {
