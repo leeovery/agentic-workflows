@@ -106,7 +106,9 @@ Update the Plan Index File with the revised task table.
 
 #### If `auto`
 
-Note that `task_list_gate_mode` should be updated to `auto` in the manifest during the commit step below.
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_list_gate_mode auto
+```
 
 → Proceed to **C. Finalize Approval**.
 
@@ -124,11 +126,7 @@ Note that `task_list_gate_mode` should be updated to `auto` in the manifest duri
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task {first_task_id}
    ```
-2. If user chose `auto` at this gate: update the manifest:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_list_gate_mode auto
-   ```
-3. Commit: `planning({work_unit}): approve Phase {N} task list`
+2. Commit: `planning({work_unit}): approve Phase {N} task list`
 
 If the task list was already approved and unchanged, no updates are needed.
 

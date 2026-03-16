@@ -4,16 +4,17 @@
 
 ---
 
-Follow stages A through E sequentially for each task. Do not abbreviate, skip, or compress stages based on previous iterations.
+Follow stages A through H sequentially for each task. Do not abbreviate, skip, or compress stages based on previous iterations.
 
 ```
 A. Retrieve next task + mark in-progress
 B. Execute task → invoke-executor.md
-   → Executor Blocked (conditional)
-C. Review task → invoke-reviewer.md
-   → Review Changes with fix analysis (conditional, fix_gate_mode)
-D. Task gate (gated → prompt user / auto → announce)
-E. Update progress + phase check + commit
+C. Handle executor block (conditional)
+D. Review task → invoke-reviewer.md
+E. Evaluate review changes (conditional, fix_gate_mode)
+F. Fix approval gate (gated prompt)
+G. Task gate (gated → prompt user / auto → announce)
+H. Update progress + phase check + commit
 → loop back to A until done
 ```
 
@@ -21,26 +22,39 @@ E. Update progress + phase check + commit
 
 ## A. Retrieve Next Task
 
-1. Follow the format's **reading.md** instructions to determine the next available task.
-2. If no available tasks remain → skip to **When All Tasks Are Complete**.
-3. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-4. Reset `fix_attempts` to `0` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts 0`).
-5. Mark the task as **in-progress** — follow the format's **updating.md** "In Progress" status transition.
-6. If the format's updating.md includes a **Phase / Parent Status** section: check whether the task's phase parent needs to be started. If so, follow the format's phase start instructions.
+Follow the format's **reading.md** instructions to determine the next available task.
+
+#### If no available tasks remain
+
+→ Proceed to **I. All Tasks Complete**.
+
+#### If a task is available
+
+1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
+2. Reset `fix_attempts` to `0` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts 0`).
+3. Mark the task as in-progress — follow the format's **updating.md** status transition.
+
+→ Proceed to **B. Execute Task**.
 
 ---
 
 ## B. Execute Task
 
-1. Load **[invoke-executor.md](invoke-executor.md)** and follow its instructions as written. Pass the normalised task content.
+→ Load **[invoke-executor.md](invoke-executor.md)** and follow its instructions as written. Pass the normalised task content.
 
 > **CHECKPOINT**: Do not proceed until the executor has returned its result.
 
-2. On receipt of result, route on STATUS:
-   - `blocked` or `failed` → follow **Executor Blocked** below
-   - `complete` → proceed to **C. Review Task**
+#### If `STATUS` is `blocked` or `failed`
 
-### Executor Blocked
+→ Proceed to **C. Handle Executor Block**.
+
+#### If `STATUS` is `complete`
+
+→ Proceed to **D. Review Task**.
+
+---
+
+## C. Handle Executor Block
 
 > *Output the next fenced block as a code block:*
 
@@ -66,11 +80,11 @@ Task failed. How would you like to proceed?
 
 #### If `retry`
 
-→ Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the user's comments.
+→ Return to **B. Execute Task**.
 
 #### If `skip`
 
-→ Proceed to **E. Update Progress and Commit** (mark task as skipped).
+→ Proceed to **H. Update Progress and Commit** (mark task as skipped).
 
 #### If `stop`
 
@@ -78,17 +92,23 @@ Task failed. How would you like to proceed?
 
 ---
 
-## C. Review Task
+## D. Review Task
 
-1. Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its instructions as written. Pass the executor's result.
+→ Load **[invoke-reviewer.md](invoke-reviewer.md)** and follow its instructions as written. Pass the executor's result.
 
 > **CHECKPOINT**: Do not proceed until the reviewer has returned its result.
 
-2. On receipt of result, route on VERDICT:
-   - `needs-changes` → follow **Review Changes** below
-   - `approved` → proceed to **D. Task Gate**
+#### If `VERDICT` is `needs-changes`
 
-### Review Changes
+→ Proceed to **E. Evaluate Review Changes**.
+
+#### If `VERDICT` is `approved`
+
+→ Proceed to **G. Task Gate**.
+
+---
+
+## E. Evaluate Review Changes
 
 Increment `fix_attempts` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_attempts {N}`).
 
@@ -108,11 +128,17 @@ Notes (non-blocking):
 
 Check `fix_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} fix_gate_mode`).
 
-#### If `fix_gate_mode: auto` and `fix_attempts < 3`
+#### If `fix_gate_mode` is `auto` and `fix_attempts` < 3
 
-→ Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
+→ Return to **B. Execute Task**.
 
-#### If `fix_gate_mode: gated`, or `fix_attempts >= 3`
+#### If `fix_gate_mode` is `gated` or `fix_attempts` >= 3
+
+→ Proceed to **F. Fix Approval Gate**.
+
+---
+
+## F. Fix Approval Gate
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -130,15 +156,37 @@ Accept the reviewer's fix analysis?
 
 **STOP.** Wait for user response.
 
-- **`y`/`yes`**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
-- **`auto`**: Note that `fix_gate_mode` should be updated to `auto` via manifest CLI during the next commit step. → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the reviewer's notes (including fix analysis).
-- **`skip`**: → Proceed to **D. Task Gate**.
-- **Ask**: Answer the user's questions about the review. When complete, re-present the Review Changes options above. Repeat until the user selects a terminal option (`yes`, `auto`, `skip`, or Comment).
-- **Comment**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content, the reviewer's notes, and the user's commentary.
+#### If `yes`
+
+→ Return to **B. Execute Task**.
+
+#### If `auto`
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_gate_mode auto
+```
+
+→ Return to **B. Execute Task**.
+
+#### If `skip`
+
+→ Proceed to **G. Task Gate**.
+
+#### If ask
+
+Answer the user's questions about the review.
+
+→ Return to **F. Fix Approval Gate**.
+
+#### If comment
+
+Include the reviewer's notes and the user's commentary when re-invoking.
+
+→ Return to **B. Execute Task**.
 
 ---
 
-## D. Task Gate
+## G. Task Gate
 
 After the reviewer approves a task, present the result:
 
@@ -153,11 +201,11 @@ Phase: {phase number} — {phase name}
 
 Check the `task_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} task_gate_mode`).
 
-#### If `task_gate_mode: auto`
+#### If `task_gate_mode` is `auto`
 
-→ Proceed to **E. Update Progress and Commit**.
+→ Proceed to **H. Update Progress and Commit**.
 
-#### If `task_gate_mode: gated`
+#### If `task_gate_mode` is `gated`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -174,19 +222,37 @@ Approve this task?
 
 **STOP.** Wait for user response.
 
-- **`y`/`yes`**: → Proceed to **E. Update Progress and Commit**.
-- **`auto`**: Note that `task_gate_mode` should be updated to `auto` via manifest CLI during the commit step. → Proceed to **E. Update Progress and Commit**.
-- **Ask**: Answer the user's questions about the implementation. When complete, re-present the Task Gate options above. Repeat until the user selects a terminal option (`yes`, `auto`, or Comment).
-- **Comment**: → Return to the top of **B. Execute Task** and re-invoke the executor with the full task content and the user's feedback.
+**If `yes`:**
+
+→ Proceed to **H. Update Progress and Commit**.
+
+**If `auto`:**
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} task_gate_mode auto
+```
+
+→ Proceed to **H. Update Progress and Commit**.
+
+**If ask:**
+
+Answer the user's questions about the implementation.
+
+→ Return to **G. Task Gate**.
+
+**If comment:**
+
+Include the user's feedback when re-invoking.
+
+→ Return to **B. Execute Task**.
 
 ---
 
-## E. Update Progress and Commit
+## H. Update Progress and Commit
 
 **Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete.
 
-**Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress:
-- If the format's updating.md includes a **Phase / Parent Status** section, follow its phase completion instructions
+**Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
 
 **Internal ID convention**: The internal ID used in `completed_tasks`, `current_task`, and commit messages MUST come from the plan index table's `Internal ID` column (format: `{topic}-{phase_id}-{task_id}`). If the format adapter returns an external ID, resolve the internal ID from the plan table — it maps internal IDs to external IDs via the `External ID` column.
 
@@ -196,9 +262,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} current_task {next_task_id or ~}
 node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} completed_tasks "{internal_id}"
 ```
-- If the current phase has no remaining open/in-progress tasks: `node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} completed_phases {N}`
-- If user chose `auto` at the task gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} task_gate_mode auto`
-- If user chose `auto` at the fix gate this turn: `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} fix_gate_mode auto`
+If the current phase has no remaining open/in-progress tasks: `node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} completed_phases {N}`
 
 **Commit all changes** in a single commit:
 
@@ -208,13 +272,11 @@ impl({work_unit}): T{internal_id} — {brief description}
 
 Code, tests, plan progress, and implementation file — one commit per approved task.
 
-This is the end of this iteration.
-
-→ Proceed to **A. Retrieve Next Task** and follow the instructions as written.
+→ Return to **A. Retrieve Next Task**.
 
 ---
 
-## When All Tasks Are Complete
+## I. All Tasks Complete
 
 > *Output the next fenced block as a code block:*
 
@@ -222,4 +284,4 @@ This is the end of this iteration.
 All tasks complete. {M} tasks implemented.
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 7**.
+→ Return to **[the skill](../SKILL.md)**.
