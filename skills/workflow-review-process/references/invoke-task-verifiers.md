@@ -8,7 +8,7 @@ This step dispatches `workflow-review-task-verifier` agents in batches to verify
 
 ---
 
-## Identify Scope
+## A. Identify Scope
 
 Build the list of implementation files using git history. For each plan in scope:
 
@@ -18,9 +18,11 @@ git log --oneline --name-only --pretty=format: --grep="impl({work_unit}):" | sor
 
 This captures all files touched by implementation commits for the topic.
 
+→ Proceed to **B. Extract All Tasks**.
+
 ---
 
-## Extract All Tasks
+## B. Extract All Tasks
 
 Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope:
 - Note each task's description
@@ -28,21 +30,27 @@ Using the format reading adapter loaded in Step 2, extract every task across all
 - Note expected micro acceptance (test name)
 - Note each task's **internal ID** (format: `{topic}-{phase_id}-{task_id}`) — derive the **task suffix** by stripping the topic prefix (e.g., `auth-flow-1-1` → `1-1`)
 
+→ Proceed to **C. Filter Tasks**.
+
 ---
 
-## Filter Tasks (Incremental Mode)
+## C. Filter Tasks
 
 #### If `review_mode` is `incremental`
 
 Filter the extracted task list to only include tasks whose internal IDs appear in the `unreviewed_tasks` list passed from the entry point. Skip all other tasks — they have already been reviewed.
 
+→ Proceed to **D. Create Output Directory**.
+
 #### If `review_mode` is `full`
 
 Review all extracted tasks. No filtering needed.
 
+→ Proceed to **D. Create Output Directory**.
+
 ---
 
-## Create Output Directory
+## D. Create Output Directory
 
 Ensure the review output directory exists:
 
@@ -50,9 +58,11 @@ Ensure the review output directory exists:
 mkdir -p .workflows/{work_unit}/review/{topic}
 ```
 
+→ Proceed to **E. Batch Dispatch**.
+
 ---
 
-## Batch Dispatch
+## E. Batch Dispatch
 
 Dispatch verifiers in **batches of 5** via the Task tool.
 
@@ -78,10 +88,6 @@ Each verifier receives:
 
 If any verifier fails (error, timeout), record the failure and continue — aggregate what's available.
 
----
-
-## Expected Result
-
 Each verifier returns a brief status:
 
 ```
@@ -92,9 +98,11 @@ SUMMARY: {1 sentence}
 
 Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md`.
 
+→ Proceed to **F. Update Reviewed Tasks**.
+
 ---
 
-## Update Reviewed Tasks
+## F. Update Reviewed Tasks
 
 After all verifiers complete, push each verified task's internal ID to the review manifest:
 
@@ -104,11 +112,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.revie
 
 This enables incremental review detection on subsequent review sessions.
 
+→ Proceed to **G. Aggregate Findings**.
+
 ---
 
-## Aggregate Findings
-
-Once all batches have completed:
+## G. Aggregate Findings
 
 1. Read all `.workflows/{work_unit}/review/{topic}/report-*.md` files
 2. Synthesize findings from file contents:
@@ -118,6 +126,6 @@ Once all batches have completed:
    - Include specific file:line references
    - Check overall plan completion (see [review-checklist.md](review-checklist.md) — Plan Completion Check)
 
-**CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.
+> **CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.
 
 → Return to **[the skill](../SKILL.md)**.
