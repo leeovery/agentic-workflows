@@ -22,8 +22,20 @@ Do you have anything to add? Extra context, files, or additional
 research you'd like to include — drop them in now.
 
 - **`n`/`no`** — Continue as-is
-- Describe what you'd like to add
+- **Add context** — Describe what you'd like to include
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
+
+#### If `no`
+
+No additional context. Proceed with research sources only.
+
+→ Return to **[gather-context.md](gather-context.md)**.
+
+#### If user provides additional context
+
+Note the additional context provided by the user — it will be included alongside the research sources in the handoff to the processing skill.
+
+→ Return to **[gather-context.md](gather-context.md)**.
