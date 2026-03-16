@@ -8,7 +8,7 @@ This step uses the `workflow-planning-phase-designer` agent (`../../../agents/wo
 
 ---
 
-## Determine Phase State
+## A. Determine Phase State
 
 Read the Plan Index File. Check if phases already exist in the body.
 
@@ -20,7 +20,7 @@ Read the Plan Index File. Check if phases already exist in the body.
 Phase structure already exists. I'll present it for your review.
 ```
 
-Continue to **Review and Approve** below.
+→ Proceed to **B. Review and Approve**.
 
 #### If no phases exist
 
@@ -31,8 +31,6 @@ I'll delegate phase design to a specialist agent. It will read the full
 specification and propose a phase structure — how we break this into
 independently testable stages.
 ```
-
-### Invoke the Agent
 
 Read `work_type` from the manifest:
 ```bash
@@ -59,11 +57,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planni
 
 Commit: `planning({work_unit}): draft phase structure`
 
-Continue to **Review and Approve** below.
+→ Proceed to **B. Review and Approve**.
 
 ---
 
-## Review and Approve
+## B. Review and Approve
 
 Present the phase structure to the user as rendered markdown (not in a code block). Then, separately, present the choices:
 
@@ -87,7 +85,9 @@ Re-invoke `workflow-planning-phase-designer` with all original inputs PLUS:
 - **Previous output**: the current phase structure
 - **User feedback**: what the user wants changed
 
-Update the Plan Index File with the revised output, re-present, and ask again. Repeat until approved.
+Update the Plan Index File with the revised output.
+
+→ Return to **B. Review and Approve**.
 
 #### If `approved`
 
@@ -97,3 +97,5 @@ Update the Plan Index File with the revised output, re-present, and ask again. R
 2. Commit: `planning({work_unit}): approve phase structure`
 
 If the phase structure was already approved and unchanged, no updates are needed.
+
+→ Return to **[plan-construction.md](plan-construction.md)**.
