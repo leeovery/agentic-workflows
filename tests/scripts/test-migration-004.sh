@@ -315,8 +315,6 @@ output=$(run_migration 2>&1)
 content=$(cat "$SPEC_DIR/no-discussion.md")
 
 assert_contains "$content" "sources: \[\]" "Empty sources array added"
-assert_contains "$output" "MIGRATION_INFO" "Info message output for user review"
-assert_contains "$output" "no-discussion" "Spec name mentioned in info message"
 
 echo ""
 

@@ -145,9 +145,6 @@ for file in "$SPEC_DIR"/*.md; do
     # If no sources were added, use empty array format
     if ! $sources_added; then
         new_sources_block="sources: []"
-        # Echo info for Claude to prompt user about unmatched specs
-        spec_name=$(basename "$file" .md)
-        echo "MIGRATION_INFO: Specification '$spec_name' has no matching discussion. Sources field set to empty - please review and add sources manually."
     fi
 
     #
