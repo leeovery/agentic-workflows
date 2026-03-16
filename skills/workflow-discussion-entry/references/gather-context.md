@@ -4,13 +4,41 @@
 
 ---
 
+## A. Route on Source
+
 Route based on the `source` variable set in earlier steps.
 
 #### If source is `topic-provided`
 
 New discussion entry: topic was provided by the caller.
 
-Check if any completed research items exist:
+→ Proceed to **B. Check Research**.
+
+#### If source is `research`
+
+→ Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions as written.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+#### If source is `fresh`
+
+→ Load **[name-topic.md](name-topic.md)** and follow its instructions as written.
+
+→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+#### If source is `continue`
+
+→ Load **[gather-context-continue.md](gather-context-continue.md)** and follow its instructions as written.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+---
+
+## B. Check Research
+
+Check if any research items exist for this work unit:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.research.*
@@ -18,7 +46,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.res
 
 **If exists (`true`):**
 
-Check their statuses:
+→ Proceed to **C. Check Research Status**.
+
+**If not exists (`false`):**
+
+→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
+
+→ Return to **[the skill](../SKILL.md)**.
+
+---
+
+## C. Check Research Status
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.research.* status
@@ -51,31 +89,5 @@ Set source="topic-provided-with-research".
 **Otherwise:**
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If source is `research`
-
-→ Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions as written.
-
-**STOP.** Wait for user response.
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If source is `fresh`
-
-→ Load **[name-topic.md](name-topic.md)** and follow its instructions as written.
-
-→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
-
-**STOP.** Wait for user response.
-
-→ Return to **[the skill](../SKILL.md)**.
-
-#### If source is `continue`
-
-→ Load **[gather-context-continue.md](gather-context-continue.md)** and follow its instructions as written.
-
-**STOP.** Wait for user response.
 
 → Return to **[the skill](../SKILL.md)**.
