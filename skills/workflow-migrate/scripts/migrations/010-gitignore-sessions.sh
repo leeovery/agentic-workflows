@@ -15,8 +15,8 @@
 # Idempotent: safe to run multiple times.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 
 STATE_DIR="docs/workflow/.state"
 CACHE_DIR="docs/workflow/.cache"
@@ -35,7 +35,7 @@ for file in "${ANALYSIS_FILES[@]}"; do
     if [ -f "$CACHE_DIR/$file" ]; then
         mkdir -p "$STATE_DIR"
         mv "$CACHE_DIR/$file" "$STATE_DIR/$file"
-        report_update "$STATE_DIR/$file" "moved from .cache/"
+        report_update
     fi
 done
 
@@ -44,19 +44,19 @@ done
 for old_file in "$CACHE_DIR/migrations" "$CACHE_DIR/migrations.log"; do
     if [ -f "$old_file" ]; then
         rm "$old_file"
-        report_update "$old_file" "removed orphaned tracking file"
+        report_update
     fi
 done
 
 # --- Step 3: Add docs/workflow/.cache/ to .gitignore ---
 
 if [ -f "$GITIGNORE" ] && grep -qxF "$NEW_ENTRY" "$GITIGNORE"; then
-    report_skip "$GITIGNORE"
+    report_skip
 else
     # Ensure file ends with newline before appending
     [ -f "$GITIGNORE" ] && [ -n "$(tail -c 1 "$GITIGNORE")" ] && echo >> "$GITIGNORE"
     echo "$NEW_ENTRY" >> "$GITIGNORE"
-    report_update "$GITIGNORE" "added .cache/ to gitignore"
+    report_update
 fi
 
 # --- Step 4: Remove old sessions/ entry from .gitignore (now redundant) ---
@@ -65,5 +65,5 @@ if [ -f "$GITIGNORE" ] && grep -qF "$OLD_ENTRY" "$GITIGNORE"; then
     # Remove the old entry (and its comment if present)
     grep -vF "$OLD_ENTRY" "$GITIGNORE" > "${GITIGNORE}.tmp"
     mv "${GITIGNORE}.tmp" "$GITIGNORE"
-    report_update "$GITIGNORE" "removed redundant sessions/ entry"
+    report_update
 fi

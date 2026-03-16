@@ -8,8 +8,8 @@
 # New specifications will have work_type set by the skill that creates them.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="014"
@@ -38,14 +38,14 @@ for file in "$SPEC_DIR"/*/specification.md; do
 
     # Check if file has YAML frontmatter
     if ! head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
     # Check if work_type already exists
     frontmatter=$(extract_frontmatter "$file")
     if echo "$frontmatter" | grep -q "^work_type:"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -72,5 +72,5 @@ work_type: greenfield"
         echo "$content"
     } > "$file"
 
-    report_update "$file" "added work_type: greenfield"
+    report_update
 done

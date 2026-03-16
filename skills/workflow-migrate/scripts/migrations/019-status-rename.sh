@@ -74,6 +74,6 @@ for dir in "$WORKFLOWS_DIR"/*/; do
   " "$manifest" 2>/dev/null) || true
 
   if [ -n "$result" ]; then
-    report_update "$manifest" "$result"
+    report_update
   fi
 done

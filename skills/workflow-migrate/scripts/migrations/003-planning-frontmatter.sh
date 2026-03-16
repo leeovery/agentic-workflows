@@ -32,8 +32,8 @@
 #   Completed, Done → concluded
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="003"
@@ -55,7 +55,7 @@ for file in "$PLAN_DIR"/*.md; do
 
     # Check if file already has full frontmatter (topic field present)
     if head -10 "$file" 2>/dev/null | grep -q "^topic:"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -65,7 +65,7 @@ for file in "$PLAN_DIR"/*.md; do
     has_inline_metadata=$(grep -c '^\*\*Date\*\*:\|^\*\*Status\*\*:\|^\*\*Specification\*\*:' "$file" 2>/dev/null || true)
 
     if [ "${has_partial_frontmatter:-0}" = "0" ] && [ "${has_inline_metadata:-0}" = "0" ]; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -180,5 +180,5 @@ specification: $spec_value
         echo "$content"
     } > "$file"
 
-    report_update "$file" "added full frontmatter (status: $status_new, format: $format_value)"
+    report_update
 done

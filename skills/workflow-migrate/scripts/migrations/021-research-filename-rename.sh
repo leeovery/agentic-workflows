@@ -43,10 +43,10 @@ for dir in "$WORKFLOWS_DIR"/*/; do
 
   # Don't rename if target already exists
   if [ -f "$target" ]; then
-    report_skip "$exploration"
+    report_skip
     continue
   fi
 
   mv "$exploration" "$target"
-  report_update "$exploration" "renamed to ${name}.md"
+  report_update
 done

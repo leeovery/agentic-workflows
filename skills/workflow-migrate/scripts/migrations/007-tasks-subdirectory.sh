@@ -24,8 +24,8 @@
 # Idempotent: skips if tasks/ already exists and contains .md files.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="007"
@@ -51,7 +51,7 @@ for topic_dir in "$PLAN_DIR"/*/; do
     task_files=("$topic_dir${topic}-"*.md)
     if [ ! -f "${task_files[0]}" ]; then
         # No task files — format may not be local-markdown, or tasks already moved
-        report_skip "$marker"
+        report_skip
         continue
     fi
 
@@ -66,5 +66,5 @@ for topic_dir in "$PLAN_DIR"/*/; do
         moved=$((moved + 1))
     done
 
-    report_update "$marker" "moved $moved task file(s) to tasks/ subdirectory"
+    report_update
 done

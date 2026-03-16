@@ -25,8 +25,8 @@
 #   Concluded, Complete, ✅ Complete → concluded
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="001"
@@ -43,13 +43,13 @@ for file in "$DISCUSSION_DIR"/*.md; do
 
     # Check if file already has YAML frontmatter
     if head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
     # Check if file has legacy format (look for **Status**: or **Status:** or **Date**: or **Started:**)
     if ! grep -q '^\*\*Status\*\*:\|^\*\*Status:\*\*\|^\*\*Date\*\*:\|^\*\*Started:\*\*' "$file" 2>/dev/null; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -122,5 +122,5 @@ date: $date_value
         echo "$content"
     } > "$file"
 
-    report_update "$file" "added frontmatter"
+    report_update
 done

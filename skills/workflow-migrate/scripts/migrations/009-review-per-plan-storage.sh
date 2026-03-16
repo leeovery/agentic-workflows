@@ -17,8 +17,8 @@
 # Idempotent: skips directories that already have proper r{N}/ structure.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="009"
@@ -37,7 +37,7 @@ for rdir in "$REVIEW_DIR"/*/r*/; do
     pa_file="${rdir}product-assessment.md"
     [ -f "$pa_file" ] || continue
     rm "$pa_file"
-    report_update "$pa_file" "removed product assessment (feature removed)"
+    report_update
 done
 
 #
@@ -79,7 +79,7 @@ for scope_dir in "$REVIEW_DIR"/*/; do
             rmdir "$plan_subdir" 2>/dev/null || true
 
             if [ "$moved" -gt 0 ]; then
-                report_update "$dest_dir" "moved $moved QA files from multi-plan review $scope/r${rnum}"
+                report_update
             fi
         done
     done
@@ -112,6 +112,6 @@ for topic_dir in "$REVIEW_DIR"/*/; do
     done
 
     if [ "$moved" -gt 0 ]; then
-        report_update "${topic_dir}r1" "moved $moved orphaned QA files into r1/"
+        report_update
     fi
 done

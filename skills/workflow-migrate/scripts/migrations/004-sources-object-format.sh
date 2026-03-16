@@ -29,8 +29,8 @@
 #   - If no matching discussion, add empty sources: [] and report for user review
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="004"
@@ -92,7 +92,7 @@ for file in "$SPEC_DIR"/*.md; do
 
     # Check if file has YAML frontmatter
     if ! head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -104,7 +104,7 @@ for file in "$SPEC_DIR"/*.md; do
 
     # If sources field exists, check if already in object format
     if $has_sources_field && sources_already_object_format "$file"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -188,10 +188,10 @@ ${new_sources_block}"
 
     # Report appropriate message based on what was done
     if $has_sources_field; then
-        report_update "$file" "converted sources to object format"
+        report_update
     elif $sources_added; then
-        report_update "$file" "added sources field with matching discussion"
+        report_update
     else
-        report_update "$file" "added empty sources field (no matching discussion found)"
+        report_update
     fi
 done

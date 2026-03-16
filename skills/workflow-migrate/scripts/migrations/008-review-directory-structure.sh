@@ -31,8 +31,8 @@
 # Idempotent: skips if r1/ already exists.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="008"
@@ -52,7 +52,7 @@ for review_file in "$REVIEW_DIR"/*.md; do
 
     # Skip if r1/ already exists (idempotent)
     if [ -d "$r1_dir" ]; then
-        report_skip "$review_file"
+        report_skip
         continue
     fi
 
@@ -92,5 +92,5 @@ for review_file in "$REVIEW_DIR"/*.md; do
         done
     fi
 
-    report_update "$r1_dir/review.md" "migrated to r1/ structure ($moved items)"
+    report_update
 done

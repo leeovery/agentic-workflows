@@ -10,8 +10,8 @@
 # Compatible with bash 3.2+ (no associative arrays).
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 # Skip if no .workflows directory
@@ -296,7 +296,7 @@ while IFS= read -r name; do
 
     # Skip if already migrated (idempotency)
     if [ -f ".workflows/$name/manifest.json" ]; then
-        report_skip ".workflows/$name/manifest.json"
+        report_skip
         continue
     fi
 
@@ -310,7 +310,7 @@ while IFS= read -r name; do
             while IFS= read -r dfile; do
                 if [ -f "$dfile" ]; then
                     mv "$dfile" ".workflows/$name/discussion/"
-                    report_update "$dfile" "moved to .workflows/$name/discussion/"
+                    report_update
                 fi
             done <<< "$epic_discs"
         fi
@@ -319,7 +319,7 @@ while IFS= read -r name; do
         if [ -n "$disc_file" ] && [ -f "$disc_file" ]; then
             mkdir -p ".workflows/$name/discussion"
             mv "$disc_file" ".workflows/$name/discussion/${name}.md"
-            report_update "$disc_file" "moved to .workflows/$name/discussion/${name}.md"
+            report_update
         fi
     fi
 
@@ -329,7 +329,7 @@ while IFS= read -r name; do
         mkdir -p ".workflows/$name/investigation"
         if [ -f "${inv_dir}investigation.md" ]; then
             mv "${inv_dir}investigation.md" ".workflows/$name/investigation/${name}.md"
-            report_update "${inv_dir}investigation.md" "moved to .workflows/$name/investigation/${name}.md"
+            report_update
         fi
         # Move any remaining files
         for ifile in "$inv_dir"*; do
@@ -354,7 +354,7 @@ while IFS= read -r name; do
                         [ -e "$sfile" ] || continue
                         mv "$sfile" ".workflows/$name/specification/$_topic/"
                     done
-                    report_update "$_dir" "moved to .workflows/$name/specification/$_topic/"
+                    report_update
                 fi
             done <<< "$epic_specs"
         fi
@@ -366,7 +366,7 @@ while IFS= read -r name; do
                 [ -e "$sfile" ] || continue
                 mv "$sfile" ".workflows/$name/specification/$name/"
             done
-            report_update "$spec_dir" "moved to .workflows/$name/specification/$name/"
+            report_update
         fi
     fi
 
@@ -381,11 +381,11 @@ while IFS= read -r name; do
                     mkdir -p ".workflows/$name/planning/$_topic"
                     if [ -f "${_dir}plan.md" ]; then
                         mv "${_dir}plan.md" ".workflows/$name/planning/$_topic/planning.md"
-                        report_update "${_dir}plan.md" "moved and renamed to planning/$_topic/planning.md"
+                        report_update
                     fi
                     if [ -d "${_dir}tasks" ]; then
                         mv "${_dir}tasks" ".workflows/$name/planning/$_topic/tasks"
-                        report_update "${_dir}tasks/" "moved to .workflows/$name/planning/$_topic/tasks/"
+                        report_update
                     fi
                     for pfile in "$_dir"*; do
                         [ -e "$pfile" ] || continue
@@ -403,11 +403,11 @@ while IFS= read -r name; do
             mkdir -p ".workflows/$name/planning/$name"
             if [ -f "${plan_dir}plan.md" ]; then
                 mv "${plan_dir}plan.md" ".workflows/$name/planning/$name/planning.md"
-                report_update "${plan_dir}plan.md" "moved and renamed to planning/$name/planning.md"
+                report_update
             fi
             if [ -d "${plan_dir}tasks" ]; then
                 mv "${plan_dir}tasks" ".workflows/$name/planning/$name/tasks"
-                report_update "${plan_dir}tasks/" "moved to .workflows/$name/planning/$name/tasks/"
+                report_update
             fi
             for pfile in "$plan_dir"*; do
                 [ -e "$pfile" ] || continue
@@ -430,7 +430,7 @@ while IFS= read -r name; do
                     mkdir -p ".workflows/$name/implementation/$_topic"
                     if [ -f "${_dir}tracking.md" ]; then
                         mv "${_dir}tracking.md" ".workflows/$name/implementation/$_topic/implementation.md"
-                        report_update "${_dir}tracking.md" "moved and renamed to implementation/$_topic/implementation.md"
+                        report_update
                     fi
                     for imfile in "$_dir"*; do
                         [ -e "$imfile" ] || continue
@@ -448,7 +448,7 @@ while IFS= read -r name; do
             mkdir -p ".workflows/$name/implementation/$name"
             if [ -f "${impl_dir}tracking.md" ]; then
                 mv "${impl_dir}tracking.md" ".workflows/$name/implementation/$name/implementation.md"
-                report_update "${impl_dir}tracking.md" "moved and renamed to implementation/$name/implementation.md"
+                report_update
             fi
             for imfile in "$impl_dir"*; do
                 [ -e "$imfile" ] || continue
@@ -473,7 +473,7 @@ while IFS= read -r name; do
                         [ -e "$ritem" ] || continue
                         mv "$ritem" ".workflows/$name/review/$_topic/"
                     done
-                    report_update "$_dir" "moved to .workflows/$name/review/$_topic/"
+                    report_update
                 fi
             done <<< "$epic_revs"
         fi
@@ -485,7 +485,7 @@ while IFS= read -r name; do
                 [ -e "$ritem" ] || continue
                 mv "$ritem" ".workflows/$name/review/$name/"
             done
-            report_update "$review_dir" "moved to .workflows/$name/review/$name/"
+            report_update
         fi
     fi
 
@@ -497,7 +497,7 @@ while IFS= read -r name; do
             while IFS= read -r rfile; do
                 if [ -f "$rfile" ]; then
                     mv "$rfile" ".workflows/$name/research/"
-                    report_update "$rfile" "moved to .workflows/$name/research/"
+                    report_update
                 fi
             done <<< "$epic_research"
         fi
@@ -508,7 +508,7 @@ while IFS= read -r name; do
                 if [ -d "$rdir" ]; then
                     dirname=$(basename "$rdir")
                     mv "$rdir" ".workflows/$name/research/$dirname"
-                    report_update "$rdir" "moved to .workflows/$name/research/$dirname"
+                    report_update
                 fi
             done <<< "$epic_research_dirs"
         fi
@@ -520,7 +520,7 @@ while IFS= read -r name; do
             if [ -f ".workflows/.state/$_state_file" ]; then
                 mkdir -p ".workflows/$name/.state"
                 mv ".workflows/.state/$_state_file" ".workflows/$name/.state/$_state_file"
-                report_update ".workflows/.state/$_state_file" "moved to .workflows/$name/.state/"
+                report_update
             fi
         done
     fi
@@ -806,7 +806,7 @@ while IFS= read -r name; do
             JSON.stringify(manifest, null, 2) + '\n'
         );
     "
-    report_update ".workflows/$name/manifest.json" "created manifest for $wt work unit"
+    report_update
 
 done < "$_016_TMPDIR/wu_list"
 
@@ -819,7 +819,7 @@ for phase_dir in discussion investigation specification planning implementation 
         remaining=$(find ".workflows/$phase_dir" -type f ! -name ".gitkeep" 2>/dev/null | head -1)
         if [ -z "$remaining" ]; then
             rm -rf ".workflows/$phase_dir"
-            report_update ".workflows/$phase_dir" "removed empty phase directory"
+            report_update
         fi
     fi
 done

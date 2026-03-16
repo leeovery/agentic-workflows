@@ -17,7 +17,7 @@
 # Adding new migrations:
 #   1. Create scripts/migrations/NNN-description.sh (e.g., 002-spec-frontmatter.sh)
 #   2. The script will be run automatically in numeric order
-#   3. Each migration script receives helper functions via source: report_update, report_skip
+#   3. Each migration script receives counter functions via source: report_update, report_skip (no args)
 #
 
 set -eo pipefail
@@ -84,21 +84,18 @@ FILES_SKIPPED=0
 MIGRATIONS_RUN=0
 
 #
-# Helper function: Report a file update (for migration scripts to call)
-# Usage: report_update "filepath" "description"
+# Helper function: Increment files-updated counter (for migration scripts to call)
+# Usage: report_update
 #
 report_update() {
-    local filepath="$1"
-    local description="$2"
     FILES_UPDATED=$((FILES_UPDATED + 1))
 }
 
 #
-# Helper function: Report a file skip (for migration scripts to call)
-# Usage: report_skip "filepath"
+# Helper function: Increment files-skipped counter (for migration scripts to call)
+# Usage: report_skip
 #
 report_skip() {
-    local filepath="$1"
     FILES_SKIPPED=$((FILES_SKIPPED + 1))
 }
 

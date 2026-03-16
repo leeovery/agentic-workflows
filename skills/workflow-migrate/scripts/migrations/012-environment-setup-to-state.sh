@@ -8,8 +8,8 @@
 # Idempotent: safe to run multiple times.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 
 OLD_FILE=".workflows/environment-setup.md"
 NEW_FILE=".workflows/.state/environment-setup.md"
@@ -17,7 +17,7 @@ NEW_FILE=".workflows/.state/environment-setup.md"
 if [ -f "$OLD_FILE" ]; then
     mkdir -p "$(dirname "$NEW_FILE")"
     mv "$OLD_FILE" "$NEW_FILE"
-    report_update "$NEW_FILE" "moved from workflows root"
+    report_update
 elif [ -f "$NEW_FILE" ]; then
-    report_skip "$NEW_FILE (already in .state/)"
+    report_skip
 fi

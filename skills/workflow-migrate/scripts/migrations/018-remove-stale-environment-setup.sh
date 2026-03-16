@@ -9,20 +9,20 @@
 # Idempotent: safe to run multiple times.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 
 STALE_FILE=".workflows/environment-setup.md"
 STATE_FILE=".workflows/.state/environment-setup.md"
 
 if [ -f "$STALE_FILE" ] && [ -f "$STATE_FILE" ]; then
     rm "$STALE_FILE"
-    report_update "$STALE_FILE" "removed stale copy (already in .state/)"
+    report_update
 elif [ -f "$STALE_FILE" ] && [ ! -f "$STATE_FILE" ]; then
     # State copy doesn't exist — run the original migration logic
     mkdir -p "$(dirname "$STATE_FILE")"
     mv "$STALE_FILE" "$STATE_FILE"
-    report_update "$STATE_FILE" "moved from workflows root"
+    report_update
 else
-    report_skip "$STALE_FILE"
+    report_skip
 fi

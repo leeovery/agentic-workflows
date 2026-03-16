@@ -12,8 +12,8 @@
 # Updates plan frontmatter `specification` field to use new directory paths.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="006"
@@ -31,7 +31,7 @@ if [ -d "$SPEC_DIR" ]; then
 
         # Skip if already a directory (already migrated)
         if [ -d "$SPEC_DIR/$name" ] && [ -f "$SPEC_DIR/$name/specification.md" ]; then
-            report_skip "$SPEC_DIR/$name/specification.md"
+            report_skip
             continue
         fi
 
@@ -50,10 +50,10 @@ if [ -d "$SPEC_DIR" ]; then
             # Strip the topic prefix: {name}-review-foo.md → review-foo.md
             new_tracking_name="${tracking_basename#"${name}-"}"
             mv "$tracking_file" "$SPEC_DIR/$name/$new_tracking_name"
-            report_update "$SPEC_DIR/$name/$new_tracking_name" "moved tracking file into topic directory"
+            report_update
         done
 
-        report_update "$new_path" "restructured to topic directory"
+        report_update
     done
 fi
 
@@ -68,7 +68,7 @@ if [ -d "$PLAN_DIR" ]; then
 
         # Skip if already a directory with plan.md
         if [ -d "$PLAN_DIR/$name" ] && [ -f "$PLAN_DIR/$name/plan.md" ]; then
-            report_skip "$PLAN_DIR/$name/plan.md"
+            report_skip
             continue
         fi
 
@@ -86,10 +86,10 @@ if [ -d "$PLAN_DIR" ]; then
             tracking_basename=$(basename "$tracking_file")
             new_tracking_name="${tracking_basename#"${name}-"}"
             mv "$tracking_file" "$PLAN_DIR/$name/$new_tracking_name"
-            report_update "$PLAN_DIR/$name/$new_tracking_name" "moved tracking file into topic directory"
+            report_update
         done
 
-        report_update "$new_path" "restructured to topic directory"
+        report_update
     done
 fi
 
@@ -140,7 +140,7 @@ if [ -d "$PLAN_DIR" ]; then
                     { print }
                 ' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
 
-                report_update "$file" "updated specification field: $spec_value → $new_spec_value"
+                report_update
                 ;;
         esac
     done

@@ -30,8 +30,8 @@
 #   - "- ~~{topic}: {description}~~ → satisfied externally" → state: satisfied_externally
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 #
 
 MIGRATION_ID="005"
@@ -122,14 +122,14 @@ for file in "$PLAN_DIR"/*.md; do
 
     # Check if file has YAML frontmatter
     if ! head -1 "$file" 2>/dev/null | grep -q "^---$"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
     # Check if external_dependencies already exists in frontmatter
     frontmatter=$(extract_frontmatter_005 "$file")
     if echo "$frontmatter" | grep -q "^external_dependencies:"; then
-        report_skip "$file"
+        report_skip
         continue
     fi
 
@@ -217,8 +217,8 @@ ${new_deps_block}"
     } > "$file"
 
     if $has_deps; then
-        report_update "$file" "migrated external dependencies to frontmatter"
+        report_update
     else
-        report_update "$file" "added empty external_dependencies to frontmatter"
+        report_update
     fi
 done

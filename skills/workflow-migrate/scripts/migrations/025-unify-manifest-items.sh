@@ -71,6 +71,6 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
   " "$manifest" 2>/dev/null) || true
 
   if [ "$result" = "updated" ]; then
-    report_update "$manifest" "unified to items structure for $wu_name"
+    report_update
   fi
 done

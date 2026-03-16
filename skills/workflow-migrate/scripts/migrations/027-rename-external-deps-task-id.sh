@@ -12,8 +12,8 @@
 # Idempotent: safe to run multiple times.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 
 if [ ! -d ".workflows" ]; then
     return 0 2>/dev/null || exit 0
@@ -61,8 +61,8 @@ for manifest in .workflows/*/manifest.json; do
     " 2>/dev/null)
 
     if [ "$result" = "updated" ]; then
-        report_update "$manifest" "renamed task_id → internal_id in external_dependencies"
+        report_update
     else
-        report_skip "$manifest"
+        report_skip
     fi
 done

@@ -16,8 +16,8 @@
 # Idempotent: safe to run multiple times.
 #
 # This script is sourced by migrate.sh and has access to:
-#   - report_update "filepath" "description"
-#   - report_skip "filepath"
+#   - report_update
+#   - report_skip
 
 OLD_DIR="docs/workflow"
 NEW_DIR=".workflows"
@@ -28,7 +28,7 @@ NEW_GITIGNORE_ENTRY=".workflows/.cache/"
 # --- Step 1: Skip if nothing to migrate ---
 
 if [ ! -d "$OLD_DIR" ]; then
-    report_skip "$OLD_DIR (not found)"
+    report_skip
 else
     # --- Step 2: Create destination ---
     mkdir -p "$NEW_DIR"
@@ -43,19 +43,19 @@ else
         [ ! -e "$item" ] && continue
 
         if [ -e "$NEW_DIR/$basename_item" ]; then
-            report_skip "$basename_item (already exists at destination)"
+            report_skip
         else
             mv "$item" "$NEW_DIR/$basename_item"
-            report_update "$NEW_DIR/$basename_item" "moved from $OLD_DIR/"
+            report_update
         fi
     done
 
     # --- Step 4: Remove old directory ---
-    rmdir "$OLD_DIR" 2>/dev/null && report_update "$OLD_DIR" "removed empty directory" || true
+    rmdir "$OLD_DIR" 2>/dev/null && report_update || true
 
     # Remove docs/ if empty
     if [ -d "docs" ]; then
-        rmdir "docs" 2>/dev/null && report_update "docs" "removed empty directory" || true
+        rmdir "docs" 2>/dev/null && report_update || true
     fi
 fi
 
@@ -67,7 +67,7 @@ if [ -f "$GITIGNORE" ] && grep -qF "$OLD_GITIGNORE_ENTRY" "$GITIGNORE"; then
         if ($0 == old) print new; else print
     }' "$GITIGNORE" > "${GITIGNORE}.tmp"
     mv "${GITIGNORE}.tmp" "$GITIGNORE"
-    report_update "$GITIGNORE" "updated .cache/ path"
+    report_update
 elif [ -f "$GITIGNORE" ] && grep -qxF "$NEW_GITIGNORE_ENTRY" "$GITIGNORE"; then
-    report_skip "$GITIGNORE (already has new entry)"
+    report_skip
 fi

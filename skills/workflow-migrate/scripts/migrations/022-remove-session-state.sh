@@ -16,7 +16,7 @@ SESSIONS_DIR="$WORKFLOWS_DIR/.cache/sessions"
 
 if [ -d "$SESSIONS_DIR" ]; then
   rm -rf "$SESSIONS_DIR"
-  report_update "$SESSIONS_DIR" "removed stale session state directory"
+  report_update
 fi
 
 # --- Step 2: Clean up .claude/settings.json ---
@@ -72,9 +72,9 @@ if [ -f "$SETTINGS_FILE" ] && grep -qE "workflows/session-env\.sh|workflows/comp
     " "$SETTINGS_FILE" 2>/dev/null) || true
 
     if [ "$result" = "removed" ]; then
-      report_update "$SETTINGS_FILE" "removed (only contained session hooks)"
+      report_update
     elif [ "$result" = "cleaned" ]; then
-      report_update "$SETTINGS_FILE" "removed dangling session hook entries"
+      report_update
     fi
   fi
 fi

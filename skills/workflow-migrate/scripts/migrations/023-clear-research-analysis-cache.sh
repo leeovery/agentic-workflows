@@ -17,7 +17,7 @@ WORKFLOWS_DIR="${PROJECT_DIR:-.}/.workflows"
 for state_file in "$WORKFLOWS_DIR"/*/.state/research-analysis.md; do
   [ -f "$state_file" ] || continue
   rm "$state_file"
-  report_update "$state_file" "removed old-format research analysis cache"
+  report_update
 done
 
 # --- Step 2: Clear analysis_cache from manifests ---
@@ -40,6 +40,6 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
   " "$manifest" 2>/dev/null) || true
 
   if [ "$result" = "cleared" ]; then
-    report_update "$manifest" "removed analysis_cache from manifest"
+    report_update
   fi
 done

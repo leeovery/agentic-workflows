@@ -66,6 +66,6 @@ for dir in "$WORKFLOWS_DIR"/*/; do
   " "$manifest" 2>/dev/null) || true
 
   if [ "$updated" = "changed" ]; then
-    report_update "$manifest" "concluded to completed"
+    report_update
   fi
 done

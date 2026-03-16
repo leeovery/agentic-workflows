@@ -186,7 +186,7 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
     " "$manifest" "$topic" "$tasks_from_fm" "$phases_from_fm" "$ext_map" 2>/dev/null) || true
 
     if [ "$result" = "updated" ]; then
-      report_update "$manifest" "backfilled/normalised tracking for $topic"
+      report_update
     fi
   done
 done
@@ -237,7 +237,7 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
       rm -rf "$rn_dir"
     done
 
-    report_update "$topic_dir" "flattened review (kept r$highest_num)"
+    report_update
   done
 done
 
@@ -263,7 +263,7 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
   " "$manifest" 2>/dev/null) || true
 
   if [ "$result" = "updated" ]; then
-    report_update "$manifest" "renamed ext_id to external_id"
+    report_update
   fi
 
   # Rename Ext ID → External ID in plan index files (planning.md)
@@ -277,7 +277,7 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
       awk '{gsub(/Ext ID/, "External ID"); print}' "$plan_file" > "$plan_file.tmp" && mv "$plan_file.tmp" "$plan_file"
       # Also rename ext_id: field in phase entries
       awk '{sub(/^ext_id:/, "external_id:"); print}' "$plan_file" > "$plan_file.tmp" && mv "$plan_file.tmp" "$plan_file"
-      report_update "$plan_file" "renamed Ext ID to External ID"
+      report_update
     fi
   done
 done
@@ -302,7 +302,7 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
     # Match task table header: | ID | (but not | Internal ID | or | External ID |)
     if grep -q '^| ID |' "$plan_file" 2>/dev/null; then
       awk 'BEGIN{FS=OFS=""} /^[|] ID [|]/{sub(/^[|] ID [|]/, "| Internal ID |")} /^[|]----[|]/{sub(/^[|]----[|]/, "|-------------|")} {print}' "$plan_file" > "$plan_file.tmp" && mv "$plan_file.tmp" "$plan_file"
-      report_update "$plan_file" "renamed ID to Internal ID in task table"
+      report_update
     fi
   done
 done

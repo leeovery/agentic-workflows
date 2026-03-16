@@ -50,7 +50,7 @@ create_research_file() {
 }
 
 # Stub report_update for migration script
-report_update() { echo "updated: $1 — $2"; }
+report_update() { echo "updated"; }
 export -f report_update
 
 run_migration() {
@@ -153,7 +153,7 @@ assert_equals "$(get_field "v1" "phases.research.items.exploration.status")" "co
 assert_equals "$(get_field "v1" "phases.research.items.architecture.status")" "completed" "architecture backfilled as item"
 assert_equals "$(get_field "v1" "phases.research.status")" "undefined" "Flat status removed"
 assert_equals "$(get_field "v1" "phases.discussion.items.auth.status")" "completed" "Existing items untouched"
-assert_contains "$output" "backfilled 2 item(s)" "Reports backfill"
+assert_contains "$output" "updated" "Reports update"
 
 echo ""
 
@@ -174,7 +174,7 @@ create_manifest "orphan" '{
 output=$(run_migration)
 
 assert_equals "$(get_field "orphan" "phases.research")" "undefined" "Empty phase object removed"
-assert_contains "$output" "removed orphaned flat status" "Reports orphan removal"
+assert_contains "$output" "updated" "Reports update"
 
 echo ""
 
@@ -200,7 +200,7 @@ output=$(run_migration)
 assert_equals "$(get_field "mixed" "phases.discussion.status")" "undefined" "Flat status removed"
 assert_equals "$(get_field "mixed" "phases.discussion.items.auth.status")" "completed" "Items preserved"
 assert_equals "$(get_field "mixed" "phases.discussion.items.billing.status")" "in-progress" "Items preserved"
-assert_contains "$output" "removed flat status (items exist)" "Reports status removal"
+assert_contains "$output" "updated" "Reports update"
 
 echo ""
 
