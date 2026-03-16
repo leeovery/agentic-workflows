@@ -51,3 +51,5 @@ Completed phase: investigation
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
+
+**STOP.** Do not proceed — terminal condition.

@@ -47,7 +47,7 @@ Do these findings match your understanding?
 
 Address their concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit.
 
-Re-present findings using the same format above.
+→ Return to **A. Present Findings**.
 
 #### If `yes`
 
@@ -94,7 +94,9 @@ Engage collaboratively. Stay bounded — focus on:
 - Exploring how fixes interact with existing code
 - Understanding user priorities (speed, safety, maintainability)
 
-Do not go into implementation detail — that belongs in the specification. When discussion reaches a natural decision point, summarize the agreed direction and present for confirmation.
+Do not go into implementation detail — that belongs in the specification.
+
+→ Return to **B. Fix Direction Discussion**.
 
 #### If `yes`
 
