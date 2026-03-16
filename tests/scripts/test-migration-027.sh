@@ -32,14 +32,11 @@ echo ""
 #
 
 report_update() {
-    local file="$1"
-    local description="$2"
-    echo "[UPDATE] $file: $description"
+    echo "updated"
 }
 
 report_skip() {
-    local file="$1"
-    echo "[SKIP] $file"
+    echo "skipped"
 }
 
 # Export functions for sourced script
@@ -154,7 +151,7 @@ assert_not_contains "$content" '"task_id"' "task_id field removed"
 assert_contains "$content" '"state": "resolved"' "state preserved"
 assert_contains "$content" '"description": "User authentication"' "description preserved"
 assert_contains "$content" '"state": "unresolved"' "unresolved dep unchanged"
-assert_contains "$output" "UPDATE" "Reports update"
+assert_contains "$output" "updated" "Reports update"
 
 echo ""
 
@@ -190,7 +187,7 @@ output=$(run_migration 2>&1)
 after=$(cat "$TEST_DIR/.workflows/already-done/manifest.json")
 
 assert_equals "$after" "$before" "Already-migrated manifest unchanged"
-assert_contains "$output" "SKIP" "Reports skip for already-migrated"
+assert_contains "$output" "skipped" "Reports skip for already-migrated"
 
 echo ""
 
@@ -220,7 +217,7 @@ output=$(run_migration 2>&1)
 after=$(cat "$TEST_DIR/.workflows/no-deps/manifest.json")
 
 assert_equals "$after" "$before" "No external_dependencies field left unchanged"
-assert_contains "$output" "SKIP" "Reports skip for no deps"
+assert_contains "$output" "skipped" "Reports skip for no deps"
 
 echo ""
 
@@ -251,7 +248,7 @@ output=$(run_migration 2>&1)
 after=$(cat "$TEST_DIR/.workflows/empty-deps/manifest.json")
 
 assert_equals "$after" "$before" "Empty external_dependencies unchanged"
-assert_contains "$output" "SKIP" "Reports skip for empty deps"
+assert_contains "$output" "skipped" "Reports skip for empty deps"
 
 echo ""
 
@@ -283,7 +280,7 @@ output=$(run_migration 2>&1)
 after=$(cat "$TEST_DIR/.workflows/.archive/manifest.json")
 
 assert_equals "$after" "$before" "Dot-prefixed directory skipped"
-assert_not_contains "$output" "UPDATE" "No update for dot-prefixed directory"
+assert_not_contains "$output" "updated" "No update for dot-prefixed directory"
 
 echo ""
 
