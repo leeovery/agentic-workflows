@@ -116,7 +116,9 @@ Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specifi
 
 #### If the user provides feedback
 
-Incorporate feedback and re-present the proposed content **in full**. Update the tracking file with the revised content. Then ask the same choice again. Repeat until approved or skipped.
+Incorporate feedback and re-present the proposed content **in full**. Update the tracking file with the revised content.
+
+→ Return to **B. Process One Item at a Time**.
 
 #### If `approved`
 

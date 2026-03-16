@@ -50,7 +50,9 @@ Confirm this type assessment?
 
 #### If comment
 
-Discuss the user's suggested classification, re-assess, and re-present the assessment display and prompt above.
+Discuss the user's suggested classification and re-assess.
+
+→ Return to **A. Determine Specification Type**.
 
 #### If `yes`
 
@@ -90,7 +92,9 @@ Ready to conclude?
 
 #### If comment
 
-Discuss the user's context, apply any changes, then re-present the sign-off prompt above.
+Discuss the user's context and apply any changes.
+
+→ Return to **C. Sign-Off**.
 
 #### If `yes`
 
@@ -157,6 +161,8 @@ This specification defines patterns/policies referenced by feature plans.
 It does not proceed to planning independently.
 ```
 
+**STOP.** Do not proceed — terminal condition.
+
 #### If `type` is `feature` (or not set)
 
 Invoke the bridge:
@@ -167,3 +173,5 @@ Completed phase: specification
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
+
+**STOP.** Do not proceed — terminal condition.
