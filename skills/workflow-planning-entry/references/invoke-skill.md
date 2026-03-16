@@ -4,15 +4,11 @@
 
 ---
 
-This skill's purpose is now fulfilled.
-
-Invoke the [workflow-planning-process](../../workflow-planning-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded - it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
 
 ---
 
 ## Handoff
-
-Construct the handoff based on the plan state.
 
 #### If creating fresh plan (no existing plan)
 
@@ -27,6 +23,8 @@ Cross-cutting references: {list of applicable cross-cutting specs with brief sum
 Invoke the workflow-planning-process skill.
 ```
 
+Invoke the [workflow-planning-process](../../workflow-planning-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
+
 #### If continuing or reviewing existing plan
 
 ```
@@ -38,3 +36,5 @@ Existing plan: .workflows/{work_unit}/planning/{topic}/planning.md
 
 Invoke the workflow-planning-process skill.
 ```
+
+Invoke the [workflow-planning-process](../../workflow-planning-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
