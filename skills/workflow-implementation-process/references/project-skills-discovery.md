@@ -112,6 +112,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 → Return to **[the skill](../SKILL.md)**.
 
+**If `source` is `topic`:**
+
+→ Return to **[the skill](../SKILL.md)**.
+
 #### If `no`
 
 Clear topic-level `project_skills` before re-discovery:

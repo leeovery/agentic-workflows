@@ -4,8 +4,6 @@
 
 ---
 
-Before marking complete, present the sign-off:
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -13,23 +11,15 @@ Before marking complete, present the sign-off:
 Ready to mark implementation as completed?
 
 - **`y`/`yes`** — Mark as completed
-- **Comment** — Add context before completing
+- **`n`/`no`** — Go back and make changes
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-#### If comment
+#### If `no`
 
-Discuss the user's context.
-
-**If additional work is needed:**
-
-→ Return to **[the skill](../SKILL.md)** for **Step 6** or **Step 7** as appropriate.
-
-**Otherwise:**
-
-Re-present the sign-off prompt above.
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
 
 #### If `yes`
 
@@ -50,3 +40,5 @@ Completed phase: implementation
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
+
+**STOP.** Do not proceed — terminal condition.

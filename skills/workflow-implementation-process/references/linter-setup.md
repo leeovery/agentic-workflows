@@ -116,6 +116,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 → Return to **[the skill](../SKILL.md)**.
 
+**If `source` is `topic`:**
+
+→ Return to **[the skill](../SKILL.md)**.
+
 #### If `no`
 
 Clear topic-level `linters` before re-discovery:
@@ -174,7 +178,9 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 #### If `change`
 
-Adjust based on user input, re-present for confirmation.
+Adjust based on user input.
+
+→ Return to **C. Discovery**.
 
 #### If `skip`
 
