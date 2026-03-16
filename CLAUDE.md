@@ -618,7 +618,6 @@ The same navigation conventions apply across all skill tiers (entry-point and pr
 ```
 → Return to **[the skill](../SKILL.md)** for **Step N**.
 → Return to **[the skill](../SKILL.md)**.
-→ Return to **[plan-review.md](plan-review.md)** for the next phase.
 → Return to **A. Phase Name**.
 ```
 
@@ -629,6 +628,7 @@ Rules:
 - Use links when routing to another file (parent SKILL.md or calling reference file)
 - No links for internal routing within the same file (lettered phases, named sections)
 - When skipping steps, use a parenthetical: `→ Proceed to **Step 5** (skipping Steps 1–3).`
+- **Implicit return to caller is the default.** When a loaded file completes, execution resumes at the caller's next routing line. Do not add an explicit return just to route back to the line that loaded you. `→ Return to **[the skill](../SKILL.md)**` is different — it is a hard escape to the backbone, not a return to caller, and is always valid.
 - Single-exit reference files end with `→ Return to **[the skill](../SKILL.md)**.` — the backbone's `→ Proceed to **Step N**.` handles onward sequencing
 - Multi-exit reference files end each path with `→ Return to **[the skill](../SKILL.md)** for **Step N**.`
 - Terminal reference files (invoke-skill.md, phase-bridge.md) invoke a processing skill as their final action — no return needed

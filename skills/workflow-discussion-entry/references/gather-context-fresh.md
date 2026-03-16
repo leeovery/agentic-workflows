@@ -8,7 +8,7 @@ Ask each question below **one at a time**. After each, **STOP** and wait for the
 
 ---
 
-## Core Problem
+## A. Core Problem
 
 > *Output the next fenced block as a code block:*
 
@@ -20,9 +20,13 @@ What's the core problem or decision we need to work through?
 
 **STOP.** Wait for user response.
 
+Remember the response — it defines the central problem or decision that the discussion will be structured around.
+
+→ Proceed to **B. Constraints**.
+
 ---
 
-## Constraints
+## B. Constraints
 
 > *Output the next fenced block as a code block:*
 
@@ -32,9 +36,13 @@ Any constraints or context I should know about?
 
 **STOP.** Wait for user response.
 
+Remember the response — these constraints will bound the solution space during the discussion.
+
+→ Proceed to **C. Codebase**.
+
 ---
 
-## Codebase
+## C. Codebase
 
 > *Output the next fenced block as a code block:*
 
@@ -45,3 +53,5 @@ Are there specific files in the codebase I should review first?
 ```
 
 **STOP.** Wait for user response.
+
+Remember the response — these files will be read for context when the discussion begins.

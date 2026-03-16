@@ -32,10 +32,6 @@ research you'd like to include — drop them in now.
 
 No additional context. Proceed with research sources only.
 
-→ Return to **[gather-context.md](gather-context.md)**.
-
 #### If user provides additional context
 
-Note the additional context provided by the user — it will be included alongside the research sources in the handoff to the processing skill.
-
-→ Return to **[gather-context.md](gather-context.md)**.
+Remember the additional context — it will be included alongside the research sources in the handoff to the processing skill.

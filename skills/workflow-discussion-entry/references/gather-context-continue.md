@@ -17,3 +17,5 @@ What would you like to focus on in this session?
 ```
 
 **STOP.** Wait for user response.
+
+Remember the response — it sets the focus for this continuation session.
