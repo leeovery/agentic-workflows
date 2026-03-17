@@ -47,6 +47,10 @@ Check if a discussion with this topic already exists:
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.discussion.{topic}
 ```
 
+#### If not exists (`false`)
+
+Name confirmed. No conflict.
+
 #### If exists (`true`)
 
 > *Output the next fenced block as a code block:*
@@ -54,21 +58,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.dis
 ```
 A discussion named "{topic}" already exists in this work unit.
 
-Run /workflow-start to resume, or choose a different name.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-- **`n`/`new`** — Choose a different name
-· · · · · · · · · · · ·
+Run /workflow-start to resume, or enter a different name:
 ```
 
 **STOP.** Wait for user response.
 
-→ Return to **A. Name Suggestion**.
+Use the response as `{topic}` (kebab-case).
 
-#### If not exists (`false`)
-
-Name confirmed. No conflict.
+→ Return to **B. Conflict Check**.
