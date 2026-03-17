@@ -109,7 +109,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 "{selected.name:(titlecase)}" marked as completed.
 ```
 
-→ Return to caller to redisplay main view (re-run discovery, re-render from top).
+→ Return to caller.
 
 #### If user chose `p`/`pivot`
 
@@ -136,7 +136,7 @@ Invoke the `/continue-epic` skill. This is terminal — do not return to the cal
 
 **If user chose `b`/`back`:**
 
-→ Return to caller to redisplay main view (re-run discovery, re-render from top).
+→ Return to caller.
 
 #### If user chose `v`/`view-plan`
 
@@ -156,7 +156,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} st
 "{selected.name:(titlecase)}" marked as cancelled.
 ```
 
-→ Return to caller to redisplay main view (re-run discovery, re-render from top).
+→ Return to caller.
 
 #### If user chose `b`/`back`
 
