@@ -26,7 +26,7 @@ Reopening research: {topic:(titlecase)}
 
 Set source="continue".
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If status is `in-progress`
 
@@ -38,4 +38,4 @@ Resuming research: {topic:(titlecase)}
 
 Set source="continue".
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

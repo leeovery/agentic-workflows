@@ -120,4 +120,4 @@ Any constraints or context I should know about upfront?
 
 **STOP.** Wait for user response.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
