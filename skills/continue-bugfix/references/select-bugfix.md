@@ -58,7 +58,9 @@ Store the selected bugfix's name as `work_unit`.
 
 #### If user chose "View completed & cancelled"
 
-→ Load **[../../workflow-start/references/view-completed.md](../../workflow-start/references/view-completed.md)** and follow its instructions as written. Pass work_type filter = `bugfix`.
+Set work_type filter = `bugfix`.
+
+→ Load **[../../workflow-start/references/view-completed.md](../../workflow-start/references/view-completed.md)** and follow its instructions as written.
 
 Re-run discovery to refresh state after potential changes.
 
