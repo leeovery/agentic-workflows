@@ -320,7 +320,7 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 | Start new discussion topic | discussion | — |
 | Start new research | research | — |
 
-→ Return to the caller with the selected phase and topic.
+→ Return to caller.
 
 ---
 
@@ -374,4 +374,4 @@ List all completed items across all phases.
 
 Store the selected phase and topic.
 
-→ Return to the caller with the selected phase and topic.
+→ Return to caller.
