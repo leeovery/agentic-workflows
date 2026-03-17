@@ -84,4 +84,4 @@ Proceed?
 
 #### If user declines (n)
 
-→ Return to the display menu that initiated this confirmation.
+→ Return to caller.

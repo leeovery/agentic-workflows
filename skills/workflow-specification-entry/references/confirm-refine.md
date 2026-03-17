@@ -46,4 +46,4 @@ command when ready.
 
 **If groupings or specs menu:**
 
-→ Return to the display menu that initiated this confirmation.
+→ Return to caller.
