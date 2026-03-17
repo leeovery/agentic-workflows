@@ -325,7 +325,7 @@ Filter staging file to tasks with `status: approved`.
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-Commit all changes (staging file, plan tasks, Plan Index Files):
+Commit all changes (staging file, plan tasks, task_map updates):
 
 ```
 review({work_unit}): add review remediation ({K} tasks)
@@ -339,12 +339,11 @@ review({work_unit}): add review remediation ({K} tasks)
 
 For each plan that received new tasks:
 
-1. Read the implementation tracking file at `.workflows/{work_unit}/implementation/{topic}/implementation.md`
-2. Update the manifest via CLI:
+1. Update the manifest via CLI:
    - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} status in-progress`
    - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} updated {today's date}`
    - `node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} analysis_cycle 0`
-3. Commit tracking changes:
+2. Commit tracking changes:
 
 ```
 review({work_unit}): re-open implementation tracking

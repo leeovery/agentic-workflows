@@ -270,7 +270,7 @@ If the current phase has no remaining open/in-progress tasks: `node .claude/skil
 impl({work_unit}): T{internal_id} — {brief description}
 ```
 
-Code, tests, plan progress, and implementation file — one commit per approved task.
+Code, tests, and plan progress — one commit per approved task.
 
 → Return to **A. Retrieve Next Task**.
 

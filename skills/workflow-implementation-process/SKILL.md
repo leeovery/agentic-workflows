@@ -26,7 +26,7 @@ Follows planning. Execute the plan task by task — an executor implements via s
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Also read the implementation file and any other working documents for additional context.
+2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Check manifest state for additional context.
 3. **Check gate modes and progress** via manifest CLI:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic}
@@ -52,13 +52,16 @@ When announcing a new step, output `── ── ── ── ──` on its o
 
 ## Step 0: Resume Detection
 
-Check if an implementation file exists at `.workflows/{work_unit}/implementation/{topic}/implementation.md`.
+Check if an implementation entry exists in the manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.implementation.{topic}
+```
 
-#### If no implementation file exists
+#### If implementation entry does not exist
 
 → Proceed to **Step 1**.
 
-#### If implementation file exists
+#### If implementation entry exists
 
 > *Output the next fenced block as a code block:*
 
