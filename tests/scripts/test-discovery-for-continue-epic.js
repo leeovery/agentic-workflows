@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils');
-const { discover } = require('../../skills/continue-epic/scripts/discovery');
+const { discover, format } = require('../../skills/continue-epic/scripts/discovery');
 
 describe('continue-epic discovery', () => {
   let dir;
@@ -503,5 +503,125 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.gating.can_start_specification, true);
       assert.strictEqual(d.gating.can_start_planning, true);
     });
+  });
+});
+
+describe('continue-epic format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('includes header with count and summary', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== EPICS (0) ==='));
+    assert.ok(out.includes('summary: no active epics'));
+  });
+
+  it('includes epic name with active phases', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { exploration: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  v1: research, discussion'));
+  });
+
+  it('shows (no phases) for empty epic', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  v1: (no phases)'));
+  });
+
+  it('includes phase items with status', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('    discussion:'));
+    assert.ok(out.includes('      - auth (in-progress)'));
+  });
+
+  it('includes sources in item output', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: {
+          items: {
+            'auth-spec': {
+              status: 'in-progress',
+              sources: [{ topic: 'auth', status: 'incorporated' }],
+            },
+          },
+        },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('[sources: auth:incorporated]'));
+  });
+
+  it('includes in-progress section', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('    in-progress:'));
+    assert.ok(out.includes('      - auth (discussion)'));
+  });
+
+  it('includes next-phase-ready section', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: { items: { auth: { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('    next-phase-ready:'));
+    assert.ok(out.includes('start_planning'));
+  });
+
+  it('includes completed section', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('    completed:'));
+    assert.ok(out.includes('      - auth (discussion)'));
+  });
+
+  it('includes unaccounted_discussions', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: {
+            auth: { status: 'completed' },
+            payments: { status: 'completed' },
+          },
+        },
+        specification: {
+          items: {
+            'auth-spec': {
+              status: 'in-progress',
+              sources: [{ topic: 'auth', status: 'incorporated' }],
+            },
+          },
+        },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('    unaccounted_discussions: payments'));
   });
 });

@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils');
-const { discover } = require('../../skills/workflow-start/scripts/discovery');
+const { discover, format } = require('../../skills/workflow-start/scripts/discovery');
 
 describe('workflow-start discovery', () => {
   let dir;
@@ -201,5 +201,70 @@ describe('workflow-start discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.features.count, 1);
     assert.strictEqual(r.features.work_units[0].next_phase, 'review');
+  });
+});
+
+describe('workflow-start format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('includes section headers for all types', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== EPICS ==='));
+    assert.ok(out.includes('=== FEATURES ==='));
+    assert.ok(out.includes('=== BUGFIXES ==='));
+    assert.ok(out.includes('=== STATE ==='));
+  });
+
+  it('shows (none) for empty sections', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('  (none)'));
+  });
+
+  it('includes feature with phase_label', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  auth (discussion (in-progress))'));
+  });
+
+  it('includes epic with active_phases', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { exploration: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  v1 (research, discussion)'));
+  });
+
+  it('includes has_any_work in state', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('has_any_work: false'));
+  });
+
+  it('includes counts in state', () => {
+    createManifest(dir, 'auth', { work_type: 'feature' });
+    const out = format(discover(dir));
+    assert.ok(out.includes('counts: 0 epic, 1 feature, 0 bugfix'));
+  });
+
+  it('includes completed_count and cancelled_count', () => {
+    createManifest(dir, 'done', { work_type: 'feature', status: 'completed' });
+    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
+    const out = format(discover(dir));
+    assert.ok(out.includes('completed_count: 1'));
+    assert.ok(out.includes('cancelled_count: 1'));
+  });
+
+  it('shows zero completed and cancelled when none exist', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('completed_count: 0'));
+    assert.ok(out.includes('cancelled_count: 0'));
   });
 });

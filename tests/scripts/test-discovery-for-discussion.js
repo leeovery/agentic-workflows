@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils');
-const { discover } = require('../../skills/workflow-discussion-entry/scripts/discovery');
+const { discover, format } = require('../../skills/workflow-discussion-entry/scripts/discovery');
 
 describe('workflow-discussion-entry discovery', () => {
   let dir;
@@ -163,5 +163,69 @@ describe('workflow-discussion-entry discovery', () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
     const r = discover(dir);
     assert.strictEqual(r.research.checksum, null);
+  });
+});
+
+describe('workflow-discussion-entry format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('includes all section headers', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== RESEARCH ==='));
+    assert.ok(out.includes('=== DISCUSSIONS ==='));
+    assert.ok(out.includes('=== CACHE ==='));
+    assert.ok(out.includes('=== STATE ==='));
+  });
+
+  it('shows (none) for empty sections', () => {
+    const out = format(discover(dir));
+    const noneCount = (out.match(/\(none\)/g) || []).length;
+    assert.strictEqual(noneCount, 3);
+  });
+
+  it('includes research files with checksum', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { research: { status: 'completed' } },
+    });
+    createFile(dir, '.workflows/v1/research/market.md', '# Market');
+    const out = format(discover(dir));
+    assert.ok(out.includes('  v1/market: in-progress'));
+    assert.ok(out.includes('  checksum: '));
+  });
+
+  it('includes discussion files with counts', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  auth/auth (feature): in-progress'));
+    assert.ok(out.includes('  counts: 1 in-progress, 0 completed'));
+  });
+
+  it('includes state scenario and flags', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('scenario: fresh'));
+    assert.ok(out.includes('has_research: false, has_discussions: false'));
+  });
+
+  it('includes cache entries when present', () => {
+    const crypto = require('crypto');
+    const checksum = crypto.createHash('md5').update('# Notes').digest('hex');
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        research: {
+          status: 'completed',
+          analysis_cache: { checksum, generated: '2026-01-01', files: ['notes.md'] },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
+    const out = format(discover(dir));
+    assert.ok(out.includes('  v1: valid'));
   });
 });

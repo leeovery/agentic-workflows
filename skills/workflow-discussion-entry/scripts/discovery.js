@@ -147,4 +147,4 @@ if (require.main === module) {
   process.stdout.write(format(discover(process.cwd(), workUnit)));
 }
 
-module.exports = { discover };
+module.exports = { discover, format };

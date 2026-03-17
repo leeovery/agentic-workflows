@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils');
-const { discover } = require('../../skills/continue-feature/scripts/discovery');
+const { discover, format } = require('../../skills/continue-feature/scripts/discovery');
 
 describe('continue-feature discovery', () => {
   let dir;
@@ -147,5 +147,55 @@ describe('continue-feature discovery', () => {
       const r = discover(dir);
       assert.deepStrictEqual(r.features[0].completed_phases, ['research']);
     });
+  });
+});
+
+describe('continue-feature format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('includes header with count', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== FEATURES (0) ==='));
+  });
+
+  it('includes summary', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('summary: no active features'));
+  });
+
+  it('includes feature with phase_label and completed_phases', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  auth: specification (in-progress) [completed: discussion]'));
+  });
+
+  it('shows none for empty completed_phases', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('[completed: none]'));
+  });
+
+  it('lists multiple completed phases', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed' } } },
+        planning: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('[completed: discussion, specification]'));
   });
 });

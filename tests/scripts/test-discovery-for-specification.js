@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils');
-const { discover } = require('../../skills/workflow-specification-entry/scripts/discovery');
+const { discover, format } = require('../../skills/workflow-specification-entry/scripts/discovery');
 
 describe('workflow-specification-entry discovery', () => {
   let dir;
@@ -310,5 +310,85 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.specifications.length, 1);
     assert.strictEqual(r.specifications[0].work_type, 'bugfix');
     assert.strictEqual(r.specifications[0].name, 'login-crash');
+  });
+});
+
+describe('workflow-specification-entry format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('includes all section headers', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== DISCUSSIONS ==='));
+    assert.ok(out.includes('=== SPECIFICATIONS ==='));
+    assert.ok(out.includes('=== CACHE ==='));
+    assert.ok(out.includes('=== STATE ==='));
+  });
+
+  it('shows (none) for empty sections', () => {
+    const out = format(discover(dir));
+    const noneCount = (out.match(/\(none\)/g) || []).length;
+    assert.strictEqual(noneCount, 3);
+  });
+
+  it('includes discussion with spec status', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: {
+              status: 'in-progress',
+              sources: { auth: { status: 'extracted' } },
+            },
+          },
+        },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  auth/auth (feature): completed, spec: in-progress'));
+  });
+
+  it('includes specification with sources', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: {
+              status: 'completed',
+              type: 'feature',
+              sources: { auth: { status: 'incorporated' } },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+    const out = format(discover(dir));
+    assert.ok(out.includes('  auth: completed, type=feature'));
+    assert.ok(out.includes('    source: auth (incorporated, discussion: completed)'));
+  });
+
+  it('includes state with counts', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('discussions: 1 (1 completed, 0 in-progress)'));
+  });
+
+  it('includes checksum when discussions have files', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
+    const out = format(discover(dir));
+    assert.ok(out.includes('checksum: '));
   });
 });

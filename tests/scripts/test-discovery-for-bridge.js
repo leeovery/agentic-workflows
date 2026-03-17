@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils');
-const { discover } = require('../../skills/workflow-bridge/scripts/discovery');
+const { discover, format } = require('../../skills/workflow-bridge/scripts/discovery');
 
 describe('workflow-bridge discovery', () => {
   let dir;
@@ -164,5 +164,51 @@ describe('workflow-bridge discovery', () => {
     assert.strictEqual(r.epic_detail, undefined);
     assert.strictEqual(r.phases.research.exists, true);
     assert.strictEqual(r.work_type, 'epic');
+  });
+});
+
+describe('workflow-bridge format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('returns error string for missing manifest', () => {
+    const out = format(discover(dir, 'nonexistent'));
+    assert.ok(out.startsWith('Error: '));
+  });
+
+  it('includes header with work_unit, work_type and status', () => {
+    createManifest(dir, 'auth', { work_type: 'feature' });
+    const out = format(discover(dir, 'auth'));
+    assert.ok(out.includes('=== auth (feature, in-progress) ==='));
+  });
+
+  it('includes next_phase', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    const out = format(discover(dir, 'auth'));
+    assert.ok(out.includes('next_phase: specification'));
+  });
+
+  it('includes phase statuses with file existence', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    createFile(dir, '.workflows/auth/discussion/auth.md', '# Discussion');
+    const out = format(discover(dir, 'auth'));
+    assert.ok(out.includes('  discussion: completed'));
+    assert.ok(!out.includes('discussion: completed (no files)'));
+  });
+
+  it('marks phases without files', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    const out = format(discover(dir, 'auth'));
+    assert.ok(out.includes('specification: none (no files)'));
   });
 });

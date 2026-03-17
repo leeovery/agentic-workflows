@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils');
-const { discover } = require('../../skills/continue-bugfix/scripts/discovery');
+const { discover, format } = require('../../skills/continue-bugfix/scripts/discovery');
 
 describe('continue-bugfix discovery', () => {
   let dir;
@@ -127,5 +127,42 @@ describe('continue-bugfix discovery', () => {
       const r = discover(dir);
       assert.ok(!r.bugfixes[0].completed_phases.includes('research'));
     });
+  });
+});
+
+describe('continue-bugfix format', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('includes header with count', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== BUGFIXES (0) ==='));
+  });
+
+  it('includes summary', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('summary: no active bugfixes'));
+  });
+
+  it('includes bugfix with phase_label and completed_phases', () => {
+    createManifest(dir, 'crash', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { items: { crash: { status: 'completed' } } },
+        specification: { items: { crash: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  crash: specification (in-progress) [completed: investigation]'));
+  });
+
+  it('shows none for empty completed_phases', () => {
+    createManifest(dir, 'crash', {
+      work_type: 'bugfix',
+      phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('[completed: none]'));
   });
 });

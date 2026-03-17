@@ -80,4 +80,4 @@ if (require.main === module) {
   process.stdout.write(format(discover(process.cwd())));
 }
 
-module.exports = { discover };
+module.exports = { discover, format };

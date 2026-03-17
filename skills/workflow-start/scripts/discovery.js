@@ -113,6 +113,8 @@ function format(result) {
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
   lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix`);
+  lines.push(`completed_count: ${result.completed_count}`);
+  lines.push(`cancelled_count: ${result.cancelled_count}`);
 
   return lines.join('\n') + '\n';
 }
@@ -121,4 +123,4 @@ if (require.main === module) {
   process.stdout.write(format(discover(process.cwd())));
 }
 
-module.exports = { discover };
+module.exports = { discover, format };
