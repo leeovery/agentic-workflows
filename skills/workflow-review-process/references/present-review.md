@@ -86,4 +86,4 @@ Answer the question using the review file, QA task files, specification, and pla
 
 #### If `continue`
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

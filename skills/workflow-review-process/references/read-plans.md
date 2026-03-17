@@ -16,4 +16,4 @@ For each plan:
 4. Load the format's reading adapter from `../workflow-planning-process/references/output-formats/{format}/reading.md` — this tells you how to locate and read individual task files
 5. Extract all tasks across all phases
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

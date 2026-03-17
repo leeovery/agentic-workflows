@@ -62,3 +62,5 @@ SUMMARY: {1-2 sentences}
 ```
 
 The full report is at `.workflows/{work_unit}/implementation/{topic}/review-report-c{N}.md`. If tasks were proposed, the staging file is at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`.
+
+→ Return to caller.

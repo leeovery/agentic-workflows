@@ -128,4 +128,4 @@ This enables incremental review detection on subsequent review sessions.
 
 > **CHECKPOINT**: Do not proceed until ALL task verifiers have returned and findings are aggregated.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
