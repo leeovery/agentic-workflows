@@ -4,6 +4,8 @@
 
 ---
 
+## A. Display and Select
+
 Display active bugfixes and let the user select one.
 
 > *Output the next fenced block as a code block:*
@@ -56,8 +58,16 @@ Store the selected bugfix's name as `work_unit`.
 
 #### If user chose "View completed & cancelled"
 
-→ Load **[../../workflow-start/references/view-completed.md](../../workflow-start/references/view-completed.md)** with work_type filter = `bugfix`. On return, re-run discovery and redisplay from the top of this reference.
+→ Load **[../../workflow-start/references/view-completed.md](../../workflow-start/references/view-completed.md)** and follow its instructions as written. Pass work_type filter = `bugfix`.
+
+Re-run discovery to refresh state after potential changes.
+
+→ Return to **A. Display and Select**.
 
 #### If user chose `m`/`manage`
 
-→ Load **[../../workflow-start/references/manage-work-unit.md](../../workflow-start/references/manage-work-unit.md)**. On return, re-run discovery and redisplay from the top of this reference.
+→ Load **[../../workflow-start/references/manage-work-unit.md](../../workflow-start/references/manage-work-unit.md)** and follow its instructions as written.
+
+Re-run discovery to refresh state after potential changes.
+
+→ Return to **A. Display and Select**.
