@@ -4,7 +4,7 @@
 
 ---
 
-Display completed and cancelled work units. Self-contained — receives context from caller (completed/cancelled arrays, optional work_type filter).
+Display completed and cancelled work units from discovery output.
 
 ## A. Display List
 
@@ -44,7 +44,7 @@ Cancelled:
 @endif
 ```
 
-Build from the completed and cancelled arrays passed by the caller. Numbering is continuous across both sections. Blank line between each numbered item.
+Build from the completed and cancelled sections in the discovery output. Numbering is continuous across both sections. Blank line between each numbered item.
 
 → Proceed to **B. Select**.
 

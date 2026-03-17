@@ -110,6 +110,22 @@ function format(result) {
   emitSection('features', result.features.work_units);
   emitSection('bugfixes', result.bugfixes.work_units);
 
+  if (result.completed.length > 0) {
+    lines.push('=== COMPLETED ===');
+    for (const u of result.completed) {
+      lines.push(`  ${u.name} (${u.work_type}, last phase: ${u.last_phase || 'none'})`);
+    }
+    lines.push('');
+  }
+
+  if (result.cancelled.length > 0) {
+    lines.push('=== CANCELLED ===');
+    for (const u of result.cancelled) {
+      lines.push(`  ${u.name} (${u.work_type}, last phase: ${u.last_phase || 'none'})`);
+    }
+    lines.push('');
+  }
+
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
   lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix`);

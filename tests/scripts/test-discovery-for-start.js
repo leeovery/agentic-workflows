@@ -267,4 +267,24 @@ describe('workflow-start format', () => {
     assert.ok(out.includes('completed_count: 0'));
     assert.ok(out.includes('cancelled_count: 0'));
   });
+
+  it('emits completed work unit details', () => {
+    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== COMPLETED ==='));
+    assert.ok(out.includes('  done-feat (feature, last phase: review)'));
+  });
+
+  it('emits cancelled work unit details', () => {
+    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== CANCELLED ==='));
+    assert.ok(out.includes('  dropped (bugfix, last phase: investigation)'));
+  });
+
+  it('omits completed/cancelled sections when empty', () => {
+    const out = format(discover(dir));
+    assert.ok(!out.includes('=== COMPLETED ==='));
+    assert.ok(!out.includes('=== CANCELLED ==='));
+  });
 });
