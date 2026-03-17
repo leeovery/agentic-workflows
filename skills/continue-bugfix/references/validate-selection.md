@@ -24,4 +24,4 @@ Run /continue-bugfix to see available bugfixes, or /start-bugfix to begin a new 
 
 Store the matched bugfix's data (name, next_phase, phase_label, completed_phases).
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

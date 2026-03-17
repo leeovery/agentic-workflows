@@ -52,7 +52,7 @@ Recreate with actual bugfixes and `phase_label` values from discovery. No auto-s
 
 Store the selected bugfix's name as `work_unit`.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If user chose "View completed & cancelled"
 
