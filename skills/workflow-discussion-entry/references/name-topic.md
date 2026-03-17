@@ -58,7 +58,7 @@ Name confirmed. No conflict.
 ```
 A discussion named "{topic}" already exists in this work unit.
 
-Run /workflow-start to resume.
+Run /workflow-start to resume, or enter a different name.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
