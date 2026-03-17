@@ -58,7 +58,15 @@ Name confirmed. No conflict.
 ```
 A discussion named "{topic}" already exists in this work unit.
 
-Run /workflow-start to resume, or enter a different name:
+Run /workflow-start to resume.
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+- **Suggest a different name**
+· · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
