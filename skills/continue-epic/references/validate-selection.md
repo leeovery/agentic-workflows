@@ -24,4 +24,4 @@ Run /continue-epic to see available epics, or /start-epic to begin a new one.
 
 Store the matched epic's data (name, active_phases, detail) for use in subsequent steps.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
