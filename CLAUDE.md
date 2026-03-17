@@ -606,50 +606,92 @@ Rules:
 
 ### Navigation & Return Patterns
 
-The same navigation conventions apply across all skill tiers (entry-point and processing).
+Skill files form a call stack. The backbone (SKILL.md) loads reference files via Load directives. Reference files may load other reference files. Two verbs control all movement through this stack:
 
-**Forward navigation** — moving to the next step, phase, or section:
+- `→ Proceed to` — forward movement (next step, next section)
+- `→ Return to` — backward/upward movement (back to caller, back to earlier section, up to backbone)
+
+No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continue to`, `→ Enter`. No adverbs — `→ Proceed to`, never `→ Proceed directly to`.
+
+#### Forward (within a file)
+
+| Instruction | Context |
+|---|---|
+| `→ Proceed to **Step N**.` | Next step in the backbone |
+| `→ Proceed to **B. Section Name**.` | Next lettered section in a reference file |
+
+When skipping steps, add a parenthetical: `→ Proceed to **Step 5** (skipping Steps 1–3).`
+
+#### Backward (within a file)
+
+| Instruction | Context |
+|---|---|
+| `→ Return to **A. Section Name**.` | Earlier lettered section in the same reference file |
+
+Internal routing (both forward and backward) uses bold text, never links.
+
+#### Exiting a reference file
+
+This is the critical decision. Use this flowchart:
+
 ```
-→ Proceed to **Step N**.
-→ Proceed to **B. Section Name**.
+How should this reference file exit?
+│
+├─ Is the final action invoking a processing skill?
+│  └─ YES → Terminal. No routing instruction needed.
+│
+├─ Are you going back to whoever loaded this file?
+│  │
+│  ├─ Just returning (caller's next line takes over)?
+│  │  └─ → Return to caller.
+│  │
+│  └─ Returning to a specific section in the caller?
+│     └─ → Return to caller for **B. Section Name**.
+│
+└─ Are you routing to the backbone (not your caller)?
+   │
+   ├─ To the backbone generally?
+   │  └─ → Return to **[the skill](../SKILL.md)**.
+   │
+   └─ To a specific backbone step?
+      └─ → Return to **[the skill](../SKILL.md)** for **Step N**.
 ```
 
-**Return navigation** — returning up the call stack or backward within a file:
-```
-→ Return to caller.
-→ Return to caller for **B. Section Name**.
-→ Return to **[the skill](../SKILL.md)**.
-→ Return to **[the skill](../SKILL.md)** for **Step N**.
-→ Return to **A. Section Name**.
-```
+**`→ Return to caller.`** is the default exit. It works identically whether the caller is the backbone or another reference file — you never need to check who loaded you. The caller's next routing instruction handles onward sequencing.
 
-Rules:
-- Only two routing verbs: `→ Proceed to` (forward) and `→ Return to` (backward/upward)
-- No adverbs — `→ Proceed to`, never `→ Proceed directly to`
-- No alternative verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continue to`, `→ Enter`
-- No links for internal routing within the same file (lettered sections)
-- When skipping steps, use a parenthetical: `→ Proceed to **Step 5** (skipping Steps 1–3).`
-- **Caller returns** — `→ Return to caller.` returns to the line that loaded this file; the caller's next routing instruction takes over. No link needed since the destination is always the loading context. This is the standard exit for reference files. `→ Return to caller for **B. Section Name**.` returns to the caller at a specific lettered section rather than the loading line.
-- **Backbone escapes** — `→ Return to **[the skill](../SKILL.md)**` is a hard escape to the backbone, bypassing intermediate callers. Use when the reference file needs to route to the backbone rather than returning to its immediate caller. `→ Return to **[the skill](../SKILL.md)** for **Step N**.` targets a specific backbone step.
-- **Internal routing** — within the same file, `→ Proceed to **C. Section**.` moves forward and `→ Return to **A. Section**.` moves backward. Both use bold text, no links.
-- Single-exit reference files end with `→ Return to caller.`
-- Multi-exit reference files end each path with `→ Return to caller.` — unless different paths need to route to different backbone steps, in which case use `→ Return to **[the skill](../SKILL.md)** for **Step N**.`
-- Terminal reference files (invoke-skill.md, phase-bridge.md) invoke a processing skill as their final action — no return needed
+**Backbone escape** (`→ Return to **[the skill](../SKILL.md)**`) is for two scenarios:
+1. **Short-circuiting the call stack** — a reference file loaded by another reference file needs to skip past its caller and land on the backbone directly. Like an exception bubbling up past intermediate frames.
+2. **Directing to a specific backbone step** — different conditional paths within a file need to route to different backbone steps (e.g., one path → Step 4, another → Step 5). The caller's single `→ Proceed to` line can only go one place, so the file overrides it. This applies regardless of whether the caller is the backbone or another reference file.
 
-### Internal Reference File Phases
+#### Exit pattern summary
 
-Complex reference files with multiple sequential phases use lettered headings to avoid collision with backbone step numbers:
+| File type | Exit pattern |
+|---|---|
+| Single-exit reference file | `→ Return to caller.` |
+| Multi-exit, all paths resume at caller | Each path ends with `→ Return to caller.` |
+| Multi-exit, paths need different backbone steps | Each path ends with `→ Return to **[the skill](../SKILL.md)** for **Step N**.` |
+| Terminal (invokes processing skill) | No routing instruction |
+
+#### Formatting rules
+
+- Bold the target: `**Step N**`, `**B. Section Name**`, `**[the skill](../SKILL.md)**`
+- Links only for backbone escapes (`**[the skill](../SKILL.md)**`). All other routing is linkless — `→ Return to caller.` has no link, internal routing has no link.
+- Every conditional branch must include its own routing instruction. Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
+
+### Internal Reference File Sections
+
+Complex reference files use lettered headings to organise sequential sections, avoiding collision with backbone step numbers:
 
 ```markdown
-## A. First Phase
+## A. First Section
 
 ...
-→ Proceed to **B. Second Phase**.
+→ Proceed to **B. Second Section**.
 
-## B. Second Phase
+## B. Second Section
 
 ...
-→ Proceed to **C. Third Phase**.
+→ Proceed to **C. Third Section**.
 ```
 
 Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge`) without letters.
