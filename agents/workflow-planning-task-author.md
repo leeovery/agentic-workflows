@@ -17,8 +17,8 @@ You receive file paths via the orchestrator's prompt:
 2. **Specification path** — The validated specification to plan from
 3. **Cross-cutting spec paths** (if any) — Architectural decisions that influence planning
 4. **task-design.md** — Task design principles and template
-5. **All approved phases** — The complete phase structure (from the Plan Index File)
-6. **Task list for current phase** — The approved task table (ALL tasks in the phase)
+5. **All approved phases** — The complete phase structure (from the output format or scratch file)
+6. **Task list for current phase** — The approved task list (ALL tasks in the phase) from the task list scratch file
 7. **Scratch file path** — Where to write authored tasks
 
 On **amendment**, you also receive:

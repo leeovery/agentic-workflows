@@ -19,7 +19,6 @@ Work unit: {work_unit}
 
 Plans to review:
   - work_unit: {work_unit}
-    plan: .workflows/{work_unit}/planning/{topic}/planning.md
     format: {format}
     specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
 

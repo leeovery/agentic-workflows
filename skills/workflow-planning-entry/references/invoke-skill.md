@@ -32,7 +32,7 @@ Planning session for: {topic}
 Work unit: {work_unit}
 
 Specification: .workflows/{work_unit}/specification/{topic}/specification.md
-Existing plan: .workflows/{work_unit}/planning/{topic}/planning.md
+Existing plan: true (manifest has planning entry)
 
 Invoke the workflow-planning-process skill.
 ```

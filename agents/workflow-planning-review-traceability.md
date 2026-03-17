@@ -15,18 +15,16 @@ You receive file paths and context via the orchestrator's prompt:
 
 1. **Review criteria path** — `review-traceability.md` with detailed analysis criteria and tracking file format
 2. **Specification path** — the validated specification to trace against
-3. **Plan path** — the Plan Index File
-4. **Format reading.md path** — the output format's reading instructions for locating task files
-5. **Cycle number** — current review cycle (for tracking file naming)
-6. **Topic name** — for file naming and paths
-7. **Task design path** — `task-design.md` with the canonical task template and field requirements
+3. **Format reading.md path** — the output format's reading instructions for locating task files
+4. **Cycle number** — current review cycle (for tracking file naming)
+5. **Topic name** — for file naming and paths
+6. **Task design path** — `task-design.md` with the canonical task template and field requirements
 
 ## Your Process
 
 1. **Read the review criteria** (`review-traceability.md`) — absorb the full analysis criteria before starting
 2. **Read the specification** in full — do not rely on summaries or memory
-3. **Read the Plan Index File** for structure and phase overview
-4. **Locate and read all task files** following the format's reading.md instructions
+3. **Locate and read all task files** following the format's reading.md instructions — this gives you the phase structure and all task content
 5. **Perform Direction 1** (Spec → Plan): verify every spec element has plan coverage
 6. **Perform Direction 2** (Plan → Spec): verify every plan element traces to the spec
 7. **Create the tracking file** — write findings to `review-traceability-tracking-c{N}.md` in the plan topic directory, using the format defined in the review criteria file

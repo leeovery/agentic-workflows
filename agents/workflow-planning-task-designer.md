@@ -18,9 +18,8 @@ You receive file paths via the orchestrator's prompt:
 3. **Cross-cutting spec paths** (if any) — Architectural decisions that influence planning
 4. **task-design.md** — Task design principles
 5. **Context-specific task design** — Work-type guidance (epic, feature, or bugfix)
-6. **All approved phases** — The complete phase structure (from the Plan Index File)
+6. **All approved phases** — The complete phase structure (from the output format or scratch file)
 7. **Target phase number** — Which phase to break into tasks
-8. **plan-index-schema.md** — Canonical plan index structure
 
 On **amendment**, you also receive:
 - **Previous output** — Your prior task list
@@ -34,8 +33,7 @@ On **amendment**, you also receive:
 4. Read `task-design.md` — absorb the task design principles
 5. Read the context-specific task design guidance
 6. Read the approved phases — understand the full plan structure and where this phase fits
-7. Read `plan-index-schema.md` — understand the plan index structure
-8. Design the task list for the target phase
+7. Design the task list for the target phase
 
 If this is an **amendment**: read your previous output and the user's feedback, then revise accordingly.
 
@@ -55,13 +53,16 @@ Phase {N}: {Phase Name}
      Edge cases: {comma-separated list, or "none"}
 ```
 
-**Task table format (for the Plan Index File):**
+**Task table format (for the scratch file):**
 
-Follow the **Task Table** template from plan-index-schema. Use placeholder IDs `{topic}-{phase_id}-{task_id}`. Set `Status` to `pending`. Leave `External ID` empty.
+```markdown
+#### Tasks
+| Internal ID | Name | Edge Cases |
+|-------------|------|------------|
+| {topic}-{phase_id}-{task_id} | {Task Name} | {comma-separated list, or "none"} |
+```
 
 **CRITICAL**: `{topic}` must be the **exact, full topic name** — never abbreviate or shorten it. The topic name is used for path construction and positional mapping across phases.
-
-The orchestrator will use the topic name from the Plan Index File.
 
 ## Rules
 

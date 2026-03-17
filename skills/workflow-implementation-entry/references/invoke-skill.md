@@ -27,7 +27,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implem
 Implementation session for: {topic}
 Work unit: {work_unit}
 
-Plan: .workflows/{work_unit}/planning/{topic}/planning.md
 Format: {format}
 External ID: {external_id} (if applicable)
 Specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})

@@ -26,6 +26,10 @@ INSTRUCTIONS:
 
 ## ID Resolution
 
-The `{internal_id}` in the template is always the **internal ID** (format: `{topic}-{phase_id}-{task_id}`). This comes from the plan index table's `Internal ID` column.
+The `{internal_id}` in the template is always the **internal ID** (format: `{topic}-{phase_id}-{task_id}`).
 
-If the format adapter returns an external ID, cross-reference the plan index table to find the internal ID. The plan table has both `Internal ID` and `External ID` columns for this mapping.
+If the format adapter returns an external ID, read `task_map` from the manifest to find the corresponding internal ID:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_map
+```
+Reverse lookup — match the external ID value to find its internal ID key.

@@ -14,17 +14,15 @@ Perform an **integrity review** of the plan as a standalone document — checkin
 You receive file paths and context via the orchestrator's prompt:
 
 1. **Review criteria path** — `review-integrity.md` with detailed review criteria and tracking file format
-2. **Plan path** — the Plan Index File
-3. **Format reading.md path** — the output format's reading instructions for locating task files
-4. **Cycle number** — current review cycle (for tracking file naming)
-5. **Topic name** — for file naming and paths
-6. **Task design path** — `task-design.md` with the canonical task template and field requirements
+2. **Format reading.md path** — the output format's reading instructions for locating task files
+3. **Cycle number** — current review cycle (for tracking file naming)
+4. **Topic name** — for file naming and paths
+5. **Task design path** — `task-design.md` with the canonical task template and field requirements
 
 ## Your Process
 
 1. **Read the review criteria** (`review-integrity.md`) — absorb all review dimensions before starting
-2. **Read the Plan Index File** for structure and phase overview
-3. **Locate and read all task files** following the format's reading.md instructions
+2. **Locate and read all task files** following the format's reading.md instructions — this gives you the phase structure and all task content
 4. **Evaluate all review criteria** as defined in the review criteria file
 5. **Create the tracking file** — write findings to `review-integrity-tracking-c{N}.md` in the plan topic directory, using the format defined in the review criteria file
 6. **Commit the tracking file**: `planning({topic}): integrity review cycle {N}`
