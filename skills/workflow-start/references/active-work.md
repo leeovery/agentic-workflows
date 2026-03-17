@@ -6,7 +6,7 @@
 
 Display all active work and present a unified menu for continuing or starting work.
 
-## Display
+## A. Display and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -99,8 +99,16 @@ This skill ends. The invoked skill will load into context and provide additional
 
 #### If user chose "View completed & cancelled"
 
-→ Load **[view-completed.md](view-completed.md)** with no work_type filter (unified across all types). On return, re-run discovery and redisplay from the top of this reference.
+→ Load **[view-completed.md](view-completed.md)** and follow its instructions as written.
+
+Re-run discovery to refresh state after potential changes.
+
+→ Return to **A. Display and Menu**.
 
 #### If user chose `m`/`manage`
 
-→ Load **[manage-work-unit.md](manage-work-unit.md)**. On return, re-run discovery and redisplay from the top of this reference.
+→ Load **[manage-work-unit.md](manage-work-unit.md)** and follow its instructions as written.
+
+Re-run discovery to refresh state after potential changes.
+
+→ Return to **A. Display and Menu**.
