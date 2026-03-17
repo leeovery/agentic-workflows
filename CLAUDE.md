@@ -616,6 +616,7 @@ The same navigation conventions apply across all skill tiers (entry-point and pr
 
 **Return navigation** — returning to the parent skill or a previous phase:
 ```
+→ Return to caller.
 → Return to **[the skill](../SKILL.md)** for **Step N**.
 → Return to **[the skill](../SKILL.md)**.
 → Return to **A. Phase Name**.
@@ -628,9 +629,10 @@ Rules:
 - Use links when routing to another file (parent SKILL.md or calling reference file)
 - No links for internal routing within the same file (lettered phases, named sections)
 - When skipping steps, use a parenthetical: `→ Proceed to **Step 5** (skipping Steps 1–3).`
-- **Implicit return to caller is the default.** When a loaded file completes, execution resumes at the caller's next routing line. Do not add an explicit return just to route back to the line that loaded you. `→ Return to **[the skill](../SKILL.md)**` is different — it is a hard escape to the backbone, not a return to caller, and is always valid.
-- Single-exit reference files end with `→ Return to **[the skill](../SKILL.md)**.` — the backbone's `→ Proceed to **Step N**.` handles onward sequencing
-- Multi-exit reference files end each path with `→ Return to **[the skill](../SKILL.md)** for **Step N**.`
+- `→ Return to caller.` — returns to the line that loaded this file; the caller's next routing instruction takes over. No link needed since the destination is always the loading context. This is the standard exit for reference files that are not hard-escaping to the backbone.
+- `→ Return to **[the skill](../SKILL.md)**` — hard escape to the backbone. Use when the reference file needs to route to a specific backbone step rather than returning to its immediate caller.
+- Single-exit reference files end with `→ Return to caller.`
+- Multi-exit reference files end each path with `→ Return to caller.` — unless different paths need to route to different backbone steps, in which case use `→ Return to **[the skill](../SKILL.md)** for **Step N**.`
 - Terminal reference files (invoke-skill.md, phase-bridge.md) invoke a processing skill as their final action — no return needed
 
 ### Internal Reference File Phases
