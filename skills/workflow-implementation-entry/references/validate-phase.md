@@ -66,16 +66,16 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 Reopening implementation: {topic:(titlecase)}
 ```
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 **If status is `in-progress`:**
 
 Proceed normally.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 **If not exists (`false`):**
 
 Proceed normally (new entry).
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

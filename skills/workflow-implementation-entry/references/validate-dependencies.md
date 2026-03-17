@@ -6,7 +6,7 @@
 
 #### If work_type is not `epic`
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### Otherwise
 
@@ -18,8 +18,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.pla
 
 **If `false`:**
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 **If `true`:**
 
 → Load **[check-dependencies.md](check-dependencies.md)** and follow its instructions as written.
+
+→ Return to caller.

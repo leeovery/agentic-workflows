@@ -40,7 +40,7 @@ Add to the blocking list.
 External dependencies satisfied.
 ```
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If the blocking list has entries
 

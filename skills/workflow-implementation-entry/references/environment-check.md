@@ -20,7 +20,7 @@ cat .workflows/.state/environment-setup.md
 Environment: No special setup required.
 ```
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If file exists and contains setup instructions
 
@@ -30,7 +30,7 @@ Environment: No special setup required.
 Environment setup file found: .workflows/.state/environment-setup.md
 ```
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If file does not exist
 
@@ -46,4 +46,4 @@ Are there any environment setup instructions I should follow before implementati
 - If the user provides instructions, save them to `.workflows/.state/environment-setup.md`, commit and push
 - If the user says no/none, create `.workflows/.state/environment-setup.md` with "No special setup required." and commit
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
