@@ -8,10 +8,9 @@ Check if plan exists and is ready.
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
 ```
 
-#### If plan doesn't exist
+#### If plan doesn't exist (`false`)
 
 > *Output the next fenced block as a code block:*
 
@@ -25,7 +24,15 @@ A completed plan is required for implementation.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists but status is not `completed`
+#### If plan exists (`true`)
+
+Check its status:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
+```
+
+**If status is not `completed`:**
 
 > *Output the next fenced block as a code block:*
 
@@ -37,7 +44,7 @@ The plan for "{topic:(titlecase)}" is not yet completed.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists and status is `completed`
+**If status is `completed`:**
 
 Check if implementation phase entry exists:
 
