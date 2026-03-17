@@ -18,7 +18,7 @@ New discussion entry: topic was provided by the caller.
 
 → Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions as written.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If source is `fresh`
 
@@ -26,13 +26,13 @@ New discussion entry: topic was provided by the caller.
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If source is `continue`
 
 → Load **[gather-context-continue.md](gather-context-continue.md)** and follow its instructions as written.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 ---
 
@@ -52,7 +52,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.res
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 ---
 
@@ -80,10 +80,10 @@ These will be read when the discussion begins.
 
 Set source="topic-provided-with-research".
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 **Otherwise:**
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
