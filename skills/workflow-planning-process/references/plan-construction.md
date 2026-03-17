@@ -45,22 +45,22 @@ Check `task_list_gate_mode` via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_list_gate_mode
 ```
 
-#### If the phase has no task table
+#### If the phase has no task list
 
-This phase needs task design.
+Check the task list scratch file at `.workflows/.cache/{work_unit}/planning/{topic}/phase-{N}-tasks.md`. If no scratch file exists, this phase needs task design.
 
 → Load **[define-tasks.md](define-tasks.md)** and follow its instructions as written.
 
 → Proceed to **C. Author Phase Tasks**.
 
-#### If the phase has a task table and `task_list_gate_mode` is `auto`
+#### If the phase has a task list and `task_list_gate_mode` is `auto`
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 **Phase {N}: {Phase Name}** — {M} tasks.
 
-{task list from the phase's task table}
+{task list from the task list scratch file}
 ```
 
 > *Output the next fenced block as a code block:*
@@ -71,14 +71,14 @@ Phase {N}: {Phase Name} — task list confirmed. Proceeding to authoring.
 
 → Proceed to **C. Author Phase Tasks**.
 
-#### If the phase has a task table and `task_list_gate_mode` is `gated`
+#### If the phase has a task list and `task_list_gate_mode` is `gated`
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 **Phase {N}: {Phase Name}** — {M} tasks.
 
-{task list from the phase's task table}
+{task list from the task list scratch file}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -111,9 +111,12 @@ Approve this task list?
 
 Tasks are authored in a single batch per phase. One sub-agent authors all tasks for the phase, writing to a scratch file. The orchestrator then handles approval and writing to the plan format. Never invoke multiple authoring agents concurrently. Never batch beyond a single phase.
 
-#### If all tasks in the phase have status `authored`
+#### If all task internal IDs for this phase exist in `task_map`
 
-All tasks already written.
+All tasks already authored. Check via manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_map
+```
 
 > *Output the next fenced block as a code block:*
 
@@ -123,7 +126,7 @@ Phase {N}: {Phase Name} — all tasks already authored.
 
 → Proceed to **D. Advance Phase**.
 
-#### If any tasks in the phase have status `pending`
+#### If any task internal IDs are missing from `task_map`
 
 → Load **[author-tasks.md](author-tasks.md)** and follow its instructions as written.
 

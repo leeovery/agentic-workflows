@@ -10,9 +10,9 @@ This step uses the `workflow-planning-task-author` agent (`../../../agents/workf
 
 ## A. Prepare the Scratch File
 
-Scratch file path: `.workflows/.cache/planning/{work_unit}/{topic}/phase-{N}.md`
+Scratch file path: `.workflows/.cache/{work_unit}/planning/{topic}/phase-{N}.md`
 
-Create the `.workflows/.cache/planning/{work_unit}/{topic}/` directory if it does not exist.
+Create the `.workflows/.cache/{work_unit}/planning/{topic}/` directory if it does not exist.
 
 → Proceed to **B. Invoke the Agent**.
 
@@ -32,9 +32,9 @@ Invoke `workflow-planning-task-author` with these file paths:
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **task-design.md**: `task-design.md`
-5. **All approved phases**: the complete phase structure from the Plan Index File body
-6. **Task list for current phase**: the approved task table (ALL tasks in the phase)
-7. **Scratch file path**: `.workflows/.cache/planning/{work_unit}/{topic}/phase-{N}.md`
+5. **All approved phases**: the complete phase structure from the output format (read via reading.md) or scratch file if phases haven't been authored yet
+6. **Task list for current phase**: the approved task list (ALL tasks in the phase) from the task list scratch file
+7. **Scratch file path**: `.workflows/.cache/{work_unit}/planning/{topic}/phase-{N}.md`
 
 The agent writes all tasks to the scratch file and returns.
 
@@ -44,7 +44,7 @@ The agent writes all tasks to the scratch file and returns.
 
 ## C. Validate Scratch File
 
-Read the scratch file and count tasks. Verify task count matches the task table in the Plan Index File for this phase.
+Read the scratch file and count tasks. Verify task count matches the task list scratch file for this phase.
 
 #### If `mismatch`
 
@@ -184,12 +184,18 @@ For each approved task in the scratch file, in order:
 
 1. Read the task content from the scratch file
 2. Write to the output format (format-specific — see the format's **[authoring.md](output-formats/{format}/authoring.md)**)
-3. Update the task table in the Plan Index File: set `status: authored` and set `External ID` to the external identifier for the task as exposed by the output format
+3. Record the internal ID → external ID mapping in the manifest:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
+   ```
 4. If the manifest's `external_id` is empty, set it to the external identifier for the plan as exposed by the output format:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_id {external_id}
    ```
-5. If the current phase's `external_id` is empty, set it to the external identifier for the phase as exposed by the output format
+5. If this is the first task in a phase, record the phase's internal ID → external ID mapping:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
+   ```
 6. Advance the manifest planning position to the next pending task (or next phase if this was the last task):
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task {next_task_id}
@@ -210,8 +216,8 @@ Repeat for each task.
 
 ## H. Cleanup
 
-Delete the scratch file: `rm .workflows/.cache/planning/{work_unit}/{topic}/phase-{N}.md`
+Delete the scratch file: `rm .workflows/.cache/{work_unit}/planning/{topic}/phase-{N}.md`
 
-Remove the `.workflows/.cache/planning/{work_unit}/{topic}/` directory if empty.
+Remove the `.workflows/.cache/{work_unit}/planning/{topic}/` directory if empty.
 
 → Return to caller.

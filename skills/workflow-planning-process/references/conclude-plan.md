@@ -4,7 +4,7 @@
 
 ---
 
-> **CHECKPOINT**: Do not conclude if any tasks in the Plan Index File show `status: pending`. All tasks must be `authored` before concluding.
+> **CHECKPOINT**: Do not conclude if any designed task internal IDs are missing from `task_map` in the manifest. All tasks must be authored before concluding.
 
 > *Output the next fenced block as markdown (not a code block):*
 
