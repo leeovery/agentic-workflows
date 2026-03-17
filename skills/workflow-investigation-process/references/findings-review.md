@@ -110,4 +110,4 @@ Document the Fix Direction section in the investigation file:
 
 Commit the updated investigation file.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
