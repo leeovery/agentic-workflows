@@ -3301,7 +3301,7 @@ const FLOWCHARTS = {
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process during plan review.' },
       { id: 'read-criteria', label: 'Read review criteria', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review-traceability.md — absorb full analysis criteria before starting.' },
       { id: 'read-spec', label: 'Read specification', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read the specification in full. Do not rely on summaries.' },
-      { id: 'read-plan', label: 'Read plan + all tasks', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read Plan Index File and all task files via format reading.md.' },
+      { id: 'read-plan', label: 'Read plan + all tasks', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read all task files via format reading.md.' },
       { id: 'spec-to-plan', label: 'Spec → Plan direction', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Direction 1: Verify every spec element has plan coverage (completeness).' },
       { id: 'plan-to-spec', label: 'Plan → Spec direction', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Direction 2: Verify every plan element traces to the spec (fidelity, anti-hallucination).' },
       { id: 'write', label: 'Write tracking file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write findings to review-traceability-tracking-c{N}.md with full fix content.' },
@@ -3323,7 +3323,7 @@ const FLOWCHARTS = {
     nodes: [
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked by workflow-planning-process during plan review.' },
       { id: 'read-criteria', label: 'Read review criteria', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read review-integrity.md — absorb all review dimensions before starting.' },
-      { id: 'read-plan', label: 'Read plan + all tasks', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read Plan Index File and all task files via format reading.md.' },
+      { id: 'read-plan', label: 'Read plan + all tasks', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read all task files via format reading.md.' },
       { id: 'evaluate', label: 'Evaluate all criteria', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Evaluate structural quality, implementation readiness, and standards adherence.' },
       { id: 'write', label: 'Write tracking file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write findings to review-integrity-tracking-c{N}.md with full fix content.' },
       { id: 'commit', label: 'Commit tracking file', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Commit: planning({topic}): integrity review cycle {N}.' },

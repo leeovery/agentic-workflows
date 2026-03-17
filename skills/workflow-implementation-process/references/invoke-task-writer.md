@@ -16,11 +16,9 @@ Pass via the orchestrator's prompt:
 
 1. **Topic name** — the implementation topic
 2. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md`
-3. **Plan path** — the implementation plan path
-4. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
-5. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
-6. **plan-index-schema.md** — `../../workflow-planning-process/references/plan-index-schema.md`
-7. **Phase label** — `Analysis (Cycle {N})`
+3. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
+4. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
+5. **Phase label** — `Analysis (Cycle {N})`
 
 ---
 

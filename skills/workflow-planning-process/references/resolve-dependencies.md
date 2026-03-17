@@ -104,7 +104,10 @@ Nothing to remove.
 
 ## D. Resolve Current Plan's Dependencies
 
-For each unresolved dependency, check if `.workflows/{work_unit}/planning/{dep_topic}/planning.md` exists.
+For each unresolved dependency, check if the planning entry exists in the manifest:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{dep_topic}
+```
 
 #### If the plan does not exist
 

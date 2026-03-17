@@ -57,7 +57,7 @@ In the task file, add a **Needs Clarification** section:
 
 ## Cleanup (Restart)
 
-Delete the tasks directory — preserves `planning.md` (the Plan Index) and any review tracking files:
+Delete the tasks directory — preserves any review tracking files:
 
 ```bash
 rm -rf .workflows/{work_unit}/planning/{topic}/tasks/
