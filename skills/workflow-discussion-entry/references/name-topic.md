@@ -54,7 +54,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.dis
 ```
 A discussion named "{topic}" already exists in this work unit.
 
-Run /continue-epic to resume, or choose a different name.
+Run /workflow-start to resume, or choose a different name.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
