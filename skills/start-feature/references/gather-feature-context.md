@@ -16,4 +16,4 @@ Describe briefly what you're building and why.
 
 **STOP.** Wait for user response.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
