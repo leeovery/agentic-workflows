@@ -21,4 +21,4 @@
    ```
 5. Commit the initial file
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

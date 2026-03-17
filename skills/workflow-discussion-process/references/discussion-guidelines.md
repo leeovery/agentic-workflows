@@ -42,4 +42,4 @@ These are natural pauses, not every exchange. Document the reasoning and context
 
 **Create the file early.** After understanding the topic and initial questions, create the discussion file with context and the questions list. Don't wait until you have answers.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

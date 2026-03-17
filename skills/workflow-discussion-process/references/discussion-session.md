@@ -28,4 +28,4 @@ Work through questions one at a time. For each:
 
 When the user indicates they want to conclude the discussion (e.g., "that covers it", "let's wrap up", "I think we're done"):
 
-→ Return to **[the skill](../SKILL.md)** for **Step 4**.
+→ Return to caller.
