@@ -69,4 +69,4 @@ node .claude/skills/workflow-manifest/scripts/manifest.js init {work_unit} --wor
 
 Where `{description}` is a concise one-line summary compiled from the epic context gathered in Step 1.
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.

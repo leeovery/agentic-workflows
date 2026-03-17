@@ -25,10 +25,10 @@ Select an option:
 
 Set phase="research".
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 #### If user chooses discussion
 
 Set phase="discussion".
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
