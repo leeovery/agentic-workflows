@@ -64,7 +64,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.rev
 
 **If not exists (`false`):**
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 **If exists and status is `completed`:**
 
@@ -78,8 +78,8 @@ Reset to in-progress:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review.{topic} status in-progress
 ```
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
 
 **If exists and status is `in-progress`:**
 
-→ Return to **[the skill](../SKILL.md)**.
+→ Return to caller.
