@@ -10,7 +10,7 @@ This step uses the `workflow-planning-phase-designer` agent (`../../../agents/wo
 
 ## A. Determine Phase State
 
-Read the Plan File at `.workflows/{work_unit}/planning/{topic}/planning.md`. Check if phases already exist in the body.
+Read the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md`. Check if phases already exist in the body.
 
 #### If phases exist
 
@@ -46,7 +46,7 @@ Invoke `workflow-planning-phase-designer` with these file paths:
 5. **Context guidance**: `phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
 6. **task-design.md**: `task-design.md`
 
-The agent returns a complete phase structure. Write it directly to the Plan File body.
+The agent returns a complete phase structure. Write it directly to the planning file body.
 
 Update the manifest planning position:
 ```bash
@@ -84,7 +84,7 @@ Re-invoke `workflow-planning-phase-designer` with all original inputs PLUS:
 - **Previous output**: the current phase structure
 - **User feedback**: what the user wants changed
 
-Update the Plan File with the revised output.
+Update the planning file with the revised output.
 
 → Return to **B. Review and Approve**.
 

@@ -32,7 +32,7 @@ Invoke `workflow-planning-task-author` with these file paths:
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **task-design.md**: `task-design.md`
-5. **Plan File path**: `.workflows/{work_unit}/planning/{topic}/planning.md` — contains all approved phases and the task list for the current phase
+5. **Planning file path**: `.workflows/{work_unit}/planning/{topic}/planning.md` — contains all approved phases and the task list for the current phase
 6. **Scratch file path**: `.workflows/.cache/{work_unit}/planning/{topic}/phase-{N}.md`
 
 The agent writes all tasks to the scratch file and returns.
@@ -43,7 +43,7 @@ The agent writes all tasks to the scratch file and returns.
 
 ## C. Validate Scratch File
 
-Read the scratch file and count tasks. Verify task count matches the task table in the Plan File for this phase.
+Read the scratch file and count tasks. Verify task count matches the task table in the planning file for this phase.
 
 #### If `mismatch`
 

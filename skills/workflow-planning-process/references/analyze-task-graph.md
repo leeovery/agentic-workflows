@@ -26,7 +26,7 @@ Load the format's **[reading.md](output-formats/{format}/reading.md)** and **[gr
 
 Invoke `workflow-planning-dependency-grapher` with these file paths:
 
-1. **Plan File path**: `.workflows/{work_unit}/planning/{topic}/planning.md`
+1. **Planning file path**: `.workflows/{work_unit}/planning/{topic}/planning.md`
 2. **reading.md**: the format's reading reference loaded above
 3. **graph.md**: the format's graph reference loaded above
 

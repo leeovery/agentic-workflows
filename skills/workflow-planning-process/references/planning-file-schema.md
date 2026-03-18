@@ -1,10 +1,10 @@
-# Plan File Schema
+# Planning File Schema
 
 *Reference for **[workflow-planning-process](../SKILL.md)***
 
 ---
 
-This file defines the canonical structure for Plan Files (`.workflows/{work_unit}/planning/{topic}/planning.md`). The Plan File is a content document — it holds the human-readable plan structure (phases, task tables). All state (status, gate modes, progress, `task_map`) is in the manifest.
+This file defines the canonical structure for the planning file (`.workflows/{work_unit}/planning/{topic}/planning.md`). The planning file is a content document — it holds the human-readable plan structure (phases, task tables). All state (status, gate modes, progress, `task_map`) is in the manifest.
 
 ---
 

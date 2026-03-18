@@ -45,7 +45,7 @@ Check `task_list_gate_mode` via manifest CLI:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_list_gate_mode
 ```
 
-#### If the phase has no task table in the Plan File
+#### If the phase has no task table in the planning file
 
 → Load **[define-tasks.md](define-tasks.md)** and follow its instructions as written.
 
@@ -58,7 +58,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planni
 ```
 **Phase {N}: {Phase Name}** — {M} tasks.
 
-{task list from the Plan File}
+{task list from the planning file}
 ```
 
 > *Output the next fenced block as a code block:*
@@ -76,7 +76,7 @@ Phase {N}: {Phase Name} — task list confirmed. Proceeding to authoring.
 ```
 **Phase {N}: {Phase Name}** — {M} tasks.
 
-{task list from the Plan File}
+{task list from the planning file}
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

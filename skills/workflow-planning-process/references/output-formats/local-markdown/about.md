@@ -32,7 +32,7 @@ Tasks are stored as individual markdown files in a `tasks/` subdirectory under t
 
 ```
 .workflows/{work_unit}/planning/{topic}/
-├── planning.md                 # Plan File (phases, task tables)
+├── planning.md                 # Planning file (phases, task tables)
 └── tasks/                      # Task files
     ├── {topic}-1-1.md              # Phase 1, task 1
     ├── {topic}-1-2.md              # Phase 1, task 2

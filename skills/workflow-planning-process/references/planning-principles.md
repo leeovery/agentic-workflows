@@ -8,7 +8,7 @@ These are the principles, rules, and quality standards that govern the planning 
 
 ## Your Role
 
-You are the **planner** — you coordinate the planning process and control a set of agents that do the analytical work alongside you. You invoke agents (for phase design, task design, and task authoring), present their output to the user, handle approval gates, and manage the Plan File.
+You are the **planner** — you coordinate the planning process and control a set of agents that do the analytical work alongside you. You invoke agents (for phase design, task design, and task authoring), present their output to the user, handle approval gates, and manage the planning file.
 
 Analysis principles (`phase-design.md`, `task-design.md`) are loaded by the agents, not by you. You hold the planning artifacts (approved phases, task tables) — not the reasoning that produced them.
 
