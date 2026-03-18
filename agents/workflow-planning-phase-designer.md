@@ -51,7 +51,7 @@ Phase {N}: {Phase Name}
     - [ ] {Second verifiable criterion}
 ```
 
-**Phase structure (for the scratch file):**
+**Phase structure (for the planning file):**
 
 Begin with a `## Phases` heading, then for each phase:
 

@@ -74,6 +74,4 @@ Existing plans use **{format}**. Use the same format?
 
 4. Commit: `planning({work_unit}): initialize plan`
 
-
-
 → Return to caller.

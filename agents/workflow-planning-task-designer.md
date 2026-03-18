@@ -53,7 +53,7 @@ Phase {N}: {Phase Name}
      Edge cases: {comma-separated list, or "none"}
 ```
 
-**Task table format (for the scratch file):**
+**Task table format (for the planning file):**
 
 ```markdown
 #### Tasks
