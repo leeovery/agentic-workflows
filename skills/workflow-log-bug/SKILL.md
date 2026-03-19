@@ -4,54 +4,25 @@ description: Capture a bug report as a markdown file in the workflow inbox. Use 
 allowed-tools: Bash(mkdir -p), Bash(ls .workflows/inbox/)
 ---
 
-Capture a bug as a markdown file in the inbox. Fire-and-forget — no manifest, no migrations.
+This skill captures a bug and writes it to the inbox. No manifest, no migrations, no pipeline — just capture and file.
 
-## Instructions
+If there's already conversation context about something broken, synthesise it straight into the file without asking questions. If this is a cold start, ask what's broken and have a natural back-and-forth to draw out the symptoms. Recognise when it has enough detail (typically 2-4 exchanges) and wrap up.
 
-Follow these steps EXACTLY as written. Do not skip steps or combine them.
+**Capture, don't explore.** Don't read code, search the web, validate or reproduce the bug, suggest fixes, diagnose root causes, or propose solutions. The goal is to record what's broken, not to investigate it.
 
----
-
-## Step 1: Detect Mode
-
-Evaluate the current conversation context.
-
-#### If prior conversation context exists that describes a bug worth capturing
-
-The user has been discussing something broken and wants to log it. No questions needed — proceed directly to **Step 3**.
-
-#### Otherwise
-
-This is a direct invocation. The user wants to capture a new bug.
-
-→ Proceed to **Step 2**.
-
----
-
-## Step 2: Capture Bug
-
-Load **[capture.md](references/capture.md)** and follow its instructions as written.
-
-→ Proceed to **Step 3**.
-
----
-
-## Step 3: Write File
-
-Generate a slug from the bug's core symptom — short, descriptive, kebab-case (e.g., `stale-cache-on-deploy`, `login-timeout`).
-
-Determine today's date in `YYYY-MM-DD` format.
+When ready, generate a short kebab-case slug from the core symptom (e.g., `stale-cache-on-deploy`, `login-timeout`) and write the file:
 
 ```bash
 mkdir -p .workflows/inbox/bugs
 ```
 
-Write the file to `.workflows/inbox/bugs/{YYYY-MM-DD}--{slug}.md`:
-- H1 title (the bug name, titlecased)
-- Prose body — 200-500 words
-- No forced headings or structured sections — let the content flow naturally
+**File:** `.workflows/inbox/bugs/{YYYY-MM-DD}--{slug}.md`
+- H1 title, prose body, 200-500 words
+- No forced headings — let the content flow naturally
 - Naturally cover symptoms, conditions, and impact as discussed
-- If codebase files came up in conversation, mention them
+- Mention relevant codebase files if they came up
+
+Confirm with a one-liner:
 
 > *Output the next fenced block as a code block:*
 
