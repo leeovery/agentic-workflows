@@ -69,4 +69,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js init {work_unit} --wor
 
 Where `{description}` is a concise one-line summary compiled from the epic context gathered in Step 1.
 
+**If this work unit was started from an inbox file**, archive it:
+
+```bash
+mkdir -p .workflows/inbox/.archived/ideas
+mv .workflows/inbox/ideas/{file} .workflows/inbox/.archived/ideas/{file}
+```
+
 → Return to caller.

@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { loadActiveManifests, loadAllManifests, phaseStatus, phaseItems, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
@@ -22,6 +24,54 @@ function lastCompletedPhase(manifest) {
     }
   }
   return last;
+}
+
+function readTitle(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const match = content.match(/^#\s+(.+)$/m);
+    return match ? match[1].trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseInboxFile(filename) {
+  const match = filename.match(/^(\d{4}-\d{2}-\d{2})--(.+)\.md$/);
+  if (!match) return null;
+  return { date: match[1], slug: match[2] };
+}
+
+function discoverInbox(cwd) {
+  const inboxDir = path.join(cwd, '.workflows', 'inbox');
+  const ideas = [];
+  const bugs = [];
+
+  for (const type of ['ideas', 'bugs']) {
+    const dir = path.join(inboxDir, type);
+    let files;
+    try {
+      files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort();
+    } catch {
+      files = [];
+    }
+    for (const f of files) {
+      const parsed = parseInboxFile(f);
+      if (!parsed) continue;
+      const title = readTitle(path.join(dir, f)) || parsed.slug;
+      const item = { slug: parsed.slug, date: parsed.date, title, file: f };
+      if (type === 'ideas') ideas.push(item);
+      else bugs.push(item);
+    }
+  }
+
+  return {
+    ideas,
+    bugs,
+    idea_count: ideas.length,
+    bug_count: bugs.length,
+    total_count: ideas.length + bugs.length,
+  };
 }
 
 function discover(cwd) {
@@ -71,6 +121,8 @@ function discover(cwd) {
     }
   }
 
+  const inbox = discoverInbox(cwd);
+
   return {
     epics: { work_units: epics, count: epics.length },
     features: { work_units: features, count: features.length },
@@ -79,11 +131,14 @@ function discover(cwd) {
     cancelled,
     completed_count: completed.length,
     cancelled_count: cancelled.length,
+    inbox,
     state: {
       has_any_work: (epics.length + features.length + bugfixes.length) > 0,
       epic_count: epics.length,
       feature_count: features.length,
       bugfix_count: bugfixes.length,
+      has_inbox: inbox.total_count > 0,
+      inbox_count: inbox.total_count,
     },
   };
 }
@@ -126,11 +181,26 @@ function format(result) {
     lines.push('');
   }
 
+  if (result.inbox.total_count > 0) {
+    lines.push('=== INBOX ===');
+    lines.push(`  ideas: ${result.inbox.idea_count}`);
+    lines.push(`  bugs: ${result.inbox.bug_count}`);
+    for (const item of result.inbox.ideas) {
+      lines.push(`  ${item.slug} (idea, ${item.date})`);
+    }
+    for (const item of result.inbox.bugs) {
+      lines.push(`  ${item.slug} (bug, ${item.date})`);
+    }
+    lines.push('');
+  }
+
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
   lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix`);
   lines.push(`completed_count: ${result.completed_count}`);
   lines.push(`cancelled_count: ${result.cancelled_count}`);
+  lines.push(`has_inbox: ${result.state.has_inbox}`);
+  lines.push(`inbox_count: ${result.state.inbox_count}`);
 
   return lines.join('\n') + '\n';
 }

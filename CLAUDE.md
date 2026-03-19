@@ -28,6 +28,8 @@ Skills are organised in two tiers:
 
 **Processing skills** (`workflow-*-process`) are model-invocable. They assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills provide all required inputs before invoking them.
 
+**Capture skills** (`workflow-log-idea`, `workflow-log-bug`) are model-invocable, lightweight skills outside the pipeline. They capture ideas or bugs as markdown files in the inbox (`.workflows/inbox/`). No manifest, no migrations, no step/reference structure — just natural language instructions with capture-only constraints. They can be invoked directly by the user or discovered by the model when the user wants to log something.
+
 ### Phase Entry Skill Routing
 
 Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional). Topic resolution: `topic = $2 || (wt !== 'epic' ? $1 : null)`.
@@ -64,6 +66,8 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase)
+- Inbox: `.workflows/inbox/ideas/`, `.workflows/inbox/bugs/` (pre-pipeline capture, plain markdown)
+- Inbox archive: `.workflows/inbox/.archived/{ideas,bugs}/` (moved here when an inbox item enters the pipeline)
 
 **Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking its lifecycle state:
 - `in-progress` — actively being worked on (default on creation)

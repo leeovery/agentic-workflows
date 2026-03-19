@@ -69,6 +69,8 @@ Or jump straight in:
 | `/start-feature` | You're adding functionality to an existing product |
 | `/start-epic` | The work spans multiple topics and sessions |
 | `/start-bugfix` | Something is broken and needs fixing |
+| `/workflow-log-idea` | You want to capture an idea for later |
+| `/workflow-log-bug` | You want to log a bug for later |
 
 Each command gathers context through a brief interview, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
 
@@ -148,9 +150,13 @@ Reviewers identify problems but don't fix them. Each finding includes a recommen
 
 Revisit any completed phase before moving forward — refine a discussion, update a spec — without losing forward progress. During planning, jump to any point (leading edge, beginning, specific task) without advancing the progress tracker.
 
+### Inbox Capture
+
+Log ideas and bugs as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea` or `/workflow-log-bug` directly. Captured items land in the inbox as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview.
+
 ### Workflow Dashboard
 
-`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, and route to the right skill.
+`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, browse your inbox, and route to the right skill.
 
 ## Skills Reference
 
@@ -175,6 +181,8 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 **Start:** [`/start-feature`](skills/start-feature/) | [`/start-epic`](skills/start-epic/) | [`/start-bugfix`](skills/start-bugfix/)
 
 **Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/)
+
+**Capture:** [`/workflow-log-idea`](skills/workflow-log-idea/) | [`/workflow-log-bug`](skills/workflow-log-bug/)
 
 **Utilities:** [`/workflow-migrate`](skills/workflow-migrate/)
 

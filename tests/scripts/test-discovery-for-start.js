@@ -202,6 +202,61 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.features.count, 1);
     assert.strictEqual(r.features.work_units[0].next_phase, 'review');
   });
+
+  it('discovers inbox ideas', () => {
+    createFile(dir, '.workflows/inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry Logic\n\nSome idea content.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.idea_count, 1);
+    assert.strictEqual(r.inbox.ideas[0].slug, 'smart-retry');
+    assert.strictEqual(r.inbox.ideas[0].date, '2026-03-19');
+    assert.strictEqual(r.inbox.ideas[0].title, 'Smart Retry Logic');
+    assert.strictEqual(r.state.has_inbox, true);
+    assert.strictEqual(r.state.inbox_count, 1);
+  });
+
+  it('discovers inbox bugs', () => {
+    createFile(dir, '.workflows/inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nBug details.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.bug_count, 1);
+    assert.strictEqual(r.inbox.bugs[0].slug, 'login-timeout');
+    assert.strictEqual(r.inbox.bugs[0].date, '2026-03-18');
+    assert.strictEqual(r.inbox.bugs[0].title, 'Login Timeout');
+    assert.strictEqual(r.state.has_inbox, true);
+  });
+
+  it('discovers mixed inbox ideas and bugs', () => {
+    createFile(dir, '.workflows/inbox/ideas/2026-03-19--idea-one.md', '# Idea One\n\nContent.');
+    createFile(dir, '.workflows/inbox/ideas/2026-03-20--idea-two.md', '# Idea Two\n\nContent.');
+    createFile(dir, '.workflows/inbox/bugs/2026-03-18--bug-one.md', '# Bug One\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.idea_count, 2);
+    assert.strictEqual(r.inbox.bug_count, 1);
+    assert.strictEqual(r.inbox.total_count, 3);
+    assert.strictEqual(r.state.inbox_count, 3);
+  });
+
+  it('returns empty inbox when no inbox directory exists', () => {
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.idea_count, 0);
+    assert.strictEqual(r.inbox.bug_count, 0);
+    assert.strictEqual(r.inbox.total_count, 0);
+    assert.strictEqual(r.state.has_inbox, false);
+    assert.strictEqual(r.state.inbox_count, 0);
+  });
+
+  it('skips inbox files that do not match expected filename format', () => {
+    createFile(dir, '.workflows/inbox/ideas/random-notes.md', '# Random\n\nContent.');
+    createFile(dir, '.workflows/inbox/ideas/2026-03-19--valid-idea.md', '# Valid Idea\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.idea_count, 1);
+    assert.strictEqual(r.inbox.ideas[0].slug, 'valid-idea');
+  });
+
+  it('falls back to slug when file has no H1 title', () => {
+    createFile(dir, '.workflows/inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.ideas[0].title, 'no-title');
+  });
 });
 
 describe('workflow-start format', () => {
@@ -286,5 +341,34 @@ describe('workflow-start format', () => {
     const out = format(discover(dir));
     assert.ok(!out.includes('=== COMPLETED ==='));
     assert.ok(!out.includes('=== CANCELLED ==='));
+  });
+
+  it('emits inbox section with ideas and bugs', () => {
+    createFile(dir, '.workflows/inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
+    createFile(dir, '.workflows/inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== INBOX ==='));
+    assert.ok(out.includes('  ideas: 1'));
+    assert.ok(out.includes('  bugs: 1'));
+    assert.ok(out.includes('  smart-retry (idea, 2026-03-19)'));
+    assert.ok(out.includes('  login-timeout (bug, 2026-03-18)'));
+  });
+
+  it('omits inbox section when empty', () => {
+    const out = format(discover(dir));
+    assert.ok(!out.includes('=== INBOX ==='));
+  });
+
+  it('includes has_inbox and inbox_count in state output', () => {
+    createFile(dir, '.workflows/inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
+    const out = format(discover(dir));
+    assert.ok(out.includes('has_inbox: true'));
+    assert.ok(out.includes('inbox_count: 1'));
+  });
+
+  it('shows has_inbox false when no inbox items', () => {
+    const out = format(discover(dir));
+    assert.ok(out.includes('has_inbox: false'));
+    assert.ok(out.includes('inbox_count: 0'));
   });
 });
