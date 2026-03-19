@@ -21,7 +21,7 @@ Lower number = higher priority. `0` means unset.
 ### Setting Priority
 
 ```
-linear_updateIssue(
+update_issue(
   issueId: "{issue_id}",
   priority: {priority_level}
 )
@@ -30,7 +30,7 @@ linear_updateIssue(
 ### Removing Priority
 
 ```
-linear_updateIssue(
+update_issue(
   issueId: "{issue_id}",
   priority: 0
 )
@@ -38,31 +38,28 @@ linear_updateIssue(
 
 ## Dependencies
 
+> **Note**: Issue relation tools may not be available on all Linear MCP server implementations. Check available tools before proceeding. If relation tools are unavailable, document dependencies in task descriptions and rely on phase ordering and priority for execution order.
+
 ### Adding a Dependency
 
 To declare that one task depends on another (is blocked by it):
 
 ```
-linear_createIssueRelation(
+create_issue_relation(
   issueId: "{dependent_issue_id}",
   relatedIssueId: "{blocking_issue_id}",
   type: "blocks"
 )
 ```
 
-A task can have multiple dependencies. Call `linear_createIssueRelation` for each one.
+A task can have multiple dependencies. Call `create_issue_relation` for each one.
 
 ### Removing a Dependency
 
-Delete the issue relation via MCP:
+Query the issue to find its relations, then delete the specific relation:
 
 ```
-linear_deleteIssueRelation(issueRelationId: "{relation_id}")
+get_issue(issueId: "{issue_id}")
 ```
 
-To find the relation ID, query the issue's relations first:
-
-```
-linear_getIssue(issueId: "{issue_id}")
-# Look for the relation in the issue's relations list
-```
+Look for the relation in the issue's relations list, then remove it using the relation ID.

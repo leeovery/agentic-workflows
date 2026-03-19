@@ -18,28 +18,32 @@ You should never do the following:
 
 If a description contains double quotes, escape them with `\"`. That's it.
 
-## Task Storage
+## Plan Structure
 
-Tasks are created using the `tick create` command. Always set `--refs` to store the workflow's internal ID — this links every tick task back to the planning system. Before creating individual tasks, establish the topic and phase parent tasks.
-
-**1. Create the topic task:**
+Create the topic task — this is the plan-level entity in tick. Always set `--refs` to store the workflow's internal ID.
 
 ```bash
 tick create "{topic:(titlecase)}" --refs "{topic}"
 ```
 
-This returns the topic task ID (e.g., `tick-a1b2`).
+Returns the topic task ID (e.g., `tick-a1b2`). This is the plan's external identifier.
 
-**2. Create phase tasks as children of the topic:**
+## Phase Structure
+
+Create phase tasks as children of the topic task. Each phase is a parent task whose children are the individual tasks.
 
 The `--refs` value follows the internal ID format: `{topic}-{phase_id}`.
 
 ```bash
-tick create "Phase 1: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-1"  # returns tick-c3d4
-tick create "Phase 2: {phase:(titlecase)}" --parent tick-a1b2 --refs "{topic}-2"  # returns tick-e5f6
+tick create "Phase 1: {phase:(titlecase)}" --parent <topic-tick-id> --refs "{topic}-1"  # returns tick-c3d4
+tick create "Phase 2: {phase:(titlecase)}" --parent <topic-tick-id> --refs "{topic}-2"  # returns tick-e5f6
 ```
 
-**3. Create tasks as children of their phase:**
+Each command returns the phase's tick ID — this is the phase's external identifier.
+
+## Task Storage
+
+Create tasks as children of their phase task. Always set `--refs` to store the workflow's internal ID.
 
 ```bash
 tick create "{task:(titlecase)}" --parent tick-c3d4 \

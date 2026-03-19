@@ -1,34 +1,51 @@
 # Linear: Authoring
 
-## Project Setup
+Uses the official Linear MCP server (`https://mcp.linear.app/mcp`). Tool names below reflect this server — verify available tools if using a different implementation.
 
-Via MCP, create a project with:
+## Plan Structure
 
-- **Name**: Match the topic name
-- **Description**: Brief summary + link to specification file
-- **Team**: As specified by user
+Create a Linear project — this is the plan-level entity:
 
-## Phase Labels
+```
+create_project(
+  name: "{topic:(titlecase)}",
+  teamIds: ["{team_id}"],
+  description: "Implementation plan for {topic}"
+)
+```
 
-Create labels to denote phases (if they don't already exist):
+Returns the project ID — this is the plan's external identifier.
 
-- `phase-1`
-- `phase-2`
-- etc.
+## Phase Structure
+
+Create a parent issue for each phase within the project. Tasks are created as sub-issues of these phase parents.
+
+```
+create_issue(
+  teamId: "{team_id}",
+  title: "Phase {N}: {phase:(titlecase)}",
+  description: "{phase goal}",
+  projectId: "{project_id}"
+)
+```
+
+Returns the issue UUID — this is the phase's external identifier.
 
 ## Task Storage
 
-For each task, create a Linear issue via MCP:
+Create tasks as sub-issues of their phase parent:
 
 ```
-linear_createIssue(
+create_issue(
   teamId: "{team_id}",
-  projectId: "{project_id}",
   title: "{task:(titlecase)}",
   description: "{description}",
-  labelIds: ["{phase_label_id}", ...]
+  parentId: "{phase_issue_id}",
+  projectId: "{project_id}"
 )
 ```
+
+Returns the issue UUID — this is the task's external identifier.
 
 ## Task Properties
 
@@ -46,16 +63,26 @@ Linear uses workflow states. Map to these states:
 
 ### Phase Grouping
 
-Apply phase labels to issues: `phase-1`, `phase-2`, etc. All issues in a phase share the same label.
+Phases are represented as parent issues. Each task belongs to a phase by being a sub-issue of that phase's parent issue.
 
 ### Labels / Tags
 
-Beyond phase labels, apply optional labels for categorisation:
+Apply optional labels for categorisation:
 
 - `needs-info` — task requires additional information
 - `edge-case` — edge case handling task
 - `foundation` — setup/infrastructure task
 - `refactor` — cleanup task
+
+Create labels with `create_issue_label` if they don't exist:
+
+```
+create_issue_label(
+  teamId: "{team_id}",
+  name: "{label_name}",
+  color: "{hex_color}"
+)
+```
 
 ## Flagging
 

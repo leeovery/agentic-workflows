@@ -190,7 +190,7 @@ For each approved task in the task detail file, in order:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} external_id {external_id}
    ```
-5. If the output format's authoring instructions include phase creation and produce a phase-level external identifier, record the mapping in the manifest:
+5. Record the phase's internal ID → external ID mapping in the manifest (the external identifier is declared in the format's **[authoring.md](output-formats/{format}/authoring.md)** Phase Structure section):
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
    ```

@@ -27,11 +27,11 @@ Ask the user: **Which team should own this project?**
 | Concept | Linear Entity |
 |---------|---------------|
 | Topic | Project |
-| Phase | Label (e.g., `phase-1`, `phase-2`) |
-| Task | Issue |
+| Phase | Parent issue (tasks are sub-issues) |
+| Task | Issue (sub-issue of phase parent) |
 | Dependency | Issue blocking relationship |
 
-Each topic becomes its own Linear project. Phases are represented as labels on issues.
+Each topic becomes its own Linear project. Phases are parent issues within the project. Tasks are sub-issues of their phase parent.
 
 ## Output Location
 
@@ -39,10 +39,14 @@ Tasks are stored as issues in a Linear project:
 
 ```
 Linear:
-└── Project: {work_unit}
-    ├── Issue: Task 1 [label: phase-1, priority: urgent]
-    ├── Issue: Task 2 [label: phase-1, priority: normal]
-    └── Issue: Task 3 [label: phase-2, priority: high]
+└── Project: {topic name}
+    ├── Issue: "Phase 1: {phase name}"
+    │   ├── Sub-issue: Task 1-1 [priority: urgent]
+    │   ├── Sub-issue: Task 1-2 [priority: normal]
+    │   └── Sub-issue: Task 1-3 [priority: high]
+    └── Issue: "Phase 2: {phase name}"
+        ├── Sub-issue: Task 2-1
+        └── Sub-issue: Task 2-2
 ```
 
 Linear is the source of truth for task detail and status.

@@ -12,14 +12,20 @@ Update the issue state in Linear via MCP:
 | In Progress | Set state to "In Progress" |
 
 ```
-linear_updateIssue(issueId: "{id}", stateId: "{state_id}")
+update_issue(issueId: "{id}", stateId: "{state_id}")
+```
+
+To find available workflow states for a team:
+
+```
+list_issue_statuses(teamId: "{team_id}")
 ```
 
 ## Updating Task Content
 
 Update issue properties via MCP:
 
-- **Title**: `linear_updateIssue(issueId: "{id}", title: "{new title}")`
-- **Description**: `linear_updateIssue(issueId: "{id}", description: "{new description}")`
-- **Priority**: `linear_updateIssue(issueId: "{id}", priority: {level})`
-- **Labels**: `linear_updateIssue(issueId: "{id}", labelIds: ["{label_id}", ...])`
+- **Title**: `update_issue(issueId: "{id}", title: "{new title}")`
+- **Description**: `update_issue(issueId: "{id}", description: "{new description}")`
+- **Priority**: `update_issue(issueId: "{id}", priority: {level})`
+- **Labels**: `update_issue(issueId: "{id}", labelIds: ["{label_id}", ...])`

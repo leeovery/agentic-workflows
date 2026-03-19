@@ -1,5 +1,13 @@
 # Local Markdown: Authoring
 
+## Plan Structure
+
+The plan is represented by the `tasks/` directory at `.workflows/{work_unit}/planning/{topic}/tasks/`. Create this directory when authoring the first task. The external identifier is the topic name (`{topic}`).
+
+## Phase Structure
+
+Phases have no separate entity — they are encoded in the internal ID convention (`{topic}-{phase_id}`). The phase external identifier equals the phase internal ID (e.g., `authentication-1`).
+
 ## Task Storage
 
 Each task is written to `.workflows/{work_unit}/planning/{topic}/tasks/{internal_id}.md` — a markdown file with frontmatter and a description body.

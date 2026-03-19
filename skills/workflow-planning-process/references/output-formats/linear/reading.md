@@ -5,31 +5,32 @@
 To retrieve all tasks for a plan:
 
 ```
-linear_getIssues(projectId: "{project_id}")
+list_issues(projectId: "{project_id}")
 ```
 
-Each issue in the response includes: id, title, state (status), priority, labels (phase grouping), and blocking relationships (`blockedByIssues`, `blockingIssues`).
+Each issue in the response includes: id, title, state (status), priority, parent issue (phase grouping), and blocking relationships.
 
-Use label filters to narrow by phase, or priority/state filters to scope the query further — Linear's API supports these natively.
+Phase parent issues have no `parentId` and contain sub-issues. Individual tasks are sub-issues of a phase parent.
 
 ## Extracting a Task
 
 Query Linear MCP for the issue by ID:
 
 ```
-linear_getIssue(issueId: "{issue_id}")
+get_issue(issueId: "{issue_id}")
 ```
 
-The response includes title, description, status, priority, labels, and blocking relationships.
+The response includes title, description, status, priority, parent, and blocking relationships.
 
 ## Next Available Task
 
 To find the next task to implement:
 
-1. Query Linear MCP for project issues: `linear_getIssues(projectId: "{project_id}")`
-2. Filter to issues whose state is not "completed" or "cancelled"
-3. Exclude issues where any `blockedByIssues` entry has a state other than `completed`
-4. Filter by phase label — complete all `phase-1` issues before `phase-2`
-5. Within a phase, order by priority (Urgent > High > Medium > Low)
-6. The first match is the next task
-7. If no incomplete issues remain, all tasks are complete.
+1. Query Linear MCP for project issues: `list_issues(projectId: "{project_id}")`
+2. Identify phase parent issues (those without a `parentId`) — order by phase number from their title
+3. Filter to sub-issues (tasks) whose state is not "completed" or "cancelled"
+4. Exclude tasks where any blocking issue has a state other than "completed"
+5. Process phases in order — complete all tasks in Phase 1 before Phase 2
+6. Within a phase, order by priority (Urgent > High > Medium > Low)
+7. The first match is the next task
+8. If no incomplete tasks remain, all tasks are complete

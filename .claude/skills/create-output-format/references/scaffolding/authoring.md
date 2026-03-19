@@ -1,7 +1,21 @@
 # {Format Name}: Authoring
 
-<!-- Instructions for creating individual tasks in isolation -->
-<!-- This file is used by the task authoring agent — do NOT include priority or dependency info -->
+<!-- Instructions for creating plan structure and individual tasks -->
+<!-- This file is used by the planning process and task authoring agent — do NOT include priority or dependency info -->
+
+## Plan Structure
+
+<!-- How to create the plan-level entity and what external identifier it produces -->
+<!-- Every format must declare this, even when the identifier equals the internal topic name -->
+
+{How to create the plan-level entity in this format. State what external identifier is produced.}
+
+## Phase Structure
+
+<!-- How to create phase-level entities and what external identifier each produces -->
+<!-- Every format must declare this, even when the identifier equals the internal phase ID -->
+
+{How to create a phase in this format. State what external identifier is produced.}
 
 ## Task Storage
 

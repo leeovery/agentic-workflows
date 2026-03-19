@@ -28,10 +28,12 @@ Must include:
 
 ### authoring.md
 
-Instructions for creating individual tasks. This file is used by the task authoring agent, which works on one task at a time in isolation. It must NOT contain priority or dependency information — those are set later by the graphing agent using graph.md.
+Instructions for creating plan structure and individual tasks. This file is used by the planning process and task authoring agent. It must NOT contain priority or dependency information — those are set later by the graphing agent using graph.md.
 
 Must include:
 
+- **Plan Structure** — how to create the plan-level entity in the format (project, directory, top-level task, etc.) and what external identifier it produces. Every format must declare this, even when the identifier equals the internal topic name.
+- **Phase Structure** — how to create phase-level entities (parent tasks, parent issues, directories, etc.) and what external identifier each produces. Every format must declare this, even when the identifier equals the internal phase ID.
 - **Task Storage** — how to create a task (file path, API call, etc.) with a complete example showing the full task template
 - **Task Properties** — properties set during authoring:
   - **Status** — available values and their meanings
