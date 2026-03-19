@@ -602,6 +602,30 @@ function cmdExists(args) {
   process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
 }
 
+function cmdKeyOf(args) {
+  if (args.length < 3) die('Usage: key-of <path> <field.path> <value>');
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+  const searchValue = args[2];
+
+  const manifest = readManifest(workUnit);
+  const segments = resolveSegments(phase, topic, fieldSegments);
+  const obj = getByPath(manifest, segments);
+
+  if (obj == null || typeof obj !== 'object') {
+    die(`Path "${segments.join('.')}" is not an object in "${workUnit}"`);
+  }
+
+  const key = Object.keys(obj).find(k => String(obj[k]) === searchValue);
+
+  if (key === undefined) {
+    die(`Value "${searchValue}" not found in "${segments.join('.')}"`);
+  }
+
+  process.stdout.write(key + '\n');
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -609,7 +633,7 @@ function cmdExists(args) {
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
-  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, delete, list, init-phase, push, exists');
+  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, delete, list, init-phase, push, exists, key-of');
 }
 
 switch (command) {
@@ -621,5 +645,6 @@ switch (command) {
   case 'init-phase': cmdInitPhase(args); break;
   case 'push':     cmdPush(args); break;
   case 'exists':   cmdExists(args); break;
+  case 'key-of':   cmdKeyOf(args); break;
   default:         die(`Unknown command "${command}"`);
 }

@@ -254,7 +254,10 @@ Include the user's feedback when re-invoking.
 
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
 
-**Internal ID convention**: The internal ID used in `completed_tasks`, `current_task`, and commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If the format adapter returns an external ID, resolve the internal ID from the manifest's `task_map` — it maps internal IDs to external IDs.
+**Internal ID convention**: The internal ID used in `completed_tasks`, `current_task`, and commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If the format adapter returns an external ID, resolve the internal ID via the manifest CLI:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js key-of {work_unit}.planning.{topic} task_map {external_id}
+```
 
 **Update implementation state via manifest CLI**:
 ```bash

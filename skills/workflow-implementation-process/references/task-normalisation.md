@@ -28,8 +28,7 @@ INSTRUCTIONS:
 
 The `{internal_id}` in the template is always the **internal ID** (format: `{topic}-{phase_id}-{task_id}`).
 
-If the format adapter returns an external ID, read `task_map` from the manifest to find the corresponding internal ID:
+If the format adapter returns an external ID, resolve the internal ID via the manifest CLI:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} task_map
+node .claude/skills/workflow-manifest/scripts/manifest.js key-of {work_unit}.planning.{topic} task_map {external_id}
 ```
-Reverse lookup — match the external ID value to find its internal ID key.

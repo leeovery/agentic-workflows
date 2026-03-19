@@ -1165,6 +1165,63 @@ assert_contains "$output" '"a.md"' "Phase-level push works"
 echo ""
 
 # ============================================================================
+# KEY-OF COMMAND
+# ============================================================================
+
+echo -e "${YELLOW}Test: key-of finds key by value${NC}"
+setup_fixture
+run_cli init key-of-test --work-type feature --description "Key-of test" >/dev/null 2>&1
+run_cli init-phase key-of-test.planning.key-of-test >/dev/null 2>&1
+run_cli set key-of-test.planning.key-of-test task_map.portal-1-1 tick-abc >/dev/null 2>&1
+run_cli set key-of-test.planning.key-of-test task_map.portal-1-2 tick-def >/dev/null 2>&1
+
+output=$(run_cli_stdout key-of key-of-test.planning.key-of-test task_map tick-abc)
+assert_equals "$output" "portal-1-1" "key-of returns correct key for first value"
+
+output=$(run_cli_stdout key-of key-of-test.planning.key-of-test task_map tick-def)
+assert_equals "$output" "portal-1-2" "key-of returns correct key for second value"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: key-of errors on missing value${NC}"
+setup_fixture
+run_cli init key-of-miss --work-type feature --description "Key-of miss" >/dev/null 2>&1
+run_cli init-phase key-of-miss.planning.key-of-miss >/dev/null 2>&1
+run_cli set key-of-miss.planning.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
+
+exit_code=$(run_cli_exit_code key-of key-of-miss.planning.key-of-miss task_map ext-notfound)
+assert_equals "$exit_code" "1" "key-of errors when value not found"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: key-of errors on non-object path${NC}"
+setup_fixture
+run_cli init key-of-scalar --work-type feature --description "Key-of scalar" >/dev/null 2>&1
+run_cli init-phase key-of-scalar.planning.key-of-scalar >/dev/null 2>&1
+run_cli set key-of-scalar.planning.key-of-scalar format tick >/dev/null 2>&1
+
+exit_code=$(run_cli_exit_code key-of key-of-scalar.planning.key-of-scalar format tick)
+assert_equals "$exit_code" "1" "key-of errors when path is not an object"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: key-of works at work-unit level${NC}"
+setup_fixture
+run_cli init key-of-wu --work-type feature --description "Key-of work unit" >/dev/null 2>&1
+run_cli set key-of-wu custom_map '{"a":"x","b":"y"}' >/dev/null 2>&1
+
+output=$(run_cli_stdout key-of key-of-wu custom_map y)
+assert_equals "$output" "b" "key-of works at work-unit level"
+
+echo ""
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 

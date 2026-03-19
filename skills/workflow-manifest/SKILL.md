@@ -243,6 +243,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.js push <name>.implementa
 node .claude/skills/workflow-manifest/scripts/manifest.js push <name>.review.{topic} reviewed_tasks "{topic}-1-1"
 ```
 
+### `key-of`
+
+Find the key in an object whose value matches. Useful for reverse lookups — e.g., finding an internal ID from an external ID in `task_map`.
+
+```bash
+# Find internal ID from external ID
+node .claude/skills/workflow-manifest/scripts/manifest.js key-of <name>.planning.<topic> task_map {external_id}
+```
+
+Output: the matching key to stdout (e.g., `portal-1-1`). Errors if the value is not found or the path is not an object.
+
 ### `exists`
 
 Check whether a work unit, field, or phase entry exists. Always exits 0 — both `true` and `false` are valid results. Outputs `true` or `false` to stdout, nothing to stderr.
