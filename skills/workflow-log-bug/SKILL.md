@@ -1,7 +1,7 @@
 ---
 name: workflow-log-bug
 description: Capture a bug report as a markdown file in the workflow inbox. Use when the user wants to log, note, or save a bug for later.
-allowed-tools: Bash(mkdir -p), Bash(ls .workflows/inbox/)
+allowed-tools: Bash(mkdir -p)
 ---
 
 This skill captures a bug report and writes it to the inbox.
@@ -15,8 +15,6 @@ If there's already conversation context about something broken, synthesise it st
 - Do not suggest fixes or workarounds
 - Do not diagnose root causes or theorise about what's wrong
 - Do not propose solutions or next steps
-
-This skill exists to record what's broken, not to investigate it. Investigation, diagnosis, and resolution belong to later phases in the pipeline — do not encroach on them here.
 
 When ready, generate a short kebab-case slug from the core symptom (e.g., `stale-cache-on-deploy`, `login-timeout`) and write the file:
 

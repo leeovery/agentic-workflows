@@ -1,7 +1,7 @@
 ---
 name: workflow-log-idea
 description: Capture an idea as a markdown file in the workflow inbox. Use when the user wants to log, note, or save an idea for later.
-allowed-tools: Bash(mkdir -p), Bash(ls .workflows/inbox/)
+allowed-tools: Bash(mkdir -p)
 ---
 
 This skill captures an idea and writes it to the inbox.
@@ -15,8 +15,6 @@ If there's already conversation context about an idea, synthesise it straight in
 - Do not suggest architecture or implementation approaches
 - Do not play devil's advocate or challenge the idea
 - Do not propose solutions or next steps
-
-This skill exists to record what the user is thinking, not to evaluate or refine it. Research, discussion, and validation belong to later phases in the pipeline — do not encroach on them here.
 
 When ready, generate a short kebab-case slug from the core concept (e.g., `smart-retry-logic`, `unified-search`) and write the file:
 
