@@ -14,12 +14,13 @@ This step invokes the task writer agent to create plan tasks from approved analy
 
 Pass via the orchestrator's prompt:
 
-1. **Topic name** — the implementation topic
-2. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md`
-3. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
-4. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
-5. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
-6. **Phase label** — `Analysis (Cycle {N})`
+1. **Work unit** — the work unit name (for path construction)
+2. **Topic name** — the implementation topic
+3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md`
+4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
+5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
+6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
+7. **Phase label** — `Analysis (Cycle {N})`
 
 ---
 

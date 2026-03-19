@@ -28,8 +28,9 @@ Dispatch **all three in parallel** via the Task tool. Each agent receives the sa
 2. **Specification path** — from the specification (if available)
 3. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} project_skills`)
 4. **code-quality.md path** — `code-quality.md`
-5. **Topic name** — the implementation topic
-6. **Cycle number** — the current analysis cycle number (from `analysis_cycle` in the manifest: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} analysis_cycle`)
+5. **Work unit** — the work unit name (for path construction)
+6. **Topic name** — the implementation topic
+7. **Cycle number** — the current analysis cycle number (from `analysis_cycle` in the manifest: `node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} analysis_cycle`)
 
 Each agent knows its own output path convention and writes findings independently.
 

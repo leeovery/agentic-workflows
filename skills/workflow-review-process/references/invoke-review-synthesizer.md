@@ -26,10 +26,11 @@ Dispatch **one agent** via the Task tool.
 
 The synthesizer receives:
 
-1. **Plan topic** — the plan being synthesized
-2. **Review path** — path to `review/{topic}/` directory (review summary + QA files)
-3. **Specification path** — from the manifest
-4. **Cycle number** — the review remediation cycle number
+1. **Work unit** — the work unit name (for path construction)
+2. **Plan topic** — the plan being synthesized
+3. **Review path** — path to `review/{topic}/` directory (review summary + QA files)
+4. **Specification path** — from the manifest
+5. **Cycle number** — the review remediation cycle number
 
 ---
 

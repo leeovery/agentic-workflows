@@ -15,11 +15,12 @@ This step invokes the synthesis agent to read analysis findings, deduplicate, an
 Pass via the orchestrator's prompt:
 
 1. **Task normalization reference path** — `task-normalisation.md`
-2. **Topic name** — the implementation topic
-3. **Cycle number** — the current analysis cycle number
-4. **Specification path** — from the specification (if available)
+2. **Work unit** — the work unit name (for path construction)
+3. **Topic name** — the implementation topic
+4. **Cycle number** — the current analysis cycle number
+5. **Specification path** — from the specification (if available)
 
-The agent knows its own file path conventions — it locates findings files and writes output files based on the topic name.
+The agent locates findings files and writes output files using the work unit and topic name.
 
 ---
 
