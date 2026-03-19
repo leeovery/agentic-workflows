@@ -58,20 +58,22 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
 
       const taskMap = {};
 
-      // Parse task table rows: | Internal ID | Name | Edge Cases | Status | External ID |
-      const tableRowRegex = /^\|\\s*([^|]+?)\\s*\|\\s*[^|]+\\s*\|\\s*[^|]+\\s*\|\\s*[^|]+\\s*\|\\s*([^|]*?)\\s*\|/gm;
-      let match;
-      while ((match = tableRowRegex.exec(planContent)) !== null) {
-        const internalId = match[1].trim();
-        const externalId = match[2].trim();
-        // Skip header row and separator
-        if (internalId === 'Internal ID' || internalId.startsWith('-')) continue;
-        if (!externalId) continue;
+      // Parse task table rows line-by-line
+      // Only match rows with exactly 5 data columns (6 pipes): | Internal ID | Name | Edge Cases | Status | External ID |
+      const lines = planContent.split('\\n');
+      for (const line of lines) {
+        const cells = line.split('|').map(c => c.trim());
+        // A 5-column table row has 7 parts when split by | (empty before first pipe, 5 cells, empty after last pipe)
+        if (cells.length < 7) continue;
+        const internalId = cells[1];
+        const externalId = cells[5];
+        // Skip header and separator rows
+        if (!internalId || internalId === 'Internal ID' || internalId === 'ID' || internalId.startsWith('-')) continue;
+        if (!externalId || externalId.startsWith('-')) continue;
         taskMap[internalId] = externalId;
       }
 
       // Parse phase-level external_id fields
-      const lines = planContent.split('\\n');
       let currentPhaseId = null;
       for (const line of lines) {
         // Match phase headers: ### Phase {N}: {Name}
