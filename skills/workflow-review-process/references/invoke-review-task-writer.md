@@ -22,9 +22,10 @@ Pass via the orchestrator's prompt:
 
 1. **Topic name** — the implementation topic (scopes tasks to correct plan)
 2. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle-number}.md`
-3. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
-4. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
-5. **Phase label** — `Review Remediation (Cycle {N})`
+3. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
+4. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
+5. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
+6. **Phase label** — `Review Remediation (Cycle {N})`
 
 ---
 
