@@ -28,8 +28,12 @@ What would you like to start?
 2. **Epic** — large initiative, multi-topic, multi-session
 3. **Bugfix** — fix broken behavior
 
+@if(has_inbox)
+4. **Start from inbox** ({inbox_count} items)
+@endif
+
 @if(completed_count > 0 || cancelled_count > 0)
-4. **View completed & cancelled work units**
+5. **View completed & cancelled work units**
 @endif
 
 Select an option (enter number):
@@ -37,6 +41,12 @@ Select an option (enter number):
 ```
 
 **STOP.** Wait for user response.
+
+#### If user chose "Start from inbox"
+
+→ Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.
+
+→ Return to caller.
 
 #### If user chose a start-new option
 

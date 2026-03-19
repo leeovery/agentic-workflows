@@ -40,6 +40,23 @@ Epics:
 @endforeach
 @endif
 
+@if(has_inbox)
+
+Inbox:
+@if(idea_count > 0)
+  Ideas:
+@foreach(idea in inbox.ideas)
+    • {idea.title} — {idea.date}
+@endforeach
+@endif
+@if(bug_count > 0)
+  Bugs:
+@foreach(bug in inbox.bugs)
+    • {bug.title} — {bug.date}
+@endforeach
+@endif
+@endif
+
 @if(completed_count > 0 || cancelled_count > 0)
 {completed_count} completed, {cancelled_count} cancelled.
 @endif
@@ -64,6 +81,10 @@ What would you like to do?
 4. Start new feature
 5. Start new epic
 6. Start new bugfix
+
+@if(has_inbox)
+- **`i`/`inbox`** — Start from an inbox item
+@endif
 
 @if(completed_count > 0 || cancelled_count > 0)
 7. View completed & cancelled work units
@@ -102,6 +123,12 @@ This skill ends. The invoked skill will load into context and provide additional
 → Load **[view-completed.md](view-completed.md)** and follow its instructions as written.
 
 Re-run discovery to refresh state after potential changes.
+
+→ Return to **A. Display and Menu**.
+
+#### If user chose `i`/`inbox`
+
+→ Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.
 
 → Return to **A. Display and Menu**.
 

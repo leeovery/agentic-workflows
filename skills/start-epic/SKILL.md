@@ -1,6 +1,6 @@
 ---
 name: start-epic
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/), Bash(mkdir -p .workflows/inbox/.archived/), Bash(mv .workflows/inbox/)
 ---
 
 Start a new epic. Gather a brief description, create the work unit, and route to the first phase.
@@ -30,6 +30,14 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 ---
 
 ## Step 1: Gather Epic Context
+
+#### If inbox file path was provided as positional argument (`$0`)
+
+Read the inbox file at the provided path. Use its content as the epic description — skip the gather-context prompt. The slug from the filename (strip the `YYYY-MM-DD--` prefix, strip `.md`) becomes the suggested work unit name in Step 2.
+
+→ Proceed to **Step 2**.
+
+#### Otherwise
 
 Load **[gather-epic-context.md](references/gather-epic-context.md)** and follow its instructions as written.
 
