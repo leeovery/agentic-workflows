@@ -30,8 +30,9 @@ Invoke `workflow-planning-task-author` with these file paths:
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Cross-cutting specs**: cross-cutting spec paths if any
 4. **task-design.md**: `task-design.md`
-5. **Planning file path**: `.workflows/{work_unit}/planning/{topic}/planning.md` — contains all approved phases and the task list for the current phase
-6. **Task detail file path**: `.workflows/{work_unit}/planning/{topic}/phase-{N}-tasks.md`
+5. **All approved phases**: the complete phase structure from the planning file body
+6. **Task list for current phase**: the task table for this specific phase from the planning file
+7. **Task detail file path**: `.workflows/{work_unit}/planning/{topic}/phase-{N}-tasks.md`
 
 The agent writes all tasks to the task detail file and returns.
 
