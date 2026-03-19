@@ -48,7 +48,7 @@ This process constructs a plan from a specification. A plan consists of:
 - **Planning file** — `.workflows/{work_unit}/planning/{topic}/planning.md`. The human-readable plan: phases with goals and acceptance criteria, task tables with internal IDs and edge cases. This is plan content — all state lives in the manifest.
 - **Manifest state** — All metadata (format, status, progress, gate modes, `task_map`) is stored in the manifest via the CLI. The manifest is the single source of truth for planning state.
 - **Task detail files** — Per-phase files at `.workflows/{work_unit}/planning/{topic}/phase-{N}-tasks.md` containing full task specifications. Written during authoring, persist as a permanent record alongside the output format.
-- **Authored Tasks** — Detailed task files written to the chosen **Output Format** (selected during planning). The output format determines where and how task detail is stored.
+- **Authored tasks** — Detailed task files written to the chosen **Output Format** (selected during planning). The output format determines where and how task detail is stored.
 
 Follow every step in sequence. No steps are optional.
 
@@ -104,7 +104,7 @@ Found existing plan for {work_unit} (previously reached phase {N}, task {M}).
 Continue or restart?
 
 - **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.
-- **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, Authored Tasks, and clears manifest state. Other topics are unaffected.
+- **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.
 · · · · · · · · · · · ·
 ```
 
@@ -121,7 +121,7 @@ Continue or restart?
    node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
    ```
 2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
-3. Follow the authoring file's cleanup instructions to remove Authored Tasks for this topic
+3. Follow the authoring file's cleanup instructions to remove Authored tasks for this topic
 4. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
 5. Delete the planning manifest entry:
    ```bash
