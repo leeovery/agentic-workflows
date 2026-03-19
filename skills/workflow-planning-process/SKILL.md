@@ -121,7 +121,7 @@ Continue or restart?
    node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} format
    ```
 2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
-3. Follow the authoring file's cleanup instructions to remove Authored tasks for this topic
+3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic
 4. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
 5. Delete the planning manifest entry:
    ```bash

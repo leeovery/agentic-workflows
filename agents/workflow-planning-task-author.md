@@ -36,7 +36,7 @@ On **amendment**, you also receive:
 
 If this is an **amendment**: read the task detail file, find tasks marked `rejected` (they have a feedback blockquote below the status line). Rewrite the entire task detail file — copy `approved` tasks verbatim, rewrite `rejected` tasks addressing the feedback. Reset rewritten tasks to `pending` status.
 
-## Scratch File Format
+## Task Detail File Format
 
 Write the task detail file with this structure:
 

@@ -38,7 +38,7 @@ By induction, every plan creation resolves all resolvable deps. The only remaini
 `check-dependencies.md` offers `l`/`link` to invoke `/link-dependencies` at implementation time. If planning resolves deps correctly, this is never needed. The remaining implementation gate options (`i`/`implement` the blocker first, `s`/`satisfied externally`) cover all real cases.
 
 **Output format adapters aren't needed for resolution**
-The current `resolve-dependencies.md` and `/link-dependencies` load output format `reading.md` adapters to find matching tasks. This is unnecessary — the plan index file (`planning.md`) has a standard task table (Internal ID, Name, Edge Cases, Status, External ID) regardless of output format. Semantic matching between the dep description and task names is sufficient. Ambiguous matches are already handled via user selection.
+The current `resolve-dependencies.md` and `/link-dependencies` load output format `reading.md` adapters to find matching tasks. This is unnecessary — the planning file (`planning.md`) has a standard task table (Internal ID, Name, Edge Cases) regardless of output format. Semantic matching between the dep description and task names is sufficient. Ambiguous matches are already handled via user selection.
 
 ## Decisions
 
@@ -65,7 +65,7 @@ All three stages add a work-type guard at the top:
 
 ### Enhanced Resolve Dependencies Flow
 
-`resolve-dependencies.md` is rewritten to implement this flow. It replaces the current implementation which loads output format adapters — all resolution now reads the plan index file (`planning.md`) directly, which has a standard task table regardless of output format.
+`resolve-dependencies.md` is rewritten to implement this flow. It replaces the current implementation which loads output format adapters — all resolution now reads the planning file (`planning.md`) directly, which has a standard task table regardless of output format.
 
 After a plan is created and all tasks are authored (epic work type only):
 
@@ -120,7 +120,7 @@ Remove the standalone skill and all references:
 - Remove from `update-workflow-explorer` SKILL.md (file mapping table)
 - Remove from `resolve-dependencies.md` line 26
 - Remove from `dependencies.md` lifecycle/resolution sections (rewrite to reflect Parts A/B/C flow)
-- Update `plan-index-schema.md` — rename `task_id` references to `internal_id` in external_dependencies documentation
+- Note: `plan-index-schema.md` has been deleted — `task_id`/`internal_id` references in external_dependencies documentation should be checked against the planning file and manifest
 
 ### Migration
 
