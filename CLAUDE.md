@@ -8,6 +8,10 @@ Claude Code skills package for structured technical discussion and planning work
 
 **This CLAUDE.md is development documentation for authoring the workflows — it does not ship with the product.** When installed, only the skills and agents are copied into the target project (which has its own CLAUDE.md). Skills and agents must be fully self-contained — never rely on this file for runtime behaviour, conventions, or formats that agents need to follow.
 
+## Git Workflow
+
+Always create a feature branch **before** the first commit. Never commit to main and move commits after. The only exception is when explicitly told to commit to main.
+
 ## Workflow Phases
 
 1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas

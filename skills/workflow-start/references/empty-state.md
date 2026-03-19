@@ -24,31 +24,29 @@ No active work found.
 · · · · · · · · · · · ·
 What would you like to start?
 
-1. **Feature** — add functionality to an existing product
-2. **Epic** — large initiative, multi-topic, multi-session
-3. **Bugfix** — fix broken behavior
-
+- **`f`/`feature`** — Add functionality to an existing product
+- **`e`/`epic`** — Large initiative, multi-topic, multi-session
+- **`b`/`bugfix`** — Fix broken behavior
 @if(has_inbox)
-4. **Start from inbox** ({inbox_count} items)
+- **`i`/`inbox`** — Start from an inbox item ({inbox_count} items)
 @endif
-
 @if(completed_count > 0 || cancelled_count > 0)
-5. **View completed & cancelled work units**
+- **`v`/`view`** — View completed & cancelled work units
 @endif
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-#### If user chose "Start from inbox"
+#### If user chose `i`/`inbox`
 
 → Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.
 
 → Return to caller.
 
-#### If user chose a start-new option
+#### If user chose `f`/`feature`, `e`/`epic`, or `b`/`bugfix`
 
 Invoke the selected skill:
 
@@ -60,7 +58,7 @@ Invoke the selected skill:
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
-#### If user chose "View completed & cancelled"
+#### If user chose `v`/`view`
 
 → Load **[view-completed.md](view-completed.md)** and follow its instructions as written.
 

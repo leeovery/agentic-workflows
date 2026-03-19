@@ -4,15 +4,44 @@
 
 ---
 
-Manage an in-progress work unit's lifecycle. Self-contained four-step flow. Uses the numbered in-progress items already displayed by the caller.
+Manage an in-progress work unit's lifecycle. Self-contained four-step flow.
 
 ## A. Select
+
+> *Output the next fenced block as a code block:*
+
+```
+Manage
+
+@if(feature_count > 0)
+Features:
+@foreach(unit in features.work_units)
+  {N}. {unit.name:(titlecase)}
+@endforeach
+@endif
+
+@if(bugfix_count > 0)
+Bugfixes:
+@foreach(unit in bugfixes.work_units)
+  {N}. {unit.name:(titlecase)}
+@endforeach
+@endif
+
+@if(epic_count > 0)
+Epics:
+@foreach(unit in epics.work_units)
+  {N}. {unit.name:(titlecase)}
+@endforeach
+@endif
+```
+
+Build from discovery output. Only show sections that have work units. Numbering is continuous across sections — same numbers as the overview.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Which work unit would you like to manage? (enter number from list above, or **`b`/`back`** to return)
+Select a work unit (enter number, or **`b`/`back`** to return):
 · · · · · · · · · · · ·
 ```
 

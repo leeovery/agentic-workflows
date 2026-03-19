@@ -24,11 +24,17 @@ Build a numbered list combining all ideas and bugs, sorted by date (oldest first
 
 ```
 · · · · · · · · · · · ·
-Select an item (enter number):
+Select an item (enter number, or **`b`/`back`** to return):
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
+
+#### If user chose `b`/`back`
+
+→ Return to caller.
+
+#### If user chose a number
 
 → Proceed to **B. Load and Route**.
 
