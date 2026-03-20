@@ -34,7 +34,7 @@ Check status:
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
 ```
 
-#### If plan status is not `completed`
+**If plan status is not `completed`:**
 
 > *Output the next fenced block as a code block:*
 
@@ -46,7 +46,7 @@ The plan for "{topic:(titlecase)}" is not yet completed.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan status is `completed`
+**If plan status is `completed`:**
 
 → Proceed to **B. Implementation Check**.
 

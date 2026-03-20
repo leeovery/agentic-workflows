@@ -28,13 +28,11 @@ A completed plan and completed implementation are required for review.
 
 #### If plan exists (`true`)
 
-→ Proceed to check implementation.
-
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.implementation.{topic}
 ```
 
-#### If implementation doesn't exist (`false`)
+**If implementation doesn't exist (`false`):**
 
 > *Output the next fenced block as a code block:*
 
@@ -48,7 +46,7 @@ A completed implementation is required for review.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If implementation exists (`true`)
+**If implementation exists (`true`):**
 
 → Proceed to **B. Implementation Status**.
 
