@@ -6,28 +6,19 @@
 
 Promote an epic specification assessed as cross-cutting to its own cross-cutting work unit.
 
+Derive the new work unit name: `cc_work_unit = {topic}`. All work-unit-level operations below use `{cc_work_unit}`. The original `{topic}` is only used when referencing the item within the epic's phases.
+
 ## A. Collision Check
 
-Check if a work unit with the topic name already exists:
+Check if a work unit with this name already exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js exists {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js exists {cc_work_unit}
 ```
 
 #### If `true`
 
-> *Output the next fenced block as a code block:*
-
-```
-Promotion Blocked
-
-A work unit named "{topic}" already exists. Cannot promote — name collision.
-
-Resolve the conflict manually (rename the existing work unit or choose
-a different topic name) before retrying.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Choose a descriptive alternative name that captures the cross-cutting concern (e.g., append a qualifier like `{topic}-policy`, `{topic}-patterns`, or use a more specific name derived from the specification content). Assign the alternative to `cc_work_unit` and re-check.
 
 #### If `false`
 
@@ -38,15 +29,15 @@ a different topic name) before retrying.
 Create the new cross-cutting work unit and mark it as completed (the pipeline is terminal after spec, and spec is already complete):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init {topic} --work-type cross-cutting --description "{one-line summary from spec}"
-node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js init {cc_work_unit} --work-type cross-cutting --description "{one-line summary from spec}"
+node .claude/skills/workflow-manifest/scripts/manifest.js set {cc_work_unit} status completed
 ```
 
 Set provenance to track the origin:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} source_work_unit {work_unit}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {topic} source_topic {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {cc_work_unit} source_work_unit {work_unit}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {cc_work_unit} source_topic {topic}
 ```
 
 → Proceed to **C. Move Discussion Files**.
@@ -62,34 +53,34 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specif
 For each source that is a discussion file (check if `.workflows/{work_unit}/discussion/{source}.md` exists), move it to the new work unit:
 
 ```bash
-mkdir -p .workflows/{topic}/discussion/
-mv .workflows/{work_unit}/discussion/{source}.md .workflows/{topic}/discussion/{source}.md
+mkdir -p .workflows/{cc_work_unit}/discussion/
+mv .workflows/{work_unit}/discussion/{source}.md .workflows/{cc_work_unit}/discussion/{source}.md
 ```
 
 Initialize discussion phase in the new manifest for each moved source:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {topic}.discussion.{source}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {topic}.discussion.{source} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {cc_work_unit}.discussion.{source}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {cc_work_unit}.discussion.{source} status completed
 ```
 
 → Proceed to **D. Move Specification**.
 
 ## D. Move Specification
 
-Move the specification directory to the new work unit:
+Move the specification directory to the new work unit. For cross-cutting work units, the topic within the specification phase equals the work unit name:
 
 ```bash
-mkdir -p .workflows/{topic}/specification/
-mv .workflows/{work_unit}/specification/{topic}/ .workflows/{topic}/specification/{topic}/
+mkdir -p .workflows/{cc_work_unit}/specification/
+mv .workflows/{work_unit}/specification/{topic}/ .workflows/{cc_work_unit}/specification/{cc_work_unit}/
 ```
 
 Initialize specification phase in the new manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {topic}.specification.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {topic}.specification.{topic} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.js set {topic}.specification.{topic} date $(date +%Y-%m-%d)
+node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {cc_work_unit}.specification.{cc_work_unit}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {cc_work_unit}.specification.{cc_work_unit} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.js set {cc_work_unit}.specification.{cc_work_unit} date $(date +%Y-%m-%d)
 ```
 
 → Proceed to **E. Update Epic Manifest**.
@@ -100,7 +91,7 @@ Mark the topic as promoted in the epic manifest:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} status promoted
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} promoted_to {topic}
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} promoted_to {cc_work_unit}
 ```
 
 → Proceed to **F. Commit and Display**.
@@ -116,6 +107,7 @@ Promoted to Cross-Cutting
 
 "{topic:(titlecase)}" has been promoted to its own cross-cutting work unit.
 
+  Work unit: {cc_work_unit}
   Source: {work_unit}
   Discussion files: moved
   Specification: moved
