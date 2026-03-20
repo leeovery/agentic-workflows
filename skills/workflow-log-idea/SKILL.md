@@ -19,10 +19,10 @@ If there's already conversation context about an idea, synthesise it straight in
 When ready, generate a short kebab-case slug from the core concept (e.g., `smart-retry-logic`, `unified-search`) and write the file:
 
 ```bash
-mkdir -p .workflows/inbox/ideas
+mkdir -p .workflows/.inbox/ideas
 ```
 
-**File:** `.workflows/inbox/ideas/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
+**File:** `.workflows/.inbox/ideas/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
 - H1 title, prose body, 200-500 words
 - No forced headings — let the content flow naturally
 - Mention relevant codebase files, constraints, or goals if they came up

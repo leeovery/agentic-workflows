@@ -1,6 +1,6 @@
 ---
 name: start-bugfix
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/), Bash(mkdir -p .workflows/inbox/.archived/), Bash(mv .workflows/inbox/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
 ---
 
 Start a new bugfix. Gather a brief description, create the work unit, and route to investigation.

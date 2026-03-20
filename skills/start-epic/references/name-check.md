@@ -72,8 +72,8 @@ Where `{description}` is a concise one-line summary compiled from the epic conte
 **If this work unit was started from an inbox file**, archive it:
 
 ```bash
-mkdir -p .workflows/inbox/.archived/ideas
-mv .workflows/inbox/ideas/{file} .workflows/inbox/.archived/ideas/{file}
+mkdir -p .workflows/.inbox/.archived/ideas
+mv .workflows/.inbox/ideas/{file} .workflows/.inbox/.archived/ideas/{file}
 ```
 
 → Return to caller.

@@ -72,8 +72,8 @@ Where `{description}` is a concise one-line summary compiled from the bug contex
 **If this work unit was started from an inbox file**, archive it:
 
 ```bash
-mkdir -p .workflows/inbox/.archived/bugs
-mv .workflows/inbox/bugs/{file} .workflows/inbox/.archived/bugs/{file}
+mkdir -p .workflows/.inbox/.archived/bugs
+mv .workflows/.inbox/bugs/{file} .workflows/.inbox/.archived/bugs/{file}
 ```
 
 → Return to caller.

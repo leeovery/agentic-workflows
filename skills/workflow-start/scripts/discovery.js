@@ -43,7 +43,7 @@ function parseInboxFile(filename) {
 }
 
 function discoverInbox(cwd) {
-  const inboxDir = path.join(cwd, '.workflows', 'inbox');
+  const inboxDir = path.join(cwd, '.workflows', '.inbox');
   const ideas = [];
   const bugs = [];
 

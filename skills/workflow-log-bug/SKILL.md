@@ -19,10 +19,10 @@ If there's already conversation context about something broken, synthesise it st
 When ready, generate a short kebab-case slug from the core symptom (e.g., `stale-cache-on-deploy`, `login-timeout`) and write the file:
 
 ```bash
-mkdir -p .workflows/inbox/bugs
+mkdir -p .workflows/.inbox/bugs
 ```
 
-**File:** `.workflows/inbox/bugs/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
+**File:** `.workflows/.inbox/bugs/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
 - H1 title, prose body, 200-500 words
 - No forced headings — let the content flow naturally
 - Naturally cover symptoms, conditions, and impact as discussed
