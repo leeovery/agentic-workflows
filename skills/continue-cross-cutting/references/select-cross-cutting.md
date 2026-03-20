@@ -34,7 +34,7 @@ Build from the discovery output's `cross_cutting` array. Each shows `name` (titl
 · · · · · · · · · · · ·
 Which cross-cutting concern would you like to continue?
 
-1. Continue "{cc.name:(titlecase)}" — {cc.phase_label}
+1. Continue "{cross_cutting.name:(titlecase)}" — {cross_cutting.phase_label}
 2. ...
 
 @if(completed_count > 0 || cancelled_count > 0)
