@@ -115,8 +115,7 @@ Key:
 
   Status:
     in-progress — work is ongoing
-    completed   — phase done
-    completed   — all tasks implemented
+    completed   — phase or implementation done
     promoted    — moved to its own cross-cutting work unit
 
   Blocking reason:

@@ -51,6 +51,8 @@ Run /continue-cross-cutting to resume, or choose a different name.
 
 ```
 · · · · · · · · · · · ·
+What would you like to do?
+
 - **`n`/`new`** — Choose a different name
 · · · · · · · · · · · ·
 ```

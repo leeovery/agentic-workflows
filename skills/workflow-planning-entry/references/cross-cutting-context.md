@@ -53,6 +53,8 @@ These may contain architectural decisions relevant to this plan.
 
 ```
 · · · · · · · · · · · ·
+Proceed without these, or complete them first?
+
 - **`c`/`continue`** — Plan without them
 - **`s`/`stop`** — Complete them first
 · · · · · · · · · · · ·
@@ -88,7 +90,7 @@ For each completed cross-cutting spec, read the specification file at `.workflow
 
 ```
 Cross-cutting specifications to reference:
-- {topic}: {brief summary of key decisions}
+  • {topic}: {brief summary of key decisions}
 ```
 
 These specifications contain validated architectural decisions that should inform the plan. The planning skill will incorporate these as a "Cross-Cutting References" section in the plan.

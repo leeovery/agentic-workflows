@@ -43,21 +43,21 @@ Cross-Cutting Completed
 
 Set `target_phase` = `next_phase`.
 
-→ Proceed to **C. Check for Earlier Phases**.
+→ Proceed to **B. Check for Earlier Phases**.
 
-## C. Check for Earlier Phases
+## B. Check for Earlier Phases
 
 Check if there are completed phases earlier in the pipeline that the user could revisit. Look at the discovery output's `phases` data — any phase with status `completed` that comes before `next_phase` in the pipeline order.
 
 #### If no earlier completed phases exist
 
-→ Proceed to **F. Enter Plan Mode**.
+→ Proceed to **E. Enter Plan Mode**.
 
 #### If earlier completed phases exist
 
-→ Proceed to **D. Offer Revisit**.
+→ Proceed to **C. Offer Revisit**.
 
-## D. Offer Revisit
+## C. Offer Revisit
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -67,7 +67,6 @@ Check if there are completed phases earlier in the pipeline that the user could 
 
 - **`y`/`yes`** — Proceed to {next_phase}
 - **`r`/`revisit`** — Revisit an earlier phase
-
 · · · · · · · · · · · ·
 ```
 
@@ -75,13 +74,13 @@ Check if there are completed phases earlier in the pipeline that the user could 
 
 #### If user chose `y`/`yes`
 
-→ Proceed to **F. Enter Plan Mode**.
+→ Proceed to **E. Enter Plan Mode**.
 
 #### If user chose `r`/`revisit`
 
-→ Proceed to **E. Select Phase**.
+→ Proceed to **D. Select Phase**.
 
-## E. Select Phase
+## D. Select Phase
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -103,15 +102,15 @@ List only completed phases that come before `next_phase`.
 
 #### If user chose Back
 
-→ Return to **D. Offer Revisit**.
+→ Return to **C. Offer Revisit**.
 
 #### If user chose a phase
 
 Set `target_phase` = selected phase.
 
-→ Proceed to **F. Enter Plan Mode**.
+→ Proceed to **E. Enter Plan Mode**.
 
-## F. Enter Plan Mode
+## E. Enter Plan Mode
 
 Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
 
