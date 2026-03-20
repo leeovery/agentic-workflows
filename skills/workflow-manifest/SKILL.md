@@ -84,7 +84,7 @@ $MANIFEST list [--status s] [--work-type t]
 Create a new work unit manifest.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js init <name> --work-type <epic|feature|bugfix> --description "..."
+node .claude/skills/workflow-manifest/scripts/manifest.js init <name> --work-type <epic|feature|bugfix|cross-cutting> --description "..."
 ```
 
 Creates `.workflows/<name>/manifest.json` with identity fields and empty phases. Errors if manifest already exists. Rejects names containing dots or matching phase names.
@@ -281,22 +281,46 @@ If the work unit doesn't exist and a deeper path is requested, outputs `false` (
 
 **Wildcard topic** (`*` as third segment) — outputs `true` if any topic in the phase matches (has the field, or exists at all if no field specified), `false` otherwise. Always exits 0.
 
+### `project`
+
+Read the project manifest (`.workflows/manifest.json`). The project manifest tracks all work units and their types.
+
+**List work units:**
+```bash
+# All registered work units
+node .claude/skills/workflow-manifest/scripts/manifest.js project list
+
+# Filter by work type
+node .claude/skills/workflow-manifest/scripts/manifest.js project list --type cross-cutting
+```
+
+Output: one name per line. No output if none found.
+
+**Get work unit entry:**
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.js project get <name>
+```
+
+Output: `work_type: <type>`. Errors if not found.
+
+The project manifest is automatically updated when `init` creates a new work unit.
+
 ## Validation
 
 The CLI validates structural values to prevent invalid state:
 
-| Field                          | Valid Values                             |
-|--------------------------------|------------------------------------------|
-| `work_type`                    | `epic`, `feature`, `bugfix`              |
-| `status` (work unit)           | `in-progress`, `completed`, `cancelled`  |
-| Item `status` (research)       | `in-progress`, `completed`               |
-| Item `status` (discussion)     | `in-progress`, `completed`               |
-| Item `status` (investigation)  | `in-progress`, `completed`               |
-| Item `status` (specification)  | `in-progress`, `completed`, `superseded` |
-| Item `status` (planning)       | `in-progress`, `completed`               |
-| Item `status` (implementation) | `in-progress`, `completed`               |
-| Item `status` (review)         | `in-progress`, `completed`               |
-| Gate modes (`*_gate_mode`)     | `gated`, `auto`                          |
+| Field                          | Valid Values                                       |
+|--------------------------------|----------------------------------------------------|
+| `work_type`                    | `epic`, `feature`, `bugfix`, `cross-cutting`       |
+| `status` (work unit)           | `in-progress`, `completed`, `cancelled`            |
+| Item `status` (research)       | `in-progress`, `completed`                         |
+| Item `status` (discussion)     | `in-progress`, `completed`                         |
+| Item `status` (investigation)  | `in-progress`, `completed`                         |
+| Item `status` (specification)  | `in-progress`, `completed`, `superseded`, `promoted` |
+| Item `status` (planning)       | `in-progress`, `completed`                         |
+| Item `status` (implementation) | `in-progress`, `completed`                         |
+| Item `status` (review)         | `in-progress`, `completed`                         |
+| Gate modes (`*_gate_mode`)     | `gated`, `auto`                                    |
 
 Status is always tracked at the item level (`phases.{phase}.items.{topic}.status`), never at the phase level.
 

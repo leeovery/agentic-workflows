@@ -12,7 +12,6 @@ Create the specification file at `.workflows/{work_unit}/specification/{topic}/s
 2. Register specification and initialize state via manifest CLI:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.js init-phase {work_unit}.specification.{topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} type feature
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} review_cycle 0
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} finding_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)

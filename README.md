@@ -69,6 +69,7 @@ Or jump straight in:
 | `/start-feature` | You're adding functionality to an existing product |
 | `/start-epic` | The work spans multiple topics and sessions |
 | `/start-bugfix` | Something is broken and needs fixing |
+| `/start-cross-cutting` | You're defining patterns or policies that inform features |
 | `/workflow-log-idea` | You want to capture an idea for later |
 | `/workflow-log-bug` | You want to log a bug for later |
 
@@ -79,25 +80,28 @@ Each command gathers context through a brief interview, then pipelines you throu
 Three work types, each with its own pipeline:
 
 ```
-Epic:      Research → Discussion → Specification → Planning → Implementation → Review
-Feature: (Research) → Discussion → Specification → Planning → Implementation → Review
-Bugfix:            Investigation → Specification → Planning → Implementation → Review
+Epic:          Research → Discussion → Specification → Planning → Implementation → Review
+Feature:     (Research) → Discussion → Specification → Planning → Implementation → Review
+Bugfix:                Investigation → Specification → Planning → Implementation → Review
+Cross-cutting: (Research) → Discussion → Specification (terminal)
 ```
 
 These aren't just different shapes — every phase adapts its behaviour to the work type. This runs deep, from how research is analysed to how plans are structured to how review findings are prioritised.
 
-**Epics** are for large initiatives spanning multiple sessions. Topics move independently — 10 discussions might yield 5 specifications, each planned and implemented separately. Planning uses walking skeletons and steel threads to prove architecture end-to-end before building features on top. Advisory soft gates warn when moving between phases if prerequisite items are still in progress.
+**Epics** are for large initiatives spanning multiple sessions. Topics move independently — 10 discussions might yield 5 specifications, each planned and implemented separately. Planning uses walking skeletons and steel threads to prove architecture end-to-end before building features on top. Advisory soft gates warn when moving between phases if prerequisite items are still in progress. When a spec is assessed as cross-cutting, it's auto-promoted to its own cross-cutting work unit.
 
 **Features** are for adding functionality. Single topic, linear pipeline. Planning analyses your codebase and follows existing patterns — it won't introduce new architectural conventions unless the spec calls for it. Research is optional — skip it if you know what you're building. If a feature grows beyond scope, pivot it to an epic without losing progress.
 
 **Bugfixes** replace discussion with investigation — structured symptom gathering combined with code analysis to find the root cause before specifying the fix. Planning applies minimal-change surgical fixes with regression prevention as a first-class deliverable.
 
+**Cross-cutting** concerns define patterns, policies, or architectural decisions that inform how features are built (caching strategies, error handling conventions, API versioning). They terminate after specification — there's nothing to build. During planning for any work type, completed cross-cutting specs are surfaced as context.
+
 ### The Phases
 
 | Phase | Purpose | Applies to |
 |-------|---------|------------|
-| **Research** | Explore ideas, market fit, technical feasibility. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.) |
-| **Discussion** | Deep dives into architecture, edge cases, and rationale. Captures not just decisions, but *why* you made them. | Epic, Feature |
+| **Research** | Explore ideas, market fit, technical feasibility. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
+| **Discussion** | Deep dives into architecture, edge cases, and rationale. Captures not just decisions, but *why* you made them. | Epic, Feature, Cross-cutting |
 | **Investigation** | Symptom gathering + code analysis to identify root cause. The bugfix alternative to discussion. | Bugfix |
 | **Specification** | Analyses all discussions/investigation, filters hallucinations, enriches gaps, validates decisions. Reviewed against source material and analysed for gaps before finalising. The spec becomes the golden document — planning references only this. | All |
 | **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. Validated for spec traceability and structural integrity. Per-item approval gates with auto-mode. | All |
@@ -178,9 +182,9 @@ Log ideas and bugs as you go — mid-conversation or from scratch. Say "log that
 <details>
 <summary><strong>Entry-Point Skills</strong> — user-facing commands</summary>
 
-**Start:** [`/start-feature`](skills/start-feature/) | [`/start-epic`](skills/start-epic/) | [`/start-bugfix`](skills/start-bugfix/)
+**Start:** [`/start-feature`](skills/start-feature/) | [`/start-epic`](skills/start-epic/) | [`/start-bugfix`](skills/start-bugfix/) | [`/start-cross-cutting`](skills/start-cross-cutting/)
 
-**Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/)
+**Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/) | [`/continue-cross-cutting`](skills/continue-cross-cutting/)
 
 **Capture:** [`/workflow-log-idea`](skills/workflow-log-idea/) | [`/workflow-log-bug`](skills/workflow-log-bug/)
 

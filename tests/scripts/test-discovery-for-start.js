@@ -153,6 +153,44 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.state.has_any_work, false);
   });
 
+  it('groups cross-cutting work units separately', () => {
+    createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
+    createManifest(dir, 'auth', { work_type: 'feature' });
+    const r = discover(dir);
+    assert.strictEqual(r.state.cross_cutting_count, 1);
+    assert.strictEqual(r.cross_cutting.work_units[0].name, 'caching');
+    assert.strictEqual(r.state.feature_count, 1);
+    assert.strictEqual(r.state.has_any_work, true);
+  });
+
+  it('cross-cutting includes phase_label', () => {
+    createManifest(dir, 'caching', {
+      work_type: 'cross-cutting',
+      phases: { discussion: { items: { caching: { status: 'in-progress' } } } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.cross_cutting.work_units[0].phase_label, 'discussion (in-progress)');
+  });
+
+  it('cross-cutting done is excluded from active', () => {
+    createManifest(dir, 'done-cc', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { 'done-cc': { status: 'completed' } } },
+        specification: { items: { 'done-cc': { status: 'completed' } } },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.cross_cutting.count, 0);
+  });
+
+  it('cross-cutting completed shows in completed array', () => {
+    createManifest(dir, 'done-cc', { work_type: 'cross-cutting', status: 'completed' });
+    const r = discover(dir);
+    assert.strictEqual(r.completed_count, 1);
+    assert.strictEqual(r.completed[0].work_type, 'cross-cutting');
+  });
+
   it('epic active_phases ignores flat status with no items', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -269,6 +307,7 @@ describe('workflow-start format', () => {
     assert.ok(out.includes('=== EPICS ==='));
     assert.ok(out.includes('=== FEATURES ==='));
     assert.ok(out.includes('=== BUGFIXES ==='));
+    assert.ok(out.includes('=== CROSS-CUTTING ==='));
     assert.ok(out.includes('=== STATE ==='));
   });
 
@@ -306,7 +345,7 @@ describe('workflow-start format', () => {
   it('includes counts in state', () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
     const out = format(discover(dir));
-    assert.ok(out.includes('counts: 0 epic, 1 feature, 0 bugfix'));
+    assert.ok(out.includes('counts: 0 epic, 1 feature, 0 bugfix, 0 cross-cutting'));
   });
 
   it('includes completed_count and cancelled_count', () => {

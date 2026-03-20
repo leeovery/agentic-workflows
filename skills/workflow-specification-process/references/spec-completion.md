@@ -1,60 +1,71 @@
-# Assess Type & Conclude
+# Assess Cross-Cutting & Conclude
 
 *Reference for **[workflow-specification-process](../SKILL.md)***
 
 ---
 
-## A. Determine Specification Type
+## A. Cross-Cutting Assessment
 
-Before asking for sign-off, assess whether this is a **feature** or **cross-cutting** specification. See **[specification-format.md](specification-format.md)** for type definitions.
+#### If work_type is `epic`
 
-**Feature specification** — Something to build:
+Before asking for sign-off, assess whether this specification defines cross-cutting patterns rather than something to build directly.
+
+**Cross-cutting indicators** — Patterns/policies that inform other work:
+- Defines "how to do things" rather than "what to build"
+- Will be referenced by multiple specifications
+- Implementation happens within features that apply these patterns
+
+**Directly plannable indicators** — Something to build:
 - Has concrete deliverables (code, APIs, UI)
 - Can be planned with phases, tasks, acceptance criteria
 - Results in a standalone implementation
-
-**Cross-cutting specification** — Patterns/policies that inform other work:
-- Defines "how to do things" rather than "what to build"
-- Will be referenced by multiple feature specifications
-- Implementation happens within features that apply these patterns
 
 Present your assessment to the user:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Type Assessment
+Cross-Cutting Assessment
 
-This specification appears to be a {feature/cross-cutting} specification.
+@if(cross_cutting)
+This specification appears to be cross-cutting.
+@else
+This specification is directly plannable — no cross-cutting promotion needed.
+@endif
 
 {Brief rationale — e.g., "It defines a caching strategy that will inform how
 multiple features handle data retrieval, rather than being a standalone piece
 of functionality to build."}
-
-  Feature specs      — standalone, directly actionable
-  Cross-cutting specs — referenced by feature specs, no own action plan
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Confirm this type assessment?
+Confirm this assessment?
 
-- **`y`/`yes`** — Confirm type assessment
+- **`y`/`yes`** — Confirm assessment
 - **Comment** — Suggest a different classification
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-#### If comment
+**If comment:**
 
 Discuss the user's suggested classification and re-assess.
 
-→ Return to **A. Determine Specification Type**.
+→ Return to **A. Cross-Cutting Assessment**.
 
-#### If `yes`
+**If `yes`:**
+
+Store the confirmed assessment for use in Section F.
+
+→ Proceed to **B. Verify Tracking Files Complete**.
+
+#### Otherwise
+
+No assessment needed — feature, bugfix, and cross-cutting work types always produce directly plannable specifications.
 
 → Proceed to **B. Verify Tracking Files Complete**.
 
@@ -108,7 +119,6 @@ Update the specification metadata via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} type {type}  # feature or cross-cutting, as confirmed in Section A
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
@@ -117,7 +127,6 @@ Specification is complete when:
 - All sources are marked as `incorporated`
 - At least one review cycle completed with no findings, OR user explicitly chose to proceed past the re-loop prompt
 - All review tracking files marked `status: complete`
-- Type has been determined and confirmed
 - User confirms the specification is complete
 - No blocking gaps remain
 
@@ -145,25 +154,11 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 ## F. Pipeline Continuation
 
-Read the specification type from the manifest:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} type
-```
+#### If work_type is `epic` and assessment was `cross-cutting`
 
-#### If `type` is `cross-cutting`
+→ Load **[promote-to-cross-cutting.md](promote-to-cross-cutting.md)** and follow its instructions as written.
 
-> *Output the next fenced block as a code block:*
-
-```
-Cross-cutting specification completed: {topic}
-
-This specification defines patterns/policies referenced by feature plans.
-It does not proceed to planning independently.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If `type` is `feature` (or not set)
+#### Otherwise
 
 Invoke the bridge:
 

@@ -27,6 +27,13 @@ Bugfixes:
 @endforeach
 @endif
 
+@if(cross_cutting_count > 0)
+Cross-Cutting:
+@foreach(unit in cross_cutting.work_units)
+  {N}. {unit.name:(titlecase)}
+@endforeach
+@endif
+
 @if(epic_count > 0)
 Epics:
 @foreach(unit in epics.work_units)

@@ -31,6 +31,15 @@ Bugfixes:
 @endforeach
 @endif
 
+@if(cross_cutting_count > 0)
+Cross-Cutting:
+@foreach(unit in cross_cutting.work_units)
+  {N}. {unit.name:(titlecase)}
+     └─ {unit.phase_label:(titlecase)}
+
+@endforeach
+@endif
+
 @if(epic_count > 0)
 Epics:
 @foreach(unit in epics.work_units)
@@ -76,11 +85,13 @@ What would you like to do?
 
 1. Continue "{feature.name:(titlecase)}" — feature, {feature.phase_label}
 2. Continue "{bugfix.name:(titlecase)}" — bugfix, {bugfix.phase_label}
-3. Continue "{epic.name:(titlecase)}" — epic
+3. Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
+4. Continue "{epic.name:(titlecase)}" — epic
 
 - **`f`/`feature`** — Start new feature
 - **`e`/`epic`** — Start new epic
 - **`b`/`bugfix`** — Start new bugfix
+- **`c`/`cross-cutting`** — Start new cross-cutting concern
 @if(has_inbox)
 - **`i`/`inbox`** — Start from an inbox item
 @endif
@@ -93,7 +104,7 @@ Select an option (enter number or command):
 · · · · · · · · · · · ·
 ```
 
-**Continue items:** Feature/bugfix shows type + phase label. Epic just shows "epic" (detail is in continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
+**Continue items:** Feature/bugfix/cross-cutting shows type + phase label. Epic just shows "epic" (detail is in continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
 
 **Command options:** Start-new, inbox, view, and manage are always command options (not numbered). Always show all three start options.
 
@@ -109,10 +120,12 @@ Invoke the selected skill:
 |-----------|--------|
 | Continue feature | `/continue-feature {work_unit}` |
 | Continue bugfix | `/continue-bugfix {work_unit}` |
+| Continue cross-cutting | `/continue-cross-cutting {work_unit}` |
 | Continue epic | `/continue-epic {work_unit}` |
 | Start new feature | `/start-feature` |
 | Start new epic | `/start-epic` |
 | Start new bugfix | `/start-bugfix` |
+| Start new cross-cutting | `/start-cross-cutting` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 

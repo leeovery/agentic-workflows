@@ -79,6 +79,7 @@ function discover(cwd) {
   const epics = [];
   const features = [];
   const bugfixes = [];
+  const cross_cutting = [];
 
   for (const m of manifests) {
     const state = computeNextPhase(m);
@@ -103,6 +104,8 @@ function discover(cwd) {
       epics.push(unit);
     } else if (m.work_type === 'bugfix') {
       bugfixes.push(unit);
+    } else if (m.work_type === 'cross-cutting') {
+      cross_cutting.push(unit);
     } else {
       features.push(unit);
     }
@@ -127,16 +130,18 @@ function discover(cwd) {
     epics: { work_units: epics, count: epics.length },
     features: { work_units: features, count: features.length },
     bugfixes: { work_units: bugfixes, count: bugfixes.length },
+    cross_cutting: { work_units: cross_cutting, count: cross_cutting.length },
     completed,
     cancelled,
     completed_count: completed.length,
     cancelled_count: cancelled.length,
     inbox,
     state: {
-      has_any_work: (epics.length + features.length + bugfixes.length) > 0,
+      has_any_work: (epics.length + features.length + bugfixes.length + cross_cutting.length) > 0,
       epic_count: epics.length,
       feature_count: features.length,
       bugfix_count: bugfixes.length,
+      cross_cutting_count: cross_cutting.length,
       has_inbox: inbox.total_count > 0,
       inbox_count: inbox.total_count,
     },
@@ -164,6 +169,7 @@ function format(result) {
   emitSection('epics', result.epics.work_units);
   emitSection('features', result.features.work_units);
   emitSection('bugfixes', result.bugfixes.work_units);
+  emitSection('cross-cutting', result.cross_cutting.work_units);
 
   if (result.completed.length > 0) {
     lines.push('=== COMPLETED ===');
@@ -196,7 +202,7 @@ function format(result) {
 
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
-  lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix`);
+  lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix, ${result.state.cross_cutting_count} cross-cutting`);
   lines.push(`completed_count: ${result.completed_count}`);
   lines.push(`cancelled_count: ${result.cancelled_count}`);
   lines.push(`has_inbox: ${result.state.has_inbox}`);

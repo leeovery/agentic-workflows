@@ -19,7 +19,6 @@ Specification metadata is stored in the work-unit manifest, not in file frontmat
 ```bash
 # Read fields
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} status
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} type
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} review_cycle
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} finding_gate_mode
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.specification.{topic} sources.{source-name}.status
@@ -32,7 +31,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.specif
 | Field | Set when |
 |-------|----------|
 | `status` | Spec creation → `in-progress`; completion → `completed` |
-| `type` | Spec creation → `feature` (default); completion → `feature` or `cross-cutting` |
 | `date` | Spec creation — today's date; update on each commit |
 | `review_cycle` | Starts at 0; incremented each review cycle. Missing field treated as 0. |
 | `finding_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
@@ -98,69 +96,8 @@ If a new source is added to a completed specification (via grouping analysis), t
 
 ---
 
-## Specification Types
+## Cross-Cutting Concerns
 
-The `type` field distinguishes between specifications that result in standalone implementation work versus those that inform how other work is done.
+Cross-cutting concerns (caching strategies, rate-limiting policies, work conventions) are a separate work type with their own pipeline: Research (optional) → Discussion → Specification (terminal). They are created via `/start-cross-cutting` or promoted from epic specifications at completion time.
 
-### Feature Specifications (`type: feature`)
-
-Feature specifications describe something to **build** — a concrete piece of functionality with its own implementation plan.
-
-**Examples:**
-- User authentication system
-- Order processing pipeline
-- Notification service
-- Dashboard analytics
-
-**Characteristics:**
-- Results in a dedicated implementation plan
-- Has concrete deliverables (code, APIs, UI)
-- Can be planned with phases, tasks, and acceptance criteria
-- Progress is measurable ("the feature is done")
-
-**This is the default type.** If not specified, assume `feature`.
-
-### Cross-Cutting Specifications (`type: cross-cutting`)
-
-Cross-cutting specifications describe **patterns, policies, or architectural decisions** that inform how features are built. They don't result in standalone implementation — instead, they're referenced by feature specifications and plans.
-
-**Examples:**
-- Caching strategy
-- Rate limiting policy
-- Error handling conventions
-- Logging and observability standards
-- API versioning approach
-- Security patterns
-
-**Characteristics:**
-- Does NOT result in a dedicated implementation plan
-- Defines "how to do things" rather than "what to build"
-- Referenced by multiple feature specifications
-- Implementation happens within features that apply these patterns
-- No standalone "done" state — the patterns are applied across features
-
-### Why This Matters
-
-Cross-cutting specifications go through the same validation phases. The decisions are just as important to validate and document. The difference is what happens after:
-
-- **Feature specs** → Planning → Implementation → Review
-- **Cross-cutting specs** → Referenced by feature plans → Applied during feature implementation
-
-When planning a feature, the planning process surfaces relevant cross-cutting specifications as context. This ensures that a "user authentication" plan incorporates the validated caching strategy and error handling conventions.
-
-### Determining the Type
-
-Ask: **"Is there a standalone thing to build, or does this inform how we build other things?"**
-
-| Question | Feature | Cross-Cutting |
-|----------|---------|---------------|
-| Can you demo it when done? | Yes — "here's the login page" | No — it's invisible infrastructure |
-| Does it have its own UI/API/data? | Yes | No — lives within other features |
-| Can you plan phases and tasks for it? | Yes | Tasks would be "apply X to feature Y" |
-| Is it used by one feature or many? | Usually one | By definition, multiple |
-
-**Edge cases:**
-- A "caching service" that provides shared caching infrastructure → **Feature** (you're building something)
-- "How we use caching across the app" → **Cross-cutting** (policy/pattern)
-- Authentication system → **Feature**
-- Authentication patterns and security requirements → **Cross-cutting**
+During planning for any work type, the planning entry skill surfaces completed cross-cutting specifications as context, ensuring features and bugfixes incorporate validated architectural decisions.

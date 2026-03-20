@@ -1,7 +1,7 @@
 ---
 name: workflow-specification-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.js), Bash(mkdir -p .workflows/), Bash(mv .workflows/)
 ---
 
 # Specification Process
@@ -168,7 +168,7 @@ Load **[spec-review.md](references/spec-review.md)** and follow its instructions
 
 ---
 
-## Step 8: Assess Type & Conclude
+## Step 8: Assess Cross-Cutting & Conclude
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.
 

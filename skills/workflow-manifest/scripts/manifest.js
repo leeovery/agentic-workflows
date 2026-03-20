@@ -10,7 +10,7 @@ const path = require('path');
 
 const WORKFLOWS_DIR = path.resolve(process.cwd(), '.workflows');
 
-const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix'];
+const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting'];
 
 const VALID_PHASES = [
   'research', 'discussion', 'investigation',
@@ -22,7 +22,7 @@ const VALID_PHASE_STATUSES = {
   research:       ['in-progress', 'completed'],
   discussion:     ['in-progress', 'completed'],
   investigation:  ['in-progress', 'completed'],
-  specification:  ['in-progress', 'completed', 'superseded'],
+  specification:  ['in-progress', 'completed', 'superseded', 'promoted'],
   planning:       ['in-progress', 'completed'],
   implementation: ['in-progress', 'completed'],
   review:         ['in-progress', 'completed'],
@@ -372,6 +372,17 @@ function cmdInit(args) {
   };
 
   writeManifestAtomic(name, manifest);
+
+  // Register in project manifest
+  const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
+  let proj = {};
+  if (fs.existsSync(projPath)) {
+    proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
+  }
+  if (!proj.work_units) proj.work_units = {};
+  proj.work_units[name] = { work_type: workType };
+  fs.writeFileSync(projPath, JSON.stringify(proj, null, 2) + '\n');
+
   process.stdout.write(`Created work unit "${name}" (${workType})\n`);
 }
 
@@ -602,6 +613,46 @@ function cmdExists(args) {
   process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
 }
 
+function cmdProject(args) {
+  const sub = args[0];
+  if (!sub) die('Usage: project <list|get> [args]');
+
+  if (sub === 'list') {
+    let filterType = null;
+    for (let i = 1; i < args.length; i++) {
+      if (args[i] === '--type' && i + 1 < args.length) {
+        filterType = args[++i];
+      }
+    }
+    const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
+    if (!fs.existsSync(projPath)) {
+      // No output — no work units registered
+      return;
+    }
+    const proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
+    const units = proj.work_units || {};
+    const names = Object.keys(units).filter(n => !filterType || units[n].work_type === filterType);
+    if (names.length > 0) {
+      process.stdout.write(names.join('\n') + '\n');
+    }
+    return;
+  }
+
+  if (sub === 'get') {
+    const name = args[1];
+    if (!name) die('Usage: project get <name>');
+    const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
+    if (!fs.existsSync(projPath)) die(`Project manifest not found`);
+    const proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
+    const entry = (proj.work_units || {})[name];
+    if (!entry) die(`Work unit "${name}" not found in project manifest`);
+    process.stdout.write(`work_type: ${entry.work_type}\n`);
+    return;
+  }
+
+  die(`Unknown project subcommand "${sub}". Must be: list, get`);
+}
+
 function cmdKeyOf(args) {
   if (args.length < 3) die('Usage: key-of <path> <field.path> <value>');
 
@@ -633,7 +684,7 @@ function cmdKeyOf(args) {
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
-  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, delete, list, init-phase, push, exists, key-of');
+  die('Usage: manifest.js <command> [args]\nCommands: init, get, set, delete, list, init-phase, push, exists, key-of, project');
 }
 
 switch (command) {
@@ -646,5 +697,6 @@ switch (command) {
   case 'push':     cmdPush(args); break;
   case 'exists':   cmdExists(args); break;
   case 'key-of':   cmdKeyOf(args); break;
+  case 'project':  cmdProject(args); break;
   default:         die(`Unknown command "${command}"`);
 }

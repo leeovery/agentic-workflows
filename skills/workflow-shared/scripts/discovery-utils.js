@@ -131,6 +131,9 @@ function computeNextPhase(manifest) {
     return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
   }
   if (ps('specification') === 'completed') {
+    if (wt === 'cross-cutting') {
+      return { next_phase: 'done', phase_label: 'pipeline complete' };
+    }
     return { next_phase: 'planning', phase_label: 'ready for planning' };
   }
   if (ps('specification') === 'in-progress') {
