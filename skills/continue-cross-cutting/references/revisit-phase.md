@@ -26,7 +26,7 @@ Skip this step — route directly to the next phase.
 
 ```
 · · · · · · · · · · · ·
-Continuing "{cc.name:(titlecase)}" — {cc.phase_label}.
+Continuing "{cross_cutting.name:(titlecase)}" — {cross_cutting.phase_label}.
 
 - **`y`/`yes`** — Proceed to {next_phase}
 - **`r`/`revisit`** — Revisit an earlier phase

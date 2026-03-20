@@ -85,7 +85,7 @@ What would you like to do?
 
 1. Continue "{feature.name:(titlecase)}" — feature, {feature.phase_label}
 2. Continue "{bugfix.name:(titlecase)}" — bugfix, {bugfix.phase_label}
-3. Continue "{cc.name:(titlecase)}" — cross-cutting, {cc.phase_label}
+3. Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
 4. Continue "{epic.name:(titlecase)}" — epic
 
 - **`f`/`feature`** — Start new feature
