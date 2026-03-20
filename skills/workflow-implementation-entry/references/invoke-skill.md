@@ -17,22 +17,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planni
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} external_id
 ```
 
-Check implementation state:
+Check if implementation already exists:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.implementation.{topic}
-```
-
-#### If implementation does not exist (`false`)
-
-Set `status` = `not-started`.
-
-#### If implementation exists (`true`)
-
-Check status:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} status
 ```
 
 ```
@@ -42,7 +30,7 @@ Work unit: {work_unit}
 Format: {format}
 External ID: {external_id} (if applicable)
 Specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
-Implementation: {exists | new} (status: {in-progress | not-started | completed})
+Implementation: {exists:[true|false]}
 
 Dependencies: {All satisfied | List any notes}
 Environment: {Setup required | No special setup required}
