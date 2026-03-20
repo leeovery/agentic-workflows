@@ -84,15 +84,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.rev
 
 → Return to caller.
 
-**If exists (`true`):**
-
-Check status:
+**If exists (`true`) and status is `completed`:**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.review.{topic} status
 ```
-
-**If status is `completed`:**
 
 Reset to in-progress:
 
@@ -102,6 +98,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.review
 
 → Return to caller.
 
-**If status is `in-progress`:**
+**If exists (`true`) and status is `in-progress`:**
 
 → Return to caller.
