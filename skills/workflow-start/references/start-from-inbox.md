@@ -60,7 +60,7 @@ What type of work unit?
 
 - **`f`/`feature`** — Single-topic feature
 - **`e`/`epic`** — Multi-topic initiative
-- **`x`/`cross-cutting`** — Cross-cutting concern (pattern or policy)
+- **`c`/`cross-cutting`** — Cross-cutting concern (pattern or policy)
 · · · · · · · · · · · ·
 ```
 
@@ -78,7 +78,7 @@ Invoke `/start-epic .workflows/inbox/ideas/{file}`.
 
 This skill ends. The invoked skill handles archival. Terminal.
 
-**If `x`/`cross-cutting`:**
+**If `c`/`cross-cutting`:**
 
 Invoke `/start-cross-cutting .workflows/inbox/ideas/{file}`.
 

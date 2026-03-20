@@ -91,7 +91,7 @@ What would you like to do?
 - **`f`/`feature`** — Start new feature
 - **`e`/`epic`** — Start new epic
 - **`b`/`bugfix`** — Start new bugfix
-- **`x`/`cross-cutting`** — Start new cross-cutting concern
+- **`c`/`cross-cutting`** — Start new cross-cutting concern
 @if(has_inbox)
 - **`i`/`inbox`** — Start from an inbox item
 @endif
