@@ -6,6 +6,8 @@
 
 Check if plan and implementation exist and are ready via manifest CLI.
 
+## A. Existence Checks
+
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.planning.{topic}
 ```
@@ -25,14 +27,6 @@ A completed plan and completed implementation are required for review.
 **STOP.** Do not proceed — terminal condition.
 
 #### If plan exists (`true`)
-
-Check plan status:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.planning.{topic} status
-```
-
-Check if implementation exists:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.implementation.{topic}
@@ -54,7 +48,9 @@ A completed implementation is required for review.
 
 #### If implementation exists (`true`)
 
-Check implementation status:
+→ Proceed to **B. Implementation Status**.
+
+## B. Implementation Status
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js get {work_unit}.implementation.{topic} status
@@ -72,9 +68,11 @@ The implementation for "{topic:(titlecase)}" is not yet completed.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan and implementation are both ready
+#### If implementation status is `completed`
 
-Check if review phase entry exists:
+→ Proceed to **C. Review State**.
+
+## C. Review State
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.review.{topic}
