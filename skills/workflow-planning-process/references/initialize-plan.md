@@ -69,7 +69,7 @@ Existing plans use **{format}**. Use the same format?
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} author_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} finding_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase 1
-   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
+   node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task '~'
    node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task_map '{}'
    ```
 

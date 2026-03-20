@@ -107,7 +107,7 @@ Use these project skills?
 
 Copy to topic level:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills [{phase-level values}]
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills '[{phase-level values}]'
 ```
 
 → Return to caller.
@@ -120,7 +120,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implem
 
 Clear topic-level `project_skills` before re-discovery:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills '[]'
 ```
 
 → Proceed to **C. Discovery**.
@@ -139,8 +139,8 @@ No project skills found. Proceeding without project-specific conventions.
 
 Store empty array at both levels:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills []
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills '[]'
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills '[]'
 ```
 
 → Return to caller.
@@ -177,8 +177,8 @@ Which project skills should be used?
 
 Store empty array at both levels:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills []
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills []
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation.{topic} project_skills '[]'
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills '[]'
 ```
 
 → Return to caller.
@@ -189,7 +189,7 @@ Store the selected skill paths via manifest CLI, pushing each path individually 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path1}"
 node .claude/skills/workflow-manifest/scripts/manifest.js push {work_unit}.implementation.{topic} project_skills "{path2}"
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills ["{path1}","{path2}"]
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.implementation project_skills '["{path1}","{path2}"]'
 ```
 
 → Return to caller.

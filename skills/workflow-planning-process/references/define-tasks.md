@@ -42,7 +42,7 @@ The agent returns a task overview and task table. Write the task table to the pl
 Update the manifest planning position:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase {N}
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task '~'
 ```
 
 Commit: `planning({work_unit}): draft Phase {N} task list`

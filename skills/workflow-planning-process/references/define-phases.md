@@ -51,7 +51,7 @@ The agent returns phases only — goals, ordering rationale, and acceptance crit
 Update the manifest planning position:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} phase 1
-node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task ~
+node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit}.planning.{topic} task '~'
 ```
 
 Commit: `planning({work_unit}): draft phase structure`
