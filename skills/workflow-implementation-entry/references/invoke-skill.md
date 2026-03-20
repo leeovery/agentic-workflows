@@ -25,7 +25,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {work_unit}.imp
 
 #### If implementation does not exist (`false`)
 
-Implementation is new — status is `not-started`.
+Set `status` = `not-started`.
 
 #### If implementation exists (`true`)
 
