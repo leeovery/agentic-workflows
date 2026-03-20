@@ -18,7 +18,9 @@ node .claude/skills/workflow-manifest/scripts/manifest.js exists {cc_work_unit}
 
 #### If `true`
 
-Choose a descriptive alternative name that captures the cross-cutting concern (e.g., append a qualifier like `{topic}-policy`, `{topic}-patterns`, or use a more specific name derived from the specification content). Assign the alternative to `cc_work_unit` and re-check.
+Choose a descriptive alternative name that captures the cross-cutting concern (e.g., append a qualifier like `{topic}-policy`, `{topic}-patterns`, or use a more specific name derived from the specification content). Set `cc_work_unit` to the new name.
+
+→ Return to **A. Collision Check**.
 
 #### If `false`
 
