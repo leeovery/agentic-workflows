@@ -242,7 +242,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers inbox ideas', () => {
-    createFile(dir, '.workflows/inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry Logic\n\nSome idea content.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry Logic\n\nSome idea content.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.idea_count, 1);
     assert.strictEqual(r.inbox.ideas[0].slug, 'smart-retry');
@@ -253,7 +253,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers inbox bugs', () => {
-    createFile(dir, '.workflows/inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nBug details.');
+    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nBug details.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.bug_count, 1);
     assert.strictEqual(r.inbox.bugs[0].slug, 'login-timeout');
@@ -263,9 +263,9 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers mixed inbox ideas and bugs', () => {
-    createFile(dir, '.workflows/inbox/ideas/2026-03-19--idea-one.md', '# Idea One\n\nContent.');
-    createFile(dir, '.workflows/inbox/ideas/2026-03-20--idea-two.md', '# Idea Two\n\nContent.');
-    createFile(dir, '.workflows/inbox/bugs/2026-03-18--bug-one.md', '# Bug One\n\nContent.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--idea-one.md', '# Idea One\n\nContent.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-20--idea-two.md', '# Idea Two\n\nContent.');
+    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--bug-one.md', '# Bug One\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.idea_count, 2);
     assert.strictEqual(r.inbox.bug_count, 1);
@@ -283,15 +283,15 @@ describe('workflow-start discovery', () => {
   });
 
   it('skips inbox files that do not match expected filename format', () => {
-    createFile(dir, '.workflows/inbox/ideas/random-notes.md', '# Random\n\nContent.');
-    createFile(dir, '.workflows/inbox/ideas/2026-03-19--valid-idea.md', '# Valid Idea\n\nContent.');
+    createFile(dir, '.workflows/.inbox/ideas/random-notes.md', '# Random\n\nContent.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--valid-idea.md', '# Valid Idea\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.idea_count, 1);
     assert.strictEqual(r.inbox.ideas[0].slug, 'valid-idea');
   });
 
   it('falls back to slug when file has no H1 title', () => {
-    createFile(dir, '.workflows/inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.ideas[0].title, 'no-title');
   });
@@ -383,8 +383,8 @@ describe('workflow-start format', () => {
   });
 
   it('emits inbox section with ideas and bugs', () => {
-    createFile(dir, '.workflows/inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.workflows/inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
+    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
     const out = format(discover(dir));
     assert.ok(out.includes('=== INBOX ==='));
     assert.ok(out.includes('  ideas: 1'));
@@ -399,7 +399,7 @@ describe('workflow-start format', () => {
   });
 
   it('includes has_inbox and inbox_count in state output', () => {
-    createFile(dir, '.workflows/inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
     const out = format(discover(dir));
     assert.ok(out.includes('has_inbox: true'));
     assert.ok(out.includes('inbox_count: 1'));
