@@ -1,4 +1,4 @@
-<h1 align="center">Claude Technical Workflows</h1>
+<h1 align="center">Agentic Engineering Workflows</h1>
 
 <p align="center">
   <strong>From Idea to Implementation: Agentic Engineering Workflows for Claude Code</strong>
@@ -15,7 +15,7 @@
 ---
 
 <p align="center">
-  <a href="https://leeovery.github.io/claude-technical-workflows/"><strong>Open the Interactive Workflow Explorer</strong></a>
+  <a href="https://leeovery.github.io/agentic-workflows/"><strong>Open the Interactive Workflow Explorer</strong></a>
 </p>
 
 > **Workflow Explorer** — A visual, interactive guide to every phase and skill in this toolkit. Trace decision logic through flowcharts and understand the full pipeline at a glance.
@@ -41,7 +41,7 @@ A development workflow for Claude Code that turns conversations into working sof
 ### Install
 
 ```bash
-npx agntc add leeovery/claude-technical-workflows
+npx agntc add leeovery/agentic-workflows
 ```
 
 Skills are copied to `.claude/` in your project. Commit them to make them available everywhere, including Claude Code for Web.
@@ -50,7 +50,7 @@ Skills are copied to `.claude/` in your project. Commit them to make them availa
 <summary>Removal</summary>
 
 ```bash
-npx agntc remove leeovery/claude-technical-workflows
+npx agntc remove leeovery/agentic-workflows
 ```
 </details>
 

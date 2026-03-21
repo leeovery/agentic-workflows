@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Code skills package for structured technical discussion and planning workflows. Installed via `npx agntc add leeovery/claude-technical-workflows`.
+Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
 
 **This CLAUDE.md is development documentation for authoring the workflows — it does not ship with the product.** When installed, only the skills and agents are copied into the target project (which has its own CLAUDE.md). Skills and agents must be fully self-contained — never rely on this file for runtime behaviour, conventions, or formats that agents need to follow.
 
