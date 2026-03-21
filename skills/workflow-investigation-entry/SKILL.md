@@ -77,6 +77,20 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ## Step 3: Gather Bug Context
 
+#### If bug context is already available in conversation
+
+The caller already gathered bug context (expected/actual behavior, initial context). Do not re-ask.
+
+> *Output the next fenced block as a code block:*
+
+```
+Starting investigation: {work_unit:(titlecase)}
+```
+
+→ Proceed to **Step 4**.
+
+#### Otherwise
+
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
