@@ -62,5 +62,5 @@ tick dep add tick-e5f6 tick-c3d4
 ### Removing a Dependency
 
 ```bash
-tick dep rm <tick-id> <blocked-by-tick-id>
+tick dep remove <tick-id> <blocked-by-tick-id>
 ```
