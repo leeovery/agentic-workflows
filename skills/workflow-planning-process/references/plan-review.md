@@ -15,7 +15,7 @@ Check the `review_cycle` field in the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} review_cycle
 ```
 
-#### If `review_cycle` is missing or not set
+#### If `review_cycle` is `0`
 
 Set `review_cycle` to 1 in the manifest:
 ```bash
@@ -26,7 +26,7 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 → Proceed to **C. Traceability Review**.
 
-#### If `review_cycle` is already set
+#### If `review_cycle` >= 1
 
 Increment `review_cycle` by 1:
 ```bash
