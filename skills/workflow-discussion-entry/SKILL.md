@@ -142,6 +142,14 @@ Load **[display-options.md](references/display-options.md)** and follow its inst
 
 ## Step 6: Gather Context
 
+#### If discussion context is already available in conversation
+
+The caller already gathered context (problem description, motivation, constraints). Do not re-ask.
+
+→ Proceed to **Step 7**.
+
+#### Otherwise
+
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 7**.

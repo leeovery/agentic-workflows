@@ -96,6 +96,14 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ## Step 4: Gather Context
 
+#### If research context is already available in conversation
+
+The caller already gathered context (idea description, motivation, constraints). Do not re-ask.
+
+→ Proceed to **Step 5**.
+
+#### Otherwise
+
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
