@@ -47,12 +47,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 
 Commit: `planning({work_unit}): draft Phase {N} task list`
 
-Present the task overview to the user:
+Present the task list to the user using the overview returned by the agent:
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
-{task overview from workflow-planning-task-designer agent}
+Phase {N}: {Phase Name} — {M} tasks.
+
+1. {Task Name} — {One-line summary}
+   └─ Edge cases: {comma-separated list, or "none"}
+
+2. ...
 ```
 
 → Proceed to **B. Check Gate Mode**.
