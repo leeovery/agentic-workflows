@@ -29,6 +29,8 @@ Set the work unit status to completed:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status completed
 ```
 
+Commit: `workflow({work_unit}): complete cross-cutting pipeline`
+
 > *Output the next fenced block as a code block:*
 
 ```

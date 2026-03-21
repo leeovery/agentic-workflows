@@ -32,6 +32,8 @@ Set the work unit status to completed:
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status completed
 ```
 
+Commit: `workflow({work_unit}): complete feature pipeline`
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -75,6 +77,8 @@ Set the work unit status to completed:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {work_unit} status completed
 ```
+
+Commit: `workflow({work_unit}): complete feature pipeline (review skipped)`
 
 > *Output the next fenced block as a code block:*
 

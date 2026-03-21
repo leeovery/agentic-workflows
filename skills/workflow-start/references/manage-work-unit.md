@@ -139,6 +139,8 @@ Set `implementation_completed` = true.
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status completed
 ```
 
+Commit: `workflow({selected.name}): mark as completed`
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -185,6 +187,8 @@ Invoke the `/continue-epic` skill. This is terminal — do not return to the cal
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.js set {selected.name} status cancelled
 ```
+
+Commit: `workflow({selected.name}): mark as cancelled`
 
 > *Output the next fenced block as a code block:*
 
