@@ -32,6 +32,8 @@ const VALID_GATE_MODES = ['gated', 'auto'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
+const RESERVED_NAMES = ['project'];
+
 const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;
 const LOCK_TIMEOUT_MS = 10000;
@@ -121,6 +123,97 @@ function withLock(name, fn) {
   } finally {
     releaseLock(name);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Project Manifest
+// ---------------------------------------------------------------------------
+
+function projectManifestPath() {
+  return path.join(WORKFLOWS_DIR, 'manifest.json');
+}
+
+function projectLockPath() {
+  return path.join(WORKFLOWS_DIR, '.project-lock');
+}
+
+function readProjectManifest() {
+  const p = projectManifestPath();
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeProjectManifestAtomic(data) {
+  const p = projectManifestPath();
+  fs.mkdirSync(WORKFLOWS_DIR, { recursive: true });
+  const tmp = p + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
+  fs.renameSync(tmp, p);
+}
+
+function acquireProjectLock() {
+  const lp = projectLockPath();
+  fs.mkdirSync(WORKFLOWS_DIR, { recursive: true });
+  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+
+  while (true) {
+    try {
+      const fd = fs.openSync(lp, 'wx');
+      fs.writeSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      return;
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+    }
+
+    try {
+      const stat = fs.statSync(lp);
+      if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+        fs.unlinkSync(lp);
+        continue;
+      }
+    } catch (_) {
+      continue;
+    }
+
+    if (Date.now() >= deadline) {
+      die('Timed out waiting for project manifest lock');
+    }
+
+    const end = Date.now() + LOCK_RETRY_MS;
+    while (Date.now() < end) { /* spin */ }
+  }
+}
+
+function releaseProjectLock() {
+  try { fs.unlinkSync(projectLockPath()); } catch (_) {}
+}
+
+function withProjectLock(fn) {
+  acquireProjectLock();
+  try {
+    return fn();
+  } finally {
+    releaseProjectLock();
+  }
+}
+
+/**
+ * Check if a path argument targets the project manifest.
+ * Returns { isProject: true, fieldSegments: [...] } or { isProject: false }.
+ */
+function parseProjectPath(pathArg) {
+  if (pathArg === 'project') {
+    return { isProject: true, fieldSegments: [] };
+  }
+  if (pathArg.startsWith('project.')) {
+    const remainder = pathArg.slice('project.'.length);
+    return { isProject: true, fieldSegments: remainder.split('.') };
+  }
+  return { isProject: false, fieldSegments: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -350,6 +443,7 @@ function cmdInit(args) {
   if (!workType) die('--work-type is required');
   if (name.includes('.')) die(`Work unit name "${name}" must not contain dots`);
   if (VALID_PHASES.includes(name)) die(`Work unit name "${name}" conflicts with a phase name`);
+  if (RESERVED_NAMES.includes(name)) die(`Work unit name "${name}" is reserved`);
 
   validateWorkType(workType);
 
@@ -374,20 +468,34 @@ function cmdInit(args) {
   writeManifestAtomic(name, manifest);
 
   // Register in project manifest
-  const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
-  let proj = {};
-  if (fs.existsSync(projPath)) {
-    proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
-  }
-  if (!proj.work_units) proj.work_units = {};
-  proj.work_units[name] = { work_type: workType };
-  fs.writeFileSync(projPath, JSON.stringify(proj, null, 2) + '\n');
+  withProjectLock(() => {
+    const proj = readProjectManifest();
+    if (!proj.work_units) proj.work_units = {};
+    proj.work_units[name] = { work_type: workType };
+    writeProjectManifestAtomic(proj);
+  });
 
   process.stdout.write(`Created work unit "${name}" (${workType})\n`);
 }
 
 function cmdGet(args) {
   if (args.length < 1) die('Usage: get <path> [field.path]');
+
+  // Project manifest routing
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    const manifest = readProjectManifest();
+    if (proj.fieldSegments.length === 0) {
+      process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
+      return;
+    }
+    const value = getByPath(manifest, proj.fieldSegments);
+    if (value === undefined) {
+      die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);
+    }
+    outputValue(value);
+    return;
+  }
 
   const { workUnit, phase, topic } = parsePath(args[0]);
   const manifest = readManifest(workUnit);
@@ -429,6 +537,21 @@ function cmdGet(args) {
 }
 
 function cmdSet(args) {
+  // Project manifest routing: set project.field.path <value>
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0 || args.length < 2) {
+      die('Usage: set project.<field.path> <value>');
+    }
+    const value = parseValue(args[1]);
+    withProjectLock(() => {
+      const manifest = readProjectManifest();
+      setByPath(manifest, proj.fieldSegments, value);
+      writeProjectManifestAtomic(manifest);
+    });
+    return;
+  }
+
   if (args.length < 3) die('Usage: set <path> <field> <value>');
 
   const { workUnit, phase, topic } = parsePath(args[0]);
@@ -451,6 +574,22 @@ function cmdSet(args) {
 }
 
 function cmdDelete(args) {
+  // Project manifest routing: delete project.field.path
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0) {
+      die('Usage: delete project.<field.path>');
+    }
+    withProjectLock(() => {
+      const manifest = readProjectManifest();
+      if (!deleteByPath(manifest, proj.fieldSegments)) {
+        die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);
+      }
+      writeProjectManifestAtomic(manifest);
+    });
+    return;
+  }
+
   if (args.length < 2) die('Usage: delete <path> <field.path>');
 
   const { workUnit, phase, topic } = parsePath(args[0]);
@@ -486,14 +625,21 @@ function cmdList(args) {
     return;
   }
 
-  const entries = fs.readdirSync(WORKFLOWS_DIR, { withFileTypes: true });
+  // Use project manifest for work unit names, fall back to filesystem scan
+  const proj = readProjectManifest();
+  let names;
+  if (proj.work_units && Object.keys(proj.work_units).length > 0) {
+    names = Object.keys(proj.work_units);
+  } else {
+    names = fs.readdirSync(WORKFLOWS_DIR, { withFileTypes: true })
+      .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+      .map(e => e.name);
+  }
+
   const results = [];
 
-  for (const entry of entries) {
-    // Skip non-directories and dot-prefixed directories
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-
-    const mp = path.join(WORKFLOWS_DIR, entry.name, 'manifest.json');
+  for (const name of names) {
+    const mp = path.join(WORKFLOWS_DIR, name, 'manifest.json');
     if (!fs.existsSync(mp)) continue;
 
     try {
@@ -542,6 +688,32 @@ function cmdInitPhase(args) {
 }
 
 function cmdPush(args) {
+  // Project manifest routing: push project.field.path <value>
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0 || args.length < 2) {
+      die('Usage: push project.<field.path> <value>');
+    }
+    const value = parseValue(args[1]);
+    withProjectLock(() => {
+      const manifest = readProjectManifest();
+      const current = getByPath(manifest, proj.fieldSegments);
+
+      if (current !== undefined && !Array.isArray(current)) {
+        die(`Path "${proj.fieldSegments.join('.')}" is not an array in project manifest`);
+      }
+
+      if (current === undefined) {
+        setByPath(manifest, proj.fieldSegments, [value]);
+      } else {
+        current.push(value);
+      }
+
+      writeProjectManifestAtomic(manifest);
+    });
+    return;
+  }
+
   if (args.length < 3) die('Usage: push <path> <field> <value>');
 
   const { workUnit, phase, topic } = parsePath(args[0]);
@@ -572,6 +744,20 @@ function cmdPush(args) {
 
 function cmdExists(args) {
   if (args.length < 1) die('Usage: exists <path> [field.path]');
+
+  // Project manifest routing: exists project[.field.path]
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    const manifest = readProjectManifest();
+    if (proj.fieldSegments.length === 0) {
+      // exists project — check if project manifest has any content
+      process.stdout.write(Object.keys(manifest).length > 0 ? 'true\n' : 'false\n');
+      return;
+    }
+    const value = getByPath(manifest, proj.fieldSegments);
+    process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+    return;
+  }
 
   const { workUnit, phase, topic } = parsePath(args[0]);
   const mp = manifestPath(workUnit);
@@ -613,6 +799,8 @@ function cmdExists(args) {
   process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
 }
 
+// Legacy convenience command — prefer project.* dot-path syntax via get/set/exists/delete/push.
+// Retained for the --type filter on list which is not available via dot-path.
 function cmdProject(args) {
   const sub = args[0];
   if (!sub) die('Usage: project <list|get> [args]');

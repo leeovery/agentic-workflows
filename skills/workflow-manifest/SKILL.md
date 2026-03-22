@@ -28,6 +28,31 @@ The path joins work unit, phase, and topic with dots. The field is always a sepa
 | 2 | Phase | `my-epic.planning` | `format` | `phases.planning.format` |
 | 3 | Topic | `my-epic.discussion.auth-flow` | `status` | `phases.discussion.items.auth-flow.status` |
 
+### Project-Level Access
+
+The reserved path prefix `project` routes to the project manifest (`.workflows/manifest.json`). For project paths, the field is embedded in the dot-path — no separate field argument:
+
+```bash
+MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.cjs"
+
+# Read:
+$MANIFEST get project                              # Full project manifest
+$MANIFEST get project.work_units                    # All work units
+$MANIFEST get project.defaults.plan_format          # Specific default
+
+# Write (field path + value):
+$MANIFEST set project.defaults.plan_format local-markdown
+$MANIFEST push project.defaults.project_skills ".claude/skills/golang-pro"
+
+# Check existence:
+$MANIFEST exists project.defaults.plan_format
+
+# Delete:
+$MANIFEST delete project.defaults.plan_format
+```
+
+### Work-Unit, Phase, and Topic Access
+
 ```bash
 MANIFEST="node .claude/skills/workflow-manifest/scripts/manifest.cjs"
 
@@ -76,6 +101,7 @@ $MANIFEST list [--status s] [--work-type t]
 
 - **Work unit names must not contain dots** — dots are the path separator
 - **Work unit names must not match phase names** (`research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`)
+- **Work unit names must not be reserved** — `project` is reserved for project-level manifest access
 
 ## Commands
 
@@ -281,9 +307,9 @@ If the work unit doesn't exist and a deeper path is requested, outputs `false` (
 
 **Wildcard topic** (`*` as third segment) — outputs `true` if any topic in the phase matches (has the field, or exists at all if no field specified), `false` otherwise. Always exits 0.
 
-### `project`
+### `project` (legacy convenience)
 
-Read the project manifest (`.workflows/manifest.json`). The project manifest tracks all work units and their types.
+List or get work units from the project manifest. Prefer the `project.*` dot-path syntax via `get`/`set`/`exists`/`delete`/`push` for new usage. The `project list --type` filter is retained as a convenience.
 
 **List work units:**
 ```bash
@@ -304,6 +330,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs project get <name>
 Output: `work_type: <type>`. Errors if not found.
 
 The project manifest is automatically updated when `init` creates a new work unit.
+
+### Project Defaults
+
+Project-wide settings are stored in the `defaults` section of the project manifest. These serve as suggestions when starting new topics — the user always confirms or overrides. The chosen value is saved back as "most recently used".
+
+| Default | Description | Used by |
+|---------|-------------|---------|
+| `plan_format` | Output format for plans (e.g., `local-markdown`, `tick`, `linear`) | Planning |
+| `project_skills` | Array of skill paths used during implementation | Implementation |
+
+The cascade is: **project defaults** (suggestion) → **topic level** (actual value used). There is no phase-level storage.
 
 ## Validation
 
