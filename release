@@ -2,21 +2,6 @@
 
 set -euo pipefail
 
-# =============================================================================
-# Configuration - adjust these for your project
-# =============================================================================
-
-# Version strategy: "file", "embedded", or "none"
-#   file     - version stored in plain text file (just the version number)
-#   embedded - version embedded in source file as RELEASE_VERSION="x.y.z"
-#   none     - tag-only, no version file to update
-VERSION_STRATEGY="file"
-
-# Path to version file (used by "file" and "embedded" strategies)
-VERSION_FILE="release.txt"
-
-# =============================================================================
-
 # Get the script directory
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 readonly script_dir
@@ -79,25 +64,7 @@ semver_increment() {
 
 get_current_version() {
     local version=""
-
-    case "$VERSION_STRATEGY" in
-        file)
-            # Read version from plain text file
-            if [[ -f "$VERSION_FILE" ]]; then
-                version=$(tr -d '[:space:]' < "$VERSION_FILE")
-            fi
-            ;;
-        embedded)
-            # Extract version from RELEASE_VERSION="x.y.z" in source file
-            if [[ -f "$VERSION_FILE" ]]; then
-                version=$(grep -oE '^RELEASE_VERSION="[0-9]+\.[0-9]+\.[0-9]+"' "$VERSION_FILE" 2>/dev/null | sed 's/RELEASE_VERSION="//;s/"$//' || echo "")
-            fi
-            ;;
-        none)
-            # Tag-only: use git tags
-            version=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
-            ;;
-    esac
+    version=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
 
     # Validate version format, fallback to 0.0.0
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -105,29 +72,6 @@ get_current_version() {
     fi
 
     echo "$version"
-}
-
-update_version_file() {
-    local new_version=$1
-
-    case "$VERSION_STRATEGY" in
-        file)
-            echo "$new_version" > "$VERSION_FILE"
-            echo "Updated $VERSION_FILE to $new_version"
-            ;;
-        embedded)
-            sed -i.bak 's/^RELEASE_VERSION=".*"$/RELEASE_VERSION="'"$new_version"'"/' "$VERSION_FILE"
-            rm -f "${VERSION_FILE}.bak"
-            echo "Updated RELEASE_VERSION in $VERSION_FILE to $new_version"
-            ;;
-        none)
-            echo "No version file to update (tag-only strategy)"
-            ;;
-        *)
-            echo "Error: Unknown VERSION_STRATEGY '$VERSION_STRATEGY'" >&2
-            exit 1
-            ;;
-    esac
 }
 
 # Generate release notes using Claude AI
@@ -266,19 +210,11 @@ perform_release() {
         commit_message=$(generate_release_commit_message "$new_version" "v${current_version}")
     fi
 
-    # Update version file and commit
-    update_version_file "$new_version"
-
-    if [[ "$VERSION_STRATEGY" != "none" ]]; then
-        git add "$VERSION_FILE"
-        git commit -m "$commit_message"
-    fi
-
-    # Create annotated tag with the same message
+    # Create annotated tag with the release message
     git tag -a "v${new_version}" -m "$commit_message"
 
-    # Push commit and tag atomically
-    git push --atomic origin HEAD "v${new_version}"
+    # Push tag
+    git push origin "v${new_version}"
 
     echo -e "\n"
     echo "✅ Released v${new_version}"
@@ -332,15 +268,8 @@ main() {
         fi
     else
         echo -e "\nThis will:"
-        if [[ "$VERSION_STRATEGY" != "none" ]]; then
-            echo " 1. Update version in $VERSION_FILE"
-            echo " 2. Create a new commit"
-            echo " 3. Create git tag v${new_version}"
-            echo -e " 4. Push changes\n"
-        else
-            echo " 1. Create git tag v${new_version}"
-            echo -e " 2. Push tag\n"
-        fi
+        echo " 1. Create git tag v${new_version}"
+        echo -e " 2. Push tag\n"
 
         echo -n "Proceed? [Y/n] "
         read -r perform_update
