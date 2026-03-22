@@ -10,7 +10,7 @@ set -euo pipefail
 #   file     - version stored in plain text file (just the version number)
 #   embedded - version embedded in source file as RELEASE_VERSION="x.y.z"
 #   none     - tag-only, no version file to update
-VERSION_STRATEGY="file"
+VERSION_STRATEGY="none"
 
 # Path to version file (used by "file" and "embedded" strategies)
 VERSION_FILE="release.txt"
