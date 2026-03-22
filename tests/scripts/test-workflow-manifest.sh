@@ -1222,6 +1222,136 @@ assert_equals "$output" "b" "key-of works at work-unit level"
 echo ""
 
 # ============================================================================
+# PROJECT DOT-PATH TESTS
+# ============================================================================
+
+echo -e "${YELLOW}Test: init rejects reserved name 'project'${NC}"
+setup_fixture
+output=$(run_cli init project --work-type feature --description "Bad name" 2>&1 || true)
+assert_contains "$output" "reserved" "Reserved name rejected"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: set and get project.defaults.plan_format${NC}"
+setup_fixture
+run_cli init my-proj --work-type feature --description "Setup" >/dev/null 2>&1
+run_cli set project.defaults.plan_format local-markdown >/dev/null 2>&1
+
+output=$(run_cli_stdout get project.defaults.plan_format)
+assert_equals "$output" "local-markdown" "Get project default plan_format"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: exists project.defaults.plan_format${NC}"
+setup_fixture
+run_cli init ex-proj --work-type feature --description "Setup" >/dev/null 2>&1
+run_cli set project.defaults.plan_format tick >/dev/null 2>&1
+
+output=$(run_cli_stdout exists project.defaults.plan_format)
+assert_equals "$output" "true" "Exists returns true for set default"
+
+output=$(run_cli_stdout exists project.defaults.nonexistent)
+assert_equals "$output" "false" "Exists returns false for missing default"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete project.defaults.plan_format${NC}"
+setup_fixture
+run_cli init del-proj --work-type feature --description "Setup" >/dev/null 2>&1
+run_cli set project.defaults.plan_format linear >/dev/null 2>&1
+run_cli delete project.defaults.plan_format >/dev/null 2>&1
+
+output=$(run_cli_stdout exists project.defaults.plan_format)
+assert_equals "$output" "false" "Deleted project default no longer exists"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: push project.defaults.project_skills${NC}"
+setup_fixture
+run_cli init push-proj --work-type feature --description "Setup" >/dev/null 2>&1
+run_cli push project.defaults.project_skills ".claude/skills/golang-pro" >/dev/null 2>&1
+run_cli push project.defaults.project_skills ".claude/skills/react-patterns" >/dev/null 2>&1
+
+output=$(run_cli_stdout get project.defaults.project_skills)
+assert_contains "$output" "golang-pro" "Push first skill present"
+assert_contains "$output" "react-patterns" "Push second skill appended"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get project returns full project manifest${NC}"
+setup_fixture
+run_cli init full-proj --work-type epic --description "Full test" >/dev/null 2>&1
+
+output=$(run_cli_stdout get project)
+assert_contains "$output" "work_units" "Full project manifest has work_units"
+assert_contains "$output" "full-proj" "Full project manifest has work unit name"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get project.work_units returns work_units object${NC}"
+setup_fixture
+run_cli init wu-proj --work-type feature --description "WU test" >/dev/null 2>&1
+
+output=$(run_cli_stdout get project.work_units)
+assert_contains "$output" "wu-proj" "Work units object has expected entry"
+assert_contains "$output" "feature" "Work units entry has work_type"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: exists project returns true when manifest exists${NC}"
+setup_fixture
+run_cli init exists-proj --work-type feature --description "Exists test" >/dev/null 2>&1
+
+output=$(run_cli_stdout exists project)
+assert_equals "$output" "true" "Exists project returns true with content"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get project.defaults errors when not set${NC}"
+setup_fixture
+run_cli init err-proj --work-type feature --description "Error test" >/dev/null 2>&1
+
+output=$(run_cli get project.defaults.plan_format 2>&1 || true)
+assert_contains "$output" "not found" "Get missing project default errors"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: set project.defaults without value errors${NC}"
+setup_fixture
+output=$(run_cli set project.defaults.plan_format 2>&1 || true)
+assert_contains "$output" "Usage" "Set without value shows usage"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: project set does not require work unit to exist${NC}"
+setup_fixture
+run_cli set project.defaults.plan_format tick >/dev/null 2>&1
+output=$(run_cli_stdout get project.defaults.plan_format)
+assert_equals "$output" "tick" "Can set project default without any work units"
+
+echo ""
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 

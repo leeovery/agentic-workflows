@@ -9,6 +9,7 @@ const { setupFixture, cleanupFixture, createFile } = require('./discovery-test-u
 const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
+  loadProjectManifest,
   phaseStatus, phaseItems, phaseData, computeNextPhase,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
@@ -148,6 +149,75 @@ describe('discovery-utils', () => {
       fs.mkdirSync(path.join(dir, '.workflows', '.state'), { recursive: true });
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 1);
+    });
+  });
+
+  describe('loadProjectManifest', () => {
+    it('returns parsed project manifest', () => {
+      const proj = { work_units: { alpha: { work_type: 'feature' } } };
+      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      const result = loadProjectManifest(dir);
+      assert.deepStrictEqual(result, proj);
+    });
+
+    it('returns null when missing', () => {
+      assert.strictEqual(loadProjectManifest(dir), null);
+    });
+  });
+
+  describe('loadActiveManifests (project-manifest-driven)', () => {
+    it('uses project manifest for work unit names', () => {
+      const { createManifest } = require('./discovery-test-utils.cjs');
+      createManifest(dir, 'alpha', { status: 'in-progress' });
+      createManifest(dir, 'beta', { status: 'completed' });
+      // Project manifest only lists alpha and beta
+      const proj = { work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } };
+      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      const results = loadActiveManifests(dir);
+      assert.strictEqual(results.length, 1);
+      assert.strictEqual(results[0].name, 'alpha');
+    });
+
+    it('skips work units in project manifest whose directory was deleted', () => {
+      const { createManifest } = require('./discovery-test-utils.cjs');
+      createManifest(dir, 'exists', { status: 'in-progress' });
+      // "ghost" is in project manifest but has no directory
+      const proj = { work_units: { exists: { work_type: 'feature' }, ghost: { work_type: 'epic' } } };
+      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      const results = loadActiveManifests(dir);
+      assert.strictEqual(results.length, 1);
+      assert.strictEqual(results[0].name, 'exists');
+    });
+
+    it('falls back to filesystem when project manifest missing', () => {
+      const { createManifest } = require('./discovery-test-utils.cjs');
+      createManifest(dir, 'fallback', { status: 'in-progress' });
+      // No project manifest file
+      const results = loadActiveManifests(dir);
+      assert.strictEqual(results.length, 1);
+      assert.strictEqual(results[0].name, 'fallback');
+    });
+  });
+
+  describe('loadAllManifests (project-manifest-driven)', () => {
+    it('uses project manifest for work unit names', () => {
+      const { createManifest } = require('./discovery-test-utils.cjs');
+      createManifest(dir, 'a', { status: 'in-progress' });
+      createManifest(dir, 'b', { status: 'completed' });
+      const proj = { work_units: { a: { work_type: 'feature' }, b: { work_type: 'epic' } } };
+      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      const results = loadAllManifests(dir);
+      assert.strictEqual(results.length, 2);
+    });
+
+    it('skips deleted work units gracefully', () => {
+      const { createManifest } = require('./discovery-test-utils.cjs');
+      createManifest(dir, 'real', { status: 'in-progress' });
+      const proj = { work_units: { real: { work_type: 'feature' }, gone: { work_type: 'epic' } } };
+      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      const results = loadAllManifests(dir);
+      assert.strictEqual(results.length, 1);
+      assert.strictEqual(results[0].name, 'real');
     });
   });
 

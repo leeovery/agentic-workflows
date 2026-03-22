@@ -20,10 +20,10 @@ Set `source` = `topic`.
 
 #### Otherwise
 
-Check if phase-level `project_skills` exists via manifest CLI:
+Check if project-level default `project_skills` exists via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.implementation project_skills
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists project.defaults.project_skills
 ```
 
 **If `false`:**
@@ -32,19 +32,19 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.im
 
 **If `true`:**
 
-Read phase-level `project_skills` via manifest CLI:
+Read project default `project_skills` via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation project_skills
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get project.defaults.project_skills
 ```
 
-**If phase-level is populated:**
+**If project default is populated:**
 
-Set `source` = `phase`.
+Set `source` = `project`.
 
 → Proceed to **B. Confirm Skills**.
 
-**If phase-level is empty:**
+**If project default is empty:**
 
 > *Output the next fenced block as a code block:*
 
@@ -103,11 +103,11 @@ Use these project skills?
 
 #### If `yes`
 
-**If `source` is `phase`:**
+**If `source` is `project`:**
 
 Copy to topic level:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} project_skills '[{phase-level values}]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} project_skills '[{project-level values}]'
 ```
 
 → Return to caller.
@@ -137,10 +137,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.imple
 No project skills found. Proceeding without project-specific conventions.
 ```
 
-Store empty array at both levels:
+Store empty array at topic and project level:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} project_skills '[]'
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation project_skills '[]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.project_skills '[]'
 ```
 
 → Return to caller.
@@ -175,21 +175,21 @@ Which project skills should be used?
 
 #### If `none`
 
-Store empty array at both levels:
+Store empty array at topic and project level:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} project_skills '[]'
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation project_skills '[]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.project_skills '[]'
 ```
 
 → Return to caller.
 
 #### Otherwise
 
-Store the selected skill paths via manifest CLI, pushing each path individually to topic level and setting phase level:
+Store the selected skill paths via manifest CLI, pushing each path individually to topic level and setting the project default:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.implementation.{topic} project_skills "{path1}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.implementation.{topic} project_skills "{path2}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation project_skills '["{path1}","{path2}"]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.project_skills '["{path1}","{path2}"]'
 ```
 
 → Return to caller.

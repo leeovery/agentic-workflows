@@ -24,10 +24,10 @@ Set `source` = `topic`.
 
 #### Otherwise
 
-Check if phase-level `linters` exists via manifest CLI:
+Check if project-level default `linters` exists via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.implementation linters
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists project.defaults.linters
 ```
 
 **If `false`:**
@@ -36,19 +36,19 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.im
 
 **If `true`:**
 
-Read phase-level `linters` via manifest CLI:
+Read project default `linters` via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation linters
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get project.defaults.linters
 ```
 
-**If phase-level is populated:**
+**If project default is populated:**
 
-Set `source` = `phase`.
+Set `source` = `project`.
 
 → Proceed to **B. Confirm Linters**.
 
-**If phase-level is empty:**
+**If project default is empty:**
 
 > *Output the next fenced block as a code block:*
 
@@ -107,11 +107,11 @@ Use these linters?
 
 #### If `yes`
 
-**If `source` is `phase`:**
+**If `source` is `project`:**
 
 Copy to topic level:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} linters '[{phase-level values}]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} linters '[{project-level values}]'
 ```
 
 → Return to caller.
@@ -168,10 +168,10 @@ Approve these linters?
 
 #### If `yes`
 
-Store at both levels:
+Store at topic and project level:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} linters '[...]'
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation linters '[...]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.linters '[...]'
 ```
 
 → Return to caller.
@@ -184,10 +184,10 @@ Adjust based on user input.
 
 #### If `skip`
 
-Store empty array at both levels:
+Store empty array at topic and project level:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} linters '[]'
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation linters '[]'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.linters '[]'
 ```
 
 → Return to caller.

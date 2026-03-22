@@ -48,6 +48,15 @@ function filesChecksum(paths) {
   return hash.digest('hex');
 }
 
+function loadProjectManifest(cwd) {
+  const p = path.join(cwd, '.workflows', 'manifest.json');
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 function loadManifest(cwd, name) {
   const p = path.join(cwd, '.workflows', name, 'manifest.json');
   try {
@@ -57,11 +66,22 @@ function loadManifest(cwd, name) {
   }
 }
 
-function loadActiveManifests(cwd) {
+/**
+ * Get work unit names from the project manifest, falling back to filesystem scanning.
+ */
+function workUnitNames(cwd) {
+  const proj = loadProjectManifest(cwd);
+  if (proj && proj.work_units && Object.keys(proj.work_units).length > 0) {
+    return Object.keys(proj.work_units);
+  }
+  // Fallback: scan filesystem (pre-migration compat)
   const workflowsDir = path.join(cwd, '.workflows');
+  return listDirs(workflowsDir).filter(n => !n.startsWith('.'));
+}
+
+function loadActiveManifests(cwd) {
   const results = [];
-  for (const name of listDirs(workflowsDir)) {
-    if (name.startsWith('.')) continue;
+  for (const name of workUnitNames(cwd)) {
     const m = loadManifest(cwd, name);
     if (m && m.status === 'in-progress') results.push(m);
   }
@@ -69,10 +89,8 @@ function loadActiveManifests(cwd) {
 }
 
 function loadAllManifests(cwd) {
-  const workflowsDir = path.join(cwd, '.workflows');
   const results = [];
-  for (const name of listDirs(workflowsDir)) {
-    if (name.startsWith('.')) continue;
+  for (const name of workUnitNames(cwd)) {
     const m = loadManifest(cwd, name);
     if (m) results.push(m);
   }
@@ -192,4 +210,5 @@ module.exports = {
   computeNextPhase,
   loadActiveManifests,
   loadAllManifests,
+  loadProjectManifest,
 };

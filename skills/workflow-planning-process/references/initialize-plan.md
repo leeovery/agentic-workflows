@@ -6,10 +6,10 @@
 
 ## A. Check Format Recommendation
 
-Check if phase-level `format` exists via manifest CLI:
+Check if a project-level default `plan_format` exists via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning format
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists project.defaults.plan_format
 ```
 
 #### If `false`
@@ -18,17 +18,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.pl
 
 #### Otherwise
 
-Read phase-level `format` via manifest CLI:
+Read the project default `plan_format` via manifest CLI:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning format
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get project.defaults.plan_format
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Existing plans use **{format}**. Use the same format?
+Project default format is **{format}**. Use the same format?
 
 - **`y`/`yes`** — Use {format}
 - **`n`/`no`** — See all available formats
@@ -63,7 +63,7 @@ Existing plans use **{format}**. Use the same format?
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.planning.{topic}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} format {chosen-format}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning format {chosen-format}
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.plan_format {chosen-format}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} spec_commit {commit-hash}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_list_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} author_gate_mode gated

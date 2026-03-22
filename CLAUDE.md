@@ -60,7 +60,7 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 
 Work-unit-first directory structure with uniform `{topic}` in all paths. For feature/bugfix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase.
 
-- Project manifest: `.workflows/manifest.json` (work unit registry — name + type)
+- Project manifest: `.workflows/manifest.json` (work unit registry + project defaults)
 - Manifest: `.workflows/{work_unit}/manifest.json`
 - Research: `.workflows/{work_unit}/research/`
 - Discussion: `.workflows/{work_unit}/discussion/{topic}.md` (flat file)
@@ -197,7 +197,9 @@ Conventions:
 
 ## Manifest CLI
 
-The manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the single source of truth for all workflow state. Uses dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). See `skills/workflow-manifest/SKILL.md` for the full API.
+The manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the single source of truth for all workflow state. Uses dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). The reserved prefix `project` routes to the project manifest (`.workflows/manifest.json`) — e.g., `get project.defaults.plan_format`. See `skills/workflow-manifest/SKILL.md` for the full API.
+
+**Project defaults cascade**: `project.defaults` → topic level. Project defaults are suggestions (user confirms or overrides). Topic level records the actual value in use. There is no phase-level storage for settings like `plan_format`, `project_skills`, or `linters`.
 
 **Shell quoting**: Always single-quote values that zsh would interpret — `'[]'`, `'[...]'`, `'{}'`, `'~'`. Bare `[]` is a glob pattern (causes `no matches found` errors) and bare `~` expands to the home directory.
 
