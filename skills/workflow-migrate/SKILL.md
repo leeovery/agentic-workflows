@@ -46,7 +46,7 @@ Migrations Applied
 All documents up to date.
 ```
 
-→ Return to the calling skill.
+→ Return to caller.
 
 ---
 
@@ -69,7 +69,7 @@ Ready to continue?
 
 Check `git status`. If migration changes are uncommitted, stage and commit them with the message `chore: apply workflow migrations` before returning.
 
-→ Return to the calling skill.
+→ Return to caller.
 
 #### If ask
 

@@ -27,6 +27,8 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
 
+→ Proceed to **Step 1**.
+
 ---
 
 ## Step 1: Gather Bug Context
