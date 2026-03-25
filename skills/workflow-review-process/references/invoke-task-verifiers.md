@@ -36,13 +36,13 @@ Using the format reading adapter loaded in Step 2, extract every task across all
 
 ## C. Filter Tasks
 
-#### If `review_mode` is `incremental`
+#### If `unreviewed_tasks` is set
 
-Filter the extracted task list to only include tasks whose internal IDs appear in the `unreviewed_tasks` list passed from the entry point. Skip all other tasks — they have already been reviewed.
+Filter the extracted task list to only include tasks whose internal IDs appear in the `unreviewed_tasks` list. Skip all other tasks — they have already been reviewed.
 
 → Proceed to **D. Create Output Directory**.
 
-#### If `review_mode` is `full`
+#### Otherwise
 
 Review all extracted tasks. No filtering needed.
 

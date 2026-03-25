@@ -95,7 +95,7 @@ Continue or restart?
 
 #### If `continue`
 
-→ Proceed to **Step 3** (skipping Steps 1–2).
+→ Proceed to **Step 3**.
 
 #### If `restart`
 

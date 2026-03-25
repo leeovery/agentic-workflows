@@ -64,7 +64,7 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 #### If source is `existing`
 
-→ Proceed to **Step 5** (skipping Step 4).
+→ Proceed to **Step 5**.
 
 #### If source is `fresh`
 

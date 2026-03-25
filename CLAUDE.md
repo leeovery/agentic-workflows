@@ -698,7 +698,6 @@ No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continu
 | `→ Proceed to **Step N**.` | Next step in the backbone |
 | `→ Proceed to **B. Section Name**.` | Next lettered section in a reference file |
 
-When skipping steps, add a parenthetical: `→ Proceed to **Step 5** (skipping Steps 1–3).`
 
 #### Backward (within a file)
 
