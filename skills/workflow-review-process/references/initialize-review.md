@@ -28,7 +28,7 @@ Phase already registered (e.g. reopened review).
 
 ---
 
-## B. Determine Review Mode
+## B. Determine Review Scope
 
 Read `completed_tasks` via manifest CLI:
 
@@ -44,7 +44,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.re
 
 #### If `reviewed_tasks` does not exist
 
-Set `review_mode` = `full`.
+Fresh review or restart — all tasks will be reviewed.
 
 → Return to **[the skill](../SKILL.md)** for **Step 2**.
 
@@ -68,41 +68,6 @@ Compare `completed_tasks` against `reviewed_tasks`. Any internal ID in `complete
 
 **If unreviewed tasks remain:**
 
-→ Proceed to **C. Select Review Mode**.
-
----
-
-## C. Select Review Mode
-
-> *Output the next fenced block as a code block:*
-
-```
-New Implementation Detected
-
-Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Review mode?
-
-- **`i`/`incremental`** — Review only new tasks ({U} tasks)
-- **`f`/`full`** — Re-review all tasks
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `incremental`
-
-Set `review_mode` = `incremental` and `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
-
-→ Return to **[the skill](../SKILL.md)** for **Step 2**.
-
-#### If `full`
-
-Set `review_mode` = `full`.
+`unreviewed_tasks` was set in Step 0. Only these tasks will be reviewed.
 
 → Return to **[the skill](../SKILL.md)** for **Step 2**.

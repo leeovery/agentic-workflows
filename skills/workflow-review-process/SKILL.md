@@ -35,7 +35,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Hard Rules
 
-1. **Review ALL tasks** — In full mode, verify every planned task. In incremental mode, verify only unreviewed tasks
+1. **Review ALL tasks** — Verify every planned task, or only unreviewed tasks when continuing a prior review
 2. **Don't fix code** — Identify problems, don't solve them
 3. **Don't re-implement** — You're reviewing, not building
 4. **Be specific** — "Test doesn't cover X" not "tests need work"
@@ -61,10 +61,33 @@ Check if a review file exists at `.workflows/{work_unit}/review/{topic}/report.m
 
 #### If review file exists
 
+Gather coverage state. Read `completed_tasks` from the implementation manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} completed_tasks
+```
+
+Check if `reviewed_tasks` exists in the review manifest:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.review.{topic} reviewed_tasks
+```
+
+If `true`, read it:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.review.{topic} reviewed_tasks
+```
+
+Compare `completed_tasks` against `reviewed_tasks`. Let {C} = total completed, {R} = reviewed, {U} = unreviewed ({C} − {R}).
+
+**If `reviewed_tasks` exists and unreviewed tasks remain:**
+
 > *Output the next fenced block as a code block:*
 
 ```
 Found existing review for "{topic:(titlecase)}".
+Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -73,14 +96,38 @@ Found existing review for "{topic:(titlecase)}".
 · · · · · · · · · · · ·
 Continue or restart?
 
-- **`c`/`continue`** — Continue the review from its current state
-- **`r`/`restart`** — Delete the review and all report files. Start fresh.
+- **`c`/`continue`** — Review the {U} unreviewed tasks
+- **`r`/`restart`** — Delete review, re-review all {C} tasks
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**Otherwise** (all tasks reviewed, or no tracking data):
+
+> *Output the next fenced block as a code block:*
+
+```
+Found existing review for "{topic:(titlecase)}".
+@if(reviewed_tasks exists) All {C} tasks have been reviewed. @endif
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Continue or restart?
+
+- **`c`/`continue`** — Continue from current review state
+- **`r`/`restart`** — Delete review, start fresh
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
 #### If `continue`
+
+If unreviewed tasks exist, set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 → Proceed to **Step 1**.
 
