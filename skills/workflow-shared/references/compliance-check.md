@@ -13,6 +13,8 @@ Before concluding this phase, verify that the skill instructions were followed c
 
 This is non-negotiable. Do not skip this step or rely on your memory of what the instructions said. The re-read IS the mechanism.
 
+→ Proceed to **B. Audit the Session**.
+
 ## B. Audit the Session
 
 With the instructions fresh in context, review the conversation transcript and compare what happened against what the instructions prescribed:
@@ -24,6 +26,8 @@ With the instructions fresh in context, review the conversation transcript and c
 5. **Artifact correctness** — Are all working artifacts (discussion files, specifications, plans, investigation files, review reports, code) correct and consistent with what the instructions prescribed?
 6. **Manifest correctness** — Was the manifest updated via the CLI with the right fields, values, and paths? Were any manual edits made that should have gone through the CLI?
 7. **Commit discipline** — Were changes committed at natural breaks as required?
+
+→ Proceed to **C. Assess and Act**.
 
 ## C. Assess and Act
 
