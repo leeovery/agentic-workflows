@@ -154,7 +154,15 @@ Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instruct
 
 ---
 
-## Step 8: Mark Implementation Complete
+## Step 8: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Proceed to **Step 9**.
+
+---
+
+## Step 9: Mark Implementation Complete
 
 Load **[conclude-implementation.md](references/conclude-implementation.md)** and follow its instructions as written.
 

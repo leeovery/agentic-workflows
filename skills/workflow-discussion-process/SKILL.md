@@ -101,6 +101,14 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 
 ---
 
-## Step 4: Conclude Discussion
+## Step 4: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Conclude Discussion
 
 Load **[conclude-discussion.md](references/conclude-discussion.md)** and follow its instructions as written.

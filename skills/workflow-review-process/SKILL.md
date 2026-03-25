@@ -220,7 +220,15 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 
 ---
 
-## Step 7: Review Actions
+## Step 7: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Proceed to **Step 8**.
+
+---
+
+## Step 8: Review Actions
 
 Load **[review-actions-loop.md](references/review-actions-loop.md)** and follow its instructions as written.
 

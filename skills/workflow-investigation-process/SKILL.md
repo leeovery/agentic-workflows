@@ -153,6 +153,14 @@ Load **[findings-review.md](references/findings-review.md)** and follow its inst
 
 ---
 
-## Step 6: Conclude Investigation
+## Step 6: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Proceed to **Step 7**.
+
+---
+
+## Step 7: Conclude Investigation
 
 Load **[conclude-investigation.md](references/conclude-investigation.md)** and follow its instructions as written.

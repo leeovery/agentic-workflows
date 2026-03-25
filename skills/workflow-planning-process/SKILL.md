@@ -203,6 +203,14 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 ---
 
-## Step 9: Conclude the Plan
+## Step 9: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Proceed to **Step 10**.
+
+---
+
+## Step 10: Conclude the Plan
 
 Load **[conclude-plan.md](references/conclude-plan.md)** and follow its instructions as written.

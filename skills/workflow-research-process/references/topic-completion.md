@@ -8,6 +8,8 @@
 
 The current topic is converging — tradeoffs are clear, it's approaching decision territory.
 
+→ Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
