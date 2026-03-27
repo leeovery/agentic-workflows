@@ -22,7 +22,7 @@ The discussion is a conversation. Follow this loop:
 2. **Discuss** — Engage with the user on the current question or topic. Challenge thinking, push back, explore edge cases. Participate as an expert architect.
 3. **Document** — At natural pauses, update the discussion file with decisions, debates, options explored, and rationale. Use the per-question structure from the template (Context → Options → Journey → Decision).
 4. **Commit** — Git commit after each write. Don't batch.
-5. **Consider agents** — After each substantive commit, evaluate the review agent trigger conditions. If a decision point with genuine ambiguity has emerged, evaluate the perspective agent trigger conditions.
+5. **Consider agents** — After each substantive commit, evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, follow their dispatch instructions.
 6. **Repeat** — Continue with the next question or follow where the conversation leads.
 
 ---

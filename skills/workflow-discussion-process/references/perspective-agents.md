@@ -4,17 +4,9 @@
 
 ---
 
-Full lifecycle for perspective and synthesis agents — when to fire, how to dispatch, and how to process results. Perspective agents argue for distinct approaches in the background. When all perspectives in a set complete, a synthesis agent reconciles them into a tradeoff landscape.
+These instructions are loaded into context at the start of the discussion session but are not for immediate use. Perspective agents argue for distinct approaches in the background. When all perspectives in a set complete, a synthesis agent reconciles them into a tradeoff landscape. Apply the dispatch and results processing instructions below when the time is right.
 
-Cache directory: `.workflows/.cache/{work_unit}/discussion/{topic}/`
-File patterns: `perspective-{NNN}-{angle}.md`, `synthesis-{NNN}.md`
-Frontmatter status lifecycle: `pending` → `read` → `incorporated`
-
----
-
-## A. Trigger Conditions
-
-Fire perspective agents when the orchestrator identifies a decision point with **genuine ambiguity** — two or more viable approaches where the tradeoffs are not obvious.
+**Trigger conditions** — offer perspective agents when the orchestrator identifies a decision point with **genuine ambiguity** — two or more viable approaches where the tradeoffs are not obvious.
 
 Signals:
 - Multiple defensible approaches with no clear winner
@@ -22,22 +14,15 @@ Signals:
 - The domain has known competing paradigms (e.g., relational vs document, monolith vs microservices, sync vs async)
 - Explicit disagreement between orchestrator and user on the best approach
 
-**Do not fire when:**
-- The decision is straightforward with a clear best answer
-- The tradeoffs are already well understood
-- The user has already made a confident decision
+Do not fire when the decision is straightforward, the tradeoffs are already well understood, or the user has already made a confident decision.
 
-#### If no ambiguity detected
+When these conditions are met → Proceed to **A. Offer Perspectives**.
 
-→ Return to caller.
-
-#### If ambiguity detected
-
-→ Proceed to **B. Offer Perspectives**.
+At natural conversational breaks, check for completed results → Proceed to **D. Check for Results**.
 
 ---
 
-## B. Offer Perspectives
+## A. Offer Perspectives
 
 Identify 2-3 distinct perspectives worth exploring. Each should be a genuinely defensible position, not a strawman.
 
@@ -56,15 +41,15 @@ This decision has {N} genuinely viable approaches. Want to explore them in depth
 
 #### If `no`
 
-→ Return to caller.
+Continue the discussion without perspectives.
 
 #### If `yes`
 
-→ Proceed to **C. Dispatch Perspective Agents**.
+→ Proceed to **B. Dispatch Perspective Agents**.
 
 ---
 
-## C. Dispatch Perspective Agents
+## B. Dispatch Perspective Agents
 
 Ensure the cache directory exists:
 
@@ -119,29 +104,11 @@ Results will be surfaced when available.
 
 The discussion continues — do not wait for agents to return.
 
-→ Return to caller.
-
 ---
 
-## D. Check for Results
+## C. Dispatch Synthesis Agent
 
-Scan the cache directory for perspective and synthesis files.
-
-#### If all perspective files in a set are complete and no synthesis file exists for that set
-
-→ Proceed to **E. Dispatch Synthesis Agent**.
-
-#### If a synthesis file with `status: pending` exists
-
-→ Proceed to **F. Surface Findings**.
-
-#### Otherwise
-
-→ Return to caller.
-
----
-
-## E. Dispatch Synthesis Agent
+This section is reached when all perspective agents in a set have completed. The synthesis agent reconciles their findings into a tradeoff landscape.
 
 **Agent path**: `../../../agents/workflow-discussion-synthesis.md`
 
@@ -174,11 +141,27 @@ SUMMARY: {1-2 sentences}
 
 The discussion continues — do not wait for the agent to return.
 
-→ Return to caller.
+---
+
+## D. Check for Results
+
+Scan the cache directory for perspective and synthesis files.
+
+#### If all perspective files in a set are complete and no synthesis file exists for that set
+
+→ Proceed to **C. Dispatch Synthesis Agent**.
+
+#### If a synthesis file with `status: pending` exists
+
+→ Proceed to **E. Surface Findings**.
+
+#### Otherwise
+
+Nothing to surface. Continue the discussion.
 
 ---
 
-## F. Surface Findings
+## E. Surface Findings
 
 1. Read the synthesis file (and perspective files if needed for detail)
 2. Update all files in the set to `status: read`
@@ -198,5 +181,3 @@ Summarise the key tensions, strongest arguments, and decision criteria conversat
 **Deriving questions**: Extract decision criteria and unresolved questions from the synthesis. Reframe them as practical questions tied to the project's constraints. Add unresolved questions to the discussion file's Questions list (as unchecked items). Commit the update.
 
 **Marking as incorporated**: After findings have been discussed and their questions explored (or deliberately set aside), update all files in the set to `status: incorporated`. No commit needed for cache file status changes.
-
-→ Return to caller.
