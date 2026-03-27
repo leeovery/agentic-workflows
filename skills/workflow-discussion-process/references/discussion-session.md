@@ -4,33 +4,25 @@
 
 ---
 
-## Findings Integration
-
-Load **[findings-integration.md](findings-integration.md)** — these rules govern how to check for and surface completed agent findings. Apply them throughout the session.
-
----
-
 ## Session Loop
 
 The discussion is a conversation. Follow this loop:
 
-1. **Check for findings** — At natural conversational breaks, check for completed agent findings per the findings integration rules. Skip on the first iteration (no agents have been dispatched yet).
+1. **Check for findings** — At natural conversational breaks, check for completed agent work:
+   - Load **[review-agent.md](review-agent.md)** for **C. Check for Results**.
+   - Load **[perspective-agents.md](perspective-agents.md)** for **D. Check for Results**.
+
+   Skip on the first iteration (no agents have been dispatched yet).
+
 2. **Discuss** — Engage with the user on the current question or topic. Challenge thinking, push back, explore edge cases. Participate as an expert architect.
+
 3. **Document** — At natural pauses, update the discussion file with decisions, debates, options explored, and rationale. Use the per-question structure from the template (Context → Options → Journey → Decision).
+
 4. **Commit** — Git commit after each write. Don't batch.
-5. **Consider agents** — After each substantive commit, evaluate:
 
-   **Periodic review**: Fire a review agent if ALL of these conditions are met:
-   - The commit added meaningful content (a decision, a question explored, options analysed — not a typo fix or reformatting)
-   - No review agent is currently in flight
-   - This is not the first commit (the discussion needs enough content to review)
-   - At least 2-3 conversational exchanges have passed since the last review dispatch
-
-   If conditions are met → Load **[invoke-review-agent.md](invoke-review-agent.md)** and follow its instructions as written.
-
-   **Perspectives**: If a decision point with genuine ambiguity has emerged — two or more viable approaches where the tradeoffs are not obvious — offer perspective agents to the user. Signals: multiple defensible approaches with no clear winner, user expressing uncertainty, competing paradigms in the domain, explicit disagreement.
-
-   If ambiguity detected → Load **[invoke-perspective-agents.md](invoke-perspective-agents.md)** and follow its instructions as written.
+5. **Consider agents** — After each substantive commit:
+   - Load **[review-agent.md](review-agent.md)** for **A. Trigger Conditions**.
+   - Load **[perspective-agents.md](perspective-agents.md)** for **A. Trigger Conditions**.
 
 6. **Repeat** — Continue with the next question or follow where the conversation leads.
 
@@ -70,7 +62,9 @@ There are still {N} background agents working.
 
 #### If `wait`
 
-Check for agent completion. When all agents have returned, integrate their findings per the findings integration rules.
+Check for agent completion. When all agents have returned, process their findings:
+- Load **[review-agent.md](review-agent.md)** for **C. Check for Results**.
+- Load **[perspective-agents.md](perspective-agents.md)** for **D. Check for Results**.
 
 → Return to **Session Loop**.
 
