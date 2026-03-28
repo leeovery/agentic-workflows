@@ -11,7 +11,7 @@ Foundation work. Adds review agents to phases that currently lack quality gates.
 | # | Idea | Scope |
 |---|------|-------|
 | 1 | ~~[Skill Compliance Self-Check](skill-compliance-self-check.md)~~ | All processing skills | ✅ Done |
-| 2 | [Discussion Review Agent](discussion-review-agent.md) | Discussion phase |
+| 2 | ~~[Discussion Review Agent](discussion-review-agent.md)~~ | Discussion phase | ✅ Done |
 | 3 | [Investigation Synthesis Agent](investigation-synthesis-agent.md) | Investigation phase (bugfix) |
 
 ## Phase 2 — Discussion Evolution
@@ -21,7 +21,7 @@ Builds on Phase 1. The discussion review agent is the safety net that makes loos
 | # | Idea | Scope |
 |---|------|-------|
 | 4 | [Natural Conversation in Discussion](natural-conversation-in-discussion.md) | Discussion processing skill |
-| 5 | [Parallel Agent Discussion](parallel-agent-discussion.md) | Discussion processing skill |
+| 5 | ~~[Parallel Agent Discussion](parallel-agent-discussion.md)~~ | Discussion processing skill | ✅ Done |
 
 ## Phase 3 — UX & Visibility
 

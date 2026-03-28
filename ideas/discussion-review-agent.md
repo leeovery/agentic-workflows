@@ -1,4 +1,6 @@
-# Discussion Review Agent
+# ~~Discussion Review Agent~~ — Done
+
+> Implemented in PR #224. Periodic background review agent dispatched during discussion sessions. Agent definition at `agents/workflow-discussion-review.md`, lifecycle at `skills/workflow-discussion-process/references/review-agent.md`.
 
 ## The Idea
 

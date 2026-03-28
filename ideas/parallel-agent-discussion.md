@@ -1,4 +1,6 @@
-# Parallel Agent Perspectives in Discussion
+# ~~Parallel Agent Perspectives in Discussion~~ — Done
+
+> Implemented in PR #224. Perspective agents + synthesis agent dispatched during discussion sessions. Agent definitions at `agents/workflow-discussion-perspective.md` and `agents/workflow-discussion-synthesis.md`, lifecycle at `skills/workflow-discussion-process/references/perspective-agents.md`.
 
 ## The Idea
 
