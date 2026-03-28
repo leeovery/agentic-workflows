@@ -4,7 +4,7 @@
 
 ---
 
-## Background Agents
+## A. Background Agents
 
 Two types of background agent operate during the discussion. Load their lifecycle instructions now — apply them at the appropriate moments during the session loop.
 
@@ -14,7 +14,7 @@ Two types of background agent operate during the discussion. Load their lifecycl
 
 ---
 
-## Session Loop
+## B. Session Loop
 
 The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. Follow this loop:
 
@@ -28,7 +28,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
 ---
 
-## Subtopic Lifecycle
+## C. Subtopic Lifecycle
 
 Subtopics move through states as the conversation progresses:
 
@@ -46,7 +46,7 @@ Child subtopics can exist under parents. A parent might be `exploring` while one
 
 ---
 
-## Navigation
+## D. Navigation
 
 Claude owns transitions between subtopics. The goal is natural flow, not rigid sequencing.
 
@@ -72,7 +72,7 @@ If a subtopic was partially explored and the conversation moved on, Claude remem
 
 ---
 
-## Status Display
+## E. Status Display
 
 At natural breaks — after a decision, when transitioning between subtopics, or when the user asks — render the current Discussion Map state. This gives the user visibility into where the discussion stands.
 
@@ -97,7 +97,7 @@ Don't render the map after every exchange — do it at meaningful transitions. I
 
 ---
 
-## Topic Elevation
+## F. Topic Elevation
 
 **This section applies to epic work types only.** For features and bugfixes (single-topic), subtopics stay on the map regardless of scope. Note any out-of-scope concerns in the Summary section for the user to consider separately.
 
@@ -133,17 +133,17 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 3. Update the current Discussion Map: replace the subtopic with `→ Elevated: {new-topic}`
 4. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
 
-→ Return to **Session Loop**.
+→ Return to **B. Session Loop**.
 
 #### If `keep`
 
 Leave it as a subtopic on the map.
 
-→ Return to **Session Loop**.
+→ Return to **B. Session Loop**.
 
 ---
 
-## Convergence
+## G. Convergence
 
 Convergence is the natural end state — not a forced conclusion. The discussion converges when:
 
@@ -180,11 +180,11 @@ Discussion complete. Ready to conclude?
 
 Continue the discussion. The user may want to revisit a decision, explore an edge case further, or probe for gaps. If new subtopics emerge, add them to the map and continue.
 
-→ Return to **Session Loop**.
+→ Return to **B. Session Loop**.
 
 ---
 
-## When the User Signals Conclusion
+## H. When the User Signals Conclusion
 
 When the user indicates they want to conclude the discussion (e.g., "that covers it", "let's wrap up", "I think we're done") before natural convergence:
 
@@ -215,7 +215,7 @@ Note unresolved subtopics in the Summary → Open Threads section of the discuss
 
 **If `no`:**
 
-→ Return to **Session Loop**.
+→ Return to **B. Session Loop**.
 
 #### If all subtopics are `decided`
 
@@ -238,7 +238,7 @@ There are still {N} background agents working.
 
 Check for agent completion. When all agents have returned, check for findings and surface them.
 
-→ Return to **Session Loop**.
+→ Return to **B. Session Loop**.
 
 **If `proceed`:**
 
