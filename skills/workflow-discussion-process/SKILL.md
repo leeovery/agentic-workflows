@@ -16,7 +16,7 @@ Follows research (or starts the pipeline for features). Debate technical decisio
 
 - **Topic** (required) - What technical area to discuss/document
 - **Context** (optional) - Prior research, constraints, existing decisions
-- **Questions to explore** (optional) - Specific architectural questions to address
+- **Seed concerns** (optional) - Initial subtopics or architectural questions to explore
 
 ---
 

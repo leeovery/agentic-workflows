@@ -132,11 +132,14 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
    ```
 3. Update the current Discussion Map: replace the subtopic with `→ Elevated: {new-topic}`
 4. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
-5. Continue with the current discussion
+
+→ Return to **Session Loop**.
 
 #### If `keep`
 
-Leave it as a subtopic on the map. Continue discussing.
+Leave it as a subtopic on the map.
+
+→ Return to **Session Loop**.
 
 ---
 
@@ -185,7 +188,7 @@ Continue the discussion. The user may want to revisit a decision, explore an edg
 
 When the user indicates they want to conclude the discussion (e.g., "that covers it", "let's wrap up", "I think we're done") before natural convergence:
 
-**If there are subtopics still `pending` or `exploring`:**
+#### If there are subtopics still `pending` or `exploring`
 
 Render the Discussion Map and note which subtopics are unresolved.
 
@@ -204,17 +207,17 @@ There are still {N} subtopics not yet decided:
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 Note unresolved subtopics in the Summary → Open Threads section of the discussion file. Commit.
 
 → Return to caller.
 
-#### If `no`
+**If `no`:**
 
 → Return to **Session Loop**.
 
-**If all subtopics are `decided`:**
+#### If all subtopics are `decided`
 
 Check for in-flight agents. If agents are still running:
 
@@ -231,16 +234,16 @@ There are still {N} background agents working.
 
 **STOP.** Wait for user response.
 
-#### If `wait`
+**If `wait`:**
 
 Check for agent completion. When all agents have returned, check for findings and surface them.
 
 → Return to **Session Loop**.
 
-#### If `proceed`
+**If `proceed`:**
 
 → Return to caller.
 
-#### If no agents are in flight
+**If no agents are in flight:**
 
 → Return to caller.
