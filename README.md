@@ -69,20 +69,23 @@ Or jump straight in:
 | `/start-feature` | You're adding functionality to an existing product |
 | `/start-epic` | The work spans multiple topics and sessions |
 | `/start-bugfix` | Something is broken and needs fixing |
+| `/start-quickfix` | A trivially scoped mechanical change (find-and-replace, syntax update) |
 | `/start-cross-cutting` | You're defining patterns or policies that inform features |
 | `/workflow-log-idea` | You want to capture an idea for later |
 | `/workflow-log-bug` | You want to log a bug for later |
+| `/workflow-log-quickfix` | You want to log a quick-fix for later |
 
 Each command gathers context through a brief interview, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
 
 ## The Workflow
 
-Three work types, each with its own pipeline:
+Five work types, each with its own pipeline:
 
 ```
 Epic:          Research → Discussion → Specification → Planning → Implementation → Review
 Feature:     (Research) → Discussion → Specification → Planning → Implementation → Review
 Bugfix:                Investigation → Specification → Planning → Implementation → Review
+Quick-fix:                   Scoping → Implementation → Review
 Cross-cutting: (Research) → Discussion → Specification (terminal)
 ```
 
@@ -94,6 +97,8 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 **Bugfixes** replace discussion with investigation — structured symptom gathering combined with code analysis to find the root cause before specifying the fix. An optional synthesis agent independently validates the root cause hypothesis by tracing code fresh, catching flawed reasoning before it propagates through the pipeline. Planning applies minimal-change surgical fixes with regression prevention as a first-class deliverable.
 
+**Quick-fixes** are for trivially scoped mechanical changes — global find-and-replace, syntax updates, API renames. Scoping combines context gathering, specification, and planning into a single pass, producing 1-2 tasks directly without agents or review cycles. Implementation uses a verification workflow (baseline → change → verify) instead of TDD, since mechanical changes can't meaningfully be test-driven. If scoping reveals the change is more complex than expected, it promotes to a feature or bugfix automatically.
+
 **Cross-cutting** concerns define patterns, policies, or architectural decisions that inform how features are built (caching strategies, error handling conventions, API versioning). They terminate after specification — there's nothing to build. During planning for any work type, completed cross-cutting specs are surfaced as context.
 
 ### The Phases
@@ -103,10 +108,11 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 | **Research** | Explore ideas, market fit, technical feasibility. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
 | **Discussion** | Organic conversation guided by a live Discussion Map that tracks subtopics through pending → exploring → converging → decided. Background review agent catches gaps; competing perspective agents argue viable approaches on ambiguous decisions, then a synthesis agent maps the tradeoff landscape. For epics, sibling concerns discovered during discussion are elevated to their own topic automatically. | Epic, Feature, Cross-cutting |
 | **Investigation** | Symptom gathering + code analysis to identify root cause. Optional synthesis agent validates the hypothesis independently. The bugfix alternative to discussion. | Bugfix |
-| **Specification** | Analyses all discussions/investigation, filters hallucinations, enriches gaps, validates decisions. Reviewed against source material and analysed for gaps before finalising. The spec becomes the golden document — planning references only this. | All |
-| **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. Validated for spec traceability and structural integrity. Per-item approval gates with auto-mode. | All |
-| **Implementation** | Strict TDD — tests first, then code, commit per task. Post-implementation analysis agents check architecture, duplication, and standards. | All |
-| **Review** | Parallel subagents verify each task against spec and plan. Findings become remediation tasks that feed back into implementation. | All |
+| **Scoping** | Context gathering, specification, and planning in a single pass. Produces 1-2 tasks directly. Includes complexity check with promotion to feature/bugfix if needed. | Quick-fix |
+| **Specification** | Analyses all discussions/investigation, filters hallucinations, enriches gaps, validates decisions. Reviewed against source material and analysed for gaps before finalising. The spec becomes the golden document — planning references only this. | Epic, Feature, Bugfix, Cross-cutting |
+| **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. Validated for spec traceability and structural integrity. Per-item approval gates with auto-mode. | Epic, Feature, Bugfix |
+| **Implementation** | TDD (or verification workflow for quick-fix) — commit per task. Post-implementation analysis agents check architecture, duplication, and standards. | Epic, Feature, Bugfix, Quick-fix |
+| **Review** | Parallel subagents verify each task against spec and plan. Findings become remediation tasks that feed back into implementation. | Epic, Feature, Bugfix, Quick-fix |
 
 ### Lifecycle
 

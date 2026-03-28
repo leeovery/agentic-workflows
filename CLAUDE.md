@@ -17,7 +17,8 @@ Always create a feature branch **before** the first commit. Never commit to main
 1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas
 2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map. Subtopics tracked through `pending` → `exploring` → `converging` → `decided`. Topic elevation seeds sibling concerns as separate discussion topics (epics only)
 3. **Investigation** (`workflow-investigation-process` skill): Bugfix-specific - symptom gathering + code analysis → root cause
-4. **Specification** (`workflow-specification-process` skill): Validate and refine into standalone spec
+4. **Scoping** (`workflow-scoping-process` skill): Quick-fix-specific - context, spec, and plan in one pass
+5. **Specification** (`workflow-specification-process` skill): Validate and refine into standalone spec
 5. **Planning** (`workflow-planning-process` skill): Define HOW - phases, tasks, acceptance criteria
 6. **Implementation** (`workflow-implementation-process` skill): Execute plan via strict TDD
 7. **Review** (`workflow-review-process` skill): Validate work against discussion, specification, and plan
@@ -49,14 +50,15 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 
 ## Key Conventions
 
-**Work types and work units**: A *work type* is one of four pipeline shapes: epic, feature, bugfix, or cross-cutting. A *work unit* is a named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" is an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
+**Work types and work units**: A *work type* is one of five pipeline shapes: epic, feature, bugfix, quick-fix, or cross-cutting. A *work unit* is a named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" is an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
 - **Epic**: Multi-topic, multi-session, phase-centric (Research → Discussion → Specification → Planning → Implementation → Review)
 - **Feature**: Single-topic, single-session, linear (Discussion → Specification → Planning → Implementation → Review)
 - **Bugfix**: Single-topic, investigation-centric (Investigation → Specification → Planning → Implementation → Review)
+- **Quick-fix**: Single-topic, scoping-centric (Scoping → Implementation → Review)
 - **Cross-cutting**: Single-topic, project-level (Research (opt.) → Discussion → Specification — terminal)
 
-**Topics**: A *topic* is the item within a phase. For feature/bugfix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All work types use per-topic items in the manifest (unified structure). The discussion phase analyses all research files collectively to derive discussion topics.
+**Topics**: A *topic* is the item within a phase. For feature/bugfix/quick-fix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All work types use per-topic items in the manifest (unified structure). The discussion phase analyses all research files collectively to derive discussion topics.
 
 Work-unit-first directory structure with uniform `{topic}` in all paths. For feature/bugfix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase.
 
@@ -72,8 +74,8 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase)
-- Inbox: `.workflows/.inbox/ideas/`, `.workflows/.inbox/bugs/` (pre-pipeline capture, plain markdown)
-- Inbox archive: `.workflows/.inbox/.archived/{ideas,bugs}/` (moved here when an inbox item enters the pipeline)
+- Inbox: `.workflows/.inbox/ideas/`, `.workflows/.inbox/bugs/`, `.workflows/.inbox/quickfixes/` (pre-pipeline capture, plain markdown)
+- Inbox archive: `.workflows/.inbox/.archived/{ideas,bugs,quickfixes}/` (moved here when an inbox item enters the pipeline)
 
 **Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking its lifecycle state:
 - `in-progress` — actively being worked on (default on creation)
