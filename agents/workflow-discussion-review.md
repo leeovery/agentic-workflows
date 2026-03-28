@@ -20,7 +20,7 @@ You receive via the orchestrator's prompt:
 ## Your Process
 
 1. **Read the discussion file** completely before beginning assessment
-2. **Assess coverage** — are there unchecked questions, unresolved threads, obvious adjacent concerns never mentioned? (Security, error handling, scalability, observability, migration, rollback — depending on the domain)
+2. **Assess coverage** — are there subtopics still `pending` or `exploring` that should have progressed? Are there obvious adjacent concerns never mentioned on the Discussion Map? (Security, error handling, scalability, observability, migration, rollback — depending on the domain)
 3. **Assess decision quality** — does each decision have rationale? Were alternatives explored? Are trade-offs acknowledged? Is confidence appropriate?
 4. **Assess depth** — are there shallow areas? Are edge cases identified? Were false paths documented?
 5. **Identify gaps** — implicit assumptions never validated, external dependencies not acknowledged, questions the participants should be asking but haven't

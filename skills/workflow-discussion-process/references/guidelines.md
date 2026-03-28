@@ -8,15 +8,15 @@ Best practices for documenting discussions. For DOCUMENTATION only - no plans or
 
 ## Core Principles
 
-**One question at a time**: Don't overwhelm with multiple questions. Focus on single issue, get answer, move forward.
+**Follow the conversation**: Explore subtopics in whatever order makes sense. The Discussion Map tracks coverage — you don't need to force sequencing.
 
-**Multiple-choice preferred**: Easier to answer than open-ended. Present 2-3 options with trade-offs.
+**Multiple-choice preferred**: When presenting options, concrete choices are easier to reason about than open-ended questions. Present 2-3 approaches with trade-offs.
 
 **YAGNI ruthlessly**: Remove unnecessary features from all designs. If not discussed, don't add it.
 
 **Explore alternatives**: Always propose 2-3 approaches before settling. Show trade-offs.
 
-**Be flexible**: Go back and clarify when something doesn't make sense. Don't forge ahead on assumptions.
+**Be flexible**: Go back and clarify when something doesn't make sense. Circle back to partially explored subtopics when new context changes the thinking.
 
 **Ask questions**: Clarify ambiguity. Better to ask than assume.
 
@@ -59,12 +59,12 @@ Best practices for documenting discussions. For DOCUMENTATION only - no plans or
 
 At natural pauses — not every exchange, but when something meaningful has been completed, explored, or uncovered — update the file on disk:
 
-- Check off answered questions
-- Add options as explored
+- Update Discussion Map states as subtopics progress
+- Document subtopics when they reach `decided`
+- Add new subtopics to the map as they emerge
 - Document false paths when identified
 - Record decisions (even provisional ones) with rationale
-- Capture new questions as they emerge
-- Keep "Current Thinking" updated
+- Capture provisional thinking for in-progress subtopics before context refresh
 
 Then commit. The file is the source of truth, not the conversation.
 
@@ -78,14 +78,16 @@ Then commit. The file is the source of truth, not the conversation.
 
 **Too much detail too soon**: "Need user-specific cache keys with query params" not "Cache key: metrics:{user_id}:{date}:{SHA256(params)}"
 
+**Scope creep**: If a concern is expanding beyond the current topic's scope, it's likely a sibling topic — elevate it rather than stuffing it into the current discussion
+
 ## Quality Check
 
 Before marking discussion complete:
+- ✅ All Discussion Map subtopics are `decided` or deliberately deferred
 - ✅ Context clear
-- ✅ Questions answered (or parked)
 - ✅ Options explored with trade-offs
 - ✅ False paths documented
 - ✅ Decisions have rationale
-- ✅ Impact explained
-- ✅ Confidence stated
+- ✅ Confidence stated where uncertain
 - ✅ No hallucination
+- ✅ Open threads noted in Summary

@@ -4,7 +4,7 @@
 
 ---
 
-When the user indicates they want to conclude:
+When the discussion session returns here (either through natural convergence or user-initiated conclusion):
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -21,12 +21,13 @@ Conclude this discussion and mark as completed?
 
 #### If `yes`
 
-1. Set discussion status to completed via manifest CLI:
+1. Ensure the Summary section is populated — Key Insights, Open Threads, Current State
+2. Set discussion status to completed via manifest CLI:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status completed
    ```
-2. Final commit
-3. Invoke the bridge:
+3. Final commit
+4. Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}

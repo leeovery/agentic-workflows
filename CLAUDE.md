@@ -15,7 +15,7 @@ Always create a feature branch **before** the first commit. Never commit to main
 ## Workflow Phases
 
 1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas
-2. **Discussion** (`workflow-discussion-process` skill): Capture WHAT and WHY - decisions, architecture, edge cases, debates
+2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map. Subtopics tracked through `pending` → `exploring` → `converging` → `decided`. Topic elevation seeds sibling concerns as separate discussion topics (epics only)
 3. **Investigation** (`workflow-investigation-process` skill): Bugfix-specific - symptom gathering + code analysis → root cause
 4. **Specification** (`workflow-specification-process` skill): Validate and refine into standalone spec
 5. **Planning** (`workflow-planning-process` skill): Define HOW - phases, tasks, acceptance criteria
@@ -105,7 +105,7 @@ The contract and scaffolding templates live in `.claude/skills/create-output-for
 
 ## Output Format References (IMPORTANT)
 
-**NEVER list output format names (linear, local-markdown, etc.) anywhere except:**
+**NEVER list output format names (tick, linear, local-markdown, etc.) anywhere except:**
 - `skills/workflow-planning-process/references/output-formats.md` - the authoritative list
 - `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
@@ -322,7 +322,7 @@ addressed first.
 
 Always parenthetical `(term)`. Never brackets or dash-separated.
 
-Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Phase-specific terms are fine but format is always `(term)`.
+Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`. Phase-specific terms are fine but format is always `(term)`.
 
 ### Cross-Plan References
 

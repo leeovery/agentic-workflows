@@ -337,7 +337,7 @@ Project-wide settings are stored in the `defaults` section of the project manife
 
 | Default | Description | Used by |
 |---------|-------------|---------|
-| `plan_format` | Output format for plans (e.g., `local-markdown`, `tick`, `linear`) | Planning |
+| `plan_format` | Output format for plans (e.g., `tick`, `linear`, `local-markdown`) | Planning |
 | `project_skills` | Array of skill paths used during implementation | Implementation |
 | `linters` | Array of linter configs used during TDD cycle | Implementation |
 

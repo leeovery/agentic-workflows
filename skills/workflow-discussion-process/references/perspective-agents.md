@@ -178,6 +178,6 @@ Summarise the key tensions, strongest arguments, and decision criteria conversat
 
 **Do not read out the full perspective files.** Surface the tradeoff landscape — what's at stake, what the decision hinges on.
 
-**Deriving questions**: Extract decision criteria and unresolved questions from the synthesis. Reframe them as practical questions tied to the project's constraints. Add unresolved questions to the discussion file's Questions list (as unchecked items). Commit the update.
+**Deriving subtopics**: Extract decision criteria and unresolved concerns from the synthesis. Reframe them as practical subtopics tied to the project's constraints. Add unresolved items to the Discussion Map as `pending` subtopics. Commit the update.
 
-**Marking as incorporated**: After findings have been discussed and their questions explored (or deliberately set aside), update all files in the set to `status: incorporated`. No commit needed for cache file status changes.
+**Marking as incorporated**: After findings have been discussed and their subtopics explored (or deliberately set aside), update all files in the set to `status: incorporated`. No commit needed for cache file status changes.

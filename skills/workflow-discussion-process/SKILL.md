@@ -16,7 +16,7 @@ Follows research (or starts the pipeline for features). Debate technical decisio
 
 - **Topic** (required) - What technical area to discuss/document
 - **Context** (optional) - Prior research, constraints, existing decisions
-- **Questions to explore** (optional) - Specific architectural questions to address
+- **Seed concerns** (optional) - Initial subtopics or architectural questions to explore
 
 ---
 
@@ -25,9 +25,9 @@ Follows research (or starts the pipeline for features). Debate technical decisio
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the discussion file** at `.workflows/{work_unit}/discussion/{topic}.md`. This is the only working document this skill creates. Its content is your source of truth for progress.
+2. **Read the discussion file** at `.workflows/{work_unit}/discussion/{topic}.md`. This is the only working document this skill creates. The Discussion Map section is your primary progress indicator — it shows which subtopics are decided, exploring, converging, or pending.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
+4. **Announce your position** to the user before continuing: render the current Discussion Map, state what step you believe you're at, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 

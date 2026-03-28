@@ -102,6 +102,6 @@ If all findings are minor or already addressed:
 
 > "A background review came back — nothing we haven't already covered."
 
-**Deriving questions**: Extract the most impactful gaps and open questions. Reframe them as practical questions tied to the project's constraints. Add unresolved questions to the discussion file's Questions list (as unchecked items). Commit the update.
+**Deriving subtopics**: Extract the most impactful gaps and open questions. Reframe them as practical concerns tied to the project's constraints. Add unresolved items to the Discussion Map as `pending` subtopics. Commit the update.
 
-**Marking as incorporated**: After findings have been discussed and their questions explored (or deliberately set aside), update the file frontmatter to `status: incorporated`. No commit needed for cache file status changes.
+**Marking as incorporated**: After findings have been discussed and their subtopics explored (or deliberately set aside), update the file frontmatter to `status: incorporated`. No commit needed for cache file status changes.

@@ -24,29 +24,44 @@ What this is about, why we're discussing it, the problem or opportunity, current
 - [Related spec or doc](link)
 - [Prior discussion](link)
 
-## Questions
+## Discussion Map
 
-- [ ] How should we handle X?
-      - Sub-question about edge case
-      - Context: brief note if needed
-- [ ] What's the right approach for Y?
-- [ ] Should Z be separate or combined with W?
-      - Related: how does this affect A?
-- [ ] ...
+A living index of subtopics tracked during the discussion. This is the structural backbone — it grows as the conversation branches, and converges as decisions land. Claude maintains this section throughout.
+
+### States
+
+- **pending** — identified but not yet explored
+- **exploring** — actively being discussed
+- **converging** — narrowing toward a decision
+- **decided** — decision reached with rationale documented
+
+### Map
+
+  {Subtopic A} (decided)
+  ├─ {Child subtopic} (decided)
+  └─ {Child subtopic} (converging)
+
+  {Subtopic B} (exploring)
+  ├─ {Child subtopic} (exploring)
+  └─ {Child subtopic} (pending)
+
+  {Subtopic C} (pending)
+
+  → Elevated: {sibling-topic} — discovered during discussion, seeded as separate topic
 
 ---
 
-*Each question above gets its own section below. Check off as completed.*
+*Subtopics are documented below as they reach `decided` or accumulate enough exploration to capture. Not every subtopic needs its own section — minor items resolved in passing can be folded into their parent.*
 
 ---
 
-## How should we handle X?
+## {Subtopic A}
 
 ### Context
-Why this question matters, what's at stake.
+Why this subtopic matters, what's at stake, how it fits the larger topic.
 
 ### Options Considered
-The approaches we looked at. If pros/cons naturally emerged:
+The approaches explored. If pros/cons naturally emerged:
 
 **Option A**
 - Pros: ...
@@ -68,7 +83,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 ---
 
-## What's the right approach for Y?
+## {Subtopic B}
 
 *(Same structure: Context → Options → Journey → Decision)*
 
@@ -80,13 +95,13 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 1. Cross-cutting learning from the discussion
 2. Something that applies broadly
 
+### Open Threads
+- Anything deliberately deferred or left for future discussion
+- Subtopics that were elevated to separate topics (with links)
+
 ### Current State
 - What's resolved
 - What's still uncertain
-
-### Next Steps
-- [ ] Research X
-- [ ] Validate Y
 ```
 
 ## Usage Notes
@@ -95,30 +110,39 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 1. Ensure discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Create file: `.workflows/{work_unit}/discussion/{topic}.md`
 3. Start with context: why discussing?
-4. List questions: what needs deciding?
+4. Seed the Discussion Map with initial subtopics (derived from research, handoff, or user input)
 5. Set status via manifest CLI (the skill handles this)
 
 **During discussion**:
-- Work through questions one at a time
-- Document options, journey, and decision for each
-- Check off questions as completed
-- Keep journey contextual - false paths, debates, and "aha" moments belong with the question they relate to
+- Follow the conversation organically — don't force a rigid question order
+- Update the Discussion Map as subtopics are identified, explored, and decided
+- Document subtopics when they reach `decided` (or accumulate enough exploration to capture)
+- New subtopics emerge naturally — add them to the map as `pending`
+- Minor items resolved in passing can be folded into their parent subtopic's documentation
 
-**Per-question structure**:
-- **Context**: Why this specific question matters
-- **Options Considered**: Approaches explored - include pros/cons if they naturally emerged
-- **Journey**: The exploration - what we thought, what changed, false paths, debates, insights
+**Per-subtopic structure** (when documenting):
+- **Context**: Why this specific subtopic matters
+- **Options Considered**: Approaches explored — include pros/cons if they naturally emerged
+- **Journey**: The exploration — what we thought, what changed, false paths, debates, insights
 - **Decision**: What we chose, why, the deciding factor
 
-**Flexibility**: Not every question needs all sections. Some questions have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up - don't force structure onto a simple discussion.
+**Discussion Map maintenance**:
+- Update states as the conversation progresses
+- New child subtopics can be added under parents
+- The map is the user's visibility into discussion shape and Claude's tracking mechanism
+- Elevated topics (siblings that became their own discussion) are noted with `→ Elevated:` on the map
+
+**Flexibility**: Not every subtopic needs all sections. Some have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up — don't force structure onto a simple discussion.
 
 **Anti-patterns**:
-- Don't pull false paths into a separate top-level section - keep them with the question they relate to
+- Don't pull false paths into a separate top-level section — keep them with the subtopic they relate to
 - Don't turn into plan (no implementation steps)
-- Don't write code - unless it came up in discussion (e.g., API shape, pattern example) and is relevant to capture
-- Don't summarise the journey - document it
+- Don't write code — unless it came up in discussion (e.g., API shape, pattern example) and is relevant to capture
+- Don't summarise the journey — document it
+- Don't stuff sibling-level concerns into subtopics — elevate them to their own discussion topic
 
 **Complete when**:
-- Major questions completed with rationale
+- All subtopics on the Discussion Map are `decided` (or deliberately deferred)
 - Trade-offs understood
 - Path forward clear
+- No new subtopics emerging without breaking scope

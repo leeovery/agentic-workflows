@@ -20,7 +20,7 @@ Builds on Phase 1. The discussion review agent is the safety net that makes loos
 
 | # | Idea | Scope |
 |---|------|-------|
-| 4 | [Natural Conversation in Discussion](natural-conversation-in-discussion.md) | Discussion processing skill |
+| 4 | ~~[Natural Conversation in Discussion](natural-conversation-in-discussion.md)~~ | Discussion processing skill | ✅ Done |
 | 5 | ~~[Parallel Agent Discussion](parallel-agent-discussion.md)~~ | Discussion processing skill | ✅ Done |
 
 ## Phase 3 — UX & Visibility
