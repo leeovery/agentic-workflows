@@ -6,7 +6,7 @@ const { loadActiveManifests, loadAllManifests, phaseStatus, phaseItems, computeN
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
-const ALL_PHASES = ['research', 'discussion', 'investigation', 'specification', 'planning', 'implementation', 'review'];
+const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 
 function lastCompletedPhase(manifest) {
   let last = null;
@@ -46,8 +46,9 @@ function discoverInbox(cwd) {
   const inboxDir = path.join(cwd, '.workflows', '.inbox');
   const ideas = [];
   const bugs = [];
+  const quickfixes = [];
 
-  for (const type of ['ideas', 'bugs']) {
+  for (const type of ['ideas', 'bugs', 'quickfixes']) {
     const dir = path.join(inboxDir, type);
     let files;
     try {
@@ -61,16 +62,19 @@ function discoverInbox(cwd) {
       const title = readTitle(path.join(dir, f)) || parsed.slug;
       const item = { slug: parsed.slug, date: parsed.date, title, file: f };
       if (type === 'ideas') ideas.push(item);
-      else bugs.push(item);
+      else if (type === 'bugs') bugs.push(item);
+      else quickfixes.push(item);
     }
   }
 
   return {
     ideas,
     bugs,
+    quickfixes,
     idea_count: ideas.length,
     bug_count: bugs.length,
-    total_count: ideas.length + bugs.length,
+    quickfix_count: quickfixes.length,
+    total_count: ideas.length + bugs.length + quickfixes.length,
   };
 }
 
@@ -79,6 +83,7 @@ function discover(cwd) {
   const epics = [];
   const features = [];
   const bugfixes = [];
+  const quick_fixes = [];
   const cross_cutting = [];
 
   for (const m of manifests) {
@@ -104,6 +109,8 @@ function discover(cwd) {
       epics.push(unit);
     } else if (m.work_type === 'bugfix') {
       bugfixes.push(unit);
+    } else if (m.work_type === 'quick-fix') {
+      quick_fixes.push(unit);
     } else if (m.work_type === 'cross-cutting') {
       cross_cutting.push(unit);
     } else {
@@ -130,6 +137,7 @@ function discover(cwd) {
     epics: { work_units: epics, count: epics.length },
     features: { work_units: features, count: features.length },
     bugfixes: { work_units: bugfixes, count: bugfixes.length },
+    quick_fixes: { work_units: quick_fixes, count: quick_fixes.length },
     cross_cutting: { work_units: cross_cutting, count: cross_cutting.length },
     completed,
     cancelled,
@@ -137,10 +145,11 @@ function discover(cwd) {
     cancelled_count: cancelled.length,
     inbox,
     state: {
-      has_any_work: (epics.length + features.length + bugfixes.length + cross_cutting.length) > 0,
+      has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
       epic_count: epics.length,
       feature_count: features.length,
       bugfix_count: bugfixes.length,
+      quickfix_count: quick_fixes.length,
       cross_cutting_count: cross_cutting.length,
       has_inbox: inbox.total_count > 0,
       inbox_count: inbox.total_count,
@@ -169,6 +178,7 @@ function format(result) {
   emitSection('epics', result.epics.work_units);
   emitSection('features', result.features.work_units);
   emitSection('bugfixes', result.bugfixes.work_units);
+  emitSection('quick-fixes', result.quick_fixes.work_units);
   emitSection('cross-cutting', result.cross_cutting.work_units);
 
   if (result.completed.length > 0) {
@@ -191,18 +201,22 @@ function format(result) {
     lines.push('=== INBOX ===');
     lines.push(`  ideas: ${result.inbox.idea_count}`);
     lines.push(`  bugs: ${result.inbox.bug_count}`);
+    lines.push(`  quickfixes: ${result.inbox.quickfix_count}`);
     for (const item of result.inbox.ideas) {
       lines.push(`  ${item.slug} (idea, ${item.date})`);
     }
     for (const item of result.inbox.bugs) {
       lines.push(`  ${item.slug} (bug, ${item.date})`);
     }
+    for (const item of result.inbox.quickfixes) {
+      lines.push(`  ${item.slug} (quick-fix, ${item.date})`);
+    }
     lines.push('');
   }
 
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
-  lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix, ${result.state.cross_cutting_count} cross-cutting`);
+  lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix, ${result.state.quickfix_count} quick-fix, ${result.state.cross_cutting_count} cross-cutting`);
   lines.push(`completed_count: ${result.completed_count}`);
   lines.push(`cancelled_count: ${result.cancelled_count}`);
   lines.push(`has_inbox: ${result.state.has_inbox}`);

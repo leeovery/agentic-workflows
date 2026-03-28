@@ -3,7 +3,7 @@
 const path = require('path');
 const { loadManifest, phaseStatus, fileExists, listFiles, listDirs, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
-const ALL_PHASES = ['research', 'discussion', 'investigation', 'specification', 'planning', 'implementation', 'review'];
+const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 
 function phaseFileExists(cwd, workUnit, phase, manifest) {
   const dir = path.join(cwd, '.workflows', workUnit, phase);
@@ -11,6 +11,7 @@ function phaseFileExists(cwd, workUnit, phase, manifest) {
     case 'research':       return listFiles(dir, '.md').length > 0;
     case 'discussion':     return listFiles(dir, '.md').length > 0;
     case 'investigation':  return listFiles(dir, '.md').length > 0;
+    case 'scoping':        return phaseStatus(manifest, phase) !== null;
     case 'specification':  return listDirs(dir).some(d => fileExists(path.join(dir, d, 'specification.md')));
     case 'planning':       return phaseStatus(manifest, phase) !== null;
     case 'implementation': return phaseStatus(manifest, phase) !== null;

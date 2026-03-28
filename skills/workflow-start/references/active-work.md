@@ -31,6 +31,15 @@ Bugfixes:
 @endforeach
 @endif
 
+@if(quickfix_count > 0)
+Quick Fixes:
+@foreach(unit in quick_fixes.work_units)
+  {N}. {unit.name:(titlecase)}
+     └─ {unit.phase_label:(titlecase)}
+
+@endforeach
+@endif
+
 @if(cross_cutting_count > 0)
 Cross-Cutting:
 @foreach(unit in cross_cutting.work_units)
@@ -64,6 +73,12 @@ Inbox:
     • {bug.title} — {bug.date}
 @endforeach
 @endif
+@if(quickfix_count > 0)
+  Quick Fixes:
+@foreach(qf in inbox.quickfixes)
+    • {qf.title} — {qf.date}
+@endforeach
+@endif
 @endif
 
 @if(completed_count > 0 || cancelled_count > 0)
@@ -85,12 +100,14 @@ What would you like to do?
 
 1. Continue "{feature.name:(titlecase)}" — feature, {feature.phase_label}
 2. Continue "{bugfix.name:(titlecase)}" — bugfix, {bugfix.phase_label}
-3. Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
-4. Continue "{epic.name:(titlecase)}" — epic
+3. Continue "{quickfix.name:(titlecase)}" — quick-fix, {quickfix.phase_label}
+4. Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
+5. Continue "{epic.name:(titlecase)}" — epic
 
 - **`f`/`feature`** — Start new feature
 - **`e`/`epic`** — Start new epic
 - **`b`/`bugfix`** — Start new bugfix
+- **`q`/`quick-fix`** — Start new quick-fix
 - **`c`/`cross-cutting`** — Start new cross-cutting concern
 @if(has_inbox)
 - **`i`/`inbox`** — Start from an inbox item
@@ -120,11 +137,13 @@ Invoke the selected skill:
 |-----------|--------|
 | Continue feature | `/continue-feature {work_unit}` |
 | Continue bugfix | `/continue-bugfix {work_unit}` |
+| Continue quick-fix | `/continue-quickfix {work_unit}` |
 | Continue cross-cutting | `/continue-cross-cutting {work_unit}` |
 | Continue epic | `/continue-epic {work_unit}` |
 | Start new feature | `/start-feature` |
 | Start new epic | `/start-epic` |
 | Start new bugfix | `/start-bugfix` |
+| Start new quick-fix | `/start-quickfix` |
 | Start new cross-cutting | `/start-cross-cutting` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

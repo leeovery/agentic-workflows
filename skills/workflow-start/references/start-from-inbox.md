@@ -18,7 +18,7 @@ Inbox
 @endforeach
 ```
 
-Build a numbered list combining all ideas and bugs, sorted by date (oldest first). Each shows title, type (idea/bug), and date.
+Build a numbered list combining all ideas, bugs, and quick-fixes, sorted by date (oldest first). Each shows title, type (idea/bug/quick-fix), and date.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -47,6 +47,14 @@ Read the full content of the selected inbox file.
 Invoke `/start-bugfix` with the inbox file path as positional argument:
 
 `/start-bugfix .workflows/.inbox/bugs/{file}`
+
+This skill ends. The invoked skill handles archival. Terminal.
+
+#### If selected item is a quick-fix
+
+Invoke `/start-quickfix` with the inbox file path as positional argument:
+
+`/start-quickfix .workflows/.inbox/quickfixes/{file}`
 
 This skill ends. The invoked skill handles archival. Terminal.
 

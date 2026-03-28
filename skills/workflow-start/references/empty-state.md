@@ -27,6 +27,7 @@ What would you like to start?
 - **`f`/`feature`** — Add functionality to an existing product
 - **`e`/`epic`** — Large initiative, multi-topic, multi-session
 - **`b`/`bugfix`** — Fix broken behavior
+- **`q`/`quick-fix`** — Trivially scoped mechanical change
 - **`c`/`cross-cutting`** — Define patterns or policies that inform features
 @if(has_inbox)
 - **`i`/`inbox`** — Start from an inbox item ({inbox_count} items)
@@ -47,7 +48,7 @@ Select an option:
 
 → Return to caller.
 
-#### If user chose `f`/`feature`, `e`/`epic`, `b`/`bugfix`, or `c`/`cross-cutting`
+#### If user chose `f`/`feature`, `e`/`epic`, `b`/`bugfix`, `q`/`quick-fix`, or `c`/`cross-cutting`
 
 Invoke the selected skill:
 
@@ -56,6 +57,7 @@ Invoke the selected skill:
 | Feature | `/start-feature` |
 | Epic | `/start-epic` |
 | Bugfix | `/start-bugfix` |
+| Quick-fix | `/start-quickfix` |
 | Cross-cutting | `/start-cross-cutting` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
