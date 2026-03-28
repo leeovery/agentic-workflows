@@ -29,11 +29,11 @@ A development workflow for Claude Code that turns conversations into working sof
 **What you get:**
 
 - **An expert in the room.** The system acts as an expert architect — challenging your thinking, probing edge cases before they become bugs, and capturing not just decisions but *why* you made them. Every phase adds real analytical value, not just formatting.
-- **Decisions that stick.** Architecture choices, edge cases, and trade-offs are captured in discussion documents — not lost to chat history. When you come back in a week, the context is there.
+- **Decisions that stick.** Architecture choices, edge cases, and trade-offs are captured in discussion documents — not lost to chat history. A background review agent catches gaps as you go, and when a decision has genuine ambiguity, competing perspective agents argue each position before a synthesis agent maps the tradeoff landscape. When you come back in a week, the context is there.
 - **Specifications that catch mistakes early.** The system analyses your discussions, filters hallucinations, fills gaps, and produces a validated spec before any code is written.
 - **Plans with real structure.** Specifications become phased implementation plans with tasks, acceptance criteria, and dependency ordering. Choose where tasks live — [local markdown files, Linear issues, or Tick CLI](#output-formats).
 - **Implementation via strict TDD.** Tests first, then code, commit after each task. Per-task approval gates keep you in control, or switch to auto-mode when you trust the flow.
-- **Validation at every stage.** Specifications get bidirectional review — one agent checks against source material for accuracy, another analyses the spec as a standalone document for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
+- **Validation at every stage.** Discussions are reviewed by a background agent for gaps and shallow coverage, with competing perspective agents for ambiguous decisions. Investigation root causes are independently validated by a synthesis agent before proceeding. Specifications get bidirectional review — one agent checks against source material for accuracy, another analyses the spec as a standalone document for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
 - **Context that survives.** Each phase clears the context window and starts fresh, so you're never fighting token limits on large work. All progress lives on disk — pick up exactly where you left off, even after context compaction or a new session.
 
 ## Getting Started
@@ -92,7 +92,7 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 **Features** are for adding functionality. Single topic, linear pipeline. Planning analyses your codebase and follows existing patterns — it won't introduce new architectural conventions unless the spec calls for it. Research is optional — skip it if you know what you're building. If a feature grows beyond scope, pivot it to an epic without losing progress.
 
-**Bugfixes** replace discussion with investigation — structured symptom gathering combined with code analysis to find the root cause before specifying the fix. Planning applies minimal-change surgical fixes with regression prevention as a first-class deliverable.
+**Bugfixes** replace discussion with investigation — structured symptom gathering combined with code analysis to find the root cause before specifying the fix. An optional synthesis agent independently validates the root cause hypothesis by tracing code fresh, catching flawed reasoning before it propagates through the pipeline. Planning applies minimal-change surgical fixes with regression prevention as a first-class deliverable.
 
 **Cross-cutting** concerns define patterns, policies, or architectural decisions that inform how features are built (caching strategies, error handling conventions, API versioning). They terminate after specification — there's nothing to build. During planning for any work type, completed cross-cutting specs are surfaced as context.
 
@@ -101,8 +101,8 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 | Phase | Purpose | Applies to |
 |-------|---------|------------|
 | **Research** | Explore ideas, market fit, technical feasibility. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
-| **Discussion** | Deep dives into architecture, edge cases, and rationale. Captures not just decisions, but *why* you made them. | Epic, Feature, Cross-cutting |
-| **Investigation** | Symptom gathering + code analysis to identify root cause. The bugfix alternative to discussion. | Bugfix |
+| **Discussion** | Deep dives into architecture, edge cases, and rationale. Background review agent catches gaps; competing perspective agents argue viable approaches on ambiguous decisions, then a synthesis agent maps the tradeoff landscape. | Epic, Feature, Cross-cutting |
+| **Investigation** | Symptom gathering + code analysis to identify root cause. Optional synthesis agent validates the hypothesis independently. The bugfix alternative to discussion. | Bugfix |
 | **Specification** | Analyses all discussions/investigation, filters hallucinations, enriches gaps, validates decisions. Reviewed against source material and analysed for gaps before finalising. The spec becomes the golden document — planning references only this. | All |
 | **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. Validated for spec traceability and structural integrity. Per-item approval gates with auto-mode. | All |
 | **Implementation** | Strict TDD — tests first, then code, commit per task. Post-implementation analysis agents check architecture, duplication, and standards. | All |
@@ -114,9 +114,9 @@ Work units are **in-progress**, **completed**, or **cancelled**. Completion happ
 
 ## Key Features
 
-### 17 Specialized Agents
+### 21 Specialized Agents
 
-Complex phases spawn parallel subagents for isolated concerns — planning uses 6 agents for phase design, task authoring, dependency graphing, and quality review. Implementation uses 7 for TDD execution, post-task review, and cross-cutting analysis. Specification and review each use 2 for input validation and gap analysis.
+Complex phases spawn parallel subagents for isolated concerns — discussion uses 3 agents for independent review, competing perspectives, and synthesis of tradeoffs. Investigation uses 1 for independent root cause validation. Specification and review each use 2 for input validation and gap analysis. Planning uses 6 for phase design, task authoring, dependency graphing, and quality review. Implementation uses 7 for TDD execution, post-task review, and cross-cutting analysis.
 
 ### Output Formats
 
@@ -193,11 +193,15 @@ Log ideas and bugs as you go — mid-conversation or from scratch. Say "log that
 </details>
 
 <details>
-<summary><strong>Agents</strong> — 17 subagents for parallel task execution</summary>
+<summary><strong>Agents</strong> — 21 subagents for parallel task execution</summary>
 
-**Planning:** [phase-designer](agents/workflow-planning-phase-designer.md) | [task-designer](agents/workflow-planning-task-designer.md) | [task-author](agents/workflow-planning-task-author.md) | [dependency-grapher](agents/workflow-planning-dependency-grapher.md) | [review-traceability](agents/workflow-planning-review-traceability.md) | [review-integrity](agents/workflow-planning-review-integrity.md)
+**Discussion:** [review](agents/workflow-discussion-review.md) | [perspective](agents/workflow-discussion-perspective.md) | [synthesis](agents/workflow-discussion-synthesis.md)
+
+**Investigation:** [synthesis](agents/workflow-investigation-synthesis.md)
 
 **Specification:** [review-input](agents/workflow-specification-review-input.md) | [review-gap-analysis](agents/workflow-specification-review-gap-analysis.md)
+
+**Planning:** [phase-designer](agents/workflow-planning-phase-designer.md) | [task-designer](agents/workflow-planning-task-designer.md) | [task-author](agents/workflow-planning-task-author.md) | [dependency-grapher](agents/workflow-planning-dependency-grapher.md) | [review-traceability](agents/workflow-planning-review-traceability.md) | [review-integrity](agents/workflow-planning-review-integrity.md)
 
 **Implementation:** [task-executor](agents/workflow-implementation-task-executor.md) | [task-reviewer](agents/workflow-implementation-task-reviewer.md) | [analysis-architecture](agents/workflow-implementation-analysis-architecture.md) | [analysis-duplication](agents/workflow-implementation-analysis-duplication.md) | [analysis-standards](agents/workflow-implementation-analysis-standards.md) | [analysis-synthesizer](agents/workflow-implementation-analysis-synthesizer.md) | [analysis-task-writer](agents/workflow-implementation-analysis-task-writer.md)
 
