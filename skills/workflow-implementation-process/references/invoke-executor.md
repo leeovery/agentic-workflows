@@ -20,9 +20,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_
 
 Use **verification-workflow.md** (`verification-workflow.md`) as the workflow reference (item 1 below).
 
+→ Proceed to **Invoke the Agent**.
+
 #### Otherwise
 
 Use **tdd-workflow.md** (`tdd-workflow.md`) as the workflow reference (item 1 below).
+
+→ Proceed to **Invoke the Agent**.
 
 ---
 
