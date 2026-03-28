@@ -49,3 +49,11 @@ Larger systemic changes. Project memory benefits from all other improvements bei
 |---|------|-------|
 | 12 | [Project Memory](project-memory.md) | Cross-cutting, all phases |
 | 13 | [Dynamic Discovery Engine](dynamic-discovery-engine.md) | All discovery scripts |
+
+## Phase 6 — Model Routing
+
+Leverage multiple AI models by dispatching work to the best model for each task type.
+
+| # | Idea | Scope |
+|---|------|-------|
+| 14 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
