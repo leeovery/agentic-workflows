@@ -30,6 +30,19 @@ Why It Wasn't Caught:
   {testing gap, edge case, recent change}
 ```
 
+**If synthesis validation was run and found gaps**, add a synthesis block:
+
+> *Output the next fenced block as a code block:*
+
+```
+Synthesis Validation ({CONFIDENCE} confidence):
+  {gap 1}
+  {gap 2}
+
+These gaps may affect the root cause assessment. Consider them
+during your review.
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```

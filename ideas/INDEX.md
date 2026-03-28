@@ -12,7 +12,7 @@ Foundation work. Adds review agents to phases that currently lack quality gates.
 |---|------|-------|
 | 1 | ~~[Skill Compliance Self-Check](skill-compliance-self-check.md)~~ | All processing skills | ✅ Done |
 | 2 | ~~[Discussion Review Agent](discussion-review-agent.md)~~ | Discussion phase | ✅ Done |
-| 3 | [Investigation Synthesis Agent](investigation-synthesis-agent.md) | Investigation phase (bugfix) |
+| 3 | ~~[Investigation Synthesis Agent](investigation-synthesis-agent.md)~~ | Investigation phase (bugfix) | ✅ Done |
 
 ## Phase 2 — Discussion Evolution
 

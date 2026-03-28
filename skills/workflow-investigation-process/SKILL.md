@@ -145,22 +145,30 @@ Document in the investigation file and commit.
 
 ---
 
-## Step 5: Findings Review & Fix Discussion
+## Step 5: Root Cause Validation
 
-Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.
+Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Compliance Self-Check
+## Step 6: Findings Review & Fix Discussion
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.
 
 → Proceed to **Step 7**.
 
 ---
 
-## Step 7: Conclude Investigation
+## Step 7: Compliance Self-Check
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Proceed to **Step 8**.
+
+---
+
+## Step 8: Conclude Investigation
 
 Load **[conclude-investigation.md](references/conclude-investigation.md)** and follow its instructions as written.
