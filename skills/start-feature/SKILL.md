@@ -61,13 +61,13 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ## Step 1: Gather Feature Context
 
-#### If inbox file path was provided as positional argument (`$0`)
-
 > *Output the next fenced block as a code block:*
 
 ```
 ── Gather Feature Context ──────────────────────────
 ```
+
+#### If inbox file path was provided as positional argument (`$0`)
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -81,12 +81,6 @@ Read the inbox file at the provided path. Use its content as the feature descrip
 → Proceed to **Step 2**.
 
 #### Otherwise
-
-> *Output the next fenced block as a code block:*
-
-```
-── Gather Feature Context ──────────────────────────
-```
 
 > *Output the next fenced block as markdown (not a code block):*
 
