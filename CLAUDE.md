@@ -254,7 +254,7 @@ Rules:
 - 2-space left padding on the title text
 - Title text is the phase or context name — no "Overview" suffix
 - One blank line after the closing border before any content
-- Rendered as a code block with its own rendering instruction
+- **Must be inside a code block** — never markdown. Code blocks preserve the indentation and whitespace that the border layout depends on. Markdown rendering would collapse the spacing and break the layout
 
 Phase titles replace the old plain-text title pattern. Status displays that previously opened with a title line (e.g., `Planning Overview`) now use the phase title at the top of the same code block, followed by a blank line before the content.
 
