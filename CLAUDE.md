@@ -245,14 +245,14 @@ Bullet-bordered box. One per skill invocation. Serves as the top-level anchor te
 
 ```
 ●───────────────────────────────────────────────●
-  Specification
+  Specification Overview
 ●───────────────────────────────────────────────●
 ```
 
 Rules:
 - Fixed width: 49 characters total (● + 47 em-dashes + ●)
 - 2-space left padding on the title text
-- Title text is the phase or context name — no "Overview" suffix
+- Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
 - One blank line after the closing border before any content
 - **Must be inside a code block** — never markdown. Code blocks preserve the indentation and whitespace that the border layout depends on. Markdown rendering would collapse the spacing and break the layout
 
@@ -534,7 +534,7 @@ When a phase can't proceed — use the phase title at the top, then explain:
 
 ```
 ●───────────────────────────────────────────────●
-  Planning
+  Planning Overview
 ●───────────────────────────────────────────────●
 
 No specification found in .workflows/{work_unit}/specification/{topic}/

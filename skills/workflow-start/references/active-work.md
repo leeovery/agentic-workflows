@@ -12,7 +12,7 @@ Display all active work and present a unified menu for continuing or starting wo
 
 ```
 ●───────────────────────────────────────────────●
-  Workflow
+  Workflow Overview
 ●───────────────────────────────────────────────●
 
 @if(feature_count > 0)

@@ -10,7 +10,7 @@ No active work found. Offer to start something new, with option to view complete
 
 ```
 ●───────────────────────────────────────────────●
-  Workflow
+  Workflow Overview
 ●───────────────────────────────────────────────●
 
 No active work found.
