@@ -13,7 +13,9 @@ Present everything discovered to help the user make an informed choice.
 > *Output the next fenced block as a code block:*
 
 ```
-Discussion Overview
+●───────────────────────────────────────────────●
+  Discussion Overview
+●───────────────────────────────────────────────●
 
 {N} research topics found. {M} existing discussions.
 
