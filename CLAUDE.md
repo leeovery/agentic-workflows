@@ -256,7 +256,7 @@ Rules:
 - One blank line after the closing border before any content
 - Rendered as a code block with its own rendering instruction
 
-Phase titles replace the old plain-text title pattern. Status displays that previously opened with a title line (e.g., `Planning Overview`) now use a separate phase title block above the status code block.
+Phase titles replace the old plain-text title pattern. Status displays that previously opened with a title line (e.g., `Planning Overview`) now use the phase title at the top of the same code block, followed by a blank line before the content.
 
 ### Step Markers
 
@@ -530,14 +530,13 @@ Automatically proceeding with "{topic:(titlecase)}".
 
 ### Block / Terminal Messages
 
-When a phase can't proceed — use the phase title, then explain in a separate code block:
+When a phase can't proceed — use the phase title at the top, then explain:
 
 ```
 ●───────────────────────────────────────────────●
   Planning
 ●───────────────────────────────────────────────●
-```
-```
+
 No specification found in .workflows/{work_unit}/specification/{topic}/
 
 The planning phase requires a completed specification.

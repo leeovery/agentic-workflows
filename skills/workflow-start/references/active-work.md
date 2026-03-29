@@ -14,11 +14,7 @@ Display all active work and present a unified menu for continuing or starting wo
 ●───────────────────────────────────────────────●
   Workflow
 ●───────────────────────────────────────────────●
-```
 
-> *Output the next fenced block as a code block:*
-
-```
 @if(feature_count > 0)
 Features:
 @foreach(unit in features.work_units)
