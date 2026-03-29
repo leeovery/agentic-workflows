@@ -29,6 +29,12 @@ Conclude this discussion and mark as completed?
 3. Final commit
 4. Invoke the bridge:
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Discussion complete.** The specification phase will synthesise your decisions into a formal document.
+```
+
 ```
 Pipeline bridge for: {work_unit}
 Completed phase: discussion

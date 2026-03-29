@@ -33,12 +33,6 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
-## Output Formatting
-
-When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
-
----
-
 ## Step 0: Resume Detection
 
 Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
@@ -94,6 +88,12 @@ Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and fol
 ---
 
 ## Step 3: Discussion Session
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Discussion starting.** I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
+```
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
 
