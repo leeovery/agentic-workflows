@@ -85,7 +85,7 @@ Register the task_map entries. For each task, map internal_id to external_id:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
 ```
 
-For local-markdown, the external_id equals the topic name. For tick/linear, use the ID returned by the creation command.
+The external_id is determined by the format's authoring instructions.
 
 ## D. Mark Scoping Complete
 
