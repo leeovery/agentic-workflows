@@ -21,12 +21,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ## Step 0: Initialisation
 
-Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
-
-**Run migrations — this is mandatory. You must complete it before proceeding.**
-
-Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
-
 > *Output the next fenced block as a code block:*
 
 ```
@@ -35,11 +29,41 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 ●───────────────────────────────────────────────●
 ```
 
+> *Output the next fenced block as a code block:*
+
+```
+── Initialisation ──────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Running migrations to keep workflow files in sync.**
+```
+
+Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
+
+**Run migrations — this is mandatory. You must complete it before proceeding.**
+
+Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
+
 → Proceed to **Step 1**.
 
 ---
 
 ## Step 1: Discovery State
+
+> *Output the next fenced block as a code block:*
+
+```
+── Run Discovery ───────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Scanning for active features and their current progress.**
+```
 
 !`node .claude/skills/continue-feature/scripts/discovery.cjs`
 
@@ -73,6 +97,18 @@ Parse the discovery output to understand:
 
 ## Step 2: Check Count and Arguments
 
+> *Output the next fenced block as a code block:*
+
+```
+── Check State ─────────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Checking how many features are in progress.**
+```
+
 #### If `count` is 0
 
 > *Output the next fenced block as a code block:*
@@ -99,6 +135,18 @@ Store the work_unit.
 
 ## Step 3: Select Feature
 
+> *Output the next fenced block as a code block:*
+
+```
+── Select Feature ──────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Showing your active features for selection.**
+```
+
 Load **[select-feature.md](references/select-feature.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
@@ -106,6 +154,18 @@ Load **[select-feature.md](references/select-feature.md)** and follow its instru
 ---
 
 ## Step 4: Validate Selection
+
+> *Output the next fenced block as a code block:*
+
+```
+── Validate Selection ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Confirming the selected feature exists and is active.**
+```
 
 Load **[validate-selection.md](references/validate-selection.md)** and follow its instructions as written.
 
@@ -115,6 +175,18 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ## Step 5: Backwards Navigation
 
+> *Output the next fenced block as a code block:*
+
+```
+── Check Progress ──────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Checking whether earlier phases are available to revisit.**
+```
+
 Load **[revisit-phase.md](references/revisit-phase.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
@@ -122,6 +194,18 @@ Load **[revisit-phase.md](references/revisit-phase.md)** and follow its instruct
 ---
 
 ## Step 6: Route to Phase Skill
+
+> *Output the next fenced block as a code block:*
+
+```
+── Route to Phase ──────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Handing off to the next phase for this feature.**
+```
 
 Using the selected feature's `next_phase`, invoke the appropriate phase skill:
 
