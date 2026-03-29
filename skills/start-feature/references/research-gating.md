@@ -6,12 +6,6 @@
 
 Let the user choose whether to start with research or go directly to discussion.
 
-> *Output the next fenced block as a code block:*
-
-```
-── Step 3: Choose Starting Phase ───────────────────
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```

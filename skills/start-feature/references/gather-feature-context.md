@@ -9,8 +9,6 @@ Gather a brief description of the feature — enough for a name and manifest des
 > *Output the next fenced block as a code block:*
 
 ```
-── Step 1: Gather Context ──────────────────────────
-
 What feature are you adding?
 
 Describe briefly what you're building and why.
