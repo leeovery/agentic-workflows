@@ -11,7 +11,9 @@ Shows when multiple completed discussions exist, specifications exist, and cache
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 {N} completed discussions found. {M} specifications exist.
 

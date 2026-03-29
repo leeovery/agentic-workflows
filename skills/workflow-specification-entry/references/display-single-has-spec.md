@@ -13,7 +13,9 @@ Determine extraction count: check the spec's `sources` array from discovery. Cou
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 Single completed discussion found with existing specification.
 

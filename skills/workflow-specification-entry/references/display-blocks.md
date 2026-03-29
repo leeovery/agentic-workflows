@@ -11,7 +11,9 @@ Two terminal paths — the command stops and cannot proceed.
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 No discussions found.
 
@@ -29,7 +31,9 @@ The specification phase requires completed discussions to work from.
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 No completed discussions found.
 

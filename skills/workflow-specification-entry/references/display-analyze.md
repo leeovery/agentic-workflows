@@ -11,7 +11,9 @@ Prompted when multiple completed discussions exist, no specifications exist, and
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 {N} completed discussions found. No specifications exist yet.
 

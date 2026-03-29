@@ -18,7 +18,9 @@ Extraction count: X = sources with `status: incorporated`, Y = total source coun
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 Single completed discussion found with existing multi-source specification.
 

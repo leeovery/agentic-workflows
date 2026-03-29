@@ -55,7 +55,9 @@ All items are first-class — every grouping (including single-discussion entrie
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 Recommended breakdown for specifications with their source discussions.
 

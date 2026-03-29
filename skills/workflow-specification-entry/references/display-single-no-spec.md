@@ -11,7 +11,9 @@ No specification exists for this discussion.
 > *Output the next fenced block as a code block:*
 
 ```
-Specification Overview
+●───────────────────────────────────────────────●
+  Specification Overview
+●───────────────────────────────────────────────●
 
 Single completed discussion found.
 
