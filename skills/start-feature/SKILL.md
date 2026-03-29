@@ -61,6 +61,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ## Step 1: Gather Feature Context
 
+#### If inbox file path was provided as positional argument (`$0`)
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -70,17 +72,28 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> **Gathering context for the feature.** This is used to
-> understand the scope and suggest a name.
+> **Using context from your inbox item.** Reading the inbox file
+> to understand scope and suggest a name.
 ```
-
-#### If inbox file path was provided as positional argument (`$0`)
 
 Read the inbox file at the provided path. Use its content as the feature description — skip the gather-context prompt. The slug from the filename (strip the `YYYY-MM-DD--` prefix, strip `.md`) becomes the suggested work unit name in Step 2.
 
 → Proceed to **Step 2**.
 
 #### Otherwise
+
+> *Output the next fenced block as a code block:*
+
+```
+── Gather Feature Context ──────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Gathering context for the feature.** A brief description
+> is enough to understand the scope and suggest a name.
+```
 
 Load **[gather-feature-context.md](references/gather-feature-context.md)** and follow its instructions as written.
 
