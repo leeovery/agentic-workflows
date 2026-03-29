@@ -32,7 +32,9 @@ Conclude this discussion and mark as completed?
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> **Discussion complete.** The specification phase will synthesise your decisions into a formal document.
+> **Discussion complete.** The specification
+> phase will synthesise your decisions into a
+> formal document.
 ```
 
 ```

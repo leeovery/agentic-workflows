@@ -309,6 +309,7 @@ Guidance text rendered as markdown blockquotes. Used for phase entry context, pr
 
 Rules:
 - Rendered as markdown (use the markdown rendering instruction)
+- **Every line must start with `>`** — Claude Code only renders the blockquote border on lines that have the `>` prefix. A single long line will wrap without the border on subsequent lines. Wrap at ~50 characters per line to keep the blockquote visually intact
 - Bold lead phrase sets context: `**Entering Specification.**`, `**Heads up:**`, `**Blocked:**`, `**Specification complete.**`
 - Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
 - 1-3 sentences maximum — never compete with the actual content

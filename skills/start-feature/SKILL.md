@@ -38,7 +38,10 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> **Starting a new feature.** I'll ask what you're building, suggest a name, then you'll choose whether to research first or go straight to discussion.
+> **Starting a new feature.** I'll ask what
+> you're building, suggest a name, then you'll
+> choose whether to research first or go straight
+> to discussion.
 ```
 
 → Proceed to **Step 1**.

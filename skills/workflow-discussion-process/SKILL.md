@@ -92,7 +92,11 @@ Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and fol
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> **Discussion starting.** I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
+> **Discussion starting.** I'll track our
+> conversation on a Discussion Map. You can lead
+> wherever you want — I'll challenge thinking,
+> explore edge cases, and capture decisions as
+> we go.
 ```
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
