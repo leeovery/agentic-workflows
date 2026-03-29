@@ -20,6 +20,8 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ---
 
+## Step 0: Initialisation
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -40,9 +42,18 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 ●─────────────────────────────────────────────────────────────────●
 ```
 
----
+> *Output the next fenced block as a code block:*
 
-## Step 0: Initialisation
+```
+── Initialisation ──────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Running migrations to keep workflow files in sync.**
+> This ensures everything is up to date before we proceed.
+```
 
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
@@ -55,6 +66,19 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 ---
 
 ## Step 1: Run Discovery
+
+> *Output the next fenced block as a code block:*
+
+```
+── Run Discovery ───────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Scanning your workflow directory.** Looking for active work,
+> completed items, and inbox entries to show you the full picture.
+```
 
 !`node .claude/skills/workflow-start/scripts/discovery.cjs`
 
@@ -94,6 +118,19 @@ Parse the output to understand the current workflow state:
 
 ## Step 2: Check State
 
+> *Output the next fenced block as a code block:*
+
+```
+── Check State ─────────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Determining what to show you.** Routing based on whether
+> active work was found.
+```
+
 #### If `state.has_any_work` is false
 
 Load **[empty-state.md](references/empty-state.md)** and follow its instructions as written.
@@ -105,5 +142,17 @@ Load **[empty-state.md](references/empty-state.md)** and follow its instructions
 ---
 
 ## Step 3: Display and Route
+
+> *Output the next fenced block as a code block:*
+
+```
+── Display and Route ───────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Showing your active work and available options.**
+```
 
 Load **[active-work.md](references/active-work.md)** and follow its instructions as written.
