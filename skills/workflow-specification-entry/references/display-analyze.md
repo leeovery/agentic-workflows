@@ -43,17 +43,11 @@ No `---` separator before these messages.
 
 #### If cache status is `none`
 
-> *Output the next fenced block as a code block:*
-
-```
-These discussions will be analyzed for natural groupings to determine
-how they should be organized into specifications. Results are cached
-and reused until discussions change.
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+> **What happens next.** Your discussions will be analyzed for natural groupings to determine how they should be organized into specifications. Results are cached and reused until discussions change.
+
 · · · · · · · · · · · ·
 Proceed with analysis?
 - **`y`/`yes`**
@@ -67,19 +61,11 @@ Proceed with analysis?
 
 #### If cache status is `stale`
 
-> *Output the next fenced block as a code block:*
-
-```
-A previous grouping analysis exists but is outdated — discussions
-have changed since it was created.
-
-These discussions will be re-analyzed for natural groupings. Results
-are cached and reused until discussions change.
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+> **Analysis outdated.** A previous grouping analysis exists but discussions have changed since it was created. Your discussions will be re-analyzed for natural groupings. Results are cached and reused until discussions change.
+
 · · · · · · · · · · · ·
 Proceed with analysis?
 - **`y`/`yes`**
