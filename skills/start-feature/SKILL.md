@@ -47,12 +47,6 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ## Step 1: Gather Feature Context
 
-> *Output the next fenced block as a code block:*
-
-```
-── Step 1: Gather Context ──────────────────────────
-```
-
 #### If inbox file path was provided as positional argument (`$0`)
 
 Read the inbox file at the provided path. Use its content as the feature description — skip the gather-context prompt. The slug from the filename (strip the `YYYY-MM-DD--` prefix, strip `.md`) becomes the suggested work unit name in Step 2.
@@ -69,12 +63,6 @@ Load **[gather-feature-context.md](references/gather-feature-context.md)** and f
 
 ## Step 2: Feature Name and Conflict Check
 
-> *Output the next fenced block as a code block:*
-
-```
-── Step 2: Name Check ──────────────────────────────
-```
-
 Load **[name-check.md](references/name-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
@@ -82,12 +70,6 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 ---
 
 ## Step 3: Route to First Phase
-
-> *Output the next fenced block as a code block:*
-
-```
-── Step 3: Choose Starting Phase ───────────────────
-```
 
 Load **[research-gating.md](references/research-gating.md)** and follow its instructions as written.
 
