@@ -209,6 +209,20 @@ The manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the singl
 
 These are hard rules, not suggestions. All entry-point skills that present discovery state, menus, or interactive choices MUST follow these conventions exactly. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
 
+### Visual Hierarchy
+
+All user-facing output uses five distinct visual tiers, each with a specific purpose. From heaviest to lightest:
+
+| Tier | Element | Purpose | Rendering |
+|------|---------|---------|-----------|
+| 1 | Phase title | "Where am I" — top-level anchor | Code block |
+| 2 | Signpost blockquote | "What's happening" — guidance, context, closure | Markdown |
+| 3 | Step marker | Progress through the phase | Code block |
+| 4 | Sub-step marker | Progress within a step | Code block |
+| 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
+
+Every skill invocation should produce at most one phase title. Step markers appear at each step boundary. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion. Status displays and menus are unchanged from existing conventions.
+
 ### Rendering Instructions
 
 Every **user-facing output** fenced block in skill files must be preceded by a rendering instruction. Fenced blocks that are model instructions (bash commands to execute, file paths to load) are exempt — they are not displayed to the user.
@@ -223,17 +237,106 @@ or:
 > *Output the next fenced block as markdown (not a code block):*
 ```
 
-Code blocks are used for informational displays (overviews, status, keys) — they preserve indentation for tree structures and aligned lists. Markdown is used for interactive elements (menus, prompts) where bold formatting is needed. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
+Code blocks are used for informational displays (overviews, status, keys, phase titles, step markers) — they preserve indentation for tree structures and aligned lists. Markdown is used for interactive elements (menus, prompts) and signpost blockquotes where bold formatting is needed. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
 
-### Title Pattern
+### Phase Titles
 
-Always `{Phase} Overview` as the first line of the opening code block, followed by a blank line and a summary sentence.
+Bullet-bordered box. One per skill invocation. Serves as the top-level anchor telling the user where they are. Always followed by a blank line before any subsequent content.
 
 ```
-Planning Overview
-
-4 specifications found. 2 plans exist.
+●───────────────────────────────────────────────●
+  Specification
+●───────────────────────────────────────────────●
 ```
+
+Rules:
+- Fixed width: 49 characters total (● + 47 em-dashes + ●)
+- 2-space left padding on the title text
+- Title text is the phase or context name — no "Overview" suffix
+- One blank line after the closing border before any content
+- Rendered as a code block with its own rendering instruction
+
+Phase titles replace the old plain-text title pattern. Status displays that previously opened with a title line (e.g., `Planning Overview`) now use a separate phase title block above the status code block.
+
+### Step Markers
+
+Em-dash framed progress indicators. Embedded at each step boundary — never instructed once at the top of a file. Short left side, long right side to fill width.
+
+```
+── Step 3: Construct Specification ──────────────────
+```
+
+Variations for loops and routing:
+
+```
+── Step 4: Task Execution (3 of 12) ─────────────────
+── Step 5: Review (cycle 2) ─────────────────────────
+── Returning to Step 2: Discussion Session ──────────
+```
+
+Rules:
+- Always `── ` (two em-dashes + space) on the left
+- Right side padded with em-dashes to ~55 characters total
+- Step numbers match the skill file's internal step numbering
+- Loop iterations shown in parentheses: `(cycle N)`, `(N of M)`
+- Route-back uses `Returning to Step N: Name`
+- Rendered as a single-line code block with its own rendering instruction
+
+### Sub-step Markers
+
+Dot-framed markers for stages within a step. Visually lighter than step markers to indicate nesting.
+
+```
+·· Step 3a: Extract Sources ·························
+```
+
+Rules:
+- Always `·· ` (two middle dots + space) on the left
+- Right side padded with middle dots to ~55 characters total
+- Lettered suffixes: `3a`, `3b`, `3c` matching the parent step
+- Same loop/iteration conventions as step markers
+- Rendered as a single-line code block with its own rendering instruction
+
+### Signpost Blockquotes
+
+Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
+
+```
+> **Entering Specification.** Your completed discussions will be synthesised
+> into a formal spec. Expect questions about gaps, contradictions, and
+> missing edge cases. The output is a standalone document that drives planning.
+```
+
+Rules:
+- Rendered as markdown (use the markdown rendering instruction)
+- Bold lead phrase sets context: `**Entering Specification.**`, `**Heads up:**`, `**Blocked:**`, `**Specification complete.**`
+- Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
+- 1-3 sentences maximum — never compete with the actual content
+- Placement: after phase titles, before menus where context helps the decision, at phase transitions, explaining soft gates or blockers
+- Never between two code blocks that are part of the same logical display
+
+### Workflow Banner
+
+The `workflow-start` skill uses an ASCII art banner as the entry point. It uses the same bullet-border convention as phase titles, widened to accommodate the art:
+
+```
+●─────────────────────────────────────────────────────────────────●
+    ___   _____________   __________________
+   /   | / ____/ ____/ | / /_  __/  _/ ____/
+  / /| |/ / __/ __/ /  |/ / / /  / // /
+ / ___ / /_/ / /___/ /|  / / / _/ // /___
+/_/  |_\____/_____/_/ |_/ /_/ /___/\____/
+ _       ______  ____  __ __ ________    ____ _       _______
+| |     / / __ \/ __ \/ //_// ____/ /   / __ \ |     / / ___/
+| | /| / / / / / /_/ / ,<  / /_  / /   / / / / | /| / /\__ \
+| |/ |/ / /_/ / _, _/ /| |/ __/ / /___/ /_/ /| |/ |/ /___/ /
+|__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
+
+  Agentic engineering workflows — from idea to implementation.
+●─────────────────────────────────────────────────────────────────●
+```
+
+This is the only exception to the fixed-width phase title rule — the banner is wider to fit the ASCII art.
 
 ### Template Placeholders
 
@@ -427,11 +530,14 @@ Automatically proceeding with "{topic:(titlecase)}".
 
 ### Block / Terminal Messages
 
-When a phase can't proceed — use the phase title pattern, then explain:
+When a phase can't proceed — use the phase title, then explain in a separate code block:
 
 ```
-Planning Overview
-
+●───────────────────────────────────────────────●
+  Planning
+●───────────────────────────────────────────────●
+```
+```
 No specification found in .workflows/{work_unit}/specification/{topic}/
 
 The planning phase requires a completed specification.
@@ -443,13 +549,12 @@ Use `•` for all bulleted lists (sources, files, not-ready items, etc.).
 
 ### Spacing Rules
 
-Inside code blocks, maintain **one blank line** between:
-- Title/summary and first content
+**Between blocks**: One blank line after the phase title closing border before any content (code block, blockquote, or step marker). No `---` separators between code blocks (overview → not-ready → key → menu) — just natural block separation.
+
+**Inside code blocks**: One blank line between:
 - Each numbered tree item
 - Section headings and their content
 - Key categories
-
-Between code blocks (overview → not-ready → key → menu), no `---` separators — just the natural block separation.
 
 ## Structural Conventions (MANDATORY)
 
@@ -488,6 +593,7 @@ Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
 - **Step 0** runs migrations via the `/workflow-migrate` skill (mandatory in all entry-point skills)
 - Steps are separated by `---` horizontal rules
 - Each step completes fully before the next begins
+- User-facing step markers (see Display & Output Conventions → Step Markers) are embedded at each step boundary in the skill file — never instructed once at the top
 
 ### Conditional Routing
 
