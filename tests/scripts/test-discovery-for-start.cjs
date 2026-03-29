@@ -153,6 +153,55 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.state.has_any_work, false);
   });
 
+  it('groups quick-fix work units separately', () => {
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix' });
+    createManifest(dir, 'auth', { work_type: 'feature' });
+    const r = discover(dir);
+    assert.strictEqual(r.state.quickfix_count, 1);
+    assert.strictEqual(r.quick_fixes.work_units[0].name, 'rename-api');
+    assert.strictEqual(r.state.feature_count, 1);
+    assert.strictEqual(r.state.has_any_work, true);
+  });
+
+  it('quick-fix includes phase_label', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
+      phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.quick_fixes.work_units[0].phase_label, 'scoping (in-progress)');
+  });
+
+  it('quick-fix done is excluded from active', () => {
+    createManifest(dir, 'done-qf', {
+      work_type: 'quick-fix',
+      phases: {
+        scoping: { items: { 'done-qf': { status: 'completed' } } },
+        implementation: { items: { 'done-qf': { status: 'completed' } } },
+        review: { items: { 'done-qf': { status: 'completed' } } },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.quick_fixes.count, 0);
+  });
+
+  it('discovers inbox quickfixes', () => {
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--replace-interface.md', '# Replace Interface\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.quickfix_count, 1);
+    assert.strictEqual(r.inbox.quickfixes[0].slug, 'replace-interface');
+    assert.strictEqual(r.inbox.quickfixes[0].date, '2026-03-28');
+    assert.strictEqual(r.inbox.quickfixes[0].title, 'Replace Interface');
+  });
+
+  it('includes quickfixes in inbox total_count', () => {
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--qf.md', '# QF\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.total_count, 2);
+    assert.strictEqual(r.state.inbox_count, 2);
+  });
+
   it('groups cross-cutting work units separately', () => {
     createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     createManifest(dir, 'auth', { work_type: 'feature' });
@@ -307,6 +356,7 @@ describe('workflow-start format', () => {
     assert.ok(out.includes('=== EPICS ==='));
     assert.ok(out.includes('=== FEATURES ==='));
     assert.ok(out.includes('=== BUGFIXES ==='));
+    assert.ok(out.includes('=== QUICK-FIXES ==='));
     assert.ok(out.includes('=== CROSS-CUTTING ==='));
     assert.ok(out.includes('=== STATE ==='));
   });
@@ -345,7 +395,7 @@ describe('workflow-start format', () => {
   it('includes counts in state', () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
     const out = format(discover(dir));
-    assert.ok(out.includes('counts: 0 epic, 1 feature, 0 bugfix, 0 cross-cutting'));
+    assert.ok(out.includes('counts: 0 epic, 1 feature, 0 bugfix, 0 quick-fix, 0 cross-cutting'));
   });
 
   it('includes completed_count and cancelled_count', () => {
@@ -382,15 +432,18 @@ describe('workflow-start format', () => {
     assert.ok(!out.includes('=== CANCELLED ==='));
   });
 
-  it('emits inbox section with ideas and bugs', () => {
+  it('emits inbox section with ideas, bugs, and quickfixes', () => {
     createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
     createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--rename-api.md', '# Rename API\n\nContent.');
     const out = format(discover(dir));
     assert.ok(out.includes('=== INBOX ==='));
     assert.ok(out.includes('  ideas: 1'));
     assert.ok(out.includes('  bugs: 1'));
+    assert.ok(out.includes('  quickfixes: 1'));
     assert.ok(out.includes('  smart-retry (idea, 2026-03-19)'));
     assert.ok(out.includes('  login-timeout (bug, 2026-03-18)'));
+    assert.ok(out.includes('  rename-api (quick-fix, 2026-03-28)'));
   });
 
   it('omits inbox section when empty', () => {

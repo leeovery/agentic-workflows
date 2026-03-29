@@ -545,6 +545,70 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.next_phase, 'review');
     });
 
+    it('quick-fix: returns scoping for fresh quick-fix', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: {} });
+      assert.strictEqual(r.next_phase, 'scoping');
+      assert.strictEqual(r.phase_label, 'ready for scoping');
+    });
+
+    it('quick-fix: returns in-progress scoping', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: { scoping: { items: { test: { status: 'in-progress' } } } } });
+      assert.strictEqual(r.next_phase, 'scoping');
+      assert.strictEqual(r.phase_label, 'scoping (in-progress)');
+    });
+
+    it('quick-fix: returns implementation when scoping completed', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: { scoping: { items: { test: { status: 'completed' } } } } });
+      assert.strictEqual(r.next_phase, 'implementation');
+      assert.strictEqual(r.phase_label, 'ready for implementation');
+    });
+
+    it('quick-fix: returns in-progress implementation', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: {
+        scoping: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'in-progress' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'implementation');
+      assert.strictEqual(r.phase_label, 'implementation (in-progress)');
+    });
+
+    it('quick-fix: returns review when implementation completed', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: {
+        scoping: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'completed' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'review');
+      assert.strictEqual(r.phase_label, 'ready for review');
+    });
+
+    it('quick-fix: returns in-progress review', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: {
+        scoping: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'completed' } } },
+        review: { items: { test: { status: 'in-progress' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'review');
+      assert.strictEqual(r.phase_label, 'review (in-progress)');
+    });
+
+    it('quick-fix: returns done when review completed', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: {
+        scoping: { items: { test: { status: 'completed' } } },
+        implementation: { items: { test: { status: 'completed' } } },
+        review: { items: { test: { status: 'completed' } } },
+      } });
+      assert.strictEqual(r.next_phase, 'done');
+      assert.strictEqual(r.phase_label, 'pipeline complete');
+    });
+
+    it('quick-fix: does not fall through to discussion/spec phases', () => {
+      const r = computeNextPhase({ work_type: 'quick-fix', phases: {
+        discussion: { items: { test: { status: 'completed' } } },
+      } });
+      // Should still return scoping, not specification
+      assert.strictEqual(r.next_phase, 'scoping');
+    });
+
     it('epic: all items have no status falls back to null', () => {
       const r = computeNextPhase({
         work_type: 'epic',
