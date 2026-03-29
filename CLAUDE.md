@@ -333,7 +333,7 @@ The `workflow-start` skill uses an ASCII art banner as the entry point. It uses 
 |__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
 
 ●─────────────────────────────────────────────────────────────────●
-Agentic engineering workflows — from idea to implementation.
+  Agentic engineering workflows — from idea to implementation.
 ●─────────────────────────────────────────────────────────────────●
 ```
 

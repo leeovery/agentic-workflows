@@ -36,7 +36,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 |__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
 
 ●─────────────────────────────────────────────────────────────────●
-Agentic engineering workflows — from idea to implementation.
+  Agentic engineering workflows — from idea to implementation.
 ●─────────────────────────────────────────────────────────────────●
 ```
 
