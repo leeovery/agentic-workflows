@@ -1,7 +1,7 @@
 ---
 name: workflow-scoping-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(cat .workflows/.state/environment-setup.md)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -54,14 +54,6 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ---
 
-## Step 3: Check Environment
-
-Load **[environment-check.md](../workflow-implementation-entry/references/environment-check.md)** and follow its instructions as written.
-
-→ Proceed to **Step 4**.
-
----
-
-## Step 4: Invoke the Skill
+## Step 3: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

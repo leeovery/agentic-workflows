@@ -21,8 +21,6 @@ Scoping session for: {topic}
 Work unit: {work_unit}
 Description: {description}
 
-Environment: {Setup required | No special setup required}
-
 Invoke the workflow-scoping-process skill.
 ```
 
