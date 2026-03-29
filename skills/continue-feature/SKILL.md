@@ -27,6 +27,14 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
 
+> *Output the next fenced block as a code block:*
+
+```
+●───────────────────────────────────────────────●
+  Continue Feature
+●───────────────────────────────────────────────●
+```
+
 → Proceed to **Step 1**.
 
 ---
@@ -70,8 +78,6 @@ Parse the discovery output to understand:
 > *Output the next fenced block as a code block:*
 
 ```
-Continue Feature
-
 No features in progress.
 
 Run /start-feature to begin a new one.

@@ -11,8 +11,6 @@ Validate the selected work unit against the discovery output and store its data.
 > *Output the next fenced block as a code block:*
 
 ```
-Continue Feature
-
 No active feature named "{work_unit}" found.
 
 Run /continue-feature to see available features, or /start-feature to begin a new one.

@@ -11,8 +11,6 @@ Display active features and let the user select one.
 > *Output the next fenced block as a code block:*
 
 ```
-Continue Feature
-
 {count} feature(s) in progress:
 
 @foreach(feature in features)
