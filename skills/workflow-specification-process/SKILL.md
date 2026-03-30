@@ -61,7 +61,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as a code block:*
 
 ```
-── Resume Detection ────────────────────────────────
+── Resume Detection ─────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -119,7 +120,8 @@ Continue or restart?
 > *Output the next fenced block as a code block:*
 
 ```
-── Verify Source Material ──────────────────────────
+── Verify Source Material ───────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -142,7 +144,8 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 > *Output the next fenced block as a code block:*
 
 ```
-── Initialize Specification ────────────────────────
+── Initialize Specification ─────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -164,7 +167,8 @@ Load **[initialize-specification.md](references/initialize-specification.md)** a
 > *Output the next fenced block as a code block:*
 
 ```
-── Session Setup ───────────────────────────────────
+── Session Setup ────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -187,7 +191,8 @@ Load **[session-setup.md](references/session-setup.md)** and follow its instruct
 > *Output the next fenced block as a code block:*
 
 ```
-── Load Specification Principles ───────────────────
+── Load Specification Principles ────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -209,7 +214,8 @@ Load **[specification-principles.md](references/specification-principles.md)** a
 > *Output the next fenced block as a code block:*
 
 ```
-── Spec Construction ───────────────────────────────
+── Spec Construction ────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -232,7 +238,8 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 > *Output the next fenced block as a code block:*
 
 ```
-── Document Dependencies ───────────────────────────
+── Document Dependencies ────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -260,7 +267,8 @@ Load **[dependencies.md](references/dependencies.md)** and follow its instructio
 > *Output the next fenced block as a code block:*
 
 ```
-── Specification Review ────────────────────────────
+── Specification Review ─────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -283,7 +291,8 @@ Load **[spec-review.md](references/spec-review.md)** and follow its instructions
 > *Output the next fenced block as a code block:*
 
 ```
-── Compliance Self-Check ───────────────────────────
+── Compliance Self-Check ────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -305,7 +314,8 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as a code block:*
 
 ```
-── Conclude ────────────────────────────────────────
+── Conclude ─────────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
