@@ -303,23 +303,15 @@ Rules:
 Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
 
 ```
-> **Entering Specification.** Your completed discussions will be synthesised
-> into a formal spec. Expect questions about gaps, contradictions, and
-> missing edge cases. The output is a standalone document that drives planning.
-```
-
-Plain text example (most step signposts):
-
-```
-> Reading the handoff context to identify which
-> topic to implement.
+> Your completed discussions will be synthesised into a formal spec.
+> Expect questions about gaps, contradictions, and missing edge cases.
+> The output is a standalone document that drives planning.
 ```
 
 Rules:
 - Rendered as markdown (use the markdown rendering instruction)
 - **Every line must start with `>`** — Claude Code only renders the blockquote border on lines that have the `>` prefix. A single long line will wrap without the border on subsequent lines. Wrap at ~70 characters per line (including the `> ` prefix) to keep the blockquote visually intact
-- **Bold is optional and rare.** Most blockquotes should be plain text — the blockquote styling (indented, dimmed) already sets them apart. Use a short bold lead phrase (3-5 words) only when the blockquote has a distinct label + description pattern (e.g., `**Entering Specification.** Your discussions will be...`). Step signposts that are just a sentence of description should not be bold
-- If bold spans multiple lines, each line must have its own `**` open and close — bold does not carry across `>` prefixed line breaks
+- **Plain text only** — no bold. The blockquote styling (indented, dimmed) already sets signposts apart visually. If bold is ever needed on multiple lines, each line must have its own `**` open and close — bold does not carry across `>` prefixed line breaks
 - Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
 - 1-3 sentences maximum — never compete with the actual content
 - Placement: after phase titles, before menus where context helps the decision, at phase transitions, explaining soft gates or blockers
