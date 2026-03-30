@@ -76,7 +76,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} phase 1
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map '{}'
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_id {external_id}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} status completed
 ```
 
