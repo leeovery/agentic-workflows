@@ -32,7 +32,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.imple
 
 Commit: `impl({work_unit}): complete implementation`
 
-**Pipeline continuation** — Invoke the bridge:
+**Pipeline continuation**:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Implementation complete.** The review phase will validate
+> your work against the specification and plan.
+
+```
+
+Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}

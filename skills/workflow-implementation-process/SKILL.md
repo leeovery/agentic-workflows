@@ -44,13 +44,23 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 1. **No autonomous decisions on spec deviations** — when the executor reports a blocker or spec deviation, present to user and STOP. Never resolve on the user's behalf.
 2. **All git operations are the orchestrator's responsibility** — agents never commit, stage, or interact with git.
 
-## Output Formatting
-
-When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
-
----
-
 ## Step 0: Resume Detection
+
+> *Output the next fenced block as a code block:*
+
+```
+── Resume Detection ─────────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Checking for existing implementation progress.** If a
+> previous session exists, gates and counters will be reset
+> for this session.
+
+```
 
 Check if an implementation entry exists in the manifest:
 ```bash
@@ -84,6 +94,21 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.imple
 
 ## Step 1: Environment Setup
 
+> *Output the next fenced block as a code block:*
+
+```
+── Environment Setup ────────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Checking for environment setup instructions.** Any
+> first-time setup will be handled before tasks begin.
+
+```
+
 Load **[environment-setup.md](references/environment-setup.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
@@ -91,6 +116,21 @@ Load **[environment-setup.md](references/environment-setup.md)** and follow its 
 ---
 
 ## Step 2: Read Plan + Load Plan Adapter
+
+> *Output the next fenced block as a code block:*
+
+```
+── Read Plan ────────────────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Reading the plan and loading the format adapter.**
+> This determines how tasks are extracted and tracked.
+
+```
 
 Load **[load-plan-adapter.md](references/load-plan-adapter.md)** and follow its instructions as written.
 
@@ -100,6 +140,21 @@ Load **[load-plan-adapter.md](references/load-plan-adapter.md)** and follow its 
 
 ## Step 3: Initialize Implementation Tracking
 
+> *Output the next fenced block as a code block:*
+
+```
+── Initialize Tracking ──────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Setting up implementation tracking in the manifest.**
+> This records progress as tasks are completed.
+
+```
+
 Load **[initialize-tracking.md](references/initialize-tracking.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
@@ -107,6 +162,21 @@ Load **[initialize-tracking.md](references/initialize-tracking.md)** and follow 
 ---
 
 ## Step 4: Project Skills Discovery
+
+> *Output the next fenced block as a code block:*
+
+```
+── Project Skills Discovery ─────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Discovering project-level skills that agents should
+> use during implementation.**
+
+```
 
 Load **[project-skills-discovery.md](references/project-skills-discovery.md)** and follow its instructions as written.
 
@@ -116,6 +186,21 @@ Load **[project-skills-discovery.md](references/project-skills-discovery.md)** a
 
 ## Step 5: Linter Discovery
 
+> *Output the next fenced block as a code block:*
+
+```
+── Linter Discovery ─────────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Discovering linters and formatters that should be
+> run after each task to ensure code quality.**
+
+```
+
 Load **[linter-setup.md](references/linter-setup.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
@@ -123,6 +208,22 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 ---
 
 ## Step 6: Task Loop
+
+> *Output the next fenced block as a code block:*
+
+```
+── Task Loop ────────────────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Executing tasks from the plan.** Each task is implemented
+> via TDD by an executor agent, then independently verified by
+> a reviewer agent. You'll approve each task before it proceeds.
+
+```
 
 Load **[task-loop.md](references/task-loop.md)** and follow its instructions as written.
 
@@ -142,6 +243,22 @@ After the loop completes:
 
 ## Step 7: Analysis Loop
 
+> *Output the next fenced block as a code block:*
+
+```
+── Analysis Loop ────────────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Analysing the implementation for gaps and issues.**
+> Agents review what was built against the plan and spec.
+> New tasks may be created if problems are found.
+
+```
+
 Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instructions as written.
 
 #### If new tasks were created in the plan
@@ -156,6 +273,20 @@ Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instruct
 
 ## Step 8: Compliance Self-Check
 
+> *Output the next fenced block as a code block:*
+
+```
+── Compliance Self-Check ────────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Verifying the implementation follows workflow conventions.**
+
+```
+
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 9**.
@@ -163,6 +294,21 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 ---
 
 ## Step 9: Mark Implementation Complete
+
+> *Output the next fenced block as a code block:*
+
+```
+── Conclude Implementation ──────────────────────
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> **Wrapping up.** Final confirmation before marking
+> implementation as complete and moving to review.
+
+```
 
 Load **[conclude-implementation.md](references/conclude-implementation.md)** and follow its instructions as written.
 
