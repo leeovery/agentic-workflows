@@ -281,7 +281,7 @@ Rules:
 - **No step numbers** — steps may be skipped based on conditionals and routing is non-linear. Names alone are sufficient
 - Loop iterations shown in parentheses: `(cycle N)`, `(N of M)`
 - Route-back uses `Returning to {Name}`
-- Rendered as a single-line code block with its own rendering instruction
+- Rendered as a code block with its own rendering instruction. Include a trailing blank line after the marker inside the code block for breathing room
 
 ### Sub-step Markers
 

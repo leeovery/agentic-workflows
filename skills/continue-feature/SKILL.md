@@ -34,6 +34,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ```
 ── Initialisation ───────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -58,6 +59,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ```
 ── Run Discovery ────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -102,6 +104,7 @@ Parse the discovery output to understand:
 
 ```
 ── Check State ──────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -140,6 +143,7 @@ Store the work_unit.
 
 ```
 ── Select Feature ───────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -160,6 +164,7 @@ Load **[select-feature.md](references/select-feature.md)** and follow its instru
 
 ```
 ── Validate Selection ───────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -180,6 +185,7 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ```
 ── Check Progress ───────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -200,6 +206,7 @@ Load **[revisit-phase.md](references/revisit-phase.md)** and follow its instruct
 
 ```
 ── Route to Phase ───────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

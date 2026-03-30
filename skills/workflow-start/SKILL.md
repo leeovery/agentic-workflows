@@ -46,6 +46,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ```
 ── Initialisation ───────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -71,6 +72,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ```
 ── Run Discovery ────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -122,6 +124,7 @@ Parse the output to understand the current workflow state:
 
 ```
 ── Check State ──────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -147,6 +150,7 @@ Load **[empty-state.md](references/empty-state.md)** and follow its instructions
 
 ```
 ── Display and Route ────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

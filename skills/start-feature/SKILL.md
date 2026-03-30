@@ -25,6 +25,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ```
 ── Initialisation ───────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -66,6 +67,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ```
 ── Gather Feature Context ───────────────────────
+
 ```
 
 #### If inbox file path was provided as positional argument (`$0`)
@@ -102,6 +104,7 @@ Load **[gather-feature-context.md](references/gather-feature-context.md)** and f
 
 ```
 ── Feature Name ─────────────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -123,6 +126,7 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ```
 ── Choose Starting Phase ────────────────────────
+
 ```
 
 Load **[research-gating.md](references/research-gating.md)** and follow its instructions as written.
@@ -137,6 +141,7 @@ Load **[research-gating.md](references/research-gating.md)** and follow its inst
 
 ```
 ── Invoke Phase Skill ───────────────────────────
+
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
