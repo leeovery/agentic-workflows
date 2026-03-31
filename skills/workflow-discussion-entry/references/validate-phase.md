@@ -24,6 +24,24 @@ Set source="continue".
 
 → Return to caller.
 
+#### If discussion exists and status is `pending`
+
+Set status to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status in-progress
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Starting discussion: {topic:(titlecase)}
+```
+
+Set source="pending-start".
+
+→ Return to caller.
+
 #### If discussion exists and status is `completed`
 
 Reset to in-progress:
@@ -39,5 +57,23 @@ Reopening discussion: {topic:(titlecase)}
 ```
 
 Set source="continue".
+
+→ Return to caller.
+
+#### If discussion exists and status is `skipped`
+
+Reset to in-progress:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status in-progress
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Reopening skipped discussion: {topic:(titlecase)}
+```
+
+Set source="pending-start".
 
 → Return to caller.

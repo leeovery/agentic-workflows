@@ -120,6 +120,41 @@ describe('workflow-discussion-entry discovery', () => {
     assert.strictEqual(r.cache.entries.length, 0);
   });
 
+  it('counts pending discussion items', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: {
+            'auth': { status: 'pending' },
+            'billing': { status: 'pending' },
+            'data': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.discussions.counts.pending, 2);
+    assert.strictEqual(r.discussions.counts.in_progress, 1);
+  });
+
+  it('counts skipped discussion items', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: {
+            'auth': { status: 'skipped' },
+            'billing': { status: 'completed' },
+          },
+        },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.discussions.counts.skipped, 1);
+    assert.strictEqual(r.discussions.counts.completed, 1);
+  });
+
   it('epic with flat discussion status but no items returns no discussions', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -203,7 +238,7 @@ describe('workflow-discussion-entry format', () => {
     });
     const out = format(discover(dir));
     assert.ok(out.includes('  auth/auth (feature): in-progress'));
-    assert.ok(out.includes('  counts: 1 in-progress, 0 completed'));
+    assert.ok(out.includes('  counts: 1 in-progress, 0 completed, 0 pending, 0 skipped'));
   });
 
   it('includes state scenario and flags', () => {

@@ -13,7 +13,7 @@ function discover(cwd, workUnit) {
 
   // --- Discussions ---
   const discussions = [];
-  let discCount = 0, completedCount = 0, inProgressCount = 0;
+  let discCount = 0, completedCount = 0, inProgressCount = 0, pendingCount = 0;
 
   for (const m of manifests) {
     const discItemsList = phaseItems(m, 'discussion');
@@ -23,6 +23,7 @@ function discover(cwd, workUnit) {
       discCount++;
       if (item.status === 'completed') completedCount++;
       else if (item.status === 'in-progress') inProgressCount++;
+      else if (item.status === 'pending') pendingCount++;
 
       // Check if this discussion has an individual spec via sources
       let hasIndividualSpec = false;
@@ -145,9 +146,11 @@ function discover(cwd, workUnit) {
       discussion_count: discCount,
       completed_count: completedCount,
       in_progress_count: inProgressCount,
+      pending_count: pendingCount,
       spec_count: specCount,
       has_discussions: discCount > 0,
       has_completed: completedCount > 0,
+      has_pending: pendingCount > 0,
       has_specs: specCount > 0,
     },
   };
@@ -197,7 +200,7 @@ function format(result) {
 
   lines.push('=== STATE ===');
   const cs = result.current_state;
-  lines.push(`discussions: ${cs.discussion_count} (${cs.completed_count} completed, ${cs.in_progress_count} in-progress)`);
+  lines.push(`discussions: ${cs.discussion_count} (${cs.completed_count} completed, ${cs.in_progress_count} in-progress, ${cs.pending_count} pending)`);
   lines.push(`specs: ${cs.spec_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
   if (cs.discussions_checksum) lines.push(`checksum: ${cs.discussions_checksum}`);
 

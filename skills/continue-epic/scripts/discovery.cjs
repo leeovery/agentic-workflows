@@ -51,6 +51,7 @@ function buildEpicDetail(cwd, manifest) {
   const allSourcedDiscussions = new Set();
   const completedItems = [];
   const inProgressItems = [];
+  const pendingItems = [];
   const nextPhaseReady = [];
 
   for (const phase of EPIC_PHASES) {
@@ -90,6 +91,9 @@ function buildEpicDetail(cwd, manifest) {
       }
       if (item.status === 'completed') {
         completedItems.push({ name: item.name, phase });
+      }
+      if (item.status === 'pending') {
+        pendingItems.push({ name: item.name, phase });
       }
     }
 
@@ -152,12 +156,14 @@ function buildEpicDetail(cwd, manifest) {
   const hasCompletedSpec = specItems.some(s => s.status === 'completed');
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
   const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
+  const hasPendingDiscussion = discussionItems.some(d => d.status === 'pending');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
   return {
     phases,
     in_progress: inProgressItems,
     completed: completedItems,
+    pending: pendingItems,
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
@@ -165,6 +171,7 @@ function buildEpicDetail(cwd, manifest) {
       has_research: hasResearch,
       can_start_discussion: hasCompletedResearch,
       can_start_specification: hasCompletedDiscussion,
+      has_pending_discussions: hasPendingDiscussion,
       can_start_planning: hasCompletedSpec,
       can_start_implementation: hasCompletedPlan,
       can_start_review: hasCompletedImpl,
@@ -257,6 +264,10 @@ function format(result) {
     if (d.in_progress.length > 0) {
       lines.push('    in-progress:');
       for (const i of d.in_progress) lines.push(`      - ${i.name} (${i.phase})`);
+    }
+    if (d.pending.length > 0) {
+      lines.push('    pending:');
+      for (const p of d.pending) lines.push(`      - ${p.name} (${p.phase})`);
     }
     if (d.next_phase_ready.length > 0) {
       lines.push('    next-phase-ready:');

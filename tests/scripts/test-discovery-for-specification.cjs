@@ -311,6 +311,36 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.specifications[0].work_type, 'bugfix');
     assert.strictEqual(r.specifications[0].name, 'login-crash');
   });
+
+  it('counts pending discussions', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: {
+            auth: { status: 'pending' },
+            billing: { status: 'completed' },
+            data: { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.current_state.pending_count, 1);
+    assert.strictEqual(r.current_state.has_pending, true);
+  });
+
+  it('has_pending false when no pending discussions', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.current_state.pending_count, 0);
+    assert.strictEqual(r.current_state.has_pending, false);
+  });
 });
 
 describe('workflow-specification-entry format', () => {
@@ -379,7 +409,7 @@ describe('workflow-specification-entry format', () => {
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     const out = format(discover(dir));
-    assert.ok(out.includes('discussions: 1 (1 completed, 0 in-progress)'));
+    assert.ok(out.includes('discussions: 1 (1 completed, 0 in-progress, 0 pending)'));
   });
 
   it('includes checksum when discussions have files', () => {

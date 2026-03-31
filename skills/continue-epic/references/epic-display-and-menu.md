@@ -79,7 +79,8 @@ No work started yet.
 | In-progress items across multiple phases | No recommendation |
 | Some research in-progress, some completed | "Consider completing remaining research before starting discussion. Topic analysis works best with all research available." |
 | Some discussions in-progress, some completed | "Consider completing remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
-| All discussions completed, specs not started | "All discussions are completed. Specification will analyze and group them." |
+| Pending discussions exist (from `gating.has_pending_discussions`) | "{N} discussion topic(s) from research are still pending. Consider discussing or skipping them before starting specification." |
+| All discussions completed and no pending discussions, specs not started | "All discussions are completed. Specification will analyze and group them." |
 | Some specs completed, some in-progress | "Completing all specifications before planning helps identify cross-cutting dependencies." |
 | Some plans completed, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
@@ -118,8 +119,10 @@ Show only statuses and categories that appear in the current display. No `---` s
 Key:
 
   Status:
+    pending     — surfaced from research, not yet started
     in-progress — work is ongoing
     completed   — phase or implementation done
+    skipped     — topic deliberately skipped
     promoted    — moved to its own cross-cutting work unit
 
   Blocking reason:
@@ -153,7 +156,8 @@ Build a numbered menu with three sections:
   - Only show if `gating.can_start_specification` is true (at least one completed discussion)
 
 **Section 3 — Standing options:**
-- `Start new discussion topic` (always present)
+- `Start new discussion topic` (always present). When `gating.has_pending_discussions` is true, append count: `Start new discussion topic — {N} pending from research`
+- `Manage pending topics` (only shown when `pending` items exist in discovery `detail.pending`)
 - `Start new research` (always present)
 - `Resume a completed topic` (only shown when `completed` items exist)
 - `Stop here — resume later with /workflow-start` (always present)
@@ -165,7 +169,7 @@ Build a numbered menu with three sections:
 - No "Start specification" unless `gating.can_start_specification` is true
 
 **Recommendation marking:** Mark one item as `(recommended)` based on phase completion state:
-- All discussions completed, no specifications exist → "Start specification (recommended)"
+- All discussions completed AND no pending discussions (`gating.has_pending_discussions` is false), no specifications exist → "Start specification (recommended)"
 - All plannable specifications completed, some without plans → first plannable spec "(recommended)"
 - All plans completed (and deps satisfied), some without implementations → first implementable plan "(recommended)"
 - All implementations completed, some without reviews → first reviewable implementation "(recommended)"
@@ -260,6 +264,54 @@ Commit the change.
 
 → Return to **C. Menu**.
 
+#### If user chose a pending discussion item
+
+A pending item is a discussion with `status === 'pending'` from `detail.phases.discussion`.
+
+> *Output the next fenced block as a code block:*
+
+```
+"{topic:(titlecase)}" is pending from research analysis.
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+- **`d`/`discuss`** — Start discussing this topic
+- **`s`/`skip`** — Skip this topic (mark as resolved)
+- **`b`/`back`** — Return to menu
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `discuss`:**
+
+→ Proceed to **E. Route Selection** with phase=discussion and topic={topic}.
+
+**If user chose `skip`:**
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status skipped
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Skipped: {topic:(titlecase)}
+```
+
+→ Return to **C. Menu**.
+
+**If user chose `back`:**
+
+→ Return to **C. Menu**.
+
+#### If user chose `Manage pending topics`
+
+→ Proceed to **G. Manage Pending**.
+
 #### If user chose `Resume a completed topic`
 
 → Proceed to **F. Resume Completed**.
@@ -272,6 +324,7 @@ Commit the change.
 |---------------------|-----------|--------------|
 | discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Discussion topic analysis works best with all research available." |
 | specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Specification grouping analysis works best with all discussions available." |
+| specification (new or continue) | `gating.has_pending_discussions` is true (and no in-progress discussions) | "{N} discussion topic(s) from research are still pending. Starting specification now may require rework if those topics affect the design." |
 | planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all completed." |
 | implementation | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 
@@ -322,6 +375,7 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 | Start implementation of {topic} | implementation | {topic} |
 | Start review for {topic} | review | {topic} |
 | Start specification | specification | — |
+| Discuss {topic} (from pending) | discussion | {topic} |
 | Start new discussion topic | discussion | — |
 | Start new research | research | — |
 
@@ -380,3 +434,77 @@ List all completed items across all phases.
 Store the selected phase and topic.
 
 → Return to caller.
+
+---
+
+## G. Manage Pending
+
+Display all pending discussion items and let the user discuss, skip, or skip all.
+
+Using the `pending` items from discovery output, filter to discussion phase:
+
+> *Output the next fenced block as a code block:*
+
+```
+Pending Topics from Research
+
+@foreach(item in pending where item.phase == 'discussion')
+  └─ {item.name:(titlecase)} (pending)
+@endforeach
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Pick a topic to discuss or skip it.
+
+1. {item.name:(titlecase)}
+2. ...
+{N}. Back to main menu
+
+- **`sa`/`skip-all`** — Skip all pending topics
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If user chose `skip-all`
+
+For each pending discussion item:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status skipped
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Skipped {N} pending topic(s).
+```
+
+→ Return to **C. Menu**.
+
+#### If user chose `Back to main menu`
+
+→ Return to **C. Menu**.
+
+#### If user chose a topic number
+
+Show the discuss/skip/back prompt for that topic (same as the pending item handler in **D. Handle Selection**).
+
+**If user chose `discuss`:**
+
+→ Proceed to **E. Route Selection** with phase=discussion and topic={topic}.
+
+**If user chose `skip`:**
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status skipped
+```
+
+→ Return to **G. Manage Pending**.
+
+**If user chose `back`:**
+
+→ Return to **C. Menu**.

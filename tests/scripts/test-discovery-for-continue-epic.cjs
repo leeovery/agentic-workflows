@@ -292,6 +292,76 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(spec.sources[0].topic, 'providers');
     });
 
+    it('tracks pending items separately', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              auth: { status: 'pending' },
+              billing: { status: 'in-progress' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.pending.length, 1);
+      assert.strictEqual(d.pending[0].name, 'auth');
+      assert.strictEqual(d.pending[0].phase, 'discussion');
+      assert.strictEqual(d.in_progress.length, 1);
+      assert.strictEqual(d.in_progress[0].name, 'billing');
+    });
+
+    it('sets has_pending_discussions gating flag', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              auth: { status: 'pending' },
+              billing: { status: 'completed' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.gating.has_pending_discussions, true);
+    });
+
+    it('has_pending_discussions false when no pending', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              auth: { status: 'completed' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.gating.has_pending_discussions, false);
+    });
+
+    it('pending items excluded from in_progress and completed', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              auth: { status: 'pending' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.in_progress.length, 0);
+      assert.strictEqual(d.completed.length, 0);
+      assert.strictEqual(d.pending.length, 1);
+    });
+
     it('handles empty epic (no phases)', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
       const r = discover(dir);

@@ -23,7 +23,7 @@ Research topics:
 
 1. {theme_name}
    └─ Sources: {filename1}.md, {filename2}.md
-   └─ Discussion: @if(has_discussion) {work_unit}/{topic} ({status:[in-progress|completed]}) @else (no discussion) @endif
+   └─ Discussion: @if(has_discussion) {work_unit}/{topic} ({status:[pending|in-progress|completed|skipped]}) @else (no discussion) @endif
    └─ "{summary}"
 
 2. ...
@@ -36,7 +36,7 @@ If discussions exist that are NOT linked to a research topic, list them separate
 ```
 Existing discussions:
 
-  • {work_unit}/{topic} ({status:[in-progress|completed]}, {work_type:[epic|feature|bugfix]})
+  • {work_unit}/{topic} ({status:[pending|in-progress|completed|skipped]}, {work_type:[epic|feature|bugfix]})
 ```
 
 ### Key/Legend
@@ -49,8 +49,10 @@ No `---` separator before this section.
 Key:
 
   Discussion status:
+    pending     — surfaced from research, not yet started
     in-progress — discussion is ongoing
     completed   — discussion is done
+    skipped     — topic deliberately skipped
 ```
 
 **Then present the options based on what exists:**
