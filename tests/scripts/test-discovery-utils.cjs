@@ -272,16 +272,22 @@ describe('discovery-utils', () => {
       }, 'discussion'), 'in-progress');
     });
 
-    it('treats skipped as resolved for completion', () => {
+    it('skipped items are invisible — completed plus skipped returns completed', () => {
       assert.strictEqual(phaseStatus({
         phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'skipped' } } } },
       }, 'discussion'), 'completed');
     });
 
-    it('all skipped returns completed', () => {
+    it('all skipped returns null (soft-deleted, phase effectively empty)', () => {
       assert.strictEqual(phaseStatus({
         phases: { discussion: { items: { a: { status: 'skipped' }, b: { status: 'skipped' } } } },
-      }, 'discussion'), 'completed');
+      }, 'discussion'), null);
+    });
+
+    it('single skipped item returns null', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { discussion: { items: { a: { status: 'skipped' } } } },
+      }, 'discussion'), null);
     });
 
     it('returns pending when mixed completed and pending', () => {
@@ -655,7 +661,7 @@ describe('discovery-utils', () => {
       assert.ok(r.phase_label.includes('pending'));
     });
 
-    it('epic: all discussions skipped advances to specification', () => {
+    it('epic: all discussions skipped stays on discussion (nothing to specify)', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
@@ -667,8 +673,7 @@ describe('discovery-utils', () => {
           },
         },
       });
-      assert.strictEqual(r.next_phase, 'specification');
-      assert.strictEqual(r.phase_label, 'ready for specification');
+      assert.strictEqual(r.next_phase, 'discussion');
     });
 
     it('epic: mixed completed and skipped discussions advances to specification', () => {

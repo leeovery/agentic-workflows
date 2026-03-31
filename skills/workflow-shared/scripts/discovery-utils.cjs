@@ -102,10 +102,11 @@ function phaseStatus(manifest, phase) {
   if (p.items && typeof p.items === 'object') {
     const keys = Object.keys(p.items);
     if (keys.length === 0) return null;
-    if (keys.length === 1) return (p.items[keys[0]] || {}).status || null;
-    const statuses = keys.map(k => (p.items[k] || {}).status).filter(Boolean);
+    // Filter out skipped items — they're soft-deleted and invisible to phase calculations
+    const statuses = keys.map(k => (p.items[k] || {}).status).filter(s => s && s !== 'skipped');
     if (statuses.length === 0) return null;
-    if (statuses.every(s => s === 'completed' || s === 'skipped')) return 'completed';
+    if (statuses.length === 1) return statuses[0];
+    if (statuses.every(s => s === 'completed')) return 'completed';
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     if (statuses.some(s => s === 'pending')) return 'pending';
     return statuses[0];
