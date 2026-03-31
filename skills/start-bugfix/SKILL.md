@@ -21,11 +21,39 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ## Step 0: Initialisation
 
+> *Output the next fenced block as a code block:*
+
+```
+── Initialisation ───────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Running migrations to keep workflow files in sync.
+```
+
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
 **Run migrations — this is mandatory. You must complete it before proceeding.**
 
 Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
+
+> *Output the next fenced block as a code block:*
+
+```
+●───────────────────────────────────────────────●
+  New Bugfix
+●───────────────────────────────────────────────●
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Starting a new bugfix. I'll ask what's broken, suggest a name,
+> then hand off to investigation to diagnose the root cause.
+```
 
 → Proceed to **Step 1**.
 
@@ -33,13 +61,33 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ## Step 1: Gather Bug Context
 
+> *Output the next fenced block as a code block:*
+
+```
+── Gather Bug Context ───────────────────────────
+```
+
 #### If inbox file path was provided as positional argument (`$0`)
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Using context from your inbox item. Reading the inbox file
+> to understand the issue and suggest a name.
+```
 
 Read the inbox file at the provided path. Use its content as the bug description — skip the gather-context prompt. The slug from the filename (strip the `YYYY-MM-DD--` prefix, strip `.md`) becomes the suggested work unit name in Step 2.
 
 → Proceed to **Step 2**.
 
 #### Otherwise
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Gathering context about the bug. A brief description of
+> what's broken is enough to get started.
+```
 
 Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow its instructions as written.
 
@@ -49,6 +97,19 @@ Load **[gather-bug-context.md](references/gather-bug-context.md)** and follow it
 
 ## Step 2: Bugfix Name and Conflict Check
 
+> *Output the next fenced block as a code block:*
+
+```
+── Bugfix Name ──────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Naming the bugfix and checking for conflicts. The name becomes
+> the identifier used throughout the workflow.
+```
+
 Load **[name-check.md](references/name-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
@@ -56,6 +117,19 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 ---
 
 ## Step 3: Invoke Entry-Point Skill
+
+> *Output the next fenced block as a code block:*
+
+```
+── Invoke Investigation ─────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Handing off to the investigation phase. This will gather
+> symptoms and analyse code to find the root cause.
+```
 
 Invoke `/workflow-investigation-entry bugfix {work_unit}`.
 
