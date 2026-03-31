@@ -113,7 +113,7 @@ Parse the discovery output to understand:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking how many epics are in progress.
+> Checking if there are any epics in progress.
 ```
 
 #### If `count` is 0

@@ -107,7 +107,7 @@ Parse the discovery output to understand:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking how many features are in progress.
+> Checking if there are any features in progress.
 ```
 
 #### If `count` is 0
