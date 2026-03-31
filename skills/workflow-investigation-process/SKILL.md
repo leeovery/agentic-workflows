@@ -56,13 +56,20 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 ---
 
-## Output Formatting
-
-When announcing a new step, output `── ── ── ── ──` on its own line before the step heading.
-
----
-
 ## Step 0: Resume Detection
+
+> *Output the next fenced block as a code block:*
+
+```
+── Resume Detection ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking for an existing investigation. If one exists,
+> you can pick up where you left off or start fresh.
+```
 
 Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
 
@@ -102,6 +109,19 @@ Found existing investigation for **{topic:(titlecase)}**.
 
 ## Step 1: Initialize Investigation
 
+> *Output the next fenced block as a code block:*
+
+```
+── Initialize Investigation ─────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Creating the investigation file and recording the initial
+> bug context.
+```
+
 Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
@@ -109,6 +129,19 @@ Load **[initialize-investigation.md](references/initialize-investigation.md)** a
 ---
 
 ## Step 2: Symptom Gathering
+
+> *Output the next fenced block as a code block:*
+
+```
+── Symptom Gathering ────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Gathering detailed symptoms — reproduction steps, error
+> messages, affected areas, and environmental context.
+```
 
 Load **[symptom-gathering.md](references/symptom-gathering.md)** and use its questions to gather symptoms from the user.
 
@@ -122,6 +155,19 @@ When symptoms are sufficiently understood to begin code analysis:
 
 ## Step 3: Code Analysis
 
+> *Output the next fenced block as a code block:*
+
+```
+── Code Analysis ────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Tracing the bug through the codebase — following code
+> paths, checking state, and narrowing down the root cause.
+```
+
 Load **[analysis-patterns.md](references/analysis-patterns.md)** and use its techniques to trace the bug through the code.
 
 Document findings in the investigation file as you analyze. Commit after each significant finding.
@@ -131,6 +177,19 @@ Document findings in the investigation file as you analyze. Commit after each si
 ---
 
 ## Step 4: Root Cause Synthesis
+
+> *Output the next fenced block as a code block:*
+
+```
+── Root Cause Synthesis ─────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Synthesising findings into a clear root cause statement,
+> contributing factors, and fix direction.
+```
 
 Synthesize findings into a clear root cause:
 
@@ -147,6 +206,19 @@ Document in the investigation file and commit.
 
 ## Step 5: Root Cause Validation
 
+> *Output the next fenced block as a code block:*
+
+```
+── Root Cause Validation ────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Validating the root cause analysis against the codebase
+> to confirm the diagnosis is correct.
+```
+
 Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
@@ -154,6 +226,19 @@ Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its inst
 ---
 
 ## Step 6: Findings Review & Fix Discussion
+
+> *Output the next fenced block as a code block:*
+
+```
+── Findings Review ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Presenting the investigation findings and discussing
+> the fix approach with you.
+```
 
 Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.
 
@@ -163,6 +248,18 @@ Load **[findings-review.md](references/findings-review.md)** and follow its inst
 
 ## Step 7: Compliance Self-Check
 
+> *Output the next fenced block as a code block:*
+
+```
+── Compliance Self-Check ────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Verifying the investigation file follows workflow conventions.
+```
+
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 8**.
@@ -170,5 +267,18 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 ---
 
 ## Step 8: Conclude Investigation
+
+> *Output the next fenced block as a code block:*
+
+```
+── Conclude Investigation ───────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Wrapping up. Final confirmation before marking the
+> investigation as complete.
+```
 
 Load **[conclude-investigation.md](references/conclude-investigation.md)** and follow its instructions as written.

@@ -43,7 +43,16 @@ Fix direction: {chosen approach}
 The investigation is completed. Root cause and fix direction are documented.
 ```
 
-4. Invoke the bridge:
+4. Closure signpost:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Investigation complete. The specification phase will formalise
+> the fix approach into a document that drives planning.
+```
+
+5. Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
