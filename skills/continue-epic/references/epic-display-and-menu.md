@@ -448,7 +448,7 @@ Pick a topic to discuss or skip it.
 
 **If user chose `discuss`:**
 
-→ Proceed to **E. Route Selection** with phase=discussion and topic={topic}.
+→ Return to **E. Route Selection** with phase=discussion and topic={topic}.
 
 **If user chose `skip`:**
 
