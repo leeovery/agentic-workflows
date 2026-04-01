@@ -57,3 +57,9 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | # | Idea | Scope |
 |---|------|-------|
 | 14 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
+
+## Unsorted
+
+| # | Idea | Scope |
+|---|------|-------|
+| 15 | [Selection Menu Display Pattern](selection-menu-pattern.md) | All selection menus across skills |
