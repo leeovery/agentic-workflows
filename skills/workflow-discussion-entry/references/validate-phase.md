@@ -38,7 +38,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discu
 Starting discussion: {topic:(titlecase)}
 ```
 
-Set source="research".
+Set source="topic-provided".
 
 → Return to caller.
 
@@ -74,6 +74,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discu
 Reopening skipped discussion: {topic:(titlecase)}
 ```
 
-Set source="research".
+Set source="topic-provided".
 
 → Return to caller.
