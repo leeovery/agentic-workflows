@@ -6,7 +6,7 @@
 
 ## A. Check Cache
 
-Use `cache.entries` from discovery to determine the approach. Check if a cache entry exists for this work unit.
+Check `cache.entries` from the discovery output parsed in Step 1. The array contains at most one entry for this work unit. If empty, there is no cache.
 
 #### If a cache entry exists with `status` `valid`
 
