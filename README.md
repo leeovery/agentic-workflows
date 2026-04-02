@@ -112,7 +112,7 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 | **Specification** | Analyses all discussions/investigation, filters hallucinations, enriches gaps, validates decisions. Reviewed against source material and analysed for gaps before finalising. The spec becomes the golden document — planning references only this. | Epic, Feature, Bugfix, Cross-cutting |
 | **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. Validated for spec traceability and structural integrity. Per-item approval gates with auto-mode. | Epic, Feature, Bugfix |
 | **Implementation** | TDD (or verification workflow for quick-fix) — commit per task. Post-implementation analysis agents check architecture, duplication, and standards. | Epic, Feature, Bugfix, Quick-fix |
-| **Review** | Parallel subagents verify each task against spec and plan. Findings become remediation tasks that feed back into implementation. | Epic, Feature, Bugfix, Quick-fix |
+| **Review** | Parallel subagents verify each task against spec and plan. Non-blocking recommendations are categorized as quick-fixes, ideas, or bugs — surface selected items to the inbox for future work. Blocking findings become remediation tasks that feed back into implementation. | Epic, Feature, Bugfix, Quick-fix |
 
 ### Lifecycle
 
@@ -154,7 +154,7 @@ Implementation auto-discovers linters (ESLint, Prettier, PHP CS Fixer, etc.) and
 
 ### Structured Review Findings
 
-Reviewers identify problems but don't fix them. Each finding includes a recommended fix, optional alternative approach, and confidence level. When multiple parallel reviewers flag the same issue, findings are deduplicated — and low-severity items are discarded unless they cluster into a pattern.
+Reviewers identify problems but don't fix them. Each finding includes a recommended fix, optional alternative approach, and confidence level. When multiple parallel reviewers flag the same issue, findings are deduplicated — and low-severity items are discarded unless they cluster into a pattern. Non-blocking recommendations are categorized as quick-fixes (mechanical, no logic changes), ideas (require discussion), or bugs (latent, non-blocking). Surface any of them to the inbox directly from the review verdict screen.
 
 ### Navigate Freely
 
@@ -162,7 +162,7 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 
 ### Inbox Capture
 
-Log ideas and bugs as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea` or `/workflow-log-bug` directly. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview.
+Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview.
 
 ### Workflow Dashboard
 

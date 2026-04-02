@@ -25,7 +25,7 @@ You receive via the orchestrator's prompt:
 2. **Read all report files** — read every `report-*.md` in the review path. Extract BLOCKING ISSUES and significant NON-BLOCKING NOTES with their file:line references
 3. **Deduplicate** — same issue found across multiple QA files → one finding, note all sources
 4. **Group related findings** — multiple findings about the same concern become one task (e.g., 3 QA findings about missing error handling in the same module = 1 "add error handling" task)
-5. **Filter** — discard low-severity non-blocking findings unless they cluster into a pattern. Never discard high-severity or blocking findings.
+5. **Filter** — discard low-severity non-blocking findings unless they cluster into a pattern. Never discard high-severity or blocking findings. NON-BLOCKING NOTES may carry category tags (`[quickfix]`, `[idea]`, `[bug]`). These tags classify the *type* of improvement, not severity. A `[bug]` tagged non-blocking note is a latent, non-blocking issue — do not escalate it to blocking severity based on the tag alone. Apply the same severity/clustering filter regardless of category tags.
 6. **Normalize** — convert each group into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests)
 7. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/review-report-c{cycle}.md`
 8. **Write staging file** — if actionable tasks exist, write to `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle}.md` with `status: pending` for each task

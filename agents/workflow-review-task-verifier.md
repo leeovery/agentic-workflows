@@ -35,6 +35,8 @@ Plan Task (acceptance criteria)
     Verify Tests (adequate, not over/under tested)
     ↓
     Check Code Quality (readable, conventions)
+    ↓
+    Categorize Non-Blocking Notes (quickfix/idea/bug)
 ```
 
 ### Step 1: Understand the Task
@@ -85,6 +87,16 @@ Review the implementation as a senior architect would:
 - **Security**: No obvious vulnerabilities (injection, exposure, etc.)
 - **Performance**: No obvious inefficiencies (N+1 queries, unnecessary loops, etc.)
 
+### Step 6: Categorize Non-Blocking Notes
+
+Tag each non-blocking note with a category:
+
+- **`[quickfix]`** — Mechanical change with no logic impact. Typos, renames, linting, code style, find-and-replace. Achievable in minutes, no design decisions.
+- **`[idea]`** — Requires discussion or design. Architectural suggestions, refactoring, new functionality, deduplication. Not trivially scoped.
+- **`[bug]`** — Something is broken or incorrect but non-blocking. Latent bugs, unhandled edge cases, incorrect error mapping. These are non-blocking — they do not belong in BLOCKING ISSUES.
+
+If unsure, default to `[idea]` — it's the safest catch-all for anything that needs human judgment.
+
 ## Output File Format
 
 Write to `.workflows/{work_unit}/review/{topic}/report-{phase_id}-{task_id}.md`:
@@ -120,7 +132,7 @@ BLOCKING ISSUES:
 - [List any issues that must be fixed]
 
 NON-BLOCKING NOTES:
-- [Suggestions for improvement]
+- [{quickfix|idea|bug}] {description}
 ```
 
 ## Your Output

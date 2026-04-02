@@ -35,7 +35,15 @@
 1. [Specific actionable change]
 
 ## Recommendations
-[Combined non-blocking suggestions]
+
+### Quick-fixes
+[Mechanical, no-logic-change items — omit section if none]
+
+### Ideas
+[Items requiring discussion or design — omit section if none]
+
+### Bugs
+[Non-blocking broken behavior — omit section if none]
 ```
 
 ## Verdict Guidelines
