@@ -15,7 +15,7 @@ Always create a feature branch **before** the first commit. Never commit to main
 ## Workflow Phases
 
 1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas
-2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map. Subtopics tracked through `pending` → `exploring` → `converging` → `decided`. Topic elevation seeds sibling concerns as separate discussion topics (epics only)
+2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Topic elevation seeds sibling discussions (epics only)
 3. **Investigation** (`workflow-investigation-process` skill): Bugfix-specific - symptom gathering + code analysis → root cause
 4. **Scoping** (`workflow-scoping-process` skill): Quick-fix-specific - context, spec, and plan in one pass
 5. **Specification** (`workflow-specification-process` skill): Validate and refine into standalone spec
@@ -27,13 +27,13 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 Skills are organised in two tiers:
 
-**Entry-point skills** (`/start-*`, `/continue-*`, `/workflow-migrate`, etc.) are user-invocable. They gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/workflow-start`) have `disable-model-invocation: true`. `/workflow-migrate` has `user-invocable: false` — it is model-invoked only (Step 0 of every user-invocable entry-point skill).
+**Entry-point skills** (`/start-*`, `/continue-*`, `/workflow-migrate`, etc.) are user-invocable. Gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/workflow-start`) have `disable-model-invocation: true`. `/workflow-migrate` is model-invoked only (Step 0 of every entry-point skill).
 
-**Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). They are invoked by start/continue/bridge skills with work_type and work_unit always provided. They handle phase-specific validation, bootstrap questions for new entries, and processing skill invocation.
+**Phase entry skills** (`workflow-*-entry`) are internal (`user-invocable: false`). Invoked by start/continue/bridge skills with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, and processing skill invocation.
 
-**Processing skills** (`workflow-*-process`) are model-invocable. They assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills provide all required inputs before invoking them.
+**Processing skills** (`workflow-*-process`) are model-invocable. Assume pipeline context — work_type is set, prior phases complete, artifacts in expected locations.
 
-**Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) are model-invocable, lightweight skills outside the pipeline. They capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural language instructions with capture-only constraints.
+**Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) are model-invocable, lightweight skills outside the pipeline. Capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural language instructions with capture-only constraints.
 
 ### Phase Entry Skill Routing
 
@@ -58,9 +58,9 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 - **Quick-fix**: Single-topic, scoping-centric (Scoping → Implementation → Review)
 - **Cross-cutting**: Single-topic, project-level (Research (opt.) → Discussion → Specification — terminal)
 
-**Topics**: A *topic* is the item within a phase. For feature/bugfix/quick-fix, the topic name equals the work unit name (single topic moving through the pipeline). For epic, topics are distinct from the work unit name (multiple topics per phase). All work types use per-topic items in the manifest (unified structure). The discussion phase analyses all research files collectively to derive discussion topics.
+**Topics**: A *topic* is the item within a phase. For feature/bugfix/quick-fix, topic name equals work unit name. For epic, topics are distinct from the work unit name. All work types use per-topic manifest items (unified structure).
 
-Work-unit-first directory structure with uniform `{topic}` in all paths. For feature/bugfix/quick-fix, `{topic}` equals `{work_unit}`. For epic, `{topic}` is the item within a phase.
+Work-unit-first directory structure with uniform `{topic}` in all paths (`{topic}` = `{work_unit}` for feature/bugfix/quick-fix).
 
 - Project manifest: `.workflows/manifest.json` (work unit registry + project defaults)
 - Manifest: `.workflows/{work_unit}/manifest.json`
@@ -74,8 +74,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase)
-- Inbox: `.workflows/.inbox/ideas/`, `.workflows/.inbox/bugs/`, `.workflows/.inbox/quickfixes/` (pre-pipeline capture, plain markdown)
-- Inbox archive: `.workflows/.inbox/.archived/{ideas,bugs,quickfixes}/` (moved here when an inbox item enters the pipeline)
+- Inbox: `.workflows/.inbox/{ideas,bugs,quickfixes}/` (pre-pipeline capture; archived to `.archived/` subfolder when entering pipeline)
 
 **Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking its lifecycle state:
 - `in-progress` — actively being worked on (default on creation)
@@ -86,7 +85,7 @@ Discovery filters by status — active work by default, with options to view com
 
 **Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). After pivot, the user can continue immediately as an epic or return to the previous view.
 
-**Epic soft gates**: When navigating forward between phases in an epic (via `continue-epic`), advisory gates warn if prerequisite phase items are still in-progress. These are informational, not blocking — the user can proceed anyway. The system recovers gracefully via re-analysis if the user proceeds early.
+**Epic soft gates**: When navigating forward between epic phases, advisory gates warn if prerequisite items are still in-progress. Informational, not blocking — the system recovers via re-analysis if the user proceeds early.
 
 Commit docs frequently (natural breaks, before context refresh). Skills capture context, don't implement.
 
@@ -118,7 +117,7 @@ The contract and scaffolding templates live in `.claude/skills/create-output-for
 
 ## Migrations
 
-The `/workflow-migrate` skill keeps workflow files in sync with the current system design. It runs via Step 0 at the start of every entry-point skill.
+The `/workflow-migrate` skill keeps workflow files in sync with the current system design (runs via Step 0 of every entry-point skill).
 
 **How it works:**
 - `skills/workflow-migrate/scripts/migrate.sh` runs all migration scripts in `skills/workflow-migrate/scripts/migrations/` in numeric order
@@ -134,58 +133,13 @@ The `/workflow-migrate` skill keeps workflow files in sync with the current syst
 
 **Critical: Migration scripts must not use the manifest CLI**
 
-Migration scripts are point-in-time snapshots. The manifest CLI validates values against the current schema, which changes over time (e.g., valid statuses). A migration that uses the CLI today may break silently when validation rules change in a later release. Always read and write `manifest.json` directly using `node` (or `jq`) — never via the manifest CLI. This ensures migrations remain stable regardless of future schema changes.
+Migration scripts are point-in-time snapshots. The manifest CLI validates against the current schema, which changes over time — a migration using it today may break silently later. Always read/write `manifest.json` directly with `node` or `jq`.
 
-**Bash 3.2 compatibility**: Migration scripts must be compatible with Bash 3.2 (macOS default). Avoid `mapfile`/`readarray` (bash 4+), associative arrays `declare -A` (bash 4+), and `local -n` namerefs (bash 4.3+).
+**Bash 3.2 compatibility** (macOS default): Avoid `mapfile`/`readarray`, `declare -A`, `local -n` (all bash 4+).
 
 **Testing migrations:**
 
-Every migration must have a corresponding test file at `tests/scripts/test-migration-NNN.sh`. The test harness follows this structure:
-
-```bash
-#!/bin/bash
-#
-# Tests for migration NNN: description
-#
-# Run: bash tests/scripts/test-migration-NNN.sh
-#
-
-set -eo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/NNN-description.sh"
-
-PASS=0
-FAIL=0
-
-report_update() { : ; }
-report_skip() { : ; }
-
-assert_eq() {
-  local label="$1" expected="$2" actual="$3"
-  if [ "$expected" = "$actual" ]; then
-    PASS=$((PASS + 1))
-  else
-    FAIL=$((FAIL + 1))
-    echo "FAIL: $label"
-    echo "  expected: $expected"
-    echo "  actual:   $actual"
-  fi
-}
-
-setup() {
-  TEST_DIR=$(mktemp -d /tmp/migration-NNN-test.XXXXXX)
-  export PROJECT_DIR="$TEST_DIR"
-  mkdir -p "$TEST_DIR/.workflows"
-}
-
-teardown() {
-  rm -rf "$TEST_DIR"
-}
-```
-
-Conventions:
+Every migration must have a corresponding test file at `tests/scripts/test-migration-NNN.sh`. Follow the harness structure in existing test files (`set -eo pipefail`, `PASS`/`FAIL` counters, `report_update`/`report_skip` stubs, `assert_eq` function, `setup`/`teardown` with temp dir). Conventions:
 - **Invocation**: Use `source "$MIGRATION"` for migrations that use `return 0`. Use `bash "$MIGRATION"` with `export -f report_update report_skip` for migrations that use `exit 0`.
 - **Isolation**: Each test function calls `setup` at the start and `teardown` at the end. No shared state between tests.
 - **Assertions**: Use only `assert_eq`. Parameter order: `label`, `expected`, `actual`. Convert other checks inline:
@@ -199,7 +153,7 @@ Conventions:
 
 ## Manifest CLI
 
-The manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the single source of truth for all workflow state. Uses dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). The reserved prefix `project` routes to the project manifest (`.workflows/manifest.json`) — e.g., `get project.defaults.plan_format`. See `skills/workflow-manifest/SKILL.md` for the full API.
+The manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the single source of truth for all workflow state. Dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). Reserved prefix `project` routes to the project manifest — e.g., `get project.defaults.plan_format`.
 
 **Project defaults cascade**: `project.defaults` → topic level. Project defaults are suggestions (user confirms or overrides). Topic level records the actual value in use. There is no phase-level storage for settings like `plan_format`, `project_skills`, or `linters`.
 
@@ -255,13 +209,13 @@ Rules:
 - 2-space left padding on the title text
 - Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
 - Include a trailing blank line after the closing border inside the code block — this creates visual breathing room in the rendered output
-- **Must be inside a code block** — never markdown (markdown collapses the spacing the border depends on)
+- **Must be inside a code block** — never markdown. Code blocks preserve the indentation and whitespace that the border layout depends on. Markdown rendering would collapse the spacing and break the layout
 
 Status displays use the phase title at the top of the same code block, followed by a blank line before the content.
 
 ### Step Markers
 
-Em-dash framed progress indicators at each step boundary (never instructed once at the top of a file). Every step gets a marker, even if it has no explicit output — Claude's visible processing IS the user experience, and the marker labels it. Every step marker must be followed by a signpost blockquote explaining what the step does and why.
+Em-dash framed progress indicators. Embedded at each step boundary — never instructed once at the top of a file. Short left side, long right side to fill width. Every step in a skill gets a marker, even if the step has no explicit output — Claude's visible processing (reading files, running commands, thinking) IS the user experience, and the marker labels that activity. Every step marker must be followed by a signpost blockquote explaining what the step does and why — the marker names the step, the signpost explains it.
 
 ```
 ── Construct Specification ─────────────────────
@@ -300,7 +254,15 @@ Rules:
 
 ### Signpost Blockquotes
 
-Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices. Rules:
+Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
+
+```
+> Your completed discussions will be synthesised into a formal spec.
+> Expect questions about gaps, contradictions, and missing edge cases.
+> The output is a standalone document that drives planning.
+```
+
+Rules:
 - Rendered as markdown (use the markdown rendering instruction)
 - **Every line must start with `>`** — Claude Code only renders the blockquote border on lines that have the `>` prefix. A single long line will wrap without the border on subsequent lines. Wrap at ~70 characters per line (including the `> ` prefix) to keep the blockquote visually intact
 - **Plain text only** — no bold. The blockquote styling (indented, dimmed) already sets signposts apart visually. If bold is ever needed on multiple lines, each line must have its own `**` open and close — bold does not carry across `>` prefixed line breaks
@@ -374,7 +336,30 @@ before they can be included in a specification.
 2. ...
 ```
 
-Richer hierarchies nest naturally (child items can have their own `├─`/`└─` branches). Unnumbered trees follow the same structure with blank lines between top-level items.
+Richer hierarchies nest naturally:
+
+```
+1. {topic:(titlecase)}
+   └─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
+   └─ Discussions:
+      ├─ {discussion} ({status:[extracted|pending]})
+      └─ ...
+```
+
+Unnumbered trees follow the same structure:
+
+```
+Plans not ready for implementation:
+These plans have unresolved dependencies that must be
+addressed first.
+
+  Core Features
+  └─ Blocked by data-model:data-model-1-2
+
+  Advanced Features
+  ├─ Blocked by core-features:core-2-3
+  └─ Blocked by auth
+```
 
 ### Status Terms
 
@@ -443,7 +428,27 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-**Yes/no and multi-choice prompts** follow the same dot-separator pattern. Yes/no uses **`y`/`yes`** and **`n`/`no`**. Multi-choice uses letter shorthands (e.g., **`s`/`single`**, **`m`/`multi`**, **`a`/`all`**) with `— description`.
+**Yes/no prompt:**
+
+```
+· · · · · · · · · · · ·
+Proceed?
+- **`y`/`yes`**
+- **`n`/`no`**
+· · · · · · · · · · · ·
+```
+
+**Multi-choice prompt:**
+
+```
+· · · · · · · · · · · ·
+What scope would you like to review?
+
+- **`s`/`single`** — Review one plan's implementation
+- **`m`/`multi`** — Review selected plans
+- **`a`/`all`** — Review all implemented plans
+· · · · · · · · · · · ·
+```
 
 **Meta options** in selection menus get backtick-wrapped descriptions:
 
@@ -577,7 +582,13 @@ Rules:
 
 ### Navigation Arrows
 
-Use `→` for flow control: `→ Proceed to **Step 4**.`, `→ Load **[file.md](file.md)** and follow its instructions.`
+Use `→` for flow control between steps or to external files:
+
+```
+→ Proceed to **Step 4**.
+→ Proceed to **Step 7** to invoke the skill.
+→ Load **[file.md](file.md)** and follow its instructions.
+```
 
 ### Reference File Headers
 
@@ -593,11 +604,21 @@ Reference files loaded by skills use this header pattern:
 
 ### Critical / Important Markers
 
-Use bold labels with colons: `**CRITICAL**:`, `**IMPORTANT**:`, `**CHECKPOINT**:`.
+Use bold labels with colons for emphasis levels:
+
+```
+**CRITICAL**: This guidance is mandatory.
+**IMPORTANT**: Use ONLY this script for discovery.
+**CHECKPOINT**: Summarize progress before continuing.
+```
 
 ### Zero Output Rule
 
-Entry-point skills that invoke processing skills include: `> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.`
+Entry-point skills that invoke processing skills use this exact blockquote to prevent narration:
+
+```
+> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
+```
 
 ### Auto-Mode Gates
 
@@ -605,7 +626,15 @@ Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STO
 
 **Manifest tracking**: Gate modes are stored in the manifest via CLI (`gated` or `auto`). This ensures they survive context refresh.
 
-**Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement (e.g., `Task {M} of {total}: {Task Name} — authored. Logging to plan.`).
+**Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
+
+```
+> *Output the next fenced block as a code block:*
+
+\```
+Task {M} of {total}: {Task Name} — authored. Logging to plan.
+\```
+```
 
 **Lifecycle**:
 - Default: `gated` (set in manifest on creation)
@@ -613,7 +642,10 @@ Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STO
 - Reset: entry-point skills reset gates to `gated` on fresh invocation (not on `continue`)
 - Context refresh: read gate modes from manifest and preserve
 
-**Menu option format**: Add `- **`a`/`auto`** — Approve this and all remaining {items} automatically` between the primary action and secondary options.
+**Menu option format**: Add between the primary action and secondary options:
+```
+- **`a`/`auto`** — Approve this and all remaining {items} automatically
+```
 
 **Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles before escalating to the user. This prevents infinite cascading.
 
@@ -770,7 +802,21 @@ How should this reference file exit?
 
 ### Internal Reference File Sections
 
-Complex reference files use lettered H2 headings (`## A. First Section`, `## B. Second Section`) to avoid collision with backbone step numbers. Navigate with `→ Proceed to **B. Section Name**.`. Simple reference files use named sections without letters.
+Complex reference files use lettered headings to organise sequential sections, avoiding collision with backbone step numbers:
+
+```markdown
+## A. First Section
+
+...
+→ Proceed to **B. Second Section**.
+
+## B. Second Section
+
+...
+→ Proceed to **C. Third Section**.
+```
+
+Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge`) without letters.
 
 ### Reference File Naming
 
