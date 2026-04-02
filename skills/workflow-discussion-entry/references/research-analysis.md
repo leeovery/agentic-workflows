@@ -54,9 +54,7 @@ Group the themes from B into discussion topics. Each topic becomes a separate di
 
 **Prefer fewer, coarser topics.** The goal is discussion-sized chunks with clear boundaries — not an exhaustive breakdown of every concern. Research that surfaces 10-15 themes should typically yield 3-6 discussion topics. Each topic should be substantial enough for a rich conversation, not so narrow that the discussion is artificially constrained.
 
-**The independence test:** If discussing topic A requires constantly referencing topic B, they belong together. Merge themes that share the same domain, data model, user journey, or decision space.
-
-**The specification test:** If themes would end up in the same specification anyway, they should be one discussion topic. Narrow topics create overhead — separate discussions, separate artifacts, separate scaffolding — only to be regrouped later with gaps or overlaps.
+**The independence test:** If discussing topic A requires constantly referencing topic B, they belong together. Merge themes that share the same domain, data model, user journey, or decision space. Narrow topics create overhead — separate discussions, separate artifacts, separate scaffolding — and artificially constrain conversations that naturally want to cross boundaries.
 
 **Anti-pattern — splitting implementation details of one domain:**
 
