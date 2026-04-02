@@ -58,10 +58,9 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 |---|------|-------|
 | 14 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
 
-## Phase 7 — Convention Normalisation
-
-Standardise patterns that have diverged across skills.
+## Unphased — New Ideas
 
 | # | Idea | Scope |
 |---|------|-------|
 | 15 | [Selection Menu Display Pattern](selection-menu-pattern.md) | All selection menus across skills |
+| 16 | [Background Sub-Agents in Research](research-background-agents.md) | Research processing skill |

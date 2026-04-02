@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
 
-**This CLAUDE.md is development documentation for authoring the workflows — it does not ship with the product.** When installed, only the skills and agents are copied into the target project (which has its own CLAUDE.md). Skills and agents must be fully self-contained — never rely on this file for runtime behaviour, conventions, or formats that agents need to follow.
+**Development documentation only — not shipped with the product.** Installed projects get their own CLAUDE.md. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
 ## Git Workflow
 
@@ -33,7 +33,7 @@ Skills are organised in two tiers:
 
 **Processing skills** (`workflow-*-process`) are model-invocable. They assume pipeline context — work_type is set, prior phases are complete, artifacts are in expected locations. Phase entry skills provide all required inputs before invoking them.
 
-**Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) are model-invocable, lightweight skills outside the pipeline. They capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural language instructions with capture-only constraints. They can be invoked directly by the user or discovered by the model when the user wants to log something.
+**Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) are model-invocable, lightweight skills outside the pipeline. They capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural language instructions with capture-only constraints.
 
 ### Phase Entry Skill Routing
 
@@ -82,7 +82,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths. For fea
 - `completed` — pipeline finished (set automatically when the pipeline completes, or manually via the manage menu)
 - `cancelled` — abandoned (set manually via the manage menu)
 
-Discovery scripts filter by status — `workflow-start` and `continue-*` show active work by default, with menu options to view completed/cancelled items or manage lifecycle state. Completed/cancelled work units can be reactivated.
+Discovery filters by status — active work by default, with options to view completed/cancelled or manage lifecycle. Work units can be reactivated.
 
 **Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). After pivot, the user can continue immediately as an epic or return to the previous view.
 
@@ -221,7 +221,7 @@ All user-facing output uses five distinct visual tiers, each with a specific pur
 | 4 | Sub-step marker | Progress within a step | Code block |
 | 5 | Status / menu | Data displays and interactive choices | Code block / markdown |
 
-Every skill invocation should produce at most one phase title. Step markers appear at every step boundary — including steps with no explicit output, since Claude's visible processing (file reads, commands, thinking) is the user experience and the marker labels it. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion. Status displays and menus are unchanged from existing conventions.
+Every skill invocation should produce at most one phase title. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion.
 
 ### Rendering Instructions
 
@@ -255,13 +255,13 @@ Rules:
 - 2-space left padding on the title text
 - Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
 - Include a trailing blank line after the closing border inside the code block — this creates visual breathing room in the rendered output
-- **Must be inside a code block** — never markdown. Code blocks preserve the indentation and whitespace that the border layout depends on. Markdown rendering would collapse the spacing and break the layout
+- **Must be inside a code block** — never markdown (markdown collapses the spacing the border depends on)
 
-Phase titles replace the old plain-text title pattern. Status displays that previously opened with a title line (e.g., `Planning Overview`) now use the phase title at the top of the same code block, followed by a blank line before the content.
+Status displays use the phase title at the top of the same code block, followed by a blank line before the content.
 
 ### Step Markers
 
-Em-dash framed progress indicators. Embedded at each step boundary — never instructed once at the top of a file. Short left side, long right side to fill width. Every step in a skill gets a marker, even if the step has no explicit output — Claude's visible processing (reading files, running commands, thinking) IS the user experience, and the marker labels that activity. Every step marker must be followed by a signpost blockquote explaining what the step does and why — the marker names the step, the signpost explains it.
+Em-dash framed progress indicators at each step boundary (never instructed once at the top of a file). Every step gets a marker, even if it has no explicit output — Claude's visible processing IS the user experience, and the marker labels it. Every step marker must be followed by a signpost blockquote explaining what the step does and why.
 
 ```
 ── Construct Specification ─────────────────────
@@ -300,15 +300,7 @@ Rules:
 
 ### Signpost Blockquotes
 
-Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
-
-```
-> Your completed discussions will be synthesised into a formal spec.
-> Expect questions about gaps, contradictions, and missing edge cases.
-> The output is a standalone document that drives planning.
-```
-
-Rules:
+Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices. Rules:
 - Rendered as markdown (use the markdown rendering instruction)
 - **Every line must start with `>`** — Claude Code only renders the blockquote border on lines that have the `>` prefix. A single long line will wrap without the border on subsequent lines. Wrap at ~70 characters per line (including the `> ` prefix) to keep the blockquote visually intact
 - **Plain text only** — no bold. The blockquote styling (indented, dimmed) already sets signposts apart visually. If bold is ever needed on multiple lines, each line must have its own `**` open and close — bold does not carry across `>` prefixed line breaks
@@ -320,27 +312,7 @@ Rules:
 
 ### Workflow Banner
 
-The `workflow-start` skill uses an ASCII art banner as the entry point. It uses the same bullet-border convention as phase titles, widened to accommodate the art:
-
-```
-●─────────────────────────────────────────────────────────────────●
-    ___   _____________   __________________
-   /   | / ____/ ____/ | / /_  __/  _/ ____/
-  / /| |/ / __/ __/ /  |/ / / /  / // /
- / ___ / /_/ / /___/ /|  / / / _/ // /___
-/_/  |_\____/_____/_/ |_/ /_/ /___/\____/
- _       ______  ____  __ __ ________    ____ _       _______
-| |     / / __ \/ __ \/ //_// ____/ /   / __ \ |     / / ___/
-| | /| / / / / / /_/ / ,<  / /_  / /   / / / / | /| / /\__ \
-| |/ |/ / /_/ / _, _/ /| |/ __/ / /___/ /_/ /| |/ |/ /___/ /
-|__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
-
-●─────────────────────────────────────────────────────────────────●
-  Agentic engineering workflows — from idea to implementation.
-●─────────────────────────────────────────────────────────────────●
-```
-
-This is the only exception to the fixed-width phase title rule — the banner is wider to fit the ASCII art.
+The `workflow-start` skill uses an ASCII art banner (see skill file for exact art). Uses the same bullet-border convention as phase titles, widened to accommodate the art — the only exception to the fixed-width rule.
 
 ### Template Placeholders
 
@@ -402,30 +374,7 @@ before they can be included in a specification.
 2. ...
 ```
 
-Richer hierarchies nest naturally:
-
-```
-1. {topic:(titlecase)}
-   └─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
-   └─ Discussions:
-      ├─ {discussion} ({status:[extracted|pending]})
-      └─ ...
-```
-
-Unnumbered trees follow the same structure:
-
-```
-Plans not ready for implementation:
-These plans have unresolved dependencies that must be
-addressed first.
-
-  Core Features
-  └─ Blocked by data-model:data-model-1-2
-
-  Advanced Features
-  ├─ Blocked by core-features:core-2-3
-  └─ Blocked by auth
-```
+Richer hierarchies nest naturally (child items can have their own `├─`/`└─` branches). Unnumbered trees follow the same structure with blank lines between top-level items.
 
 ### Status Terms
 
@@ -494,27 +443,7 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
-**Yes/no prompt:**
-
-```
-· · · · · · · · · · · ·
-Proceed?
-- **`y`/`yes`**
-- **`n`/`no`**
-· · · · · · · · · · · ·
-```
-
-**Multi-choice prompt:**
-
-```
-· · · · · · · · · · · ·
-What scope would you like to review?
-
-- **`s`/`single`** — Review one plan's implementation
-- **`m`/`multi`** — Review selected plans
-- **`a`/`all`** — Review all implemented plans
-· · · · · · · · · · · ·
-```
+**Yes/no and multi-choice prompts** follow the same dot-separator pattern. Yes/no uses **`y`/`yes`** and **`n`/`no`**. Multi-choice uses letter shorthands (e.g., **`s`/`single`**, **`m`/`multi`**, **`a`/`all`**) with `— description`.
 
 **Meta options** in selection menus get backtick-wrapped descriptions:
 
@@ -561,7 +490,7 @@ Use `•` for all bulleted lists (sources, files, not-ready items, etc.).
 
 ## Structural Conventions (MANDATORY)
 
-These are hard rules, not suggestions. All skill files (entry-point and processing) MUST follow these conventions exactly. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
+These are hard rules, not suggestions. All skill files (entry-point and processing) MUST follow these conventions exactly.
 
 ### Stop Gates
 
@@ -648,13 +577,7 @@ Rules:
 
 ### Navigation Arrows
 
-Use `→` for flow control between steps or to external files:
-
-```
-→ Proceed to **Step 4**.
-→ Proceed to **Step 7** to invoke the skill.
-→ Load **[file.md](file.md)** and follow its instructions.
-```
+Use `→` for flow control: `→ Proceed to **Step 4**.`, `→ Load **[file.md](file.md)** and follow its instructions.`
 
 ### Reference File Headers
 
@@ -670,21 +593,11 @@ Reference files loaded by skills use this header pattern:
 
 ### Critical / Important Markers
 
-Use bold labels with colons for emphasis levels:
-
-```
-**CRITICAL**: This guidance is mandatory.
-**IMPORTANT**: Use ONLY this script for discovery.
-**CHECKPOINT**: Summarize progress before continuing.
-```
+Use bold labels with colons: `**CRITICAL**:`, `**IMPORTANT**:`, `**CHECKPOINT**:`.
 
 ### Zero Output Rule
 
-Entry-point skills that invoke processing skills use this exact blockquote to prevent narration:
-
-```
-> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
-```
+Entry-point skills that invoke processing skills include: `> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.`
 
 ### Auto-Mode Gates
 
@@ -692,15 +605,7 @@ Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STO
 
 **Manifest tracking**: Gate modes are stored in the manifest via CLI (`gated` or `auto`). This ensures they survive context refresh.
 
-**Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
-
-```
-> *Output the next fenced block as a code block:*
-
-\```
-Task {M} of {total}: {Task Name} — authored. Logging to plan.
-\```
-```
+**Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement (e.g., `Task {M} of {total}: {Task Name} — authored. Logging to plan.`).
 
 **Lifecycle**:
 - Default: `gated` (set in manifest on creation)
@@ -708,10 +613,7 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 - Reset: entry-point skills reset gates to `gated` on fresh invocation (not on `continue`)
 - Context refresh: read gate modes from manifest and preserve
 
-**Menu option format**: Add between the primary action and secondary options:
-```
-- **`a`/`auto`** — Approve this and all remaining {items} automatically
-```
+**Menu option format**: Add `- **`a`/`auto`** — Approve this and all remaining {items} automatically` between the primary action and secondary options.
 
 **Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles before escalating to the user. This prevents infinite cascading.
 
@@ -734,7 +636,7 @@ What's on your mind?
 
 ## Skill File Structure (MANDATORY)
 
-These are hard rules, not suggestions. All skills (entry-point and processing) use a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
+All skills (entry-point and processing) use a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives.
 
 ### Backbone Structure
 
@@ -868,21 +770,7 @@ How should this reference file exit?
 
 ### Internal Reference File Sections
 
-Complex reference files use lettered headings to organise sequential sections, avoiding collision with backbone step numbers:
-
-```markdown
-## A. First Section
-
-...
-→ Proceed to **B. Second Section**.
-
-## B. Second Section
-
-...
-→ Proceed to **C. Third Section**.
-```
-
-Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge`) without letters.
+Complex reference files use lettered H2 headings (`## A. First Section`, `## B. Second Section`) to avoid collision with backbone step numbers. Navigate with `→ Proceed to **B. Section Name**.`. Simple reference files use named sections without letters.
 
 ### Reference File Naming
 

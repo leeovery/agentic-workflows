@@ -2298,32 +2298,56 @@ const FLOWCHARTS = {
       { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Entry: workflow-discussion-process skill receives context from entry skill.' },
       { id: 'resume', label: 'Existing discussion?', shape: 'diamond', w: 130, h: 130, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Step 0: Check if discussion file exists at .workflows/{work_unit}/discussion/{topic}.md.' },
       { id: 'resume-ask', label: 'ASK: Continue/restart?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Discussion exists: announce current state, ask whether to continue or restart.' },
-      { id: 'init', label: 'Initialize document', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 1: Create {work_unit}/discussion/{topic}.md using template. Register in manifest. Commit.' },
-      { id: 'guidelines', label: 'Load guidelines', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Load discussion-guidelines.md — internalize discussion session rules.' },
-      { id: 'engage', label: 'Engage on topic', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 3: Present topic for discussion. Ask probing questions one at a time.' },
-      { id: 'capture', label: 'Capture decisions', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Record options considered, journey of exploration, and decisions with rationale.' },
-      { id: 'document', label: 'Write to disk', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Write reasoning and context to the discussion file. Capture the journey, not the dialogue.' },
-      { id: 'commit', label: 'Commit & push', w: 180, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Commit at natural breaks. Never batch — context refresh loses unpushed work.' },
-      { id: 'more', label: 'More topics?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Are there more topics to discuss?' },
-      { id: 'complete', label: 'Conclude discussion', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 4: Load conclude-discussion.md — set status completed, final commit.' },
-      { id: 'end', label: '{work_unit}/discussion/{topic}.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Completed discussion document ready for specification phase.' },
+      { id: 'init', label: 'Initialize document', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 1: Create discussion file with Discussion Map. If research provided, extract initial subtopics. Register in manifest. Commit.' },
+      { id: 'guidelines', label: 'Load guidelines', w: 180, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Step 2: Load discussion-guidelines.md and meeting-assistant.md. Internalize dual-role: expert architect + documentation assistant.' },
+      // Session loop
+      { id: 'surface', label: 'Surface agent findings', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 3 entry: Check for completed background agent results. Surface review gaps, perspective analyses, or synthesis conclusions.' },
+      { id: 'engage', label: 'Engage on subtopic', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Discuss current subtopic. Challenge thinking, explore edge cases, push back. Subtopic states: pending → exploring → converging → decided.' },
+      { id: 'document', label: 'Navigate, write, commit', w: 200, h: 44, color: 'var(--accent)', bg: 'rgba(108,138,255,0.12)', desc: 'Update Discussion Map states. Write Context→Options→Journey→Decision for decided subtopics. Commit at natural pauses.' },
+      // Agent dispatch
+      { id: 'agent-check', label: 'Agent triggers?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Evaluate dispatch conditions: review agent (meaningful content, no agents in flight, 2-3 exchanges) or perspective agents (genuine ambiguity detected).' },
+      { id: 'review-agent', label: 'Review agent (bg)', w: 180, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Dispatch review agent in background. Identifies gaps, missed considerations, and untested assumptions. Results surfaced next loop.' },
+      { id: 'perspective-ask', label: 'ASK: Perspectives?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Genuine ambiguity detected. Offer to dispatch perspective agents to argue distinct approaches.' },
+      { id: 'perspectives', label: 'Perspective agents (bg)', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Dispatch multiple perspective agents in parallel (background). Each argues a distinct angle on the decision.' },
+      { id: 'synthesis', label: 'Synthesis agent (bg)', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Auto-dispatched when all perspectives complete. Reconciles divergent views into tensions, trade-offs, and a recommended decision.' },
+      // Convergence + elevation
+      { id: 'convergence', label: 'All decided?', shape: 'diamond', w: 120, h: 120, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Check Discussion Map: all subtopics decided or deliberately deferred? Review agent had chance to flag gaps?' },
+      { id: 'elevate', label: 'Elevate topic', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Epic only: subtopic expands beyond scope. Create seed discussion file, init manifest, update Discussion Map with elevation marker.' },
+      // Conclusion
+      { id: 'conclude', label: 'Conclude discussion', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 5: Populate Summary section. Set discussion status to completed via manifest. Final commit.' },
+      { id: 'end', label: '{topic}.md', shape: 'pill', w: 175, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: Completed discussion document with Discussion Map, Context, and decided subtopics.' },
       { id: 'next', label: 'Invoke workflow-bridge', desc: 'Invoke the workflow-bridge skill to determine next phase and enter plan mode.', w: 200, h: 44, color: 'var(--skill)', bg: 'var(--skill-bg)', skillLink: 'workflow-bridge' },
     ],
     connections: [
+      // Resume
       { from: 'start', to: 'resume' },
       { from: 'resume', to: 'resume-ask', type: 'yes', label: 'exists' },
       { from: 'resume', to: 'init', type: 'no', label: 'new', weight: 2 },
       { from: 'resume-ask', to: 'init', label: 'restart' },
       { from: 'resume-ask', to: 'guidelines', label: 'continue', weight: 2 },
       { from: 'init', to: 'guidelines' },
-      { from: 'guidelines', to: 'engage' },
-      { from: 'engage', to: 'capture' },
-      { from: 'capture', to: 'document' },
-      { from: 'document', to: 'commit' },
-      { from: 'commit', to: 'more' },
-      { from: 'more', to: 'engage', type: 'backloop', label: 'yes', port: 'right' },
-      { from: 'more', to: 'complete', type: 'no', label: 'done' },
-      { from: 'complete', to: 'end' },
+      // Session loop entry
+      { from: 'guidelines', to: 'surface' },
+      // Session loop
+      { from: 'surface', to: 'engage' },
+      { from: 'engage', to: 'document' },
+      { from: 'document', to: 'agent-check' },
+      // Agent dispatch branches
+      { from: 'agent-check', to: 'review-agent', label: 'review' },
+      { from: 'agent-check', to: 'perspective-ask', label: 'ambiguity' },
+      { from: 'agent-check', to: 'convergence', type: 'no', label: 'none' },
+      { from: 'review-agent', to: 'convergence' },
+      { from: 'perspective-ask', to: 'perspectives', type: 'yes', label: 'yes' },
+      { from: 'perspective-ask', to: 'convergence', type: 'no', label: 'no' },
+      { from: 'perspectives', to: 'synthesis' },
+      { from: 'synthesis', to: 'convergence' },
+      // Convergence routing
+      { from: 'convergence', to: 'surface', type: 'backloop', label: 'continue' },
+      { from: 'convergence', to: 'elevate', label: 'elevate (epic)' },
+      { from: 'convergence', to: 'conclude', type: 'yes', label: 'all decided', weight: 2 },
+      { from: 'elevate', to: 'surface', type: 'backloop' },
+      // Conclusion
+      { from: 'conclude', to: 'end' },
       { from: 'end', to: 'next', type: 'transition' },
     ]
   },
@@ -2420,12 +2444,16 @@ const FLOWCHARTS = {
       // Post construction
       { id: 'analyze-graph', label: 'Analyze task graph', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', skillLink: 'workflow-planning-dependency-grapher', desc: 'Step 5: Invoke planning-dependency-grapher agent. Analyzes all tasks, assigns priorities, detects cycles.' },
       { id: 'deps', label: 'Resolve ext deps', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 6: Document external dependencies. Match to tasks in other plans if possible.' },
+      // Review — Cycle management
+      { id: 'review-cycle', label: 'Cycle management', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Step 7: Increment review_cycle. If > 3 cycles, present proceed/skip gate. Auto mode caps at 5 cycles.' },
       // Review — Traceability
       { id: 'traceability', label: 'Traceability review', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Step 7a: Invoke planning-review-traceability agent. Two-direction check — Spec→Plan and Plan→Spec.', skillLink: 'workflow-planning-review-traceability' },
       { id: 'trace-finding', label: 'ASK: Approve fix?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Process findings one at a time. User: approve, skip, or comment.' },
       // Review — Integrity
       { id: 'integrity', label: 'Integrity review', w: 200, h: 44, color: 'var(--agent)', bg: 'var(--agent-bg)', desc: 'Step 7b: Invoke planning-review-integrity agent. Standalone plan quality check.', skillLink: 'workflow-planning-review-integrity' },
       { id: 'integ-finding', label: 'ASK: Approve fix?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Process integrity findings one at a time.' },
+      // Review — Re-loop
+      { id: 'reloop', label: 'Re-loop?', shape: 'diamond', w: 110, h: 110, color: 'var(--routing)', bg: 'var(--routing-bg)', desc: 'Both review phases clean → signoff. Findings applied → ask user: reanalyse (re-run cycle) or proceed to signoff.' },
       // Sign-off + Conclusion
       { id: 'signoff', label: 'ASK: Sign off plan?', w: 200, h: 44, color: 'var(--ask)', bg: 'var(--ask-bg)', desc: 'Step 8: Final sign-off gate. User: approve (y) to conclude, or comment to route back to review.' },
       { id: 'complete', label: 'Complete plan', w: 180, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Set status: completed. Checkpoint: all tasks must be authored. Final commit.' },
@@ -2464,18 +2492,23 @@ const FLOWCHARTS = {
       { from: 'log-task', to: 'next-task', type: 'backloop', label: 'next task', toPort: 'lower-right' },
       // Post construction
       { from: 'analyze-graph', to: 'deps' },
+      // Review — cycle management
+      { from: 'deps', to: 'review-cycle' },
+      { from: 'review-cycle', to: 'traceability' },
       // Review — traceability
-      { from: 'deps', to: 'traceability' },
       { from: 'traceability', to: 'trace-finding' },
       { from: 'trace-finding', to: 'traceability', type: 'backloop', label: 'more findings' },
       { from: 'trace-finding', to: 'integrity', label: 'all processed' },
       // Review — integrity
       { from: 'integrity', to: 'integ-finding' },
       { from: 'integ-finding', to: 'integrity', type: 'backloop', label: 'more findings' },
-      { from: 'integ-finding', to: 'signoff', label: 'all processed' },
+      { from: 'integ-finding', to: 'reloop', label: 'all processed' },
+      // Re-loop + Sign-off
+      { from: 'reloop', to: 'review-cycle', type: 'backloop', label: 'reanalyse' },
+      { from: 'reloop', to: 'signoff', type: 'no', label: 'proceed', weight: 2 },
       // Sign-off + Conclusion
       { from: 'signoff', to: 'complete', type: 'yes', label: 'approve', weight: 2 },
-      { from: 'signoff', to: 'deps', type: 'backloop', label: 'comment' },
+      { from: 'signoff', to: 'review-cycle', type: 'backloop', label: 'comment' },
       { from: 'complete', to: 'end' },
       { from: 'end', to: 'next', type: 'transition' },
     ]
@@ -3586,10 +3619,11 @@ const FLOWCHART_DESCS = {
     meta: { output: '.workflows/{work_unit}/research/', complexity: 'Looping skill' }
   },
   'skill-discussion': {
-    summary: 'The discussion skill — captures decisions, debates, and edge cases through structured dialogue.',
-    body: `<p>Engages as an expert architect and meeting assistant. The core loop: <strong>Engage → Capture decisions → Write to disk → Commit → Repeat</strong> until the discussion is completed. Writes happen at natural pauses — partial and provisional documentation is expected and valuable.</p>
-<p>Each question is structured as <strong>Options → Journey → Decision</strong>. The skill documents competing solutions and why choices were made, capturing the full reasoning trail. The file on disk is the defence against context compaction — what's not written is lost. Frontmatter status progresses from <code>in-progress</code> to <code>completed</code>.</p>`,
-    meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', complexity: 'Looping skill' }
+    summary: 'The discussion skill — organic conversation with background agents, convergence detection, and topic elevation.',
+    body: `<p>Engages as an expert architect and meeting assistant. The session loop: <strong>Surface agent findings → Engage on subtopic → Navigate &amp; write → Commit → Agent dispatch check → Convergence check → Repeat</strong>. Subtopics progress through <code>pending</code> → <code>exploring</code> → <code>converging</code> → <code>decided</code> on the Discussion Map.</p>
+<p><strong>Three background agents</strong>: a <strong>review agent</strong> (dispatched when content is meaningful, no agents in flight, and 2-3 exchanges since last — identifies gaps and missed considerations), <strong>perspective agents</strong> (dispatched in parallel when genuine ambiguity is detected and user approves — each argues a distinct angle), and a <strong>synthesis agent</strong> (auto-fired when all perspectives complete — reconciles views into tensions and a recommendation). Results are surfaced at the start of each loop iteration.</p>
+<p><strong>Topic elevation</strong> (epic only): when a subtopic expands beyond its scope, it is elevated to its own discussion file with a seed from the current context. <strong>Convergence</strong>: all subtopics decided or deliberately deferred + review agent had chance to flag gaps → conclude path.</p>`,
+    meta: { output: '.workflows/{work_unit}/discussion/{topic}.md', complexity: 'Agent-assisted skill', agents: 'review, perspective (×N), synthesis' }
   },
   'skill-specification': {
     summary: 'The specification skill — collaborative refinement with agent-driven review cycle.',
