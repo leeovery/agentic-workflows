@@ -87,12 +87,12 @@ When naming topics:
 
 ## E. Save Results
 
-Write cache metadata to manifest:
+Write cache metadata to manifest. The `checksum` and `files` fields record which research input files were analysed, so the cache can detect when research changes.
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.checksum "{research.checksum from discovery}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.generated "{ISO timestamp}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research analysis_cache.files "{filename1}.md"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research analysis_cache.files "{filename2}.md"
+# Push one entry per research file that was read:
+node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research analysis_cache.files "{research-file}.md"
 ```
 
 Ensure the state directory exists:
