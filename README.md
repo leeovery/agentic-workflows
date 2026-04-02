@@ -91,7 +91,7 @@ Cross-cutting: (Research) → Discussion → Specification (terminal)
 
 These aren't just different shapes — every phase adapts its behaviour to the work type. This runs deep, from how research is analysed to how plans are structured to how review findings are prioritised.
 
-**Epics** are for large initiatives spanning multiple sessions. Topics move independently — 10 discussions might yield 5 specifications, each planned and implemented separately. Planning uses walking skeletons and steel threads to prove architecture end-to-end before building features on top. Advisory soft gates warn when moving between phases if prerequisite items are still in progress. When a spec is assessed as cross-cutting, it's auto-promoted to its own cross-cutting work unit.
+**Epics** are for large initiatives spanning multiple sessions. Topics move independently — 10 discussions might yield 5 specifications, each planned and implemented separately. Research analysis identifies potential discussion topics and tracks which ones haven't been started yet — you can manage pending topics from the epic menu (discuss or skip). Planning uses walking skeletons and steel threads to prove architecture end-to-end before building features on top. Advisory soft gates warn when moving between phases if prerequisite items are still in progress. When a spec is assessed as cross-cutting, it's auto-promoted to its own cross-cutting work unit.
 
 **Features** are for adding functionality. Single topic, linear pipeline. Planning analyses your codebase and follows existing patterns — it won't introduce new architectural conventions unless the spec calls for it. Research is optional — skip it if you know what you're building. If a feature grows beyond scope, pivot it to an epic without losing progress.
 
@@ -144,7 +144,7 @@ When a task reviewer finds issues, the executor re-invokes with feedback automat
 
 ### Change Detection & Cached Analysis
 
-The system tracks content changes across phase boundaries using checksums. If research documents change, the discussion phase recommends reanalysing to identify new topics — anchoring against existing discussions so nothing is lost. If discussions change, the specification phase recommends regrouping. If a spec changes after planning, the system asks whether to continue or replan.
+The system tracks content changes across phase boundaries using checksums. If research documents change, the discussion phase recommends reanalysing to identify new topics — anchoring against existing discussions so nothing is lost. Surfaced topics from research are tracked in the manifest so the epic menu shows which topics are pending discussion, and a soft gate warns before starting specification if undiscussed topics remain. If discussions change, the specification phase recommends regrouping. If a spec changes after planning, the system asks whether to continue or replan.
 
 Analysis results are cached — the system only reanalyses when content actually changed. This keeps behaviour deterministic across session replays and backwards navigation, avoiding redundant work when revisiting earlier phases.
 
