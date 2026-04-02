@@ -275,9 +275,9 @@ Commit the change.
 
 | User selected phase | Condition | Gate message |
 |---------------------|-----------|--------------|
-| discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Discussion topic analysis works best with all research available." |
-| specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Specification grouping analysis works best with all discussions available." |
-| specification (new or continue) | `gating.has_pending_discussions` is true | "{N} pending discussion topic(s) from research have not been started. Starting these discussions first ensures the specification covers all identified topics." |
+| discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
+| specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Grouping analysis works best with all discussions available." |
+| specification (new or continue) | `gating.has_pending_discussions` is true | "{N} pending discussion topic(s) from research have not been started. Starting these first ensures the specification covers all identified topics." |
 | planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all completed." |
 | implementation | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 
@@ -287,7 +287,7 @@ Commit the change.
 
 ```
 · · · · · · · · · · · ·
-{N} of {M} {phase items} still in-progress. {Gate message}.
+{Gate message}
 
 The system will re-analyse if you revisit later — proceeding
 now is safe, but may require rework.
@@ -296,6 +296,8 @@ now is safe, but may require rework.
 - **`b`/`back`** — Return to menu
 · · · · · · · · · · · ·
 ```
+
+Gate messages are self-contained first lines. For "N of M in-progress" conditions, compose the count prefix into the message (e.g., "3 of 5 research topics still in-progress. Discussion topic analysis works best with all research available.").
 
 **STOP.** Wait for user response.
 
@@ -329,6 +331,7 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 | Start review for {topic} | review | {topic} |
 | Start specification | specification | — |
 | Start new discussion topic | discussion | — |
+| Discuss pending topic {topic} | discussion | {topic} |
 | Start new research | research | — |
 
 → Return to caller.
@@ -448,6 +451,6 @@ Removed "{topic:(titlecase)}" from pending topics.
 
 #### If user chose `discuss`
 
-Store the selected topic. Set source="research".
+Set selection to "Discuss pending topic {topic}" with the selected topic name.
 
 → Return to **E. Route Selection**.

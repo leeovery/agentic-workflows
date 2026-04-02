@@ -49,8 +49,9 @@ No `---` separator before this section.
 Key:
 
   Discussion status:
-    in-progress — discussion is ongoing
-    completed   — discussion is done
+    in-progress           — discussion is ongoing
+    completed             — discussion is done
+    pending from research — identified by research, not yet discussed
 ```
 
 **Then present the options based on what exists:**

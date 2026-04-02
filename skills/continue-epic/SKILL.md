@@ -228,6 +228,7 @@ Invoke the appropriate skill based on the user's menu selection:
 | Start review for {topic} | `/workflow-review-entry epic {work_unit} {topic}` |
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
+| Discuss pending topic {topic} | `/workflow-discussion-entry epic {work_unit} {topic}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
