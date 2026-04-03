@@ -1051,11 +1051,13 @@
       <div style="border-top:1px solid var(--border); margin:6px 0"></div>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('start-feature',this)" id="btn-start-feature"><span class="badge badge-cmd">cmd</span><span class="btn-label">start-feature</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('start-bugfix',this)" id="btn-start-bugfix"><span class="badge badge-cmd">cmd</span><span class="btn-label">start-bugfix</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('start-quickfix',this)" id="btn-start-quickfix"><span class="badge badge-cmd">cmd</span><span class="btn-label">start-quickfix</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('start-epic',this)" id="btn-start-epic"><span class="badge badge-cmd">cmd</span><span class="btn-label">start-epic</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('start-cross-cutting',this)" id="btn-start-cross-cutting"><span class="badge badge-cmd">cmd</span><span class="btn-label">start-cross-cutting</span></button>
       <div style="border-top:1px solid var(--border); margin:6px 0"></div>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('continue-feature',this)" id="btn-continue-feature"><span class="badge badge-cmd">cmd</span><span class="btn-label">continue-feature</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('continue-bugfix',this)" id="btn-continue-bugfix"><span class="badge badge-cmd">cmd</span><span class="btn-label">continue-bugfix</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('continue-quickfix',this)" id="btn-continue-quickfix"><span class="badge badge-cmd">cmd</span><span class="btn-label">continue-quickfix</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('continue-epic',this)" id="btn-continue-epic"><span class="badge badge-cmd">cmd</span><span class="btn-label">continue-epic</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('continue-cross-cutting',this)" id="btn-continue-cross-cutting"><span class="badge badge-cmd">cmd</span><span class="btn-label">continue-cross-cutting</span></button>
     </div>
@@ -1075,20 +1077,24 @@
           <button class="nav-btn tl-cmd" onclick="selectPhase('investigation',this)" id="btn-investigation"><span class="name">3. Investigation</span><span class="badge badge-skl">skl</span></button>
           <button class="nav-btn tl-skill" onclick="selectPhase('skill-investigation',this)" id="btn-skill-investigation"><span class="skill-label">workflow-investigation-process</span><span class="badge badge-skl">skl</span></button>
         </div>
+        <div class="tl-group"><div class="tl-dot" style="background:#f59e0b"></div>
+          <button class="nav-btn tl-cmd" onclick="selectPhase('scoping',this)" id="btn-scoping"><span class="name">4. Scoping</span><span class="badge badge-skl">skl</span></button>
+          <button class="nav-btn tl-skill" onclick="selectPhase('skill-scoping',this)" id="btn-skill-scoping"><span class="skill-label">workflow-scoping-process</span><span class="badge badge-skl">skl</span></button>
+        </div>
         <div class="tl-group"><div class="tl-dot" style="background:var(--specification)"></div>
-          <button class="nav-btn tl-cmd" onclick="selectPhase('specification',this)" id="btn-specification"><span class="name">4. Specification</span><span class="badge badge-skl">skl</span></button>
+          <button class="nav-btn tl-cmd" onclick="selectPhase('specification',this)" id="btn-specification"><span class="name">5. Specification</span><span class="badge badge-skl">skl</span></button>
           <button class="nav-btn tl-skill" onclick="selectPhase('skill-specification',this)" id="btn-skill-specification"><span class="skill-label">workflow-specification-process</span><span class="badge badge-skl">skl</span></button>
         </div>
         <div class="tl-group"><div class="tl-dot" style="background:var(--planning)"></div>
-          <button class="nav-btn tl-cmd" onclick="selectPhase('planning',this)" id="btn-planning"><span class="name">5. Planning</span><span class="badge badge-skl">skl</span></button>
+          <button class="nav-btn tl-cmd" onclick="selectPhase('planning',this)" id="btn-planning"><span class="name">6. Planning</span><span class="badge badge-skl">skl</span></button>
           <button class="nav-btn tl-skill" onclick="selectPhase('skill-planning',this)" id="btn-skill-planning"><span class="skill-label">workflow-planning-process</span><span class="badge badge-skl">skl</span></button>
         </div>
         <div class="tl-group"><div class="tl-dot" style="background:var(--implementation)"></div>
-          <button class="nav-btn tl-cmd" onclick="selectPhase('implementation',this)" id="btn-implementation"><span class="name">6. Implementation</span><span class="badge badge-skl">skl</span></button>
+          <button class="nav-btn tl-cmd" onclick="selectPhase('implementation',this)" id="btn-implementation"><span class="name">7. Implementation</span><span class="badge badge-skl">skl</span></button>
           <button class="nav-btn tl-skill" onclick="selectPhase('skill-implementation',this)" id="btn-skill-implementation"><span class="skill-label">workflow-implementation-process</span><span class="badge badge-skl">skl</span></button>
         </div>
         <div class="tl-group"><div class="tl-dot" style="background:var(--review)"></div>
-          <button class="nav-btn tl-cmd" onclick="selectPhase('review',this)" id="btn-review"><span class="name">7. Review</span><span class="badge badge-skl">skl</span></button>
+          <button class="nav-btn tl-cmd" onclick="selectPhase('review',this)" id="btn-review"><span class="name">8. Review</span><span class="badge badge-skl">skl</span></button>
           <button class="nav-btn tl-skill" onclick="selectPhase('skill-review',this)" id="btn-skill-review"><span class="skill-label">workflow-review-process</span><span class="badge badge-skl">skl</span></button>
         </div>
       </div>
@@ -1096,12 +1102,23 @@
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Utilities</div>
     <div class="collapsible-content">
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('status',this)" id="btn-status"><span class="badge badge-cmd">cmd</span><span class="btn-label">status</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('view-plan',this)" id="btn-view-plan"><span class="badge badge-cmd">cmd</span><span class="btn-label">view-plan</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('migrate',this)" id="btn-migrate"><span class="badge badge-skl">skl</span><span class="btn-label">workflow-migrate</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-bridge',this)" id="btn-workflow-bridge"><span class="badge badge-skl">skl</span><span class="btn-label">workflow-bridge</span></button>
     </div>
 
     <div class="section-label collapsible" onclick="toggleSidebarSection(this)"><span class="chevron">▼</span> Agents</div>
     <div class="collapsible-content">
+      <div class="dropdown-subheading">Research</div>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-research-review',this)" id="btn-research-review"><span class="badge badge-agt">agt</span><span class="btn-label">research-review</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-research-deep-dive',this)" id="btn-research-deep-dive"><span class="badge badge-agt">agt</span><span class="btn-label">research-deep-dive</span></button>
+      <div class="dropdown-subheading">Discussion</div>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-discussion-review',this)" id="btn-discussion-review"><span class="badge badge-agt">agt</span><span class="btn-label">discussion-review</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-discussion-perspective',this)" id="btn-discussion-perspective"><span class="badge badge-agt">agt</span><span class="btn-label">discussion-perspective</span></button>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-discussion-synthesis',this)" id="btn-discussion-synthesis"><span class="badge badge-agt">agt</span><span class="btn-label">discussion-synthesis</span></button>
+      <div class="dropdown-subheading">Investigation</div>
+      <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-investigation-synthesis',this)" id="btn-investigation-synthesis"><span class="badge badge-agt">agt</span><span class="btn-label">investigation-synthesis</span></button>
       <div class="dropdown-subheading">Specification</div>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-specification-review-input',this)" id="btn-specification-review-input"><span class="badge badge-agt">agt</span><span class="btn-label">review-input</span></button>
       <button class="nav-btn dropdown-btn" onclick="selectPhase('workflow-specification-review-gap-analysis',this)" id="btn-specification-review-gap-analysis"><span class="badge badge-agt">agt</span><span class="btn-label">review-gap-analysis</span></button>
@@ -1172,14 +1189,15 @@
         <h1>Technical Workflow System</h1>
         <p class="ov-overview">
           A structured pipeline for turning ideas into verified production code.
-          Four work types &mdash; <strong>Feature</strong>, <strong>Bugfix</strong>, <strong>Epic</strong>, and <strong>Cross-cutting</strong> &mdash;
+          Five work types &mdash; <strong>Feature</strong>, <strong>Bugfix</strong>, <strong>Quick-fix</strong>, <strong>Epic</strong>, and <strong>Cross-cutting</strong> &mdash;
           each follow their own pipeline through phases of exploration, decisions,
           and validated specifications. Features, bugfixes, and epics continue through
           implementation planning, test-driven development, and final review.
+          Quick-fixes use rapid scoping (spec + plan in one pass) before implementation.
           Cross-cutting concerns are terminal at specification.
         </p>
         <div class="ov-hint">
-          Run <code>/workflow-start</code> to see all active work, or <code>/start-feature</code>, <code>/start-bugfix</code>, <code>/start-epic</code>, <code>/start-cross-cutting</code> to begin.
+          Run <code>/workflow-start</code> to see all active work, or <code>/start-feature</code>, <code>/start-bugfix</code>, <code>/start-quickfix</code>, <code>/start-epic</code>, <code>/start-cross-cutting</code> to begin.
         </div>
       </section>
 
@@ -1206,6 +1224,10 @@
             <div class="ov-phase-name">/start-bugfix</div>
             <div class="ov-phase-desc">New bugfix</div>
           </div>
+          <div class="ov-card ov-card-entry" onclick="selectPhase('start-quickfix')" style="border-color: #818cf8">
+            <div class="ov-phase-name">/start-quickfix</div>
+            <div class="ov-phase-desc">New quick-fix</div>
+          </div>
           <div class="ov-card ov-card-entry" onclick="selectPhase('start-epic')" style="border-color: #818cf8">
             <div class="ov-phase-name">/start-epic</div>
             <div class="ov-phase-desc">New epic</div>
@@ -1222,6 +1244,9 @@
           </div>
           <div class="ov-card ov-card-entry ov-card-sm" onclick="selectPhase('continue-bugfix')" style="border-color: #818cf8">
             <div class="ov-phase-name">/continue-bugfix</div>
+          </div>
+          <div class="ov-card ov-card-entry ov-card-sm" onclick="selectPhase('continue-quickfix')" style="border-color: #818cf8">
+            <div class="ov-phase-name">/continue-quickfix</div>
           </div>
           <div class="ov-card ov-card-entry ov-card-sm" onclick="selectPhase('continue-epic')" style="border-color: #818cf8">
             <div class="ov-phase-name">/continue-epic</div>
@@ -1252,6 +1277,15 @@
             <div class="ov-pipeline-heading" style="color: #818cf8">Bugfix</div>
             <div class="ov-card ov-card-phase" data-phase="investigation" onclick="selectPhase('investigation')" style="border-color: #fb923c">
               <div class="ov-phase-name">Investigation</div>
+            </div>
+          </div>
+
+          <!-- Quick-fix column -->
+          <div class="ov-pipeline-col">
+            <div class="ov-pipeline-heading" style="color: #818cf8">Quick-fix</div>
+            <div class="ov-card ov-card-phase" data-phase="scoping" onclick="selectPhase('scoping')" style="border-color: #f59e0b">
+              <div class="ov-phase-name">Scoping</div>
+              <div class="ov-phase-desc">spec + plan in one pass</div>
             </div>
           </div>
 
@@ -1289,11 +1323,11 @@
 
         <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
-        <!-- Convergence: shared phases (feature/bugfix/epic only) -->
-        <div class="ov-layer-label">Convergence &mdash; Feature / Bugfix / Epic</div>
+        <!-- Convergence: shared phases (feature/bugfix/quick-fix/epic only) -->
+        <div class="ov-layer-label">Convergence &mdash; Feature / Bugfix / Quick-fix / Epic</div>
 
         <div class="ov-row ov-row-center">
-          <div class="ov-card" data-phase="specification" onclick="selectPhase('specification')" style="max-width: 400px">
+          <div class="ov-card" data-phase="specification" onclick="selectPhase('specification')" style="max-width: 600px">
             <span class="ov-watermark">S</span>
             <div class="ov-phase-name">Specification</div>
             <div class="ov-phase-desc">Build validated specifications &mdash; filter hallucinations, enrich gaps</div>
@@ -1306,7 +1340,7 @@
         <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <div class="ov-row ov-row-center">
-          <div class="ov-card" data-phase="planning" onclick="selectPhase('planning')" style="max-width: 400px">
+          <div class="ov-card" data-phase="planning" onclick="selectPhase('planning')" style="max-width: 600px">
             <span class="ov-watermark">P</span>
             <div class="ov-phase-name">Planning</div>
             <div class="ov-phase-desc">Transform specs into phased plans with tasks and acceptance criteria</div>
@@ -1319,7 +1353,7 @@
         <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <div class="ov-row ov-row-center">
-          <div class="ov-card" data-phase="implementation" onclick="selectPhase('implementation')" style="max-width: 400px">
+          <div class="ov-card" data-phase="implementation" onclick="selectPhase('implementation')" style="max-width: 600px">
             <span class="ov-watermark">I</span>
             <div class="ov-phase-name">Implementation</div>
             <div class="ov-phase-desc">Execute plan via agent-based TDD &mdash; executor and reviewer per task</div>
@@ -1332,7 +1366,7 @@
         <div class="ov-flow-down"><div class="ov-flow-down-line"></div><div class="ov-flow-down-head"></div></div>
 
         <div class="ov-row ov-row-center">
-          <div class="ov-card" data-phase="review" onclick="selectPhase('review')" style="max-width: 400px">
+          <div class="ov-card" data-phase="review" onclick="selectPhase('review')" style="max-width: 600px">
             <span class="ov-watermark">R</span>
             <div class="ov-phase-name">Review</div>
             <div class="ov-phase-desc">Verify implementation against plan using parallel verification agents</div>
@@ -1758,6 +1792,33 @@ const phases = {
     color: '#fb923c', bg: 'rgba(251,146,60,0.12)',
     label: 'Investigation Synthesis',
     desc: 'Subagent that validates root cause analysis — checks reasoning, identifies gaps, and assesses confidence.',
+  },
+  // ── Research agents ──
+  'workflow-research-review': {
+    color: 'var(--research)', bg: 'var(--research-bg)',
+    label: 'Research Review',
+    desc: 'Background agent that reviews research files for coverage gaps, shallow areas, and unvalidated assumptions.',
+  },
+  'workflow-research-deep-dive': {
+    color: 'var(--research)', bg: 'var(--research-bg)',
+    label: 'Research Deep Dive',
+    desc: 'Background agent that conducts independent research on a focused thread — competitor, API, feasibility, or market.',
+  },
+  // ── Discussion agents ──
+  'workflow-discussion-review': {
+    color: 'var(--discussion)', bg: 'var(--discussion-bg)',
+    label: 'Discussion Review',
+    desc: 'Background agent that reviews discussion for gaps, shallow coverage, and missing edge cases.',
+  },
+  'workflow-discussion-perspective': {
+    color: 'var(--discussion)', bg: 'var(--discussion-bg)',
+    label: 'Discussion Perspective',
+    desc: 'Background agent that advocates for a specific technical perspective. Multiple run in parallel.',
+  },
+  'workflow-discussion-synthesis': {
+    color: 'var(--discussion)', bg: 'var(--discussion-bg)',
+    label: 'Discussion Synthesis',
+    desc: 'Background agent that reconciles competing perspectives into a tradeoff landscape with decision criteria.',
   },
   'workflow-review-task-verifier': {
     color: '#f472b6', bg: 'rgba(244,114,182,0.12)',
@@ -3514,6 +3575,115 @@ const FLOWCHARTS = {
       { from: 'write', to: 'end' },
     ]
   },
+  // ── Research agents ──
+  'workflow-research-review': {
+    nodes: [
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in background by workflow-research-process during session loop.' },
+      { id: 'read-research', label: 'Read research file(s)', w: 210, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read all research documents completely before assessment.' },
+      { id: 'coverage', label: 'Assess coverage breadth', w: 210, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Check for unexplored areas — competitors, market segments, technical alternatives, compliance, cost dimensions.' },
+      { id: 'depth', label: 'Assess depth', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Find shallow coverage — options listed but not investigated, claims without evidence, threads forgotten.' },
+      { id: 'assumptions', label: 'Identify assumptions', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Flag unvalidated assumptions taken for granted that could be verified.' },
+      { id: 'angles', label: 'Check missing angles', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Has research tunnel-visioned? Technical missing business? Market missing feasibility?' },
+      { id: 'threads', label: 'Note disconnected threads', w: 210, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Findings in different areas that could inform each other but haven\'t been connected.' },
+      { id: 'write', label: 'Write findings file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write structured review with unexplored areas, shallow coverage, unvalidated assumptions, and observations.' },
+      { id: 'end', label: 'STATUS report', shape: 'pill', w: 180, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: gaps_found | thorough, with gaps count, assumptions count, and summary.' },
+    ],
+    connections: [
+      { from: 'start', to: 'read-research' },
+      { from: 'read-research', to: 'coverage' },
+      { from: 'coverage', to: 'depth' },
+      { from: 'depth', to: 'assumptions' },
+      { from: 'assumptions', to: 'angles' },
+      { from: 'angles', to: 'threads' },
+      { from: 'threads', to: 'write' },
+      { from: 'write', to: 'end' },
+    ]
+  },
+  'workflow-research-deep-dive': {
+    nodes: [
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in background by workflow-research-process for focused thread investigation.' },
+      { id: 'read-context', label: 'Read research context', w: 210, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read current research file for background — what\'s explored, what questions are open.' },
+      { id: 'plan', label: 'Plan investigation', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Determine sources, searches, and analysis approach for this brief.' },
+      { id: 'investigate', label: 'Investigate thoroughly', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Web search, fetch docs, review source code, analyse APIs, read specs. Go deep.' },
+      { id: 'organize', label: 'Organize findings', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Structure findings: facts first, then analysis, then open questions. Cite sources.' },
+      { id: 'write', label: 'Write findings file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write to output: brief, key findings, limitations/caveats, open questions, sources.' },
+      { id: 'end', label: 'STATUS report', shape: 'pill', w: 180, h: 40, color: 'var(--research)', bg: 'var(--research-bg)', desc: 'Output: complete, with thread name, findings count, and summary.' },
+    ],
+    connections: [
+      { from: 'start', to: 'read-context' },
+      { from: 'read-context', to: 'plan' },
+      { from: 'plan', to: 'investigate' },
+      { from: 'investigate', to: 'organize' },
+      { from: 'organize', to: 'write' },
+      { from: 'write', to: 'end' },
+    ]
+  },
+  // ── Discussion agents ──
+  'workflow-discussion-review': {
+    nodes: [
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in background by workflow-discussion-process during session loop.' },
+      { id: 'read-disc', label: 'Read discussion file', w: 200, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read discussion document completely before assessment.' },
+      { id: 'coverage', label: 'Assess coverage', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Check for pending/exploring subtopics that should have progressed and obvious adjacent concerns never mentioned.' },
+      { id: 'decisions', label: 'Assess decision quality', w: 210, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Does each decision have rationale? Were alternatives explored? Are trade-offs acknowledged?' },
+      { id: 'depth', label: 'Assess depth', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Find shallow areas, missing edge cases, undocumented false paths.' },
+      { id: 'gaps', label: 'Identify gaps', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Implicit assumptions, unacknowledged dependencies, unasked questions.' },
+      { id: 'write', label: 'Write findings file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write structured review with summary, gaps, open questions, and observations.' },
+      { id: 'end', label: 'STATUS report', shape: 'pill', w: 180, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: gaps_found | clean, with gaps count, questions count, and summary.' },
+    ],
+    connections: [
+      { from: 'start', to: 'read-disc' },
+      { from: 'read-disc', to: 'coverage' },
+      { from: 'coverage', to: 'decisions' },
+      { from: 'decisions', to: 'depth' },
+      { from: 'depth', to: 'gaps' },
+      { from: 'gaps', to: 'write' },
+      { from: 'write', to: 'end' },
+    ]
+  },
+  'workflow-discussion-perspective': {
+    nodes: [
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Invoked in parallel by workflow-discussion-process when genuine ambiguity detected.' },
+      { id: 'read-disc', label: 'Read discussion context', w: 210, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read discussion file — understand problem space, constraints, and what\'s been discussed.' },
+      { id: 'build-case', label: 'Build case', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Argue for assigned perspective within this specific context. Reference constraints and requirements.' },
+      { id: 'weaknesses', label: 'Address weaknesses', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Acknowledge costs honestly, explain why they\'re acceptable or mitigable.' },
+      { id: 'counter', label: 'Counter alternatives', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Anticipate strongest counterarguments and address them.' },
+      { id: 'limits', label: 'Define limits', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'State when this approach would be the wrong choice.' },
+      { id: 'write', label: 'Write perspective file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write: position, the case, risks/mitigations table, why not alternatives, when it breaks down.' },
+      { id: 'end', label: 'STATUS report', shape: 'pill', w: 180, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: complete, with perspective name and 1-sentence core argument.' },
+    ],
+    connections: [
+      { from: 'start', to: 'read-disc' },
+      { from: 'read-disc', to: 'build-case' },
+      { from: 'build-case', to: 'weaknesses' },
+      { from: 'weaknesses', to: 'counter' },
+      { from: 'counter', to: 'limits' },
+      { from: 'limits', to: 'write' },
+      { from: 'write', to: 'end' },
+    ]
+  },
+  'workflow-discussion-synthesis': {
+    nodes: [
+      { id: 'start', label: 'START', shape: 'pill', w: 150, h: 40, color: 'var(--accent)', bg: 'rgba(108,138,255,0.15)', desc: 'Agent entry point. Auto-dispatched by workflow-discussion-process when all perspective agents complete.' },
+      { id: 'read-all', label: 'Read all perspectives', w: 210, h: 44, color: 'var(--text-dim)', bg: 'var(--surface2)', desc: 'Read all perspective files completely before beginning synthesis.' },
+      { id: 'tradeoffs', label: 'Map tradeoff space', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Identify real axes of tension — cost vs flexibility, speed vs maintainability, simplicity vs correctness.' },
+      { id: 'common', label: 'Identify common ground', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Where do all perspectives agree? This narrows the decision space.' },
+      { id: 'disagree', label: 'Surface disagreements', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Strip away framing differences to find core disagreements.' },
+      { id: 'strength', label: 'Assess argument strength', w: 210, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Note which arguments are most compelling and why, without declaring a winner.' },
+      { id: 'criteria', label: 'Define decision criteria', w: 210, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Make explicit: what would tip the decision one way or another.' },
+      { id: 'write', label: 'Write synthesis file', w: 200, h: 44, color: 'var(--action)', bg: 'var(--action-bg)', desc: 'Write: perspectives reviewed, common ground, key tensions, comparative analysis, decision criteria, questions to resolve.' },
+      { id: 'end', label: 'STATUS report', shape: 'pill', w: 180, h: 40, color: 'var(--discussion)', bg: 'var(--discussion-bg)', desc: 'Output: complete, with decision topic, tensions count, and key tradeoff summary.' },
+    ],
+    connections: [
+      { from: 'start', to: 'read-all' },
+      { from: 'read-all', to: 'tradeoffs' },
+      { from: 'tradeoffs', to: 'common' },
+      { from: 'common', to: 'disagree' },
+      { from: 'disagree', to: 'strength' },
+      { from: 'strength', to: 'criteria' },
+      { from: 'criteria', to: 'write' },
+      { from: 'write', to: 'end' },
+    ]
+  },
   // ── Cross-cutting entry skills ──
   'start-cross-cutting': {
     nodes: [
@@ -3950,6 +4120,41 @@ const FLOWCHART_DESCS = {
 <p>Returns <strong>validated</strong> or <strong>gaps_found</strong> with confidence level (high/medium/low) and gap count.</p>`,
     meta: { model: 'Opus', invokedBy: 'workflow-investigation-process', complexity: 'Validation agent' }
   },
+  'workflow-research-review': {
+    summary: 'Review research for coverage gaps, shallow areas, unvalidated assumptions, and missing angles.',
+    body: `<p>Background agent dispatched during the research session loop. Reads research files with <strong>clean-slate perspective</strong> to catch what researchers deep in exploration may have normalised.</p>
+<p>Assesses <strong>coverage breadth</strong> (missing competitors, market segments, technical alternatives, compliance, cost), <strong>depth</strong> (options listed but uninvestigated, claims without evidence), <strong>unvalidated assumptions</strong> (taken for granted without checking), <strong>missing angles</strong> (tunnel vision on one dimension), and <strong>disconnected threads</strong> (findings that should inform each other).</p>
+<p>Returns <strong>gaps_found</strong> or <strong>thorough</strong> with gap and assumption counts.</p>`,
+    meta: { model: 'Opus', invokedBy: 'workflow-research-process', tools: 'Read, Write', complexity: 'Review agent' }
+  },
+  'workflow-research-deep-dive': {
+    summary: 'Conduct deep independent research on a focused thread — competitor, API, feasibility, or market.',
+    body: `<p>Background agent dispatched for focused investigation. Reads the current research context, then <strong>investigates thoroughly</strong> using web search, documentation fetching, source code review, and API analysis.</p>
+<p>Investigation approaches: <strong>competitor/product analysis</strong> (features, pricing, technical approach, limitations), <strong>API/technical feasibility</strong> (capabilities, auth, rate limits, community libraries), <strong>market landscape</strong> (existing solutions, demand signals, gaps), <strong>technical deep dive</strong> (architecture approaches, known pitfalls).</p>
+<p>Organises findings with <strong>cited sources</strong> — facts first, then analysis, then open questions. Reports what was found without making recommendations.</p>`,
+    meta: { model: 'Opus', invokedBy: 'workflow-research-process', tools: 'Read, Write, WebSearch, WebFetch, Bash, Grep, Glob', complexity: 'Research agent' }
+  },
+  'workflow-discussion-review': {
+    summary: 'Review a discussion for gaps, shallow coverage, missing edge cases, and unexamined assumptions.',
+    body: `<p>Background agent dispatched periodically during the discussion session loop. Reads the discussion with <strong>clean-slate perspective</strong> to catch gaps participants may have normalised.</p>
+<p>Assesses <strong>coverage</strong> (pending/exploring subtopics that should have progressed, obvious adjacent concerns never mentioned), <strong>decision quality</strong> (rationale, alternatives explored, trade-offs acknowledged), <strong>depth</strong> (shallow areas, missing edge cases), and <strong>gaps</strong> (implicit assumptions, unacknowledged dependencies, unasked questions).</p>
+<p>Returns <strong>gaps_found</strong> or <strong>clean</strong> with gap and question counts. Does not suggest solutions or evaluate decisions.</p>`,
+    meta: { model: 'Opus', invokedBy: 'workflow-discussion-process', tools: 'Read, Write', complexity: 'Review agent' }
+  },
+  'workflow-discussion-perspective': {
+    summary: 'Advocate for a specific technical perspective — deliberately partisan, argues genuinely for an assigned angle.',
+    body: `<p>Background agent invoked in <strong>parallel</strong> when genuine ambiguity is detected during discussion. Each instance is assigned a different technical angle and argues for it — not neutral, deliberately partisan. Multiple instances create a landscape of well-argued alternatives.</p>
+<p>Process: read discussion context → <strong>build case</strong> (argue within specific constraints and requirements) → <strong>address weaknesses</strong> honestly → <strong>counter alternatives</strong> (anticipate strongest objections) → <strong>define limits</strong> (when this approach would be wrong).</p>
+<p>Output: position, the case, risks/mitigations table, why not alternatives, and when the approach breaks down. Returns a 1-sentence summary of the core argument.</p>`,
+    meta: { model: 'Opus', invokedBy: 'workflow-discussion-process', tools: 'Read, Write', complexity: 'Perspective agent' }
+  },
+  'workflow-discussion-synthesis': {
+    summary: 'Reconcile competing perspectives into a tradeoff landscape with explicit decision criteria.',
+    body: `<p>Background agent <strong>auto-dispatched</strong> when all perspective agents complete. Neutral analyst — does not pick a winner, gives decision-makers the clearest possible view of what\'s at stake.</p>
+<p>Process: read all perspectives → <strong>map tradeoff space</strong> (real axes of tension) → <strong>identify common ground</strong> (narrows decision space) → <strong>surface genuine disagreements</strong> (strip framing differences) → <strong>assess argument strength</strong> → <strong>define decision criteria</strong> (what would tip the choice).</p>
+<p>Output: perspectives reviewed table, common ground, key tensions, comparative analysis matrix, decision criteria, and questions to resolve. Concise — decision-maker should understand the landscape in 2-3 minutes.</p>`,
+    meta: { model: 'Opus', invokedBy: 'workflow-discussion-process', tools: 'Read, Write', complexity: 'Synthesis agent' }
+  },
   'skill-investigation': {
     summary: 'The investigation skill — symptom gathering, code analysis, root cause synthesis, and collaborative fix direction discussion.',
     body: `<p>Acts as expert debugger, documentation assistant, and collaborative advisor. <strong>Resume detection</strong> (Step 0) checks for existing investigation file — continue or restart.</p>
@@ -4060,7 +4265,17 @@ const SOURCE_MAP = {
   'continue-epic':        'skills/continue-epic/SKILL.md',
   'continue-cross-cutting': 'skills/continue-cross-cutting/SKILL.md',
   // Utility skills
+  'status':               'skills/status/SKILL.md',
+  'view-plan':            'skills/view-plan/SKILL.md',
+  'migrate':              'skills/workflow-migrate/SKILL.md',
   'workflow-migrate':     'skills/workflow-migrate/SKILL.md',
+  // Agents — Research
+  'workflow-research-review':                      'agents/workflow-research-review.md',
+  'workflow-research-deep-dive':                   'agents/workflow-research-deep-dive.md',
+  // Agents — Discussion
+  'workflow-discussion-review':                    'agents/workflow-discussion-review.md',
+  'workflow-discussion-perspective':               'agents/workflow-discussion-perspective.md',
+  'workflow-discussion-synthesis':                 'agents/workflow-discussion-synthesis.md',
   // Agents — Investigation
   'workflow-investigation-synthesis':              'agents/workflow-investigation-synthesis.md',
   // Agents — Specification
