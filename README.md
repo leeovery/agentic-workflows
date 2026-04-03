@@ -33,7 +33,7 @@ A development workflow for Claude Code that turns conversations into working sof
 - **Specifications that catch mistakes early.** The system analyses your discussions, filters hallucinations, fills gaps, and produces a validated spec before any code is written.
 - **Plans with real structure.** Specifications become phased implementation plans with tasks, acceptance criteria, and dependency ordering. Choose where tasks live — [Tick CLI, Linear issues, or local markdown files](#output-formats).
 - **Implementation via strict TDD.** Tests first, then code, commit after each task. Per-task approval gates keep you in control, or switch to auto-mode when you trust the flow.
-- **Validation at every stage.** Discussions are reviewed by a background agent for gaps and shallow coverage, with competing perspective agents for ambiguous decisions. Investigation root causes are independently validated by a synthesis agent before proceeding. Specifications get bidirectional review — one agent checks against source material for accuracy, another analyses the spec as a standalone document for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
+- **Validation at every stage.** Research is reviewed by a background agent for coverage gaps, shallow areas, and unvalidated assumptions — with deep-dive agents dispatched for independent investigation of substantial threads. Discussions are reviewed by a background agent for gaps and shallow coverage, with competing perspective agents for ambiguous decisions. Investigation root causes are independently validated by a synthesis agent before proceeding. Specifications get bidirectional review — one agent checks against source material for accuracy, another analyses the spec as a standalone document for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
 - **Context that survives.** Each phase clears the context window and starts fresh, so you're never fighting token limits on large work. All progress lives on disk — pick up exactly where you left off, even after context compaction or a new session.
 
 ## Getting Started
@@ -105,7 +105,7 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 | Phase | Purpose | Applies to |
 |-------|---------|------------|
-| **Research** | Explore ideas, market fit, technical feasibility. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
+| **Research** | Explore ideas, market fit, technical feasibility. Background review agent identifies coverage gaps and shallow areas; deep-dive agents investigate independent threads (competitors, APIs, feasibility) in parallel. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
 | **Discussion** | Organic conversation guided by a live Discussion Map that tracks subtopics through pending → exploring → converging → decided. Background review agent catches gaps; competing perspective agents argue viable approaches on ambiguous decisions, then a synthesis agent maps the tradeoff landscape. For epics, sibling concerns discovered during discussion are elevated to their own topic automatically. | Epic, Feature, Cross-cutting |
 | **Investigation** | Symptom gathering + code analysis to identify root cause. Optional synthesis agent validates the hypothesis independently. The bugfix alternative to discussion. | Bugfix |
 | **Scoping** | Context gathering, specification, and planning in a single pass. Produces 1-2 tasks directly. Includes complexity check with promotion to feature/bugfix if needed. | Quick-fix |
@@ -120,9 +120,9 @@ Work units are **in-progress**, **completed**, or **cancelled**. Completion happ
 
 ## Key Features
 
-### 21 Specialized Agents
+### 23 Specialized Agents
 
-Complex phases spawn parallel subagents for isolated concerns — discussion uses 3 agents for independent review, competing perspectives, and synthesis of tradeoffs. Investigation uses 1 for independent root cause validation. Specification and review each use 2 for input validation and gap analysis. Planning uses 6 for phase design, task authoring, dependency graphing, and quality review. Implementation uses 7 for TDD execution, post-task review, and cross-cutting analysis.
+Complex phases spawn parallel subagents for isolated concerns — research uses 2 agents for periodic gap analysis and independent deep-dive investigation. Discussion uses 3 for independent review, competing perspectives, and synthesis of tradeoffs. Investigation uses 1 for independent root cause validation. Specification and review each use 2 for input validation and gap analysis. Planning uses 6 for phase design, task authoring, dependency graphing, and quality review. Implementation uses 7 for TDD execution, post-task review, and cross-cutting analysis.
 
 ### Output Formats
 
@@ -199,7 +199,9 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 </details>
 
 <details>
-<summary><strong>Agents</strong> — 21 subagents for parallel task execution</summary>
+<summary><strong>Agents</strong> — 23 subagents for parallel task execution</summary>
+
+**Research:** [review](agents/workflow-research-review.md) | [deep-dive](agents/workflow-research-deep-dive.md)
 
 **Discussion:** [review](agents/workflow-discussion-review.md) | [perspective](agents/workflow-discussion-perspective.md) | [synthesis](agents/workflow-discussion-synthesis.md)
 

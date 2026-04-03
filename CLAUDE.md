@@ -14,7 +14,7 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 ## Workflow Phases
 
-1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas
+1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas. Background review agent for gap analysis; deep-dive agents for independent thread investigation
 2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Topic elevation seeds sibling discussions (epics only)
 3. **Investigation** (`workflow-investigation-process` skill): Bugfix-specific - symptom gathering + code analysis → root cause
 4. **Scoping** (`workflow-scoping-process` skill): Quick-fix-specific - context, spec, and plan in one pass
