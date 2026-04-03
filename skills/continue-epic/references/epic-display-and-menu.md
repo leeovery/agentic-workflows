@@ -53,9 +53,21 @@ No work started yet.
 @endif
 @endif
 @endforeach
+@if(phase == discussion and gating.has_pending_discussions)
+@foreach(topic in pending_from_research)
+    └─ {topic.name:(titlecase)} (pending from research)
+@endforeach
+@endif
 @endif
 
 @endforeach
+@if(gating.has_pending_discussions and not phases.discussion)
+  Discussion
+@foreach(topic in pending_from_research)
+    └─ {topic.name:(titlecase)} (pending from research)
+@endforeach
+
+@endif
 @if(recommendation)
 {recommendation text}
 @endif
@@ -69,7 +81,8 @@ No work started yet.
 - Specification items show their source discussions as a sub-tree beneath, one `└─` per source
 - Source status: `(incorporated)` or `(pending)` from manifest
 - Implementation items show progress: `Phase {N}, {M} task(s) completed` if in-progress with current_phase; `{M} task(s) completed` otherwise
-- Phases with no items don't appear
+- Pending discussion topics from research appear under the Discussion phase heading with `(pending from research)` status, after any existing discussion items. If no discussion items exist yet, render a Discussion section with only the pending topics
+- Phases with no items don't appear (except Discussion, which appears if pending topics from research exist)
 - Blank line between phase sections
 - No trailing blank line after the last phase section (the code block ends immediately after the last item or recommendation)
 
@@ -80,7 +93,8 @@ No work started yet.
 | In-progress items across multiple phases | No recommendation |
 | Some research in-progress, some completed | "Consider completing remaining research before starting discussion. Topic analysis works best with all research available." |
 | Some discussions in-progress, some completed | "Consider completing remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
-| All discussions completed, specs not started | "All discussions are completed. Specification will analyze and group them." |
+| All discussions completed, specs not started, `gating.has_pending_discussions` is false | "All discussions are completed. Specification will analyze and group them." |
+| All discussions completed, specs not started, `gating.has_pending_discussions` is true | "Pending discussion topic(s) from research remain. Consider starting these before specification." |
 | Some specs completed, some in-progress | "Completing all specifications before planning helps identify cross-cutting dependencies." |
 | Some plans completed, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
@@ -119,8 +133,9 @@ Show only statuses and categories that appear in the current display. No `---` s
   Key:
     Status:
       in-progress — work is ongoing
-      completed   — phase or implementation done
-      promoted    — moved to its own cross-cutting work unit
+      completed            — phase or implementation done
+      pending from research — identified by research, not yet discussed
+      promoted             — moved to its own cross-cutting work unit
 
     Blocking reason:
       blocked by {plan}:{task} — depends on another plan's task
@@ -165,7 +180,8 @@ Build a numbered menu with three sections:
 - No "Start specification" unless `gating.can_start_specification` is true
 
 **Recommendation marking:** Mark one item as `(recommended)` based on phase completion state:
-- All discussions completed, no specifications exist → "Start specification (recommended)"
+- All discussions completed, no specifications exist, `gating.has_pending_discussions` is false → "Start specification (recommended)"
+- All discussions completed, no specifications exist, `gating.has_pending_discussions` is true → "Start new discussion topic (recommended)"
 - All plannable specifications completed, some without plans → first plannable spec "(recommended)"
 - All plans completed (and deps satisfied), some without implementations → first implementable plan "(recommended)"
 - All implementations completed, some without reviews → first reviewable implementation "(recommended)"
