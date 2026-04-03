@@ -30,14 +30,18 @@ Research topics:
 2. ...
 ```
 
-If discussions exist that are NOT linked to a research topic, list them separately:
+If discussions exist that are NOT linked to a research topic, list them separately with continuing numbers:
 
 > *Output the next fenced block as a code block:*
 
 ```
 Existing discussions:
 
-  • {work_unit}/{topic} ({status:[in-progress|completed]}, {work_type:[epic|feature|bugfix]})
+{N+1}. {topic:(titlecase)}
+       ├─ Status: ({status:[in-progress|completed]})
+       └─ {work_type:[epic|feature|bugfix]} — {work_unit}
+
+{N+2}. ...
 ```
 
 ### Key/Legend
@@ -55,9 +59,7 @@ Key:
     pending     — identified by research, not yet discussed
 ```
 
-**Then present the menu.** Numbered items correspond to research topics in the overview. Verb reflects status: pending → "Discuss", in-progress → "Continue", completed → "Reopen". If standalone discussions exist (not from research), append them with continuing numbers using "Continue".
-
-#### If research exists
+**Then present the menu.** Numbered items match the overview (research topics first, then standalone discussions if any). Verb reflects status: pending → "Discuss", in-progress → "Continue", completed → "Reopen".
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -69,24 +71,9 @@ How would you like to proceed?
 - **`2`** — Continue "Auth Flow" (in-progress)
 - **`3`** — Reopen "Bluetooth Switching" (completed)
 
+@if(has_research)
 - **`r`/`refresh`** — Force fresh research analysis
-- **Fresh topic** — describe what you want to discuss
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Selection**.
-
-#### If only discussions exist
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-How would you like to proceed?
-
-- **Continue discussion** — name one above (e.g., "continue {topic}")
+@endif
 - **Fresh topic** — describe what you want to discuss
 · · · · · · · · · · · ·
 ```
@@ -106,28 +93,6 @@ Route based on the user's choice.
 Identify the selected topic from the numbered list (by number or name). Determine source from its status:
 - pending → source="research"
 - in-progress or completed → source="continue"
-
-→ Return to caller.
-
-#### If user chose `Continue discussion`
-
-Only applies when no research exists and user names a discussion directly.
-
-Set source="continue". Identify the selected discussion.
-
-**If user specified a discussion inline** (e.g., "continue auth-flow"):
-
-→ Return to caller.
-
-**If user just said "continue discussion" without specifying:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Which discussion would you like to continue?
-```
-
-**STOP.** Wait for user response.
 
 → Return to caller.
 
