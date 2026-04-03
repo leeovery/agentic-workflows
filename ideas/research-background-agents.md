@@ -4,6 +4,8 @@
 
 During research sessions, allow the research skill to dispatch sub-agents for independent research threads in the background while the main conversation continues. The user and Claude keep exploring topics together while heavy research tasks (web searches, source code reviews, API documentation analysis) run in parallel.
 
+This must be a declared, controlled feature — not something that happens ad-hoc. The skill must own the lifecycle: when agents are dispatched, what files they create, and critically, that those files are registered in the manifest.
+
 ## Why This Matters
 
 Research sessions naturally generate multiple independent threads. Currently, the research skill processes everything sequentially — if the user wants to explore Bluetooth APIs, review a competitor's source code, and investigate networking options, each thread blocks the others.
@@ -24,19 +26,63 @@ The pattern worked well because:
 - When results arrived, they were naturally integrated into the conversation
 - Three independent research threads completed in the time one sequential thread would have taken
 
+### What Went Wrong
+
+The sub-agents created research files (`networking.md`, `rule-engine.md`, `blue-switch-review.md`, `bluetooth-pairing-behavior.md`) directly in the research directory without registering them in the manifest via `init-phase`. This left the workflow in an inconsistent state — files existed on disk that the manifest didn't know about.
+
+This happened because:
+- The Agent tool is always available — Claude used it as a general capability, not as part of the skill's process
+- The sub-agents had no awareness of the manifest or the registration requirement
+- The main agent didn't register the files on behalf of the sub-agents when results came back
+- The compliance check at the end of the session didn't catch the unregistered files
+
 ## What It Would Look Like
 
-The research skill's session loop or guidelines would explicitly acknowledge this pattern:
+The research skill's session loop or guidelines would explicitly declare this as a feature:
+
+### Dispatching
 
 - When a research thread is independent and would benefit from deep web research or code analysis, offer to dispatch it as a background sub-agent
+- Before dispatching, the main agent MUST register the new topic in the manifest:
+  ```bash
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{topic}
+  ```
+- The sub-agent brief must include the exact output file path
 - Continue the conversation on other threads while the agent works
-- When results arrive, summarise findings and integrate into the research document
-- Commit results as they land, not batched at the end
+
+### On Completion
+
+- When results arrive, summarise findings and integrate into the conversation
+- Commit the sub-agent's file
+- Verify the file matches the registered manifest entry
+
+### Sub-Agent Brief Requirements
+
+Sub-agents must receive:
+- The exact output file path (`.workflows/{work_unit}/research/{topic}.md`)
+- The research document template to follow
+- Enough context to do useful work without the conversation history
+- Clear instruction NOT to modify any other research files
+
+### Guardrails
+
+- Sub-agents write to their OWN file only — never the main exploration file or other topic files
+- The main agent is responsible for manifest registration, not the sub-agent
+- Quick lookups, single API checks, or questions that inform the next conversational turn stay in the main thread — sub-agents are for substantial, independent research
+- Maximum concurrent sub-agents should be reasonable (3-4) to avoid overwhelming the session with notifications
+
+## Compliance Check Updates
+
+The existing compliance check (`compliance-check.md`) should be extended with:
+
+1. **File-manifest consistency** — scan `.workflows/{work_unit}/research/` for any `.md` files that are NOT registered in the manifest. Flag unregistered files as a significant issue requiring correction.
+2. **Sub-agent file verification** — if sub-agents were dispatched during the session, verify each created file is registered and committed.
+3. **Template compliance** — verify sub-agent-created files follow the research document template structure.
 
 ## Design Tensions
 
 - **Context sharing**: Sub-agents don't see the ongoing conversation. They need self-contained briefs with enough context to do useful work. The main agent must compose good prompts.
-- **File conflicts**: Multiple agents writing to the same research file would cause problems. Each agent should write to its own file (e.g., `networking.md`, `blue-switch-review.md`) rather than appending to a shared document.
+- **File conflicts**: Multiple agents writing to the same research file would cause problems. Each agent should write to its own file rather than appending to a shared document.
 - **Notification handling**: When a background agent completes mid-conversation, the main agent needs to handle the notification naturally without disrupting the current thread.
-- **Over-delegation**: Not everything should be a sub-agent. Quick lookups, single API checks, or questions that inform the next conversational turn should stay in the main thread. Sub-agents are for substantial, independent research that would take multiple minutes.
-- **Skill boundary**: This pattern uses the Agent tool which is always available. The skill doesn't need to "enable" it — but explicitly acknowledging the pattern in the research guidelines would make it a deliberate part of the process rather than an ad-hoc decision.
+- **Over-delegation**: Not everything should be a sub-agent. The threshold should be high — substantial research that would take multiple minutes and is independent of the current conversation thread.
+- **Manifest as source of truth**: The manifest must always reflect reality. If a file exists, it must be registered. This is the core invariant that was violated in the observed session and the primary thing the skill must enforce.
