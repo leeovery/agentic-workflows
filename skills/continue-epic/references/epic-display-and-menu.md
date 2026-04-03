@@ -197,18 +197,18 @@ Build a numbered menu with three sections:
 · · · · · · · · · · · ·
 What would you like to do?
 
-1. Continue "Auth Flow" — discussion (in-progress)
-2. Continue "Data Model" — specification (in-progress)
-3. Start planning for "User Profiles" — spec completed
-4. Continue "Caching" — planning (in-progress)
-5. Start implementation of "Notifications" — plan completed (recommended)
-6. Start implementation of "Reporting" — blocked by core-features:core-2-3
-7. Start specification — 3 discussion(s) not yet in a spec
-8. Start new discussion topic (from research)
-9. Start new research
-10. Resume a completed topic
+- **`1`** — Continue "Auth Flow" — discussion (in-progress)
+- **`2`** — Continue "Data Model" — specification (in-progress)
+- **`3`** — Start planning for "User Profiles" — spec completed
+- **`4`** — Continue "Caching" — planning (in-progress)
+- **`5`** — Start implementation of "Notifications" — plan completed (recommended)
+- **`6`** — Start implementation of "Reporting" — blocked by core-features:core-2-3
+- **`7`** — Start specification — 3 discussion(s) not yet in a spec
+- **`8`** — Start new discussion topic (from research)
+- **`9`** — Start new research
+- **`10`** — Resume a completed topic
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 
@@ -370,11 +370,11 @@ Only show phases with completed items. Blank line between phase sections.
 · · · · · · · · · · · ·
 Which topic would you like to resume?
 
-1. Resume "{item.name:(titlecase)}" — {item.phase}
-2. ...
-{N}. Back to main menu
+- **`1`** — Resume "{item.name:(titlecase)}" — {item.phase}
+- **`2`** — ...
+- **`{N}`** — Back to main menu
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

@@ -138,17 +138,17 @@ After all grouping entries, append meta options:
 
 ```
 · · · · · · · · · · · ·
-1. Start "Auth Flow" — 2 ready discussions
-2. Continue "Data Model" — 1 source(s) pending extraction
-3. Unify all into single specification
+- **`1`** — Start "Auth Flow" — 2 ready discussions
+- **`2`** — Continue "Data Model" — 1 source(s) pending extraction
+- **`3`** — Unify all into single specification
    `All discussions are combined into one specification. Existing`
    `specifications are incorporated and superseded.`
-4. Re-analyze groupings
+- **`4`** — Re-analyze groupings
    `Current groupings are discarded and rebuilt. Existing`
    `specification names are preserved. You can provide guidance`
    `in the next step.`
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

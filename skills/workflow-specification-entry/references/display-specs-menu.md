@@ -122,14 +122,14 @@ List "Analyze for groupings (recommended)" first, then one entry per existing no
 
 ```
 · · · · · · · · · · · ·
-1. Analyze for groupings (recommended)
+- **`1`** — Analyze for groupings (recommended)
    `All discussions are analyzed for natural groupings. Existing`
    `specification names are preserved. You can provide guidance`
    `in the next step.`
-2. Continue "Auth Flow" — in-progress
-3. Refine "Data Model" — completed
+- **`2`** — Continue "Auth Flow" — in-progress
+- **`3`** — Refine "Data Model" — completed
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

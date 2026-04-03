@@ -90,11 +90,11 @@ Check if there are completed phases earlier in the pipeline that the user could 
 · · · · · · · · · · · ·
 Which phase would you like to revisit?
 
-1. {phase:(titlecase)} — completed
-2. ...
-{N}. Back
+- **`1`** — {phase:(titlecase)} — completed
+- **`2`** — ...
+- **`{N}`** — Back
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

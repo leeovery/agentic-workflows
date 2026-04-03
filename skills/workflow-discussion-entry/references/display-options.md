@@ -8,7 +8,7 @@
 
 Present everything discovered to help the user make an informed choice.
 
-**Present the full state:**
+**Present the full state.** Condense each topic's summary from the analysis cache into a single line (~80 chars max) — just enough to identify the topic's scope. The full analysis remains in the cache file unchanged.
 
 > *Output the next fenced block as a code block:*
 
@@ -22,21 +22,26 @@ Present everything discovered to help the user make an informed choice.
 Research topics:
 
 1. {theme_name}
-   └─ Sources: {filename1}.md, {filename2}.md
-   └─ Discussion: @if(has_discussion) {work_unit}/{topic} ({status:[in-progress|completed]}) @else (pending from research) @endif
-   └─ "{summary}"
+   ├─ Status: @if(has_discussion) ({status:[in-progress|completed]}) @else (pending) @endif
+   ├─ Sources: {filename1}.md, {filename2}.md
+   @if(has_discussion) ├─ Discussion: {work_unit}/{topic}
+   @endif └─ {summary_condensed_to_one_line}
 
 2. ...
 ```
 
-If discussions exist that are NOT linked to a research topic, list them separately:
+If discussions exist that are NOT linked to a research topic, list them separately with continuing numbers:
 
 > *Output the next fenced block as a code block:*
 
 ```
 Existing discussions:
 
-  • {work_unit}/{topic} ({status:[in-progress|completed]}, {work_type:[epic|feature|bugfix]})
+{N+1}. {topic:(titlecase)}
+       ├─ Status: ({status:[in-progress|completed]})
+       └─ {work_type:[epic|feature|bugfix]} — {work_unit}
+
+{N+2}. ...
 ```
 
 ### Key/Legend
@@ -48,15 +53,13 @@ No `---` separator before this section.
 ```
 Key:
 
-  Discussion status:
-    in-progress           — discussion is ongoing
-    completed             — discussion is done
-    pending from research — identified by research, not yet discussed
+  Status:
+    in-progress — discussion is ongoing
+    completed   — discussion is done
+    pending     — identified by research, not yet discussed
 ```
 
-**Then present the options based on what exists:**
-
-#### If research and discussions exist
+**Then present the menu.** Numbered items match the overview (research topics first, then standalone discussions if any). Verb reflects status: pending → "Discuss", in-progress → "Continue", completed → "Reopen".
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -64,45 +67,14 @@ Key:
 · · · · · · · · · · · ·
 How would you like to proceed?
 
+- **`1`** — Discuss "Peer Networking" (pending)
+- **`2`** — Continue "Auth Flow" (in-progress)
+- **`3`** — Reopen "Bluetooth Switching" (completed)
+
+@if(has_research)
 - **`r`/`refresh`** — Force fresh research analysis
-- From research — pick a topic number above (e.g., "1" or "research 1")
-- Continue discussion — name one above (e.g., "continue {topic}")
-- Fresh topic — describe what you want to discuss
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Selection**.
-
-#### If only research exists
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-How would you like to proceed?
-
-- **`r`/`refresh`** — Force fresh research analysis
-- From research — pick a topic number above (e.g., "1" or "research 1")
-- Fresh topic — describe what you want to discuss
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Handle Selection**.
-
-#### If only discussions exist
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-How would you like to proceed?
-
-- Continue discussion — name one above (e.g., "continue {topic}")
-- Fresh topic — describe what you want to discuss
+@endif
+- **Fresh topic** — describe what you want to discuss
 · · · · · · · · · · · ·
 ```
 
@@ -116,49 +88,11 @@ How would you like to proceed?
 
 Route based on the user's choice.
 
-#### If user chose `From research`
+#### If user chose a numbered topic or named a topic
 
-User chose to start from research (e.g., "research 1", "1", "from research", or a topic name).
-
-Set source="research".
-
-**If user specified a topic inline** (e.g., "research 2", "2", or topic name):
-- Identify the selected topic from the numbered list
-
-→ Return to caller.
-
-**If user just said "from research" without specifying:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Which research topic would you like to discuss? (Enter a number or topic name)
-```
-
-**STOP.** Wait for user response.
-
-→ Return to caller.
-
-#### If user chose `Continue discussion`
-
-User chose to continue a discussion (e.g., "continue auth-flow" or "continue discussion").
-
-Set source="continue".
-
-**If user specified a discussion inline** (e.g., "continue auth-flow"):
-- Identify the selected discussion from the list
-
-→ Return to caller.
-
-**If user just said "continue discussion" without specifying:**
-
-> *Output the next fenced block as a code block:*
-
-```
-Which discussion would you like to continue?
-```
-
-**STOP.** Wait for user response.
+Identify the selected topic from the numbered list (by number or name). Determine source from its status:
+- pending → source="research"
+- in-progress or completed → source="continue"
 
 → Return to caller.
 

@@ -103,11 +103,11 @@ Build the menu with numbered continue items first, then command options for star
 · · · · · · · · · · · ·
 What would you like to do?
 
-1. Continue "{feature.name:(titlecase)}" — feature, {feature.phase_label}
-2. Continue "{bugfix.name:(titlecase)}" — bugfix, {bugfix.phase_label}
-3. Continue "{quickfix.name:(titlecase)}" — quick-fix, {quickfix.phase_label}
-4. Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
-5. Continue "{epic.name:(titlecase)}" — epic
+- **`1`** — Continue "{feature.name:(titlecase)}" — feature, {feature.phase_label}
+- **`2`** — Continue "{bugfix.name:(titlecase)}" — bugfix, {bugfix.phase_label}
+- **`3`** — Continue "{quickfix.name:(titlecase)}" — quick-fix, {quickfix.phase_label}
+- **`4`** — Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
+- **`5`** — Continue "{epic.name:(titlecase)}" — epic
 
 - **`f`/`feature`** — Start new feature
 - **`e`/`epic`** — Start new epic
@@ -122,11 +122,11 @@ What would you like to do?
 @endif
 - **`m`/`manage`** — Manage a work unit's lifecycle
 
-Select an option (enter number or command):
+Select an option:
 · · · · · · · · · · · ·
 ```
 
-**Continue items:** Feature/bugfix/cross-cutting shows type + phase label. Epic just shows "epic" (detail is in continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
+**Continue items:** Same visual style as command options — `- **`N`** — description`. Feature/bugfix/cross-cutting shows type + phase label. Epic just shows "epic" (detail is in continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
 
 **Command options:** Start-new, inbox, view, and manage are always command options (not numbered). Always show all three start options.
 

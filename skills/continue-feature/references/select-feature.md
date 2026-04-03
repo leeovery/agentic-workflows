@@ -32,15 +32,15 @@ Build from the discovery output's `features` array. Each feature shows `name` (t
 · · · · · · · · · · · ·
 Which feature would you like to continue?
 
-1. Continue "{feature.name:(titlecase)}" — {feature.phase_label}
-2. ...
+- **`1`** — Continue "{feature.name:(titlecase)}" — {feature.phase_label}
+- **`2`** — ...
 
 @if(completed_count > 0 || cancelled_count > 0)
-{N+1}. View completed & cancelled features
+- **`{N+1}`** — View completed & cancelled features
 @endif
 - **`m`/`manage`** — Manage a feature's lifecycle
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

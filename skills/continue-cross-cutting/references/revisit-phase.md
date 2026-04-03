@@ -52,11 +52,11 @@ Continuing "{cross_cutting.name:(titlecase)}" — {cross_cutting.phase_label}.
 · · · · · · · · · · · ·
 Which phase would you like to revisit?
 
-1. {phase:(titlecase)} — completed
-2. ...
-{N}. Back
+- **`1`** — {phase:(titlecase)} — completed
+- **`2`** — ...
+- **`{N}`** — Back
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

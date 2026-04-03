@@ -32,15 +32,15 @@ Build from the discovery output's `cross_cutting` array. Each shows `name` (titl
 · · · · · · · · · · · ·
 Which cross-cutting concern would you like to continue?
 
-1. Continue "{cross_cutting.name:(titlecase)}" — {cross_cutting.phase_label}
-2. ...
+- **`1`** — Continue "{cross_cutting.name:(titlecase)}" — {cross_cutting.phase_label}
+- **`2`** — ...
 
 @if(completed_count > 0 || cancelled_count > 0)
-{N+1}. View completed & cancelled cross-cutting concerns
+- **`{N+1}`** — View completed & cancelled cross-cutting concerns
 @endif
 - **`m`/`manage`** — Manage a cross-cutting concern's lifecycle
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

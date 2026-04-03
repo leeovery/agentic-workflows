@@ -32,15 +32,15 @@ Build from the discovery output's `quick_fixes` array. Each quick-fix shows `nam
 · · · · · · · · · · · ·
 Which quick-fix would you like to continue?
 
-1. Continue "{quickfix.name:(titlecase)}" — {quickfix.phase_label}
-2. ...
+- **`1`** — Continue "{quickfix.name:(titlecase)}" — {quickfix.phase_label}
+- **`2`** — ...
 
 @if(completed_count > 0 || cancelled_count > 0)
-{N+1}. View completed & cancelled quick-fixes
+- **`{N+1}`** — View completed & cancelled quick-fixes
 @endif
 - **`m`/`manage`** — Manage a quick-fix's lifecycle
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

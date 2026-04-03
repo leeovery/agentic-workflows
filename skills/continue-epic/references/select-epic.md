@@ -32,15 +32,15 @@ Build from the discovery output's `epics` array. Each epic shows `name` (titleca
 · · · · · · · · · · · ·
 Which epic would you like to continue?
 
-1. Continue "{epic.name:(titlecase)}"
-2. ...
+- **`1`** — Continue "{epic.name:(titlecase)}"
+- **`2`** — ...
 
 @if(completed_count > 0 || cancelled_count > 0)
-{N+1}. View completed & cancelled epics
+- **`{N+1}`** — View completed & cancelled epics
 @endif
 - **`m`/`manage`** — Manage an epic's lifecycle
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

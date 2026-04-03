@@ -123,10 +123,10 @@ Set `selected_topic` = `{dep_topic}`.
 · · · · · · · · · · · ·
 Which dependency has been satisfied?
 
-1. {dep_topic:(titlecase)} — {description}
-2. ...
+- **`1`** — {dep_topic:(titlecase)} — {description}
+- **`2`** — ...
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

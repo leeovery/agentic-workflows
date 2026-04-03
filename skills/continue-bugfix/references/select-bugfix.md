@@ -32,15 +32,15 @@ Build from the discovery output's `bugfixes` array. Each bugfix shows `name` (ti
 · · · · · · · · · · · ·
 Which bugfix would you like to continue?
 
-1. Continue "{bugfix.name:(titlecase)}" — {bugfix.phase_label}
-2. ...
+- **`1`** — Continue "{bugfix.name:(titlecase)}" — {bugfix.phase_label}
+- **`2`** — ...
 
 @if(completed_count > 0 || cancelled_count > 0)
-{N+1}. View completed & cancelled bugfixes
+- **`{N+1}`** — View completed & cancelled bugfixes
 @endif
 - **`m`/`manage`** — Manage a bugfix's lifecycle
 
-Select an option (enter number):
+Select an option:
 · · · · · · · · · · · ·
 ```
 

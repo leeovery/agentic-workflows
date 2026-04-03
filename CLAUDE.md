@@ -416,13 +416,13 @@ Investigation complete. Ready to conclude?
 · · · · · · · · · · · ·
 ```
 
-**Selection menu** — use concrete examples showing verb-to-state mapping:
+**Selection menu** — use concrete examples showing verb-to-state mapping. Numbered items use the same `- **`N`** —` format as command options so the menu has a unified visual style:
 
 ```
 · · · · · · · · · · · ·
-1. Create "Auth Flow" — completed spec, no plan
-2. Continue "Data Model" — plan in-progress
-3. Review "Billing" — plan completed
+- **`1`** — Create "Auth Flow" — completed spec, no plan
+- **`2`** — Continue "Data Model" — plan in-progress
+- **`3`** — Review "Billing" — plan completed
 
 Select an option (enter number):
 · · · · · · · · · · · ·
@@ -453,7 +453,7 @@ What scope would you like to review?
 **Meta options** in selection menus get backtick-wrapped descriptions:
 
 ```
-3. Unify all into single specification
+- **`3`** — Unify all into single specification
    `All discussions combined into one specification.`
    `Existing specifications are incorporated and superseded.`
 ```
