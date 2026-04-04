@@ -15,7 +15,7 @@ This skill's purpose is now fulfilled. Invoke the [workflow-specification-proces
 ```
 Specification session for: {Title Case Name}
 
-Continuing existing: .workflows/{work_unit}/specification/{topic}/specification.md (completed)
+Continuing existing: .workflows/{work_unit}/specification/{topic}/specification.md [completed]
 
 New sources to extract:
 - .workflows/{work_unit}/discussion/{new-discussion-name}.md

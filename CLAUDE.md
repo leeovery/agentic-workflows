@@ -297,7 +297,7 @@ Each part is optional — use only what's needed for clarity.
 @if(condition) truthy content @else falsy content @endif
 ```
 
-Example: `@if(has_discussion) {topic}.md ({status:[in-progress|completed]}) @else (no discussion) @endif`
+Example: `@if(has_discussion) {topic}.md [{status:[in-progress|completed]}] @else [no discussion] @endif`
 
 **Loop directives** for iterating over collections:
 
@@ -318,9 +318,9 @@ Two styles, chosen by whether items have sub-detail.
 **Bullets (`•`)** — flat list under a shared heading. Each item is self-contained on one line with no child data.
 
 ```
-Discussions not ready for specification:
-These discussions are still in progress and must be completed
-before they can be included in a specification.
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
 
   • auth-flow
   • data-model
@@ -330,7 +330,7 @@ before they can be included in a specification.
 
 ```
 1. {topic:(titlecase)}
-   └─ Plan: @if(has_plan) {plan_status:[in-progress|completed]} @else (no plan) @endif
+   └─ Plan: @if(has_plan) {plan_status:[in-progress|completed]} @else [no plan] @endif
    └─ Spec: {spec_status:[in-progress|completed]}
 
 2. ...
@@ -342,16 +342,16 @@ Richer hierarchies nest naturally:
 1. {topic:(titlecase)}
    └─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
    └─ Discussions:
-      ├─ {discussion} ({status:[extracted|pending]})
+      ├─ {discussion} [{status:[extracted|pending]}]
       └─ ...
 ```
 
 Unnumbered trees follow the same structure:
 
 ```
-Plans not ready for implementation:
-These plans have unresolved dependencies that must be
-addressed first.
+⚑ Plans not ready for implementation:
+  These plans have unresolved dependencies that must be
+  addressed first.
 
   Core Features
   └─ Blocked by data-model:data-model-1-2
@@ -363,9 +363,26 @@ addressed first.
 
 ### Status Terms
 
-Always parenthetical `(term)`. Never brackets or dash-separated.
+Item-level statuses use square brackets `[term]`. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
-Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`. Phase-specific terms are fine but format is always `(term)`.
+Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`. Phase-specific terms are fine but format is always `[term]` for items.
+
+### Callout Flag
+
+Advisory and gating messages inside code blocks use a `⚑` prefix to visually separate them from data. The flag sits at 2-space indent (aligned with phase headers). Multi-line callouts indent continuation lines to match (2-space, no flag).
+
+```
+  ⚑ Pending discussion topic(s) from research remain.
+    Consider starting these before specification.
+```
+
+"Not ready" blocks use the same flag on their heading line, with the explanatory text 2-space indented beneath:
+
+```
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
+```
 
 ### Cross-Plan References
 

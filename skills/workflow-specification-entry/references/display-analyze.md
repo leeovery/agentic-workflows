@@ -30,9 +30,9 @@ List all completed discussions from discovery output.
 > *Output the next fenced block as a code block:*
 
 ```
-Discussions not ready for specification:
-These discussions are still in progress and must be completed
-before they can be included in a specification.
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
 
   • {discussion-name}
 ```

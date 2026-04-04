@@ -7,9 +7,9 @@
 This discussion is covered by a specification with multiple sources.
 
 Use the spec for display. Show the spec name as the title. Show ALL the spec's sources (not just this discussion) with their statuses:
-- `incorporated` + `discussion_status: completed` or `not-found` → `(extracted)`
-- `incorporated` + `discussion_status: other` (e.g. `in-progress`) → `(extracted, reopened)`
-- `pending` → `(pending)`
+- `incorporated` + `discussion_status: completed` or `not-found` → `[extracted]`
+- `incorporated` + `discussion_status: other` (e.g. `in-progress`) → `[extracted, reopened]`
+- `pending` → `[pending]`
 
 Extraction count: X = sources with `status: incorporated`, Y = total source count from the spec's `sources` array.
 
@@ -27,8 +27,8 @@ Single completed discussion found with existing multi-source specification.
 1. {work_unit:(titlecase)}
    └─ Spec: {spec_status:[in-progress|completed]} ({X} of {Y} sources extracted)
    └─ Discussions:
-      ├─ {source-name} (extracted)
-      └─ {source-name} (extracted, reopened)
+      ├─ {source-name} [extracted]
+      └─ {source-name} [extracted, reopened]
 ```
 
 #### If in-progress discussions exist
@@ -36,9 +36,9 @@ Single completed discussion found with existing multi-source specification.
 > *Output the next fenced block as a code block:*
 
 ```
-Discussions not ready for specification:
-These discussions are still in progress and must be completed
-before they can be included in a specification.
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
 
   • {discussion-name}
 ```

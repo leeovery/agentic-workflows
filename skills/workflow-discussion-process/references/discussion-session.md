@@ -81,14 +81,14 @@ At natural breaks — after a decision, when transitioning between subtopics, or
 ```
 Discussion Map — {topic:(titlecase)}
 
-  {Subtopic A} (decided)
-  ├─ {Child} (decided)
-  └─ {Child} (decided)
+  {Subtopic A} [decided]
+  ├─ {Child} [decided]
+  └─ {Child} [decided]
 
-  {Subtopic B} (converging)
-  └─ {Child} (exploring)
+  {Subtopic B} [converging]
+  └─ {Child} [exploring]
 
-  {Subtopic C} (pending)
+  {Subtopic C} [pending]
 
 {decided_count} decided · {exploring_count} exploring · {pending_count} pending
 ```

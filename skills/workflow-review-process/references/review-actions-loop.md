@@ -236,7 +236,7 @@ Update `status: approved` in the staging file.
 > *Output the next fenced block as a code block:*
 
 ```
-Task {current} of {total}: {title} — approved (auto).
+Task {current} of {total}: {title} — approved [auto].
 ```
 
 → Return to **D. Process Task**.

@@ -22,7 +22,7 @@ Present everything discovered to help the user make an informed choice.
 Research topics:
 
 1. {theme_name}
-   ├─ Status: @if(has_discussion) ({status:[in-progress|completed]}) @else (pending) @endif
+   ├─ Status: @if(has_discussion) [{status:[in-progress|completed]}] @else [pending] @endif
    ├─ Sources: {filename1}.md, {filename2}.md
    @if(has_discussion) ├─ Discussion: {work_unit}/{topic}
    @endif └─ {summary_condensed_to_one_line}
@@ -38,7 +38,7 @@ If discussions exist that are NOT linked to a research topic, list them separate
 Existing discussions:
 
 {N+1}. {topic:(titlecase)}
-       ├─ Status: ({status:[in-progress|completed]})
+       ├─ Status: [{status:[in-progress|completed]}]
        └─ {work_type:[epic|feature|bugfix]} — {work_unit}
 
 {N+2}. ...
@@ -67,14 +67,18 @@ Key:
 · · · · · · · · · · · ·
 How would you like to proceed?
 
-- **`1`** — Discuss "Peer Networking" (pending)
-- **`2`** — Continue "Auth Flow" (in-progress)
-- **`3`** — Reopen "Bluetooth Switching" (completed)
+- **`1`** — Discuss "Peer Networking" [pending]
+- **`2`** — Continue "Auth Flow" [in-progress]
+- **`3`** — Reopen "Bluetooth Switching" [completed]
+
+- **`f`/`fresh`** — Start a fresh topic not from research
 
 @if(has_research)
 - **`r`/`refresh`** — Force fresh research analysis
 @endif
-- **Fresh topic** — describe what you want to discuss
+@if(work_type == epic)
+- **`b`/`back`** — Return to epic menu
+@endif
 · · · · · · · · · · · ·
 ```
 
@@ -96,13 +100,17 @@ Identify the selected topic from the numbered list (by number or name). Determin
 
 → Return to caller.
 
-#### If user chose `Fresh topic`
+#### If user chose `fresh`
 
-User wants to start a fresh discussion.
+User wants to start a fresh discussion not derived from research.
 
 Set source="fresh".
 
 → Return to caller.
+
+#### If user chose `back`
+
+Re-invoke the caller's entry-point skill to return to its menu. Invoke `/continue-epic {work_unit}`. This is terminal — the invoked skill takes over.
 
 #### If user chose `refresh`
 

@@ -13,10 +13,10 @@
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md (in-progress)
+Existing: .workflows/{work_unit}/specification/{topic}/specification.md [in-progress]
 
 Sources to extract:
-  • {discussion-name} (pending)
+  • {discussion-name} [pending]
 
 Previously extracted (for reference):
   • {discussion-name}
@@ -43,7 +43,7 @@ Proceed?
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md (in-progress)
+Existing: .workflows/{work_unit}/specification/{topic}/specification.md [in-progress]
 
 All sources extracted:
   • {discussion-name}
@@ -71,10 +71,10 @@ Proceed?
 ```
 Continuing specification: {Title Case Name}
 
-Existing: .workflows/{work_unit}/specification/{topic}/specification.md (completed)
+Existing: .workflows/{work_unit}/specification/{topic}/specification.md [completed]
 
 New sources to extract:
-  • {discussion-name} (pending)
+  • {discussion-name} [pending]
 
 Previously extracted (for reference):
   • {discussion-name}

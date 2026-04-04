@@ -37,15 +37,15 @@ A living index of subtopics tracked during the discussion. This is the structura
 
 ### Map
 
-  {Subtopic A} (decided)
-  ├─ {Child subtopic} (decided)
-  └─ {Child subtopic} (converging)
+  {Subtopic A} [decided]
+  ├─ {Child subtopic} [decided]
+  └─ {Child subtopic} [converging]
 
-  {Subtopic B} (exploring)
-  ├─ {Child subtopic} (exploring)
-  └─ {Child subtopic} (pending)
+  {Subtopic B} [exploring]
+  ├─ {Child subtopic} [exploring]
+  └─ {Child subtopic} [pending]
 
-  {Subtopic C} (pending)
+  {Subtopic C} [pending]
 
   → Elevated: {sibling-topic} — discovered during discussion, seeded as separate topic
 

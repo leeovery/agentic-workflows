@@ -28,8 +28,8 @@ For each non-superseded specification from discovery output, display as nested t
 1. {work_unit:(titlecase)}
    └─ Spec: {spec_status:[in-progress|completed]} ({X} of {Y} sources extracted)
    └─ Discussions:
-      ├─ {source-name} (extracted)
-      └─ {source-name} (extracted)
+      ├─ {source-name} [extracted]
+      └─ {source-name} [extracted]
 ```
 
 Determine discussion status from the spec's `sources` array:
@@ -56,9 +56,9 @@ Completed discussions not in a specification:
 > *Output the next fenced block as a code block:*
 
 ```
-Discussions not ready for specification:
-These discussions are still in progress and must be completed
-before they can be included in a specification.
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
 
   • {discussion-name}
 ```

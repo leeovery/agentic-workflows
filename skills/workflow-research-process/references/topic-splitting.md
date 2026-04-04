@@ -52,7 +52,7 @@ Commit after splitting.
 Which topic would you like to continue with?
 
 @foreach(topic in available_topics)
-**{N}. {topic:(titlecase)}** — {status:(in-progress)}
+**{N}. {topic:(titlecase)}** — {status:[in-progress]}
 @endforeach
 
 Select an option (enter number):

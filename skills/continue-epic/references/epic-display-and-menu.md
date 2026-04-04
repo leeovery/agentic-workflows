@@ -38,12 +38,12 @@ No work started yet.
 ●───────────────────────────────────────────────●
 
 @foreach(phase in phases)
-@if(phase.items)
-  {phase:(titlecase)}
+@if(phase.items or (phase == discussion and gating.has_pending_discussions))
+  {phase:(titlecase)} ({phase.count_summary})
 @foreach(item in phase.items)
-    └─ {item.name:(titlecase)} ({item.status})@if(phase == planning and item.format) [{item.format}]@endif
+    @if(last_item_in_phase and not (phase == discussion and gating.has_pending_discussions)) └─ @else ├─ @endif {item.name:(titlecase)} [{item.status}]@if(phase == planning and item.format) · {item.format}@endif
 @if(phase == specification and item.sources)
-       └─ {source.topic:(titlecase)} ({source.status})
+       └─ {source.topic:(titlecase)} [{source.status}]
 @endif
 @if(phase == implementation and item.current_phase)
        └─ Phase {item.current_phase}, {item.completed_tasks.length} task(s) completed
@@ -55,38 +55,38 @@ No work started yet.
 @endforeach
 @if(phase == discussion and gating.has_pending_discussions)
 @foreach(topic in pending_from_research)
-    └─ {topic.name:(titlecase)} (pending from research)
+    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
 @endforeach
 @endif
 @endif
 
 @endforeach
 @if(gating.has_pending_discussions and not phases.discussion)
-  Discussion
+  Discussion ({pending_from_research.length} pending)
 @foreach(topic in pending_from_research)
-    └─ {topic.name:(titlecase)} (pending from research)
+    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
 @endforeach
 
 @endif
 @if(recommendation)
-{recommendation text}
+  ⚑ {recommendation text}
 @endif
 ```
 
 **Display rules:**
 
-- Phase headers as section labels (titlecased)
-- Items under each phase use `└─` branches with titlecased names and parenthetical status
-- Planning items show format in brackets after status
+- Phase headers as section labels (titlecased) with a parenthetical count summary — e.g., `Discussion (3 completed, 1 pending)`, `Research (1 completed)`, `Specification (2 in-progress)`. Combine statuses present in that phase; omit zero counts
+- Items under each phase use proper tree grammar: `├─` for non-final siblings, `└─` for the final item. Pending discussion topics from research count as siblings when determining the final item
+- Planning items show format after status, separated by a middle dot: `[in-progress] · linear`
 - Specification items show their source discussions as a sub-tree beneath, one `└─` per source
-- Source status: `(incorporated)` or `(pending)` from manifest
+- Source status: `[incorporated]` or `[pending]` from manifest
 - Implementation items show progress: `Phase {N}, {M} task(s) completed` if in-progress with current_phase; `{M} task(s) completed` otherwise
-- Pending discussion topics from research appear under the Discussion phase heading with `(pending from research)` status, after any existing discussion items. If no discussion items exist yet, render a Discussion section with only the pending topics
+- Pending discussion topics from research appear under the Discussion phase heading with `[pending from research]` status, after any existing discussion items. If no discussion items exist yet, render a Discussion section with only the pending topics
 - Phases with no items don't appear (except Discussion, which appears if pending topics from research exist)
 - Blank line between phase sections
 - No trailing blank line after the last phase section (the code block ends immediately after the last item or recommendation)
 
-**Recommendations:** Check the following conditions in order. Show the first that applies as a line within the state display code block, separated by a blank line from the last phase section. If none apply, no recommendation.
+**Recommendations:** Check the following conditions in order. Show the first that applies as a `⚑`-prefixed line within the state display code block, 2-space indented and separated by a blank line from the last phase section. If the recommendation text is long, wrap it across two lines (both 2-space indented, only the first has `⚑`). If none apply, no recommendation.
 
 | Condition | Recommendation |
 |-----------|---------------|
@@ -104,9 +104,9 @@ No work started yet.
 > *Output the next fenced block as a code block:*
 
 ```
-Plans not ready for implementation:
-These plans have unresolved dependencies that must be
-addressed first.
+⚑ Plans not ready for implementation:
+  These plans have unresolved dependencies that must be
+  addressed first.
 
 @foreach(plan in plans_with_deps_blocking)
   {topic:(titlecase)}
@@ -152,10 +152,10 @@ Build a numbered menu with three sections:
 
 **Section 1 — In-progress items** (always first):
 - Any item with status `in-progress` in any phase
-- Planning in-progress: `Continue "{topic:(titlecase)}" — planning (in-progress)`
+- Planning in-progress: `Continue "{topic:(titlecase)}" — planning [in-progress]`
 - Implementation in-progress with progress: `Continue "{topic:(titlecase)}" — implementation (Phase {N}, Task {M})`
-- Implementation in-progress without progress: `Continue "{topic:(titlecase)}" — implementation (in-progress)`
-- Other phases: `Continue "{topic:(titlecase)}" — {phase} (in-progress)`
+- Implementation in-progress without progress: `Continue "{topic:(titlecase)}" — implementation [in-progress]`
+- Other phases: `Continue "{topic:(titlecase)}" — {phase} [in-progress]`
 
 **Section 2 — Next-phase-ready items:**
 - From `next_phase_ready` in discovery output
@@ -187,7 +187,7 @@ Build a numbered menu with three sections:
 - All implementations completed, some without reviews → first reviewable implementation "(recommended)"
 - Otherwise → no recommendation (complete in-progress work first)
 
-**Promoted items:** Items with `(promoted)` status are shown in the state display but are **not listed in the menu** — they've been moved to their own cross-cutting work unit and are no longer actionable in this epic.
+**Promoted items:** Items with `[promoted]` status are shown in the state display but are **not listed in the menu** — they've been moved to their own cross-cutting work unit and are no longer actionable in this epic.
 
 **Blocked items:** Items marked `blocked` in `next_phase_ready` are shown in the menu but are **not selectable**. If the user picks a blocked item, explain why it's blocked and re-present the menu.
 
@@ -197,10 +197,10 @@ Build a numbered menu with three sections:
 · · · · · · · · · · · ·
 What would you like to do?
 
-- **`1`** — Continue "Auth Flow" — discussion (in-progress)
-- **`2`** — Continue "Data Model" — specification (in-progress)
+- **`1`** — Continue "Auth Flow" — discussion [in-progress]
+- **`2`** — Continue "Data Model" — specification [in-progress]
 - **`3`** — Start planning for "User Profiles" — spec completed
-- **`4`** — Continue "Caching" — planning (in-progress)
+- **`4`** — Continue "Caching" — planning [in-progress]
 - **`5`** — Start implementation of "Notifications" — plan completed (recommended)
 - **`6`** — Start implementation of "Reporting" — blocked by core-features:core-2-3
 - **`7`** — Start specification — 3 discussion(s) not yet in a spec
@@ -355,7 +355,7 @@ Completed Topics
 @if(phase.completed_items)
   {phase:(titlecase)}
 @foreach(item in completed where item.phase == phase)
-    └─ {item.name:(titlecase)} (completed)
+    └─ {item.name:(titlecase)} [completed]
 @endforeach
 @endif
 

@@ -18,9 +18,9 @@ No specification exists for this discussion.
 Single completed discussion found.
 
 1. {work_unit:(titlecase)}
-   └─ Spec: (no spec)
+   └─ Spec: [no spec]
    └─ Discussions:
-      └─ {discussion-name} (ready)
+      └─ {discussion-name} [ready]
 ```
 
 #### If in-progress discussions exist
@@ -28,9 +28,9 @@ Single completed discussion found.
 > *Output the next fenced block as a code block:*
 
 ```
-Discussions not ready for specification:
-These discussions are still in progress and must be completed
-before they can be included in a specification.
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
 
   • {discussion-name}
 ```

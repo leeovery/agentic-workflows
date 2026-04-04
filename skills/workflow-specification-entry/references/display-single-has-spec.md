@@ -22,7 +22,7 @@ Single completed discussion found with existing specification.
 1. {work_unit:(titlecase)}
    └─ Spec: {spec_status:[in-progress|completed]} ({X} of {Y} sources extracted)
    └─ Discussions:
-      └─ {discussion-name} (extracted)
+      └─ {discussion-name} [extracted]
 ```
 
 #### If in-progress discussions exist
@@ -30,9 +30,9 @@ Single completed discussion found with existing specification.
 > *Output the next fenced block as a code block:*
 
 ```
-Discussions not ready for specification:
-These discussions are still in progress and must be completed
-before they can be included in a specification.
+⚑ Discussions not ready for specification:
+  These discussions are still in progress and must be completed
+  before they can be included in a specification.
 
   • {discussion-name}
 ```
