@@ -664,7 +664,7 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 - **`a`/`auto`** — Approve this and all remaining {items} automatically
 ```
 
-**Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles before escalating to the user. This prevents infinite cascading. At escalation, a convergence analysis diagnostic (shared reference at `skills/workflow-shared/references/convergence-analysis.md`) reads prior cycle tracking files and presents what's resolving, what's recurring, and a trend assessment — replacing blind "continue or skip?" prompts with informed decisions.
+**Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles before escalating to the user. This prevents infinite cascading. At escalation, a convergence analysis diagnostic (shared reference at `skills/workflow-shared/references/convergence-analysis.md`) reads prior cycle tracking files and presents what's resolving, what's recurring, and a trend assessment to inform the user's decision.
 
 ### Rendering Instructions for Ask Blocks
 
@@ -727,6 +727,12 @@ Rules:
 - `→ Proceed to` appears after the Load directive, separated by a blank line
 - The final step has no `→ Proceed to` (it's terminal)
 - Within reference files routing to other reference files, use `→` before Load (it IS a routing instruction in that context)
+
+**Parameter passing**: When a shared reference needs context from the caller, append `with` followed by named assignments. String literals and variable values are both backtick-wrapped; variables use curly brace placeholders:
+
+```
+→ Load **[name.md](path)** with param = `literal`, other = `{variable}`.
+```
 
 ### Reference File Structure
 

@@ -140,7 +140,7 @@ Every approval gate (task authoring, implementation, review findings) can be swi
 
 ### Smart Fix Loops
 
-When a task reviewer finds issues, the executor re-invokes with feedback automatically. Loops cap at 3 attempts before escalating to the user — no infinite cycles, but most issues self-resolve without intervention.
+When a task reviewer finds issues, the executor re-invokes with feedback automatically. Loops cap at 3 attempts before escalating with a convergence diagnostic — showing what's been resolved, what's still stuck, and a trend assessment (converging, stable, or diverging). The same diagnostic applies to analysis cycles, planning review, and specification review at their respective caps.
 
 ### Change Detection & Cached Analysis
 
