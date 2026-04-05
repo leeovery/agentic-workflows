@@ -58,14 +58,7 @@ Auto mode is active — pass through to review. Section E's safety cap (cycle 5)
 
 #### If `review_cycle` > 3 and `finding_gate_mode` is `gated` (or not set)
 
-> *Output the next fenced block as a code block:*
-
-```
-Review cycle {N}
-
-Review has run {N-1} times so far. You can continue (recommended if issues
-were still found last cycle) or skip to completion.
-```
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -138,13 +131,7 @@ Review cycle {N} complete — findings applied. Running follow-up cycle.
 
 #### If `finding_gate_mode` is `auto` and `review_cycle` >= 5
 
-> *Output the next fenced block as a code block:*
-
-```
-Review cycle {N}
-
-Auto-review has not converged after 5 cycles — escalating for human review.
-```
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 > *Output the next fenced block as a code block:*
 
@@ -176,6 +163,8 @@ Run another review round?
 → Proceed to **F. Completion**.
 
 #### If `finding_gate_mode` is `gated`
+
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 > *Output the next fenced block as a code block:*
 

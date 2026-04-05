@@ -37,7 +37,8 @@ Follow the format's **reading.md** instructions to determine the next available 
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
 2. Reset `fix_attempts` to `0` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_attempts 0`).
-3. Mark the task as in-progress — follow the format's **updating.md** status transition.
+3. Delete any existing fix tracking cache file for this task: `.workflows/.cache/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md` (clean slate per task).
+4. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Proceed to **B. Execute Task**.
 
@@ -117,12 +118,40 @@ Task failed. How would you like to proceed?
 
 Increment `fix_attempts` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_attempts {N}`).
 
+**Persist fix tracking** — Append the reviewer's findings to the fix tracking cache file at `.workflows/.cache/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`. If the file does not exist, create it. Append a section for this attempt:
+
+```markdown
+## Attempt {N}
+
+ISSUES:
+{copy ISSUES from reviewer output, including FIX, ALTERNATIVE, and CONFIDENCE per issue}
+
+NOTES:
+{copy NOTES from reviewer output}
+```
+
+#### If `fix_attempts` >= 3
+
+→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
+
 > *Output the next fenced block as a code block:*
 
 ```
-@if(fix_attempts >= 3)
-  The executor and reviewer have not converged after {N} attempts. Escalating for human review.
-@endif
+Review for Task {internal_id}: {Task Name} — needs changes (attempt {N})
+
+{ISSUES from reviewer, including FIX, ALTERNATIVE, and CONFIDENCE for each}
+
+Notes (non-blocking):
+{NOTES from reviewer}
+```
+
+→ Proceed to **F. Fix Approval Gate**.
+
+#### If `fix_attempts` < 3
+
+> *Output the next fenced block as a code block:*
+
+```
 Review for Task {internal_id}: {Task Name} — needs changes (attempt {N})
 
 {ISSUES from reviewer, including FIX, ALTERNATIVE, and CONFIDENCE for each}
@@ -133,11 +162,11 @@ Notes (non-blocking):
 
 Check `fix_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} fix_gate_mode`).
 
-#### If `fix_gate_mode` is `auto` and `fix_attempts` < 3
+**If `fix_gate_mode` is `auto`:**
 
 → Return to **B. Execute Task**.
 
-#### If `fix_gate_mode` is `gated` or `fix_attempts` >= 3
+**If `fix_gate_mode` is `gated`:**
 
 → Proceed to **F. Fix Approval Gate**.
 

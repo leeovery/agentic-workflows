@@ -31,7 +31,7 @@ Standalone improvements. Can be done in any order within this phase.
 |---|------|-------|
 | 6 | ~~[User Guidance & Help](user-guidance-and-help.md)~~ | All entry-point skills | ✅ Done |
 | 7 | ~~[Spec Diff on Resurface](spec-diff-on-resurface.md)~~ | Specification processing skill | ✅ Done |
-| 8 | [Intelligent Escalation](intelligent-escalation.md) | All review/fix cycles |
+| 8 | ~~[Intelligent Escalation](intelligent-escalation.md)~~ | All review/fix cycles | ✅ Done |
 | 9 | [Epic Dependency Visualization](epic-dependency-visualization.md) | Continue-epic / workflow-start |
 
 ## Phase 4 — Implementation Improvements
