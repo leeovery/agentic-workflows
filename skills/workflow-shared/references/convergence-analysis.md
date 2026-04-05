@@ -4,7 +4,7 @@
 
 ---
 
-When a review or fix cycle reaches its escalation threshold, this reference reads prior cycle tracking data to present a diagnostic — replacing blind "continue or skip?" prompts with visibility into what's converging, what's stuck, and why.
+When a review or fix cycle reaches its escalation threshold, read prior cycle tracking data and present a diagnostic showing what's converging, what's stuck, and why.
 
 ## Parameters
 
