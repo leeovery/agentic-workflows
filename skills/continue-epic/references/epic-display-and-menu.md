@@ -165,7 +165,7 @@ Build a menu with two types of options:
 
 **Command options** — entry-point actions that launch a flow handling its own selection. Use letter shortcuts (first letter of command; second letter if disambiguation needed):
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
-- **`d`/`discuss`** — Start new discussion topic — {N} pending from research (if `gating.has_pending_discussions` is true; show count from `pending_from_research.length`). Without pending topics: @if(gating.has_research) `Start new discussion topic (from research)` @else `Start new discussion topic` @endif
+- **`d`/`discuss`** — Start new discussion (always present). When `gating.has_pending_discussions` is true, append ` — {N} pending from research` (count from `pending_from_research.length`)
 - **`p`/`pending`** — Manage pending topics (only shown when `gating.has_pending_discussions` is true)
 - **`r`/`research`** — Start new research (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
@@ -203,7 +203,7 @@ What would you like to do?
 - **`4`** — Start planning for "User Profiles" — spec completed
 - **`5`** — Start implementation of "Reporting" — blocked by core-features:core-2-3
 - **`s`/`spec`** — Start specification — 3 discussion(s) not yet in a spec
-- **`d`/`discuss`** — Start new discussion topic (from research)
+- **`d`/`discuss`** — Start new discussion
 - **`r`/`research`** — Start new research
 - **`c`/`completed`** — Resume a completed topic
 - **`m`/`map`** — View epic dependency map
@@ -338,7 +338,7 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 | Start implementation of {topic} | implementation | {topic} |
 | Start review for {topic} | review | {topic} |
 | Start specification | specification | — |
-| Start new discussion topic / Start new discussion topic (from research) | discussion | — |
+| Start new discussion | discussion | — |
 | Discuss pending topic {topic} | discussion | {topic} |
 | Start new research | research | — |
 
