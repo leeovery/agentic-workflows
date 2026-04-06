@@ -35,7 +35,7 @@ This covers: no review files exist, or the most recent review has `status: incor
 > *Output the next fenced block as a code block:*
 
 ```
-·· Dispatch Final Review ································
+·· Dispatch Final Review ························
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

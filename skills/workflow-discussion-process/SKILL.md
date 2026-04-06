@@ -153,7 +153,7 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 > *Output the next fenced block as a code block:*
 
 ```
-── Final Gap Review ────────────────────────────
+── Final Gap Review ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
