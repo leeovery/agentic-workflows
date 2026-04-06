@@ -168,6 +168,7 @@ Build a numbered menu with three sections:
   - Only show if `gating.can_start_specification` is true (at least one completed discussion)
 
 **Section 3 — Standing options:**
+- `View epic dependency map` (always present when at least one phase has items)
 - `Start new discussion topic — {N} pending from research` (if `gating.has_pending_discussions` is true; show count from `pending_from_research.length`). Without pending topics: @if(gating.has_research) `Start new discussion topic (from research)` @else `Start new discussion topic` @endif
 - `Manage pending topics` (only shown when `gating.has_pending_discussions` is true)
 - `Start new research` (always present)
@@ -204,6 +205,7 @@ What would you like to do?
 - **`5`** — Start implementation of "Notifications" — plan completed (recommended)
 - **`6`** — Start implementation of "Reporting" — blocked by core-features:core-2-3
 - **`7`** — Start specification — 3 discussion(s) not yet in a spec
+- **`m`/`map`** — View epic dependency map
 - **`8`** — Start new discussion topic (from research)
 - **`9`** — Start new research
 - **`10`** — Resume a completed topic
@@ -260,6 +262,12 @@ Commit the change.
 → Return to **C. Menu**.
 
 **If user chose `back`:**
+
+→ Return to **C. Menu**.
+
+#### If user chose `m`/`map`
+
+Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions as written.
 
 → Return to **C. Menu**.
 

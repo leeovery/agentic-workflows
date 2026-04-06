@@ -62,8 +62,11 @@ function buildEpicDetail(cwd, manifest) {
       const entry = { name: item.name, status: item.status || 'unknown' };
 
       if (phase === 'specification' && item.sources) {
-        entry.sources = item.sources;
-        for (const src of item.sources) {
+        const sourcesArr = Array.isArray(item.sources)
+          ? item.sources
+          : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
+        entry.sources = sourcesArr;
+        for (const src of sourcesArr) {
           allSourcedDiscussions.add(src.topic || src.name);
         }
       }
@@ -243,7 +246,10 @@ function format(result) {
       for (const item of items) {
         let line = `      - ${item.name} (${item.status})`;
         if (item.sources) {
-          const srcNames = item.sources.map(s => `${s.topic || s.name}:${s.status || '?'}`);
+          const sourcesArr = Array.isArray(item.sources)
+            ? item.sources
+            : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
+          const srcNames = sourcesArr.map(s => `${s.topic || s.name}:${s.status || '?'}`);
           line += ` [sources: ${srcNames.join(', ')}]`;
         }
         if (item.format) line += ` [format: ${item.format}]`;
