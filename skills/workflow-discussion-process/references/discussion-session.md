@@ -22,9 +22,8 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; add them to the Discussion Map as `pending`.
 3. **Navigate** — When a subtopic feels explored or a decision lands, update the Discussion Map and guide the user to what's still open. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
 4. **Document** — At natural pauses, update the discussion file. Update the Discussion Map states. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision). Capture provisional thinking for subtopics still in progress if context compaction is a risk.
-5. **Commit** — Git commit after each write. Don't batch.
-6. **Consider agents** — After each substantive commit, evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, follow their dispatch instructions.
-7. **Repeat** — Continue with the next subtopic or follow where the conversation leads.
+5. **Commit & dispatch check** — Git commit after each write. Don't batch. Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, dispatch before continuing. If not, proceed.
+6. **Repeat** — Continue with the next subtopic or follow where the conversation leads.
 
 ---
 
@@ -149,7 +148,27 @@ Convergence is the natural end state — not a forced conclusion. The discussion
 
 - All subtopics on the Discussion Map are `decided` (or deliberately deferred)
 - Neither Claude nor the user can identify new subtopics without breaking scope
-- The review agent has had a chance to flag gaps (at least one review cycle completed)
+- At least one review cycle has completed (see safety net below)
+
+**Before rendering the convergence menu, verify:**
+
+Count review files in `.workflows/.cache/{work_unit}/discussion/{topic}/`.
+
+#### If zero review files exist
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ No review agent has been dispatched during this discussion.
+  At least one review cycle is required before concluding.
+  Dispatching now.
+```
+
+Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, surface findings per **C. Surface Findings** in review-agent.md.
+
+→ Return to **B. Session Loop**.
+
+#### If review files exist
 
 **When convergence is reached:**
 
@@ -172,11 +191,11 @@ Discussion complete. Ready to conclude?
 
 **STOP.** Wait for user response.
 
-#### If `yes`
+**If `yes`:**
 
 → Return to caller.
 
-#### If keep going
+**If keep going:**
 
 Continue the discussion. The user may want to revisit a decision, explore an edge case further, or probe for gaps. If new subtopics emerge, add them to the map and continue.
 
@@ -187,6 +206,24 @@ Continue the discussion. The user may want to revisit a decision, explore an edg
 ## H. When the User Signals Conclusion
 
 When the user indicates they want to conclude the discussion (e.g., "that covers it", "let's wrap up", "I think we're done") before natural convergence:
+
+**First, check the review safety net:** Count review files in `.workflows/.cache/{work_unit}/discussion/{topic}/`.
+
+**If zero review files exist:**
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ No review agent has been dispatched during this discussion.
+  At least one review cycle is required before concluding.
+  Dispatching now.
+```
+
+Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, surface findings per **C. Surface Findings** in review-agent.md. Then continue with the conclusion flow below.
+
+**If review files exist:**
+
+Continue with the conclusion flow below.
 
 #### If there are subtopics still `pending` or `exploring`
 

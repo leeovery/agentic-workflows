@@ -148,7 +148,28 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 
 ---
 
-## Step 4: Compliance Self-Check
+## Step 4: Final Gap Review
+
+> *Output the next fenced block as a code block:*
+
+```
+── Final Gap Review ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Before concluding, checking whether a fresh review is needed
+> to catch any gaps that may have emerged since the last review.
+```
+
+Load **[final-review.md](references/final-review.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -164,11 +185,11 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 5: Conclude Discussion
+## Step 6: Conclude Discussion
 
 > *Output the next fenced block as a code block:*
 

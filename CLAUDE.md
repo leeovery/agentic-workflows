@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
 
-**Development documentation only — not shipped with the product.** Installed projects get their own CLAUDE.md. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
+**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/start-*`, `/continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
 ## Git Workflow
 
@@ -14,8 +14,8 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 ## Workflow Phases
 
-1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas. Background review agent for gap analysis; deep-dive agents for independent thread investigation
-2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Topic elevation seeds sibling discussions (epics only)
+1. **Research** (`workflow-research-process` skill): EXPLORE - feasibility, market, viability, early ideas. Background review agent for gap analysis (mandatory final review before conclusion); deep-dive agents for independent thread investigation
+2. **Discussion** (`workflow-discussion-process` skill): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Background review agent for gap analysis (mandatory final review before conclusion). Topic elevation seeds sibling discussions (epics only)
 3. **Investigation** (`workflow-investigation-process` skill): Bugfix-specific - symptom gathering + code analysis → root cause
 4. **Scoping** (`workflow-scoping-process` skill): Quick-fix-specific - context, spec, and plan in one pass
 5. **Specification** (`workflow-specification-process` skill): Validate and refine into standalone spec

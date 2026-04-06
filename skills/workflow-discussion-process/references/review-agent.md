@@ -4,18 +4,26 @@
 
 ---
 
-These instructions are loaded into context at the start of the discussion session but are not for immediate use. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. Apply the dispatch and results processing instructions below when the time is right.
+These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — not optional, not deferred.
 
-**Trigger conditions** — dispatch a review agent when **all** of the following are true:
+**Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
-- The most recent commit added meaningful content (a decision documented, a question explored, options analysed — not a typo fix or reformatting)
-- No review agent is currently in flight
-- This is not the first commit (the discussion needs enough content to review)
-- At least 2-3 conversational exchanges have passed since the last review dispatch
+- □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting)
+- □ No review agent currently in flight?
+- □ Not the first commit? (the discussion needs enough content to review)
+- □ At least 2-3 conversational exchanges since the last review dispatch?
 
-When these conditions are met → Proceed to **A. Dispatch**.
+**If all checked:**
 
-At natural conversational breaks, check for completed results → Proceed to **B. Check for Results**.
+→ Proceed to **A. Dispatch**.
+
+**If any unchecked:**
+
+No dispatch needed. Continue with the session loop.
+
+At natural conversational breaks, check for completed results.
+
+→ Proceed to **B. Check for Results**.
 
 ---
 
