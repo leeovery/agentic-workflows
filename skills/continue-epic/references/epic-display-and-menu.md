@@ -166,7 +166,7 @@ Build a menu with two types of options:
 **Command options** — entry-point actions that launch a flow handling its own selection. Use letter shortcuts (first letter of command; second letter if disambiguation needed):
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
 - **`d`/`discuss`** — Start new discussion (always present). When `gating.has_pending_discussions` is true, append ` — {N} pending from research` (count from `pending_from_research.length`)
-- **`p`/`pending`** — Manage pending topics (only shown when `gating.has_pending_discussions` is true)
+- **`p`/`pending`** — Manage pending discussion topics (only shown when `gating.has_pending_discussions` is true)
 - **`r`/`research`** — Start new research (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
 - **`m`/`map`** — View epic dependency map (always present when at least one phase has items)
@@ -402,7 +402,7 @@ Store the selected phase and topic.
 
 ## G. Manage Pending
 
-Display pending topics from research and let the user take action on them. Uses `pending_from_research` from discovery output.
+Display pending discussion topics from research and let the user take action on them. Uses `pending_from_research` from discovery output.
 
 > *Output the next fenced block as a code block:*
 
@@ -421,13 +421,16 @@ been discussed.
 
 ```
 · · · · · · · · · · · ·
-Select a topic number, then choose an action:
+Start a discussion for a pending topic, or skip one:
 
-- **`d`/`discuss`** — Start a discussion for this topic
-- **`s`/`skip`** — Remove from pending list
+- **`1`** — Start discussion for "{topic_1.name:(titlecase)}"
+- **`2`** — Start discussion for "{topic_2.name:(titlecase)}"
+- **`s`/`skip`** — Remove a topic from pending list
 - **`b`/`back`** — Return to menu
 · · · · · · · · · · · ·
 ```
+
+Numbered items correspond to the list above. Recreate with actual topics from discovery.
 
 **STOP.** Wait for user response.
 
@@ -435,7 +438,23 @@ Select a topic number, then choose an action:
 
 → Return to **C. Menu**.
 
+#### If user chose a numbered topic
+
+Set selection to "Discuss pending topic {topic}" with the selected topic name.
+
+→ Return to **E. Route Selection**.
+
 #### If user chose `skip`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Which topic would you like to skip? Pick from the list above:
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
 
 Remove the topic from the surfaced_topics array via the `pull` command:
 
@@ -456,9 +475,3 @@ Removed "{topic:(titlecase)}" from pending topics.
 **If pending topics still remain:**
 
 → Return to **G. Manage Pending**.
-
-#### If user chose `discuss`
-
-Set selection to "Discuss pending topic {topic}" with the selected topic name.
-
-→ Return to **E. Route Selection**.
