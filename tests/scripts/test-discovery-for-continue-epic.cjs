@@ -468,6 +468,80 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(g.can_start_review, false);
     });
 
+    it('normalizes object-format sources to array', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: {
+            items: {
+              'core-system': {
+                status: 'in-progress',
+                sources: {
+                  'core-architecture': { status: 'incorporated' },
+                  'cli-commands-ux': { status: 'incorporated' },
+                },
+              },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const spec = r.epics[0].detail.phases.specification[0];
+      assert.strictEqual(Array.isArray(spec.sources), true);
+      assert.strictEqual(spec.sources.length, 2);
+      assert.strictEqual(spec.sources[0].topic, 'core-architecture');
+      assert.strictEqual(spec.sources[0].status, 'incorporated');
+      assert.strictEqual(spec.sources[1].topic, 'cli-commands-ux');
+    });
+
+    it('object-format sources track unaccounted discussions correctly', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              auth: { status: 'completed' },
+              payments: { status: 'completed' },
+              billing: { status: 'completed' },
+            },
+          },
+          specification: {
+            items: {
+              'core-system': {
+                status: 'in-progress',
+                sources: {
+                  auth: { status: 'incorporated' },
+                },
+              },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions.sort(), ['billing', 'payments']);
+    });
+
+    it('object-format sources detect reopened discussions', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'in-progress' } } },
+          specification: {
+            items: {
+              'core-system': {
+                status: 'in-progress',
+                sources: {
+                  auth: { status: 'incorporated' },
+                },
+              },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
+    });
+
     it('completed discussion that is in-progress is not both reopened and unaccounted', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
@@ -662,6 +736,27 @@ describe('continue-epic format', () => {
     });
     const out = format(discover(dir));
     assert.ok(out.includes('    pending_from_research: auth, billing'));
+  });
+
+  it('formats object-format sources correctly', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: {
+          items: {
+            'core-system': {
+              status: 'in-progress',
+              sources: {
+                auth: { status: 'incorporated' },
+                billing: { status: 'pending' },
+              },
+            },
+          },
+        },
+      },
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('[sources: auth:incorporated, billing:pending]'));
   });
 
   it('includes unaccounted_discussions', () => {
