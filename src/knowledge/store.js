@@ -11,7 +11,9 @@
 
 'use strict';
 
+const fs = require('fs');
 const orama = require('@orama/orama');
+const { encode, decode } = require('@msgpack/msgpack');
 
 const SCHEMA_FIELDS = [
   'id',
@@ -178,11 +180,260 @@ async function searchFulltext(db, { term = '', where, limit = 10 } = {}) {
   return res.hits.map(normaliseHit);
 }
 
+/**
+ * Vector similarity search (cosine, Orama default).
+ *
+ * @param {object} db
+ * @param {{ vector: number[], where?: object, limit?: number, similarity?: number }} params
+ * @returns {Promise<Array<object>>}
+ */
+async function searchVector(db, { vector, where, limit = 10, similarity } = {}) {
+  if (!Array.isArray(vector)) {
+    throw new Error('searchVector: vector (number[]) is required');
+  }
+  const query = {
+    mode: 'vector',
+    vector: { value: vector, property: 'embedding' },
+    limit,
+  };
+  if (typeof similarity === 'number') query.similarity = similarity;
+  if (where && Object.keys(where).length > 0) query.where = where;
+  const res = await orama.search(db, query);
+  return res.hits.map(normaliseHit);
+}
+
+/**
+ * Hybrid search — combines BM25 text scoring with vector similarity.
+ * Defaults: textWeight 0.4, vectorWeight 0.6 (from design doc).
+ *
+ * @param {object} db
+ * @param {{
+ *   term: string,
+ *   vector: number[],
+ *   where?: object,
+ *   limit?: number,
+ *   textWeight?: number,
+ *   vectorWeight?: number,
+ *   similarity?: number
+ * }} params
+ * @returns {Promise<Array<object>>}
+ */
+async function searchHybrid(
+  db,
+  {
+    term,
+    vector,
+    where,
+    limit = 10,
+    textWeight = 0.4,
+    vectorWeight = 0.6,
+    similarity,
+  } = {}
+) {
+  if (typeof term !== 'string') {
+    throw new Error('searchHybrid: term (string) is required');
+  }
+  if (!Array.isArray(vector)) {
+    throw new Error('searchHybrid: vector (number[]) is required');
+  }
+  const query = {
+    mode: 'hybrid',
+    term,
+    vector: { value: vector, property: 'embedding' },
+    hybridWeights: { text: textWeight, vector: vectorWeight },
+    limit,
+  };
+  if (typeof similarity === 'number') query.similarity = similarity;
+  if (where && Object.keys(where).length > 0) query.where = where;
+  const res = await orama.search(db, query);
+  return res.hits.map(normaliseHit);
+}
+
+// ---------------------------------------------------------------------------
+// Persistence — MsgPack on disk via Orama save()/load()
+// ---------------------------------------------------------------------------
+
+/**
+ * Persist a store to disk as a MsgPack binary. The schema is stashed
+ * alongside the raw Orama data so loadStore can reconstruct a fresh
+ * store with matching dimensionality before calling Orama's load().
+ *
+ * Atomic write: write to `<path>.tmp`, then rename — same pattern as
+ * manifest.cjs writeManifestAtomic so a crash mid-save never leaves a
+ * truncated .msp file where the real one used to be.
+ */
+async function saveStore(db, storePath) {
+  if (!storePath) throw new Error('saveStore: storePath is required');
+  const raw = orama.save(db);
+  const envelope = {
+    v: 1,
+    schema: db.schema,
+    raw,
+  };
+  const buf = encode(envelope);
+  const tmp = storePath + '.tmp';
+  fs.writeFileSync(tmp, buf);
+  fs.renameSync(tmp, storePath);
+}
+
+/**
+ * Load a store from disk. Reads the MsgPack envelope, creates a fresh
+ * Orama instance with the stashed schema, then calls Orama load() to
+ * populate it.
+ *
+ * Throws a clear error if the file is missing, empty, or corrupted.
+ */
+async function loadStore(storePath) {
+  if (!storePath) throw new Error('loadStore: storePath is required');
+  if (!fs.existsSync(storePath)) {
+    throw new Error(`loadStore: store file not found at ${storePath}`);
+  }
+  let buf;
+  try {
+    buf = fs.readFileSync(storePath);
+  } catch (e) {
+    throw new Error(`loadStore: failed to read ${storePath}: ${e.message}`);
+  }
+  if (buf.length === 0) {
+    throw new Error(`loadStore: store file is empty at ${storePath}`);
+  }
+
+  let envelope;
+  try {
+    envelope = decode(buf);
+  } catch (e) {
+    throw new Error(`loadStore: corrupted store file at ${storePath}: ${e.message}`);
+  }
+  if (!envelope || typeof envelope !== 'object' || !envelope.schema || !envelope.raw) {
+    throw new Error(`loadStore: malformed envelope at ${storePath}`);
+  }
+
+  const db = await orama.create({ schema: envelope.schema });
+  orama.load(db, envelope.raw);
+  return db;
+}
+
+// ---------------------------------------------------------------------------
+// File locking — adapted from manifest.cjs (lines 80-127).
+//
+// WRITE operations (saveStore) must be wrapped in withLock. READ
+// operations (loadStore, all searches) do NOT lock — stale reads are
+// acceptable per the design doc.
+// ---------------------------------------------------------------------------
+
+const LOCK_STALE_MS = 30000;
+const LOCK_RETRY_MS = 50;
+const LOCK_TIMEOUT_MS = 10000;
+
+function acquireLock(lockPath) {
+  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+  while (true) {
+    try {
+      const fd = fs.openSync(lockPath, 'wx');
+      fs.writeSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      return;
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+    }
+
+    // Stale lock detection
+    try {
+      const stat = fs.statSync(lockPath);
+      if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+        fs.unlinkSync(lockPath);
+        continue;
+      }
+    } catch (_) {
+      // Lock disappeared between attempts — retry
+      continue;
+    }
+
+    if (Date.now() >= deadline) {
+      throw new Error(`knowledge store: timed out waiting for lock at ${lockPath}`);
+    }
+
+    const end = Date.now() + LOCK_RETRY_MS;
+    while (Date.now() < end) { /* spin */ }
+  }
+}
+
+function releaseLock(lockPath) {
+  try { fs.unlinkSync(lockPath); } catch (_) { /* already gone */ }
+}
+
+async function withLock(lockPath, fn) {
+  acquireLock(lockPath);
+  try {
+    return await fn();
+  } finally {
+    releaseLock(lockPath);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Metadata — sidecar JSON file tracking provider/model/dimensions and
+// indexing state. Created on first index by Task 3-3; this module only
+// provides the read/write primitives.
+// ---------------------------------------------------------------------------
+
+const METADATA_FIELDS = ['provider', 'model', 'dimensions', 'last_indexed', 'pending'];
+
+function writeMetadata(metadataPath, data) {
+  if (!metadataPath) throw new Error('writeMetadata: metadataPath is required');
+  if (data == null || typeof data !== 'object') {
+    throw new Error('writeMetadata: data must be an object');
+  }
+  // Every call writes the full schema — no partial updates. Missing
+  // fields are normalised to explicit null so keyword-only mode round-
+  // trips as { provider: null, model: null, dimensions: null }.
+  const full = {
+    provider: data.provider === undefined ? null : data.provider,
+    model: data.model === undefined ? null : data.model,
+    dimensions: data.dimensions === undefined ? null : data.dimensions,
+    last_indexed: data.last_indexed === undefined ? null : data.last_indexed,
+    pending: Array.isArray(data.pending) ? data.pending : [],
+  };
+  const tmp = metadataPath + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
+  fs.renameSync(tmp, metadataPath);
+}
+
+function readMetadata(metadataPath) {
+  if (!metadataPath) throw new Error('readMetadata: metadataPath is required');
+  if (!fs.existsSync(metadataPath)) {
+    throw new Error(`readMetadata: metadata file not found at ${metadataPath}`);
+  }
+  let raw;
+  try {
+    raw = fs.readFileSync(metadataPath, 'utf8');
+  } catch (e) {
+    throw new Error(`readMetadata: failed to read ${metadataPath}: ${e.message}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`readMetadata: invalid JSON at ${metadataPath}: ${e.message}`);
+  }
+  return parsed;
+}
+
 module.exports = {
   SCHEMA_FIELDS,
+  METADATA_FIELDS,
   buildSchema,
   createStore,
   insertDocument,
   removeByIdentity,
   searchFulltext,
+  searchVector,
+  searchHybrid,
+  saveStore,
+  loadStore,
+  acquireLock,
+  releaseLock,
+  withLock,
+  writeMetadata,
+  readMetadata,
 };

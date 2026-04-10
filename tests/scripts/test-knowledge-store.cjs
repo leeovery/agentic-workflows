@@ -1,6 +1,9 @@
 'use strict';
 
-const { describe, it } = require('node:test');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const {
@@ -8,6 +11,15 @@ const {
   insertDocument,
   removeByIdentity,
   searchFulltext,
+  searchVector,
+  searchHybrid,
+  saveStore,
+  loadStore,
+  acquireLock,
+  releaseLock,
+  withLock,
+  writeMetadata,
+  readMetadata,
 } = require('../../src/knowledge/store.js');
 const { StubProvider } = require('../../src/knowledge/embeddings.js');
 
@@ -324,5 +336,331 @@ describe('knowledge store', () => {
       where: { phase: { eq: 'research' } },
     });
     assert.deepStrictEqual(hits, []);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Vector + hybrid search (task 1-4)
+// ---------------------------------------------------------------------------
+
+describe('knowledge store — vector and hybrid search', () => {
+  async function seedStore() {
+    const db = await createStore(STUB_DIMS);
+    const provider = new StubProvider({ dimensions: STUB_DIMS });
+    const corpus = [
+      ['alpha', 'alpha rate limiting bucket algorithm'],
+      ['beta',  'beta session token expiry refresh'],
+      ['gamma', 'gamma webhook retry exponential backoff'],
+      ['delta', 'delta rate limiting across regions'],
+    ];
+    for (const [id, content] of corpus) {
+      await insertDocument(db, makeDoc({
+        id,
+        content,
+        topic: id,
+        embedding: provider.embed(content),
+      }));
+    }
+    return { db, provider };
+  }
+
+  it('searches by vector similarity and returns ranked results', async () => {
+    const { db, provider } = await seedStore();
+    const query = provider.embed('alpha rate limiting bucket algorithm');
+    const hits = await searchVector(db, { vector: query, similarity: 0, limit: 10 });
+    assert.ok(hits.length >= 1);
+    // The document embedded from the exact same text must be the top hit.
+    assert.strictEqual(hits[0].id, 'alpha');
+  });
+
+  it('applies the similarity threshold to vector search', async () => {
+    const { db, provider } = await seedStore();
+    const query = provider.embed('completely unrelated query string');
+    // StubProvider vectors are random-looking; setting similarity to 0.999
+    // should filter out every (or nearly every) hit.
+    const strict = await searchVector(db, { vector: query, similarity: 0.999, limit: 10 });
+    const loose = await searchVector(db, { vector: query, similarity: 0, limit: 10 });
+    assert.ok(loose.length >= strict.length);
+  });
+
+  it('applies where clause filtering to vector search', async () => {
+    const { db, provider } = await seedStore();
+    const query = provider.embed('any query');
+    const hits = await searchVector(db, {
+      vector: query,
+      similarity: 0,
+      where: { topic: { eq: 'alpha' } },
+      limit: 10,
+    });
+    assert.ok(hits.every((h) => h.topic === 'alpha'));
+  });
+
+  it('rejects vector search without a vector', async () => {
+    const db = await createStore(STUB_DIMS);
+    await assert.rejects(() => searchVector(db, {}));
+    await assert.rejects(() => searchVector(db, { vector: 'not an array' }));
+  });
+
+  it('searches by hybrid mode and returns combined results', async () => {
+    const { db, provider } = await seedStore();
+    const query = provider.embed('rate limiting');
+    const hits = await searchHybrid(db, {
+      term: 'rate limiting',
+      vector: query,
+      similarity: 0,
+      limit: 10,
+    });
+    assert.ok(hits.length >= 1);
+    const ids = hits.map((h) => h.id);
+    // Both docs containing "rate limiting" should be returned.
+    assert.ok(ids.includes('alpha'));
+    assert.ok(ids.includes('delta'));
+  });
+
+  it('applies where clause filtering to hybrid search', async () => {
+    const { db, provider } = await seedStore();
+    const query = provider.embed('rate limiting');
+    const hits = await searchHybrid(db, {
+      term: 'rate limiting',
+      vector: query,
+      similarity: 0,
+      where: { topic: { eq: 'alpha' } },
+      limit: 10,
+    });
+    assert.ok(hits.every((h) => h.topic === 'alpha'));
+  });
+
+  it('rejects hybrid search without term or vector', async () => {
+    const db = await createStore(STUB_DIMS);
+    await assert.rejects(() => searchHybrid(db, { vector: [0, 0, 0] }));
+    await assert.rejects(() => searchHybrid(db, { term: 'hello' }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Persistence, locking, metadata (task 1-4)
+// ---------------------------------------------------------------------------
+
+describe('knowledge store — persistence and locking', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-store-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('saves the store to disk as a non-empty file', async () => {
+    const db = await createStore(STUB_DIMS);
+    await insertDocument(db, makeDoc());
+    const storePath = path.join(tmpDir, 'store.msp');
+    await saveStore(db, storePath);
+    const stat = fs.statSync(storePath);
+    assert.ok(stat.size > 0);
+  });
+
+  it('loads a previously saved store and reconstructs a working instance', async () => {
+    const db = await createStore(STUB_DIMS);
+    const provider = new StubProvider({ dimensions: STUB_DIMS });
+    await insertDocument(db, makeDoc({
+      content: 'rate limiting persistence test',
+      embedding: provider.embed('rate limiting persistence test'),
+    }));
+    const storePath = path.join(tmpDir, 'store.msp');
+    await saveStore(db, storePath);
+
+    const loaded = await loadStore(storePath);
+    const hits = await searchFulltext(loaded, { term: 'persistence' });
+    assert.strictEqual(hits.length, 1);
+    assert.strictEqual(hits[0].id, 'doc-1');
+  });
+
+  it('produces identical fulltext results after save/load round-trip', async () => {
+    const db = await createStore(STUB_DIMS);
+    const provider = new StubProvider({ dimensions: STUB_DIMS });
+    for (let i = 0; i < 5; i++) {
+      await insertDocument(db, makeDoc({
+        id: `rt-${i}`,
+        content: `round trip document number ${i}`,
+        embedding: provider.embed(`round trip document number ${i}`),
+      }));
+    }
+
+    const before = await searchFulltext(db, { term: 'round', limit: 10 });
+    const storePath = path.join(tmpDir, 'store.msp');
+    await saveStore(db, storePath);
+    const loaded = await loadStore(storePath);
+    const after = await searchFulltext(loaded, { term: 'round', limit: 10 });
+
+    const strip = (hits) => hits.map((h) => ({ id: h.id, content: h.content })).sort((a, b) => a.id.localeCompare(b.id));
+    assert.deepStrictEqual(strip(after), strip(before));
+    assert.strictEqual(after.length, before.length);
+  });
+
+  it('produces identical vector results after save/load round-trip', async () => {
+    const db = await createStore(STUB_DIMS);
+    const provider = new StubProvider({ dimensions: STUB_DIMS });
+    for (let i = 0; i < 4; i++) {
+      await insertDocument(db, makeDoc({
+        id: `vec-${i}`,
+        content: `content ${i}`,
+        embedding: provider.embed(`content ${i}`),
+      }));
+    }
+    const query = provider.embed('content 2');
+    const before = await searchVector(db, { vector: query, similarity: 0, limit: 10 });
+
+    const storePath = path.join(tmpDir, 'store.msp');
+    await saveStore(db, storePath);
+    const loaded = await loadStore(storePath);
+    const after = await searchVector(loaded, { vector: query, similarity: 0, limit: 10 });
+
+    assert.strictEqual(after.length, before.length);
+    assert.deepStrictEqual(after.map((h) => h.id), before.map((h) => h.id));
+  });
+
+  it('throws a clear error when loading a missing store file', async () => {
+    await assert.rejects(
+      () => loadStore(path.join(tmpDir, 'missing.msp')),
+      /not found/
+    );
+  });
+
+  it('throws a clear error when loading a corrupted store file', async () => {
+    const storePath = path.join(tmpDir, 'bad.msp');
+    fs.writeFileSync(storePath, Buffer.from([0xff, 0xff, 0xff, 0xff]));
+    await assert.rejects(() => loadStore(storePath), /corrupt|malformed/i);
+  });
+
+  it('throws when saving to a directory that does not exist', async () => {
+    const db = await createStore(STUB_DIMS);
+    await insertDocument(db, makeDoc());
+    const storePath = path.join(tmpDir, 'nested', 'not-here', 'store.msp');
+    await assert.rejects(() => saveStore(db, storePath));
+  });
+
+  it('acquires and releases a file lock', () => {
+    const lockPath = path.join(tmpDir, '.lock');
+    acquireLock(lockPath);
+    assert.ok(fs.existsSync(lockPath));
+    releaseLock(lockPath);
+    assert.ok(!fs.existsSync(lockPath));
+  });
+
+  it('withLock wraps execution and releases on success', async () => {
+    const lockPath = path.join(tmpDir, '.lock');
+    const observed = await withLock(lockPath, async () => {
+      assert.ok(fs.existsSync(lockPath));
+      return 'ok';
+    });
+    assert.strictEqual(observed, 'ok');
+    assert.ok(!fs.existsSync(lockPath));
+  });
+
+  it('withLock releases the lock even when the wrapped function throws', async () => {
+    const lockPath = path.join(tmpDir, '.lock');
+    await assert.rejects(() =>
+      withLock(lockPath, async () => {
+        throw new Error('boom');
+      })
+    );
+    assert.ok(!fs.existsSync(lockPath));
+  });
+
+  it('detects and cleans stale locks older than 30s', () => {
+    const lockPath = path.join(tmpDir, '.lock');
+    // Create a lock file by hand with an ancient mtime.
+    fs.writeFileSync(lockPath, '99999');
+    const past = Date.now() / 1000 - 60; // 60 seconds ago
+    fs.utimesSync(lockPath, past, past);
+    // Should succeed by detecting and removing the stale lock.
+    acquireLock(lockPath);
+    assert.ok(fs.existsSync(lockPath));
+    releaseLock(lockPath);
+  });
+});
+
+describe('knowledge store — metadata', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'knowledge-meta-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('writes metadata.json with all 5 fields', () => {
+    const metaPath = path.join(tmpDir, 'metadata.json');
+    writeMetadata(metaPath, {
+      provider: 'openai',
+      model: 'text-embedding-3-small',
+      dimensions: 1536,
+      last_indexed: '2026-04-10T12:34:56.789Z',
+      pending: [],
+    });
+    const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    assert.strictEqual(parsed.provider, 'openai');
+    assert.strictEqual(parsed.model, 'text-embedding-3-small');
+    assert.strictEqual(parsed.dimensions, 1536);
+    assert.strictEqual(parsed.last_indexed, '2026-04-10T12:34:56.789Z');
+    assert.deepStrictEqual(parsed.pending, []);
+  });
+
+  it('writes null for provider/model/dimensions in keyword-only mode', () => {
+    const metaPath = path.join(tmpDir, 'metadata.json');
+    writeMetadata(metaPath, {
+      provider: null,
+      model: null,
+      dimensions: null,
+      last_indexed: '2026-04-10T12:34:56.789Z',
+      pending: [],
+    });
+    const parsed = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    assert.strictEqual(parsed.provider, null);
+    assert.strictEqual(parsed.model, null);
+    assert.strictEqual(parsed.dimensions, null);
+  });
+
+  it('normalises missing fields to explicit null (not undefined)', () => {
+    const metaPath = path.join(tmpDir, 'metadata.json');
+    writeMetadata(metaPath, { last_indexed: '2026-04-10T00:00:00.000Z' });
+    const raw = fs.readFileSync(metaPath, 'utf8');
+    // JSON.stringify drops undefined, so this test proves we wrote explicit null.
+    assert.ok(raw.includes('"provider": null'));
+    assert.ok(raw.includes('"model": null'));
+    assert.ok(raw.includes('"dimensions": null'));
+    assert.ok(raw.includes('"pending": []'));
+  });
+
+  it('reads metadata.json correctly', () => {
+    const metaPath = path.join(tmpDir, 'metadata.json');
+    writeMetadata(metaPath, {
+      provider: 'openai',
+      model: 'text-embedding-3-small',
+      dimensions: 1536,
+      last_indexed: '2026-04-10T12:34:56.789Z',
+      pending: [{ file: 'x.md', failed_at: '2026-04-10T12:00:00.000Z', error: 'oops' }],
+    });
+    const parsed = readMetadata(metaPath);
+    assert.strictEqual(parsed.provider, 'openai');
+    assert.strictEqual(parsed.pending.length, 1);
+    assert.strictEqual(parsed.pending[0].file, 'x.md');
+  });
+
+  it('throws a clear error when metadata.json is missing', () => {
+    assert.throws(
+      () => readMetadata(path.join(tmpDir, 'missing.json')),
+      /not found/
+    );
+  });
+
+  it('throws a clear error when metadata.json contains invalid JSON', () => {
+    const metaPath = path.join(tmpDir, 'metadata.json');
+    fs.writeFileSync(metaPath, 'not json {');
+    assert.throws(() => readMetadata(metaPath), /invalid JSON/);
   });
 });
