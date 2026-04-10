@@ -4,6 +4,7 @@
 
 const { create, insert, search } = require('@orama/orama');
 const { encode, decode } = require('@msgpack/msgpack');
+const { StubProvider } = require('./embeddings');
 
 async function selfCheck() {
   const db = await create({
@@ -29,7 +30,7 @@ async function main() {
   process.stdout.write(JSON.stringify(info) + '\n');
 }
 
-module.exports = { selfCheck, main };
+module.exports = { selfCheck, main, StubProvider };
 
 if (require.main === module) {
   main().catch((err) => {
