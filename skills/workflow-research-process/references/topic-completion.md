@@ -10,6 +10,8 @@ The current topic is converging — tradeoffs are clear, it's approaching decisi
 
 → Load **[final-review.md](final-review.md)** and follow its instructions as written.
 
+→ Load **[document-review.md](document-review.md)** and follow its instructions as written.
+
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
 > *Output the next fenced block as markdown (not a code block):*
