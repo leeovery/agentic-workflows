@@ -644,7 +644,7 @@ knowledge status                                        # full health report
 **`knowledge rebuild`**
 - Destructive reindex from current artifacts
 - Drops existing index, re-chunks and re-embeds everything
-- **Human-only** — uses interactive confirmation prompts ("Are you sure?" → "Are you absolutely sure?"). Claude can't handle interactive terminals, which is the natural protection
+- **Human-only** — uses a type-the-action-word confirmation prompt (the user must type `rebuild` literally to proceed, same pattern as Terraform destroy or GitHub repo deletion). Forces engagement with what's being done rather than clicking through yes/no. Claude can't handle interactive terminals, which is the natural protection
 - Non-deterministic: rebuilt index won't match the original (embedding variance, edited artifacts). Use only when necessary (provider change, corruption, major schema change)
 - Analogous to `migrate:fresh`
 
@@ -798,7 +798,7 @@ Processed automatically on next successful `knowledge index` call:
 
 **Completed work units**: Spec chunks kept permanently. Research/discussion/investigation chunks subject to memory decay — removed after configurable TTL from work unit completion date (see Memory Decay & Compaction below).
 
-**Cancelled work units**: Removed from the knowledge base automatically as part of the cancellation action. The manage menu skill runs `knowledge remove --work-unit {work_unit}` inline — no prompt, cancelling means you're done with it. If removal fails (store locked, etc.), logged to the pending queue and handled by the catch-up mechanism on the next successful write.
+**Cancelled work units**: Removed from the knowledge base automatically as part of the cancellation action. The manage menu skill runs `knowledge remove --work-unit {work_unit}` inline — no prompt, cancelling means you're done with it. If removal fails (store locked, etc.), surface a clear error and instruct the user to run `knowledge remove --work-unit {work_unit}` manually. The cancellation itself still completes — the knowledge base cleanup is a secondary concern. The pending queue is scoped to indexing failures only (file-based retry), not removal operations (which target work_unit+phase+topic identities and have their own file lock with built-in retry via the lock timeout mechanism).
 
 ---
 
@@ -834,7 +834,7 @@ This is an approximation — the mtime may be days off the actual completion —
 
 **In-progress work units**: All chunks kept regardless of age. No completion date means nothing can expire.
 
-**Completed work units**: Spec chunks kept forever. Research/discussion/investigation chunks removed when `work_unit_completion_date + decay_months < now`.
+**Completed work units**: Spec chunks kept forever. Research/discussion/investigation chunks removed when `work_unit_completion_date + decay_months <= now` (inclusive — chunks expire on their expiry date, not the day after).
 
 **Cancelled work units**: Automatically removed from the index as part of the cancellation action (see Work Unit Lifecycle above).
 
@@ -980,7 +980,7 @@ Eliminated the problem by dropping automatic phase-entry dumps entirely. Retriev
 Fallback chain: no H2s → try H3, no H3s → whole file (with size warning in status). Strip YAML frontmatter before chunking (metadata noise — useful fields already captured structurally). Skip empty sections. Include heading text in each chunk (semantic anchor). All defaults in chunking config, overridable per phase.
 
 **10. Provider mismatch detection** — RESOLVED
-Store `provider` + `model` + `dimensions` in `metadata.json` at store creation. Every `knowledge index` call compares current config against stored values. Mismatch → refuse with: "Provider/model changed. Run `knowledge rebuild` to reindex." Read operations (`query`, `status`) unaffected — they don't embed.
+Store `provider` + `model` + `dimensions` in `metadata.json` at store creation. Every `knowledge index` and `knowledge query` call compares current config against stored values. Mismatch → refuse with: "Provider/model changed. Run `knowledge rebuild` to reindex." The check is symmetric because `query` embeds the search term before hybrid search — a mismatch would either crash Orama on dimension differences or produce garbage results on same-dim/different-provider. `knowledge status` is the only read operation unaffected (it never embeds).
 
 **11. Index-artifact drift detection** — RESOLVED
 `knowledge status` cross-references index against filesystem. Reports orphaned chunks (source file missing) and unindexed completed artifacts (found via manifest, not in store). No automatic correction — just reporting. User runs `knowledge remove` for orphans or `knowledge index` for missing files.
