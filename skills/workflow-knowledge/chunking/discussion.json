@@ -1,0 +1,15 @@
+{
+  "phase": "discussion",
+  "confidence": "low-medium",
+  "strategy": "split-on-heading",
+  "primary_level": 2,
+  "fallback_level": 3,
+  "max_lines": 200,
+  "keep_whole_below": 50,
+  "special_sections": {
+    "Discussion Map": "own-chunk",
+    "Summary": "own-chunk"
+  },
+  "strip_frontmatter": true,
+  "skip_empty_sections": true
+}
