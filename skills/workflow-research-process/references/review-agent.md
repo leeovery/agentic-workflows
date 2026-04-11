@@ -9,9 +9,11 @@ These instructions are loaded into context at the start of the research session.
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
 - □ Meaningful content committed? (new findings documented, threads explored, open questions captured — not a typo fix or reformatting)
-- □ No review agent currently in flight?
+- □ All prior reviews drained? (any `review-*.md` file in the cache directory must be in `status: incorporated`, or no review files exist yet)
 - □ Not the first commit? (the research needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
+
+**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being explored produces stale analysis — the research will look different once those findings are incorporated, and the new review would be critiquing a version the user is already extending. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check and dispatch a fresh review, so no trigger is lost. If the session ends before drainage completes, the final review at topic conclusion dispatches unconditionally and catches the rest.
 
 **If all checked:**
 
