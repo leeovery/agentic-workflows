@@ -16,7 +16,7 @@ Use this output format when you want **Linear as the source of truth** for task 
 
 ## Setup
 
-Requires the Linear MCP server to be configured in the harness.
+Requires the Linear MCP server to be configured.
 
 Check if Linear MCP is available by looking for Linear tools. If not configured, inform the user that Linear MCP is required for this format.
 
