@@ -87,7 +87,7 @@ Write all tasks to the task detail file path provided. Use the canonical task te
 
 ## Rules
 
-1. **Self-contained** — anyone (Claude or human) could pick up any task and execute it without opening another document
+1. **Self-contained** — any executor (another agent or a human) could pick up any task and run it without opening another document
 2. **Specification is source of truth** — pull rationale, decisions, and constraints from the spec
 3. **Cross-cutting specs inform** — apply their architectural decisions where relevant (e.g., caching, rate limiting)
 4. **Every field required** — Problem, Solution, Outcome, Do, Acceptance Criteria, Tests are all mandatory

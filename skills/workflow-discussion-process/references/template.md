@@ -26,7 +26,7 @@ What this is about, why we're discussing it, the problem or opportunity, current
 
 ## Discussion Map
 
-A living index of subtopics tracked during the discussion. This is the structural backbone — it grows as the conversation branches, and converges as decisions land. Claude maintains this section throughout.
+A living index of subtopics tracked during the discussion. This is the structural backbone — it grows as the conversation branches, and converges as decisions land. You maintain this section throughout.
 
 ### States
 
@@ -129,7 +129,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 **Discussion Map maintenance**:
 - Update states as the conversation progresses
 - New child subtopics can be added under parents
-- The map is the user's visibility into discussion shape and Claude's tracking mechanism
+- The map is the user's visibility into discussion shape and your tracking mechanism
 - Elevated topics (siblings that became their own discussion) are noted with `→ Elevated:` on the map
 
 **Flexibility**: Not every subtopic needs all sections. Some have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up — don't force structure onto a simple discussion.

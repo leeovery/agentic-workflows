@@ -35,7 +35,7 @@ Subtopics move through states as the conversation progresses:
 
 **exploring** → Actively being discussed. Options are surfacing, trade-offs being weighed, edge cases emerging. Only one or two subtopics should be `exploring` at a time — the conversation is linear.
 
-**converging** → Narrowing toward a decision. The options are clear, the trade-offs are understood, and the discussion is honing in on a choice. This signals to both Claude and the user that a decision is close.
+**converging** → Narrowing toward a decision. The options are clear, the trade-offs are understood, and the discussion is honing in on a choice. This signals to both you and the user that a decision is close.
 
 **decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. This is the terminal state.
 
@@ -47,7 +47,7 @@ Child subtopics can exist under parents. A parent might be `exploring` while one
 
 ## D. Navigation
 
-Claude owns transitions between subtopics. The goal is natural flow, not rigid sequencing.
+You own transitions between subtopics. The goal is natural flow, not rigid sequencing.
 
 **After a decision lands:**
 
@@ -61,11 +61,11 @@ Add it to the Discussion Map as `pending`. If it's closely related to the curren
 
 **When the user drives:**
 
-The user can jump to any subtopic at any time. Claude follows and tracks the state change on the map.
+The user can jump to any subtopic at any time. Follow their lead and track the state change on the map.
 
 **When circling back:**
 
-If a subtopic was partially explored and the conversation moved on, Claude remembers and suggests returning:
+If a subtopic was partially explored and the conversation moved on, remember it and suggest returning:
 
 > "We touched on {subtopic} earlier but didn't land a decision — worth circling back now that we've resolved {related subtopic}?"
 
@@ -147,7 +147,7 @@ Leave it as a subtopic on the map.
 Convergence is the natural end state — not a forced conclusion. The discussion converges when:
 
 - All subtopics on the Discussion Map are `decided` (or deliberately deferred)
-- Neither Claude nor the user can identify new subtopics without breaking scope
+- Neither you nor the user can identify new subtopics without breaking scope
 - At least one review cycle has completed (see safety net below)
 
 **Before rendering the convergence menu, verify:**
