@@ -58,7 +58,7 @@ The 3-level hierarchy (topic → phase → task) uses Tick's parent/child system
 ## Usage Notes
 
 - **Help**: `tick help --all` displays all available commands and flags in a single view.
-- **Output format**: The `--toon` flag is **not needed** — TOON is the default for non-interactive shells, which is what Claude Code uses. Omit it from all commands.
+- **Output format**: The `--toon` flag is **not needed** — TOON is the default for non-interactive shells, which is what this harness runs in. Omit it from all commands.
 
 ## Output Location
 

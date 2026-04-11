@@ -373,8 +373,9 @@ Review findings have been synthesized into {N} implementation tasks.
 
 ## How to proceed
 
-Clear context and continue. Claude will start implementation
-and pick up the new review remediation tasks automatically.
+Clear context and continue. The fresh session will start
+implementation and pick up the new review remediation tasks
+automatically.
 ```
 
 Exit plan mode. The user will approve and clear context, and the fresh session will pick up with the implementation entry skill routing to the new tasks.
