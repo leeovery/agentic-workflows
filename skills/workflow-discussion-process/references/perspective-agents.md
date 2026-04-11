@@ -18,7 +18,7 @@ Do not fire when the decision is straightforward, the tradeoffs are already well
 
 When these conditions are met → Proceed to **A. Offer Perspectives**.
 
-At natural conversational breaks, check for completed results → Proceed to **D. Check for Results**.
+At natural conversational breaks, check for completed results → Proceed to **D. Check and Surface**.
 
 ---
 
@@ -127,8 +127,13 @@ The synthesis agent receives:
    created: {date}
    set: {NNN}
    decision: {decision topic}
+   tensions: []   # sub-agent populates with T1/T2/... IDs
+   surfaced: []
+   announced: false
    ---
    ```
+
+The sub-agent writes tension entries with stable IDs (`T1`, `T2`, …) into the `tensions:` list. See `agents/workflow-discussion-synthesis.md` for the schema.
 
 The synthesis agent returns:
 
@@ -143,41 +148,22 @@ The discussion continues — do not wait for the agent to return.
 
 ---
 
-## D. Check for Results
+## D. Check and Surface
 
-Scan the cache directory for perspective and synthesis files.
+This section handles both in-flight perspective checks (promote to synthesis when ready) and synthesis surfacing (apply the never-dump protocol).
 
-#### If all perspective files in a set are complete and no synthesis file exists for that set
+### D1. Perspective Completion Check
 
-→ Proceed to **C. Dispatch Synthesis Agent**.
+Scan the cache directory for perspective files. For each set `{NNN}`:
 
-#### If a synthesis file with `status: pending` exists
+- If all perspective files in the set have returned AND no synthesis file exists for that set → Proceed to **C. Dispatch Synthesis Agent** for that set.
 
-→ Proceed to **E. Surface Findings**.
+### D2. Synthesis Surfacing
 
-#### Otherwise
+Synthesis files carry findings (`tensions:`) that must NOT be dumped. Delegate presentation to the shared surfacing protocol.
 
-Nothing to surface. Continue the discussion.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `synthesis`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `synthesis-*.md`, findings_key = `tensions`.
 
----
+**Deriving subtopics during presentation**: When the user engages with a tension via `explore`, reframe it as a practical subtopic tied to project constraints and add it to the Discussion Map as `pending`. Commit the update.
 
-## E. Surface Findings
-
-1. Read the synthesis file (and perspective files if needed for detail)
-2. Update all files in the set to `status: read`
-
-> *Output the next fenced block as a code block:*
-
-```
-Perspective analysis complete: {decision topic}
-
-{N} perspectives explored. {M} key tensions identified.
-```
-
-Summarise the key tensions, strongest arguments, and decision criteria conversationally. The user can ask for more detail on any perspective.
-
-**Do not read out the full perspective files.** Surface the tradeoff landscape — what's at stake, what the decision hinges on.
-
-**Deriving subtopics**: Extract decision criteria and unresolved concerns from the synthesis. Reframe them as practical subtopics tied to the project's constraints. Add unresolved items to the Discussion Map as `pending` subtopics. Commit the update.
-
-**Marking as incorporated**: After findings have been discussed and their subtopics explored (or deliberately set aside), update all files in the set to `status: incorporated`. No commit needed for cache file status changes.
+**Perspective files**: The shared protocol handles the synthesis file only. The individual perspective files remain available for reference if the user wants to drill into a specific angle — mention their existence during presentation if relevant, but do not read them out.

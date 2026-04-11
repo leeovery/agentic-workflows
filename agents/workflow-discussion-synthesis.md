@@ -37,13 +37,27 @@ You receive via the orchestrator's prompt:
 3. **Be fair** — if a perspective made a weak argument, note it, but don't dismiss the underlying position because of it.
 4. **Stay grounded** — only synthesize what the perspectives raised. Do not introduce new arguments.
 5. **Concise over comprehensive** — a decision-maker should understand the tradeoff landscape in 2-3 minutes.
+6. **Assign stable IDs** — every key tension gets a stable ID (`T1`, `T2`, `T3`, …) that appears in BOTH the frontmatter `tensions:` list and the body section heading. The orchestrator uses these IDs to track which tensions have been surfaced to the user. Never renumber, never reuse IDs.
 
 ## Output File Format
 
-Write to the output file path provided:
+Write to the output file path provided. The orchestrator passes skeleton frontmatter (`type`, `status`, `created`, `set`, `decision`, `surfaced: []`). You must add a `tensions:` list containing one entry per key tension with its stable ID and a short label. The body mirrors the same IDs as section headings under "Key Tensions" so the orchestrator can look up full content for any ID.
 
 ```markdown
-{frontmatter provided by orchestrator}
+---
+type: synthesis
+status: pending
+created: {date}
+set: {NNN}
+decision: {decision topic}
+tensions:
+  - id: T1
+    label: {one-line label — 8-12 words, no period}
+  - id: T2
+    label: {one-line label}
+surfaced: []
+announced: false
+---
 
 # Synthesis: {Decision Topic}
 
@@ -60,8 +74,13 @@ Write to the output file path provided:
 
 ## Key Tensions
 
-1. **{Tension}**: {what's being traded against what}
-2. **{Tension}**: {description}
+### T1: {label}
+
+{What's being traded against what.}
+
+### T2: {label}
+
+{Description.}
 
 ## Comparative Analysis
 

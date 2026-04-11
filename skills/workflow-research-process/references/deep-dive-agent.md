@@ -103,8 +103,13 @@ The deep-dive agent receives:
    created: {date}
    set: {NNN}
    thread: {thread name}
+   findings: []   # sub-agent populates with F1/F2/... IDs
+   surfaced: []
+   announced: false
    ---
    ```
+
+The sub-agent writes finding entries with stable IDs (`F1`, `F2`, …) into the `findings:` list. See `agents/workflow-research-deep-dive.md` for the schema.
 
 > *Output the next fenced block as a code block:*
 
@@ -128,43 +133,13 @@ The research session continues — do not wait for the agent to return.
 
 ---
 
-## C. Check for Results
+## C. Check and Surface
 
-At natural conversational breaks, scan the cache directory for deep-dive files with `status: pending` in their frontmatter.
+Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. Deep-dive reports are substantive and prone to wall-of-text dumps — the protocol's never-dump rules are especially important here.
 
-#### If no pending deep-dive files
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `deep-dive`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `deep-dive-*.md`, findings_key = `findings`.
 
-Nothing to surface. Continue the research session.
-
-→ Return to caller.
-
-#### If a pending deep-dive file exists
-
-→ Proceed to **D. Surface Findings**.
-
----
-
-## D. Surface Findings
-
-1. Read the deep-dive file
-2. Update its frontmatter to `status: read`
-3. Summarise the key findings conversationally
-
-**Do not dump the deep-dive output verbatim.** Present the highlights — what was found, what matters, what's surprising, what questions it raises. The user should understand the landscape without reading the full report.
-
-> *Output the next fenced block as a code block:*
-
-```
-Deep-dive results: {thread description}
-```
-
-Then summarise conversationally. Example approach:
-
-> "The deep dive on {thread} came back. Key findings: {finding 1}, {finding 2}. One thing that stood out — {surprising finding}. It also raised a question about {open question}. Want to dig into any of this?"
-
-After presenting findings, continue the conversation. The user may want to discuss the findings, ask questions, connect them to other threads, or park them for later. Follow their lead.
-
-**Promoting to a research file** (epic work type only): If findings are substantial enough to warrant their own research file — and the user agrees or requests it — promote them:
+**Promoting to a research file** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own research file — and agrees or requests it — promote them:
 
 1. Create a new research file at `.workflows/{work_unit}/research/{thread}.md`
 2. Synthesise the deep-dive findings into the file (don't copy the cache file verbatim — organise for the research document context)
@@ -176,6 +151,4 @@ After presenting findings, continue the conversation. The user may want to discu
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
 
-**Marking as incorporated**: After findings have been discussed, promoted, or deliberately parked, update the cache file frontmatter to `status: incorporated`. No commit needed for cache file status changes.
-
-→ Return to caller.
+**Skipped findings**: Items skipped during presentation are added to the Open Questions section of the research file.

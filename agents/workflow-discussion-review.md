@@ -35,13 +35,31 @@ You receive via the orchestrator's prompt:
 3. **Do not evaluate decisions** — whether they chose Redis or Memcached is not your concern. Whether they explored the tradeoffs is.
 4. **Be specific** — "needs more depth" is not useful. "The caching invalidation strategy was discussed for TTL but not for event-driven invalidation, which matters given the real-time requirements mentioned in the context" is useful.
 5. **Stay scoped** — keep findings within what the document intends to cover. Do not introduce new requirements or scope.
+6. **Assign stable IDs** — every gap and open question gets a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to track which findings have been surfaced to the user. Never renumber, never reuse IDs. IDs are assigned in the order you write them; numbering is sequential across gaps and questions (don't reset between sections).
 
 ## Output File Format
 
-Write to the output file path provided:
+Write to the output file path provided. The orchestrator passes skeleton frontmatter (`type`, `status`, `created`, `set`, `surfaced: []`). You must add a `findings:` list containing one entry per gap or question with its stable ID, kind, and a short label. The body mirrors the same IDs as section headings so the orchestrator can look up full content for any ID.
 
 ```markdown
-{frontmatter provided by orchestrator}
+---
+type: review
+status: pending
+created: {date}
+set: {NNN}
+findings:
+  - id: F1
+    kind: gap
+    label: {one-line label — 8-12 words, no period}
+  - id: F2
+    kind: gap
+    label: {one-line label}
+  - id: F3
+    kind: question
+    label: {one-line label}
+surfaced: []
+announced: false
+---
 
 # Discussion Review — Set {NNN}
 
@@ -51,23 +69,39 @@ Write to the output file path provided:
 
 ## Gaps Identified
 
-1. {Specific, actionable gap description}
-2. {Specific, actionable gap description}
+### F1: {label}
+
+{Specific, actionable gap description.}
+
+### F2: {label}
+
+{Specific, actionable gap description.}
 
 ## Open Questions
 
-1. {Question worth exploring — genuine, not leading}
-2. {Question worth exploring}
+### F3: {label}
+
+{Question worth exploring — genuine, not leading.}
 
 ## Observations
 
 {Optional. Anything else notable — strong areas, potential risks, patterns. Keep brief.}
 ```
 
+**Kind values**: use `gap` for items under "Gaps Identified", `question` for items under "Open Questions". The numbering is continuous across both sections — if you have 2 gaps and 1 question, the IDs are F1, F2, F3 (not F1, F2, F1).
+
 If no gaps or questions found:
 
 ```markdown
-{frontmatter provided by orchestrator}
+---
+type: review
+status: pending
+created: {date}
+set: {NNN}
+findings: []
+surfaced: []
+announced: false
+---
 
 # Discussion Review — Set {NNN}
 

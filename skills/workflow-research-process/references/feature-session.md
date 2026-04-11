@@ -57,7 +57,7 @@ There are still {N} background agents working.
 
 **If `wait`:**
 
-Check for agent completion. When all agents have returned, surface their findings per the agent instructions loaded above.
+Check for agent completion. When all agents have returned, delegate surfacing to the shared protocol loaded by review-agent.md and deep-dive-agent.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
 
 → Return to **B. Session Loop**.
 

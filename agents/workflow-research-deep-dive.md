@@ -45,13 +45,29 @@ Choose based on the brief:
 4. **Stay scoped** — investigate the brief you were given. If you discover adjacent threads worth exploring, mention them in open questions — don't chase them yourself.
 5. **One file only** — write only to your output file path. Do not create additional files.
 6. **Substance over volume** — a focused, well-organised report beats a sprawling dump. Include what matters, skip what doesn't.
+7. **Assign stable IDs to discrete findings** — split "Key Findings" into discrete items, each with a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to surface findings to the user one at a time without dumping the full report. Aim for 3-7 discrete findings per deep dive; fewer if the investigation is narrow, more if it genuinely surfaced distinct facts. Never renumber, never reuse IDs.
 
 ## Output File Format
 
-Write to the output file path provided:
+Write to the output file path provided. The orchestrator passes skeleton frontmatter (`type`, `status`, `created`, `set`, `thread`, `surfaced: []`). You must add a `findings:` list containing one entry per discrete key finding with its stable ID and a short label. The body's "Key Findings" section uses the same IDs as sub-section headings so the orchestrator can look up full content for any ID.
 
 ```markdown
-{frontmatter provided by orchestrator}
+---
+type: deep-dive
+status: pending
+created: {date}
+set: {NNN}
+thread: {thread name}
+findings:
+  - id: F1
+    label: {one-line label — 8-12 words, no period}
+  - id: F2
+    label: {one-line label}
+  - id: F3
+    label: {one-line label}
+surfaced: []
+announced: false
+---
 
 # Deep Dive: {Thread Title}
 
@@ -61,7 +77,17 @@ Write to the output file path provided:
 
 ## Key Findings
 
-{The core of what you discovered. Structure to serve the content — sections, tables, lists, whatever communicates most clearly. Include source URLs where applicable.}
+### F1: {label}
+
+{What you discovered for this finding. Include source URLs where applicable.}
+
+### F2: {label}
+
+{Content.}
+
+### F3: {label}
+
+{Content.}
 
 ## Limitations and Caveats
 
@@ -77,6 +103,8 @@ Write to the output file path provided:
 - {URL or source — description}
 - {URL or source — description}
 ```
+
+**Finding granularity**: each `F{N}` section should be a standalone unit — something the orchestrator can surface to the user as one concrete point without needing surrounding context. If two findings are inseparable, merge them into one.
 
 ## Your Output
 

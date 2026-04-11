@@ -6,21 +6,23 @@
 
 A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one. This step dispatches a fresh review covering the current state of the discussion.
 
+The final review is foreground (results needed before concluding), but the **never-dump rules still apply**. Findings are presented one at a time via the shared surfacing protocol — no walls of text, no bulleted lists of gaps.
+
 ## A. Check Review State
 
 Find the most recent review file in `.workflows/.cache/{work_unit}/discussion/{topic}/` by set number.
 
 #### If the most recent review has `status: pending`
 
-A review is in flight or just returned unread. Wait for completion, then read the review file.
+A review is in flight or just returned unread. Wait for completion.
 
-→ Proceed to **C. Surface and Assess**.
+→ Proceed to **C. Surface via Shared Protocol**.
 
-#### If the most recent review has `status: read`
+#### If the most recent review has `status: acknowledged`
 
-Findings were just surfaced but not yet fully discussed. Assess them now.
+Findings were announced but not yet drained. Continue presentation.
 
-→ Proceed to **C. Surface and Assess**.
+→ Proceed to **C. Surface via Shared Protocol**.
 
 #### Otherwise
 
@@ -74,60 +76,59 @@ The review agent receives:
    status: pending
    created: {date}
    set: {NNN}
+   findings: []   # sub-agent populates with F1/F2/... IDs
+   surfaced: []
+   announced: false
    ---
    ```
 
 When the agent returns:
 
-→ Proceed to **C. Surface and Assess**.
+→ Proceed to **C. Surface via Shared Protocol**.
 
 ---
 
-## C. Surface and Assess
+## C. Surface via Shared Protocol
 
-1. Read the review file
-2. Update its frontmatter to `status: read`
-3. Assess the findings — which gaps and questions are genuinely valuable?
+Because this is the final review at phase conclusion, treat the current moment as a natural break. The shared protocol's B → C → D/E path will read the file, skip the break check (we're already at a break), and begin presentation.
 
-**Do not dump the review output verbatim.** Digest it and derive questions. The review surfaces gaps — you turn them into productive discussion.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-#### If gaps or questions were found
+When the protocol returns (either because all findings have been drained to `incorporated`, or the user has engaged with the queued findings naturally), proceed to **D. Conclude or Return**.
 
-Surface the most impactful findings conversationally, then:
+---
+
+## D. Conclude or Return
+
+After the shared protocol returns, determine the next step.
+
+#### If the user wants to return to discussion (e.g., they asked to `explore` a finding that opened a new subtopic)
+
+The new subtopic has been added to the Discussion Map as `pending`. The user is back in the flow.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 3**.
+
+#### If all findings were drained (explored, skipped, or parked) without reopening the discussion
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-The final review identified gaps worth discussing before concluding.
+Final review complete. Ready to conclude the discussion?
 
-- **`d`/`discuss`** — Return to the discussion to address these gaps
-- **`p`/`proceed`** — Proceed to conclusion (gaps noted in Summary)
+- **`y`/`yes`** — Conclude
+- **`n`/`no`** — Return to discussion
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-**If `discuss`:**
+**If `yes`:**
 
-Add unresolved items to the Discussion Map as `pending` subtopics. Update the review file to `status: incorporated`. Commit.
+Note any skipped findings in the Summary → Open Threads section of the discussion file. Commit.
+
+→ Return to caller.
+
+**If `no`:**
 
 → Return to **[the skill](../SKILL.md)** for **Step 3**.
-
-**If `proceed`:**
-
-Note unaddressed gaps in the Summary → Open Threads section of the discussion file. Update the review file to `status: incorporated`. Commit.
-
-→ Return to caller.
-
-#### If no gaps found
-
-> *Output the next fenced block as a code block:*
-
-```
-Final review — no gaps identified. Discussion is thorough.
-```
-
-Update the review file to `status: incorporated`.
-
-→ Return to caller.

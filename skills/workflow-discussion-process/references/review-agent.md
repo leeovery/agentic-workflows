@@ -23,7 +23,7 @@ No dispatch needed. Continue with the session loop.
 
 At natural conversational breaks, check for completed results.
 
-→ Proceed to **B. Check for Results**.
+→ Proceed to **B. Check and Surface**.
 
 ---
 
@@ -58,8 +58,13 @@ The review agent receives:
    status: pending
    created: {date}
    set: {NNN}
+   findings: []   # sub-agent populates with F1/F2/... IDs
+   surfaced: []
+   announced: false
    ---
    ```
+
+The sub-agent writes finding entries with stable IDs (`F1`, `F2`, …) into the `findings:` list. See `agents/workflow-discussion-review.md` for the schema.
 
 > *Output the next fenced block as a code block:*
 
@@ -80,36 +85,12 @@ The discussion continues — do not wait for the agent to return.
 
 ---
 
-## B. Check for Results
+## B. Check and Surface
 
-Scan the cache directory for review files with `status: pending` in their frontmatter.
+Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. This enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection.
 
-#### If no pending review files
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-Nothing to surface. Continue the discussion.
+**Deriving subtopics during presentation**: When the user engages with a finding via `explore`, reframe it as a practical concern tied to project constraints and add it to the Discussion Map as a `pending` subtopic. Commit the update.
 
-#### If a pending review file exists
-
-→ Proceed to **C. Surface Findings**.
-
----
-
-## C. Surface Findings
-
-1. Read the review file
-2. Update its frontmatter to `status: read`
-3. Assess the findings — which gaps and questions are genuinely valuable?
-
-**Do not dump the review output verbatim.** Digest it and derive questions. The review surfaces gaps — you turn them into productive discussion.
-
-Example phrasing — adapt naturally:
-
-> "A background review flagged a couple of gaps worth considering: we haven't touched on what happens when {X fails}, and the caching decision assumed {Y} but we haven't validated that. Want to explore either of those?"
-
-If all findings are minor or already addressed:
-
-> "A background review came back — nothing we haven't already covered."
-
-**Deriving subtopics**: Extract the most impactful gaps and open questions. Reframe them as practical concerns tied to the project's constraints. Add unresolved items to the Discussion Map as `pending` subtopics. Commit the update.
-
-**Marking as incorporated**: After findings have been discussed and their subtopics explored (or deliberately set aside), update the file frontmatter to `status: incorporated`. No commit needed for cache file status changes.
+**Skipped findings**: Items skipped during presentation are added to the Summary → Open Threads section of the discussion file.

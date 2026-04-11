@@ -36,13 +36,31 @@ You receive via the orchestrator's prompt:
 3. **Do not evaluate options** — whether one technical approach is better than another is not your concern. Whether the research has adequately explored the landscape of options is.
 4. **Be specific** — "needs more depth" is not useful. "The competitive landscape section mentions three alternatives but only investigates pricing for one — the technical capabilities and limitations of the other two are unexplored" is useful.
 5. **Stay scoped** — keep findings within what the research intends to cover. Do not introduce entirely new research domains or expand the scope.
+6. **Assign stable IDs** — every unexplored area, shallow-coverage item, and unvalidated assumption gets a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to track which findings have been surfaced to the user. Never renumber, never reuse IDs. Numbering is sequential across all three sections (don't reset).
 
 ## Output File Format
 
-Write to the output file path provided:
+Write to the output file path provided. The orchestrator passes skeleton frontmatter (`type`, `status`, `created`, `set`, `surfaced: []`). You must add a `findings:` list containing one entry per unexplored area, shallow-coverage item, or unvalidated assumption with its stable ID, kind, and a short label. The body mirrors the same IDs as section headings so the orchestrator can look up full content for any ID.
 
 ```markdown
-{frontmatter provided by orchestrator}
+---
+type: review
+status: pending
+created: {date}
+set: {NNN}
+findings:
+  - id: F1
+    kind: unexplored
+    label: {one-line label — 8-12 words, no period}
+  - id: F2
+    kind: shallow
+    label: {one-line label}
+  - id: F3
+    kind: assumption
+    label: {one-line label}
+surfaced: []
+announced: false
+---
 
 # Research Review — Set {NNN}
 
@@ -52,28 +70,41 @@ Write to the output file path provided:
 
 ## Unexplored Areas
 
-1. {Specific area that hasn't been touched — what's missing and why it matters}
-2. {Specific area}
+### F1: {label}
+
+{Specific area that hasn't been touched — what's missing and why it matters.}
 
 ## Shallow Coverage
 
-1. {Area where research exists but lacks depth — what's there and what's missing}
-2. {Area}
+### F2: {label}
+
+{Area where research exists but lacks depth — what's there and what's missing.}
 
 ## Unvalidated Assumptions
 
-1. {Assumption being taken for granted — what was assumed and how it could be checked}
-2. {Assumption}
+### F3: {label}
+
+{Assumption being taken for granted — what was assumed and how it could be checked.}
 
 ## Observations
 
 {Optional. Connections between threads, patterns across findings, angles that could complement each other. Keep brief.}
 ```
 
+**Kind values**: `unexplored`, `shallow`, `assumption`. Numbering is continuous across all three sections — if you have 2 unexplored, 1 shallow, 1 assumption, the IDs are F1, F2, F3, F4.
+
 If no significant gaps found:
 
 ```markdown
-{frontmatter provided by orchestrator}
+---
+type: review
+status: pending
+created: {date}
+set: {NNN}
+findings: []
+surfaced: []
+announced: false
+---
 
 # Research Review — Set {NNN}
 

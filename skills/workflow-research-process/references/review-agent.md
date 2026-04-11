@@ -23,7 +23,7 @@ No dispatch needed. Continue with the session loop.
 
 At natural conversational breaks, check for completed results.
 
-→ Proceed to **B. Check for Results**.
+→ Proceed to **B. Check and Surface**.
 
 ---
 
@@ -58,8 +58,13 @@ The review agent receives:
    status: pending
    created: {date}
    set: {NNN}
+   findings: []   # sub-agent populates with F1/F2/... IDs
+   surfaced: []
+   announced: false
    ---
    ```
+
+The sub-agent writes finding entries with stable IDs (`F1`, `F2`, …) into the `findings:` list. See `agents/workflow-research-review.md` for the schema.
 
 > *Output the next fenced block as a code block:*
 
@@ -80,38 +85,12 @@ The research session continues — do not wait for the agent to return.
 
 ---
 
-## B. Check for Results
+## B. Check and Surface
 
-Scan the cache directory for review files with `status: pending` in their frontmatter.
+Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. This enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection.
 
-#### If no pending review files
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-Nothing to surface. Continue the research session.
+**Offering deep dives during presentation**: When the user engages with a finding via `explore` and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
 
-→ Return to caller.
-
-#### If a pending review file exists
-
-→ Proceed to **C. Surface Findings**.
-
----
-
-## C. Surface Findings
-
-1. Read the review file
-2. Update its frontmatter to `status: read`
-3. Assess the findings — which gaps, shallow areas, and assumptions are genuinely worth exploring?
-
-**Do not dump the review output verbatim.** Digest it and present it conversationally. The review surfaces gaps — you turn them into productive research threads.
-
-Example phrasing — adapt naturally:
-
-> "A background review flagged some areas we haven't touched yet: we haven't looked at the regulatory side of {X}, and the competitor analysis assumed {Y} without checking. There's also a shallow spot around {Z} — we mentioned it but never dug in. Worth exploring any of these?"
-
-If all findings are minor or already addressed:
-
-> "A background review came back — nothing significant beyond what we've already covered."
-
-**Offering deep dives**: If a gap is substantial and independent enough for its own investigation, offer to dispatch a deep-dive agent for it. This is a natural transition — the review identifies what's missing, the deep dive goes and finds it. Follow the deep-dive agent instructions for the offer and dispatch.
-
-**Marking as incorporated**: After findings have been discussed and either explored or deliberately set aside, update the file frontmatter to `status: incorporated`. No commit needed for cache file status changes.
+**Skipped findings**: Items skipped during presentation are added to the Open Questions section of the research file.

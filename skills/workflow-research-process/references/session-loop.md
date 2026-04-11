@@ -8,7 +8,7 @@
 
 Not a rigid checklist — a natural cadence for productive research conversations:
 
-1. **Check for findings** — At natural conversational breaks, check for completed agent results and surface them per the review agent and deep-dive agent instructions loaded by the session wrapper. Skip on the first iteration (no agents have been dispatched yet).
+1. **Check for findings** — Before each conversational turn, scan the cache directory for pending or acknowledged background-agent files (review agents, deep-dive agents). If any are found, delegate handling to the shared surfacing protocol loaded by review-agent.md and deep-dive-agent.md. The protocol enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly in this step — always go through the shared protocol, which decides whether now is a natural break.** Skip this step on the first iteration (no agents have been dispatched yet).
 
 2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next.
 

@@ -18,7 +18,7 @@ Two types of background agent operate during the discussion. Load their lifecycl
 
 The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. Follow this loop:
 
-1. **Check for findings** — At natural conversational breaks, check for completed agent results and surface them. Skip on the first iteration (no agents have been dispatched yet).
+1. **Check for findings** — Before each conversational turn, scan the cache directory for pending or acknowledged background-agent files (review agents, synthesis agents). If any are found, delegate handling to the shared surfacing protocol loaded by review-agent.md and perspective-agents.md. The protocol enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection. **Do not surface findings directly in this step — always go through the shared protocol, which decides whether now is a natural break.** Skip this step on the first iteration (no agents have been dispatched yet).
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; add them to the Discussion Map as `pending`.
 3. **Navigate** — When a subtopic feels explored or a decision lands, update the Discussion Map and guide the user to what's still open. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
 4. **Document** — At natural pauses, update the discussion file. Update the Discussion Map states. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision). Capture provisional thinking for subtopics still in progress if context compaction is a risk.
@@ -164,7 +164,7 @@ Count review files in `.workflows/.cache/{work_unit}/discussion/{topic}/`.
   Dispatching now.
 ```
 
-Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, surface findings per **C. Surface Findings** in review-agent.md.
+Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, delegate to **B. Check and Surface** in review-agent.md — the shared surfacing protocol applies the never-dump rules and presents findings one at a time.
 
 → Return to **B. Session Loop**.
 
@@ -219,7 +219,7 @@ When the user indicates they want to conclude the discussion (e.g., "that covers
   Dispatching now.
 ```
 
-Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, surface findings per **C. Surface Findings** in review-agent.md. Then continue with the conclusion flow below.
+Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, delegate to **B. Check and Surface** in review-agent.md — the shared surfacing protocol applies the never-dump rules and presents findings one at a time. Then continue with the conclusion flow below.
 
 **If review files exist:**
 
@@ -273,7 +273,7 @@ There are still {N} background agents working.
 
 **If `wait`:**
 
-Check for agent completion. When all agents have returned, check for findings and surface them.
+Check for agent completion. When all agents have returned, delegate surfacing to the shared protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
 
 → Return to **B. Session Loop**.
 
