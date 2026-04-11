@@ -33,3 +33,5 @@ Any of these means defer:
 ## C. When Uncertain
 
 Default to NOT interrupting. The cache file persists; the `acknowledged` state is designed to let you defer safely. The next iteration of the session loop's check-for-results will reconsider the same question.
+
+→ Return to caller.

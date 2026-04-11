@@ -150,20 +150,14 @@ The discussion continues — do not wait for the agent to return.
 
 ## D. Check and Surface
 
-This section handles both in-flight perspective checks (promote to synthesis when ready) and synthesis surfacing (apply the never-dump protocol).
+This section handles two responsibilities: promoting completed perspective sets to synthesis, and surfacing synthesis findings via the never-dump protocol.
 
-### D1. Perspective Completion Check
+**Perspective completion check** — scan the cache directory for perspective files. For each set `{NNN}`, if all perspective files in the set have returned AND no synthesis file exists for that set, proceed to **C. Dispatch Synthesis Agent** for that set.
 
-Scan the cache directory for perspective files. For each set `{NNN}`:
-
-- If all perspective files in the set have returned AND no synthesis file exists for that set → Proceed to **C. Dispatch Synthesis Agent** for that set.
-
-### D2. Synthesis Surfacing
-
-Synthesis files carry findings (`tensions:`) that must NOT be dumped. Delegate presentation to the shared surfacing protocol.
+**Synthesis surfacing** — synthesis files carry findings (`tensions:`) that must NOT be dumped. Delegate presentation to the shared surfacing protocol.
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `synthesis`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `synthesis-*.md`, findings_key = `tensions`.
 
-**Deriving subtopics during presentation**: When the user engages with a tension via `explore`, reframe it as a practical subtopic tied to project constraints and add it to the Discussion Map as `pending`. Commit the update.
+**Deriving subtopics during presentation**: When the user engages with a raised tension, reframe it as a practical subtopic tied to project constraints and add it to the Discussion Map as `pending`. Commit the update.
 
 **Perspective files**: The shared protocol handles the synthesis file only. The individual perspective files remain available for reference if the user wants to drill into a specific angle — mention their existence during presentation if relevant, but do not read them out.

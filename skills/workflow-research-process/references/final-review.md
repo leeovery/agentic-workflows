@@ -4,29 +4,37 @@
 
 ---
 
-A final review ensures the research is thorough before moving to discussion. Even if review agents ran during the session, the research may have progressed significantly since the last one. This step dispatches a fresh review covering the current state of the research.
+A final review ensures the research is thorough before moving to discussion. Even if review agents ran during the session, the research may have progressed significantly since the last one.
+
+This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the research session so the user can engage naturally. The next time the user signals done, Step 4 re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point Step 4 returns to the backbone to proceed toward conclusion.
+
+The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
 ## A. Check Review State
 
 Find the most recent review file in `.workflows/.cache/{work_unit}/research/{topic}/` by set number.
 
-#### If the most recent review has `status: pending`
-
-A review is in flight or just returned unread. Wait for completion, then read the review file.
-
-→ Proceed to **C. Surface and Assess**.
-
-#### If the most recent review has `status: read`
-
-Findings were just surfaced but not yet fully discussed. Assess them now.
-
-→ Proceed to **C. Surface and Assess**.
-
-#### Otherwise
-
-This covers: no review files exist, or the most recent review has `status: incorporated` (findings were discussed but the research may have moved on since). In both cases, dispatch a fresh review.
+#### If no review files exist
 
 → Proceed to **B. Dispatch Final Review**.
+
+#### If the most recent review has `status: incorporated`
+
+The prior review was fully drained. Dispatch a fresh one to catch anything that emerged since.
+
+→ Proceed to **B. Dispatch Final Review**.
+
+#### If the most recent review has `status: pending`
+
+A review is in flight or just returned unread.
+
+→ Proceed to **C. Surface via Shared Protocol**.
+
+#### If the most recent review has `status: acknowledged`
+
+Findings from the current review are still being drained.
+
+→ Proceed to **C. Surface via Shared Protocol**.
 
 ---
 
@@ -61,7 +69,7 @@ Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
 **Agent path**: `../../../agents/workflow-research-review.md`
 
-Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before concluding).
+Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
 
 The review agent receives:
 
@@ -74,60 +82,40 @@ The review agent receives:
    status: pending
    created: {date}
    set: {NNN}
+   findings: []   # sub-agent populates with F1/F2/... IDs
+   surfaced: []
+   announced: false
    ---
    ```
 
 When the agent returns:
 
-→ Proceed to **C. Surface and Assess**.
+→ Proceed to **C. Surface via Shared Protocol**.
 
 ---
 
-## C. Surface and Assess
+## C. Surface via Shared Protocol
 
-1. Read the review file
-2. Update its frontmatter to `status: read`
-3. Assess the findings — which gaps, shallow areas, and assumptions are genuinely worth exploring?
+Because this is final review at phase conclusion, the current moment IS a natural break — the shared protocol will render the announce menu (first entry) or raise the next unsurfaced finding (subsequent entries).
 
-**Do not dump the review output verbatim.** Digest it and present it conversationally. The review surfaces gaps — you turn them into productive research threads.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-#### If gaps or questions were found
+When the protocol returns, proceed to **D. Route Next**.
 
-Surface the most impactful findings conversationally, then:
+---
 
-> *Output the next fenced block as markdown (not a code block):*
+## D. Route Next
 
-```
-· · · · · · · · · · · ·
-The final review identified gaps worth exploring before concluding.
+Re-read the most recent review file's `status:` and `surfaced:` fields.
 
-- **`e`/`explore`** — Return to the research session to explore these gaps
-- **`p`/`proceed`** — Proceed to conclusion (gaps noted in research file)
-· · · · · · · · · · · ·
-```
+#### If `status: incorporated`
 
-**STOP.** Wait for user response.
+All findings have been raised (or the review came back with zero gaps). The final-review gate is satisfied.
 
-**If `explore`:**
+→ Return to caller.
 
-Note the gaps in the research file for exploration. Update the review file to `status: incorporated`. Commit.
+#### If `status: acknowledged`
+
+A finding was just raised (or the announce menu was just shown / the parenthetical fired). Control belongs to the conversation — return the user to the research session so they can engage naturally. The session loop's check-for-results will pick up subsequent findings at natural breaks. When the user signals done again, Step 4 re-runs and this flow resumes.
 
 → Return to **[the skill](../SKILL.md)** for **Step 4**.
-
-**If `proceed`:**
-
-Note unaddressed gaps in the research file. Update the review file to `status: incorporated`. Commit.
-
-→ Return to caller.
-
-#### If no gaps found
-
-> *Output the next fenced block as a code block:*
-
-```
-Final review — no gaps identified. Research is thorough.
-```
-
-Update the review file to `status: incorporated`.
-
-→ Return to caller.

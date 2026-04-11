@@ -91,6 +91,6 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-**Offering deep dives during presentation**: When the user engages with a finding via `explore` and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
+**Offering deep dives during presentation**: If the user engages with a raised finding and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
 
-**Skipped findings**: Items skipped during presentation are added to the Open Questions section of the research file.
+**Findings the user deflects**: If the user doesn't want to engage with a finding Claude raised, note it in the Open Questions section of the research file.

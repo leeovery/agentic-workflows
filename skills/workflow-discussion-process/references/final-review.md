@@ -4,31 +4,37 @@
 
 ---
 
-A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one. This step dispatches a fresh review covering the current state of the discussion.
+A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one.
 
-The final review is foreground (results needed before concluding), but the **never-dump rules still apply**. Findings are presented one at a time via the shared surfacing protocol — no walls of text, no bulleted lists of gaps.
+This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 4 re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point Step 4 returns to the backbone to proceed toward conclusion.
+
+The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
 ## A. Check Review State
 
 Find the most recent review file in `.workflows/.cache/{work_unit}/discussion/{topic}/` by set number.
 
+#### If no review files exist
+
+→ Proceed to **B. Dispatch Final Review**.
+
+#### If the most recent review has `status: incorporated`
+
+The prior review was fully drained. Dispatch a fresh one to catch anything that emerged since.
+
+→ Proceed to **B. Dispatch Final Review**.
+
 #### If the most recent review has `status: pending`
 
-A review is in flight or just returned unread. Wait for completion.
+A review is in flight or just returned unread.
 
 → Proceed to **C. Surface via Shared Protocol**.
 
 #### If the most recent review has `status: acknowledged`
 
-Findings were announced but not yet drained. Continue presentation.
+Findings from the current review are still being drained.
 
 → Proceed to **C. Surface via Shared Protocol**.
-
-#### Otherwise
-
-This covers: no review files exist, or the most recent review has `status: incorporated` (findings were discussed but the discussion may have moved on since). In both cases, dispatch a fresh review.
-
-→ Proceed to **B. Dispatch Final Review**.
 
 ---
 
@@ -63,7 +69,7 @@ Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
-Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before concluding).
+Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
 
 The review agent receives:
 
@@ -90,45 +96,26 @@ When the agent returns:
 
 ## C. Surface via Shared Protocol
 
-Because this is the final review at phase conclusion, treat the current moment as a natural break. The shared protocol's B → C → D/E path will read the file, skip the break check (we're already at a break), and begin presentation.
+Because this is final review at phase conclusion, the current moment IS a natural break — the shared protocol will render the announce menu (first entry) or raise the next unsurfaced finding (subsequent entries).
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-When the protocol returns (either because all findings have been drained to `incorporated`, or the user has engaged with the queued findings naturally), proceed to **D. Conclude or Return**.
+When the protocol returns, proceed to **D. Route Next**.
 
 ---
 
-## D. Conclude or Return
+## D. Route Next
 
-After the shared protocol returns, determine the next step.
+Re-read the most recent review file's `status:` and `surfaced:` fields.
 
-#### If the user wants to return to discussion (e.g., they asked to `explore` a finding that opened a new subtopic)
+#### If `status: incorporated`
 
-The new subtopic has been added to the Discussion Map as `pending`. The user is back in the flow.
-
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
-
-#### If all findings were drained (explored, skipped, or parked) without reopening the discussion
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Final review complete. Ready to conclude the discussion?
-
-- **`y`/`yes`** — Conclude
-- **`n`/`no`** — Return to discussion
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Note any skipped findings in the Summary → Open Threads section of the discussion file. Commit.
+All findings have been raised (or the review came back with zero gaps). The final-review gate is satisfied.
 
 → Return to caller.
 
-**If `no`:**
+#### If `status: acknowledged`
+
+A finding was just raised (or the announce menu was just shown / the parenthetical fired). Control belongs to the conversation — return the user to the discussion session so they can engage naturally. The session loop's check-for-results will pick up subsequent findings at natural breaks. When the user signals done again, Step 4 re-runs and this flow resumes.
 
 → Return to **[the skill](../SKILL.md)** for **Step 3**.

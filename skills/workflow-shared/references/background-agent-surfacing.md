@@ -17,13 +17,25 @@ This reference defines how to surface findings from background agents without du
 
 **Never dump findings.** Three hard rules govern every surfacing interaction:
 
-1. **Two-phase surfacing.** First acknowledge the file exists (micro-menu, no content). Only after the user opts in, present content.
-2. **One finding at a time.** Never present a list of gaps. Raise one, let the user engage, then offer the next at the next natural break.
-3. **Mid-thread protection.** If Claude is mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical acknowledgement is acceptable.
+1. **Two-phase surfacing.** First acknowledge the file exists (micro-menu, no content). Only after the user opts in, start raising findings one at a time.
+2. **One finding per turn, then exit.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged with a finding — the next session-loop check will pick up the next one at the next natural break.
+3. **Mid-thread protection.** If Claude is mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
 
 Natural-break detection is guidance, not hard-enforced.
 
 → Load **[natural-breaks.md](natural-breaks.md)** and follow its instructions as written.
+
+## LLM Turn Semantics (IMPORTANT)
+
+This protocol runs as a turn-level check, not a long-running state machine. Each invocation:
+- Reads the cache file
+- Updates frontmatter flags (`status`, `surfaced`, `announced`)
+- Optionally produces a small output (parenthetical, menu, or one raised finding)
+- **Exits back to the session loop**
+
+Once Claude raises a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Claude does NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check-for-results will naturally re-enter this protocol at the next natural break, pick the next unsurfaced finding, and raise it.
+
+**The cache file is the only state.** If it's not in frontmatter, it doesn't survive. Never expect cross-turn continuity within this protocol.
 
 ## State Machine
 
@@ -31,11 +43,11 @@ Cache files move through these states:
 
 **`pending`** → Sub-agent wrote the file. Claude hasn't read it yet.
 
-**`acknowledged`** → Claude has read the file. Sub-states are distinguished by two frontmatter flags:
+**`acknowledged`** → Claude has read the file. Two frontmatter flags track sub-state:
 - `announced: false/true` — has the user been told the file exists? Prevents repeated parenthetical interruptions on silent re-checks.
-- `surfaced: []` vs `surfaced: [F2]` — empty means no findings have been presented yet; non-empty means mid-presentation with more queued.
+- `surfaced: [F1, F3, …]` — which finding IDs have been raised. Empty means nothing raised yet; partial means mid-presentation.
 
-**`incorporated`** → All findings have been presented (explored, skipped, or parked). Terminal state.
+**`incorporated`** → All findings have been raised. Terminal state.
 
 ---
 
@@ -55,17 +67,9 @@ Nothing to surface.
 
 #### If an `acknowledged` file exists
 
-Inspect its `surfaced:` list to route.
+The file was first-read on an earlier iteration. C. Decide Action will read its flags and decide what to do next.
 
-**If `surfaced:` is empty:**
-
-→ Proceed to **C. Break Check**.
-
-**If `surfaced:` is non-empty:**
-
-The file is mid-presentation — more findings remain. Re-enter the presentation loop at the next natural break.
-
-→ Proceed to **C. Break Check**.
+→ Proceed to **C. Decide Action**.
 
 ---
 
@@ -73,7 +77,7 @@ The file is mid-presentation — more findings remain. Re-enter the presentation
 
 1. Read the cache file completely.
 2. Count findings in the frontmatter `{findings_key}` list.
-3. Transition the frontmatter: `status: pending` → `status: acknowledged`. Add `surfaced: []` and `announced: false` if not already present.
+3. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were set by the orchestrator at dispatch time and are already present.
 
 #### If the finding count is 0 (zero-gap case)
 
@@ -91,29 +95,23 @@ Then transition the file directly to `status: incorporated`.
 
 #### Otherwise
 
-→ Proceed to **C. Break Check**.
+→ Proceed to **C. Decide Action**.
 
 ---
 
-## C. Break Check
+## C. Decide Action
 
-Is the conversation at a natural break right now? Consult the natural-breaks checklist loaded above.
+Read current `surfaced:` and `announced:` from the cache file frontmatter. Compute the unsurfaced set: IDs in `{findings_key}` not in `surfaced:`.
 
-#### If yes — natural break
+#### If the unsurfaced set is empty
 
-The file is `acknowledged`. Route based on the `surfaced:` list:
+All findings have been raised. Transition `status: acknowledged` → `status: incorporated`.
 
-**If `surfaced:` is empty:**
+→ Return to caller.
 
-→ Proceed to **D. Announce Menu**.
+#### If the unsurfaced set is non-empty and NOT a natural break
 
-**If `surfaced:` is non-empty:**
-
-→ Proceed to **E. Present Next Finding**.
-
-#### If no — mid-thread
-
-Route based on the `announced:` flag — the user is told ONCE, not on every re-check.
+Consult the natural-breaks checklist. Route on the `announced:` flag.
 
 **If `announced: false`:**
 
@@ -133,11 +131,13 @@ The user already knows the file is waiting. Silent return — no output. The nex
 
 → Return to caller.
 
----
+#### If the unsurfaced set is non-empty and IS a natural break
 
-## D. Announce Menu
+Route on whether the user has already opted in. `surfaced:` is the signal: empty means we still need to announce; non-empty means the user picked `now` on a prior iteration and more findings remain.
 
-Render the announce menu. Do not describe findings, do not summarise, do not preview. Just the count and the menu.
+**If `surfaced:` is empty (first time at a break):**
+
+Render the announce menu. Do not describe findings, do not summarise, do not preview — just the count and the menu.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -145,82 +145,55 @@ Render the announce menu. Do not describe findings, do not summarise, do not pre
 · · · · · · · · · · · ·
 Background {agent_type} returned — flagged {N} area(s).
 
-- **`n`/`now`** — Walk through them one by one
+- **`n`/`now`** — Walk through them one at a time
 - **`l`/`later`** — Keep pulling on the current thread, I'll raise them at the next pause
 · · · · · · · · · · · ·
 ```
 
+After rendering the menu, set `announced: true` in the cache file frontmatter.
+
 **STOP.** Wait for user response.
 
-#### If `now`
+**If `now`:**
 
-→ Proceed to **E. Present Next Finding**.
+→ Proceed to **D. Raise One Finding**.
 
-#### If `later`
+**If `later`:**
 
-Leave the file as `acknowledged` with `surfaced: []`. The next natural break will re-raise this menu.
+Leave `surfaced:` empty. The next natural break will re-raise this menu.
+
+→ Return to caller.
+
+**If `surfaced:` is non-empty (user already opted in, more findings remain):**
+
+Do not re-ask. The user has already committed to walking through the set.
+
+→ Proceed to **D. Raise One Finding**.
+
+---
+
+## D. Raise One Finding
+
+This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
+
+1. Read `{findings_key}` and `surfaced:` from the cache file.
+2. Compute the unsurfaced set.
+3. Pick the single most contextually relevant unsurfaced finding. **Contextual relevance outranks sub-agent order.** If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
+4. Append its ID to `surfaced:` in the cache file frontmatter.
+5. Digest the finding. Do NOT read it out verbatim. Reframe it as one concrete concern tied to the current context, phrased as a single question.
+6. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
+
+After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Claude handles their response as normal discussion — not as protocol-driven routing.
+
+**Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The `surfaced:` list ensures nothing is forgotten across turns — every natural break re-enters this protocol and raises the next unsurfaced finding. When the user has engaged with all of them, the next check transitions the file to `incorporated`.
 
 → Return to caller.
 
 ---
 
-## E. Present Next Finding
+## When the User Wants Out
 
-1. Read the cache file's `{findings_key}` list and the current `surfaced:` list from frontmatter.
-2. Determine the unsurfaced set: findings whose IDs are NOT in `surfaced:`.
-3. Pick the single most impactful unsurfaced finding. **Contextual relevance outranks sub-agent order.** If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
-4. Digest the finding. Do NOT read it out verbatim. Reframe it as one concrete concern tied to the discussion/research context, phrased as a single question.
-5. Raise it as a single turn. One question, no lists, no bundled follow-ups.
-
-After you raise the finding and the user engages (even briefly), render the per-finding menu:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-- **`e`/`explore`** — Dig into this one
-- **`s`/`skip`** — Note it in Open Threads and move on
-- **`p`/`park`** — Come back to it later
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `explore`
-
-Continue the conversation naturally on this finding. When the finding is addressed or deliberately set aside, append its ID to `surfaced:` in the cache file frontmatter.
-
-→ Proceed to **F. Check Remaining**.
-
-#### If `skip`
-
-Add the finding to the Open Threads section of the discussion/research file. Commit. Append its ID to `surfaced:` in the cache file frontmatter.
-
-→ Proceed to **F. Check Remaining**.
-
-#### If `park`
-
-Append its ID to `surfaced:` in the cache file frontmatter. The user has been told it exists — if they want to return to it, they'll say so.
-
-→ Proceed to **F. Check Remaining**.
-
----
-
-## F. Check Remaining
-
-Count unsurfaced findings: items in `{findings_key}` whose IDs are still not in `surfaced:`.
-
-#### If unsurfaced findings remain
-
-Do not chain the next finding immediately. The user has just engaged with one — give the conversation room to breathe. The next natural break will pick it up via the session loop's check-for-results mechanism. The file stays `acknowledged` with a partial `surfaced:` list.
-
-→ Return to caller.
-
-#### If no unsurfaced findings remain
-
-Transition the cache file frontmatter: `status: acknowledged` → `status: incorporated`. No commit needed for cache file status changes.
-
-→ Return to caller.
+If during presentation the user explicitly says they're done with the review ("skip the rest", "we're good", "that's enough findings"), treat all remaining unsurfaced IDs as implicitly parked — append them to `surfaced:` in bulk, and the next check will transition the file to `incorporated`. If any skipped items are worth noting, add them to the phase's Open Threads / Open Questions section.
 
 ---
 
