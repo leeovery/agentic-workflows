@@ -93,4 +93,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 **Offering deep dives during presentation**: If the user engages with a raised finding and it's substantial enough for independent investigation, offer to dispatch a deep-dive agent for it. Follow the deep-dive agent instructions for the offer and dispatch.
 
-**Findings the user deflects**: If the user doesn't want to engage with a finding Claude raised, note it in the Open Questions section of the research file.
+**Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Open Questions section of the research file.

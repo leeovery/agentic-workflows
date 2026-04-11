@@ -151,4 +151,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
 
-**Findings the user deflects**: If the user doesn't want to engage with a finding Claude raised, note it in the Open Questions section of the research file.
+**Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Open Questions section of the research file.

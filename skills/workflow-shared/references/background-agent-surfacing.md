@@ -19,7 +19,7 @@ This reference defines how to surface findings from background agents without du
 
 1. **Two-phase surfacing.** First acknowledge the file exists (micro-menu, no content). Only after the user opts in, start raising findings one at a time.
 2. **One finding per turn, then exit.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged with a finding — the next session-loop check will pick up the next one at the next natural break.
-3. **Mid-thread protection.** If Claude is mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
+3. **Mid-thread protection.** If you are mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
 
 Natural-break detection is guidance, not hard-enforced.
 
@@ -33,7 +33,7 @@ This protocol runs as a turn-level check, not a long-running state machine. Each
 - Optionally produces a small output (parenthetical, menu, or one raised finding)
 - **Exits back to the session loop**
 
-Once Claude raises a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Claude does NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check-for-results will naturally re-enter this protocol at the next natural break, pick the next unsurfaced finding, and raise it.
+Once you raise a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Do NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check-for-results will naturally re-enter this protocol at the next natural break, pick the next unsurfaced finding, and raise it.
 
 **The cache file is the only state.** If it's not in frontmatter, it doesn't survive. Never expect cross-turn continuity within this protocol.
 
@@ -41,9 +41,9 @@ Once Claude raises a finding, control belongs to the conversation. The user enga
 
 Cache files move through these states:
 
-**`pending`** → Sub-agent wrote the file. Claude hasn't read it yet.
+**`pending`** → Sub-agent wrote the file. You haven't read it yet.
 
-**`acknowledged`** → Claude has read the file. Two frontmatter flags track sub-state:
+**`acknowledged`** → You have read the file. Two frontmatter flags track sub-state:
 - `announced: false/true` — has the user been told the file exists? Prevents repeated parenthetical interruptions on silent re-checks.
 - `surfaced: [F1, F3, …]` — which finding IDs have been raised. Empty means nothing raised yet; partial means mid-presentation.
 
@@ -183,7 +183,7 @@ This section runs once per invocation and then exits. It never waits in-protocol
 5. Digest the finding. Do NOT read it out verbatim. Reframe it as one concrete concern tied to the current context, phrased as a single question.
 6. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
 
-After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Claude handles their response as normal discussion — not as protocol-driven routing.
+After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing.
 
 **Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The `surfaced:` list ensures nothing is forgotten across turns — every natural break re-enters this protocol and raises the next unsurfaced finding. When the user has engaged with all of them, the next check transitions the file to `incorporated`.
 

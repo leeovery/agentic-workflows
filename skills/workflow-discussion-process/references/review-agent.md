@@ -93,4 +93,4 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and add it to the Discussion Map as a `pending` subtopic. Commit the update.
 
-**Findings the user deflects**: If the user doesn't want to engage with a finding Claude raised, note it in the Summary → Open Threads section of the discussion file.
+**Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Summary → Open Threads section of the discussion file.
