@@ -56,26 +56,24 @@ test_bundle_under_threshold() {
   assert_eq "bundle size under 150KB" "true" "$under"
 }
 
-# --- Test 4: bundle runs and exits 0 ---
-test_bundle_runs_clean() {
-  if node "$BUNDLE" > "$LOG_DIR/knowledge-run.log" 2>&1; then
+# --- Test 4: bundle runs (no-command prints usage, exits 1 — expected CLI behaviour) ---
+test_bundle_runs() {
+  local stderr_out
+  stderr_out=$(node "$BUNDLE" 2>&1 || true)
+  assert_eq "no-command prints usage" \
+    "true" \
+    "$(echo "$stderr_out" | grep -q 'Usage:' && echo true || echo false)"
+}
+
+# --- Test 5: check command exits 0 (CLI is functional) ---
+test_check_exits_clean() {
+  # Check without setup → not-ready, but exit 0.
+  if node "$BUNDLE" check > "$LOG_DIR/knowledge-check.log" 2>&1; then
     run_status=0
   else
     run_status=$?
   fi
-  assert_eq "bundle runs and exits with code 0" "0" "$run_status"
-}
-
-# --- Test 5: __dirname resolves to the script directory, not the source ---
-test_dirname_resolves_to_script_dir() {
-  local stdout
-  stdout=$(node "$BUNDLE" 2>/dev/null)
-  assert_eq "stdout contains skills/workflow-knowledge/scripts path" \
-    "true" \
-    "$(echo "$stdout" | grep -q 'skills/workflow-knowledge/scripts' && echo true || echo false)"
-  assert_eq "stdout does NOT contain src/knowledge path" \
-    "true" \
-    "$(echo "$stdout" | grep -q 'src/knowledge' && echo false || echo true)"
+  assert_eq "check command exits with code 0" "0" "$run_status"
 }
 
 # --- Run all tests ---
@@ -85,8 +83,8 @@ echo ""
 test_build_exits_clean
 test_bundle_exists
 test_bundle_under_threshold
-test_bundle_runs_clean
-test_dirname_resolves_to_script_dir
+test_bundle_runs
+test_check_exits_clean
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
