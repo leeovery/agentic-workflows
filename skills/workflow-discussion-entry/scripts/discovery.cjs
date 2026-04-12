@@ -81,6 +81,20 @@ function discover(cwd, workUnit) {
     surfacedTopics.push(...computePendingFromResearch(m));
   }
 
+  // --- Gap input checksum (discussion files + research-analysis.md) ---
+  let gapInputChecksum = null;
+  {
+    const gapInputFiles = [];
+    for (const m of manifests) {
+      const discussionDir = path.join(workflowsDir, m.name, 'discussion');
+      const dFiles = listFiles(discussionDir, '.md');
+      for (const f of dFiles) gapInputFiles.push(path.join(discussionDir, f));
+      const researchAnalysisPath = path.join(workflowsDir, m.name, '.state', 'research-analysis.md');
+      if (fileExists(researchAnalysisPath)) gapInputFiles.push(researchAnalysisPath);
+    }
+    gapInputChecksum = gapInputFiles.length > 0 ? filesChecksum(gapInputFiles) : null;
+  }
+
   // --- Gap analysis cache state ---
   const gapCacheEntries = [];
   for (const m of manifests) {
@@ -88,20 +102,11 @@ function discover(cwd, workUnit) {
     const gapCache = researchPhase.gap_analysis_cache;
     if (!gapCache || !gapCache.checksum) continue;
 
-    // Build the same input file list used for gap analysis checksum:
-    // all discussion .md files + research-analysis.md (if exists)
-    const discussionDir = path.join(workflowsDir, m.name, 'discussion');
-    const dFiles = listFiles(discussionDir, '.md');
-    const gapInputFiles = dFiles.map(f => path.join(discussionDir, f));
-    const researchAnalysisPath = path.join(workflowsDir, m.name, '.state', 'research-analysis.md');
-    if (fileExists(researchAnalysisPath)) gapInputFiles.push(researchAnalysisPath);
-
     let status = 'stale';
     let reason = 'discussions have changed since gap analysis was generated';
 
-    if (gapInputFiles.length > 0) {
-      const currentChecksum = filesChecksum(gapInputFiles);
-      if (gapCache.checksum === currentChecksum) {
+    if (gapInputChecksum) {
+      if (gapCache.checksum === gapInputChecksum) {
         status = 'valid';
         reason = 'checksums match';
       }
@@ -147,6 +152,7 @@ function discover(cwd, workUnit) {
     },
     surfaced_topics: surfacedTopics,
     gap_topics: gapTopics,
+    gap_input_checksum: gapInputChecksum,
     cache: { entries: cacheEntries },
     gap_cache: { entries: gapCacheEntries },
     state: { has_research: hasResearch, has_discussions: hasDiscussions, scenario },
@@ -195,6 +201,9 @@ function format(result) {
     for (const c of result.gap_cache.entries) {
       lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);
     }
+  }
+  if (result.gap_input_checksum) {
+    lines.push(`  gap_input_checksum: ${result.gap_input_checksum}`);
   }
   lines.push('');
 

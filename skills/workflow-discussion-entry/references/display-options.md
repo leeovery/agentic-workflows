@@ -150,4 +150,10 @@ rm .workflows/{work_unit}/.state/research-analysis.md
 rm .workflows/{work_unit}/.state/discussion-gap-analysis.md
 ```
 
+**If research exists (`state.has_research` is true):**
+
 → Return to **[the skill](../SKILL.md)** for **Step 4**.
+
+**If no research exists (gap analysis only):**
+
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.

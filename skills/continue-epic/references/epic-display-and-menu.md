@@ -141,10 +141,10 @@ Show only statuses and categories that appear in the current display. No `---` s
   Key:
     Status:
       in-progress — work is ongoing
-      completed                — phase or implementation done
-      pending from research    — identified by research, not yet discussed
+      completed            — phase or implementation done
+      pending from research — identified by research, not yet discussed
       pending from gap analysis — identified by discussion gap analysis
-      promoted                 — moved to its own cross-cutting work unit
+      promoted             — moved to its own cross-cutting work unit
 
     Blocking reason:
       blocked by {plan}:{task} — depends on another plan's task

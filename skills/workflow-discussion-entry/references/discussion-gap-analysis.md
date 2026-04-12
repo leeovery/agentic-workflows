@@ -6,9 +6,15 @@
 
 ## A. Check Prerequisites
 
-If `state.has_discussions` is false, there are no discussions to analyse for gaps.
+#### If `state.has_discussions` is false
+
+There are no discussions to analyse for gaps.
 
 → Return to caller.
+
+#### Otherwise
+
+→ Proceed to **B. Check Cache**.
 
 ---
 
@@ -105,28 +111,11 @@ For each topic, write a summary covering all constituent gaps — as long as nee
 
 ## F. Save Results
 
-Compute the checksum for gap analysis inputs. The inputs are: all discussion `.md` files + `.workflows/{work_unit}/.state/research-analysis.md` (if it exists).
-
-To compute the checksum, build the list of input file paths in the same order the discovery script uses (discussion files sorted alphabetically, then research-analysis.md if present), then use the discussion checksum approach. Since you cannot compute MD5 directly, read the current checksum from the discovery output — the discovery script already computes this. Use the following approach:
-
-Build the file list and compute checksum via bash:
-```bash
-node -e "
-const path = require('path');
-const { listFiles, fileExists, filesChecksum } = require('./.claude/skills/workflow-shared/scripts/discovery-utils.cjs');
-const wu = '{work_unit}';
-const wDir = path.join('.workflows', wu);
-const dDir = path.join(wDir, 'discussion');
-const dFiles = listFiles(dDir, '.md').map(f => path.join(dDir, f));
-const ra = path.join(wDir, '.state', 'research-analysis.md');
-if (fileExists(ra)) dFiles.push(ra);
-console.log(filesChecksum(dFiles));
-"
-```
+Use `gap_input_checksum` from the discovery output parsed in Step 1. This checksum covers all discussion `.md` files + `.workflows/{work_unit}/.state/research-analysis.md` (if it exists) and is pre-computed by the discovery script.
 
 Write cache metadata to manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research gap_analysis_cache.checksum "{computed_checksum}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research gap_analysis_cache.checksum "{gap_input_checksum from discovery}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research gap_analysis_cache.generated "{ISO timestamp}"
 # Push one entry per discussion file that was read:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research gap_analysis_cache.discussion_files "{discussion-file}.md"

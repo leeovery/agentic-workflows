@@ -1,7 +1,7 @@
 ---
 name: workflow-discussion-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discussion-entry/scripts/discovery.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/research-analysis.md), Bash(rm .workflows/*/.state/discussion-gap-analysis.md), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node -e *), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-discussion-entry/scripts/discovery.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/research-analysis.md), Bash(rm .workflows/*/.state/discussion-gap-analysis.md), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -108,6 +108,7 @@ Parse the discovery output to understand:
   - `reason` - explanation of the status
   - `generated` - when the cache was created
   - `discussion_files` - list of files that were analyzed
+- `gap_input_checksum` - current checksum of all discussion files + research-analysis.md (if exists)
 
 **From `state` section:**
 - `scenario` - one of: `"fresh"`, `"research_only"`, `"discussions_only"`, `"research_and_discussions"`
@@ -196,7 +197,7 @@ Load **[research-analysis.md](references/research-analysis.md)** and follow its 
 > *Output the next fenced block as a code block:*
 
 ```
-── Discussion Gap Analysis ─────────────────────
+── Discussion Gap Analysis ──────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
