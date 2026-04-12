@@ -1,6 +1,6 @@
 'use strict';
 
-const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computePendingFromResearch } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computePendingFromResearch, computePendingFromGaps } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
@@ -158,7 +158,9 @@ function buildEpicDetail(cwd, manifest) {
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
   const pendingFromResearch = computePendingFromResearch(manifest);
-  const hasPendingDiscussions = pendingFromResearch.length > 0;
+  const pendingFromGaps = computePendingFromGaps(manifest);
+  const hasPendingGaps = pendingFromGaps.length > 0;
+  const hasPendingDiscussions = pendingFromResearch.length > 0 || hasPendingGaps;
 
   return {
     phases,
@@ -168,9 +170,11 @@ function buildEpicDetail(cwd, manifest) {
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
     pending_from_research: pendingFromResearch.map(t => ({ name: t, phase: 'discussion' })),
+    pending_from_gaps: pendingFromGaps.map(t => ({ name: t, phase: 'discussion' })),
     gating: {
       has_research: hasResearch,
       has_pending_discussions: hasPendingDiscussions,
+      has_pending_gaps: hasPendingGaps,
       can_start_discussion: hasCompletedResearch,
       can_start_specification: hasCompletedDiscussion,
       can_start_planning: hasCompletedSpec,
@@ -285,6 +289,9 @@ function format(result) {
     }
     if (d.pending_from_research.length > 0) {
       lines.push(`    pending_from_research: ${d.pending_from_research.map(p => p.name).join(', ')}`);
+    }
+    if (d.pending_from_gaps.length > 0) {
+      lines.push(`    pending_from_gaps: ${d.pending_from_gaps.map(p => p.name).join(', ')}`);
     }
     if (d.completed.length > 0) {
       lines.push('    completed:');

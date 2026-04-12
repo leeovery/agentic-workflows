@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { loadActiveManifests, phaseStatus, phaseItems, phaseData, listFiles, filesChecksum, computePendingFromResearch } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, phaseStatus, phaseItems, phaseData, listFiles, fileExists, filesChecksum, computePendingFromResearch, computePendingFromGaps } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 function discover(cwd, workUnit) {
   const allManifests = loadActiveManifests(cwd);
@@ -81,6 +81,55 @@ function discover(cwd, workUnit) {
     surfacedTopics.push(...computePendingFromResearch(m));
   }
 
+  // --- Gap input checksum (discussion files + research-analysis.md) ---
+  let gapInputChecksum = null;
+  {
+    const gapInputFiles = [];
+    for (const m of manifests) {
+      const discussionDir = path.join(workflowsDir, m.name, 'discussion');
+      const dFiles = listFiles(discussionDir, '.md');
+      for (const f of dFiles) gapInputFiles.push(path.join(discussionDir, f));
+      const researchAnalysisPath = path.join(workflowsDir, m.name, '.state', 'research-analysis.md');
+      if (fileExists(researchAnalysisPath)) gapInputFiles.push(researchAnalysisPath);
+    }
+    gapInputChecksum = gapInputFiles.length > 0 ? filesChecksum(gapInputFiles) : null;
+  }
+
+  // --- Gap analysis cache state ---
+  const gapCacheEntries = [];
+  for (const m of manifests) {
+    const discussionPhase = phaseData(m, 'discussion');
+    const gapCache = discussionPhase.gap_analysis_cache;
+    if (!gapCache || !gapCache.checksum) continue;
+
+    let status = 'stale';
+    let reason = 'discussions have changed since gap analysis was generated';
+
+    if (gapInputChecksum) {
+      if (gapCache.checksum === gapInputChecksum) {
+        status = 'valid';
+        reason = 'checksums match';
+      }
+    } else {
+      reason = 'no discussion files to compare';
+    }
+
+    gapCacheEntries.push({
+      work_unit: m.name,
+      status,
+      reason,
+      checksum: gapCache.checksum,
+      generated: gapCache.generated || 'unknown',
+      discussion_files: Array.isArray(gapCache.discussion_files) ? gapCache.discussion_files : [],
+    });
+  }
+
+  // --- Gap topics (from discussion gap analysis) ---
+  const gapTopics = [];
+  for (const m of manifests) {
+    gapTopics.push(...computePendingFromGaps(m));
+  }
+
   // --- State ---
   const hasResearch = researchFiles.length > 0;
   const hasDiscussions = discussions.length > 0;
@@ -102,7 +151,10 @@ function discover(cwd, workUnit) {
       counts: { in_progress: inProgress, completed },
     },
     surfaced_topics: surfacedTopics,
+    gap_topics: gapTopics,
+    gap_input_checksum: gapInputChecksum,
     cache: { entries: cacheEntries },
+    gap_cache: { entries: gapCacheEntries },
     state: { has_research: hasResearch, has_discussions: hasDiscussions, scenario },
   };
 }
@@ -139,6 +191,19 @@ function format(result) {
     for (const c of result.cache.entries) {
       lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);
     }
+  }
+  lines.push('');
+
+  lines.push('=== GAP CACHE ===');
+  if (result.gap_cache.entries.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const c of result.gap_cache.entries) {
+      lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);
+    }
+  }
+  if (result.gap_input_checksum) {
+    lines.push(`  gap_input_checksum: ${result.gap_input_checksum}`);
   }
   lines.push('');
 

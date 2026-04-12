@@ -53,18 +53,26 @@ No work started yet.
 @endif
 @endif
 @endforeach
-@if(phase == discussion and gating.has_pending_discussions)
+@if(phase == discussion and pending_from_research.length > 0)
 @foreach(topic in pending_from_research)
-    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
+    @if(last_pending_topic and not gating.has_pending_gaps) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
+@endforeach
+@endif
+@if(phase == discussion and gating.has_pending_gaps)
+@foreach(topic in pending_from_gaps)
+    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from gap analysis]
 @endforeach
 @endif
 @endif
 
 @endforeach
 @if(gating.has_pending_discussions and not phases.discussion)
-  Discussion ({pending_from_research.length} pending)
+  Discussion ({pending_from_research.length + pending_from_gaps.length} pending)
 @foreach(topic in pending_from_research)
-    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
+    @if(last_pending_topic and not gating.has_pending_gaps) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
+@endforeach
+@foreach(topic in pending_from_gaps)
+    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from gap analysis]
 @endforeach
 
 @endif
@@ -135,6 +143,7 @@ Show only statuses and categories that appear in the current display. No `---` s
       in-progress — work is ongoing
       completed            — phase or implementation done
       pending from research — identified by research, not yet discussed
+      pending from gap analysis — identified by discussion gap analysis
       promoted             — moved to its own cross-cutting work unit
 
     Blocking reason:
@@ -165,7 +174,7 @@ Build a menu with two types of options:
 
 **Command options** — entry-point actions that launch a flow handling its own selection. Use letter shortcuts (first letter of command; second letter if disambiguation needed):
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
-- **`d`/`discuss`** — Start new discussion (always present). When `gating.has_pending_discussions` is true, append ` — {N} pending from research` (count from `pending_from_research.length`)
+- **`d`/`discuss`** — Start new discussion (always present). When `gating.has_pending_discussions` is true, append pending counts: ` — {N} pending from research` and/or `{M} from gap analysis` (only show each count if > 0)
 - **`p`/`pending`** — Manage pending discussion topics (only shown when `gating.has_pending_discussions` is true)
 - **`r`/`research`** — Start new research (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
@@ -285,7 +294,7 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 |---------------------|-----------|--------------|
 | discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
 | specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Grouping analysis works best with all discussions available." |
-| specification (new or continue) | `gating.has_pending_discussions` is true | "{N} pending discussion topic(s) from research have not been started. Starting these first ensures the specification covers all identified topics." |
+| specification (new or continue) | `gating.has_pending_discussions` is true | "{N} pending discussion topic(s) from research/gap analysis have not been started. Starting these first ensures the specification covers all identified topics." |
 | planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all completed." |
 | implementation | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 
@@ -402,20 +411,25 @@ Store the selected phase and topic.
 
 ## G. Manage Pending
 
-Display pending discussion topics from research and let the user take action on them. Uses `pending_from_research` from discovery output.
+Display pending discussion topics from both research analysis and discussion gap analysis. Uses `pending_from_research` and `pending_from_gaps` from discovery output.
 
 > *Output the next fenced block as a code block:*
 
 ```
 Pending Discussion Topics
 
-Topics identified by research analysis that have not yet
-been discussed.
+Topics identified by research analysis and discussion
+gap analysis that have not yet been discussed.
 
 @foreach(topic in pending_from_research)
-  {N}. {topic.name:(titlecase)}
+  {N}. {topic.name:(titlecase)} [from research]
+@endforeach
+@foreach(topic in pending_from_gaps)
+  {N}. {topic.name:(titlecase)} [from gap analysis]
 @endforeach
 ```
+
+Number all topics sequentially across both lists. Track the source of each item for routing the skip action.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -456,10 +470,16 @@ Which topic would you like to skip? Pick from the list above:
 
 **STOP.** Wait for user response.
 
-Remove the topic from the surfaced_topics array via the `pull` command:
+Remove the topic from the appropriate manifest array based on its source:
 
+**If topic is from research:**
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.research surfaced_topics "{topic}"
+```
+
+**If topic is from gap analysis:**
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discussion gap_topics "{topic}"
 ```
 
 > *Output the next fenced block as a code block:*
@@ -468,7 +488,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.rese
 Removed "{topic:(titlecase)}" from pending topics.
 ```
 
-**If no more pending topics remain:**
+**If no more pending topics remain (from either source):**
 
 → Return to **C. Menu**.
 

@@ -20,6 +20,12 @@ New discussion entry: topic was provided by the caller.
 
 → Return to caller.
 
+#### If source is `gap-analysis`
+
+→ Load **[gather-context-gap-analysis.md](gather-context-gap-analysis.md)** and follow its instructions as written.
+
+→ Return to caller.
+
 #### If source is `fresh`
 
 → Load **[name-topic.md](name-topic.md)** and follow its instructions as written.

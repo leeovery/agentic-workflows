@@ -1,7 +1,7 @@
 ---
 name: workflow-discussion-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discussion-entry/scripts/discovery.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/research-analysis.md), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-discussion-entry/scripts/discovery.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/research-analysis.md), Bash(rm .workflows/*/.state/discussion-gap-analysis.md), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -73,7 +73,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.di
 
 **If not exists (`false` — new entry):**
 
-→ Proceed to **Step 6** (Gather Context) with source="topic-provided".
+→ Proceed to **Step 7** (Gather Context) with source="topic-provided".
 
 #### If no `topic` (epic — scoped path)
 
@@ -102,6 +102,16 @@ Parse the discovery output to understand:
   - `generated` - when the cache was created
   - `research_files` - list of files that were analyzed
 
+**From `gap_cache` section:**
+- `entries` - array of gap analysis cache entries (empty if no cache exists). Each entry has:
+  - `status` - `"valid"` (checksums match) or `"stale"` (discussions changed)
+  - `reason` - explanation of the status
+  - `generated` - when the cache was created
+  - `discussion_files` - list of files that were analyzed
+
+**Top-level fields:**
+- `gap_input_checksum` - current checksum of all discussion files + research-analysis.md (if exists). Used by the gap analysis step when saving cache metadata.
+
 **From `state` section:**
 - `scenario` - one of: `"fresh"`, `"research_only"`, `"discussions_only"`, `"research_and_discussions"`
 
@@ -128,7 +138,7 @@ Parse the discovery output to understand:
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
@@ -159,7 +169,7 @@ Load **[route-scenario.md](references/route-scenario.md)** and follow its instru
 
 #### If fresh
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
@@ -184,7 +194,28 @@ Load **[research-analysis.md](references/research-analysis.md)** and follow its 
 
 ---
 
-## Step 5: Display Options
+## Step 5: Discussion Gap Analysis
+
+> *Output the next fenced block as a code block:*
+
+```
+── Discussion Gap Analysis ──────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking completed discussions for coverage gaps
+> and potential new topics.
+```
+
+Load **[discussion-gap-analysis.md](references/discussion-gap-analysis.md)** and follow its instructions as written.
+
+→ Proceed to **Step 6**.
+
+---
+
+## Step 6: Display Options
 
 > *Output the next fenced block as a code block:*
 
@@ -200,11 +231,11 @@ Load **[research-analysis.md](references/research-analysis.md)** and follow its 
 
 Load **[display-options.md](references/display-options.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Gather Context
+## Step 7: Gather Context
 
 > *Output the next fenced block as a code block:*
 
@@ -222,17 +253,17 @@ Load **[display-options.md](references/display-options.md)** and follow its inst
 
 The caller already gathered context (problem description, motivation, constraints). Do not re-ask.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 #### Otherwise
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Invoke the Skill
+## Step 8: Invoke the Skill
 
 > *Output the next fenced block as a code block:*
 

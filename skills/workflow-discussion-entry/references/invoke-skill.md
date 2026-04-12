@@ -46,6 +46,23 @@ Invoke the workflow-discussion-process skill.
 
 Invoke the [workflow-discussion-process](../../workflow-discussion-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
 
+#### If source is `gap-analysis`
+
+```
+Discussion session for: {topic}
+Work unit: {work_unit}
+Output: {output_path}
+
+Source discussions:
+- .workflows/{work_unit}/discussion/{discussion1}.md
+- .workflows/{work_unit}/discussion/{discussion2}.md
+Topic context: {summary from gap analysis cache}
+
+Invoke the workflow-discussion-process skill.
+```
+
+Invoke the [workflow-discussion-process](../../workflow-discussion-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
+
 #### If source is `continue`
 
 ```

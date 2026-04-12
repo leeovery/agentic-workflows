@@ -10,7 +10,7 @@ const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
-  phaseStatus, phaseItems, phaseData, computeNextPhase, computePendingFromResearch,
+  phaseStatus, phaseItems, phaseData, computeNextPhase, computePendingFromResearch, computePendingFromGaps,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
 describe('discovery-utils', () => {
@@ -681,6 +681,79 @@ describe('discovery-utils', () => {
         phases: { research: { surfaced_topics: 'not-an-array' } },
       });
       assert.deepStrictEqual(result, []);
+    });
+  });
+
+  describe('computePendingFromGaps', () => {
+    it('returns empty when no gap_topics', () => {
+      const result = computePendingFromGaps({ phases: { discussion: {} } });
+      assert.deepStrictEqual(result, []);
+    });
+
+    it('returns all gap topics when no discussions exist', () => {
+      const result = computePendingFromGaps({
+        phases: {
+          discussion: { gap_topics: ['integration', 'error-handling'] },
+        },
+      });
+      assert.deepStrictEqual(result, ['integration', 'error-handling']);
+    });
+
+    it('returns only undiscussed gap topics', () => {
+      const result = computePendingFromGaps({
+        phases: {
+          discussion: {
+            gap_topics: ['integration', 'error-handling', 'caching'],
+            items: { integration: { status: 'completed' } },
+          },
+        },
+      });
+      assert.deepStrictEqual(result, ['error-handling', 'caching']);
+    });
+
+    it('returns empty when all gap topics have discussions', () => {
+      const result = computePendingFromGaps({
+        phases: {
+          discussion: {
+            gap_topics: ['integration', 'caching'],
+            items: {
+              integration: { status: 'completed' },
+              caching: { status: 'in-progress' },
+            },
+          },
+        },
+      });
+      assert.deepStrictEqual(result, []);
+    });
+
+    it('returns empty when no discussion phase exists', () => {
+      const result = computePendingFromGaps({ phases: {} });
+      assert.deepStrictEqual(result, []);
+    });
+
+    it('returns empty when no phases key', () => {
+      const result = computePendingFromGaps({});
+      assert.deepStrictEqual(result, []);
+    });
+
+    it('handles gap_topics that is not an array', () => {
+      const result = computePendingFromGaps({
+        phases: { discussion: { gap_topics: 'not-an-array' } },
+      });
+      assert.deepStrictEqual(result, []);
+    });
+
+    it('is independent of surfaced_topics', () => {
+      const result = computePendingFromGaps({
+        phases: {
+          research: { surfaced_topics: ['auth', 'billing'] },
+          discussion: {
+            gap_topics: ['integration'],
+            items: { auth: { status: 'completed' } },
+          },
+        },
+      });
+      assert.deepStrictEqual(result, ['integration']);
     });
   });
 });

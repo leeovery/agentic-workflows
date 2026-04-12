@@ -36,4 +36,4 @@ What topic would you like to discuss?
 
 When user responds, proceed with their topic.
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+→ Return to **[the skill](../SKILL.md)** for **Step 7**.
