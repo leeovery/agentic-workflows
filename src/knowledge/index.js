@@ -20,6 +20,16 @@ const config = require('./config');
 
 const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification'];
 
+// Resolve manifest CLI path. In the bundled form, __dirname is
+// skills/workflow-knowledge/scripts/. In source, __dirname is
+// src/knowledge/. Both need to resolve to skills/workflow-manifest/scripts/manifest.cjs.
+const MANIFEST_JS = fs.existsSync(path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'))
+  ? path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs')
+  : path.join(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+
+const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
+const PENDING_CATCHUP_LIMIT = 5;
+
 // Default dimensions when creating a store in keyword-only mode.
 // The store schema requires a dimension parameter, but keyword-only docs
 // omit the embedding field entirely — this value just satisfies the schema.
@@ -117,6 +127,38 @@ function metadataPath() {
 
 function lockFilePath() {
   return path.join(knowledgeDir(), '.lock');
+}
+
+// ---------------------------------------------------------------------------
+// Retry wrapper — single-layer retry for all operations
+// ---------------------------------------------------------------------------
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry an async function with exponential backoff.
+ * @param {Function} fn          Async function to retry
+ * @param {{ maxAttempts?: number, backoff?: number[] }} opts
+ * @returns {Promise<*>}
+ */
+async function withRetry(fn, opts) {
+  const maxAttempts = (opts && opts.maxAttempts) || 3;
+  const backoff = (opts && opts.backoff) || DEFAULT_RETRY_BACKOFF;
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts - 1) {
+        const delay = backoff[attempt] || backoff[backoff.length - 1];
+        await sleep(delay);
+      }
+    }
+  }
+  throw lastErr;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,8 +295,8 @@ function resolveProviderState(metadata, cfg, provider) {
 
 async function cmdIndex(args, options, cfg, provider) {
   if (args.length === 0) {
-    process.stderr.write('Usage: knowledge index <source_file>\n');
-    process.exit(1);
+    // Bulk index mode — discover and index all missing completed artifacts.
+    return cmdIndexBulk(options, cfg, provider);
   }
 
   const sourceFile = args[0];
@@ -269,18 +311,35 @@ async function cmdIndex(args, options, cfg, provider) {
   // Derive identity from path.
   const identity = deriveIdentity(sourceFile);
 
+  // Index with retry wrapper.
+  const chunkCount = await withRetry(
+    () => indexSingleFile(sourceFile, identity, cfg, provider),
+    { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+  );
+
+  process.stdout.write(`Indexed ${chunkCount} chunks from ${sourceFile}\n`);
+
+  // After successful single-file index, catch up pending queue (up to 5).
+  await processPendingQueue(cfg, provider, PENDING_CATCHUP_LIMIT);
+}
+
+/**
+ * Index a single file into the store. Returns the number of chunks indexed.
+ * Separated from cmdIndex so it can be called by both single-file and bulk modes.
+ */
+async function indexSingleFile(sourceFile, identity, cfg, provider) {
   // Read work_type from manifest.
   const workType = readWorkType(identity.workUnit);
 
   // Load chunking config.
   const chunkConfigPath = path.join(__dirname, '..', 'chunking', identity.phase + '.json');
   if (!fs.existsSync(chunkConfigPath)) {
-    process.stderr.write(`Chunking config not found: ${chunkConfigPath}\n`);
-    process.exit(1);
+    throw new Error(`Chunking config not found: ${chunkConfigPath}`);
   }
   const chunkConfig = JSON.parse(fs.readFileSync(chunkConfigPath, 'utf8'));
 
   // Read and chunk the source file.
+  const absSource = path.resolve(sourceFile);
   const content = fs.readFileSync(absSource, 'utf8');
   const chunks = chunker.chunk(content, chunkConfig);
 
@@ -307,7 +366,6 @@ async function cmdIndex(args, options, cfg, provider) {
 
   if (metadataExists) {
     metadata = store.readMetadata(mp);
-    // Robustness: treat missing pending as empty array.
     if (!Array.isArray(metadata.pending)) {
       metadata.pending = [];
     }
@@ -318,12 +376,10 @@ async function cmdIndex(args, options, cfg, provider) {
   let effectiveProvider;
 
   if (metadata) {
-    // Existing metadata — check provider state.
     const state = resolveProviderState(metadata, cfg, provider);
     effectiveMode = state.mode;
     effectiveProvider = state.provider;
   } else {
-    // First index — no metadata yet.
     if (provider) {
       effectiveMode = 'full';
       effectiveProvider = provider;
@@ -341,11 +397,11 @@ async function cmdIndex(args, options, cfg, provider) {
     db = await store.createStore(dims);
   }
 
-  // Embed chunks if in full mode.
+  // Embed chunks if in full mode (with retry for embed calls).
   let embeddings = null;
   if (effectiveMode === 'full' && effectiveProvider && chunks.length > 0) {
     const texts = chunks.map((c) => c.content);
-    embeddings = effectiveProvider.embedBatch(texts);
+    embeddings = await effectiveProvider.embedBatch(texts);
   }
 
   // Build chunk documents.
@@ -372,32 +428,25 @@ async function cmdIndex(args, options, cfg, provider) {
 
   // Acquire lock, remove old chunks, insert new, save.
   await store.withLock(lp, async () => {
-    // Re-load store inside lock for safety (another process may have written).
     if (storeExists) {
       db = await store.loadStore(sp);
     } else if (fs.existsSync(sp)) {
-      // Another process created the store between our check and lock acquisition.
       db = await store.loadStore(sp);
     }
 
-    // Remove existing chunks for this identity.
     await store.removeByIdentity(db, {
       work_unit: identity.workUnit,
       phase: identity.phase,
       topic: identity.topic,
     });
 
-    // Insert new chunks.
     for (const doc of docs) {
       await store.insertDocument(db, doc);
     }
 
-    // Save store.
     await store.saveStore(db, sp);
 
-    // Write or update metadata.
     if (!metadata) {
-      // First index — create metadata with full schema.
       const newMeta = {
         provider: effectiveProvider ? cfg.provider : null,
         model: effectiveProvider ? effectiveProvider.model() : null,
@@ -407,14 +456,219 @@ async function cmdIndex(args, options, cfg, provider) {
       };
       store.writeMetadata(mp, newMeta);
     } else {
-      // Update only last_indexed — do NOT touch provider/model/dimensions
-      // or pending (owned by Task 4-4).
       metadata.last_indexed = new Date().toISOString();
       store.writeMetadata(mp, metadata);
     }
   });
 
-  process.stdout.write(`Indexed ${docs.length} chunks from ${sourceFile}\n`);
+  return docs.length;
+}
+
+// ---------------------------------------------------------------------------
+// Bulk index — discover and index all missing completed artifacts
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the manifest CLI and return stdout.
+ */
+function runManifest(args) {
+  const { execFileSync } = require('child_process');
+  return execFileSync('node', [MANIFEST_JS, ...args], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+/**
+ * Check if chunks exist for the given identity triple.
+ */
+async function isIndexed(db, workUnit, phase, topic) {
+  const res = await store.searchFulltext(db, {
+    term: '',
+    where: {
+      work_unit: { eq: workUnit },
+      phase: { eq: phase },
+      topic: { eq: topic },
+    },
+    limit: 1,
+  });
+  return res.length > 0;
+}
+
+/**
+ * Discover all completed artifacts across all work units using the manifest CLI.
+ * Returns an array of { file, workUnit, phase, topic }.
+ */
+function discoverArtifacts() {
+  const items = [];
+  let workUnits;
+
+  try {
+    const raw = runManifest(['list']);
+    workUnits = JSON.parse(raw);
+  } catch (_) {
+    return items;
+  }
+
+  if (!Array.isArray(workUnits) || workUnits.length === 0) return items;
+
+  for (const wu of workUnits) {
+    const wuName = wu.name;
+    if (!wuName) continue;
+
+    for (const phase of INDEXED_PHASES) {
+      const phaseData = wu.phases && wu.phases[phase];
+      if (!phaseData || !phaseData.items) continue;
+
+      for (const [topicName, topicData] of Object.entries(phaseData.items)) {
+        if (!topicData || topicData.status !== 'completed') continue;
+
+        // Resolve file path via manifest CLI.
+        try {
+          const raw = runManifest(['resolve', `${wuName}.${phase}.${topicName}`]);
+          const filePath = raw.trim();
+          if (filePath && fs.existsSync(path.resolve(filePath))) {
+            items.push({ file: filePath, workUnit: wuName, phase, topic: topicName });
+          }
+        } catch (_) {
+          // Skip unresolvable items.
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
+async function cmdIndexBulk(options, cfg, provider) {
+  const artifacts = discoverArtifacts();
+
+  const kDir = knowledgeDir();
+  const sp = storePath();
+
+  // Ensure knowledge directory exists.
+  if (!fs.existsSync(kDir)) {
+    fs.mkdirSync(kDir, { recursive: true });
+  }
+
+  // Load existing store to check what's already indexed.
+  let db = null;
+  if (fs.existsSync(sp)) {
+    db = await store.loadStore(sp);
+  }
+
+  let totalNew = 0;
+  let totalChunks = 0;
+  let skipped = 0;
+
+  for (const item of artifacts) {
+    // Check if already indexed.
+    if (db) {
+      const indexed = await isIndexed(db, item.workUnit, item.phase, item.topic);
+      if (indexed) {
+        skipped++;
+        continue;
+      }
+    }
+
+    // Index with retry.
+    try {
+      const identity = { workUnit: item.workUnit, phase: item.phase, topic: item.topic };
+      const count = await withRetry(
+        () => indexSingleFile(item.file, identity, cfg, provider),
+        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+      );
+      process.stdout.write(`Indexing ${item.file}... ${count} chunks\n`);
+      totalNew++;
+      totalChunks += count;
+      // Reload db after indexing so subsequent isIndexed checks see the new data.
+      if (fs.existsSync(sp)) {
+        db = await store.loadStore(sp);
+      }
+    } catch (err) {
+      // All retries exhausted — add to pending queue.
+      addToPendingQueue(item.file, err.message);
+      process.stderr.write(
+        `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
+      );
+    }
+  }
+
+  // In bulk mode, process entire pending queue (no limit).
+  await processPendingQueue(cfg, provider, Infinity);
+
+  process.stdout.write(
+    `Indexed ${totalNew} files (${totalChunks} chunks). ${skipped} already indexed.\n`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pending queue helpers
+// ---------------------------------------------------------------------------
+
+function addToPendingQueue(file, errorMsg) {
+  const mp = metadataPath();
+  if (!fs.existsSync(mp)) return;
+  const metadata = store.readMetadata(mp);
+  if (!Array.isArray(metadata.pending)) metadata.pending = [];
+  // Don't duplicate — update if same file already queued.
+  const existing = metadata.pending.findIndex((p) => p.file === file);
+  const entry = { file, failed_at: new Date().toISOString(), error: errorMsg };
+  if (existing >= 0) {
+    metadata.pending[existing] = entry;
+  } else {
+    metadata.pending.push(entry);
+  }
+  store.writeMetadata(mp, metadata);
+}
+
+function removePendingItem(file) {
+  const mp = metadataPath();
+  if (!fs.existsSync(mp)) return;
+  const metadata = store.readMetadata(mp);
+  if (!Array.isArray(metadata.pending)) return;
+  metadata.pending = metadata.pending.filter((p) => p.file !== file);
+  store.writeMetadata(mp, metadata);
+}
+
+async function processPendingQueue(cfg, provider, limit) {
+  const mp = metadataPath();
+  if (!fs.existsSync(mp)) return;
+
+  const metadata = store.readMetadata(mp);
+  if (!Array.isArray(metadata.pending) || metadata.pending.length === 0) return;
+
+  const toProcess = metadata.pending.slice(0, limit);
+
+  for (const item of toProcess) {
+    const absFile = path.resolve(item.file);
+    if (!fs.existsSync(absFile)) {
+      // File no longer exists — remove from queue.
+      process.stderr.write(`Pending item ${item.file} no longer exists. Removing from queue.\n`);
+      removePendingItem(item.file);
+      continue;
+    }
+
+    let identity;
+    try {
+      identity = deriveIdentity(item.file);
+    } catch (_) {
+      // Can't derive identity — remove from queue.
+      removePendingItem(item.file);
+      continue;
+    }
+
+    try {
+      await withRetry(
+        () => indexSingleFile(item.file, identity, cfg, provider),
+        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+      );
+      removePendingItem(item.file);
+    } catch (_) {
+      // Still failing — leave in queue.
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -576,8 +830,11 @@ async function cmdQuery(args, options, cfg, provider) {
   const similarity = cfg.similarity_threshold || 0.8;
 
   if (queryMode === 'full' && effectiveProvider) {
-    // Hybrid search — embed the query, then search.
-    const queryVector = effectiveProvider.embed(searchTerm);
+    // Hybrid search — embed the query with retry, then search.
+    const queryVector = await withRetry(
+      () => effectiveProvider.embed(searchTerm),
+      { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+    );
     results = await store.searchHybrid(db, {
       term: searchTerm,
       vector: queryVector,
@@ -756,6 +1013,7 @@ module.exports = {
   buildOptions,
   deriveIdentity,
   resolveProviderState,
+  withRetry,
   main,
   StubProvider,
   OpenAIProvider,

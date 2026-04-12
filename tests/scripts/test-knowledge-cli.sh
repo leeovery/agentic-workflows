@@ -332,14 +332,14 @@ pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.wo
 assert_eq "pending is empty array" "[]" "$pending"
 teardown_project
 
-# --- Test 16: last_indexed updated without touching pending ---
-echo "Test 16: last_indexed updated, pending untouched"
+# --- Test 16: last_indexed updated; catch-up removes nonexistent pending items ---
+echo "Test 16: last_indexed updated, catch-up cleans nonexistent pending"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# Inject a pending item.
+# Inject a pending item with a nonexistent file — catch-up will remove it.
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
@@ -347,10 +347,10 @@ node -e "
   m.pending = [{file: 'test.md', failed_at: '2026-01-01T00:00:00Z', error: 'test'}];
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
-# Re-index.
+# Re-index — catch-up runs and cleans nonexistent pending file.
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
-assert_eq "pending preserved after re-index" '[{"file":"test.md","failed_at":"2026-01-01T00:00:00Z","error":"test"}]' "$pending"
+assert_eq "nonexistent pending item removed by catch-up" '[]' "$pending"
 teardown_project
 
 # ============================================================================
@@ -500,15 +500,15 @@ node "$BUNDLE" index .workflows/auth-flow/discussion/auth-flow.md 2>/dev/null ||
 assert_eq "rejects missing file" "1" "$exit_code"
 teardown_project
 
-# --- Test 28: Index no-args prints usage ---
-echo "Test 28: Index no-args prints usage"
+# --- Test 28: Index no-args runs bulk mode ---
+echo "Test 28: Index no-args runs bulk mode"
 setup_project
 write_stub_config
 exit_code=0
 output=$(run_kb index 2>&1 || true)
 run_kb index 2>/dev/null || exit_code=$?
-assert_eq "index no-args exits 1" "1" "$exit_code"
-assert_eq "index no-args shows usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
+assert_eq "index no-args exits 0 (bulk mode)" "0" "$exit_code"
+assert_eq "index no-args shows summary" "true" "$(echo "$output" | grep -q 'already indexed' && echo true || echo false)"
 teardown_project
 
 # --- Test 29: Query no-args prints usage ---
@@ -770,6 +770,93 @@ setup_project
 write_stub_config
 output=$(run_kb remove --work-unit auth-flow 2>&1)
 assert_eq "reports 0 removed" "true" "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
+teardown_project
+
+# ============================================================================
+# BULK INDEX TESTS
+# ============================================================================
+
+echo ""
+echo "=== Bulk Index Tests ==="
+
+# Helper: initialize a phase topic in the manifest.
+init_phase_topic() {
+  local wu="$1" phase="$2" topic="$3" status="$4"
+  cd "$TEST_ROOT"
+  node "$MANIFEST_JS" init-phase "$wu.$phase.$topic" >/dev/null 2>&1
+  if [ -n "$status" ]; then
+    node "$MANIFEST_JS" set "$wu.$phase.$topic" status "$status" >/dev/null 2>&1
+  fi
+}
+
+# --- Test 45: Bulk index discovers and indexes completed artifacts ---
+echo "Test 45: Bulk index discovers completed artifacts"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+output=$(run_kb index 2>&1)
+assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -q 'Indexing' && echo true || echo false)"
+assert_eq "shows summary" "true" "$(echo "$output" | grep -qE 'Indexed [1-9]' && echo true || echo false)"
+teardown_project
+
+# --- Test 46: Bulk index skips already-indexed artifacts ---
+echo "Test 46: Bulk index skips already indexed"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+# Index once.
+run_kb index >/dev/null 2>&1
+# Index again — should skip.
+output=$(run_kb index 2>&1)
+assert_eq "skips already indexed" "true" "$(echo "$output" | grep -q '1 already indexed' && echo true || echo false)"
+teardown_project
+
+# --- Test 47: Bulk index with no completed artifacts ---
+echo "Test 47: Bulk index no completed artifacts"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "in-progress"
+output=$(run_kb index 2>&1)
+assert_eq "0 files indexed" "true" "$(echo "$output" | grep -q 'Indexed 0 files' && echo true || echo false)"
+teardown_project
+
+# ============================================================================
+# PENDING QUEUE TESTS
+# ============================================================================
+
+echo ""
+echo "=== Pending Queue Tests ==="
+
+# --- Test 48: Catch-up processes pending items after single-file index ---
+echo "Test 48: Catch-up processes pending items"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+# Index the file first to create store.
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Create a spec file and inject it as a pending item.
+create_spec_file "auth-flow" "auth-flow"
+node -e "
+  const fs = require('fs');
+  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.pending = [{file: '.workflows/auth-flow/specification/auth-flow/specification.md', failed_at: '2026-01-01T00:00:00Z', error: 'transient'}];
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+"
+# Re-index discussion — catch-up should process the pending spec file.
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
+assert_eq "pending item caught up" '[]' "$pending"
+# Verify spec chunks now exist.
+query_output=$(run_kb query "specification" --limit 10 2>&1)
+assert_eq "spec chunks indexed by catch-up" "true" "$(echo "$query_output" | grep -q 'specification |' && echo true || echo false)"
 teardown_project
 
 # --- Summary ---
