@@ -154,7 +154,7 @@ assert_eq "mentions unknown command" "true" "$(echo "$output" | grep -q 'Unknown
 
 # --- Test 3: Not-yet-implemented commands exit 1 ---
 echo "Test 3: Not-yet-implemented commands"
-for cmd in status rebuild setup; do
+for cmd in setup; do
   exit_code=0
   output=$(node "$BUNDLE" "$cmd" 2>&1 || true)
   node "$BUNDLE" "$cmd" 2>/dev/null || exit_code=$?
@@ -453,7 +453,7 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Now switch config to have a provider.
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
-assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'keyword-only mode store' && echo true || echo false)"
+assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'keyword-only mode' && echo true || echo false)"
 teardown_project
 
 # --- Test 24: Query on empty store returns [0 results] ---
@@ -971,6 +971,220 @@ run_kb index .workflows/immediate/discussion/immediate.md >/dev/null 2>&1
 set_completed_with_date "immediate" "$(date +%Y-%m-%d)"
 output=$(run_kb compact 2>&1)
 assert_eq "removes with decay 0" "true" "$(echo "$output" | grep -q 'Compacted:' && echo true || echo false)"
+teardown_project
+
+# ============================================================================
+# STATUS COMMAND TESTS
+# ============================================================================
+
+echo ""
+echo "=== Status Command Tests ==="
+
+# --- Test 55: Status reports chunk counts ---
+echo "Test 55: Status reports chunk counts"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb status 2>&1)
+assert_eq "shows total chunks" "true" "$(echo "$output" | grep -q 'Total chunks:' && echo true || echo false)"
+assert_eq "shows work unit breakdown" "true" "$(echo "$output" | grep -q 'auth-flow:' && echo true || echo false)"
+assert_eq "shows store size" "true" "$(echo "$output" | grep -q 'Store size:' && echo true || echo false)"
+teardown_project
+
+# --- Test 56: Status reports pending queue ---
+echo "Test 56: Status reports pending items"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Inject a pending item.
+node -e "
+  const fs = require('fs');
+  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.pending = [{file: 'test.md', failed_at: '2026-01-01T00:00:00Z', error: 'API timeout'}];
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+"
+output=$(run_kb status 2>&1)
+assert_eq "shows pending count" "true" "$(echo "$output" | grep -q 'Pending items: 1' && echo true || echo false)"
+assert_eq "shows pending details" "true" "$(echo "$output" | grep -q 'API timeout' && echo true || echo false)"
+teardown_project
+
+# --- Test 57: Status on empty store ---
+echo "Test 57: Status on empty store"
+setup_project
+write_stub_config
+output=$(run_kb status 2>&1)
+assert_eq "shows not initialized" "true" "$(echo "$output" | grep -q 'not initialized' && echo true || echo false)"
+teardown_project
+
+# --- Test 58: Status detects orphaned chunks ---
+echo "Test 58: Status detects orphaned chunks"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Delete the source file.
+rm "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+output=$(run_kb status 2>&1)
+assert_eq "detects orphans" "true" "$(echo "$output" | grep -q 'Orphaned' && echo true || echo false)"
+teardown_project
+
+# --- Test 59: Status detects unindexed artifacts ---
+echo "Test 59: Status detects unindexed artifacts"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_spec_file "auth-flow" "auth-flow"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+init_phase_topic "auth-flow" "specification" "auth-flow" "completed"
+# Index only discussion, not spec.
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb status 2>&1)
+assert_eq "detects unindexed" "true" "$(echo "$output" | grep -q 'Unindexed' && echo true || echo false)"
+teardown_project
+
+# --- Test 60: Status detects cancelled work unit still indexed ---
+echo "Test 60: Status detects cancelled still indexed"
+setup_project
+create_work_unit "cancelled-wu" "feature" "Cancelled"
+write_stub_config
+create_discussion_file "cancelled-wu" "cancelled-wu"
+run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$MANIFEST_JS" set cancelled-wu status cancelled >/dev/null 2>&1
+output=$(run_kb status 2>&1)
+assert_eq "detects cancelled" "true" "$(echo "$output" | grep -q 'Cancelled work unit still indexed' && echo true || echo false)"
+teardown_project
+
+# --- Test 61: Status shows keyword-only mode ---
+echo "Test 61: Status shows keyword-only mode"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_keyword_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb status 2>&1)
+assert_eq "shows keyword-only" "true" "$(echo "$output" | grep -q 'Keyword-only' && echo true || echo false)"
+teardown_project
+
+# ============================================================================
+# REBUILD COMMAND TESTS
+# ============================================================================
+
+echo ""
+echo "=== Rebuild Command Tests ==="
+
+# --- Test 62: Rebuild aborts on wrong confirmation ---
+echo "Test 62: Rebuild aborts on wrong confirmation"
+setup_project
+write_stub_config
+exit_code=0
+output=$(echo "no" | run_kb rebuild 2>&1 || true)
+echo "no" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
+assert_eq "rebuild aborts" "1" "$exit_code"
+assert_eq "shows aborted" "true" "$(echo "$output" | grep -q 'Aborted' && echo true || echo false)"
+teardown_project
+
+# --- Test 63: Rebuild aborts on empty input ---
+echo "Test 63: Rebuild aborts on empty stdin"
+setup_project
+write_stub_config
+exit_code=0
+output=$(echo "" | run_kb rebuild 2>&1 || true)
+echo "" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
+assert_eq "rebuild aborts empty" "1" "$exit_code"
+teardown_project
+
+# ============================================================================
+# BATCH QUERY TESTS
+# ============================================================================
+
+echo ""
+echo "=== Batch Query Tests ==="
+
+# --- Test 64: Batch query merges results from multiple terms ---
+echo "Test 64: Batch query merges results"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_spec_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+output=$(run_kb query "topic" "specification" --limit 10 2>&1)
+assert_eq "has results" "true" "$(echo "$output" | grep -qE '\[[1-9][0-9]* results\]' && echo true || echo false)"
+teardown_project
+
+# --- Test 65: Batch query with limit ---
+echo "Test 65: Batch query respects limit"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_spec_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+output=$(run_kb query "topic" "content" --limit 1 2>&1)
+assert_eq "limited to 1 result" "true" "$(echo "$output" | grep -q '\[1 results\]' && echo true || echo false)"
+teardown_project
+
+# --- Test 66: Batch query with one empty term ---
+echo "Test 66: Batch query one term no results"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb query "topic" "xyznonexistent123" --limit 10 2>&1)
+# Should still have results from the first term.
+assert_eq "still has results" "true" "$(echo "$output" | grep -qE '\[[1-9][0-9]* results\]' && echo true || echo false)"
+teardown_project
+
+# ============================================================================
+# STUB-TO-FULL UPGRADE NOTE TESTS
+# ============================================================================
+
+echo ""
+echo "=== Stub-to-Full Upgrade Note Tests ==="
+
+# --- Test 67: Shows upgrade note when config has provider but store is keyword-only ---
+echo "Test 67: Upgrade note on query"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_keyword_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Switch to stub config.
+write_stub_config
+output=$(run_kb query "topic" 2>&1)
+assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'embedding provider configured' && echo true || echo false)"
+teardown_project
+
+# --- Test 68: No upgrade note when store and config match ---
+echo "Test 68: No upgrade note when matching"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb query "topic" 2>&1)
+assert_eq "no upgrade note" "false" "$(echo "$output" | grep -q 'embedding provider configured' && echo true || echo false)"
+teardown_project
+
+# --- Test 69: No upgrade note in pure keyword mode ---
+echo "Test 69: No upgrade note in pure keyword mode"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_keyword_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb query "topic" 2>&1)
+assert_eq "no upgrade note pure keyword" "false" "$(echo "$output" | grep -q 'embedding provider configured' && echo true || echo false)"
 teardown_project
 
 # --- Summary ---

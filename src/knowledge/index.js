@@ -774,16 +774,15 @@ function resolveQueryMode(metadata, cfg, provider) {
 
 async function cmdQuery(args, options, cfg, provider) {
   if (args.length === 0) {
-    process.stderr.write('Usage: knowledge query <search_term> [--phase ...] [--work-type ...] [--work-unit ...] [--limit N]\n');
+    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--phase ...] [--work-type ...] [--work-unit ...] [--limit N]\n');
     process.exit(1);
   }
 
-  const searchTerm = args[0];
+  const searchTerms = args; // batch: multiple positional args
   const limit = options.limit || 10;
   const sp = storePath();
   const mp = metadataPath();
 
-  // Load store.
   if (!fs.existsSync(sp)) {
     process.stdout.write('[0 results]\n');
     return;
@@ -791,7 +790,6 @@ async function cmdQuery(args, options, cfg, provider) {
 
   const db = await store.loadStore(sp);
 
-  // Determine query mode from metadata.
   let queryMode = 'keyword-only';
   let effectiveProvider = null;
   let stubNote = null;
@@ -801,17 +799,15 @@ async function cmdQuery(args, options, cfg, provider) {
     process.exit(1);
   }
 
-  if (fs.existsSync(mp)) {
-    const metadata = store.readMetadata(mp);
-    const state = resolveQueryMode(metadata, cfg, provider);
-    queryMode = state.mode;
-    effectiveProvider = state.provider;
-  }
+  const metadata = store.readMetadata(mp);
+  const state = resolveQueryMode(metadata, cfg, provider);
+  queryMode = state.mode;
+  effectiveProvider = state.provider;
 
   if (queryMode === 'keyword-only') {
     stubNote = '[keyword-only mode — configure embedding provider for semantic search]';
   } else if (queryMode === 'upgrade-available') {
-    stubNote = '[keyword-only mode store — run `knowledge rebuild` for semantic search with your configured provider]';
+    stubNote = '[keyword-only mode but embedding provider configured — run knowledge rebuild for full hybrid search]';
   }
 
   // Build where clause from filters.
@@ -825,37 +821,46 @@ async function cmdQuery(args, options, cfg, provider) {
     where.work_type = types.length === 1 ? { eq: types[0] } : { in: types };
   }
 
-  // Search.
-  let results;
   const similarity = cfg.similarity_threshold || 0.8;
+  const whereClause = Object.keys(where).length > 0 ? where : undefined;
 
-  if (queryMode === 'full' && effectiveProvider) {
-    // Hybrid search — embed the query with retry, then search.
-    const queryVector = await withRetry(
-      () => effectiveProvider.embed(searchTerm),
-      { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-    );
-    results = await store.searchHybrid(db, {
-      term: searchTerm,
-      vector: queryVector,
-      where: Object.keys(where).length > 0 ? where : undefined,
-      limit,
-      similarity,
-    });
-  } else {
-    // Fulltext only.
-    results = await store.searchFulltext(db, {
-      term: searchTerm,
-      where: Object.keys(where).length > 0 ? where : undefined,
-      limit,
-    });
+  // Run a search per term and merge.
+  const allResults = new Map(); // key: chunk id → result (highest score wins)
+
+  for (const term of searchTerms) {
+    let termResults;
+    if (queryMode === 'full' && effectiveProvider) {
+      const queryVector = await withRetry(
+        () => effectiveProvider.embed(term),
+        { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+      );
+      termResults = await store.searchHybrid(db, {
+        term,
+        vector: queryVector,
+        where: whereClause,
+        limit: limit * 2, // over-fetch per term to improve merged coverage
+        similarity,
+      });
+    } else {
+      termResults = await store.searchFulltext(db, {
+        term,
+        where: whereClause,
+        limit: limit * 2,
+      });
+    }
+
+    // Merge — keep highest score per chunk.
+    for (const r of termResults) {
+      const existing = allResults.get(r.id);
+      if (!existing || r.score > existing.score) {
+        allResults.set(r.id, r);
+      }
+    }
   }
 
-  // Re-rank.
-  results = rerank(results, options.workUnit);
+  // Re-rank merged results.
+  let results = rerank(Array.from(allResults.values()), options.workUnit);
 
-  // Apply limit after re-ranking (Orama may have returned up to limit,
-  // but re-ranking could change nothing about count).
   if (results.length > limit) {
     results = results.slice(0, limit);
   }
@@ -911,6 +916,221 @@ async function cmdCheck(/* args, options, cfg, provider */) {
   }
 
   process.stdout.write('ready\n');
+}
+
+// ---------------------------------------------------------------------------
+// Status command
+// ---------------------------------------------------------------------------
+
+async function cmdStatus() {
+  const kDir = knowledgeDir();
+  const sp = storePath();
+  const mp = metadataPath();
+  const out = [];
+
+  out.push('=== Knowledge Base Status ===');
+  out.push('');
+
+  // Store existence check.
+  if (!fs.existsSync(sp)) {
+    out.push('Store: not initialized');
+    out.push('Run `knowledge index` to build the index.');
+    process.stdout.write(out.join('\n') + '\n');
+    return;
+  }
+
+  const db = await store.loadStore(sp);
+  const allChunks = await store.searchFulltext(db, { term: '', limit: 100000 });
+
+  // 1. Index summary.
+  out.push(`Total chunks: ${allChunks.length}`);
+
+  const byWu = {};
+  const byPhase = {};
+  const byWorkType = {};
+  for (const c of allChunks) {
+    byWu[c.work_unit] = (byWu[c.work_unit] || 0) + 1;
+    byPhase[c.phase] = (byPhase[c.phase] || 0) + 1;
+    byWorkType[c.work_type] = (byWorkType[c.work_type] || 0) + 1;
+  }
+
+  if (Object.keys(byWu).length > 0) {
+    out.push('');
+    out.push('By work unit:');
+    for (const [wu, count] of Object.entries(byWu)) {
+      out.push(`  ${wu}: ${count}`);
+    }
+  }
+
+  if (Object.keys(byPhase).length > 0) {
+    out.push('');
+    out.push('By phase:');
+    for (const [phase, count] of Object.entries(byPhase)) {
+      out.push(`  ${phase}: ${count}`);
+    }
+  }
+
+  // 2. Last indexed + 3. Store health.
+  out.push('');
+  const stat = fs.statSync(sp);
+  const sizeKb = (stat.size / 1024).toFixed(1);
+  out.push(`Store size: ${sizeKb} KB`);
+
+  if (fs.existsSync(mp)) {
+    const metadata = store.readMetadata(mp);
+    out.push(`Last indexed: ${metadata.last_indexed || 'unknown'}`);
+
+    // Provider info.
+    if (metadata.provider) {
+      out.push(`Provider: ${metadata.provider} (model: ${metadata.model}, dimensions: ${metadata.dimensions})`);
+      out.push('Mode: Full (hybrid search)');
+    } else {
+      out.push('Provider: none');
+      out.push('Mode: Keyword-only');
+    }
+
+    // 4. Pending items.
+    if (Array.isArray(metadata.pending) && metadata.pending.length > 0) {
+      out.push('');
+      out.push(`Pending items: ${metadata.pending.length}`);
+      for (const p of metadata.pending) {
+        out.push(`  ${p.file} — ${p.error} (${p.failed_at})`);
+      }
+    }
+
+    // 6. Provider mismatch warning.
+    let cfg;
+    try { cfg = config.loadConfig(); } catch (_) { cfg = null; }
+    if (cfg) {
+      const cfgProvider = config.resolveProvider(cfg);
+      if (metadata.provider && cfgProvider) {
+        if (metadata.provider !== cfg.provider ||
+            metadata.model !== cfgProvider.model() ||
+            metadata.dimensions !== cfgProvider.dimensions()) {
+          out.push('');
+          out.push('WARNING: Config has changed since last index. Run `knowledge rebuild` to reindex.');
+        }
+      }
+
+      // 10. Stub-to-full upgrade note.
+      if ((metadata.provider === null || metadata.provider === undefined) && cfgProvider) {
+        out.push('');
+        out.push('NOTE: Keyword-only mode but embedding provider configured. Run `knowledge rebuild` for full hybrid search.');
+      }
+    }
+  } else {
+    out.push('Metadata: missing (run `knowledge rebuild` to fix)');
+  }
+
+  // 7. Orphan detection — source files that no longer exist.
+  const orphans = [];
+  const seenSources = new Set();
+  for (const c of allChunks) {
+    if (seenSources.has(c.source_file)) continue;
+    seenSources.add(c.source_file);
+    if (!fs.existsSync(path.resolve(c.source_file))) {
+      orphans.push(c.source_file);
+    }
+  }
+  if (orphans.length > 0) {
+    out.push('');
+    out.push(`Orphaned chunks (source deleted): ${orphans.length} files`);
+    for (const f of orphans) {
+      out.push(`  ${f}`);
+    }
+  }
+
+  // 8. Unindexed artifacts.
+  try {
+    const artifacts = discoverArtifacts();
+    const unindexed = [];
+    for (const a of artifacts) {
+      const indexed = await isIndexed(db, a.workUnit, a.phase, a.topic);
+      if (!indexed) unindexed.push(a.file);
+    }
+    if (unindexed.length > 0) {
+      out.push('');
+      out.push(`Unindexed completed artifacts: ${unindexed.length}`);
+      for (const f of unindexed) {
+        out.push(`  ${f}`);
+      }
+    }
+  } catch (_) {
+    // Discovery may fail if no manifest — skip.
+  }
+
+  // 9. Manifest-knowledge consistency.
+  const consistency = [];
+  for (const wu of Object.keys(byWu)) {
+    const meta = getWorkUnitMeta(wu);
+    if (!meta) continue;
+    if (meta.status === 'cancelled') {
+      consistency.push(`Cancelled work unit still indexed: ${wu}`);
+    }
+  }
+  // Check for superseded specs.
+  const specChunks = allChunks.filter((c) => c.phase === 'specification');
+  const specTopics = new Set(specChunks.map((c) => `${c.work_unit}.specification.${c.topic}`));
+  for (const key of specTopics) {
+    try {
+      const status = runManifest(['get', key, 'status']).trim();
+      if (status === 'superseded') {
+        consistency.push(`Superseded spec still indexed: ${key}`);
+      }
+    } catch (_) {
+      // Skip if manifest lookup fails.
+    }
+  }
+  if (consistency.length > 0) {
+    out.push('');
+    out.push('Consistency warnings:');
+    for (const w of consistency) {
+      out.push(`  ${w}`);
+    }
+  }
+
+  process.stdout.write(out.join('\n') + '\n');
+}
+
+// ---------------------------------------------------------------------------
+// Rebuild command
+// ---------------------------------------------------------------------------
+
+async function cmdRebuild(_args, options, cfg, provider) {
+  const sp = storePath();
+  const mp = metadataPath();
+
+  process.stderr.write(
+    'Warning: This will delete the existing index and rebuild from scratch.\n' +
+    'This is non-deterministic — the rebuilt index will differ from the original.\n' +
+    "Type 'rebuild' to confirm: "
+  );
+
+  // Read confirmation from stdin.
+  const input = await new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.once('data', (chunk) => {
+      data += chunk;
+      resolve(data.trim());
+    });
+    // If stdin ends without data (piped with no input), resolve empty.
+    process.stdin.once('end', () => resolve(data.trim()));
+    process.stdin.resume();
+  });
+
+  if (input !== 'rebuild') {
+    process.stderr.write('Aborted.\n');
+    process.exit(1);
+  }
+
+  // Delete existing store and metadata.
+  if (fs.existsSync(sp)) fs.unlinkSync(sp);
+  if (fs.existsSync(mp)) fs.unlinkSync(mp);
+  process.stdout.write('Deleted existing index.\n');
+
+  // Run bulk index.
+  await cmdIndexBulk(options, cfg, provider);
 }
 
 // ---------------------------------------------------------------------------
@@ -1123,10 +1343,10 @@ async function main() {
     case 'index':   await cmdIndex(commandArgs, options, cfg, provider); break;
     case 'query':   await cmdQuery(commandArgs, options, cfg, provider); break;
     case 'check':   await cmdCheck(commandArgs, options, cfg, provider); break;
-    case 'status':  notYetImplemented('status'); break;
+    case 'status':  await cmdStatus(); break;
     case 'remove':  await cmdRemove(commandArgs, options, cfg, provider); break;
     case 'compact': await cmdCompact(commandArgs, options, cfg, provider); break;
-    case 'rebuild': notYetImplemented('rebuild'); break;
+    case 'rebuild': await cmdRebuild(commandArgs, options, cfg, provider); break;
     case 'setup':   notYetImplemented('setup'); break;
     default:
       process.stderr.write(`Unknown command "${command}".\n\n${USAGE}\n`);
