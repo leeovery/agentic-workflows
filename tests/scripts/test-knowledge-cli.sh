@@ -476,6 +476,134 @@ output=$(run_kb query "topic" --limit 1 2>&1)
 assert_eq "provenance format" "true" "$(echo "$output" | grep -qE '\[discussion \| auth-flow/auth-flow \| .* \| [0-9]{4}-[0-9]{2}-[0-9]{2}\]' && echo true || echo false)"
 teardown_project
 
+# --- Test 26: Nested path rejected for discussion ---
+echo "Test 26: Nested discussion path rejected"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion/sub"
+echo "# Nested" > "$TEST_ROOT/.workflows/auth-flow/discussion/sub/topic.md"
+exit_code=0
+cd "$TEST_ROOT"
+node "$BUNDLE" index .workflows/auth-flow/discussion/sub/topic.md 2>/dev/null || exit_code=$?
+assert_eq "rejects nested discussion path" "1" "$exit_code"
+teardown_project
+
+# --- Test 27: File not found for valid workflow path ---
+echo "Test 27: File not found for valid workflow path"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+exit_code=0
+cd "$TEST_ROOT"
+node "$BUNDLE" index .workflows/auth-flow/discussion/auth-flow.md 2>/dev/null || exit_code=$?
+assert_eq "rejects missing file" "1" "$exit_code"
+teardown_project
+
+# --- Test 28: Index no-args prints usage ---
+echo "Test 28: Index no-args prints usage"
+setup_project
+write_stub_config
+exit_code=0
+output=$(run_kb index 2>&1 || true)
+run_kb index 2>/dev/null || exit_code=$?
+assert_eq "index no-args exits 1" "1" "$exit_code"
+assert_eq "index no-args shows usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
+teardown_project
+
+# --- Test 29: Query no-args prints usage ---
+echo "Test 29: Query no-args prints usage"
+setup_project
+write_stub_config
+exit_code=0
+output=$(run_kb query 2>&1 || true)
+run_kb query 2>/dev/null || exit_code=$?
+assert_eq "query no-args exits 1" "1" "$exit_code"
+assert_eq "query no-args shows usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
+teardown_project
+
+# --- Test 30: Query filters by --work-type comma-separated ---
+echo "Test 30: Query filters by --work-type comma-separated"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_research_file "payments" "exploration"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/payments/research/exploration.md >/dev/null 2>&1
+output=$(run_kb query "content" --work-type "feature,epic" 2>&1)
+assert_eq "comma work-type returns results" "false" "$(echo "$output" | grep -q '\[0 results\]' && echo true || echo false)"
+# Filter to only feature — should exclude epic research
+output2=$(run_kb query "content" --work-type feature 2>&1)
+assert_eq "single work-type filters" "false" "$(echo "$output2" | grep -q 'research |' && echo true || echo false)"
+teardown_project
+
+# --- Test 31: Work-unit proximity re-ranking changes order ---
+echo "Test 31: Work-unit proximity re-ranking"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+create_work_unit "data-model" "feature" "Data"
+write_stub_config
+# Create two discussions with similar content so they both match the same query.
+mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
+mkdir -p "$TEST_ROOT/.workflows/data-model/discussion"
+cat > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md" <<'MD'
+# Auth Discussion
+
+## Token Refresh Design
+
+Token refresh intervals must be configured. Rate limiting applies.
+The design covers refresh, rotation, and expiry edge cases.
+Line padding for chunking threshold. Line 10. Line 11.
+Line 12. Line 13. Line 14. Line 15. Line 16. Line 17.
+Line 18. Line 19. Line 20. Line 21. Line 22. Line 23.
+Line 24. Line 25. Line 26. Line 27. Line 28. Line 29.
+Line 30. Line 31. Line 32. Line 33. Line 34. Line 35.
+Line 36. Line 37. Line 38. Line 39. Line 40. Line 41.
+Line 42. Line 43. Line 44. Line 45. Line 46. Line 47.
+Line 48. Line 49. Line 50. Line 51. Line 52. Line 53.
+MD
+cat > "$TEST_ROOT/.workflows/data-model/discussion/data-model.md" <<'MD'
+# Data Model Discussion
+
+## Token Storage Design
+
+Token refresh intervals stored in the data model. Rate limiting applies.
+The schema covers refresh, rotation, and expiry edge cases.
+Line padding for chunking threshold. Line 10. Line 11.
+Line 12. Line 13. Line 14. Line 15. Line 16. Line 17.
+Line 18. Line 19. Line 20. Line 21. Line 22. Line 23.
+Line 24. Line 25. Line 26. Line 27. Line 28. Line 29.
+Line 30. Line 31. Line 32. Line 33. Line 34. Line 35.
+Line 36. Line 37. Line 38. Line 39. Line 40. Line 41.
+Line 42. Line 43. Line 44. Line 45. Line 46. Line 47.
+Line 48. Line 49. Line 50. Line 51. Line 52. Line 53.
+MD
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
+# Query with --work-unit auth-flow: auth-flow results should appear first.
+output=$(run_kb query "token refresh" --work-unit auth-flow --limit 2 2>&1)
+# Extract the first provenance line's work_unit.
+first_wu=$(echo "$output" | grep -m1 '^\[discussion' | sed 's/.*| \([^/]*\)\/.*/\1/')
+assert_eq "boosted work-unit appears first" "auth-flow" "$first_wu"
+teardown_project
+
+# --- Test 32: Query errors when metadata missing but store exists ---
+echo "Test 32: Query errors on missing metadata"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+exit_code=0
+output=$(run_kb query "topic" 2>&1 || true)
+run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
+assert_eq "errors on missing metadata" "1" "$exit_code"
+assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
+teardown_project
+
 # ============================================================================
 # CHECK COMMAND TESTS
 # ============================================================================
@@ -483,8 +611,8 @@ teardown_project
 echo ""
 echo "=== Check Command Tests ==="
 
-# --- Test 26: Check outputs ready when all three conditions met ---
-echo "Test 26: Check ready"
+# --- Test 33: Check outputs ready when all three conditions met ---
+echo "Test 33: Check ready"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
@@ -497,8 +625,8 @@ assert_eq "outputs ready" "ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
-# --- Test 27: Check outputs not-ready when directory is missing ---
-echo "Test 27: Check not-ready (missing directory)"
+# --- Test 34: Check outputs not-ready when directory is missing ---
+echo "Test 34: Check not-ready (missing directory)"
 setup_project
 rm -rf "$TEST_ROOT/.workflows/.knowledge"
 output=$(run_kb check 2>&1)
@@ -508,8 +636,8 @@ assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
-# --- Test 28: Check outputs not-ready when config is missing ---
-echo "Test 28: Check not-ready (missing config)"
+# --- Test 35: Check outputs not-ready when config is missing ---
+echo "Test 35: Check not-ready (missing config)"
 setup_project
 # Directory exists but no config.json.
 output=$(run_kb check 2>&1)
@@ -519,8 +647,8 @@ assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
-# --- Test 29: Check outputs not-ready when store is missing ---
-echo "Test 29: Check not-ready (missing store)"
+# --- Test 36: Check outputs not-ready when store is missing ---
+echo "Test 36: Check not-ready (missing store)"
 setup_project
 write_stub_config
 # Config exists but no store.msp.
@@ -531,8 +659,8 @@ assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
-# --- Test 30: Check outputs not-ready when store is corrupted ---
-echo "Test 30: Check not-ready (corrupted store)"
+# --- Test 37: Check outputs not-ready when store is corrupted ---
+echo "Test 37: Check not-ready (corrupted store)"
 setup_project
 write_stub_config
 echo "this is garbage data not msgpack" > "$TEST_ROOT/.workflows/.knowledge/store.msp"

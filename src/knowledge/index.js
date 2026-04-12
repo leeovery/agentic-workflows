@@ -160,17 +160,25 @@ function deriveIdentity(filePath) {
     }
     topic = specMatch[1];
   } else if (phase === 'discussion' || phase === 'investigation') {
-    // .workflows/{wu}/{phase}/{topic}.md
-    if (!rest.endsWith('.md')) {
-      throw new Error(`Expected .md file for ${phase}: ${rest}`);
+    // .workflows/{wu}/{phase}/{topic}.md — flat file, no subdirectories.
+    const flatMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!flatMatch) {
+      throw new Error(
+        `Unexpected ${phase} path structure: ${rest}\n` +
+          `Expected: .workflows/{work_unit}/${phase}/{topic}.md`
+      );
     }
-    topic = rest.replace(/\.md$/, '');
+    topic = flatMatch[1];
   } else if (phase === 'research') {
-    // .workflows/{wu}/research/{filename}.md
-    if (!rest.endsWith('.md')) {
-      throw new Error(`Expected .md file for research: ${rest}`);
+    // .workflows/{wu}/research/{filename}.md — flat file.
+    const resMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!resMatch) {
+      throw new Error(
+        `Unexpected research path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/research/{filename}.md'
+      );
     }
-    topic = rest.replace(/\.md$/, '');
+    topic = resMatch[1];
   }
 
   return { workUnit, phase, topic };
@@ -366,6 +374,9 @@ async function cmdIndex(args, options, cfg, provider) {
     // Re-load store inside lock for safety (another process may have written).
     if (storeExists) {
       db = await store.loadStore(sp);
+    } else if (fs.existsSync(sp)) {
+      // Another process created the store between our check and lock acquisition.
+      db = await store.loadStore(sp);
     }
 
     // Remove existing chunks for this identity.
@@ -529,6 +540,11 @@ async function cmdQuery(args, options, cfg, provider) {
   let queryMode = 'keyword-only';
   let effectiveProvider = null;
   let stubNote = null;
+
+  if (!fs.existsSync(mp)) {
+    process.stderr.write('metadata.json missing but store exists. Run `knowledge rebuild` to fix.\n');
+    process.exit(1);
+  }
 
   if (fs.existsSync(mp)) {
     const metadata = store.readMetadata(mp);
