@@ -476,6 +476,73 @@ output=$(run_kb query "topic" --limit 1 2>&1)
 assert_eq "provenance format" "true" "$(echo "$output" | grep -qE '\[discussion \| auth-flow/auth-flow \| .* \| [0-9]{4}-[0-9]{2}-[0-9]{2}\]' && echo true || echo false)"
 teardown_project
 
+# ============================================================================
+# CHECK COMMAND TESTS
+# ============================================================================
+
+echo ""
+echo "=== Check Command Tests ==="
+
+# --- Test 26: Check outputs ready when all three conditions met ---
+echo "Test 26: Check ready"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb check 2>&1)
+exit_code=0
+run_kb check >/dev/null 2>&1 || exit_code=$?
+assert_eq "outputs ready" "ready" "$(echo "$output" | tr -d '\n')"
+assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# --- Test 27: Check outputs not-ready when directory is missing ---
+echo "Test 27: Check not-ready (missing directory)"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+output=$(run_kb check 2>&1)
+exit_code=0
+run_kb check >/dev/null 2>&1 || exit_code=$?
+assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
+assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# --- Test 28: Check outputs not-ready when config is missing ---
+echo "Test 28: Check not-ready (missing config)"
+setup_project
+# Directory exists but no config.json.
+output=$(run_kb check 2>&1)
+exit_code=0
+run_kb check >/dev/null 2>&1 || exit_code=$?
+assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
+assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# --- Test 29: Check outputs not-ready when store is missing ---
+echo "Test 29: Check not-ready (missing store)"
+setup_project
+write_stub_config
+# Config exists but no store.msp.
+output=$(run_kb check 2>&1)
+exit_code=0
+run_kb check >/dev/null 2>&1 || exit_code=$?
+assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
+assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# --- Test 30: Check outputs not-ready when store is corrupted ---
+echo "Test 30: Check not-ready (corrupted store)"
+setup_project
+write_stub_config
+echo "this is garbage data not msgpack" > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+output=$(run_kb check 2>&1)
+exit_code=0
+run_kb check >/dev/null 2>&1 || exit_code=$?
+assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
+assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

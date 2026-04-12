@@ -603,16 +603,49 @@ async function cmdQuery(args, options, cfg, provider) {
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder command handlers — replaced by Task 3-5
+// Check command
+// ---------------------------------------------------------------------------
+
+async function cmdCheck() {
+  const kDir = knowledgeDir();
+  const configFile = path.join(kDir, 'config.json');
+  const sp = storePath();
+
+  // Condition 1: directory exists.
+  if (!fs.existsSync(kDir)) {
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
+  // Condition 2: config.json exists.
+  if (!fs.existsSync(configFile)) {
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
+  // Condition 3: store.msp exists and is loadable.
+  if (!fs.existsSync(sp)) {
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
+  try {
+    await store.loadStore(sp);
+  } catch (_) {
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
+  process.stdout.write('ready\n');
+}
+
+// ---------------------------------------------------------------------------
+// Not-yet-implemented stub
 // ---------------------------------------------------------------------------
 
 function notYetImplemented(name) {
   process.stderr.write(`Command "${name}" is not yet implemented.\n`);
   process.exit(1);
-}
-
-async function cmdCheck(/* args, options, cfg, provider */) {
-  notYetImplemented('check');
 }
 
 // ---------------------------------------------------------------------------
