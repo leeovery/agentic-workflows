@@ -154,7 +154,7 @@ assert_eq "mentions unknown command" "true" "$(echo "$output" | grep -q 'Unknown
 
 # --- Test 3: Not-yet-implemented commands exit 1 ---
 echo "Test 3: Not-yet-implemented commands"
-for cmd in status remove compact rebuild setup; do
+for cmd in status compact rebuild setup; do
   exit_code=0
   output=$(node "$BUNDLE" "$cmd" 2>&1 || true)
   node "$BUNDLE" "$cmd" 2>/dev/null || exit_code=$?
@@ -669,6 +669,107 @@ exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
 assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
+teardown_project
+
+# ============================================================================
+# REMOVE COMMAND TESTS
+# ============================================================================
+
+echo ""
+echo "=== Remove Command Tests ==="
+
+# --- Test 38: Remove all chunks for a work unit ---
+echo "Test 38: Remove all chunks for a work unit"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+create_work_unit "data-model" "feature" "Data"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_spec_file "auth-flow" "auth-flow"
+create_discussion_file "data-model" "data-model"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit auth-flow 2>&1)
+assert_eq "reports removed chunks" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for auth-flow' && echo true || echo false)"
+# Verify data-model chunks still exist.
+query_output=$(run_kb query "content" --limit 10 2>&1)
+assert_eq "data-model chunks unaffected" "true" "$(echo "$query_output" | grep -q 'data-model' && echo true || echo false)"
+assert_eq "auth-flow chunks gone" "false" "$(echo "$query_output" | grep -q 'auth-flow/auth-flow' && echo true || echo false)"
+teardown_project
+
+# --- Test 39: Remove chunks for a work unit + phase ---
+echo "Test 39: Remove chunks for work unit + phase"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_spec_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit auth-flow --phase discussion 2>&1)
+assert_eq "reports removed" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for auth-flow/discussion' && echo true || echo false)"
+# Spec chunks should still exist.
+query_output=$(run_kb query "specification" --limit 10 2>&1)
+assert_eq "spec chunks unaffected" "true" "$(echo "$query_output" | grep -q 'specification |' && echo true || echo false)"
+teardown_project
+
+# --- Test 40: Remove chunks for specific identity (work unit + phase + topic) ---
+echo "Test 40: Remove specific identity"
+setup_project
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+create_spec_file "payments" "billing"
+create_spec_file "payments" "invoicing"
+run_kb index .workflows/payments/specification/billing/specification.md >/dev/null 2>&1
+run_kb index .workflows/payments/specification/invoicing/specification.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit payments --phase specification --topic billing 2>&1)
+assert_eq "reports removed" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for payments/specification/billing' && echo true || echo false)"
+# Invoicing chunks should still exist.
+query_output=$(run_kb query "specification" --limit 10 2>&1)
+assert_eq "invoicing chunks unaffected" "true" "$(echo "$query_output" | grep -q 'invoicing' && echo true || echo false)"
+assert_eq "billing chunks gone" "false" "$(echo "$query_output" | grep -q 'billing' && echo true || echo false)"
+teardown_project
+
+# --- Test 41: Remove reports 0 when no chunks match ---
+echo "Test 41: Remove 0 when no match"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit nonexistent 2>&1)
+assert_eq "reports 0 removed" "true" "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
+teardown_project
+
+# --- Test 42: Remove errors when --topic given without --phase ---
+echo "Test 42: Error --topic without --phase"
+setup_project
+write_stub_config
+exit_code=0
+output=$(run_kb remove --work-unit auth-flow --topic auth-flow 2>&1 || true)
+run_kb remove --work-unit auth-flow --topic auth-flow 2>/dev/null || exit_code=$?
+assert_eq "exits 1" "1" "$exit_code"
+assert_eq "mentions requires phase" "true" "$(echo "$output" | grep -q 'requires --phase' && echo true || echo false)"
+teardown_project
+
+# --- Test 43: Remove errors when --work-unit missing ---
+echo "Test 43: Error missing --work-unit"
+setup_project
+write_stub_config
+exit_code=0
+output=$(run_kb remove 2>&1 || true)
+run_kb remove 2>/dev/null || exit_code=$?
+assert_eq "exits 1" "1" "$exit_code"
+assert_eq "shows usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
+teardown_project
+
+# --- Test 44: Remove from empty store reports 0 ---
+echo "Test 44: Remove from empty/nonexistent store"
+setup_project
+write_stub_config
+output=$(run_kb remove --work-unit auth-flow 2>&1)
+assert_eq "reports 0 removed" "true" "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
 teardown_project
 
 # --- Summary ---

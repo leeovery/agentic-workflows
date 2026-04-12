@@ -657,6 +657,53 @@ async function cmdCheck(/* args, options, cfg, provider */) {
 }
 
 // ---------------------------------------------------------------------------
+// Remove command
+// ---------------------------------------------------------------------------
+
+async function cmdRemove(_args, options) {
+  if (!options.workUnit) {
+    process.stderr.write('Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>]\n');
+    process.exit(1);
+  }
+
+  if (options.topic && !options.phase) {
+    process.stderr.write('Error: --topic requires --phase\n');
+    process.exit(1);
+  }
+
+  const sp = storePath();
+  const lp = lockFilePath();
+
+  if (!fs.existsSync(sp)) {
+    const desc = formatRemoveDesc(options);
+    process.stdout.write(`Removed 0 chunks for ${desc}\n`);
+    return;
+  }
+
+  let removed = 0;
+
+  await store.withLock(lp, async () => {
+    const db = await store.loadStore(sp);
+
+    const where = { work_unit: { eq: options.workUnit } };
+    if (options.phase) where.phase = { eq: options.phase };
+    if (options.topic) where.topic = { eq: options.topic };
+
+    removed = await store.removeByFilter(db, where);
+    await store.saveStore(db, sp);
+  });
+
+  const desc = formatRemoveDesc(options);
+  process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
+}
+
+function formatRemoveDesc(options) {
+  if (options.topic) return `${options.workUnit}/${options.phase}/${options.topic}`;
+  if (options.phase) return `${options.workUnit}/${options.phase}`;
+  return `${options.workUnit} (all phases)`;
+}
+
+// ---------------------------------------------------------------------------
 // Not-yet-implemented stub
 // ---------------------------------------------------------------------------
 
@@ -694,7 +741,7 @@ async function main() {
     case 'query':   await cmdQuery(commandArgs, options, cfg, provider); break;
     case 'check':   await cmdCheck(commandArgs, options, cfg, provider); break;
     case 'status':  notYetImplemented('status'); break;
-    case 'remove':  notYetImplemented('remove'); break;
+    case 'remove':  await cmdRemove(commandArgs, options, cfg, provider); break;
     case 'compact': notYetImplemented('compact'); break;
     case 'rebuild': notYetImplemented('rebuild'); break;
     case 'setup':   notYetImplemented('setup'); break;

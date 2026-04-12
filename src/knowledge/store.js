@@ -141,7 +141,32 @@ async function removeByIdentity(db, identity) {
   if (!identity || !identity.work_unit || !identity.phase || !identity.topic) {
     throw new Error('removeByIdentity: work_unit, phase, and topic are all required');
   }
-  const ids = await findInternalIdsByIdentity(db, identity);
+  return removeByFilter(db, {
+    work_unit: { eq: identity.work_unit },
+    phase: { eq: identity.phase },
+    topic: { eq: identity.topic },
+  });
+}
+
+/**
+ * Remove every document matching a where-clause filter. Generalises
+ * removal by any combination of enum fields. Used by the remove command
+ * for work-unit-level, phase-level, or topic-level granularity.
+ *
+ * @param {object} db       Orama database instance
+ * @param {object} where    Orama where clause (e.g., { work_unit: { eq: 'x' } })
+ * @returns {Promise<number>} number of documents removed
+ */
+async function removeByFilter(db, where) {
+  if (!where || Object.keys(where).length === 0) {
+    throw new Error('removeByFilter: where clause is required');
+  }
+  const res = await orama.search(db, {
+    term: '',
+    where,
+    limit: 100000,
+  });
+  const ids = res.hits.map((h) => h.id);
   if (ids.length === 0) return 0;
   const removed = await orama.removeMultiple(db, ids);
   return removed;
@@ -426,6 +451,7 @@ module.exports = {
   createStore,
   insertDocument,
   removeByIdentity,
+  removeByFilter,
   searchFulltext,
   searchVector,
   searchHybrid,
