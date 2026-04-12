@@ -970,6 +970,14 @@ async function cmdStatus() {
     }
   }
 
+  if (Object.keys(byWorkType).length > 0) {
+    out.push('');
+    out.push('By work type:');
+    for (const [wt, count] of Object.entries(byWorkType)) {
+      out.push(`  ${wt}: ${count}`);
+    }
+  }
+
   // 2. Last indexed + 3. Store health.
   out.push('');
   const stat = fs.statSync(sp);
@@ -1276,7 +1284,7 @@ async function cmdCompact(_args, options, cfg) {
     const out = [];
     out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (completed > ${decayMonths} months ago)`);
     for (const r of removals) {
-      out.push(`  - ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
+      out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
     }
     process.stdout.write(out.join('\n') + '\n');
     return;
@@ -1301,7 +1309,7 @@ async function cmdCompact(_args, options, cfg) {
   const out = [];
   out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (completed > ${decayMonths} months ago)`);
   for (const r of removals) {
-    out.push(`  - ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
+    out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
   }
   process.stdout.write(out.join('\n') + '\n');
 }

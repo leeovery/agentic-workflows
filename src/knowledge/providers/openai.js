@@ -38,6 +38,7 @@ class OpenAIProvider {
     const body = JSON.stringify({
       model: this._model,
       input: typeof text === 'string' ? text : String(text == null ? '' : text),
+      dimensions: this._dimensions,
     });
 
     const res = await this._fetch(body);
@@ -57,7 +58,7 @@ class OpenAIProvider {
     if (texts.length === 0) return [];
 
     if (texts.length <= MAX_BATCH_SIZE) {
-      const body = JSON.stringify({ model: this._model, input: texts });
+      const body = JSON.stringify({ model: this._model, input: texts, dimensions: this._dimensions });
       const res = await this._fetch(body);
       // OpenAI returns data sorted by index — ensure correct order.
       const sorted = res.data.sort((a, b) => a.index - b.index);
@@ -68,7 +69,7 @@ class OpenAIProvider {
     const results = new Array(texts.length);
     for (let offset = 0; offset < texts.length; offset += MAX_BATCH_SIZE) {
       const slice = texts.slice(offset, offset + MAX_BATCH_SIZE);
-      const body = JSON.stringify({ model: this._model, input: slice });
+      const body = JSON.stringify({ model: this._model, input: slice, dimensions: this._dimensions });
       const res = await this._fetch(body);
       const sorted = res.data.sort((a, b) => a.index - b.index);
       for (let i = 0; i < sorted.length; i++) {

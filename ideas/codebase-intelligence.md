@@ -354,6 +354,161 @@ Ordered by value and dependency:
 
 Items 1-2 could be part of the KB implementation or immediately after. Item 3 is the big capability jump. Items 4-9 layer incrementally.
 
-## Open Question: Standalone Product
+## Standalone Product Architecture
 
-This system has potential scope beyond the workflow system. The code wiki, AST graph, freshness engine, and verified citations could serve any AI-assisted development tool — not just agentic-workflows. Whether this should be a separate product (consumed by workflows as a dependency) or built into the workflow system directly is an open design question to explore.
+This system has scope beyond the workflow system. The code wiki, AST graph, freshness engine, and verified citations serve any AI-assisted development tool — not just agentic-workflows. Plain Claude Code, Cursor, Copilot, or any agent that reads code benefits from a maintained understanding layer.
+
+### Product Boundary: MCP Protocol
+
+The codebase intelligence product runs as an MCP server. Any AI tool connects and queries. The MCP protocol IS the product boundary — stable interface, loose coupling, independent versioning.
+
+**MCP tools exposed:**
+- `query` — semantic search across all indexed content
+- `index` — add content (with metadata, source type, chunking strategy)
+- `remove` — remove content by source/metadata
+- `graph_traverse` — structural queries on AST graph
+- `wiki_page` — read/update a specific wiki page
+- `git_intel` — hotspots, coupling, stability for a path
+- `status` — health report
+- `compact` — decay/cleanup
+
+**CLI** wraps the same operations for human use: `codeintel query "auth"`, `codeintel wiki auth-service`, `codeintel graph --from AuthService`.
+
+**Artifacts** are readable on disk: wiki pages as markdown, graph as JSON. Everything inspectable without going through the search layer.
+
+### Exposure Summary
+
+Three interfaces, same underlying system:
+
+| Interface | Audience | Use Case |
+|---|---|---|
+| MCP server | AI tools (Claude Code, Cursor, workflows) | Tool-to-tool queries, structured results |
+| CLI | Humans, scripts, CI hooks | Manual queries, automation, freshness engine |
+| Readable artifacts | Humans, any tool | Direct file reads, browsing, debugging |
+
+### Relationship to Knowledge Base Design
+
+The knowledge base design (Orama, RAG, semantic search) for agentic-workflows was the genesis of this idea. The KB design is really two things fused together:
+
+**1. Search/storage infrastructure** (generic): Orama, embeddings, chunking engine, MsgPack persistence, CLI commands, provider driver pattern, error handling, file locking.
+
+**2. Workflow artifact pipeline** (workflow-specific): Phase-aware chunking configs, confidence tiers mapped to phases, decay rules based on work unit completion, metadata filtering by work_unit/phase/topic/work_type, manifest CLI integration, Step 0 hooks.
+
+Under the standalone product model, these separate cleanly:
+
+**Transfers to codeintel core (70-80% of KB design):**
+- Orama as storage engine
+- MsgPack serialization
+- Embedding provider driver pattern (OpenAI, Stub, future)
+- Chunking engine (generalized — "source-aware" instead of "phase-aware")
+- CLI command structure (query, index, remove, compact, check, status, rebuild)
+- Two-step retrieval pattern
+- Error handling and resilience (retry, pending queue, file locking)
+- Provider mismatch detection
+- Testing strategy
+- Build approach (esbuild bundle)
+
+**Stays in workflow system as adapter (20-30% of KB design):**
+- Phase-specific chunking JSON configs (passed to codeintel via MCP tool params)
+- Confidence tiers mapped to workflow phases
+- Decay rules based on work unit completion dates
+- Workflow metadata fields (work_unit, phase, topic, work_type)
+- Step 0 codeintel availability check
+- Phase-completion indexing calls via MCP
+- Cancellation/supersession/promotion removal logic
+
+**New work for codeintel (not in KB design):**
+- Code wiki system (bootstrap, enrichment, refresh)
+- AST graph (tree-sitter WASM, entity extraction, traversal)
+- Git intelligence (log analysis, velocity metrics)
+- Test map, dependency layer, schema layer, API surface
+- Freshness engine (git hooks, staleness, scheduled refresh)
+- MCP server interface
+- Content source plugin architecture
+
+At time of writing, 5 of 8 KB implementation phases are complete. The core infrastructure (Orama store, chunking engine, embedding providers, CLI commands) is built and proven. This work transfers directly to codeintel — it IS the codeintel core. The skill integration work (phase 5) refactors into the workflow adapter.
+
+### Dependency Impact: Workflows Consuming Codeintel
+
+**Chosen approach: MCP with optional detection (Option C).**
+
+Codeintel runs as an MCP server. Workflows check for codeintel MCP tool availability at Step 0 (alongside migrations). If present, use it. If absent, workflows function as they do today — no KB, no code intelligence. Users get value from workflows immediately, then unlock a richer experience by adding codeintel.
+
+**Why this approach over alternatives:**
+
+*Required dependency (rejected):* Raises install barrier. Every workflow user would need codeintel set up (embedding provider, API key) before any workflow works. Currently workflows work immediately after `agntc add`.
+
+*Bundled core with optional full (rejected):* Bundling a minimal codeintel inside workflows creates version sync headaches and partial functionality confusion.
+
+*MCP with optional detection (chosen):* Zero barrier for workflows. Clean decoupling. Independent versioning. `agntc add` could auto-configure the MCP server if codeintel is detected. No bundled code from codeintel in workflows — just MCP tool calls.
+
+**Impact on workflow skills:**
+
+- Step 0: Currently runs `knowledge check`. Changes to: check for codeintel MCP tools → if available, run `compact` and set a flag. If absent, skip (workflows work without it).
+- Phase completion: Currently calls `knowledge index <file>`. Changes to: if codeintel available, call `index` MCP tool with workflow metadata. If absent, skip.
+- Retrieval: Currently calls `knowledge query`. Changes to: if codeintel available, call `query` MCP tool. If absent, no contextual retrieval (as before KB).
+- Cancellation: Currently calls `knowledge remove`. Changes to: if codeintel available, call `remove` MCP tool. If absent, skip.
+- `allowed-tools`: MCP tool permissions replace direct script execution permissions.
+
+**Migration for existing KB users:**
+
+When workflows upgrade to the codeintel-based version, a migration script detects the old `.workflows/.knowledge/` store. Options: migrate data to codeintel's store automatically, prompt user to run `codeintel import`, or re-index from source artifacts (safe since artifacts are the source of truth).
+
+### Dependency Landscape Change
+
+Orama was chosen for zero-native-dep distribution via `npx agntc add`. As a standalone product, the distribution model changes.
+
+**What relaxes:** Users explicitly install the product (not a silent sub-dependency). Can have its own install step, prebuilt binaries, postinstall scripts. An MCP server that stays running amortises load-once costs — Orama's memory-resident model becomes an advantage.
+
+**What still matters:** "Just works" on any dev machine is critical for adoption. Native deps requiring build tools (node-gyp, python, compilers) are still friction. Cross-platform coverage (macOS, Linux, Windows, ARM, x86) required.
+
+**Storage engine assessment:**
+
+| Option | Pros | Cons |
+|---|---|---|
+| **Orama (keep)** | Proven (5 phases built), zero deps, 90KB, hybrid search. MCP server model (load once, serve many) plays to its strengths. | Memory-resident (entire index loads), no graph support, one vector field per query |
+| **better-sqlite3 + sqlite-vec** | Disk-based, SQL queries, mature ecosystem, prebuilt binaries. Could store graph + search in one DB. | ~8MB binary, prebuilt binaries don't cover every platform, native dep |
+| **sql.js (SQLite WASM)** | Zero native deps like Orama, disk-friendly, SQL | Slower than native SQLite, no sqlite-vec |
+
+**Recommendation:** Keep Orama as starting point. It's proven in existing KB work, the MCP server model plays to its strengths, and switching search engines is a migration cost with no immediate payoff. The graph is a separate data structure anyway (JSON + JS traversal) — doesn't need to live in the search index. Design the API so the storage backend is swappable (the existing provider/driver pattern already does this). If scale becomes a problem later (index too large for memory, deserialize too slow), native SQLite migration becomes justified.
+
+**Tree-sitter WASM** is the only significant new dependency:
+- `web-tree-sitter`: ~2MB WASM binary, runs in Node, no native compilation
+- Language grammars: ~200KB-1MB each as WASM files
+- Ship common grammars (JS/TS, Python, Go, Rust, Java, PHP, Ruby ≈ 5-8MB) or download on-demand and cache
+- Zero native deps via WASM — aligns with "just works" constraint
+
+### Architecture Diagram (Standalone Product + Workflow Consumer)
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   Consumers                           │
+│                                                       │
+│  Claude Code    Cursor    Workflows    Any AI Tool    │
+│      │            │          │              │         │
+│      └────────────┴──────┬───┴──────────────┘         │
+│                     MCP / CLI                         │
+├──────────────────────────────────────────────────────┤
+│          Codebase Intelligence (the product)           │
+│                                                       │
+│  ┌─────────┐ ┌──────────┐ ┌───────────┐ ┌─────────┐ │
+│  │Code Wiki│ │AST Graph │ │Git Intel  │ │Test Map │ │
+│  └────┬────┘ └─────┬────┘ └─────┬─────┘ └────┬────┘ │
+│       └────────────┼───────────┼──────────────┘      │
+│                    ▼           ▼                       │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │          Search / Storage Core                   │ │
+│  │   Orama + Embeddings + Chunking + Persistence    │ │
+│  └─────────────────────────────────────────────────┘ │
+│                    ▲                                  │
+│              Content Sources (plugins)                │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │ Workflow  │ │   PR     │ │  Schema  │ │  Deps  │ │
+│  │ Adapter   │ │ Intents  │ │  Layer   │ │ Layer  │ │
+│  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+└──────────────────────────────────────────────────────┘
+
+Workflow Adapter lives in agentic-workflows repo.
+Calls codeintel MCP tools with workflow-specific metadata.
+Handles phase-aware chunking, confidence tiers, decay rules.
+```

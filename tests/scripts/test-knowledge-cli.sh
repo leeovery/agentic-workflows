@@ -895,7 +895,7 @@ run_kb index .workflows/old-project/specification/old-project/specification.md >
 set_completed_with_date "old-project" "2024-01-01"
 output=$(run_kb compact 2>&1)
 assert_eq "reports compacted chunks" "true" "$(echo "$output" | grep -q 'Compacted:' && echo true || echo false)"
-assert_eq "mentions discussion phase" "true" "$(echo "$output" | grep -q 'discussion' && echo true || echo false)"
+assert_eq "mentions discussion phase" "true" "$(echo "$output" | grep -q '• .*discussion' && echo true || echo false)"
 # Spec chunks should still exist.
 query_output=$(run_kb query "specification" --limit 10 2>&1)
 assert_eq "spec chunks preserved" "true" "$(echo "$query_output" | grep -q 'specification |' && echo true || echo false)"
