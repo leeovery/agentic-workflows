@@ -66,4 +66,4 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 16 | [Background Sub-Agents in Research](research-background-agents.md) | Research processing skill |
 | 17 | [Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md) | Convention drift across ~53 skill files |
 | 18 | [Loop-Based Surfacing Nudge](loop-based-surfacing-nudge.md) | Background agent surfacing (discussion + spec) |
-| 19 | [Codebase Intelligence](codebase-intelligence.md) | Code wiki, AST graph, freshness engine — cross-cutting, all phases |
+
