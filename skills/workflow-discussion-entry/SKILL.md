@@ -108,7 +108,9 @@ Parse the discovery output to understand:
   - `reason` - explanation of the status
   - `generated` - when the cache was created
   - `discussion_files` - list of files that were analyzed
-- `gap_input_checksum` - current checksum of all discussion files + research-analysis.md (if exists)
+
+**Top-level fields:**
+- `gap_input_checksum` - current checksum of all discussion files + research-analysis.md (if exists). Used by the gap analysis step when saving cache metadata.
 
 **From `state` section:**
 - `scenario` - one of: `"fresh"`, `"research_only"`, `"discussions_only"`, `"research_and_discussions"`
