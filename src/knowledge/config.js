@@ -14,6 +14,7 @@ const path = require('path');
 const os = require('os');
 
 const { StubProvider } = require('./embeddings');
+const { OpenAIProvider } = require('./providers/openai');
 
 // Default values for all config fields.
 const DEFAULTS = {
@@ -22,7 +23,7 @@ const DEFAULTS = {
 };
 
 // Known providers that have implementations in this codebase.
-const AVAILABLE_PROVIDERS = ['stub'];
+const AVAILABLE_PROVIDERS = ['stub', 'openai'];
 
 /**
  * Resolve the system config path.
@@ -163,8 +164,15 @@ function resolveProvider(config) {
     return null;
   }
 
-  // This code path won't be reached in Phase 3 (only stub is available).
-  // Phase 4 will add the OpenAI branch here.
+  // OpenAI provider.
+  if (providerName === 'openai') {
+    return new OpenAIProvider({
+      apiKey: config._api_key,
+      model: config.model || undefined,
+      dimensions: config.dimensions || undefined,
+    });
+  }
+
   return null;
 }
 

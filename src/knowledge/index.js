@@ -11,6 +11,7 @@ const path = require('path');
 const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
+const { OpenAIProvider } = require('./providers/openai');
 const config = require('./config');
 
 // ---------------------------------------------------------------------------
@@ -710,6 +711,7 @@ module.exports = {
   resolveProviderState,
   main,
   StubProvider,
+  OpenAIProvider,
   store,
   chunker,
   config,

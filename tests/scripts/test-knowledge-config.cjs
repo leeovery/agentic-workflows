@@ -211,7 +211,7 @@ describe('resolveProvider', () => {
 
   it('errors for unknown provider names', () => {
     assert.throws(
-      () => resolveProvider({ provider: 'openai', _api_key: 'sk-123' }),
+      () => resolveProvider({ provider: 'nonexistent', _api_key: 'sk-123' }),
       /not available/
     );
   });
