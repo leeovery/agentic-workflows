@@ -61,9 +61,15 @@ Store work_unit for the handoff.
 
 Resolve filename:
 
-#### If source is `import`
+#### If source is `import` and work_type is `feature`
 
-If topic is not yet resolved, set `topic = exploration`.
+`resolved_filename = {topic}.md`
+
+→ Proceed to **Step 5**.
+
+#### If source is `import` and work_type is `epic`
+
+`topic = exploration`
 
 `resolved_filename = {topic}.md`
 
