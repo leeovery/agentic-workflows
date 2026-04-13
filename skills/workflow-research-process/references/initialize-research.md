@@ -38,29 +38,35 @@
    git ls-files --error-unmatch {path_1} {path_2} ...
    ```
 
-   **If any files are tracked:**
+**If no import files are git-tracked:**
 
-   > *Output the next fenced block as markdown (not a code block):*
+→ Return to caller.
 
-   ```
-   · · · · · · · · · · · ·
-   The following source files are tracked by git:
+**If any import files are git-tracked:**
 
-   • {tracked_path_1}
-   • {tracked_path_2}
+> *Output the next fenced block as markdown (not a code block):*
 
-   - **`d`/`delete`** — Delete source files and commit cleanup
-   - **`k`/`keep`** — Keep source files as they are
-   · · · · · · · · · · · ·
-   ```
+```
+· · · · · · · · · · · ·
+The following source files are tracked by git:
 
-   **STOP.** Wait for user response.
+• {tracked_path_1}
+• {tracked_path_2}
 
-   **If `delete`**: Delete the tracked files and commit: `research({work_unit}): remove imported source files`
+- **`d`/`delete`** — Delete source files and commit cleanup
+- **`k`/`keep`** — Keep source files as they are
+· · · · · · · · · · · ·
+```
 
-   **If `keep`**: Continue without changes.
+**STOP.** Wait for user response.
 
-   **If no files are tracked:** Skip silently.
+**If user chooses `delete`:**
+
+Delete the tracked files and commit: `research({work_unit}): remove imported source files`
+
+→ Return to caller.
+
+**If user chooses `keep`:**
 
 → Return to caller.
 
