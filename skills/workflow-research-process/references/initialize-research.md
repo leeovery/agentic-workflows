@@ -7,7 +7,7 @@
 #### If source is `import`
 
 1. Read each file listed in the handoff's Import files verbatim
-2. Create the research file at the Output path using the standard template from **[template.md](template.md)**. Populate the Starting Point from conversation context. Place the full verbatim content of each imported file after the `---`, separated by `---` if multiple files.
+2. Create the research file at the Output path using the standard template from **[template.md](template.md)**. Create with a minimal Starting Point. Place the full verbatim content of each imported file after the `---`, separated by `---` if multiple files.
 
    **CRITICAL**: No summarization, no restructuring. Imported content is copied exactly as-is.
 3. Register in manifest:
