@@ -14,12 +14,18 @@
 · · · · · · · · · · · ·
 Do you have a specific topic to research, or explore openly?
 
-- **`s`/`specific`** — Name a focused topic to research
 - **`e`/`explore`** — Open exploration, follow tangents, see where it goes
+- **`s`/`specific`** — Name a focused topic to research
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
+
+**If `explore`:**
+
+`resolved_filename = exploration.md`
+
+→ Proceed to **B. Seed Idea**.
 
 **If `specific`:**
 
@@ -32,12 +38,6 @@ What topic would you like to research?
 **STOP.** Wait for user response.
 
 User provides topic name → `resolved_filename = {topic:(kebabcase)}.md`
-
-→ Proceed to **B. Seed Idea**.
-
-**If `explore`:**
-
-`resolved_filename = exploration.md`
 
 → Proceed to **B. Seed Idea**.
 
