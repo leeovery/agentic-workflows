@@ -171,6 +171,14 @@ Load **[route-first-phase.md](references/route-first-phase.md)** and follow its 
 > and guide you through the process.
 ```
 
+#### If phase is `research` and source is `import`
+
+Invoke `/workflow-research-entry epic {work_unit} {topic}`.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+#### Otherwise
+
 Invoke the appropriate entry-point skill based on the selected phase:
 
 | Phase | Invoke |

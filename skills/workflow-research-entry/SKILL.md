@@ -61,6 +61,12 @@ Store work_unit for the handoff.
 
 Resolve filename:
 
+#### If source is `import`
+
+`resolved_filename = {topic}.md`
+
+→ Proceed to **Step 5**.
+
 #### If work_type is `feature`
 
 `resolved_filename = {topic}.md`
