@@ -93,7 +93,7 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 **Epics** are for large initiatives spanning multiple sessions. Topics move independently — 10 discussions might yield 5 specifications, each planned and implemented separately. Research analysis identifies potential discussion topics and tracks which ones haven't been started yet. As discussions mature, a discussion gap analysis reads all completed discussions holistically to surface cross-discussion themes, elevated-but-uncreated topics, emergent topics, and integration gaps — suggesting new discussions that research couldn't have anticipated. Both sources of pending topics are managed from the epic menu (discuss or skip). Planning uses walking skeletons and steel threads to prove architecture end-to-end before building features on top. Advisory soft gates warn when moving between phases if prerequisite items are still in progress. When a spec is assessed as cross-cutting, it's auto-promoted to its own cross-cutting work unit.
 
-**Features** are for adding functionality. Single topic, linear pipeline. Planning analyses your codebase and follows existing patterns — it won't introduce new architectural conventions unless the spec calls for it. Research is optional — skip it if you know what you're building, or import existing research files to pick up where you left off. If a feature grows beyond scope, pivot it to an epic without losing progress.
+**Features** are for adding functionality. Single topic, linear pipeline. Planning analyses your codebase and follows existing patterns — it won't introduce new architectural conventions unless the spec calls for it. Research is optional — skip it if you know what you're building, or import existing research files to pick up where you left off. If a feature grows beyond scope, pivot it to an epic without losing progress. If it belongs in an existing epic, absorb it — the discussion and research move into the epic as a new topic.
 
 **Bugfixes** replace discussion with investigation — structured symptom gathering combined with code analysis to find the root cause before specifying the fix. An optional synthesis agent independently validates the root cause hypothesis by tracing code fresh, catching flawed reasoning before it propagates through the pipeline. Planning applies minimal-change surgical fixes with regression prevention as a first-class deliverable.
 
@@ -166,7 +166,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 
 ### Workflow Dashboard
 
-`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, browse your inbox, and route to the right skill.
+`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, absorb features into existing epics, browse your inbox, and route to the right skill.
 
 ## Skills Reference
 

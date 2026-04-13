@@ -87,6 +87,8 @@ Discovery filters by status — active work by default, with options to view com
 
 **Feature-to-epic pivot**: Features can be converted to epics via the manage menu (`p`/`pivot`). After pivot, the user can continue immediately as an epic or return to the previous view.
 
+**Feature absorption**: Features can be merged into an existing in-progress epic via the manage menu (`a`/`absorb`). Moves the feature's discussion and research into the epic as a new topic, then deletes the feature entirely. Guarded: requires a discussion, no spec-or-beyond, and at least one in-progress epic. Git history serves as provenance.
+
 **Epic soft gates**: When navigating forward between epic phases, advisory gates warn if prerequisite items are still in-progress. Informational, not blocking — the system recovers via re-analysis if the user proceeds early.
 
 Commit docs frequently (natural breaks, before context refresh). Skills capture context, don't implement.
