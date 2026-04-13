@@ -7,27 +7,9 @@
 #### If source is `import`
 
 1. Read each file listed in the handoff's Import files verbatim
-2. Create the research file at the Output path using this structure:
-   ```markdown
-   # Research: {Title}
+2. Create the research file at the Output path using the standard template from **[template.md](template.md)**. Populate the Starting Point from conversation context. Place the full verbatim content of each imported file after the `---`, separated by `---` if multiple files.
 
-   Imported from existing research files.
-
-   ## Starting Point
-
-   Imported from:
-   - {path_1}
-   - {path_2}
-
-   ---
-
-   {Full verbatim content of first file}
-
-   ---
-
-   {Full verbatim content of second file, if multiple}
-   ```
-   **CRITICAL**: No summarization, no restructuring. Content is copied exactly as-is. If multiple files, separate with `---`.
+   **CRITICAL**: No summarization, no restructuring. Imported content is copied exactly as-is.
 3. Register in manifest:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{topic}
