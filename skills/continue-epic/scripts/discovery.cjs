@@ -123,14 +123,14 @@ function buildEpicDetail(cwd, manifest) {
   const planItems = phaseItems(manifest, 'planning');
   const implItems = phaseItems(manifest, 'implementation');
 
-  const planTopics = new Set(planItems.map(i => i.name));
+  const planTopics = new Set(planItems.filter(i => i.status !== 'cancelled').map(i => i.name));
   for (const s of specItems) {
     if (s.status === 'completed' && !planTopics.has(s.name)) {
       nextPhaseReady.push({ name: s.name, action: 'start_planning', label: 'spec completed' });
     }
   }
 
-  const implTopics = new Set(implItems.map(i => i.name));
+  const implTopics = new Set(implItems.filter(i => i.status !== 'cancelled').map(i => i.name));
   for (const p of planItems) {
     if (p.status === 'completed' && !implTopics.has(p.name)) {
       // Check deps before marking as ready for implementation
@@ -147,7 +147,7 @@ function buildEpicDetail(cwd, manifest) {
   }
 
   const reviewItems = phaseItems(manifest, 'review');
-  const reviewTopics = new Set(reviewItems.map(i => i.name));
+  const reviewTopics = new Set(reviewItems.filter(i => i.status !== 'cancelled').map(i => i.name));
   for (const i of implItems) {
     if (i.status === 'completed' && !reviewTopics.has(i.name)) {
       nextPhaseReady.push({ name: i.name, action: 'start_review', label: 'implementation completed' });
@@ -301,6 +301,10 @@ function format(result) {
     if (d.completed.length > 0) {
       lines.push('    completed:');
       for (const c of d.completed) lines.push(`      - ${c.name} (${c.phase})`);
+    }
+    if (d.cancelled.length > 0) {
+      lines.push('    cancelled:');
+      for (const c of d.cancelled) lines.push(`      - ${c.name} (${c.phase}, was: ${c.previous_status || 'unknown'})`);
     }
   }
 
