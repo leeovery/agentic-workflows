@@ -38,6 +38,8 @@ Store the selected epic as `target_epic`.
 
 → Proceed to **B. Name Topic**.
 
+---
+
 ## B. Name Topic
 
 Default topic name = `{selected.name}` (the feature's work unit name).
@@ -72,6 +74,8 @@ Set `topic` to the user's input.
 
 → Proceed to **C. Collision Check**.
 
+---
+
 ## C. Collision Check
 
 Check if a discussion topic with this name already exists in the target epic:
@@ -98,6 +102,8 @@ Set `topic` to the user's input.
 #### If `false`
 
 → Proceed to **D. Research Check**.
+
+---
 
 ## D. Research Check
 
@@ -134,6 +140,8 @@ Collisions are resolved by appending `-{selected.name}` (e.g. `exploration` beco
 Set `has_research` = false.
 
 → Proceed to **E. Confirm**.
+
+---
 
 ## E. Confirm
 
@@ -187,6 +195,8 @@ Proceed?
 
 → Proceed to **F. Move Discussion**.
 
+---
+
 ## F. Move Discussion
 
 ```bash
@@ -214,6 +224,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.dis
 #### Otherwise
 
 → Proceed to **G. Move Research**.
+
+---
 
 ## G. Move Research
 
@@ -244,6 +256,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.res
 
 → Proceed to **H. Cleanup**.
 
+---
+
 ## H. Cleanup
 
 Remove the feature from the project manifest:
@@ -261,6 +275,8 @@ rm -rf .workflows/{selected.name}/
 Commit: `workflow({selected.name}): absorb into {target_epic}`
 
 → Proceed to **I. Post-Absorption**.
+
+---
 
 ## I. Post-Absorption
 
