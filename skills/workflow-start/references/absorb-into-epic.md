@@ -234,6 +234,8 @@ Absorbed into Epic
 
 ```
 · · · · · · · · · · · ·
+**{selected.name:(titlecase)}** absorbed into **{target_epic:(titlecase)}**.
+
 - **`c`/`continue`** — Continue {target_epic:(titlecase)} as epic
 - **`b`/`back`** — Return to previous view
 · · · · · · · · · · · ·
