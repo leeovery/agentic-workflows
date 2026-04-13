@@ -49,8 +49,8 @@ Default topic name = `{selected.name}` (the feature's work unit name).
 Topic name in **{target_epic:(titlecase)}**: **{selected.name}**
 
 - **`y`/`yes`** — Use this name
-- **`r`/`rename`** — Enter a different name (kebab-case)
 - **`b`/`back`** — Return
+- **Rename** — Enter a different name (kebab-case)
 · · · · · · · · · · · ·
 ```
 
@@ -66,15 +66,7 @@ Set `topic` = `{selected.name}`.
 
 → Proceed to **C. Collision Check**.
 
-#### If user chose `r`/`rename`
-
-> *Output the next fenced block as a code block:*
-
-```
-Enter topic name (kebab-case):
-```
-
-**STOP.** Wait for user response.
+#### If rename
 
 Set `topic` to the user's input.
 
