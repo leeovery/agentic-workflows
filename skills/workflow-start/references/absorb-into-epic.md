@@ -11,9 +11,9 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion into the selected epic as
-> a new topic and delete the feature work unit. Git history serves
-> as provenance.
+> This will move the feature's discussion and research into the
+> selected epic as a new topic and delete the feature work unit.
+> Git history serves as provenance.
 
 · · · · · · · · · · · ·
 Select a target epic:
@@ -107,7 +107,7 @@ Set `topic` to the user's input.
 
 → Proceed to **D. Research Warning**.
 
-## D. Research Warning
+## D. Research Check
 
 Check if the feature has research:
 
@@ -117,17 +117,29 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name
 
 #### If `true`
 
-> *Output the next fenced block as markdown (not a code block):*
+Set `has_research` = true.
 
+Read the research items to get topic names and statuses:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.research.*' status
 ```
-> Research files for this feature won't be moved — their value is
-> already captured in the discussion. They will be deleted with the
-> feature directory.
+
+Store as `research_items` (list of topic name + status pairs).
+
+For each research item, check for collision in the target epic:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {target_epic}.research.{research_topic}
 ```
+
+If a collision exists, rename by appending `-{selected.name}` (e.g. `exploration` becomes `exploration-{selected.name}`). Store the mapping of original name → target name as `research_moves`.
 
 → Proceed to **E. Confirm**.
 
 #### Otherwise
+
+Set `has_research` = false.
 
 → Proceed to **E. Confirm**.
 
@@ -150,9 +162,15 @@ Absorb Summary
   Target:     {target_epic:(titlecase)}
   Topic:      {topic}
   Discussion: [{discussion_status}]
+@if(has_research)
+  Research:   {research_item_count} file(s)
+@endif
 
   Actions:
   • Move discussion file to epic
+@if(has_research)
+  • Move research file(s) to epic
+@endif
   • Register topic in epic manifest
   • Remove feature work unit and directory
 ```
@@ -189,7 +207,7 @@ mkdir -p .workflows/{target_epic}/discussion/
 mv .workflows/{selected.name}/discussion/{selected.name}.md .workflows/{target_epic}/discussion/{topic}.md
 ```
 
-Register the topic in the epic manifest:
+Register the discussion topic in the epic manifest:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discussion.{topic}
@@ -199,6 +217,25 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_ep
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discussion.{topic} status completed
+```
+
+**If `has_research` is true:**
+
+For each item in `research_moves` (original_name → target_name):
+
+```bash
+mkdir -p .workflows/{target_epic}/research/
+mv .workflows/{selected.name}/research/{original_name}.md .workflows/{target_epic}/research/{target_name}.md
+```
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.research.{target_name}
+```
+
+If the original research item status was `completed`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.research.{target_name} status completed
 ```
 
 Remove the feature from the project manifest:
@@ -227,6 +264,9 @@ Absorbed into Epic
   Topic "{topic:(titlecase)}" added to {target_epic:(titlecase)}.
 
   • Discussion: moved
+@if(has_research)
+  • Research: moved
+@endif
   • Feature: removed
 ```
 
