@@ -35,6 +35,8 @@ Store the validated paths as `import_files`.
 
 → Proceed to **B. Topic Name**.
 
+---
+
 ## B. Topic Name
 
 > *Output the next fenced block as a code block:*
