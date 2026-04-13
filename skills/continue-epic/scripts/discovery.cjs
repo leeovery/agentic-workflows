@@ -51,6 +51,7 @@ function buildEpicDetail(cwd, manifest) {
   const allSourcedDiscussions = new Set();
   const completedItems = [];
   const inProgressItems = [];
+  const cancelledItems = [];
   const nextPhaseReady = [];
 
   for (const phase of EPIC_PHASES) {
@@ -93,6 +94,9 @@ function buildEpicDetail(cwd, manifest) {
       }
       if (item.status === 'completed') {
         completedItems.push({ name: item.name, phase });
+      }
+      if (item.status === 'cancelled') {
+        cancelledItems.push({ name: item.name, phase, previous_status: item.previous_status || null });
       }
     }
 
@@ -150,7 +154,7 @@ function buildEpicDetail(cwd, manifest) {
     }
   }
 
-  const hasResearch = researchItems.length > 0;
+  const hasResearch = researchItems.some(r => r.status !== 'cancelled');
   const hasCompletedResearch = researchItems.some(r => r.status === 'completed');
   const hasCompletedSpec = specItems.some(s => s.status === 'completed');
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
@@ -166,6 +170,7 @@ function buildEpicDetail(cwd, manifest) {
     phases,
     in_progress: inProgressItems,
     completed: completedItems,
+    cancelled: cancelledItems,
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,

@@ -83,7 +83,7 @@ No work started yet.
 
 **Display rules:**
 
-- Phase headers as section labels (titlecased) with a parenthetical count summary — e.g., `Discussion (3 completed, 1 pending)`, `Research (1 completed)`, `Specification (2 in-progress)`. Combine statuses present in that phase; omit zero counts
+- Phase headers as section labels (titlecased) with a parenthetical count summary — e.g., `Discussion (3 completed, 1 cancelled)`, `Research (1 completed)`, `Specification (2 in-progress)`. Combine statuses present in that phase; omit zero counts
 - Items under each phase use proper tree grammar: `├─` for non-final siblings, `└─` for the final item. Pending discussion topics from research count as siblings when determining the final item
 - Planning items show format after status, separated by a middle dot: `[in-progress] · linear`
 - Specification items show their source discussions as a sub-tree beneath, one `└─` per source
@@ -142,6 +142,7 @@ Show only statuses and categories that appear in the current display. No `---` s
     Status:
       in-progress — work is ongoing
       completed            — phase or implementation done
+      cancelled            — topic removed from active work
       pending from research — identified by research, not yet discussed
       pending from gap analysis — identified by discussion gap analysis
       promoted             — moved to its own cross-cutting work unit
@@ -178,6 +179,8 @@ Build a menu with two types of options:
 - **`p`/`pending`** — Manage pending discussion topics (only shown when `gating.has_pending_discussions` is true)
 - **`r`/`research`** — Start new research (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
+- **`a`/`cancel`** — Cancel a topic (only shown when non-cancelled, non-promoted items exist in any phase)
+- **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
 - **`m`/`map`** — View epic dependency map (always present when at least one phase has items)
 
 **Phase-forward gating:**
@@ -215,6 +218,8 @@ What would you like to do?
 - **`d`/`discuss`** — Start new discussion
 - **`r`/`research`** — Start new research
 - **`c`/`completed`** — Resume a completed topic
+- **`a`/`cancel`** — Cancel a topic
+- **`e`/`reactivate`** — Reactivate a cancelled topic
 - **`m`/`map`** — View epic dependency map
 
 Select an option:
@@ -285,6 +290,14 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 #### If user chose `c`/`completed`
 
 → Proceed to **F. Resume Completed**.
+
+#### If user chose `a`/`cancel`
+
+→ Proceed to **H. Cancel Topic**.
+
+#### If user chose `e`/`reactivate`
+
+→ Proceed to **I. Reactivate Topic**.
 
 #### Otherwise
 
@@ -495,3 +508,155 @@ Removed "{topic:(titlecase)}" from pending topics.
 **If pending topics still remain:**
 
 → Return to **G. Manage Pending**.
+
+---
+
+## H. Cancel Topic
+
+Display all non-cancelled, non-promoted items across all phases, grouped by phase.
+
+> *Output the next fenced block as a code block:*
+
+```
+Cancellable Topics
+
+@foreach(phase in phases)
+@if(phase has non-cancelled, non-promoted items)
+  {phase:(titlecase)}
+@foreach(item in phase.items where status != cancelled and status != promoted)
+    {N}. {item.name:(titlecase)} [{item.status}]
+@endforeach
+@endif
+
+@endforeach
+```
+
+Number all items sequentially across all phases. Only show phases with cancellable items. Blank line between phase sections.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Which topic would you like to cancel?
+
+- **`1`** — Cancel "{item_1.name:(titlecase)}" — {item_1.phase} [{item_1.status}]
+- **`2`** — ...
+- **`b`/`back`** — Return to menu
+
+Select an option:
+· · · · · · · · · · · ·
+```
+
+Recreate with actual items from discovery.
+
+**STOP.** Wait for user response.
+
+#### If user chose `back`
+
+→ Return to **C. Menu**.
+
+#### If user chose a numbered topic
+
+Confirm with the user:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Cancel "{topic:(titlecase)}" in {phase}? This will mark it as
+cancelled. You can reactivate it later.
+
+- **`y`/`yes`** — Confirm cancellation
+- **`n`/`no`** — Return to menu
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If user chose `no`:**
+
+→ Return to **C. Menu**.
+
+**If user chose `yes`:**
+
+Run two manifest CLI calls to set cancelled status and preserve previous status:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} previous_status {current_status}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status cancelled
+```
+
+Commit the change.
+
+> *Output the next fenced block as a code block:*
+
+```
+Cancelled "{topic:(titlecase)}" in {phase}.
+```
+
+→ Return to **C. Menu**.
+
+---
+
+## I. Reactivate Topic
+
+Display all cancelled items across all phases, grouped by phase.
+
+> *Output the next fenced block as a code block:*
+
+```
+Cancelled Topics
+
+@foreach(phase in phases)
+@if(phase has cancelled items)
+  {phase:(titlecase)}
+@foreach(item in phase.items where status == cancelled)
+    {N}. {item.name:(titlecase)} [cancelled] (was: {item.previous_status})
+@endforeach
+@endif
+
+@endforeach
+```
+
+Number all items sequentially across all phases. Only show phases with cancelled items. Blank line between phase sections.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Which topic would you like to reactivate?
+
+- **`1`** — Reactivate "{item_1.name:(titlecase)}" — {item_1.phase} (was: {item_1.previous_status})
+- **`2`** — ...
+- **`b`/`back`** — Return to menu
+
+Select an option:
+· · · · · · · · · · · ·
+```
+
+Recreate with actual items from discovery.
+
+**STOP.** Wait for user response.
+
+#### If user chose `back`
+
+→ Return to **C. Menu**.
+
+#### If user chose a numbered topic
+
+Read the `previous_status` from the manifest for the selected item. Restore the original status and remove `previous_status`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status {previous_status}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.{phase}.{topic} previous_status
+```
+
+Commit the change.
+
+> *Output the next fenced block as a code block:*
+
+```
+Reactivated "{topic:(titlecase)}" in {phase}. Status restored to {previous_status}.
+```
+
+→ Return to **C. Menu**.
