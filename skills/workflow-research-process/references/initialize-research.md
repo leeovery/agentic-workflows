@@ -7,14 +7,15 @@
 #### If source is `import`
 
 1. Read each file listed in the handoff's Import files verbatim
-2. Create the research file at the Output path using the standard template from **[template.md](template.md)**. Leave the Starting Point section empty. Place the full verbatim content of each imported file after the `---`, separated by `---` if multiple files.
+2. Create the research file at the Output path using the standard template from **[template.md](template.md)**. Place the full verbatim content of each imported file after the `---`, separated by `---` if multiple files.
 
    **CRITICAL**: No summarization, no restructuring. Imported content is copied exactly as-is.
-3. Register in manifest:
+3. Populate the Starting Point section based on the imported content — summarize what the files cover, key themes, and where the research stands.
+4. Register in manifest:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{topic}
    ```
-4. Commit: `research({work_unit}): import {topic} research from existing files`
+5. Commit: `research({work_unit}): import {topic} research from existing files`
 
 → Return to caller.
 
