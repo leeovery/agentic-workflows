@@ -19,6 +19,7 @@ How would you like to start?
 
 - **`r`/`research`** — Explore ideas and options first, no decisions yet
 - **`d`/`discussion`** — Ready to discuss and make decisions
+- **`i`/`import`** — Import existing research files verbatim
 
 Select an option:
 · · · · · · · · · · · ·
@@ -35,5 +36,13 @@ Set phase="research".
 #### If user chooses discussion
 
 Set phase="discussion".
+
+→ Return to caller.
+
+#### If user chooses import
+
+Load **[collect-import.md](collect-import.md)** and follow its instructions as written.
+
+Set phase="research" and source="import".
 
 → Return to caller.
