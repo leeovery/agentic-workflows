@@ -75,7 +75,7 @@ Store the selected work unit.
 
 ## B. Pre-Checks
 
-Default `implementation_completed` = false, `has_plan` = false, `has_spec` = false, `has_discussion` = false, `has_in_progress_epics` = false.
+Default `implementation_completed` = false, `has_plan` = false.
 
 Check whether the planning phase exists:
 
@@ -84,6 +84,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name
 ```
 
 If the result is `true`, set `has_plan` = true.
+
+**If `selected.work_type` is `feature`:**
+
+Default `has_spec` = false, `has_discussion` = false, `has_in_progress_epics` = false.
 
 Check whether the specification phase exists:
 
@@ -115,11 +119,11 @@ Check whether the implementation phase exists:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.implementation
 ```
 
-#### If the result is `false`
+#### If the implementation phase does not exist
 
 → Proceed to **D. Action Menu**.
 
-#### If the result is `true`
+#### If the implementation phase exists
 
 → Proceed to **C. Completion Check**.
 
