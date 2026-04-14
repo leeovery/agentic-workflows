@@ -19,14 +19,14 @@ const VALID_PHASES = [
 ];
 
 const VALID_PHASE_STATUSES = {
-  research:       ['in-progress', 'completed'],
-  discussion:     ['in-progress', 'completed'],
-  investigation:  ['in-progress', 'completed'],
-  scoping:        ['in-progress', 'completed'],
-  specification:  ['in-progress', 'completed', 'superseded', 'promoted'],
-  planning:       ['in-progress', 'completed'],
-  implementation: ['in-progress', 'completed'],
-  review:         ['in-progress', 'completed'],
+  research:       ['in-progress', 'completed', 'cancelled'],
+  discussion:     ['in-progress', 'completed', 'cancelled'],
+  investigation:  ['in-progress', 'completed', 'cancelled'],
+  scoping:        ['in-progress', 'completed', 'cancelled'],
+  specification:  ['in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
+  planning:       ['in-progress', 'completed', 'cancelled'],
+  implementation: ['in-progress', 'completed', 'cancelled'],
+  review:         ['in-progress', 'completed', 'cancelled'],
 };
 
 const VALID_GATE_MODES = ['gated', 'auto'];

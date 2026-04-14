@@ -20,6 +20,7 @@ function discover(cwd, workUnit) {
     const specItemsList = phaseItems(m, 'specification');
 
     for (const item of discItemsList) {
+      if (item.status === 'cancelled') continue;
       discCount++;
       if (item.status === 'completed') completedCount++;
       else if (item.status === 'in-progress') inProgressCount++;
@@ -56,7 +57,7 @@ function discover(cwd, workUnit) {
       if (!fileExists(specFile)) continue;
 
       const status = item.status || 'in-progress';
-      if (status === 'superseded') continue;
+      if (status === 'superseded' || status === 'cancelled') continue;
 
       specCount++;
       const spec = {

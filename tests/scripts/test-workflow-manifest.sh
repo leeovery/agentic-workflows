@@ -1451,6 +1451,96 @@ assert_not_contains "$output" "skill-a" "Project-level pull removed skill-a"
 assert_contains "$output" "skill-b" "Project-level pull kept skill-b"
 
 # ============================================================================
+# CANCELLED STATUS TESTS
+# ============================================================================
+
+echo -e "${YELLOW}Test: cancelled accepted as valid status for discussion${NC}"
+setup_fixture
+run_cli init cancel-disc --work-type epic --description "Cancel disc" >/dev/null 2>&1
+run_cli init-phase cancel-disc.discussion.my-topic >/dev/null 2>&1
+run_cli set cancel-disc.discussion.my-topic status cancelled >/dev/null 2>&1
+output=$(run_cli_stdout get cancel-disc.discussion.my-topic status)
+
+assert_equals "$output" "cancelled" "Discussion accepts cancelled status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: cancelled accepted as valid status for specification${NC}"
+setup_fixture
+run_cli init cancel-spec --work-type epic --description "Cancel spec" >/dev/null 2>&1
+run_cli init-phase cancel-spec.specification.my-topic >/dev/null 2>&1
+run_cli set cancel-spec.specification.my-topic status cancelled >/dev/null 2>&1
+output=$(run_cli_stdout get cancel-spec.specification.my-topic status)
+
+assert_equals "$output" "cancelled" "Specification accepts cancelled status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: cancelled accepted as valid status for planning${NC}"
+setup_fixture
+run_cli init cancel-plan --work-type epic --description "Cancel plan" >/dev/null 2>&1
+run_cli init-phase cancel-plan.planning.my-topic >/dev/null 2>&1
+run_cli set cancel-plan.planning.my-topic status cancelled >/dev/null 2>&1
+output=$(run_cli_stdout get cancel-plan.planning.my-topic status)
+
+assert_equals "$output" "cancelled" "Planning accepts cancelled status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: cancelled accepted as valid status for implementation${NC}"
+setup_fixture
+run_cli init cancel-impl --work-type epic --description "Cancel impl" >/dev/null 2>&1
+run_cli init-phase cancel-impl.implementation.my-topic >/dev/null 2>&1
+run_cli set cancel-impl.implementation.my-topic status cancelled >/dev/null 2>&1
+output=$(run_cli_stdout get cancel-impl.implementation.my-topic status)
+
+assert_equals "$output" "cancelled" "Implementation accepts cancelled status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: previous_status field set alongside cancelled${NC}"
+setup_fixture
+run_cli init cancel-prev --work-type epic --description "Cancel prev" >/dev/null 2>&1
+run_cli init-phase cancel-prev.discussion.my-topic >/dev/null 2>&1
+run_cli set cancel-prev.discussion.my-topic previous_status in-progress >/dev/null 2>&1
+run_cli set cancel-prev.discussion.my-topic status cancelled >/dev/null 2>&1
+prev=$(run_cli_stdout get cancel-prev.discussion.my-topic previous_status)
+status=$(run_cli_stdout get cancel-prev.discussion.my-topic status)
+
+assert_equals "$prev" "in-progress" "previous_status preserved alongside cancelled"
+assert_equals "$status" "cancelled" "Status is cancelled"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: previous_status deleted on reactivation${NC}"
+setup_fixture
+run_cli init cancel-react --work-type epic --description "Cancel react" >/dev/null 2>&1
+run_cli init-phase cancel-react.discussion.my-topic >/dev/null 2>&1
+run_cli set cancel-react.discussion.my-topic previous_status in-progress >/dev/null 2>&1
+run_cli set cancel-react.discussion.my-topic status cancelled >/dev/null 2>&1
+
+# Reactivate: restore previous status and delete previous_status field
+run_cli set cancel-react.discussion.my-topic status in-progress >/dev/null 2>&1
+run_cli delete cancel-react.discussion.my-topic previous_status >/dev/null 2>&1
+status=$(run_cli_stdout get cancel-react.discussion.my-topic status)
+prev_exists=$(run_cli_stdout exists cancel-react.discussion.my-topic previous_status)
+
+assert_equals "$status" "in-progress" "Status restored to in-progress"
+assert_equals "$prev_exists" "false" "previous_status deleted after reactivation"
+
+echo ""
+
+# ============================================================================
 # RESOLVE COMMAND TESTS
 # ============================================================================
 

@@ -36,6 +36,7 @@ function discover(cwd, workUnit) {
   for (const m of manifests) {
     const items = phaseItems(m, 'discussion');
     for (const item of items) {
+      if (item.status === 'cancelled') continue;
       discussions.push({ name: item.name, work_unit: m.name, status: item.status || 'unknown', work_type: m.work_type });
       if (item.status === 'in-progress') inProgress++;
       else if (item.status === 'completed') completed++;
