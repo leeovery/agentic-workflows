@@ -89,6 +89,8 @@ Discovery filters by status — active work by default, with options to view com
 
 **Feature absorption**: Features can be merged into an existing in-progress epic via the manage menu (`a`/`absorb`). Moves the feature's discussion and research into the epic as a new topic, then deletes the feature entirely. Guarded: requires a discussion, no spec-or-beyond, and at least one in-progress epic. Git history serves as provenance.
 
+**Epic topic cancellation**: Individual topics within an epic can be cancelled and reactivated via the continue-epic menu (`a`/`cancel`, `e`/`reactivate`). Cancellation sets the item's phase status to `cancelled` and stashes the prior status in a `previous_status` field. Cancelled items stay visible in the state display but are excluded from phase aggregation (`phaseStatus`), gating flags, next-phase-ready logic, and discussion/spec entry discovery. Reactivation restores `previous_status` and deletes the field. Epic-only — other work types use work-unit-level cancellation since topic = work unit.
+
 **Epic soft gates**: When navigating forward between epic phases, advisory gates warn if prerequisite items are still in-progress. Informational, not blocking — the system recovers via re-analysis if the user proceeds early.
 
 Commit docs frequently (natural breaks, before context refresh). Skills capture context, don't implement.
