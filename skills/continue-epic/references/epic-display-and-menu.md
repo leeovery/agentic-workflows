@@ -644,11 +644,16 @@ Recreate with actual items from discovery.
 
 #### If user chose a numbered topic
 
-Read the `previous_status` via manifest CLI, then restore the original status and remove `previous_status`:
+Read the `previous_status` via manifest CLI:
 
 ```bash
-previous_status=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.{phase}.{topic} previous_status)
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status "$previous_status"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.{phase}.{topic} previous_status
+```
+
+Use the returned value as `{previous_status}` in the next two commands to restore the original status and remove the `previous_status` field:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status {previous_status}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.{phase}.{topic} previous_status
 ```
 
