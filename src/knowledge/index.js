@@ -186,6 +186,13 @@ function deriveIdentity(filePath) {
   const phase = match[2];
   const rest = match[3];
 
+  // Reject path-traversal and hidden-dir names. The regex allows
+  // anything-without-slash, which would otherwise accept `..` or `.`
+  // and escape the .workflows directory when path.resolve() is applied.
+  if (workUnit === '.' || workUnit === '..' || workUnit.startsWith('.')) {
+    throw new Error(`Invalid work unit name: "${workUnit}"`);
+  }
+
   // Validate indexed phase.
   if (!INDEXED_PHASES.includes(phase)) {
     throw new Error(`File is in phase "${phase}" which is not indexed.`);
@@ -222,6 +229,10 @@ function deriveIdentity(filePath) {
       );
     }
     topic = resMatch[1];
+  }
+
+  if (topic === '.' || topic === '..' || topic.startsWith('.')) {
+    throw new Error(`Invalid topic name: "${topic}"`);
   }
 
   return { workUnit, phase, topic };
@@ -454,7 +465,13 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
 
     await store.saveStore(db, sp);
 
-    if (!metadata) {
+    // Re-read metadata inside the lock to avoid clobbering concurrent
+    // pending-queue mutations (addToPendingQueue runs under the same
+    // lock, but an earlier addToPendingQueue may have committed between
+    // our pre-lock load at line ~376 and this write).
+    const freshMeta = fs.existsSync(mp) ? store.readMetadata(mp) : null;
+
+    if (!freshMeta) {
       const newMeta = {
         provider: effectiveProvider ? cfg.provider : null,
         model: effectiveProvider ? effectiveProvider.model() : null,
@@ -464,8 +481,11 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
       };
       store.writeMetadata(mp, newMeta);
     } else {
-      metadata.last_indexed = new Date().toISOString();
-      store.writeMetadata(mp, metadata);
+      // Preserve provider/model/dimensions (never change once set) and
+      // preserve the FRESHEST pending[] from disk.
+      freshMeta.last_indexed = new Date().toISOString();
+      if (!Array.isArray(freshMeta.pending)) freshMeta.pending = [];
+      store.writeMetadata(mp, freshMeta);
     }
   });
 
@@ -596,7 +616,7 @@ async function cmdIndexBulk(options, cfg, provider) {
       }
     } catch (err) {
       // All retries exhausted — add to pending queue.
-      addToPendingQueue(item.file, err.message);
+      await addToPendingQueue(item.file, err.message);
       process.stderr.write(
         `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
       );
@@ -615,44 +635,55 @@ async function cmdIndexBulk(options, cfg, provider) {
 // Pending queue helpers
 // ---------------------------------------------------------------------------
 
-function addToPendingQueue(file, errorMsg) {
+// Both pending-queue helpers are async and lock-protected to avoid
+// read-modify-write races with concurrent index/bulk operations.
+
+async function addToPendingQueue(file, errorMsg) {
   const mp = metadataPath();
   const kDir = knowledgeDir();
+  const lp = lockFilePath();
   if (!fs.existsSync(kDir)) fs.mkdirSync(kDir, { recursive: true });
 
-  let metadata;
-  if (fs.existsSync(mp)) {
-    metadata = store.readMetadata(mp);
-  } else {
-    // First-ever failure before any successful index — create a minimal
-    // metadata file so failure tracking doesn't silently drop entries.
-    metadata = {
-      provider: null,
-      model: null,
-      dimensions: null,
-      last_indexed: null,
-      pending: [],
-    };
-  }
-  if (!Array.isArray(metadata.pending)) metadata.pending = [];
+  await store.withLock(lp, async () => {
+    let metadata;
+    if (fs.existsSync(mp)) {
+      metadata = store.readMetadata(mp);
+    } else {
+      // First-ever failure before any successful index — create a minimal
+      // metadata file so failure tracking doesn't silently drop entries.
+      metadata = {
+        provider: null,
+        model: null,
+        dimensions: null,
+        last_indexed: null,
+        pending: [],
+      };
+    }
+    if (!Array.isArray(metadata.pending)) metadata.pending = [];
 
-  const existing = metadata.pending.findIndex((p) => p.file === file);
-  const entry = { file, failed_at: new Date().toISOString(), error: errorMsg };
-  if (existing >= 0) {
-    metadata.pending[existing] = entry;
-  } else {
-    metadata.pending.push(entry);
-  }
-  store.writeMetadata(mp, metadata);
+    const existing = metadata.pending.findIndex((p) => p.file === file);
+    const entry = { file, failed_at: new Date().toISOString(), error: errorMsg };
+    if (existing >= 0) {
+      metadata.pending[existing] = entry;
+    } else {
+      metadata.pending.push(entry);
+    }
+    store.writeMetadata(mp, metadata);
+  });
 }
 
-function removePendingItem(file) {
+async function removePendingItem(file) {
   const mp = metadataPath();
+  const lp = lockFilePath();
   if (!fs.existsSync(mp)) return;
-  const metadata = store.readMetadata(mp);
-  if (!Array.isArray(metadata.pending)) return;
-  metadata.pending = metadata.pending.filter((p) => p.file !== file);
-  store.writeMetadata(mp, metadata);
+
+  await store.withLock(lp, async () => {
+    if (!fs.existsSync(mp)) return;
+    const metadata = store.readMetadata(mp);
+    if (!Array.isArray(metadata.pending)) return;
+    metadata.pending = metadata.pending.filter((p) => p.file !== file);
+    store.writeMetadata(mp, metadata);
+  });
 }
 
 async function processPendingQueue(cfg, provider, limit) {
@@ -669,7 +700,7 @@ async function processPendingQueue(cfg, provider, limit) {
     if (!fs.existsSync(absFile)) {
       // File no longer exists — remove from queue.
       process.stderr.write(`Pending item ${item.file} no longer exists. Removing from queue.\n`);
-      removePendingItem(item.file);
+      await removePendingItem(item.file);
       continue;
     }
 
@@ -678,7 +709,7 @@ async function processPendingQueue(cfg, provider, limit) {
       identity = deriveIdentity(item.file);
     } catch (_) {
       // Can't derive identity — remove from queue.
-      removePendingItem(item.file);
+      await removePendingItem(item.file);
       continue;
     }
 
@@ -687,7 +718,7 @@ async function processPendingQueue(cfg, provider, limit) {
         () => indexSingleFile(item.file, identity, cfg, provider),
         { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
       );
-      removePendingItem(item.file);
+      await removePendingItem(item.file);
     } catch (_) {
       // Still failing — leave in queue.
     }
@@ -1153,6 +1184,7 @@ async function cmdStatus() {
 async function cmdRebuild(_args, options, cfg, provider) {
   const sp = storePath();
   const mp = metadataPath();
+  const lp = lockFilePath();
 
   process.stderr.write(
     'Warning: This will delete the existing index and rebuild from scratch.\n' +
@@ -1160,31 +1192,63 @@ async function cmdRebuild(_args, options, cfg, provider) {
     "Type 'rebuild' to confirm: "
   );
 
-  // Read confirmation from stdin.
-  const input = await new Promise((resolve) => {
-    let data = '';
-    process.stdin.setEncoding('utf8');
-    process.stdin.once('data', (chunk) => {
-      data += chunk;
-      resolve(data.trim());
-    });
-    // If stdin ends without data (piped with no input), resolve empty.
-    process.stdin.once('end', () => resolve(data.trim()));
-    process.stdin.resume();
-  });
+  // Read a full line from stdin. Must not use `once('data', ...)` because
+  // slow typers or non-line-buffered pipes can deliver input in multiple
+  // chunks — the first chunk alone ("re") would fail the comparison.
+  const input = await readStdinLine();
 
   if (input !== 'rebuild') {
     process.stderr.write('Aborted.\n');
     process.exit(1);
   }
 
-  // Delete existing store and metadata.
-  if (fs.existsSync(sp)) fs.unlinkSync(sp);
-  if (fs.existsSync(mp)) fs.unlinkSync(mp);
+  // Acquire lock before deleting files so a concurrent index/remove/
+  // compact does not race past and resurrect partial state.
+  await store.withLock(lp, async () => {
+    if (fs.existsSync(sp)) fs.unlinkSync(sp);
+    if (fs.existsSync(mp)) fs.unlinkSync(mp);
+  });
   process.stdout.write('Deleted existing index.\n');
 
-  // Run bulk index.
+  // Run bulk index (acquires the lock per-file internally).
   await cmdIndexBulk(options, cfg, provider);
+}
+
+/**
+ * Read stdin until a newline or 'end'. Accumulates chunks — safe against
+ * partial reads on slow typers or non-line-buffered pipes.
+ */
+function readStdinLine() {
+  return new Promise((resolve) => {
+    let buf = '';
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      // Trim trailing CR/LF plus any whitespace.
+      const nl = buf.search(/\r|\n/);
+      const line = nl === -1 ? buf : buf.slice(0, nl);
+      resolve(line.trim());
+    };
+
+    process.stdin.setEncoding('utf8');
+    const onData = (chunk) => {
+      buf += chunk;
+      if (/\r|\n/.test(buf)) {
+        process.stdin.removeListener('data', onData);
+        process.stdin.removeListener('end', onEnd);
+        finish();
+      }
+    };
+    const onEnd = () => {
+      process.stdin.removeListener('data', onData);
+      finish();
+    };
+
+    process.stdin.on('data', onData);
+    process.stdin.once('end', onEnd);
+    process.stdin.resume();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1265,12 +1329,21 @@ async function cmdCompact(_args, options, cfg) {
   const sp = storePath();
   const lp = lockFilePath();
 
-  // Check decay config.
-  const decayMonths = cfg && cfg.decay_months !== undefined ? cfg.decay_months : config.DEFAULTS.decay_months;
-  if (decayMonths === false) {
+  // Check decay config. Accept only: false (disabled) or non-negative integer.
+  // Reject strings, negatives, NaN, non-integers — these would silently
+  // produce either no-op (NaN cutoff) or mass deletion (negative cutoff).
+  const rawDecay = cfg && cfg.decay_months !== undefined ? cfg.decay_months : config.DEFAULTS.decay_months;
+  if (rawDecay === false) {
     process.stdout.write('Compaction disabled\n');
     return;
   }
+  if (!Number.isInteger(rawDecay) || rawDecay < 0) {
+    process.stderr.write(
+      `Invalid decay_months: ${JSON.stringify(rawDecay)}. Expected false or a non-negative integer.\n`
+    );
+    process.exit(1);
+  }
+  const decayMonths = rawDecay;
 
   if (!fs.existsSync(sp)) return;
 

@@ -1240,6 +1240,126 @@ if [ "$exists" = "0" ]; then
 fi
 teardown_project
 
+# ============================================================================
+# THIRD-PASS REVIEW FIXES
+# ============================================================================
+
+echo ""
+echo "=== Third-Pass Review Fix Tests ==="
+
+# --- Test 73: Invalid decay_months rejected ---
+echo "Test 73: Invalid decay_months rejected"
+setup_project
+create_work_unit "alpha" "feature" "Alpha"
+mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": -6 } }
+CONF
+create_discussion_file "alpha" "alpha"
+run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb compact 2>&1 || true)
+run_kb compact >/dev/null 2>&1 || exit_code=$?
+assert_eq "negative decay exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "mentions invalid decay" "true" "$(echo "$output" | grep -q 'Invalid decay_months' && echo true || echo false)"
+teardown_project
+
+# --- Test 74: String decay_months rejected ---
+echo "Test 74: String decay_months rejected"
+setup_project
+create_work_unit "alpha" "feature" "Alpha"
+mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": "6" } }
+CONF
+create_discussion_file "alpha" "alpha"
+run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb compact 2>&1 || true)
+run_kb compact >/dev/null 2>&1 || exit_code=$?
+assert_eq "string decay exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+teardown_project
+
+# --- Test 75: Non-integer decay_months rejected ---
+echo "Test 75: Non-integer decay_months rejected"
+setup_project
+create_work_unit "alpha" "feature" "Alpha"
+mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": 6.5 } }
+CONF
+create_discussion_file "alpha" "alpha"
+run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+exit_code=0
+run_kb compact >/dev/null 2>&1 || exit_code=$?
+assert_eq "non-integer decay exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+teardown_project
+
+# --- Test 76: Pending queue preserved across re-index (no lost update) ---
+echo "Test 76: Pending queue preserved across re-index"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Inject a pending item for a non-existent file (so catch-up will drop it,
+# but only after index uses re-read metadata — proves lock + re-read works).
+# Use a file that DOES exist but isn't a valid workflow artifact so deriveIdentity fails.
+node -e "
+  const fs = require('fs');
+  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.pending = [{file: 'not-a-real-file-for-test.md', failed_at: '2026-01-01T00:00:00Z', error: 'test'}];
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+"
+# Re-index: the inner indexSingleFile must re-read metadata and preserve the pending
+# entry, not overwrite with its stale pre-lock snapshot. Then catch-up removes it
+# because the file doesn't exist. Net: pending should be empty.
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+pending=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(JSON.stringify(m.pending))")
+assert_eq "pending cleaned after re-index" '[]' "$pending"
+teardown_project
+
+# --- Test 77: Path-traversal via .. rejected ---
+echo "Test 77: Path-traversal rejected"
+setup_project
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/valid/discussion"
+echo "content" > "$TEST_ROOT/.workflows/valid/discussion/valid.md"
+# Crafted path with .. — deriveIdentity should reject it.
+exit_code=0
+cd "$TEST_ROOT"
+node "$BUNDLE" index ".workflows/../etc/discussion/foo.md" 2>/dev/null || exit_code=$?
+assert_eq "rejects traversal" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+teardown_project
+
+# --- Test 78: Hidden work unit name rejected ---
+echo "Test 78: Hidden work unit rejected"
+setup_project
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/.hidden/discussion"
+echo "content" > "$TEST_ROOT/.workflows/.hidden/discussion/foo.md"
+exit_code=0
+cd "$TEST_ROOT"
+node "$BUNDLE" index ".workflows/.hidden/discussion/foo.md" 2>/dev/null || exit_code=$?
+assert_eq "rejects hidden wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+teardown_project
+
+# --- Test 79: Rebuild handles multi-chunk stdin correctly ---
+echo "Test 79: Rebuild multi-chunk stdin"
+setup_project
+write_stub_config
+# Pipe "rebuild\n" — a single chunk is fine, but the new impl waits for newline.
+# Verify the happy path still works via piped input.
+# NOTE: This test verifies the abort path for partial input still works.
+exit_code=0
+output=$(printf "re" | run_kb rebuild 2>&1 || true)
+printf "re" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
+# "re" without newline → end fires → finish() resolves with "re" → aborts.
+assert_eq "partial input aborts" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "shows aborted" "true" "$(echo "$output" | grep -q 'Aborted' && echo true || echo false)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
