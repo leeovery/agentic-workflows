@@ -1,6 +1,6 @@
 ---
 name: continue-quickfix
-allowed-tools: Bash(node .claude/skills/continue-quickfix/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
+allowed-tools: Bash(node .claude/skills/continue-quickfix/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 Continue an in-progress quick-fix. Determines current phase and routes to the appropriate phase skill.
@@ -40,6 +40,8 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 #### If the `/workflow-migrate` skill has already been invoked in this conversation
 
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
+
 → Proceed to **Step 1**.
 
 #### Otherwise
@@ -54,7 +56,9 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
 
-**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to Step 1 below. Do not stop after migration completes.
+**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to the next instruction below. Do not stop after migration completes.
+
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 

@@ -1,6 +1,6 @@
 ---
 name: start-bugfix
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
 ---
 
 Start a new bugfix. Gather a brief description, create the work unit, and route to investigation.
@@ -47,6 +47,8 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 > then hand off to investigation to diagnose the root cause.
 ```
 
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
+
 → Proceed to **Step 1**.
 
 #### Otherwise
@@ -78,6 +80,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > Starting a new bugfix. I'll ask what's broken, suggest a name,
 > then hand off to investigation to diagnose the root cause.
 ```
+
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 

@@ -1,7 +1,7 @@
 ---
 name: workflow-start
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.
@@ -61,7 +61,9 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
 
-**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to Step 1 below. Do not stop after migration completes.
+**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to the next instruction below. Do not stop after migration completes.
+
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 

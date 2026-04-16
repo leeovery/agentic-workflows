@@ -1,6 +1,6 @@
 ---
 name: start-cross-cutting
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
 ---
 
 Start a new cross-cutting concern. Gather a brief description, create the work unit, and route to the first phase.
@@ -49,6 +49,8 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 > pipeline ends at specification — no planning or implementation.
 ```
 
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
+
 → Proceed to **Step 1**.
 
 #### Otherwise
@@ -82,6 +84,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > whether to research first or go straight to discussion. The
 > pipeline ends at specification — no planning or implementation.
 ```
+
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 
