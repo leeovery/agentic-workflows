@@ -115,6 +115,17 @@ Each entry records: where, what, why it was deferred, and a mitigation idea. Cir
 
 ---
 
+## Phase 5 (Skill Integration) — Deferred
+
+### 18. Knowledge removal has no automatic retry on failure — Medium
+
+**Location:** `skills/workflow-start/references/manage-work-unit.md` (cancellation), `skills/workflow-specification-process/references/spec-completion.md` (supersession), `skills/workflow-specification-process/references/promote-to-cross-cutting.md` (promotion).
+**Description:** When `knowledge remove` fails (store locked, CLI error), the skill displays a warning and tells the user to retry manually. Unlike indexing failures — which have a pending queue for automatic catch-up on the next `index` call — removal failures have no retry mechanism. Stale chunks from cancelled/superseded/promoted work persist in the knowledge base until the user manually runs `knowledge remove`.
+**Why deferred:** Removal failures are rare (store lock is the main scenario), and stale chunks cause noise but not corruption. The pending queue design (Phase 4) was scoped to indexing only.
+**Mitigation:** Add a pending-removal queue analogous to the pending-index queue. On each `knowledge remove` or `knowledge compact` invocation, process queued removals first.
+
+---
+
 ## How to use this file
 
 - Add new entries as you review code across any phase.
