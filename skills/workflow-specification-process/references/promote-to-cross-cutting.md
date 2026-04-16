@@ -33,6 +33,7 @@ Create the new cross-cutting work unit and mark it as completed (the pipeline is
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init {cc_work_unit} --work-type cross-cutting --description "{one-line summary from spec}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} completed_at $(date +%Y-%m-%d)
 ```
 
 Set provenance to track the origin:

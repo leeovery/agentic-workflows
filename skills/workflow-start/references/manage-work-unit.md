@@ -184,6 +184,7 @@ Set `implementation_completed` = true.
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} completed_at $(date +%Y-%m-%d)
 ```
 
 Commit: `workflow({selected.name}): mark as completed`

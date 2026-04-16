@@ -30,6 +30,7 @@ Set the work unit status to completed:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} completed_at $(date +%Y-%m-%d)
 ```
 
 Commit: `workflow({work_unit}): complete feature pipeline`
@@ -76,6 +77,7 @@ Set the work unit status to completed:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} completed_at $(date +%Y-%m-%d)
 ```
 
 Commit: `workflow({work_unit}): complete feature pipeline (review skipped)`
