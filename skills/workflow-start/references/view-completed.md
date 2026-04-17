@@ -98,6 +98,34 @@ Store the selected item.
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
 ```
 
+**If `selected.status` was `cancelled`:**
+
+Re-index completed artifacts that were removed during cancellation. For each indexed phase (research, discussion, investigation, specification), check the manifest for completed items:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.{phase}.*' status
+```
+
+For each item with status `completed`, resolve the artifact path by phase:
+- research: `.workflows/{selected.name}/research/{topic}.md`
+- discussion: `.workflows/{selected.name}/discussion/{topic}.md`
+- investigation: `.workflows/{selected.name}/investigation/{topic}.md`
+- specification: `.workflows/{selected.name}/specification/{topic}/specification.md`
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {artifact_path}
+```
+
+If any index command fails, display the error but do not block — the reactivation is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The work unit is reactivated. Indexing can be retried later.
+```
+
 > *Output the next fenced block as a code block:*
 
 ```

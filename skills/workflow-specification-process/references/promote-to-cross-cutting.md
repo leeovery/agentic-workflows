@@ -67,6 +67,23 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {cc_work_u
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.discussion.{source} status completed
 ```
 
+Index the discussion at its new location and remove old chunks (per source):
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{cc_work_unit}/discussion/{source}.md
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase discussion --topic {source}
+```
+
+If either command fails, display the error but do not block — the move is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge warning
+  {error details}
+  The discussion is moved. You can run knowledge index/remove manually later.
+```
+
 → Proceed to **D. Move Specification**.
 
 ## D. Move Specification
