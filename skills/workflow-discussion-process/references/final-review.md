@@ -6,7 +6,7 @@
 
 A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one.
 
-This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 4 re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point Step 4 returns to the backbone to proceed toward conclusion.
+This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point Step 6 returns to the backbone to proceed toward conclusion.
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
@@ -116,6 +116,6 @@ All findings have been raised (or the review came back with zero gaps). The fina
 
 #### If `status: acknowledged`
 
-Either a finding was just raised, or the announce menu was just shown and the user picked `later`. Control belongs to the conversation — return the user to the discussion session so they can engage naturally. The session loop's check-for-results will pick up subsequent findings at natural breaks. When the user signals done again, Step 4 re-runs and this flow resumes.
+Either a finding was just raised, or the announce menu was just shown and the user picked `later`. Control belongs to the conversation — return the user to the discussion session so they can engage naturally. The session loop's check-for-results will pick up subsequent findings at natural breaks. When the user signals done again, Step 6 re-runs and this flow resumes.
 
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.

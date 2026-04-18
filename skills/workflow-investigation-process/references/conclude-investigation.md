@@ -21,7 +21,7 @@ Investigation complete. Ready to conclude?
 
 #### If keep going
 
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
 
 #### If `yes`
 

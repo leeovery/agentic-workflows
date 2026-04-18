@@ -1,7 +1,7 @@
 ---
 name: workflow-planning-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 # Planning Process
@@ -204,7 +204,28 @@ Load **[planning-principles.md](references/planning-principles.md)** and follow 
 
 ---
 
-## Step 4: Verify Source Material
+## Step 4: Knowledge Usage
+
+> *Output the next fenced block as a code block:*
+
+```
+── Knowledge Usage ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the usage guide for the knowledge base so
+> proactive querying is available while planning tasks.
+```
+
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Verify Source Material
 
 > *Output the next fenced block as a code block:*
 
@@ -221,11 +242,11 @@ Load **[planning-principles.md](references/planning-principles.md)** and follow 
 
 Load **[verify-source-material.md](references/verify-source-material.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 5: Plan Construction
+## Step 6: Plan Construction
 
 > *Output the next fenced block as a code block:*
 
@@ -243,11 +264,11 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 
 Load **[plan-construction.md](references/plan-construction.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Analyze Task Graph
+## Step 7: Analyze Task Graph
 
 > *Output the next fenced block as a code block:*
 
@@ -264,11 +285,11 @@ Load **[plan-construction.md](references/plan-construction.md)** and follow its 
 
 Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Resolve External Dependencies
+## Step 8: Resolve External Dependencies
 
 > *Output the next fenced block as a code block:*
 
@@ -285,17 +306,17 @@ Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow it
 
 #### If work_type is not `epic`
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 #### Otherwise
 
 Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 ---
 
-## Step 8: Plan Review
+## Step 9: Plan Review
 
 > *Output the next fenced block as a code block:*
 
@@ -313,11 +334,11 @@ Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follo
 
 Load **[plan-review.md](references/plan-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ Proceed to **Step 10**.
 
 ---
 
-## Step 9: Compliance Self-Check
+## Step 10: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -333,11 +354,11 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 10**.
+→ Proceed to **Step 11**.
 
 ---
 
-## Step 10: Conclude the Plan
+## Step 11: Conclude the Plan
 
 > *Output the next fenced block as a code block:*
 

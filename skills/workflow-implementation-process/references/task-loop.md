@@ -94,7 +94,7 @@ Task failed. How would you like to proceed?
 
 #### If `stop`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+→ Return to **[the skill](../SKILL.md)** for **Step 9**.
 
 ---
 

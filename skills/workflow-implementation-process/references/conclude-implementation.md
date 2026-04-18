@@ -19,7 +19,7 @@ Ready to mark implementation as completed?
 
 #### If `no`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+→ Return to **[the skill](../SKILL.md)** for **Step 7**.
 
 #### If `yes`
 

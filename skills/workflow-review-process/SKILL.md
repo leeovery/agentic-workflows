@@ -1,7 +1,7 @@
 ---
 name: workflow-review-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(mkdir -p .workflows/.inbox)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(mkdir -p .workflows/.inbox)
 ---
 
 # Review Process
@@ -142,7 +142,7 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 **If all tasks reviewed:**
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 **Otherwise** (no tracking data):
 
@@ -241,7 +241,28 @@ Load **[load-project-skills.md](references/load-project-skills.md)** and follow 
 
 ---
 
-## Step 4: QA Verification
+## Step 4: Knowledge Usage
+
+> *Output the next fenced block as a code block:*
+
+```
+── Knowledge Usage ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the usage guide for the knowledge base so
+> proactive querying is available while verifying decisions.
+```
+
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: QA Verification
 
 > *Output the next fenced block as a code block:*
 
@@ -259,11 +280,11 @@ Load **[load-project-skills.md](references/load-project-skills.md)** and follow 
 
 Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 5: Produce Review
+## Step 6: Produce Review
 
 > *Output the next fenced block as a code block:*
 
@@ -280,11 +301,11 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Present Review
+## Step 7: Present Review
 
 > *Output the next fenced block as a code block:*
 
@@ -301,11 +322,11 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 
 Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Compliance Self-Check
+## Step 8: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -321,11 +342,11 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 ---
 
-## Step 8: Review Actions
+## Step 9: Review Actions
 
 > *Output the next fenced block as a code block:*
 

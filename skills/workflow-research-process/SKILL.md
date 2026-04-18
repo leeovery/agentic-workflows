@@ -149,7 +149,49 @@ Load **[research-guidelines.md](references/research-guidelines.md)** and follow 
 
 ---
 
-## Step 4: Research Session
+## Step 4: Knowledge Usage
+
+> *Output the next fenced block as a code block:*
+
+```
+── Knowledge Usage ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the usage guide for the knowledge base so
+> proactive querying is available throughout the phase.
+```
+
+Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Contextual Query
+
+> *Output the next fenced block as a code block:*
+
+```
+── Contextual Query ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking the knowledge base for prior work that relates
+> to this research topic before the session begins.
+```
+
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
+
+→ Proceed to **Step 6**.
+
+---
+
+## Step 6: Research Session
 
 > *Output the next fenced block as a code block:*
 
