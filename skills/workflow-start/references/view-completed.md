@@ -92,13 +92,29 @@ Store the selected item.
 
 **STOP.** Wait for user response.
 
-#### If user chose `r`/`reactivate`
+#### If user chose `r`/`reactivate` and `selected.status` is `cancelled`
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
 ```
 
-If `selected.status` was `cancelled`, re-index the completed artifacts that were removed during cancellation by loading **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`. Completed work units keep their chunks, so no re-indexing is needed in that case.
+Cancellation removed the work unit's chunks from the knowledge base. Restore them by loading **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
+
+> *Output the next fenced block as a code block:*
+
+```
+"{selected.name:(titlecase)}" reactivated.
+```
+
+→ Return to caller.
+
+#### If user chose `r`/`reactivate` and `selected.status` is `completed`
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
+```
+
+Completed work units retain their chunks — no re-indexing needed.
 
 > *Output the next fenced block as a code block:*
 
