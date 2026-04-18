@@ -162,16 +162,21 @@ If any of your sources were **existing specifications** (as opposed to discussio
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{source-topic} superseded_by {topic}
    ```
 2. Remove superseded spec chunks from the knowledge base (per source topic):
-   ```bash
-   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {source-topic}
-   ```
-   If the remove command fails, display the error but do not block — the supersession is already recorded:
-   > *Output the next fenced block as a code block:*
-   ```
-   ⚑ Knowledge removal warning
-     {error details}
-     The spec is superseded. You can run knowledge remove manually later.
-   ```
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {source-topic}
+```
+
+If the remove command fails, display the error but do not block — the supersession is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge removal warning
+  {error details}
+  The spec is superseded. You can run knowledge remove manually later.
+```
+
 3. Inform the user which topics were updated
 4. Commit: `spec({work_unit}): mark source specifications as superseded`
 

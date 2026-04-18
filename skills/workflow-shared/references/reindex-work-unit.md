@@ -12,23 +12,19 @@ The caller provides these via context before loading:
 
 - `work_unit` — the work unit name whose completed artifacts should be re-indexed
 
-## A. Loop Over Indexed Phases
+## A. Re-Index Each Indexed Phase
 
-For each phase in `research`, `discussion`, `investigation`, `specification`:
+Process each phase in turn: `research`, `discussion`, `investigation`, `specification`.
 
-Check whether the work unit has that phase:
+For each phase, check whether the work unit has that phase:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.{phase}
 ```
 
-#### If `false`
+If the phase does not exist on this work unit, move on to the next phase in the list.
 
-Skip this phase. → Continue to the next phase.
-
-#### If `true`
-
-Read all items in this phase with their statuses:
+If the phase exists, read all items in it with their statuses:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{work_unit}.{phase}.*' status
@@ -57,10 +53,6 @@ If any index command fails, display the error but do not block — the caller's 
   Indexing can be retried later.
 ```
 
-→ Continue to the next item, then the next phase.
+Process the remaining items in this phase, then move on to the next phase in the list.
 
-## B. Complete
-
-Once every indexed phase has been processed, return to the caller.
-
-→ Return to caller.
+→ Return to caller once every indexed phase has been processed.

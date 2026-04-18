@@ -673,7 +673,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phas
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.{phase}.{topic} previous_status
 ```
 
-**If `previous_status` is `completed` and `phase` is `research`, `discussion`, `investigation`, or `specification`:**
+**If `previous_status` is `completed` and `phase` is one of the indexed phases (research / discussion / investigation / specification):**
 
 Re-index the reactivated topic's artifact into the knowledge base. Resolve the artifact path by phase:
 - research: `.workflows/{work_unit}/research/{topic}.md`

@@ -98,15 +98,7 @@ Store the selected item.
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
 ```
 
-**If `selected.status` was `cancelled`:**
-
-Re-index completed artifacts that were removed during cancellation. Load **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
-
-**Otherwise:**
-
-No re-indexing needed — completed work units keep their chunks.
-
-Display the confirmation:
+If `selected.status` was `cancelled`, re-index the completed artifacts that were removed during cancellation by loading **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`. Completed work units keep their chunks, so no re-indexing is needed in that case.
 
 > *Output the next fenced block as a code block:*
 
