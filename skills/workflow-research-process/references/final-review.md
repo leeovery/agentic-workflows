@@ -6,7 +6,7 @@
 
 A final review ensures the research is thorough before moving to discussion. Even if review agents ran during the session, the research may have progressed significantly since the last one.
 
-This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the research session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point Step 6 returns to the backbone to proceed toward conclusion.
+This flow runs once per "user signals done" entry during Step 6 (Research Session). It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the research session so the user can engage naturally. The next time the user signals done, this flow re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point control returns to topic-completion so the phase can proceed through document review, compliance, and the conclude menu.
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
