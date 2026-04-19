@@ -12,9 +12,7 @@ This is **not** a speculative dump. It is a focused check using the best context
 
 Build a short natural-language description of what this phase is about using whatever context you have at hand: the topic description, the handoff context, bootstrap answers already captured, the problem statement, and — for investigation — the initial symptoms.
 
-- **Do** describe the thing in the language the original author would have used.
-- **Do not** use the topic slug. `"auth-flow"` is a weak semantic signal; `"user authentication flow using OAuth2 with PKCE for mobile and web clients"` is strong.
-- **Do** run a batch query (multiple angles) if you have several distinct framings — one for the feature, one for the constraint, one for the suspected dependency. Batch queries are a single CLI call.
+Follow the construction rules in **[knowledge-usage.md](knowledge-usage.md)** — **B. How to construct queries** (natural language, not slugs; batch for multiple angles). If you have several distinct framings, batch them in one call.
 
 If the only context available is a topic name, construct the best descriptive query you can. A poor query that returns nothing is acceptable — the cost is one store load.
 

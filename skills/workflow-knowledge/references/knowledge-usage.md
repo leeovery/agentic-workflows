@@ -25,25 +25,13 @@ Multiple queries from different angles are expected and encouraged. One query fo
 
 ## B. How to construct queries
 
-Use **natural language** describing what you're looking for. Not topic slugs — slugs are weak semantic signal. A query should read like a sentence the original author would have written.
+Use **natural language** describing what you're looking for — not topic slugs, which are weak semantic signal. Filter with `--work-type`, `--phase`, `--topic`; bias toward the current work unit with `--work-unit` (a re-rank hint, not a filter). For multiple angles in one invocation, pass multiple positional terms (batch query).
 
-- Good: `"OAuth2 PKCE flow for mobile clients"`
-- Good: `"why we ruled out email as a primary identity field"`
-- Poor: `"auth-flow"` (slug, weak signal)
-- Poor: `"auth"` (too broad)
-
-Use the CLI flags to filter, not the query string:
-
-- `--work-type <type>` — filter to a work type (hard filter)
-- `--phase <phase>` — filter to a phase (hard filter)
-- `--topic <topic>` — filter to a topic (hard filter)
-- `--work-unit <wu>` — **re-ranking hint, not a filter** — boosts results from the current work unit while still returning cross-work-unit context
-
-For batch queries (multiple angles in one invocation), pass multiple positional terms. See the knowledge skill for details.
+See **[SKILL.md](../SKILL.md)** — query construction examples and the full flag table.
 
 ## C. Two-step retrieval
 
-Results include chunks with provenance. Don't read source files for every chunk — read only when a chunk looks load-bearing for what you're doing. The chunk text alone is usually enough to judge relevance; the source file is there for deep dives.
+Chunks land in context; read the source file (from the `Source:` line) only when a chunk looks load-bearing. See **[SKILL.md](../SKILL.md)** — two-step retrieval pattern.
 
 ## D. Query failure handling
 
