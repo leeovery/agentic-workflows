@@ -167,6 +167,12 @@ for cmd in index query check; do
   assert_eq "$cmd does not say unknown command" "false" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
 done
 
+# --- Test 4b: setup dispatches (not an unknown command) ---
+echo "Test 4b: setup routes to the wizard handler"
+output=$(echo '' | node "$BUNDLE" setup 2>&1 || true)
+assert_eq "setup does not say unknown command" "false" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
+assert_eq "setup does not say not yet implemented" "false" "$(echo "$output" | grep -q 'not yet implemented' && echo true || echo false)"
+
 # ============================================================================
 # INDEX COMMAND TESTS
 # ============================================================================

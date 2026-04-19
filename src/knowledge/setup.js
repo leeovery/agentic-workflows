@@ -342,7 +342,28 @@ async function runProjectInitStep(rl) {
 // Orchestrator
 // ---------------------------------------------------------------------------
 
-async function cmdSetup(args, options) {
+async function runInitialIndexStep(cmdIndexBulk, options) {
+  const cfg = config.loadConfig();
+  const provider = config.resolveProvider(cfg);
+
+  process.stdout.write('\nInitial indexing\n');
+  process.stdout.write('----------------\n');
+  try {
+    await cmdIndexBulk(options || {}, cfg, provider);
+  } catch (err) {
+    // Indexing failures don't abort setup — the project is initialised
+    // and the pending queue retains any partial state.
+    process.stderr.write(
+      `\nInitial indexing hit an error: ${err.message}\n` +
+      'Project is initialised; run `knowledge index` later to retry.\n'
+    );
+  }
+}
+
+// cmdIndexBulk is injected by the caller (index.js dispatch) to avoid
+// a circular require — esbuild's CJS wrapping breaks `require.main ===
+// module` on the entry when two modules require each other.
+async function cmdSetup(cmdIndexBulk, args, options) {
   requireTTY();
 
   // Guard: .workflows/ must exist.
@@ -355,29 +376,34 @@ async function cmdSetup(args, options) {
   }
 
   const rl = createPrompter();
+  let sysResult;
 
   try {
     process.stdout.write('\nKnowledge base setup\n');
     process.stdout.write('====================\n');
 
-    const sysResult = await runSystemConfigStep(rl);
+    sysResult = await runSystemConfigStep(rl);
     await runProjectInitStep(rl);
-
-    process.stdout.write('\nSetup complete.\n');
-
-    if (!sysResult.provider) {
-      process.stdout.write(
-        '\nStub mode: no embedding provider configured. The knowledge base will run in keyword-only (BM25) mode. ' +
-        'Semantic search is disabled until you configure a provider.\n'
-      );
-    } else if (sysResult.previouslyStub) {
-      process.stdout.write(
-        '\nUpgraded from stub mode to a configured provider. ' +
-        'Run `knowledge rebuild` to re-index existing artifacts with embeddings.\n'
-      );
-    }
   } finally {
+    // Close readline before indexing — indexing is non-interactive and
+    // a lingering readline blocks process exit. Safe to call twice.
     rl.close();
+  }
+
+  await runInitialIndexStep(cmdIndexBulk, options);
+
+  process.stdout.write('\nSetup complete.\n');
+
+  if (!sysResult.provider) {
+    process.stdout.write(
+      '\nStub mode: no embedding provider configured. The knowledge base will run in keyword-only (BM25) mode. ' +
+      'Semantic search is disabled until you configure a provider.\n'
+    );
+  } else if (sysResult.previouslyStub) {
+    process.stdout.write(
+      '\nUpgraded from stub mode to a configured provider. ' +
+      'The existing store was indexed in keyword-only mode — run `knowledge rebuild` to re-index with embeddings for full hybrid search.\n'
+    );
   }
 }
 
@@ -395,6 +421,7 @@ module.exports = {
   validateApiKey,
   runSystemConfigStep,
   runProjectInitStep,
+  runInitialIndexStep,
   KEYWORD_ONLY_DIMENSIONS,
   OPENAI_DEFAULT_MODEL,
   OPENAI_DEFAULT_DIMENSIONS,

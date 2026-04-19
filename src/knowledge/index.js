@@ -1507,7 +1507,7 @@ async function main() {
     case 'remove':  await cmdRemove(commandArgs, options, cfg, provider); break;
     case 'compact': await cmdCompact(commandArgs, options, cfg, provider); break;
     case 'rebuild': await cmdRebuild(commandArgs, options, cfg, provider); break;
-    case 'setup':   await setup.cmdSetup(commandArgs, options); break;
+    case 'setup':   await setup.cmdSetup(cmdIndexBulk, commandArgs, options); break;
     default:
       process.stderr.write(`Unknown command "${command}".\n\n${USAGE}\n`);
       process.exit(1);
@@ -1521,6 +1521,7 @@ module.exports = {
   resolveProviderState,
   withRetry,
   main,
+  cmdIndexBulk,
   StubProvider,
   OpenAIProvider,
   store,

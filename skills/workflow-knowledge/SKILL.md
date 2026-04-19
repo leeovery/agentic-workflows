@@ -208,7 +208,7 @@ Skills do not call these directly during normal operation. Users run them manual
 
 ## `setup` — interactive wizard
 
-Not yet implemented (stub — Phase 7 of the knowledge base rollout). When available, it will handle system config, project init, and initial indexing in one flow. **Human-only** — interactive prompts. If `knowledge check` returns `not-ready`, direct the user to run `knowledge setup` rather than trying to fix it programmatically.
+One-shot first-time setup. Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts in a single guided flow. **Human-only** — prompts throughout via readline. Non-TTY invocations (including Claude or piped input) abort with `knowledge setup requires an interactive terminal`. If `knowledge check` returns `not-ready`, direct the user to run `knowledge setup` rather than trying to fix it programmatically. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
 
 ---
 
