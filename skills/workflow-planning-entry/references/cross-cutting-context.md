@@ -6,7 +6,7 @@
 
 Surface cross-cutting specifications as context for planning. Applies to ALL work types.
 
-Previously this loaded every completed cross-cutting spec into context and manually assessed relevance. It now issues a semantic query filtered to `work_type: cross-cutting` so only specs that are semantically relevant to the current plan surface. In-progress cross-cutting work is still called out explicitly — a semantic query can't see unfinished specs, and the user needs that awareness before planning around assumptions that might change.
+Issue a semantic query filtered to `work_type: cross-cutting` so only specs relevant to the current plan surface. In-progress cross-cutting work is called out separately — a semantic query can't see unfinished specs, and the user needs that awareness before planning around assumptions that might change.
 
 ## A. Build the query text
 
