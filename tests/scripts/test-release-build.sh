@@ -75,9 +75,9 @@ setup() {
 #!/bin/bash
 echo "npm $*" >> "$CALLS"
 case "$1" in
-  install)
-    if [ "${STUB_NPM_INSTALL_FAIL:-0}" = "1" ]; then
-      echo "stub: npm install failed" >&2
+  ci)
+    if [ "${STUB_NPM_CI_FAIL:-0}" = "1" ]; then
+      echo "stub: npm ci failed" >&2
       exit 1
     fi
     exit 0
@@ -110,7 +110,7 @@ NPMEOF
 teardown() {
   cd "$REPO_DIR"
   rm -rf "$TEST_DIR"
-  unset STUB_NPM_INSTALL_FAIL STUB_NPM_BUILD_FAIL STUB_NPM_BUILD_MODIFIES
+  unset STUB_NPM_CI_FAIL STUB_NPM_BUILD_FAIL STUB_NPM_BUILD_MODIFIES
 }
 
 # Run perform_release in a subshell with git tag/push stubbed so tests never
@@ -151,7 +151,7 @@ test_happy_path_bundle_changes() {
   run_release "1.0.0" "0.0.0" "none" || rc=$?
 
   assert_eq "perform_release exits 0 on clean build" "0" "$rc"
-  assert_eq "npm install was invoked" "true" "$(file_contains 'npm install' "$CALLS")"
+  assert_eq "npm ci was invoked" "true" "$(file_contains 'npm ci' "$CALLS")"
   assert_eq "npm run build was invoked" "true" "$(file_contains 'npm run build' "$CALLS")"
   assert_eq "bundle commit was created" "true" "$(git_log_contains 'rebuild knowledge bundle for v1.0.0')"
   assert_eq "tag was called after build" "true" "$(file_contains 'git tag' "$CALLS")"
@@ -221,19 +221,19 @@ test_build_failure_aborts() {
   teardown
 }
 
-# --- Test 6: npm install failure aborts ---
-test_install_failure_aborts() {
+# --- Test 6: npm ci failure aborts ---
+test_ci_failure_aborts() {
   setup
-  export STUB_NPM_INSTALL_FAIL=1
+  export STUB_NPM_CI_FAIL=1
 
   local rc=0
   run_release "1.0.0" "0.0.0" "none" || rc=$?
 
-  assert_eq "perform_release exits non-zero on install failure" "true" \
+  assert_eq "perform_release exits non-zero on ci failure" "true" \
     "$([ "$rc" -ne 0 ] && echo true || echo false)"
-  assert_eq "npm run build was NOT invoked after install failure" "false" \
+  assert_eq "npm run build was NOT invoked after ci failure" "false" \
     "$(file_contains 'npm run build' "$CALLS")"
-  assert_eq "tag was NOT called after install failure" "false" "$(file_contains 'git tag' "$CALLS")"
+  assert_eq "tag was NOT called after ci failure" "false" "$(file_contains 'git tag' "$CALLS")"
 
   teardown
 }
@@ -251,7 +251,8 @@ test_dirty_tree_gate_fires() {
     "$([ "$rc" -ne 0 ] && echo true || echo false)"
   assert_eq "dirty-tree error message emitted" "true" \
     "$(file_contains 'working directory is dirty' "$TEST_DIR/out.log")"
-  assert_eq "npm was NOT invoked when tree dirty" "false" "$(file_contains 'npm' "$CALLS")"
+  assert_eq "npm ci was NOT invoked when tree dirty" "false" "$(file_contains 'npm ci' "$CALLS")"
+  assert_eq "npm run build was NOT invoked when tree dirty" "false" "$(file_contains 'npm run build' "$CALLS")"
 
   teardown
 }
@@ -286,7 +287,7 @@ test_bundle_unchanged_skips_commit
 test_version_none_commits_bundle
 test_version_file_commits_bundle
 test_build_failure_aborts
-test_install_failure_aborts
+test_ci_failure_aborts
 test_dirty_tree_gate_fires
 test_build_runs_before_tag
 
