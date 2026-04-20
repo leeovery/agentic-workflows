@@ -348,7 +348,7 @@ async function loadStore(storePath) {
 
 const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;
-const LOCK_TIMEOUT_MS = 10000;
+const LOCK_TIMEOUT_MS = 30000;
 
 function tryAcquire(lockPath) {
   try {
