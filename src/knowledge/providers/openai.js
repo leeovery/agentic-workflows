@@ -42,6 +42,9 @@ class OpenAIProvider {
     });
 
     const res = await this._fetch(body);
+    if (!res.data || res.data.length === 0) {
+      throw new Error('OpenAI embed returned no data (empty response)');
+    }
     return res.data[0].embedding;
   }
 
@@ -61,7 +64,7 @@ class OpenAIProvider {
       const body = JSON.stringify({ model: this._model, input: texts, dimensions: this._dimensions });
       const res = await this._fetch(body);
       // OpenAI returns data sorted by index — ensure correct order.
-      const sorted = res.data.sort((a, b) => a.index - b.index);
+      const sorted = [...res.data].sort((a, b) => a.index - b.index);
       return sorted.map((d) => d.embedding);
     }
 
@@ -71,7 +74,7 @@ class OpenAIProvider {
       const slice = texts.slice(offset, offset + MAX_BATCH_SIZE);
       const body = JSON.stringify({ model: this._model, input: slice, dimensions: this._dimensions });
       const res = await this._fetch(body);
-      const sorted = res.data.sort((a, b) => a.index - b.index);
+      const sorted = [...res.data].sort((a, b) => a.index - b.index);
       for (let i = 0; i < sorted.length; i++) {
         results[offset + i] = sorted[i].embedding;
       }

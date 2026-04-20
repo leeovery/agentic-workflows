@@ -242,16 +242,22 @@ function loadConfig(paths) {
   const project = readConfigFile(projPath);
 
   // Merge: defaults <- system <- project. Shallow merge — all fields are
-  // scalars, no nested objects to worry about.
+  // scalars, no nested objects to worry about. `null` is treated as an
+  // explicit unset sentinel so a project config can clear a system default
+  // (e.g. "disable the system-configured provider for this project only").
   const merged = Object.assign({}, DEFAULTS);
   if (system) {
     for (const key of Object.keys(system)) {
-      if (system[key] !== undefined) merged[key] = system[key];
+      if (system[key] === undefined) continue;
+      if (system[key] === null) delete merged[key];
+      else merged[key] = system[key];
     }
   }
   if (project) {
     for (const key of Object.keys(project)) {
-      if (project[key] !== undefined) merged[key] = project[key];
+      if (project[key] === undefined) continue;
+      if (project[key] === null) delete merged[key];
+      else merged[key] = project[key];
     }
   }
 
