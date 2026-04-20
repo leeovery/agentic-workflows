@@ -598,6 +598,24 @@ assert_not_contains "$output" '"name": "old-thing"' "Dot-prefixed directory skip
 
 echo ""
 
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: list unions project registry with filesystem (legacy unit recovery)${NC}"
+setup_fixture
+# Registered via project manifest
+run_cli init registered --work-type feature --description "Registered" >/dev/null 2>&1
+# Legacy: work unit dir + manifest on disk, but NOT in project manifest registry
+mkdir -p "$TEST_DIR/.workflows/legacy"
+cat > "$TEST_DIR/.workflows/legacy/manifest.json" << 'EOF'
+{"name":"legacy","work_type":"feature","status":"in-progress","description":"Pre-registry"}
+EOF
+output=$(run_cli_stdout list)
+
+assert_contains "$output" '"name": "registered"' "Registered work unit listed"
+assert_contains "$output" '"name": "legacy"' "Legacy (filesystem-only) work unit listed"
+
+echo ""
+
 # ============================================================================
 # INIT-PHASE TESTS
 # ============================================================================
