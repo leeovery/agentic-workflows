@@ -168,6 +168,11 @@ async function withRetry(fn, opts) {
     try {
       return await fn();
     } catch (err) {
+      // Don't retry programming errors — retrying a TypeError just burns
+      // 7s of backoff before the stack trace reaches the user.
+      if (err instanceof TypeError || err instanceof ReferenceError || err instanceof SyntaxError) {
+        throw err;
+      }
       lastErr = err;
       if (attempt < maxAttempts - 1) {
         const delay = backoff[attempt] || backoff[backoff.length - 1];
@@ -680,11 +685,13 @@ async function cmdIndexBulk(options, cfg, provider) {
         db = await store.loadStore(sp);
       }
     } catch (err) {
-      // All retries exhausted — add to pending queue.
+      // All retries exhausted — add to pending queue. Write the stack to
+      // stderr so debugging does not depend on users capturing it later.
       await addToPendingQueue(item.file, err.message);
       process.stderr.write(
         `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
       );
+      if (err.stack) process.stderr.write(err.stack + '\n');
     }
   }
 
@@ -1531,6 +1538,9 @@ function readStdinLine() {
       if (/\r|\n/.test(buf)) {
         process.stdin.removeListener('data', onData);
         process.stdin.removeListener('end', onEnd);
+        // Pause to release the reference — otherwise an unused stdin keeps
+        // the event loop alive if the CLI is used as a library.
+        process.stdin.pause();
         finish();
       }
     };
