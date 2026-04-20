@@ -24,9 +24,20 @@ const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specificatio
 // Resolve manifest CLI path. In the bundled form, __dirname is
 // skills/workflow-knowledge/scripts/. In source, __dirname is
 // src/knowledge/. Both need to resolve to skills/workflow-manifest/scripts/manifest.cjs.
-const MANIFEST_JS = fs.existsSync(path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'))
-  ? path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs')
-  : path.join(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+const MANIFEST_JS = (() => {
+  const srcCandidate = path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs');
+  const bundledCandidate = path.join(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+  if (fs.existsSync(srcCandidate)) return srcCandidate;
+  if (fs.existsSync(bundledCandidate)) return bundledCandidate;
+  // Fail loud at load time — a missing manifest CLI would otherwise turn
+  // every manifest-dependent command into a silent no-op (deferred-issue #5).
+  throw new Error(
+    'Could not locate manifest.cjs. Tried:\n' +
+      `  ${srcCandidate}\n` +
+      `  ${bundledCandidate}\n` +
+      'This is an installation problem — the knowledge CLI cannot work without the manifest CLI.'
+  );
+})();
 
 const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
 const PENDING_CATCHUP_LIMIT = 5;
@@ -523,6 +534,23 @@ function runManifest(args) {
 }
 
 /**
+ * Distinguish expected "not found" errors from broken-manifest / corrupt-JSON
+ * / bad-path errors. Knowledge-base helpers swallow the former (lookups are
+ * best-effort); the latter must be surfaced or bulk operations become silent
+ * no-ops (deferred-issue #4).
+ */
+function isManifestKeyNotFound(err) {
+  const s = err && err.stderr ? String(err.stderr) : '';
+  return /not found|does not exist/i.test(s);
+}
+
+function reportUnexpectedManifestError(context, err) {
+  if (isManifestKeyNotFound(err)) return;
+  const msg = err && err.stderr ? String(err.stderr).trim() : err.message;
+  process.stderr.write(`Warning: manifest CLI failed in ${context}: ${msg}\n`);
+}
+
+/**
  * Check if chunks exist for the given identity triple.
  */
 async function isIndexed(db, workUnit, phase, topic) {
@@ -549,7 +577,8 @@ function discoverArtifacts() {
   try {
     const raw = runManifest(['list']);
     workUnits = JSON.parse(raw);
-  } catch (_) {
+  } catch (err) {
+    reportUnexpectedManifestError('discoverArtifacts:list', err);
     return items;
   }
 
@@ -574,8 +603,11 @@ function discoverArtifacts() {
           if (filePath && fs.existsSync(path.resolve(filePath))) {
             items.push({ file: filePath, workUnit: wuName, phase, topic: topicName });
           }
-        } catch (_) {
-          // Skip unresolvable items.
+        } catch (err) {
+          reportUnexpectedManifestError(
+            `discoverArtifacts:resolve(${wuName}.${phase}.${topicName})`,
+            err
+          );
         }
       }
     }
@@ -1297,8 +1329,9 @@ async function cmdStatus() {
         out.push(`  ${f}`);
       }
     }
-  } catch (_) {
-    // Discovery may fail if no manifest — skip.
+  } catch (err) {
+    // Discovery may fail if no manifest — surface so user can tell.
+    process.stderr.write(`Warning: unindexed-artifact discovery failed: ${err.message}\n`);
   }
 
   // 9. Manifest-knowledge consistency.
@@ -1503,12 +1536,16 @@ function getWorkUnitMeta(workUnit) {
       if (completedAt === '' || completedAt === 'undefined' || completedAt === 'null') {
         completedAt = null;
       }
-    } catch (_) {
-      // completed_at may not exist.
+    } catch (err) {
+      // completed_at may not exist — expected. But surface unexpected errors.
+      reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.completed_at)`, err);
     }
     return { status, completed_at: completedAt };
-  } catch (_) {
-    // Manifest lookup failed (e.g., orphaned work unit).
+  } catch (err) {
+    // Work unit missing or manifest broken. "Not found" is expected for
+    // orphaned work units referenced by stale chunks; anything else is a
+    // real problem the user should see.
+    reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.status)`, err);
     return null;
   }
 }
