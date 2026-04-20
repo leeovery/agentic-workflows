@@ -1371,26 +1371,38 @@ async function cmdStatus() {
     process.stderr.write(`Warning: unindexed-artifact discovery failed: ${err.message}\n`);
   }
 
-  // 9. Manifest-knowledge consistency.
+  // 9. Manifest-knowledge consistency. Load all manifests once via
+  // `manifest list` rather than shelling out per spec topic — status was
+  // O(specs) processes before, which meant ~5s on 50-spec repos.
   const consistency = [];
+  let allManifests = null;
+  try {
+    allManifests = JSON.parse(runManifest(['list']));
+  } catch (err) {
+    reportUnexpectedManifestError('cmdStatus:list', err);
+  }
+  const manifestByName = new Map();
+  if (Array.isArray(allManifests)) {
+    for (const m of allManifests) if (m && m.name) manifestByName.set(m.name, m);
+  }
+
   for (const wu of Object.keys(byWu)) {
-    const meta = getWorkUnitMeta(wu);
-    if (!meta) continue;
-    if (meta.status === 'cancelled') {
+    const m = manifestByName.get(wu);
+    if (!m) continue;
+    if (m.status === 'cancelled') {
       consistency.push(`Cancelled work unit still indexed: ${wu}`);
     }
   }
-  // Check for superseded specs.
+  // Superseded specs: look up each topic in the cached manifest tree.
   const specChunks = allChunks.filter((c) => c.phase === 'specification');
   const specTopics = new Set(specChunks.map((c) => `${c.work_unit}.specification.${c.topic}`));
   for (const key of specTopics) {
-    try {
-      const status = runManifest(['get', key, 'status']).trim();
-      if (status === 'superseded') {
-        consistency.push(`Superseded spec still indexed: ${key}`);
-      }
-    } catch (_) {
-      // Skip if manifest lookup fails.
+    const [wuName, , topicName] = key.split('.');
+    const m = manifestByName.get(wuName);
+    if (!m || !m.phases || !m.phases.specification || !m.phases.specification.items) continue;
+    const topicData = m.phases.specification.items[topicName];
+    if (topicData && topicData.status === 'superseded') {
+      consistency.push(`Superseded spec still indexed: ${key}`);
     }
   }
   if (consistency.length > 0) {
