@@ -36,6 +36,10 @@ const PENDING_CATCHUP_LIMIT = 5;
 // omit the embedding field entirely — this value just satisfies the schema.
 const KEYWORD_ONLY_DIMENSIONS = 1536;
 
+// Emit the stub-to-full upgrade note at most once per process to avoid
+// spamming bulk-index runs that iterate over many files.
+let stubUpgradeWarned = false;
+
 // ---------------------------------------------------------------------------
 // Flag parsing
 // ---------------------------------------------------------------------------
@@ -270,7 +274,16 @@ function resolveProviderState(metadata, cfg, provider) {
 
   // Case 4: metadata.provider is null (keyword-only store).
   // Always allowed — index WITHOUT vectors regardless of current config.
+  // If the user has since configured a provider, warn once so they know
+  // they're still in keyword-only mode and must `rebuild` to upgrade.
   if (metaProvider === null || metaProvider === undefined) {
+    if (provider && !stubUpgradeWarned) {
+      stubUpgradeWarned = true;
+      process.stderr.write(
+        'Note: store is keyword-only but an embedding provider is now configured. ' +
+        'Run `knowledge rebuild` to switch to full hybrid search.\n'
+      );
+    }
     return { mode: 'keyword-only', provider: null };
   }
 

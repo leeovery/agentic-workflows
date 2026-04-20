@@ -24,6 +24,14 @@ assert_eq() {
   fi
 }
 
+# Isolate tests from the developer's real system config (~/.config/workflows/).
+# Without this, a real OpenAI config leaks into keyword-only tests and breaks
+# Test 11 onward.
+FAKE_HOME=$(mktemp -d)
+export HOME="$FAKE_HOME"
+export XDG_CONFIG_HOME="$FAKE_HOME/.config"
+trap 'rm -rf "$FAKE_HOME"' EXIT
+
 # Create a temp dir as the project root for each test group.
 TEST_ROOT=""
 setup_project() {
@@ -458,6 +466,20 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
 assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'keyword-only mode' && echo true || echo false)"
+teardown_project
+
+# --- Test 23b: Stub-to-full upgrade note also fires on `index` (not just query) ---
+echo "Test 23b: Upgrade note on index"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_keyword_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Upgrade config to have a provider.
+write_stub_config
+# Re-index: should emit upgrade note on stderr.
+output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
+assert_eq "shows upgrade note on index" "true" "$(echo "$output" | grep -q 'Run .knowledge rebuild.' && echo true || echo false)"
 teardown_project
 
 # --- Test 24: Query on empty store returns [0 results] ---
