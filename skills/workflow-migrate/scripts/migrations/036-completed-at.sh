@@ -52,7 +52,6 @@ function toISODate(ms) {
   return yyyy + '-' + mm + '-' + dd;
 }
 
-let modified = 0;
 for (const entry of entries) {
   if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
 
@@ -76,17 +75,11 @@ for (const entry of entries) {
 
   m.completed_at = toISODate(latest);
   fs.writeFileSync(mPath, JSON.stringify(m, null, 2) + '\n');
-  modified++;
 }
-// Exit 2 signals 'no changes' to the bash wrapper so report_skip fires
-// instead of report_update — keeps the orchestrator's counter honest.
-process.exit(modified > 0 ? 0 : 2);
-" "$WORKFLOWS_DIR" 2>/dev/null && rc=0 || rc=$?
+" "$WORKFLOWS_DIR" 2>/dev/null
 
-if [ "$rc" -eq 0 ]; then
+if [ $? -eq 0 ]; then
   report_update
 else
-  # Either exit-2 (no changes) or an unexpected error — in both cases the
-  # orchestrator should not inflate the FILES_UPDATED counter.
   report_skip
 fi
