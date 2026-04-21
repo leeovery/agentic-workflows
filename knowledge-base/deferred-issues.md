@@ -50,11 +50,11 @@ Items below marked **RESOLVED** were addressed during the pre-merge cleanup pass
 **Description:** N node processes spawned for N spec topics. Status slow on repos with many specs (~5s for 50 topics).
 **Mitigation:** Cache full manifest once per status invocation; read spec statuses from the cached object.
 
-### 7. `--work-unit` filter vs boost semantics — Low (UX) — **DOC-ONLY**
+### 7. `--work-unit` filter vs boost semantics — Low (UX) — **RESOLVED**
 
 **Location:** `src/knowledge/index.js` `cmdQuery`.
-**Description:** `--work-unit` is a re-rank proximity boost, not a hard filter. Inconsistent with `--phase`/`--work-type`/`--topic` which are filters.
-**Status:** Code behaviour deliberately preserved (cross-work-unit context is the point of the KB). `SKILL.md` lines 61 + 134 document the boost semantics explicitly. Any CLI-level split (`--boost-work-unit` vs `--filter-work-unit`) is a scope-expanding redesign, kept deferred.
+**Description:** `--work-unit` was a re-rank proximity boost on `query` but a hard filter on `remove` — same flag name, opposite semantics. Inconsistent with `--phase`/`--work-type`/`--topic` (all filters). Docs alone weren't enough; the flag spelling itself invited misuse.
+**Resolution:** Split into two distinctly-named flags. `query` now takes `--prefer-work-unit` for the boost behaviour; `remove` keeps `--work-unit` as a filter. No single spelling overloaded across commands, and the `--prefer-` prefix makes the re-ranking semantics obvious at the call site. Skill files and tests updated.
 
 ### 8. Migration `report_update` called unconditionally — Low — **WITHDRAWN**
 

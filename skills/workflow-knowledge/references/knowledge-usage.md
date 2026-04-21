@@ -25,7 +25,7 @@ Multiple queries from different angles are expected and encouraged. One query fo
 
 ## B. How to construct queries
 
-Use **natural language** describing what you're looking for — not topic slugs, which are weak semantic signal. Filter with `--work-type`, `--phase`, `--topic`; bias toward the current work unit with `--work-unit` (a re-rank hint, not a filter). For multiple angles in one invocation, pass multiple positional terms (batch query).
+Use **natural language** describing what you're looking for — not topic slugs, which are weak semantic signal. Filter with `--work-type`, `--phase`, `--topic`; bias toward the current work unit with `--prefer-work-unit` (a re-rank hint, not a filter). For multiple angles in one invocation, pass multiple positional terms (batch query).
 
 See **[SKILL.md](../SKILL.md)** — query construction examples and the full flag table.
 

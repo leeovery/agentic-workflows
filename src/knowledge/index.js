@@ -95,7 +95,13 @@ function buildOptions(flags) {
   return {
     workType: flags['work-type'] || null,
     phase: flags['phase'] || null,
+    // `remove` uses this as a filter ("what to delete"). The filter semantics
+    // match --phase / --topic / --work-type, so the name is consistent.
     workUnit: flags['work-unit'] || null,
+    // `query` uses this as a re-rank boost ("bias results toward this work
+    // unit, don't filter out cross-work-unit hits"). Separate flag name so
+    // boost and filter never share a spelling.
+    preferWorkUnit: flags['prefer-work-unit'] || null,
     topic: flags['topic'] || null,
     limit: flags['limit'] ? parseInt(flags['limit'], 10) : null,
     dryRun: flags['dry-run'] === true || flags['dry-run'] === 'true',
@@ -119,12 +125,13 @@ Commands:
   setup     Interactive setup wizard
 
 Options:
-  --work-type <type>   Filter by work type
-  --work-unit <unit>   Re-rank boost for this work unit (not a filter)
-  --phase <phase>      Filter by phase
-  --topic <topic>      Filter by topic
-  --limit <n>          Limit number of results
-  --dry-run            Preview without making changes`;
+  --work-type <type>        Filter by work type
+  --work-unit <unit>        Filter by work unit (for remove)
+  --prefer-work-unit <unit> Re-rank boost toward this work unit (for query)
+  --phase <phase>           Filter by phase
+  --topic <topic>           Filter by topic
+  --limit <n>               Limit number of results
+  --dry-run                 Preview without making changes`;
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -1064,7 +1071,7 @@ function resolveQueryMode(metadata, cfg, provider) {
 
 async function cmdQuery(args, options, cfg, provider) {
   if (args.length === 0) {
-    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--phase ...] [--work-type ...] [--work-unit ...] [--limit N]\n');
+    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--phase ...] [--work-type ...] [--prefer-work-unit ...] [--topic ...] [--limit N]\n');
     process.exit(1);
   }
 
@@ -1100,9 +1107,9 @@ async function cmdQuery(args, options, cfg, provider) {
     stubNote = '[keyword-only mode but embedding provider configured — run knowledge rebuild for full hybrid search]';
   }
 
-  // Build where clause from filters. --work-unit is NOT a filter — it's a
-  // re-rank proximity hint used after search, so other work units can still
-  // appear in results but rank lower.
+  // Build where clause from hard filters. --prefer-work-unit is NOT here —
+  // it's a re-rank proximity hint applied after search, so other work units
+  // can still appear in results but rank lower.
   const where = {};
   if (options.phase) {
     const phases = options.phase.split(',').map((s) => s.trim());
@@ -1154,8 +1161,8 @@ async function cmdQuery(args, options, cfg, provider) {
     }
   }
 
-  // Re-rank merged results.
-  let results = rerank(Array.from(allResults.values()), options.workUnit);
+  // Re-rank merged results using the boost hint (--prefer-work-unit).
+  let results = rerank(Array.from(allResults.values()), options.preferWorkUnit);
 
   if (results.length > limit) {
     results = results.slice(0, limit);

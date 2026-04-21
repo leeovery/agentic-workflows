@@ -18,10 +18,10 @@ If the only context available is a topic name, construct the best descriptive qu
 
 ## B. Run the query
 
-Invoke the CLI with the constructed query (or queries). Use `--work-unit {work_unit}` to bias results toward the current work unit without filtering out cross-work-unit context. Do not use hard filters unless you have a specific reason — this is meant to surface prior work broadly.
+Invoke the CLI with the constructed query (or queries). Use `--prefer-work-unit {work_unit}` to bias results toward the current work unit without filtering out cross-work-unit context. Do not use hard filters unless you have a specific reason — this is meant to surface prior work broadly.
 
 ```
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<descriptive query>" --work-unit {work_unit}
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<descriptive query>" --prefer-work-unit {work_unit}
 ```
 
 #### If the command exits with a non-zero code

@@ -58,7 +58,7 @@ Multiple positional arguments run separate searches in one invocation, merge the
 | `--work-type <type>` | Filter results to a work type. Comma-separated list accepted (e.g., `--work-type cross-cutting` or `--work-type epic,feature`). Hard filter — non-matching chunks are excluded |
 | `--phase <phase>` | Filter to one or more phases. Same comma-separated syntax. Hard filter |
 | `--topic <topic>` | Filter to one or more topics. Same comma-separated syntax. Hard filter |
-| `--work-unit <wu>` | **Re-ranking hint, NOT a filter.** Boosts chunks from this work unit in post-processing. Cross-work-unit results still appear, just ranked lower. Use it to say "I'm currently working in `auth-flow`, prefer its context" — not to exclude other work |
+| `--prefer-work-unit <wu>` | **Re-ranking hint, NOT a filter.** Boosts chunks from this work unit in post-processing. Cross-work-unit results still appear, just ranked lower. Use it to say "I'm currently working in `auth-flow`, prefer its context" — not to exclude other work. Distinct from `--work-unit` on `remove`, which IS a filter |
 | `--limit <n>` | Cap result count after merge + re-rank. Default 10 |
 
 ### Search modes
@@ -130,8 +130,8 @@ Don't read source files for every result. Most queries produce a couple of chunk
 - **Do not dump large result sets speculatively.** `--limit 50` with a vague query produces noise. Prefer a focused query with the default limit.
 - **Do not use topic slugs as search terms.** `"auth-flow"` is a weak semantic signal. Describe the thing, don't name it.
 - **Do not query during the specification phase.** Spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the spec away from its own source material.
-- **Do not prepend metadata to the query string.** The CLI already filters by `work_type`, `phase`, `topic`, `work_unit` via flags. `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
-- **Do not treat `--work-unit` as a filter.** It re-ranks. If you want to exclude other work units, you probably don't — cross-work-unit context is the point of the knowledge base.
+- **Do not prepend metadata to the query string.** The CLI already filters by `work_type`, `phase`, `topic` via flags. `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
+- **`--prefer-work-unit` boosts, it does not filter.** If you truly want to exclude other work units, you probably don't — cross-work-unit context is the point of the knowledge base. There is no hard-filter equivalent on `query` by design.
 
 ---
 

@@ -608,8 +608,8 @@ Line 48. Line 49. Line 50. Line 51. Line 52. Line 53.
 MD
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
-# Query with --work-unit auth-flow: auth-flow results should appear first.
-output=$(run_kb query "token refresh" --work-unit auth-flow --limit 2 2>&1)
+# Query with --prefer-work-unit auth-flow: auth-flow results should appear first.
+output=$(run_kb query "token refresh" --prefer-work-unit auth-flow --limit 2 2>&1)
 # Extract the first provenance line's work_unit.
 first_wu=$(echo "$output" | grep -m1 '^\[discussion' | sed 's/.*| \([^/]*\)\/.*/\1/')
 assert_eq "boosted work-unit appears first" "auth-flow" "$first_wu"
