@@ -1161,6 +1161,19 @@ async function cmdQuery(args, options, cfg, provider) {
     process.exit(1);
   }
 
+  // Reject empty/whitespace-only terms. Orama treats an empty term as
+  // "match everything" and returns up to `limit` arbitrary chunks — almost
+  // certainly a caller mistake (fat-finger, variable template that wasn't
+  // substituted) rather than an intentional "give me anything" request.
+  for (const t of args) {
+    if (typeof t !== 'string' || t.trim() === '') {
+      throw new UserError(
+        'Empty search term. `knowledge query` requires at least one non-empty positional term. ' +
+          'If you intended to list everything indexed, use `knowledge status` instead.'
+      );
+    }
+  }
+
   const searchTerms = args; // batch: multiple positional args
   const limit = options.limit || 10;
   const sp = storePath();

@@ -503,6 +503,32 @@ output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
 assert_eq "shows upgrade note on index" "true" "$(echo "$output" | grep -q 'Run .knowledge rebuild.' && echo true || echo false)"
 teardown_project
 
+# --- Test 23c: Empty-string query rejected (no "match everything") ---
+# Orama treats empty term as wildcard and returns up to `limit` chunks.
+# That's almost always a caller bug (unsubstituted template variable,
+# accidental empty positional) — surface it as an error rather than
+# returning arbitrary hits.
+echo "Test 23c: Empty query term rejected"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb query "" 2>&1) || exit_code=$?
+assert_eq "empty query exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "error message surfaces" "true" \
+  "$(echo "$output" | grep -q 'Empty search term' && echo true || echo false)"
+# Whitespace-only term also rejected.
+exit_code=0
+output=$(run_kb query "   " 2>&1) || exit_code=$?
+assert_eq "whitespace-only query exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+# Any non-empty term still works.
+exit_code=0
+run_kb query "content" >/dev/null 2>&1 || exit_code=$?
+assert_eq "valid query still succeeds" "0" "$exit_code"
+teardown_project
+
 # --- Test 24: Query on empty store returns [0 results] ---
 echo "Test 24: Empty store"
 setup_project
@@ -860,18 +886,21 @@ create_work_unit "preview-wu" "feature" "Preview"
 write_stub_config
 create_discussion_file "preview-wu" "preview-wu"
 run_kb index .workflows/preview-wu/discussion/preview-wu.md >/dev/null 2>&1
+# Use a term that appears in the fixture ('content') to count chunks —
+# empty-string queries are now a UserError (intentional, to catch
+# unsubstituted template variables).
 # grep -c exits 1 on zero matches; absorb under set -eo pipefail.
-before=$(run_kb query "" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+before=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' || true)
 dry_output=$(run_kb remove --work-unit preview-wu --dry-run 2>&1)
 assert_eq "dry-run says 'Would remove'" "true" \
   "$(echo "$dry_output" | grep -q 'Would remove' && echo true || echo false)"
 assert_eq "dry-run does NOT say 'Removed'" "false" \
   "$(echo "$dry_output" | grep -qE '^Removed' && echo true || echo false)"
-after=$(run_kb query "" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+after=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' || true)
 assert_eq "chunk count unchanged after dry-run" "$before" "$after"
 # Sanity: a real remove afterwards DOES delete.
 run_kb remove --work-unit preview-wu >/dev/null 2>&1
-after_real=$(run_kb query "" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+after_real=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' || true)
 assert_eq "real remove actually deletes" "0" "$after_real"
 teardown_project
 
