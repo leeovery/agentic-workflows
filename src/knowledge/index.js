@@ -1652,7 +1652,7 @@ function readStdinLine() {
 
 async function cmdRemove(_args, options) {
   if (!options.workUnit) {
-    process.stderr.write('Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>]\n');
+    process.stderr.write('Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]\n');
     process.exit(1);
   }
 
@@ -1661,19 +1661,36 @@ async function cmdRemove(_args, options) {
     process.exit(1);
   }
 
+  const sp = storePath();
+  const desc = formatRemoveDesc(options);
+
+  // --dry-run is observational only: count what would be removed, touch
+  // nothing on disk. Don't drain the pending-removal queue either — that
+  // would be a real side effect.
+  if (options.dryRun) {
+    if (!fs.existsSync(sp)) {
+      process.stdout.write(`Would remove 0 chunks for ${desc} (store not initialised)\n`);
+      return;
+    }
+    const db = await store.loadStore(sp);
+    const where = { work_unit: { eq: options.workUnit } };
+    if (options.phase) where.phase = { eq: options.phase };
+    if (options.topic) where.topic = { eq: options.topic };
+    const count = await store.countByFilter(db, where);
+    process.stdout.write(`Would remove ${count} chunks for ${desc}\n`);
+    return;
+  }
+
   // Drain any previously-failed removals first so stale chunks from earlier
   // cancellations/supersessions don't linger just because the store was
   // briefly locked.
   await processPendingRemovals();
 
-  const sp = storePath();
   if (!fs.existsSync(sp)) {
-    const desc = formatRemoveDesc(options);
     process.stdout.write(`Removed 0 chunks for ${desc}\n`);
     return;
   }
 
-  const desc = formatRemoveDesc(options);
   try {
     const removed = await performRemoval(options);
     process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);

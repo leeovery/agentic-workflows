@@ -784,6 +784,28 @@ assert_eq "data-model chunks unaffected" "true" "$(echo "$query_output" | grep -
 assert_eq "auth-flow chunks gone" "false" "$(echo "$query_output" | grep -q 'auth-flow/auth-flow' && echo true || echo false)"
 teardown_project
 
+# --- Test 38b: remove --dry-run previews without deleting ---
+echo "Test 38b: remove --dry-run is observational"
+setup_project
+create_work_unit "preview-wu" "feature" "Preview"
+write_stub_config
+create_discussion_file "preview-wu" "preview-wu"
+run_kb index .workflows/preview-wu/discussion/preview-wu.md >/dev/null 2>&1
+# grep -c exits 1 on zero matches; absorb under set -eo pipefail.
+before=$(run_kb query "" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+dry_output=$(run_kb remove --work-unit preview-wu --dry-run 2>&1)
+assert_eq "dry-run says 'Would remove'" "true" \
+  "$(echo "$dry_output" | grep -q 'Would remove' && echo true || echo false)"
+assert_eq "dry-run does NOT say 'Removed'" "false" \
+  "$(echo "$dry_output" | grep -qE '^Removed' && echo true || echo false)"
+after=$(run_kb query "" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+assert_eq "chunk count unchanged after dry-run" "$before" "$after"
+# Sanity: a real remove afterwards DOES delete.
+run_kb remove --work-unit preview-wu >/dev/null 2>&1
+after_real=$(run_kb query "" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+assert_eq "real remove actually deletes" "0" "$after_real"
+teardown_project
+
 # --- Test 39: Remove chunks for a work unit + phase ---
 echo "Test 39: Remove chunks for work unit + phase"
 setup_project

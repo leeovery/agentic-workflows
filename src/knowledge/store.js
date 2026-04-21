@@ -172,6 +172,23 @@ async function removeByFilter(db, where) {
   return removed;
 }
 
+/**
+ * Count chunks matching `where` without deleting. Used by `remove --dry-run`.
+ * Same query shape as removeByFilter so the count is guaranteed to match
+ * what a non-dry-run invocation would actually remove.
+ */
+async function countByFilter(db, where) {
+  if (!where || Object.keys(where).length === 0) {
+    throw new Error('countByFilter: where clause is required');
+  }
+  const res = await orama.search(db, {
+    term: '',
+    where,
+    limit: 100000,
+  });
+  return res.hits.length;
+}
+
 function normaliseHit(hit) {
   const d = hit.document || {};
   return {
@@ -483,6 +500,7 @@ module.exports = {
   insertDocument,
   removeByIdentity,
   removeByFilter,
+  countByFilter,
   searchFulltext,
   searchVector,
   searchHybrid,
