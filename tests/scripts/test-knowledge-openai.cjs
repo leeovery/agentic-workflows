@@ -193,6 +193,31 @@ describe('OpenAIProvider embedBatch (mocked)', () => {
     const result = await p.embedBatch(['single']);
     assert.deepStrictEqual(result, [vec]);
   });
+
+  it('throws on short response (fewer rows than requested)', async () => {
+    // API returned 2 rows for a 3-item request. Previously: results[2]
+    // stayed undefined and propagated silently into the store.
+    globalThis.fetch = mockFetchSuccess({
+      data: [
+        { index: 0, embedding: [0.1, 0.2] },
+        { index: 1, embedding: [0.3, 0.4] },
+      ],
+    });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await assert.rejects(
+      () => p.embedBatch(['a', 'b', 'c']),
+      /response length mismatch.*requested 3, received 2/
+    );
+  });
+
+  it('throws on missing data array', async () => {
+    globalThis.fetch = mockFetchSuccess({ data: null });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await assert.rejects(
+      () => p.embedBatch(['a']),
+      /response length mismatch/
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

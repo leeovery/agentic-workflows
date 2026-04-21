@@ -63,6 +63,15 @@ class OpenAIProvider {
     if (texts.length <= MAX_BATCH_SIZE) {
       const body = JSON.stringify({ model: this._model, input: texts, dimensions: this._dimensions });
       const res = await this._fetch(body);
+      // Validate response length — a short response silently propagates
+      // undefined embeddings into Orama and degrades chunks to keyword-only
+      // with no warning. Rare (OpenAI usually 400s on empty input) but
+      // cheap to guard.
+      if (!Array.isArray(res.data) || res.data.length !== texts.length) {
+        throw new Error(
+          `OpenAI embedBatch response length mismatch: requested ${texts.length}, received ${res.data ? res.data.length : 0}`
+        );
+      }
       // OpenAI returns data sorted by index — ensure correct order.
       const sorted = [...res.data].sort((a, b) => a.index - b.index);
       return sorted.map((d) => d.embedding);
@@ -74,6 +83,11 @@ class OpenAIProvider {
       const slice = texts.slice(offset, offset + MAX_BATCH_SIZE);
       const body = JSON.stringify({ model: this._model, input: slice, dimensions: this._dimensions });
       const res = await this._fetch(body);
+      if (!Array.isArray(res.data) || res.data.length !== slice.length) {
+        throw new Error(
+          `OpenAI embedBatch response length mismatch on chunk offset=${offset}: requested ${slice.length}, received ${res.data ? res.data.length : 0}`
+        );
+      }
       const sorted = [...res.data].sort((a, b) => a.index - b.index);
       for (let i = 0; i < sorted.length; i++) {
         results[offset + i] = sorted[i].embedding;
