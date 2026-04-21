@@ -757,6 +757,54 @@ assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
+# --- Test 37b: Check not-ready when config.json is corrupt (invalid JSON) ---
+echo "Test 37b: Check not-ready (corrupt config JSON)"
+setup_project
+# Write invalid JSON to the config — previously this slipped through and
+# check reported 'ready'; user only discovered the problem on a later
+# index/query with a cryptic JSON parse error.
+echo 'not valid json{{' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+stdout=$(run_kb check 2>/dev/null)
+stderr=$(run_kb check 2>&1 >/dev/null)
+assert_eq "outputs not-ready on corrupt config" "not-ready" "$(echo "$stdout" | tr -d '\n')"
+assert_eq "writes config diagnostic on stderr" "true" \
+  "$(echo "$stderr" | grep -q 'config error' && echo true || echo false)"
+teardown_project
+
+# --- Test 37c: Check not-ready when config lacks 'knowledge' key ---
+echo "Test 37c: Check not-ready (config missing knowledge key)"
+setup_project
+echo '{"other":"stuff"}' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+stdout=$(run_kb check 2>/dev/null)
+stderr=$(run_kb check 2>&1 >/dev/null)
+assert_eq "outputs not-ready on shape mismatch" "not-ready" "$(echo "$stdout" | tr -d '\n')"
+assert_eq "diagnostic mentions 'knowledge' key" "true" \
+  "$(echo "$stderr" | grep -q 'knowledge' && echo true || echo false)"
+teardown_project
+
+# --- Test 37d: Corrupt config overrides otherwise-ready state ---
+# Strongest guard: an otherwise-healthy KB (valid store, valid metadata)
+# whose config gets corrupted. Pre-fix, cmdCheck only checked file
+# existence for config — so this reported 'ready' and deferred the
+# parse error to the next index/query. Now: not-ready.
+echo "Test 37d: Check not-ready (corrupt config overrides ready state)"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Sanity: with valid config, check reports ready.
+baseline=$(run_kb check 2>/dev/null | tr -d '\n')
+assert_eq "baseline is ready" "ready" "$baseline"
+# Now corrupt the config; store + metadata remain intact.
+echo 'not valid json{{' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+stdout=$(run_kb check 2>/dev/null)
+stderr=$(run_kb check 2>&1 >/dev/null)
+assert_eq "flips to not-ready on corrupt config" "not-ready" "$(echo "$stdout" | tr -d '\n')"
+assert_eq "stderr explains why" "true" \
+  "$(echo "$stderr" | grep -q 'config error' && echo true || echo false)"
+teardown_project
+
 # ============================================================================
 # REMOVE COMMAND TESTS
 # ============================================================================

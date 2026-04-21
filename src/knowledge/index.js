@@ -1274,6 +1274,18 @@ async function cmdCheck(/* args, options, cfg, provider */) {
     return;
   }
 
+  // Condition 2b: config.json parses and has the expected shape.
+  // Without this, a corrupted config would pass `check` and the user
+  // would only see the JSON parse error later on `index` or `query`,
+  // with no hint that the root cause is the config file itself.
+  try {
+    config.readConfigFile(configFile);
+  } catch (err) {
+    process.stderr.write(`config error: ${err.message}\n`);
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
   // Condition 3: store.msp exists and is loadable.
   if (!fs.existsSync(sp)) {
     process.stdout.write('not-ready\n');
