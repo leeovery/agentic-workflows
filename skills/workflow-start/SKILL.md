@@ -56,6 +56,12 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 ### Step 0.2: Migrations
 
+#### If the `/workflow-migrate` skill has already been invoked in this conversation
+
+→ Proceed to **Step 0.3**.
+
+#### Otherwise
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
