@@ -242,4 +242,6 @@ Skills receive positional arguments: `$0` = work_type (`bugfix`), `$1` = work_un
 
 If the user chose to revisit a completed phase in Step 5, use that phase instead of `next_phase`.
 
-Invoke the skill. This is terminal — do not return to the backbone.
+Invoke the skill.
+
+**STOP.** Do not proceed — terminal condition.

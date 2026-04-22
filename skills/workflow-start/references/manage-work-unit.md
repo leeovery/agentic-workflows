@@ -222,7 +222,9 @@ Load **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-u
 
 **If user chose `c`/`continue`:**
 
-Invoke the `/continue-epic` skill. This is terminal — do not return to the caller.
+Invoke the `/continue-epic` skill.
+
+**STOP.** Do not proceed — terminal condition.
 
 **If user chose `b`/`back`:**
 

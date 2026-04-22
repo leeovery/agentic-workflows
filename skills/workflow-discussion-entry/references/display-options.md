@@ -132,7 +132,9 @@ Set source="fresh".
 
 #### If user chose `back`
 
-Re-invoke the caller's entry-point skill to return to its menu. Invoke `/continue-epic {work_unit}`. This is terminal — the invoked skill takes over.
+Re-invoke the caller's entry-point skill to return to its menu. Invoke `/continue-epic {work_unit}`.
+
+**STOP.** Do not proceed — terminal condition.
 
 #### If user chose `refresh`
 
