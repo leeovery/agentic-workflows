@@ -61,6 +61,7 @@ function toISODate(ms) {
   return yyyy + '-' + mm + '-' + dd;
 }
 
+let modified = 0;
 for (const entry of entries) {
   if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
 
@@ -84,11 +85,19 @@ for (const entry of entries) {
 
   m.completed_at = toISODate(latest);
   fs.writeFileSync(mPath, JSON.stringify(m, null, 2) + '\n');
+  modified++;
 }
-" "$WORKFLOWS_DIR" 2>/dev/null
+// Exit 2 = 'no changes' so the bash wrapper reports skip rather than
+// inflating the orchestrator's FILES_UPDATED counter when nothing ran.
+// Anything else non-zero = unexpected crash — stderr passes through so
+// the orchestrator surfaces it.
+process.exit(modified > 0 ? 0 : 2);
+" "$WORKFLOWS_DIR" && rc=0 || rc=$?
 
-if [ $? -eq 0 ]; then
+if [ "$rc" -eq 0 ]; then
   report_update
 else
+  # exit 2 (no changes) or any other non-zero (real crash, stderr was
+  # already printed above). In both cases don't inflate the counter.
   report_skip
 fi
