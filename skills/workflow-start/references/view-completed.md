@@ -116,6 +116,18 @@ Cancellation removed the work unit's chunks from the knowledge base. Restore the
 
 Completed work units retain their chunks — no re-indexing needed.
 
+Check for a stale `completed_at`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name} completed_at
+```
+
+**If the output is `true`:**
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {selected.name} completed_at
+```
+
 > *Output the next fenced block as a code block:*
 
 ```
