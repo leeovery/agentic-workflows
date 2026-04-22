@@ -33,6 +33,8 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs <command> [args]
 
 Every skill that calls this must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in its `allowed-tools` frontmatter.
 
+To list commands and options, use `--help` / `-h` / `help` — writes usage to stdout, exits 0. Invoking the CLI with no arguments writes usage to stderr and exits 1.
+
 ---
 
 ## `query` — search the knowledge base

@@ -171,7 +171,8 @@ Re-ranking (query only, additive; repeat for multiple boosts):
 
 Other options:
   --limit <n>               Limit number of results
-  --dry-run                 Preview without making changes`;
+  --dry-run                 Preview without making changes
+  --help, -h                Show this usage and exit 0`;
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -1946,6 +1947,16 @@ async function cmdCompact(_args, options, cfg) {
 
 async function main() {
   const rawArgs = process.argv.slice(2);
+
+  // Informational help: --help / -h / `help` subcommand. Writes USAGE to
+  // stdout and exits 0 so scripts can probe the CLI without treating
+  // help as a failure. `knowledge` with no args is still an error —
+  // the user forgot a command (stderr, exit 1, handled below).
+  if (rawArgs.includes('--help') || rawArgs.includes('-h') || rawArgs[0] === 'help') {
+    process.stdout.write(USAGE + '\n');
+    process.exit(0);
+  }
+
   const { positional, flags, boosts } = parseArgs(rawArgs);
   const command = positional[0];
   const commandArgs = positional.slice(1);
