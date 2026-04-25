@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { withRetry } = require('../../src/knowledge/index');
+const { withRetry, UserError } = require('../../src/knowledge/index');
 
 describe('withRetry', () => {
   it('succeeds on first attempt', async () => {
@@ -67,6 +67,56 @@ describe('withRetry', () => {
     let calls = 0;
     const result = await withRetry(async () => { calls++; return 42; });
     assert.strictEqual(result, 42);
+    assert.strictEqual(calls, 1);
+  });
+
+  // Permanent-failure short-circuit: programming errors and UserError surface
+  // immediately on the first attempt rather than burning the retry budget.
+  // Each test asserts exactly one call (no retries) and that the original
+  // error class survives.
+
+  it('does not retry TypeError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new TypeError('typo'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof TypeError && /typo/.test(err.message)
+    );
+    assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry ReferenceError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new ReferenceError('missing'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof ReferenceError
+    );
+    assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry SyntaxError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new SyntaxError('bad'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof SyntaxError
+    );
+    assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry RangeError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new RangeError('out'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof RangeError
+    );
+    assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry UserError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new UserError('bad input'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof UserError && /bad input/.test(err.message)
+    );
     assert.strictEqual(calls, 1);
   });
 });
