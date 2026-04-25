@@ -89,11 +89,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.scoping.{topic} status completed
 ```
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 **Otherwise:**
 
-→ Proceed to **Step 1** (spec exists but plan is incomplete — resume from format selection).
+→ Proceed to **Step 6** (spec exists but plan is incomplete — resume from format selection).
 
 #### If specification does not exist
 
@@ -145,7 +145,28 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 ---
 
-## Step 3: Complexity Check
+## Step 3: Contextual Query
+
+> *Output the next fenced block as a code block:*
+
+```
+── Contextual Query ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking the knowledge base for prior discussions, investigations,
+> or specs that touch the area being changed.
+```
+
+Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+
+→ Proceed to **Step 4**.
+
+---
+
+## Step 4: Complexity Check
 
 > *Output the next fenced block as a code block:*
 
@@ -162,11 +183,11 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 Load **[complexity-check.md](references/complexity-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 ---
 
-## Step 4: Write Specification
+## Step 5: Write Specification
 
 > *Output the next fenced block as a code block:*
 
@@ -183,11 +204,11 @@ Load **[complexity-check.md](references/complexity-check.md)** and follow its in
 
 Load **[write-specification.md](references/write-specification.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 5: Select Output Format
+## Step 6: Select Output Format
 
 > *Output the next fenced block as a code block:*
 
@@ -203,11 +224,11 @@ Load **[write-specification.md](references/write-specification.md)** and follow 
 
 Load **[select-format.md](references/select-format.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Write Tasks
+## Step 7: Write Tasks
 
 > *Output the next fenced block as a code block:*
 
@@ -224,11 +245,11 @@ Load **[select-format.md](references/select-format.md)** and follow its instruct
 
 Load **[write-tasks.md](references/write-tasks.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Conclude Scoping
+## Step 8: Conclude Scoping
 
 > *Output the next fenced block as a code block:*
 
