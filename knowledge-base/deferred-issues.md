@@ -98,11 +98,11 @@ Items below marked **RESOLVED** were addressed during the pre-merge cleanup pass
 **Description:** `Object.assign`-style merge only copies defined values; setting project `model: undefined` cannot unset a system `model: "x"` default.
 **Mitigation:** Treat explicit `null` as unset sentinel in the merge.
 
-### 15. `searchHybrid` similarity threshold may drop strong text-only matches — Low — **RESOLVED**
+### 15. `searchHybrid` similarity threshold may drop strong text-only matches — Low — **WITHDRAWN**
 
 **Location:** `src/knowledge/store.js` `searchHybrid`.
-**Description:** Orama applies `similarity` as a filter on hybrid results; zero vector matches can mask strong BM25 matches.
-**Mitigation:** Phase 5+ retrieval tuning — fall back to text-only if hybrid returns 0.
+**Description:** Theoretical concern that Orama applies `similarity` as a filter on hybrid results; zero vector matches could mask strong BM25 matches.
+**Why withdrawn:** Empirical probing of Orama's hybrid mode shows the concern doesn't manifest. With a flat/poor vector and `similarity: 0.99`, hybrid still returns BM25-driven hits (text matches come through regardless of similarity post-filter). The only way to get zero hybrid hits is when the term itself doesn't match — at which point a text-only fallback also returns zero. A defensive fulltext fallback was briefly added in commit `33303da1` then removed once probing confirmed it was unreachable. Orama's hybrid implementation already does the right thing.
 
 ### 16. `cmdRebuild` stdin left in flowing mode — Low — **RESOLVED**
 

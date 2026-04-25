@@ -81,15 +81,18 @@ async function main() {
   });
   check('hybrid search returns results', hybRes.length > 0);
 
-  // Trigger the #15 fallback: term has matches but vector has none above threshold
+  // Hybrid with a flat/poor vector + tight similarity still returns BM25
+  // hits — Orama's hybrid mode handles the "vector matches all weak" case
+  // natively without needing a fulltext fallback. (deferred-issue #15
+  // concern was empirically not reproducible.)
   const gibberishVec = new Array(DIMS).fill(0.0001);
-  const fallbackRes = await searchHybrid(db, {
+  const hybStrictRes = await searchHybrid(db, {
     term: 'refresh',
     vector: gibberishVec,
     limit: 10,
     similarity: 0.99,
   });
-  check('hybrid → fulltext fallback when no vector hits', fallbackRes.length > 0);
+  check('hybrid surfaces BM25 hits even with weak vector matches', hybStrictRes.length > 0);
 
   const removed = await removeByFilter(db, { work_unit: { eq: 'billing' } });
   check('removeByFilter returned count > 0', removed > 0);

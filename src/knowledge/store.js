@@ -288,16 +288,6 @@ async function searchHybrid(
   if (typeof similarity === 'number') query.similarity = similarity;
   if (where && Object.keys(where).length > 0) query.where = where;
   const res = await orama.search(db, query);
-  // Orama applies `similarity` as a post-filter on hybrid results, so a
-  // query with zero good vector matches can mask a strong BM25 hit. Fall
-  // back to a text-only search before giving up so keyword matches aren't
-  // silently dropped (deferred-issue #15).
-  if (res.hits.length === 0) {
-    const fallback = { mode: 'fulltext', term, limit };
-    if (where && Object.keys(where).length > 0) fallback.where = where;
-    const fallbackRes = await orama.search(db, fallback);
-    return fallbackRes.hits.map(normaliseHit);
-  }
   return res.hits.map(normaliseHit);
 }
 
