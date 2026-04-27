@@ -1665,14 +1665,76 @@ const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
 process.stdout.write(String((m.pending_removals||[]).length));
 ")
 assert_eq "pending_removals survives an index write" "1" "$queue_after_index"
-# Part B — a normal remove call drains the queue (stale-wu has no chunks;
-# performRemoval returns 0 chunks, processPendingRemovals then removes the entry).
+# Part B — a normal remove call drains the queue on the no-op success path
+# (stale-wu has no chunks; performRemoval returns 0 chunks, processPendingRemovals
+# then removes the entry). Pairs with Parts C and D below which exercise the
+# real-failure paths.
 run_kb remove --work-unit drop-me >/dev/null 2>&1
 queue_after_remove=$(node -e "
 const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
 process.stdout.write(String((m.pending_removals||[]).length));
 ")
-assert_eq "pending queue drained after remove" "0" "$queue_after_remove"
+assert_eq "queue drains on no-op success" "0" "$queue_after_remove"
+teardown_project
+
+# --- Test 81b: pending-removal queue evicts after REMOVAL_MAX_ATTEMPTS ---
+# Guards processPendingRemovals' eviction branch — without a real-failure
+# test, all observed behaviour was on the no-op success path above.
+echo "Test 81b: Pending removal eviction"
+setup_project
+create_work_unit "drop-me" "feature" "Drop"
+write_stub_config
+create_discussion_file "drop-me" "drop-me"
+run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
+meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
+# Seed a pending removal already at the eviction threshold.
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$meta','utf8'));
+m.pending_removals=[{workUnit:'capped-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'simulated permanent failure',attempts:10}];
+fs.writeFileSync('$meta', JSON.stringify(m));
+"
+# Triggering processPendingRemovals (any command that calls it works).
+evict_stderr=$(run_kb remove --work-unit drop-me 2>&1 >/dev/null)
+queue_after_evict=$(node -e "
+const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
+process.stdout.write(String((m.pending_removals||[]).length));
+")
+assert_eq "queue empty after eviction at MAX_ATTEMPTS" "0" "$queue_after_evict"
+assert_eq "eviction surfaces stderr notice" "true" "$(echo "$evict_stderr" | grep -q 'exceeded 10 attempts.*evicting' && echo true || echo false)"
+teardown_project
+
+# --- Test 81c: pending-removal failure increments attempts ---
+# Guards the addPendingRemoval bump in processPendingRemovals' catch branch.
+# Simulates a real failure by corrupting store.msp before the drain runs.
+echo "Test 81c: Pending removal attempts increment on failure"
+setup_project
+create_work_unit "drop-me" "feature" "Drop"
+write_stub_config
+create_discussion_file "drop-me" "drop-me"
+run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
+meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
+store_msp="$TEST_ROOT/.workflows/.knowledge/store.msp"
+# Seed a pending removal mid-attempts and corrupt the store so loadStore throws.
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$meta','utf8'));
+m.pending_removals=[{workUnit:'flaky-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'prior failure',attempts:5}];
+fs.writeFileSync('$meta', JSON.stringify(m));
+"
+# Backup and corrupt the store.
+cp "$store_msp" "$store_msp.bak"
+printf 'corrupt-msgpack-bytes' > "$store_msp"
+# Trigger processPendingRemovals — this will fail and bump attempts.
+run_kb compact >/dev/null 2>&1 || true
+attempts_after=$(node -e "
+const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
+const r=(m.pending_removals||[]).find(r=>r.workUnit==='flaky-wu');
+process.stdout.write(String(r ? r.attempts : 'evicted'));
+")
+# Restore the store (so teardown_project can run cleanly if needed).
+mv "$store_msp.bak" "$store_msp"
+assert_eq "attempts incremented from 5 to 6 after real failure" "6" "$attempts_after"
 teardown_project
 
 # --- Test 82: Rebuild cleans up .bak files on success and on leftover ---
