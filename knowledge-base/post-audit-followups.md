@@ -195,7 +195,7 @@ Option 1 is consistent with how UserError is used elsewhere (validation failures
 
 ---
 
-### #6 — Setup writes openai config before validating the key
+### #6 — Setup writes openai config before validating the key (✅ commit `27a1b9f7`)
 
 **Files:** `src/knowledge/setup.js:374-407` (`runSystemConfigStep`), `:543-552` (`runProjectInitStep`)
 
