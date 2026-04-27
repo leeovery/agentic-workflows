@@ -1756,6 +1756,79 @@ assert_eq "store still present after rebuild" "true" \
   "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
 teardown_project
 
+# --- Test 84: Stranded-chunks orphan cleanup ---
+# When the registry has no entry for a work unit but the store has
+# chunks for it (post-absorption / manual mutation), `knowledge remove
+# --work-unit <name>` should clean the chunks rather than dead-end on
+# the typo error.
+echo "Test 84: Stranded-chunks orphan cleanup"
+setup_project
+create_work_unit "absorbed-wu" "feature" "Absorbed"
+write_stub_config
+create_discussion_file "absorbed-wu" "absorbed-wu"
+run_kb index .workflows/absorbed-wu/discussion/absorbed-wu.md >/dev/null 2>&1
+# Simulate post-absorption state: registry entry deleted, chunks linger.
+project_manifest="$TEST_ROOT/.workflows/manifest.json"
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$project_manifest','utf8'));
+if (m.work_units) delete m.work_units['absorbed-wu'];
+delete m['absorbed-wu'];
+fs.writeFileSync('$project_manifest', JSON.stringify(m, null, 2));
+"
+exit_code=0
+output=$(run_kb remove --work-unit absorbed-wu 2>&1) || exit_code=$?
+assert_eq "orphan cleanup succeeds (exit 0)" "0" "$exit_code"
+assert_eq "stderr surfaces orphan-cleanup notice" "true" \
+  "$(echo "$output" | grep -q 'orphan cleanup' && echo true || echo false)"
+assert_eq "removed chunks reported" "true" \
+  "$(echo "$output" | grep -qE 'Removed [1-9].* chunks' && echo true || echo false)"
+# Subsequent run must surface the typo error (registry empty, store empty).
+exit_code=0
+output=$(run_kb remove --work-unit absorbed-wu 2>&1) || exit_code=$?
+assert_eq "subsequent typo case rejects" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "subsequent error mentions no chunks" "true" \
+  "$(echo "$output" | grep -q 'no chunks for it exist' && echo true || echo false)"
+teardown_project
+
+# --- Test 85: Setup aborts on store-without-metadata partial state ---
+# The inverse of #7 — when store.msp exists but metadata.json is missing,
+# writing fresh metadata against an unknown store would create a
+# provider/dimensions mismatch we cannot detect from the store alone.
+# Setup must abort with rebuild advice instead.
+echo "Test 85: Setup aborts on store-without-metadata"
+setup_project
+write_stub_config
+# Seed a store but not metadata.
+create_work_unit "seed-wu" "feature" "Seed"
+create_discussion_file "seed-wu" "seed-wu"
+run_kb index .workflows/seed-wu/discussion/seed-wu.md >/dev/null 2>&1
+rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+exit_code=0
+# Pipe input "n" so reconfigure prompt (if reached) declines — but we expect
+# abort before that. setup is a TTY wizard, but here we just need the project
+# init step to surface the partial-state guard. Run via a wrapper that fakes
+# a TTY by redirecting stdin from /dev/tty is overkill; instead invoke the
+# wrapper script that runs runProjectInitStep directly via node -e.
+# The setup CLI requires a TTY; invoke runProjectInitStep directly so
+# the partial-state guard fires without needing the readline wizard.
+output=$(cd "$TEST_ROOT" && node -e "
+const setup = require('$BUNDLE').setup;
+(async () => {
+  try {
+    await setup.runProjectInitStep({ question: () => '', close: () => {} });
+    console.log('UNEXPECTED_SUCCESS');
+  } catch (e) {
+    console.log('THREW:', e.message);
+  }
+})();
+" 2>&1) || true
+assert_eq "setup partial-state guard surfaces inconsistent-state error" "true" \
+  "$(echo "$output" | grep -q 'inconsistent state' && echo true || echo false)"
+assert_eq "setup partial-state guard mentions knowledge rebuild" "true" \
+  "$(echo "$output" | grep -q 'knowledge rebuild' && echo true || echo false)"
+teardown_project
+
 # --- Test 83: Subdirectory invocation finds project root ---
 # Pre-fix, knowledgeDir() / orphan check / manifest reads anchored at
 # process.cwd(). Running `knowledge status` from a subdirectory of the

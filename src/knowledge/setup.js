@@ -532,6 +532,23 @@ async function runProjectInitStep(rl) {
 
   const detected = detectProjectInit(projectDir);
 
+  // Reject the dangerous partial-state where the store has chunks but
+  // metadata is missing. Writing fresh metadata against an existing
+  // populated store would create a provider/model/dimensions mismatch
+  // we cannot detect from the store alone — the next `knowledge index`
+  // would surface a misleading error or, worse, mix incompatible
+  // vectors. The escape hatch is `knowledge rebuild`.
+  if (detected.storeExists && !detected.metadataExists) {
+    process.stderr.write(
+      `\nProject knowledge base at ${projectDir} is in an inconsistent state:\n` +
+      `  store.msp is present but metadata.json is missing.\n` +
+      `  Setup cannot recover this safely — run \`knowledge rebuild\` (which\n` +
+      `  re-creates the store from scratch and writes matching metadata) and\n` +
+      `  then re-run \`knowledge setup\` if needed.\n`
+    );
+    process.exit(1);
+  }
+
   if (detected.fullyInitialised) {
     process.stdout.write(`\nProject knowledge base already initialised at ${projectDir}\n`);
     const reinit = await askYesNo(rl, 'Reinitialise (destroys existing store)?', false);

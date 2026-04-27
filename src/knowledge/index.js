@@ -1749,22 +1749,47 @@ async function cmdRemove(_args, options) {
   // removal queue's drain path may legitimately target a WU that has since
   // been removed from the registry (e.g. after absorption), and the stored
   // chunks can still be cleaned up even when the WU entry is gone.
+  // Registry presence determines whether this is a "named WU" remove (the
+  // common path) or an "orphan-chunk cleanup" remove (the escape hatch
+  // when chunks linger after absorption / manual registry mutation). On
+  // registry-not-found, fall through to a store probe — if the store has
+  // chunks for this WU we treat it as an orphan cleanup and proceed; if
+  // not, surface the typo error.
+  let isOrphanCleanup = false;
   try {
     runManifest(['project', 'get', options.workUnit]);
   } catch (err) {
     if (err && err.status === 2) {
-      throw new UserError(
-        `Work unit "${options.workUnit}" not found in project manifest.\n` +
-          '  - If the name is a typo: run `knowledge status` to see what is indexed.\n' +
-          '  - If the work unit was absorbed/deleted but its chunks linger: run `knowledge compact` to drain orphaned chunks via the pending-removal queue.'
+      const sp = storePath();
+      let storeMatch = 0;
+      if (fs.existsSync(sp)) {
+        const db = await store.loadStore(sp);
+        const where = { work_unit: { eq: options.workUnit } };
+        if (options.phase) where.phase = { eq: options.phase };
+        if (options.topic) where.topic = { eq: options.topic };
+        storeMatch = await store.countByFilter(db, where);
+      }
+      if (storeMatch === 0) {
+        throw new UserError(
+          `Work unit "${options.workUnit}" not found in project manifest, ` +
+            `and no chunks for it exist in the knowledge base.\n` +
+            `  Check the name with \`knowledge status\`.`
+        );
+      }
+      // Stranded chunks. Proceed with removal as an orphan cleanup.
+      isOrphanCleanup = true;
+      process.stderr.write(
+        `Work unit "${options.workUnit}" is not in the project manifest, but ` +
+          `${storeMatch} chunks remain in the store. Removing as an orphan cleanup.\n`
       );
+    } else {
+      // Any other manifest error is unexpected — rethrow so the stack shows.
+      throw err;
     }
-    // Any other manifest error is unexpected — rethrow so the stack shows.
-    throw err;
   }
 
   const sp = storePath();
-  const desc = formatRemoveDesc(options);
+  const desc = formatRemoveDesc(options) + (isOrphanCleanup ? ' (orphan cleanup)' : '');
 
   // --dry-run is observational only: count what would be removed, touch
   // nothing on disk. Don't drain the pending-removal queue either — that
