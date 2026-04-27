@@ -170,7 +170,7 @@ The other 9 entry-point sites (`start-bugfix`, `start-cross-cutting`, `start-epi
 
 ## Should-fixes (real correctness/UX issues, not introduced by the cleanup)
 
-### #5 — OpenAI 401/403 errors are retried
+### #5 — OpenAI 401/403 errors are retried (✅ commit `6cd6ccba`)
 
 **File:** `src/knowledge/providers/openai.js:136-148`, interaction with `src/knowledge/index.js:211-240`
 
