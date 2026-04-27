@@ -205,7 +205,7 @@ search(db, {
 | MsgPack only | ~30 MB | ~240 MB | 1,010 ms | 1,085 ms |
 | MsgPack + gzip | ~19 MB | ~154 MB | 10,829 ms | 2,079 ms |
 
-**MsgPack without gzip is the clear winner**: 3x faster serialize, 2x faster deserialize than JSON. Comparable size to JSON+gzip while being 19x faster to serialize. Both `@orama/orama` and `@msgpack/msgpack` are zero-dependency pure JS — the two libraries bundle to **90KB minified** (verified). With application code, the total `knowledge.cjs` is estimated at ~110-120KB minified.
+**MsgPack without gzip is the clear winner**: 3x faster serialize, 2x faster deserialize than JSON. Comparable size to JSON+gzip while being 19x faster to serialize. Both `@orama/orama` and `@msgpack/msgpack` are zero-dependency pure JS — the two libraries bundle to **90KB minified** (verified). The shipped `knowledge.cjs` bundle is ~155 KB — well under the 200 KB ceiling. The original ~110-120 KB estimate did not account for the ESM-resolution wrapper esbuild adds to handle Orama's CJS/ESM dual export and for Orama's own minor version drift; the budget is the ceiling, not the estimate.
 
 **Performance at realistic scale** (with memory decay/compaction — see below):
 - Active working set: 500-2,000 chunks (specs forever + recent research/discussion)
