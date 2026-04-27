@@ -275,7 +275,7 @@ No store/integration test pins down this contract. An Orama version bump that ch
 
 ---
 
-### #10 — Test 81 Part B (pending-removal queue drain) has theatre risk on the negative path
+### #10 — Test 81 Part B (pending-removal queue drain) has theatre risk on the negative path (✅ commit `a8924796`)
 
 **File:** `tests/scripts/test-knowledge-cli.sh:1638-1676` (Test 81)
 
@@ -287,7 +287,7 @@ No store/integration test pins down this contract. An Orama version bump that ch
 
 ---
 
-### #11 — README has zero mention of the knowledge base
+### #11 — README has zero mention of the knowledge base (✅ commit `ab4c60df`)
 
 **File:** `README.md` (238 lines)
 
@@ -307,7 +307,7 @@ Per `knowledge-base/design.md:316-333`, the KB is **required infrastructure**. A
 
 ---
 
-### #12 — Manual `knowledge remove --work-unit <orphan>` errors with no escape hint
+### #12 — Manual `knowledge remove --work-unit <orphan>` errors with no escape hint (✅ commit `ba515a75`)
 
 **File:** `src/knowledge/index.js:1740-1751`
 
@@ -327,27 +327,27 @@ Or: when registry says "not found" but chunks exist for that WU in the store, ro
 
 Says "loaded at phase start in research, discussion, and investigation processing skills" — but is also loaded by scoping (per Minor #9 of the cleanup). Update header to include scoping.
 
-### #14 — Phase task lists all-unchecked
+### #14 — Phase task lists all-unchecked (✅ commit `31c7b688`)
 
 `knowledge-base/phase-1-tasks.md` through `phase-8-tasks.md` (76 total checkboxes, 0 checked) despite branch being phase-8 with all features implemented. Either update post-implementation or document the convention as "checkboxes are author-time artefacts, not progress trackers".
 
-### #15 — Setup integer parser is lenient
+### #15 — Setup integer parser is lenient (✅ commit `c556adfe`)
 
 `src/knowledge/setup.js:366-370` — `parseInt('1536abc', 10)` returns `1536`; `Number.isInteger` then passes. Setup happily stores partly-valid input as the dimensions field. Add `/^\d+$/` regex check before `parseInt`.
 
-### #16 — `cmdCompact` rejects `decay_months: null`
+### #16 — `cmdCompact` rejects `decay_months: null` (✅ commit `842db966`)
 
 `src/knowledge/index.js:1842-1852`. Only `false` or non-negative integer accepted. A user hand-editing config and writing `null` intuitively (to disable) gets an error. Treat `null` as equivalent to `false`.
 
-### #17 — `cmdStatus` orphan check is cwd-sensitive
+### #17 — `cmdStatus` orphan check is cwd-sensitive (✅ commit `246b24e1`)
 
 `src/knowledge/index.js:1485`. `fs.existsSync(path.resolve(c.source_file))` against the relative path stored at index time. Status from a different cwd reports every chunk as orphaned. Resolve relative to the project root, not `process.cwd()`.
 
-### #18 — Test convention drift
+### #18 — Test convention drift (✅ commit `750d468a`)
 
 Migration tests 001-028 use `set -eo pipefail`; 029-037 use `set -euo pipefail`. Pick one (likely the stricter `-u`) and apply uniformly. Or add a comment explaining the intent.
 
-### #19 — Bundle ~30% over design estimate
+### #19 — Bundle ~30% over design estimate (✅ commit `8e8e687e`)
 
 `knowledge-base/design.md:208` estimates ~110-120 KB minified. Current bundle is ~156 KB (well under the 200 KB ceiling). Update the design estimate to reflect current reality, or note that ESM-resolution + Orama version drift accounts for the increase.
 
