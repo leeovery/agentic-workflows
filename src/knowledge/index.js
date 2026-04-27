@@ -1772,7 +1772,7 @@ async function cmdRemove(_args, options) {
       if (storeMatch === 0) {
         throw new UserError(
           `Work unit "${options.workUnit}" not found in project manifest, ` +
-            `and no chunks for it exist in the knowledge base.\n` +
+            `and no matching chunks exist in the knowledge base.\n` +
             `  Check the name with \`knowledge status\`.`
         );
       }

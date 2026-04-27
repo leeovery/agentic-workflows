@@ -1787,8 +1787,8 @@ assert_eq "removed chunks reported" "true" \
 exit_code=0
 output=$(run_kb remove --work-unit absorbed-wu 2>&1) || exit_code=$?
 assert_eq "subsequent typo case rejects" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "subsequent error mentions no chunks" "true" \
-  "$(echo "$output" | grep -q 'no chunks for it exist' && echo true || echo false)"
+assert_eq "subsequent error mentions no matching chunks" "true" \
+  "$(echo "$output" | grep -q 'no matching chunks exist' && echo true || echo false)"
 teardown_project
 
 # --- Test 85: Setup aborts on store-without-metadata partial state ---
