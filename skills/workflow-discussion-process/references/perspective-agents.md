@@ -16,23 +16,33 @@ Signals:
 
 Do not fire when the decision is straightforward, the tradeoffs are already well understood, or the user has already made a confident decision.
 
-When these conditions are met → Proceed to **A. Offer Perspectives**.
+When these conditions are met → Proceed to **A. Select Polarity Pair**.
 
 At natural conversational breaks, check for completed results → Proceed to **D. Check and Surface**.
 
 ---
 
-## A. Offer Perspectives
+## A. Select Polarity Pair
 
-Identify 2-3 distinct perspectives worth exploring. Each should be a genuinely defensible position, not a strawman.
+Match the decision topic against the polarity-pair table below. Pick the pair whose tension most closely fits the decision; if no clear match, use the default pair (last row). Each lens is a generic, predictable analytical position — pairs are deliberate counterweights so the angles are guaranteed orthogonal.
+
+| Decision keywords | Pair | Tension |
+|---|---|---|
+| api, contract, schema, protocol, types, abstraction | **Formal Systems** ↔ **Incentive Realist** | What can be mechanized vs how actors actually behave |
+| ship, release, launch, ready, when, timing, iterate | **Ship Now** ↔ **Strategic Timing** | Pragmatic urgency vs decisive moment |
+| bug, recurring, regression, leak, debt, again, repeat | **Direct Fix** ↔ **Systems Thinker** | Solve the symptom vs redesign the feedback loop |
+| scale, risk, failure, outage, fault, rare, edge, tail | **Common Path** ↔ **Tail-Risk** | Optimise the 95% case vs rare catastrophic dominates cost |
+| ux, user, interface, customer, configure, options | **User-Centric** ↔ **Capability-First** | Less but better vs expose the power |
+| structure, hierarchy, taxonomy, monolith, microservices, organise | **Classifier** ↔ **Emergence** | Predictable categories vs let structure emerge |
+| design, approach, strategy, architecture _(default)_ | **Assumption Destroyer** ↔ **First-Principles** | Top-down questioning vs bottom-up rebuilding |
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-This decision has {N} genuinely viable approaches. Want to explore them in depth?
+This decision sits on a {tension description} tension. Want to explore both lenses?
 
-- **`y`/`yes`** — Spin up perspective agents to argue each position
+- **`y`/`yes`** — Spin up perspective agents arguing each lens
 - **`n`/`no`** — Continue without perspectives
 · · · · · · · · · · · ·
 ```
@@ -71,10 +81,10 @@ Dispatch **all perspective agents in parallel** via the Task tool with `run_in_b
 
 Each perspective agent receives:
 
-1. **Perspective** — the specific angle to advocate
+1. **Lens** — the assigned lens from the polarity pair (e.g., `Formal Systems`, `Tail-Risk`)
 2. **Decision topic** — the decision being explored
 3. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-4. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{angle}.md`
+4. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{lens}.md`
 5. **Frontmatter** — the frontmatter block to write:
    ```yaml
    ---
@@ -82,23 +92,24 @@ Each perspective agent receives:
    status: pending
    created: {date}
    set: {NNN}
-   perspective: {angle}
+   lens: {lens}
    decision: {decision topic}
    ---
    ```
 
-Each perspective agent returns:
+Each perspective agent restates the decision through its lens before arguing (Problem Restate Gate) and returns:
 
 ```
 STATUS: complete
-PERSPECTIVE: {angle}
+LENS: {lens}
+RESTATEMENT: {one sentence}
 SUMMARY: {1 sentence}
 ```
 
 > *Output the next fenced block as a code block:*
 
 ```
-Dispatched {N} perspective agents: {angle1}, {angle2}, {angle3}.
+Dispatched 2 perspective agents: {lens A}, {lens B}.
 Results will be surfaced when available.
 ```
 
@@ -134,6 +145,8 @@ The synthesis agent receives:
    ```
 
 The sub-agent writes tension entries with stable IDs (`T1`, `T2`, …) into the `tensions:` list. See `agents/workflow-discussion-synthesis.md` for the schema.
+
+The synthesis agent also compares the Restatement sections from each perspective. If lenses diverge meaningfully on what the decision IS — different scope, different question, or one lens answering an unasked question — synthesis records a **Framing alignment** tension as `T1` so it surfaces first. This is the Problem Restate Gate's payoff: wrong-question failures get caught before the user acts on a tradeoff landscape.
 
 The synthesis agent returns:
 
