@@ -1839,11 +1839,12 @@ async function cmdCompact(_args, options, cfg) {
   const sp = storePath();
   const lp = lockFilePath();
 
-  // Check decay config. Accept only: false (disabled) or non-negative integer.
-  // Reject strings, negatives, NaN, non-integers — these would silently
-  // produce either no-op (NaN cutoff) or mass deletion (negative cutoff).
+  // Check decay config. Accept: false or null (both disable), or a
+  // non-negative integer. Reject strings, negatives, NaN, non-integers
+  // — these would silently produce either no-op (NaN cutoff) or mass
+  // deletion (negative cutoff).
   const rawDecay = cfg && cfg.decay_months !== undefined ? cfg.decay_months : config.DEFAULTS.decay_months;
-  if (rawDecay === false) {
+  if (rawDecay === false || rawDecay === null) {
     process.stdout.write('Compaction disabled\n');
     return;
   }
