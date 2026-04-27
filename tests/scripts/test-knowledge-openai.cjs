@@ -86,23 +86,27 @@ describe('OpenAIProvider embed (mocked)', () => {
     assert.deepStrictEqual(result, fakeVector);
   });
 
-  it('throws AuthError on 401 with descriptive message', async () => {
+  it('throws AuthError on 401 with descriptive message and recovery hint', async () => {
     globalThis.fetch = mockFetchError(401, 'Unauthorized');
     const p = new OpenAIProvider({ apiKey: 'sk-bad' });
 
     await assert.rejects(
       () => p.embed('hello'),
-      (err) => err instanceof AuthError && /OpenAI API key is invalid or expired/.test(err.message)
+      (err) =>
+        err instanceof AuthError &&
+        /invalid or expired/.test(err.message) &&
+        /knowledge setup/.test(err.message)
     );
   });
 
-  it('throws AuthError on 403', async () => {
+  it('throws AuthError on 403 with recovery hint', async () => {
     globalThis.fetch = mockFetchError(403, 'Forbidden');
     const p = new OpenAIProvider({ apiKey: 'sk-test' });
 
     await assert.rejects(
       () => p.embed('hello'),
-      (err) => err instanceof AuthError && /403/.test(err.message)
+      (err) =>
+        err instanceof AuthError && /403/.test(err.message) && /knowledge setup/.test(err.message)
     );
   });
 

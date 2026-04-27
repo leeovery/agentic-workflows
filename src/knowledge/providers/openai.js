@@ -145,12 +145,12 @@ class OpenAIProvider {
 
       if (res.status === 401) {
         throw new AuthError(
-          'OpenAI API key is invalid or expired. Check your OPENAI_API_KEY environment variable.'
+          'OpenAI API key is invalid or expired. Run `knowledge setup` to fix.'
         );
       }
       if (res.status === 403) {
         throw new AuthError(
-          `OpenAI API key lacks permission for this request (HTTP 403). ${detail}`
+          `OpenAI API key lacks permission for this request (HTTP 403). Run \`knowledge setup\` to fix. ${detail}`
         );
       }
       if (res.status === 429) {
