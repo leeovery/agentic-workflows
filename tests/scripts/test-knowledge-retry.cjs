@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { withRetry, UserError } = require('../../src/knowledge/index');
+const { withRetry, UserError, AuthError } = require('../../src/knowledge/index');
 
 describe('withRetry', () => {
   it('succeeds on first attempt', async () => {
@@ -116,6 +116,15 @@ describe('withRetry', () => {
     await assert.rejects(
       () => withRetry(async () => { calls++; throw new UserError('bad input'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
       (err) => err instanceof UserError && /bad input/.test(err.message)
+    );
+    assert.strictEqual(calls, 1);
+  });
+
+  it('does not retry AuthError', async () => {
+    let calls = 0;
+    await assert.rejects(
+      () => withRetry(async () => { calls++; throw new AuthError('bad key'); }, { maxAttempts: 3, backoff: [1, 1, 1] }),
+      (err) => err instanceof AuthError && /bad key/.test(err.message)
     );
     assert.strictEqual(calls, 1);
   });

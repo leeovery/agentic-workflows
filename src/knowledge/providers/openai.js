@@ -14,6 +14,16 @@ const DEFAULT_DIMENSIONS = 1536;
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 const MAX_BATCH_SIZE = 2048;
 
+// AuthError — marker class for HTTP 401/403 from the embeddings API.
+// Bad/expired keys do not fix themselves between retries, so withRetry
+// short-circuits this class instead of burning the backoff budget.
+class AuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 class OpenAIProvider {
   /**
    * @param {{ apiKey: string, model?: string, dimensions?: number }} options
@@ -134,8 +144,13 @@ class OpenAIProvider {
       }
 
       if (res.status === 401) {
-        throw new Error(
+        throw new AuthError(
           'OpenAI API key is invalid or expired. Check your OPENAI_API_KEY environment variable.'
+        );
+      }
+      if (res.status === 403) {
+        throw new AuthError(
+          `OpenAI API key lacks permission for this request (HTTP 403). ${detail}`
         );
       }
       if (res.status === 429) {
@@ -161,6 +176,7 @@ class OpenAIProvider {
 
 module.exports = {
   OpenAIProvider,
+  AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
   MAX_BATCH_SIZE,

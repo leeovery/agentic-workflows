@@ -5,6 +5,7 @@ const assert = require('node:assert');
 
 const {
   OpenAIProvider,
+  AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
 } = require('../../src/knowledge/providers/openai');
@@ -85,13 +86,23 @@ describe('OpenAIProvider embed (mocked)', () => {
     assert.deepStrictEqual(result, fakeVector);
   });
 
-  it('throws on 401 with descriptive message', async () => {
+  it('throws AuthError on 401 with descriptive message', async () => {
     globalThis.fetch = mockFetchError(401, 'Unauthorized');
     const p = new OpenAIProvider({ apiKey: 'sk-bad' });
 
     await assert.rejects(
       () => p.embed('hello'),
-      /OpenAI API key is invalid or expired/
+      (err) => err instanceof AuthError && /OpenAI API key is invalid or expired/.test(err.message)
+    );
+  });
+
+  it('throws AuthError on 403', async () => {
+    globalThis.fetch = mockFetchError(403, 'Forbidden');
+    const p = new OpenAIProvider({ apiKey: 'sk-test' });
+
+    await assert.rejects(
+      () => p.embed('hello'),
+      (err) => err instanceof AuthError && /403/.test(err.message)
     );
   });
 

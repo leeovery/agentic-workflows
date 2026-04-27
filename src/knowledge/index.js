@@ -11,7 +11,7 @@ const path = require('path');
 const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
-const { OpenAIProvider } = require('./providers/openai');
+const { OpenAIProvider, AuthError } = require('./providers/openai');
 const config = require('./config');
 const setup = require('./setup');
 
@@ -218,10 +218,11 @@ async function withRetry(fn, opts) {
     } catch (err) {
       // Don't retry programming errors — retrying a TypeError just burns
       // 7s of backoff before the stack trace reaches the user.
-      // Also don't retry UserError: these are user-input validation
-      // failures and will fail identically on every retry.
+      // Also don't retry UserError or AuthError: validation failures and
+      // bad/expired API keys will fail identically on every retry.
       if (
         err instanceof UserError ||
+        err instanceof AuthError ||
         err instanceof TypeError ||
         err instanceof ReferenceError ||
         err instanceof SyntaxError ||
@@ -2001,6 +2002,7 @@ module.exports = {
   resolveProviderState,
   withRetry,
   UserError,
+  AuthError,
   main,
   cmdIndexBulk,
   StubProvider,
