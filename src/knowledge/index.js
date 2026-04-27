@@ -1749,8 +1749,9 @@ async function cmdRemove(_args, options) {
   } catch (err) {
     if (err && err.status === 2) {
       throw new UserError(
-        `Work unit "${options.workUnit}" not found in project manifest. ` +
-          'Check the name, or run `knowledge status` to see what is indexed.'
+        `Work unit "${options.workUnit}" not found in project manifest.\n` +
+          '  - If the name is a typo: run `knowledge status` to see what is indexed.\n' +
+          '  - If the work unit was absorbed/deleted but its chunks linger: run `knowledge compact` to drain orphaned chunks via the pending-removal queue.'
       );
     }
     // Any other manifest error is unexpected — rethrow so the stack shows.

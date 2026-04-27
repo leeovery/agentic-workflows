@@ -209,7 +209,9 @@ Aborted.
 Rename them back manually to recover. Rollback error: ${f.message}
 `)}throw d}E.existsSync(l)&&E.unlinkSync(l),E.existsSync(u)&&E.unlinkSync(u)}function Ul(){return new Promise(t=>{let e="",n=!1,r=()=>{if(n)return;n=!0;let o=e.search(/\r|\n/),c=o===-1?e:e.slice(0,o);t(c.trim())};process.stdin.setEncoding("utf8");let s=o=>{e+=o,/\r|\n/.test(e)&&(process.stdin.removeListener("data",s),process.stdin.removeListener("end",i),process.stdin.pause(),r())},i=()=>{process.stdin.removeListener("data",s),r()};process.stdin.on("data",s),process.stdin.once("end",i),process.stdin.resume()})}async function Ol(t,e){e.workUnit||(process.stderr.write(`Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]
 `),process.exit(1)),e.topic&&!e.phase&&(process.stderr.write(`Error: --topic requires --phase
-`),process.exit(1));try{Me(["project","get",e.workUnit])}catch(s){throw s&&s.status===2?new U(`Work unit "${e.workUnit}" not found in project manifest. Check the name, or run \`knowledge status\` to see what is indexed.`):s}let n=Q(),r=Pl(e);if(e.dryRun){if(!E.existsSync(n)){process.stdout.write(`Would remove 0 chunks for ${r} (store not initialised)
+`),process.exit(1));try{Me(["project","get",e.workUnit])}catch(s){throw s&&s.status===2?new U(`Work unit "${e.workUnit}" not found in project manifest.
+  - If the name is a typo: run \`knowledge status\` to see what is indexed.
+  - If the work unit was absorbed/deleted but its chunks linger: run \`knowledge compact\` to drain orphaned chunks via the pending-removal queue.`):s}let n=Q(),r=Pl(e);if(e.dryRun){if(!E.existsSync(n)){process.stdout.write(`Would remove 0 chunks for ${r} (store not initialised)
 `);return}let s=await k.loadStore(n),i={work_unit:{eq:e.workUnit}};e.phase&&(i.phase={eq:e.phase}),e.topic&&(i.topic={eq:e.topic});let o=await k.countByFilter(s,i);process.stdout.write(`Would remove ${o} chunks for ${r}
 `);return}if(await No(),!E.existsSync(n)){process.stdout.write(`Removed 0 chunks for ${r}
 `);return}try{let s=await Uo(e);process.stdout.write(`Removed ${s} chunks for ${r}
