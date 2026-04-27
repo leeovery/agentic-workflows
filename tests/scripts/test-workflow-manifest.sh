@@ -1664,6 +1664,52 @@ assert_contains "$output" "auth-flow/discussion/auth-flow.md" "Path returned eve
 
 echo ""
 
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: corrupt project manifest aborts with clear error (no silent clobber)${NC}"
+setup_fixture
+# Write a corrupt project manifest — invalid JSON with a trailing comma
+# (the exact pattern that silently wiped tick's work_units).
+cat > "$TEST_DIR/.workflows/manifest.json" <<'BADJSON'
+{
+  "work_units": {
+    "existing-unit": {
+      "work_type": "feature"
+    },
+  }
+}
+BADJSON
+
+# Single invocation: capture both exit code and output. init creates the
+# work-unit directory before touching the project manifest, so a second
+# invocation would fail with "already exists" and mask the real error.
+combined=$(cd "$TEST_DIR" && node "$MANIFEST_JS" init new-unit --work-type bugfix --description "x" 2>&1; echo "__EXIT__=$?")
+exit_code=$(echo "$combined" | grep -o '__EXIT__=[0-9]*' | tail -1 | cut -d= -f2)
+output=$(echo "$combined" | grep -v '__EXIT__=')
+
+assert_equals "$exit_code" "1" "Corrupt manifest exits 1"
+assert_contains "$output" "not valid JSON" "Error mentions invalid JSON"
+assert_contains "$output" "by hand" "Error tells user to fix manually"
+
+# Verify the corrupt manifest was NOT overwritten — the trailing comma
+# should still be on disk.
+manifest_still_corrupt=$(cat "$TEST_DIR/.workflows/manifest.json" | node -e "let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>{try{JSON.parse(s);console.log('parsed');}catch(e){console.log('still-corrupt');}});")
+assert_equals "$manifest_still_corrupt" "still-corrupt" "Corrupt manifest preserved on disk (not clobbered)"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: missing project manifest is treated as first-write (not an error)${NC}"
+setup_fixture
+# No manifest.json on disk — init should create it fresh.
+exit_code=$(run_cli_exit_code init first-unit --work-type feature --description "x")
+assert_equals "$exit_code" "0" "First init succeeds without existing manifest"
+registered=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/manifest.json', 'utf8')).work_units).join(','))" 2>/dev/null)
+assert_equals "$registered" "first-unit" "Manifest registers the first work unit"
+
+echo ""
+
 # ============================================================================
 # SUMMARY
 # ============================================================================

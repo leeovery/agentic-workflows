@@ -152,15 +152,13 @@ node "$BUNDLE" foobar 2>/dev/null || exit_code=$?
 assert_eq "exits with code 1" "1" "$exit_code"
 assert_eq "mentions unknown command" "true" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
 
-# --- Test 3: Not-yet-implemented commands exit 1 ---
-echo "Test 3: Not-yet-implemented commands"
-for cmd in setup; do
-  exit_code=0
-  output=$(node "$BUNDLE" "$cmd" 2>&1 || true)
-  node "$BUNDLE" "$cmd" 2>/dev/null || exit_code=$?
-  assert_eq "$cmd exits with code 1" "1" "$exit_code"
-  assert_eq "$cmd mentions not yet implemented" "true" "$(echo "$output" | grep -q 'not yet implemented' && echo true || echo false)"
-done
+# --- Test 3: setup aborts when stdin is not a TTY ---
+echo "Test 3: setup requires an interactive terminal"
+exit_code=0
+output=$(echo '' | node "$BUNDLE" setup 2>&1 || true)
+echo '' | node "$BUNDLE" setup 2>/dev/null || exit_code=$?
+assert_eq "setup exits non-zero without a TTY" "1" "$exit_code"
+assert_eq "setup mentions interactive terminal" "true" "$(echo "$output" | grep -q 'interactive terminal' && echo true || echo false)"
 
 # --- Test 4: Known Phase 3 commands dispatch without unknown-command error ---
 echo "Test 4: Phase 3 commands dispatch correctly"
@@ -168,6 +166,12 @@ for cmd in index query check; do
   output=$(node "$BUNDLE" "$cmd" 2>&1 || true)
   assert_eq "$cmd does not say unknown command" "false" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
 done
+
+# --- Test 4b: setup dispatches (not an unknown command) ---
+echo "Test 4b: setup routes to the wizard handler"
+output=$(echo '' | node "$BUNDLE" setup 2>&1 || true)
+assert_eq "setup does not say unknown command" "false" "$(echo "$output" | grep -q 'Unknown command' && echo true || echo false)"
+assert_eq "setup does not say not yet implemented" "false" "$(echo "$output" | grep -q 'not yet implemented' && echo true || echo false)"
 
 # ============================================================================
 # INDEX COMMAND TESTS

@@ -140,10 +140,30 @@ function projectLockPath() {
 
 function readProjectManifest() {
   const p = projectManifestPath();
+  let raw;
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch (_) {
-    return {};
+    raw = fs.readFileSync(p, 'utf8');
+  } catch (e) {
+    // Missing file is a legitimate first-write state — callers can
+    // populate and write. Any other read error (permissions, I/O)
+    // must surface loudly rather than producing a fresh empty manifest
+    // that would then be written back, clobbering on-disk state.
+    if (e.code === 'ENOENT') return {};
+    die(`Failed to read project manifest at ${p}: ${e.message}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    // Corrupt JSON in an existing manifest — abort instead of silently
+    // returning an empty object. Returning {} here and letting callers
+    // write would erase every registered work unit. Force the user to
+    // inspect and repair rather than destroying state.
+    die(
+      `Project manifest at ${p} is not valid JSON: ${e.message}\n` +
+      'Inspect the file and fix it by hand, then re-run the command. ' +
+      'Do not let another workflow command write to it first — a write ' +
+      'against a corrupt manifest would replace all registered work units.'
+    );
   }
 }
 

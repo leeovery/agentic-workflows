@@ -257,34 +257,47 @@ Adding a new provider is just implementing the `KnowledgeProvider` interface —
 
 ### Configuration Hierarchy
 
-Two-level config: system defaults shared across projects, with per-project overrides.
+Three files, two concerns. Config is non-secret and layered (system → project). Credentials are secret and live in a separate file with restricted permissions. A provider-specific env var overrides the stored credential so power users and CI can run without a file write.
 
-**System-level** (`~/.config/workflows/config.json`):
+**System config** (`~/.config/workflows/config.json`) — non-secret settings shared across projects:
 ```json
 {
   "knowledge": {
     "provider": "openai",
     "model": "text-embedding-3-small",
     "dimensions": 1536,
-    "api_key_env": "OPENAI_API_KEY"
+    "similarity_threshold": 0.8,
+    "decay_months": 6
   }
 }
 ```
 
-**Project-level** (`.workflows/.knowledge/config.json`):
+**Project config** (`.workflows/.knowledge/config.json`) — per-project overrides. Typical content is `{ "knowledge": {} }` (inherits everything):
 ```json
 {
   "knowledge": {
-    "provider": "openai",
     "model": "text-embedding-3-large",
     "dimensions": 3072
   }
 }
 ```
 
-**Resolution**: Project config inherits from system config and overrides what it specifies. API keys are always referenced by env var name (`api_key_env`), never stored directly — keeps secrets out of config files. The user sets the env var in their shell profile.
+**Credentials** (`~/.config/workflows/credentials.json`, mode `0600`, user-private) — API keys, keyed by provider so multiple providers coexist:
+```json
+{
+  "credentials": {
+    "openai": { "api_key": "sk-..." }
+  }
+}
+```
 
-**Typical usage**: System config holds the API key reference and default provider. Most projects inherit everything. A project that needs a different model or provider overrides just that field.
+**Resolution**:
+- Config: project merges onto system merges onto built-in defaults. Shallow merge.
+- API key (per provider): `process.env[PROVIDER_ENV_VAR]` first (e.g. `OPENAI_API_KEY`). If unset or empty, read `credentials.<provider>.api_key` from `credentials.json`. If neither, the store runs in keyword-only mode.
+
+**Why the split**: config files get committed to dotfiles repos, synced, and `cat`'d during support; keeping them free of secrets makes that safe by default. The credentials file is explicitly separate and written at `0600` so the pattern is clear to the reader and the file is harder to leak by accident. Env-override exists because CI, containers, and per-shell workflows don't want a file write and shouldn't have to go through the wizard.
+
+**Typical usage**: `knowledge setup` writes both files on first run — config in plaintext, credentials at `0600`. Most projects inherit everything and don't need a project-level `config.json` override at all. To rotate the key, edit `credentials.json` or re-run `knowledge setup`. To remove the stored key, delete the file or the `openai` entry.
 
 **Complete config schema** (all valid fields):
 ```json
@@ -293,13 +306,12 @@ Two-level config: system defaults shared across projects, with per-project overr
     "provider": "openai",
     "model": "text-embedding-3-small",
     "dimensions": 1536,
-    "api_key_env": "OPENAI_API_KEY",
     "similarity_threshold": 0.8,
     "decay_months": 6
   }
 }
 ```
-System config typically has all fields. Project config only overrides what differs (e.g., just `decay_months`).
+System config typically has all fields. Project config only overrides what differs (e.g., just `decay_months`). The `api_key_env` field from earlier drafts is retired — credentials resolution is hardcoded to `PROVIDER_ENV_VARS[provider]` plus the credentials file.
 
 ### Knowledge Base is Required Infrastructure
 
@@ -309,10 +321,11 @@ The knowledge base is **required** — skills cannot proceed without it. But it 
 
 1. **Entry-point skills check** — Step 0 runs `knowledge check` (lightweight, just checks if the store exists). If not initialised, a reference file displays a clear message explaining the knowledge base, why it's needed, and the exact command to run. Hard stop — same conventions as any terminal condition.
 2. **User runs `knowledge setup`** outside Claude — interactive wizard that handles everything:
-   - System config (`~/.config/workflows/config.json`): provider, model, API key env var, validation
+   - System config (`~/.config/workflows/config.json`): provider, model, dimensions, similarity threshold, decay
+   - Credentials (`~/.config/workflows/credentials.json`, `0600`): API key, unless the env var is already set
    - Project init (`.workflows/.knowledge/`): directory, config, empty store
    - Initial indexing of all existing completed artifacts
-   - Stub mode (keyword-only) if user skips the API key step
+   - Stub mode (keyword-only) if user skips the provider step
 3. **User re-runs their workflow** — check passes, skill proceeds normally.
 
 `knowledge setup` is the single entry point for all first-time setup. Interactive throughout — Claude cannot run it. Handles both system-level and project-level initialisation in one flow. If system config already exists, skips to project init. If everything exists, no-op.
@@ -625,12 +638,14 @@ knowledge status                                        # full health report
 
 **`knowledge setup`**
 - **Interactive wizard** — handles all first-time setup in one flow:
-  1. System config (`~/.config/workflows/config.json`): provider, model, API key env var, test embed call to validate
-  2. Project init (`.workflows/.knowledge/`): directory, config, empty store
-  3. Initial indexing of all existing completed artifacts via `knowledge index` (no args)
+  1. System config (`~/.config/workflows/config.json`): provider, model, dimensions, similarity threshold, decay
+  2. Credentials (`~/.config/workflows/credentials.json`, `0600`): API key, stored only if the provider-specific env var is not already set (env wins)
+  3. Test embed call to validate the key
+  4. Project init (`.workflows/.knowledge/`): directory, config, empty store
+  5. Initial indexing of all existing completed artifacts via `knowledge index` (no args)
 - Skips steps that are already done (system config exists → skip to project init; project exists → skip to indexing)
 - **Human-only** — interactive prompts throughout. Claude cannot run it
-- Stub mode available if user skips the API key step
+- Stub mode available if user skips the provider step
 
 **No migration.** Entry-point skills check `knowledge check` in Step 0. If not initialised, a reference file displays a message and instructs the user to run `knowledge setup`. Hard stop.
 

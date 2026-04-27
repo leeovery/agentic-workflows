@@ -13,6 +13,7 @@ const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
 const { OpenAIProvider } = require('./providers/openai');
 const config = require('./config');
+const setup = require('./setup');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1475,15 +1476,6 @@ async function cmdCompact(_args, options, cfg) {
 }
 
 // ---------------------------------------------------------------------------
-// Not-yet-implemented stub
-// ---------------------------------------------------------------------------
-
-function notYetImplemented(name) {
-  process.stderr.write(`Command "${name}" is not yet implemented.\n`);
-  process.exit(1);
-}
-
-// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1515,7 +1507,7 @@ async function main() {
     case 'remove':  await cmdRemove(commandArgs, options, cfg, provider); break;
     case 'compact': await cmdCompact(commandArgs, options, cfg, provider); break;
     case 'rebuild': await cmdRebuild(commandArgs, options, cfg, provider); break;
-    case 'setup':   notYetImplemented('setup'); break;
+    case 'setup':   await setup.cmdSetup(cmdIndexBulk, commandArgs, options); break;
     default:
       process.stderr.write(`Unknown command "${command}".\n\n${USAGE}\n`);
       process.exit(1);
@@ -1529,11 +1521,13 @@ module.exports = {
   resolveProviderState,
   withRetry,
   main,
+  cmdIndexBulk,
   StubProvider,
   OpenAIProvider,
   store,
   chunker,
   config,
+  setup,
   knowledgeDir,
   storePath,
   metadataPath,
