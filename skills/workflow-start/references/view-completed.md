@@ -100,6 +100,12 @@ Set status back to in-progress:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
 ```
 
+Capture whether `completed_at` is set (used by the completed branches; harmless on the cancelled path):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name} completed_at
+```
+
 **If `selected.status` was `cancelled`:**
 
 Cancellation removed the work unit's chunks from the knowledge base. Restore them by loading **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
@@ -112,21 +118,25 @@ Cancellation removed the work unit's chunks from the knowledge base. Restore the
 
 → Return to caller.
 
-**If `selected.status` was `completed`:**
+**If `selected.status` was `completed` and `completed_at` is set:**
 
-Completed work units retain their chunks — no re-indexing needed.
-
-Check for a stale `completed_at`:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name} completed_at
-```
-
-**If the output is `true`:**
+Completed work units retain their chunks — no re-indexing needed. Clear the stale `completed_at`:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {selected.name} completed_at
 ```
+
+> *Output the next fenced block as a code block:*
+
+```
+"{selected.name:(titlecase)}" reactivated.
+```
+
+→ Return to caller.
+
+**If `selected.status` was `completed` and `completed_at` is not set:**
+
+Completed work units retain their chunks — no re-indexing needed.
 
 > *Output the next fenced block as a code block:*
 
