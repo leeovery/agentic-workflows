@@ -252,8 +252,10 @@ Load **[load-project-skills.md](references/load-project-skills.md)** and follow 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading the usage guide for the knowledge base so
-> proactive querying is available while verifying decisions.
+> Loading the usage guide for the knowledge base. Review verifies
+> against the current spec — that's in scope without the KB. The guide
+> documents the narrow case where a cross-work-unit consistency check
+> is warranted.
 ```
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
