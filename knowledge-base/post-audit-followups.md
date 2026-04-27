@@ -18,7 +18,7 @@ The agent picking these up should:
 
 ## Pre-merge musts (the four "tightly scoped" items I batched and then failed to land)
 
-### #1 — `view-completed.md` reactivation flow has a double-nested bold + missing announcement on edge case
+### #1 — `view-completed.md` reactivation flow has a double-nested bold + missing announcement on edge case (✅ commit `a8152e1d`)
 
 **File:** `skills/workflow-start/references/view-completed.md:115-137`
 
@@ -67,7 +67,7 @@ The `manifest exists completed_at` probe sits **before** the bold branches (shar
 
 ---
 
-### #2 — Review process signpost still invites proactive querying
+### #2 — Review process signpost still invites proactive querying (✅ commit `40ce4038`)
 
 **File:** `skills/workflow-review-process/SKILL.md:254-257`
 
@@ -102,7 +102,7 @@ Suggested wording:
 
 ---
 
-### #3 — `cmdIndexBulk` catch dumps stack for UserError
+### #3 — `cmdIndexBulk` catch dumps stack for UserError (✅ commit `e7b9d018`)
 
 **File:** `src/knowledge/index.js:755-763`
 
@@ -142,7 +142,7 @@ if (err.stack && !(err instanceof UserError)) process.stderr.write(err.stack + '
 
 ---
 
-### #4 — `workflow-start/SKILL.md` Step 0.2 has paraphrased signpost
+### #4 — `workflow-start/SKILL.md` Step 0.2 has paraphrased signpost (✅ commit `374ac15d`)
 
 **File:** `skills/workflow-start/SKILL.md:67-69`
 
