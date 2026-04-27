@@ -586,6 +586,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phas
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status cancelled
 ```
 
+Remove the cancelled topic's chunks from the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase {phase} --topic {topic}
+```
+
+If the remove command fails, display the error but do not block — the cancellation is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge removal warning
+  {error details}
+  The topic is cancelled. You can run knowledge remove manually later.
+```
+
 Commit the change.
 
 > *Output the next fenced block as a code block:*
@@ -655,6 +671,28 @@ Use the returned value as `{previous_status}` in the next two commands to restor
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status {previous_status}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.{phase}.{topic} previous_status
+```
+
+**If `previous_status` is `completed` and `phase` is one of the indexed phases (research / discussion / investigation / specification):**
+
+Re-index the reactivated topic's artifact into the knowledge base. Resolve the artifact path by phase:
+- research: `.workflows/{work_unit}/research/{topic}.md`
+- discussion: `.workflows/{work_unit}/discussion/{topic}.md`
+- investigation: `.workflows/{work_unit}/investigation/{topic}.md`
+- specification: `.workflows/{work_unit}/specification/{topic}/specification.md`
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {artifact_path}
+```
+
+If the index command fails, display the error but do not block — the reactivation is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
 ```
 
 Commit the change.

@@ -1360,6 +1360,23 @@ assert_eq "partial input aborts" "true" "$([ "$exit_code" -ne 0 ] && echo true |
 assert_eq "shows aborted" "true" "$(echo "$output" | grep -q 'Aborted' && echo true || echo false)"
 teardown_project
 
+# --- Test 80: Bulk index skips cancelled work units ---
+echo "Test 80: Bulk index skips cancelled work units"
+setup_project
+create_work_unit "cancelled-wu" "feature" "Cancelled"
+write_stub_config
+create_discussion_file "cancelled-wu" "cancelled-wu"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase cancelled-wu.discussion.cancelled-wu >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$MANIFEST_JS" set cancelled-wu.discussion.cancelled-wu status completed >/dev/null 2>&1
+run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$MANIFEST_JS" set cancelled-wu status cancelled >/dev/null 2>&1
+run_kb remove --work-unit cancelled-wu >/dev/null 2>&1
+# After cancel + remove, bulk index must NOT re-add the chunks.
+output=$(run_kb index 2>&1)
+status_output=$(run_kb status 2>&1)
+assert_eq "bulk index skipped cancelled wu" "true" "$(echo "$status_output" | grep -q 'cancelled-wu' && echo false || echo true)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

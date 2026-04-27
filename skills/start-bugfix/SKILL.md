@@ -1,6 +1,6 @@
 ---
 name: start-bugfix
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(ls .workflows/), Bash(mkdir -p .workflows/.inbox/.archived/), Bash(mv .workflows/.inbox/)
 ---
 
 Start a new bugfix. Gather a brief description, create the work unit, and route to investigation.
@@ -27,27 +27,17 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 ── Initialisation ───────────────────────────────
 ```
 
+### Step 0.1: Casing Conventions
+
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
+
+→ Proceed to **Step 0.2**.
+
+### Step 0.2: Migrations
 
 #### If the `/workflow-migrate` skill has already been invoked in this conversation
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  New Bugfix
-●───────────────────────────────────────────────●
-
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Starting a new bugfix. I'll ask what's broken, suggest a name,
-> then hand off to investigation to diagnose the root cause.
-```
-
-→ Proceed to **Step 1**.
+→ Proceed to **Step 0.3**.
 
 #### Otherwise
 
@@ -61,7 +51,11 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
 
-**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to the next instruction below. Do not stop after migration completes.
+**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to **Step 0.3**. Do not stop after migration completes.
+
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Intro and Knowledge Check
 
 > *Output the next fenced block as a code block:*
 
@@ -78,6 +72,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > Starting a new bugfix. I'll ask what's broken, suggest a name,
 > then hand off to investigation to diagnose the root cause.
 ```
+
+Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 

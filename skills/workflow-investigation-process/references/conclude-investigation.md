@@ -30,7 +30,23 @@ Investigation complete. Ready to conclude?
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.investigation.{topic} status completed
    ```
 2. Final commit
-3. Display conclusion:
+3. Index the completed artifact into the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/investigation/{topic}.md
+```
+
+If the index command fails, display the error but do not block — the artifact is already saved:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
+4. Display conclusion:
 
 > *Output the next fenced block as a code block:*
 
@@ -43,7 +59,7 @@ Fix direction: {chosen approach}
 The investigation is completed. Root cause and fix direction are documented.
 ```
 
-4. Closure signpost:
+5. Closure signpost:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -52,7 +68,7 @@ The investigation is completed. Root cause and fix direction are documented.
 > the fix approach into a document that drives planning.
 ```
 
-5. Invoke the bridge:
+6. Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}

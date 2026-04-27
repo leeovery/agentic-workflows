@@ -94,9 +94,27 @@ Store the selected item.
 
 #### If user chose `r`/`reactivate`
 
+Set status back to in-progress:
+
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
 ```
+
+**If `selected.status` was `cancelled`:**
+
+Cancellation removed the work unit's chunks from the knowledge base. Restore them by loading **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
+
+> *Output the next fenced block as a code block:*
+
+```
+"{selected.name:(titlecase)}" reactivated.
+```
+
+→ Return to caller.
+
+**If `selected.status` was `completed`:**
+
+Completed work units retain their chunks — no re-indexing needed.
 
 > *Output the next fenced block as a code block:*
 

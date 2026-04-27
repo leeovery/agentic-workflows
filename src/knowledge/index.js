@@ -544,6 +544,7 @@ function discoverArtifacts() {
   for (const wu of workUnits) {
     const wuName = wu.name;
     if (!wuName) continue;
+    if (wu.status === 'cancelled') continue;
 
     for (const phase of INDEXED_PHASES) {
       const phaseData = wu.phases && wu.phases[phase];

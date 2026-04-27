@@ -219,6 +219,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_ep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discussion.{topic} status completed
 ```
 
+Index the discussion at its new location in the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/discussion/{topic}.md
+```
+
+If the index command fails, display the error but do not block — the artifact is already saved:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
 → Proceed to **G. Move Research**.
 
 #### Otherwise
@@ -250,6 +266,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_ep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.research.{target_name} status completed
 ```
 
+Index the research at its new location in the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/research/{target_name}.md
+```
+
+If the index command fails, display the error but do not block — the artifact is already saved:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
 → Proceed to **H. Cleanup**.
 
 #### Otherwise
@@ -259,6 +291,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.res
 ---
 
 ## H. Cleanup
+
+Remove the absorbed feature's chunks from the knowledge base (moved files were re-indexed under the epic):
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {selected.name}
+```
+
+If the remove command fails, display the error but do not block — the absorption itself is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge removal warning
+  {error details}
+  The feature is absorbed. You can run knowledge remove manually later.
+```
 
 Remove the feature from the project manifest:
 

@@ -33,6 +33,7 @@ Create the new cross-cutting work unit and mark it as completed (the pipeline is
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init {cc_work_unit} --work-type cross-cutting --description "{one-line summary from spec}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} status completed
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} completed_at $(date +%Y-%m-%d)
 ```
 
 Set provenance to track the origin:
@@ -66,6 +67,23 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {cc_work_u
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.discussion.{source} status completed
 ```
 
+Index the discussion at its new location and remove old chunks (per source):
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{cc_work_unit}/discussion/{source}.md
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase discussion --topic {source}
+```
+
+If either command fails, display the error but do not block — the move is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge warning
+  {error details}
+  The discussion is moved. You can run knowledge index/remove manually later.
+```
+
 → Proceed to **D. Move Specification**.
 
 ## D. Move Specification
@@ -85,6 +103,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.sp
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.specification.{cc_work_unit} date $(date +%Y-%m-%d)
 ```
 
+Index the specification at its new location in the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{cc_work_unit}/specification/{cc_work_unit}/specification.md
+```
+
+If the index command fails, display the error but do not block — the artifact is already saved:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
 → Proceed to **E. Update Epic Manifest**.
 
 ## E. Update Epic Manifest
@@ -94,6 +128,22 @@ Mark the topic as promoted in the epic manifest:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status promoted
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} promoted_to {cc_work_unit}
+```
+
+Remove the promoted spec's chunks from the original work unit (already re-indexed under the new cc work unit in section D):
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {topic}
+```
+
+If the remove command fails, display the error but do not block — the promotion is already recorded:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge removal warning
+  {error details}
+  The spec is promoted. You can run knowledge remove manually later.
 ```
 
 → Proceed to **F. Commit and Display**.

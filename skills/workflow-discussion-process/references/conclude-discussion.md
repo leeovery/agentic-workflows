@@ -27,7 +27,23 @@ Conclude this discussion and mark as completed?
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status completed
    ```
 3. Final commit
-4. Invoke the bridge:
+4. Index the completed artifact into the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discussion/{topic}.md
+```
+
+If the index command fails, display the error but do not block — the artifact is already saved:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
+5. Invoke the bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

@@ -543,7 +543,7 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 - **H1** (`#`): File title only — one per file, at the top
 - **H2** (`##`): Steps and major sections (`## Step N: {Name}`, `## Notes`, `## Instructions`)
-- **H3** (`###`): Subsections within steps (`### 6a: Warn about in-progress specs`)
+- **H3** (`###`): Sub-steps within early setup steps only (`### Step 0.1: Casing Conventions`)
 - **H4** (`####`): Conditional routing only (`#### If {condition}`, `#### Otherwise`)
 
 ### Step Numbering
@@ -554,6 +554,42 @@ Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
 - Steps are separated by `---` horizontal rules
 - Each step completes fully before the next begins
 - User-facing step markers (see Display & Output Conventions → Step Markers) use names only — no numbers. They are embedded at each step boundary, including steps with no explicit output (Claude's visible processing labels the activity for the user)
+
+### Sub-Steps (Early Setup Steps Only)
+
+Early setup steps — Step 0 in particular — bundle multiple discrete pre-disclosure actions that all run unconditionally: loading shared conventions, running migrations, gating on prerequisites. These actions must execute inline (they are not progressive-disclosure work), but each needs its own routing target so conditional branches inside one action can route to the next action by name without duplicating shared content downstream.
+
+Decompose these steps into **sub-steps** using H3 decimal numbering:
+
+```
+## Step 0: Initialisation
+
+### Step 0.1: Casing Conventions
+Load **[casing-conventions.md](...)** and follow its instructions as written.
+→ Proceed to **Step 0.2**.
+
+### Step 0.2: Migrations
+
+#### If the `/workflow-migrate` skill has already been invoked in this conversation
+→ Proceed to **Step 0.3**.
+
+#### Otherwise
+[run migrations + CRITICAL note]
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Knowledge Check
+Load **[knowledge-check.md](...)** and follow its instructions as written.
+→ Proceed to **Step 1**.
+```
+
+Rules:
+
+- Heading format: `### Step {parent}.{sub}: {Name}` (e.g., `### Step 0.1: Casing Conventions`)
+- Sub-steps are **unconditional, sequential** units — they always run when the parent step runs. Use H4 `#### If` *inside* a sub-step for branching; the branches route to the next sub-step by name
+- Each sub-step is a valid routing target: `→ Proceed to **Step 0.3**`
+- The final sub-step routes to the parent's next top-level step: `→ Proceed to **Step 1**`
+- **Sub-steps are reserved for early setup steps** (typically Step 0) where content must run inline before progressive disclosure begins — migrations must complete before anything else, knowledge check gates the entire pipeline
+- **Later steps must use reference files and progressive disclosure instead.** `Load **[reference.md](...)**` is the mechanism for decomposing later-step content, not sub-steps
 
 ### Conditional Routing
 

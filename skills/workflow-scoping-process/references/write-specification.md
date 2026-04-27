@@ -52,4 +52,20 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 
 Commit: `spec({work_unit}): quick-fix specification`
 
+Index the completed specification into the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/specification/{topic}/specification.md
+```
+
+If the index command fails, display the error but do not block — the artifact is already saved:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
 → Return to caller.
