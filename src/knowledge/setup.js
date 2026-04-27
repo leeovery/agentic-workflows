@@ -363,6 +363,12 @@ async function runSystemConfigStep(rl) {
   // openai path.
   const model = await ask(rl, 'Embedding model', OPENAI_DEFAULT_MODEL);
   const dimsRaw = await ask(rl, 'Vector dimensions', String(OPENAI_DEFAULT_DIMENSIONS));
+  // parseInt is lenient ('1536abc' → 1536); insist on a clean digits-only
+  // string before parsing so partial-numeric input is rejected up front.
+  if (!/^\d+$/.test(dimsRaw.trim())) {
+    process.stderr.write(`Invalid dimensions: "${dimsRaw}". Must be a positive integer.\n`);
+    process.exit(1);
+  }
   const dimensions = parseInt(dimsRaw, 10);
   if (!Number.isInteger(dimensions) || dimensions <= 0) {
     process.stderr.write(`Invalid dimensions: "${dimsRaw}". Must be a positive integer.\n`);

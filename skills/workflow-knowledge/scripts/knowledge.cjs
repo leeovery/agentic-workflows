@@ -53,7 +53,8 @@ Embedding provider:
 `);let s;for(;s=(await qt(t,"Provider (openai / skip)","openai")).toLowerCase(),!(s==="openai"||s==="skip");)process.stdout.write(`Unknown choice "${s}". Enter "openai" or "skip".
 `);if(s==="skip")return B.writeConfigFile(e,ur()),process.stdout.write(`
 Wrote stub-mode system config to ${e}
-`),process.stdout.write("Stub mode uses keyword-only (BM25) search. Semantic search is disabled. Run `knowledge setup` again later to configure a provider.\n"),{provider:null,previouslyStub:r};let i=await qt(t,"Embedding model",ro),o=await qt(t,"Vector dimensions",String(so)),c=parseInt(o,10);(!Number.isInteger(c)||c<=0)&&(process.stderr.write(`Invalid dimensions: "${o}". Must be a positive integer.
+`),process.stdout.write("Stub mode uses keyword-only (BM25) search. Semantic search is disabled. Run `knowledge setup` again later to configure a provider.\n"),{provider:null,previouslyStub:r};let i=await qt(t,"Embedding model",ro),o=await qt(t,"Vector dimensions",String(so));/^\d+$/.test(o.trim())||(process.stderr.write(`Invalid dimensions: "${o}". Must be a positive integer.
+`),process.exit(1));let c=parseInt(o,10);(!Number.isInteger(c)||c<=0)&&(process.stderr.write(`Invalid dimensions: "${o}". Must be a positive integer.
 `),process.exit(1));let a=B.PROVIDER_ENV_VARS.openai;return await mo(t,{envVar:a,model:i,dimensions:c})==="opted-out"?(B.writeConfigFile(e,ur()),process.stdout.write(`
 Wrote stub-mode system config to ${e}
 `),process.stdout.write("Stub mode uses keyword-only (BM25) search. Semantic search is disabled. Re-run `knowledge setup` once you have a working API key.\n"),{provider:null,previouslyStub:r}):(B.writeConfigFile(e,lo({model:i,dimensions:c})),process.stdout.write(`
