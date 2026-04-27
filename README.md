@@ -30,6 +30,7 @@ A development workflow for Claude Code that turns conversations into working sof
 
 - **An expert in the room.** The system acts as an expert architect — challenging your thinking, probing edge cases before they become bugs, and capturing not just decisions but *why* you made them. Every phase adds real analytical value, not just formatting.
 - **Decisions that stick.** Discussions flow organically — follow threads, challenge assumptions, circle back when new context changes the thinking. A live Discussion Map tracks every subtopic's state (pending → exploring → converging → decided), so you always see the shape of the conversation. A background review agent catches gaps as you go — with a mandatory final review before concluding to ensure nothing was missed. When a decision has genuine ambiguity, competing perspective agents argue each position before a synthesis agent maps the tradeoff landscape. When you come back in a week, the context is there.
+- **Memory that compounds across work units.** Every completed research, discussion, investigation, and specification is indexed into a searchable knowledge base. The next discussion checks whether you've already decided this, planning sees how comparable specs were structured, review catches drift from prior decisions in other work units. A spec from three months ago or a discussion that rejected an approach stays one query away — surfaced automatically, not hunted for.
 - **Specifications that catch mistakes early.** The system analyses your discussions, filters hallucinations, fills gaps, and produces a validated spec before any code is written.
 - **Plans with real structure.** Specifications become phased implementation plans with tasks, acceptance criteria, and dependency ordering. Choose where tasks live — [Tick CLI, Linear issues, or local markdown files](#output-formats).
 - **Implementation via strict TDD.** Tests first, then code, commit after each task. Per-task approval gates keep you in control, or switch to auto-mode when you trust the flow.
@@ -57,24 +58,22 @@ npx agntc remove leeovery/agentic-workflows
 ### Requirements
 
 - Node.js 18+
-- (Optional) OpenAI API key — enables semantic search across your workflow history. See [Knowledge Base](#knowledge-base) below; stub mode is available if you'd rather skip embeddings.
+- (Optional) OpenAI API key — enables semantic search across your workflow history. See [Knowledge Base Setup](#knowledge-base-setup) below; stub mode is available if you'd rather skip embeddings.
 
-### Knowledge Base
+### Knowledge Base Setup
 
-Workflows record what's been researched, decided, and built into a per-project knowledge base. Subsequent phases query this base to surface prior context — e.g. discussion checks if a similar topic was already decided, planning checks how comparable specs were structured, review checks for cross-work-unit consistency.
-
-**First run** — before any workflow command can execute, the system checks that the knowledge base is initialised. New installs and existing projects upgrading to this version will be prompted to run setup once:
+Workflows require an initialised knowledge base — see [Knowledge Base](#knowledge-base) under Key Features for what it does. New installs are prompted to run setup once before any workflow command can execute:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 ```
 
-The wizard is interactive and walks through:
-- **Embedding provider**: choose `openai` (semantic + keyword search) or `skip` (keyword-only).
-- **OpenAI API key** (only if you chose openai): provided via `$OPENAI_API_KEY` in your shell, or stored at `~/.config/workflows/credentials.json` (mode 0600). The wizard validates the key with a test embed before committing config.
-- **Project init**: creates `.workflows/.knowledge/` with the store, metadata, and config.
+The interactive wizard walks through:
+- **Embedding provider**: `openai` (semantic + keyword search) or `skip` (keyword-only).
+- **OpenAI API key** (if `openai`): from `$OPENAI_API_KEY` or `~/.config/workflows/credentials.json` (mode 0600). The wizard validates with a test embed before saving.
+- **Project init**: creates `.workflows/.knowledge/` and runs the initial indexing pass over any existing artifacts.
 
-**Stub mode** — if you don't want to use an embedding API, choose `skip` at the provider prompt. Search falls back to BM25 keyword matching only. You can switch to OpenAI later by re-running `knowledge setup`.
+If you skip the embedding provider, search falls back to BM25 keyword matching. Re-run setup later to switch to OpenAI.
 
 ### Your First Workflow
 
@@ -141,6 +140,10 @@ Work units are **in-progress**, **completed**, or **cancelled**. Completion happ
 ### 23 Specialized Agents
 
 Complex phases spawn parallel subagents for isolated concerns — research uses 2 agents for periodic gap analysis and independent deep-dive investigation. Discussion uses 3 for independent review, competing perspectives, and synthesis of tradeoffs. Investigation uses 1 for independent root cause validation. Specification and review each use 2 for input validation and gap analysis. Planning uses 6 for phase design, task authoring, dependency graphing, and quality review. Implementation uses 7 for TDD execution, post-task review, and cross-cutting analysis.
+
+### Knowledge Base
+
+Every completed research, discussion, investigation, and specification is indexed into a local semantic-search store. Phases query it as you work — discussion finds whether a similar topic was already decided, planning surfaces how comparable specs were structured, review compares against cross-work-unit decisions for consistency. Queries are natural language, not topic slugs: *"why we ruled out email as a primary identity field"* returns the original discussion chunk with full provenance (work unit, phase, topic, date), so you can read the source when it matters and skim chunks when it doesn't. Hybrid search (vector + keyword) when an embedding provider is configured, BM25 keyword-only as a supported fallback. TTL-based decay prevents unbounded growth; specifications never expire.
 
 ### Output Formats
 
