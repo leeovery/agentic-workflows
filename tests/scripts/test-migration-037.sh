@@ -14,8 +14,8 @@ MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/037-completed-at
 PASS=0
 FAIL=0
 
-report_update() { : ; }
-report_skip() { : ; }
+report_update() { REPORT_CALLED=update; }
+report_skip() { REPORT_CALLED=skip; }
 
 assert_eq() {
   local label="$1" expected="$2" actual="$3"
@@ -33,6 +33,7 @@ setup() {
   TEST_DIR=$(mktemp -d /tmp/migration-037-test.XXXXXX)
   export PROJECT_DIR="$TEST_DIR"
   mkdir -p "$TEST_DIR/.workflows"
+  REPORT_CALLED=""
 }
 
 teardown() {
@@ -301,6 +302,65 @@ JSON
   teardown
 }
 
+# --- Test 10: Counter accuracy — update path calls report_update ---
+test_counter_reports_update_when_modified() {
+  setup
+
+  mkdir -p "$TEST_DIR/.workflows/needs-backfill/discussion"
+  cat > "$TEST_DIR/.workflows/needs-backfill/manifest.json" <<'JSON'
+{
+  "name": "needs-backfill",
+  "work_type": "feature",
+  "status": "completed",
+  "phases": {}
+}
+JSON
+  echo "content" > "$TEST_DIR/.workflows/needs-backfill/discussion/topic.md"
+  touch -t 202501150930 "$TEST_DIR/.workflows/needs-backfill/discussion/topic.md"
+
+  source "$MIGRATION"
+
+  assert_eq "report_update called when modified" "update" "$REPORT_CALLED"
+
+  teardown
+}
+
+# --- Test 11: Counter accuracy — no-op path calls report_skip ---
+test_counter_reports_skip_when_nothing_to_do() {
+  setup
+
+  # Only an already-backfilled WU exists — migration has nothing to do.
+  mkdir -p "$TEST_DIR/.workflows/already-done/discussion"
+  cat > "$TEST_DIR/.workflows/already-done/manifest.json" <<'JSON'
+{
+  "name": "already-done",
+  "work_type": "feature",
+  "status": "completed",
+  "completed_at": "2025-03-01",
+  "phases": {}
+}
+JSON
+  echo "content" > "$TEST_DIR/.workflows/already-done/discussion/topic.md"
+
+  source "$MIGRATION"
+
+  assert_eq "report_skip called when nothing modified" "skip" "$REPORT_CALLED"
+
+  teardown
+}
+
+# --- Test 12: Counter accuracy — empty workflows dir calls report_skip ---
+test_counter_reports_skip_on_empty_workflows() {
+  setup
+
+  # No work units at all.
+  source "$MIGRATION"
+
+  assert_eq "report_skip on empty workflows" "skip" "$REPORT_CALLED"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 037 tests..."
 echo ""
@@ -314,6 +374,9 @@ test_multiple
 test_content_preservation
 test_no_workflows
 test_empty_work_unit
+test_counter_reports_update_when_modified
+test_counter_reports_skip_when_nothing_to_do
+test_counter_reports_skip_on_empty_workflows
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

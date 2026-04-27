@@ -33,6 +33,8 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs <command> [args]
 
 Every skill that calls this must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in its `allowed-tools` frontmatter.
 
+To list commands and options, use `--help` / `-h` / `help` — writes usage to stdout, exits 0. Invoking the CLI with no arguments writes usage to stderr and exits 1.
+
 ---
 
 ## `query` — search the knowledge base
@@ -55,17 +57,18 @@ Multiple positional arguments run separate searches in one invocation, merge the
 
 | Flag | Behaviour |
 |------|-----------|
-| `--work-type <type>` | Filter results to a work type. Comma-separated list accepted (e.g., `--work-type cross-cutting` or `--work-type epic,feature`). Hard filter — non-matching chunks are excluded |
+| `--work-unit <wu>` | Filter to one or more work units. Comma-separated list accepted. Hard filter — non-matching chunks excluded |
+| `--work-type <type>` | Filter results to a work type. Comma-separated list accepted (e.g., `--work-type cross-cutting` or `--work-type epic,feature`). Hard filter |
 | `--phase <phase>` | Filter to one or more phases. Same comma-separated syntax. Hard filter |
 | `--topic <topic>` | Filter to one or more topics. Same comma-separated syntax. Hard filter |
-| `--work-unit <wu>` | **Re-ranking hint, NOT a filter.** Boosts chunks from this work unit in post-processing. Cross-work-unit results still appear, just ranked lower. Use it to say "I'm currently working in `auth-flow`, prefer its context" — not to exclude other work |
+| `--boost:<field> <value>` | **Re-ranking hint, NOT a filter.** Boosts chunks where `<field>` equals `<value>` by `+0.1` per match, additive. Repeatable. Valid fields: `work-unit`, `work-type`, `phase`, `topic`, `confidence`. Use it to say "I'm currently working in `auth-flow`, prefer its context" via `--boost:work-unit auth-flow` — results from other work units still appear, just ranked lower |
 | `--limit <n>` | Cap result count after merge + re-rank. Default 10 |
 
 ### Search modes
 
 Two modes, auto-selected based on project config:
 
-- **Hybrid** (default when an embedding provider is configured): keyword + vector search combined, results re-ranked by work-unit proximity, confidence tier, and recency.
+- **Hybrid** (default when an embedding provider is configured): keyword + vector search combined, results re-ranked by any `--boost:<field>` directives you pass, plus always-on confidence-tier and recency signals.
 - **Keyword-only** (when no provider is configured): full-text search only. Still useful — you lose semantic expansion but exact-term queries work. The output prepends a note: `[keyword-only mode — configure embedding provider for semantic search]`. This is a supported degraded mode, not a broken state.
 
 ### Query construction
@@ -130,8 +133,8 @@ Don't read source files for every result. Most queries produce a couple of chunk
 - **Do not dump large result sets speculatively.** `--limit 50` with a vague query produces noise. Prefer a focused query with the default limit.
 - **Do not use topic slugs as search terms.** `"auth-flow"` is a weak semantic signal. Describe the thing, don't name it.
 - **Do not query during the specification phase.** Spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the spec away from its own source material.
-- **Do not prepend metadata to the query string.** The CLI already filters by `work_type`, `phase`, `topic`, `work_unit` via flags. `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
-- **Do not treat `--work-unit` as a filter.** It re-ranks. If you want to exclude other work units, you probably don't — cross-work-unit context is the point of the knowledge base.
+- **Do not prepend metadata to the query string.** The CLI already filters by `work-unit`, `work-type`, `phase`, `topic` via flags. `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
+- **Reach for `--boost:<field>` before `--work-unit`.** Filtering by work unit excludes cross-work-unit context — usually the opposite of what you want. `--boost:work-unit <current>` nudges results toward your current work unit while keeping prior work from other units in the pool. Stack multiple boosts (`--boost:work-unit X --boost:phase specification`) when your query wants multi-dimensional preference, not exclusion.
 
 ---
 

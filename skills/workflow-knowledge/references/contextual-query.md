@@ -1,12 +1,12 @@
 # Contextual Query
 
-*Reference for **[workflow-knowledge](../SKILL.md)** — loaded at phase start in research, discussion, and investigation processing skills.*
+*Reference for **[workflow-knowledge](../SKILL.md)** — loaded at phase start in research, discussion, investigation, and scoping processing skills.*
 
 ---
 
-At the beginning of these phases, a single targeted query against the knowledge base catches prior work that might otherwise surface as a correction ten minutes into the session. One query, one interpretation step — if nothing comes back, proceed as normal.
+At the beginning of these phases, a focused query against the knowledge base catches prior work that might otherwise surface as a correction ten minutes into the session. One invocation, one interpretation step — if nothing comes back, proceed as normal.
 
-This is **not** a speculative dump. It is a focused check using the best context currently available.
+This is **not** a speculative dump. It is a focused check using the best context currently available. When the starting context offers multiple distinct angles (e.g. investigation has both symptoms and a subsystem name), batch them in a single invocation rather than running them serially.
 
 ## A. Construct the query
 
@@ -18,10 +18,18 @@ If the only context available is a topic name, construct the best descriptive qu
 
 ## B. Run the query
 
-Invoke the CLI with the constructed query (or queries). Use `--work-unit {work_unit}` to bias results toward the current work unit without filtering out cross-work-unit context. Do not use hard filters unless you have a specific reason — this is meant to surface prior work broadly.
+Invoke the CLI with the constructed query (or queries). Use `--boost:work-unit {work_unit}` to bias results toward the current work unit without filtering out cross-work-unit context. Do not use hard filters (`--work-unit`, `--phase`, `--topic`, `--work-type`) unless you have a specific reason — this is meant to surface prior work broadly.
+
+Single framing:
 
 ```
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<descriptive query>" --work-unit {work_unit}
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<descriptive query>" --boost:work-unit {work_unit}
+```
+
+Multiple framings (batch — one invocation, one merged result set):
+
+```
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<framing 1>" "<framing 2>" "<framing 3>" --boost:work-unit {work_unit}
 ```
 
 #### If the command exits with a non-zero code

@@ -2,7 +2,7 @@
 # Tests for migration 009: review-per-plan-storage
 # Run: bash tests/scripts/test-migration-009.sh
 
-set -eo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"

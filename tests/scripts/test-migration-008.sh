@@ -2,7 +2,7 @@
 # Tests for migration 008: review-directory-structure
 # Run: bash tests/scripts/test-migration-008.sh
 
-set -eo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"

@@ -174,7 +174,7 @@ If the remove command fails, display the error but do not block — the superses
 ```
 ⚑ Knowledge removal warning
   {error details}
-  The spec is superseded. You can run knowledge remove manually later.
+  The spec is superseded. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
 ```
 
 3. Inform the user which topics were updated

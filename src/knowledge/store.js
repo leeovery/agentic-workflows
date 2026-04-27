@@ -112,10 +112,51 @@ async function insertDocument(db, doc) {
   return orama.insert(db, payload);
 }
 
+// Page size for whole-store enumeration. Paged iteration replaces a
+// previous fixed `limit: 100000` so very large stores are not silently
+// truncated. 1000 keeps round-trip overhead negligible for in-process
+// Orama while bounding peak memory per page.
+const ENUMERATION_PAGE_SIZE = 1000;
+
+// Limit for filtered single-shot reads. Orama's `where` clause is an
+// indexed lookup — the matched subset is small in practice (one identity,
+// one phase, one work unit), so a single search with a high limit is the
+// right shape. Pagination is reserved for unfiltered whole-store
+// enumeration because Orama 3.1.x's offset+where combination drops pages.
+//
+// 1M is well above any realistic per-identity / per-topic / per-phase
+// chunk count (a giant topic might have low thousands; a per-work-unit
+// remove on a long-lived project, low tens of thousands). Orama
+// pre-allocates an array of size `limit` for results, so this cannot be
+// `Number.MAX_SAFE_INTEGER` — it would throw RangeError.
+const FILTERED_QUERY_LIMIT = 1_000_000;
+
+/**
+ * Enumerate every document in the store, paged via offset+limit until
+ * exhausted. Used by status, compact, and any caller that needs a
+ * complete unfiltered view. Filtered enumerations should call Orama's
+ * `where` directly with an unbounded limit (see findInternalIdsByIdentity).
+ */
+async function searchAllFulltext(db) {
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const res = await orama.search(db, {
+      term: '',
+      limit: ENUMERATION_PAGE_SIZE,
+      offset,
+    });
+    if (res.hits.length === 0) break;
+    all.push(...res.hits.map(normaliseHit));
+    if (res.hits.length < ENUMERATION_PAGE_SIZE) break;
+    offset += ENUMERATION_PAGE_SIZE;
+  }
+  return all;
+}
+
 /**
  * Find all internal document IDs whose (work_unit, phase, topic) matches
- * the given identity key. Uses Orama's search with `where` filters and
- * a large limit so we get every match in one pass.
+ * the given identity key. Internal IDs are what `removeMultiple` accepts.
  */
 async function findInternalIdsByIdentity(db, { work_unit, phase, topic }) {
   const res = await orama.search(db, {
@@ -125,7 +166,7 @@ async function findInternalIdsByIdentity(db, { work_unit, phase, topic }) {
       phase: { eq: phase },
       topic: { eq: topic },
     },
-    limit: 100000,
+    limit: FILTERED_QUERY_LIMIT,
   });
   return res.hits.map((h) => h.id);
 }
@@ -164,12 +205,33 @@ async function removeByFilter(db, where) {
   const res = await orama.search(db, {
     term: '',
     where,
-    limit: 100000,
+    limit: FILTERED_QUERY_LIMIT,
   });
   const ids = res.hits.map((h) => h.id);
   if (ids.length === 0) return 0;
-  const removed = await orama.removeMultiple(db, ids);
+  // Orama's sync removeMultiple chains batches via setTimeout but
+  // returns the result count after only the first batch — pass
+  // batchSize == ids.length to force a single batch and get an
+  // accurate total when removing > 1000 chunks.
+  const removed = await orama.removeMultiple(db, ids, ids.length);
   return removed;
+}
+
+/**
+ * Count chunks matching `where` without deleting. Used by `remove --dry-run`.
+ * Same query shape as removeByFilter so the count is guaranteed to match
+ * what a non-dry-run invocation would actually remove.
+ */
+async function countByFilter(db, where) {
+  if (!where || Object.keys(where).length === 0) {
+    throw new Error('countByFilter: where clause is required');
+  }
+  const res = await orama.search(db, {
+    term: '',
+    where,
+    limit: FILTERED_QUERY_LIMIT,
+  });
+  return res.hits.length;
 }
 
 function normaliseHit(hit) {
@@ -348,7 +410,7 @@ async function loadStore(storePath) {
 
 const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;
-const LOCK_TIMEOUT_MS = 10000;
+const LOCK_TIMEOUT_MS = 30000;
 
 function tryAcquire(lockPath) {
   try {
@@ -415,7 +477,9 @@ async function withLock(lockPath, fn) {
 // provides the read/write primitives.
 // ---------------------------------------------------------------------------
 
-const METADATA_FIELDS = ['provider', 'model', 'dimensions', 'last_indexed', 'pending'];
+const METADATA_FIELDS = [
+  'provider', 'model', 'dimensions', 'last_indexed', 'pending', 'pending_removals',
+];
 
 function writeMetadata(metadataPath, data) {
   if (!metadataPath) throw new Error('writeMetadata: metadataPath is required');
@@ -425,12 +489,18 @@ function writeMetadata(metadataPath, data) {
   // Every call writes the full schema — no partial updates. Missing
   // fields are normalised to explicit null so keyword-only mode round-
   // trips as { provider: null, model: null, dimensions: null }.
+  //
+  // IMPORTANT: every persisted field must be listed here. A missing field
+  // silently strips across writes and every downstream feature using that
+  // field stops working (see deferred-issue #18 pending_removals, which
+  // shipped broken because this whitelist was not updated).
   const full = {
     provider: data.provider === undefined ? null : data.provider,
     model: data.model === undefined ? null : data.model,
     dimensions: data.dimensions === undefined ? null : data.dimensions,
     last_indexed: data.last_indexed === undefined ? null : data.last_indexed,
     pending: Array.isArray(data.pending) ? data.pending : [],
+    pending_removals: Array.isArray(data.pending_removals) ? data.pending_removals : [],
   };
   const tmp = metadataPath + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(full, null, 2) + '\n', 'utf8');
@@ -465,7 +535,9 @@ module.exports = {
   insertDocument,
   removeByIdentity,
   removeByFilter,
+  countByFilter,
   searchFulltext,
+  searchAllFulltext,
   searchVector,
   searchHybrid,
   saveStore,

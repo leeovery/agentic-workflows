@@ -2,6 +2,8 @@
 
 Specification: [design.md](design.md)
 
+> Convention: the `[ ]` checkboxes throughout this plan and the per-phase task files (`phase-{N}-tasks.md`) are author-time planning artefacts that capture the **planned scope** of each phase. They are not progress trackers and intentionally remain unchecked even after implementation lands — completion is recorded in git history (merged phase PRs) rather than by mutating these files.
+
 ## Phases
 
 ### Phase 1: Build Pipeline + Store Fundamentals

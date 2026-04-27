@@ -2,7 +2,7 @@
 # Tests for migration 017: external-deps-object
 # Run: bash tests/scripts/test-migration-017.sh
 
-set -eo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"

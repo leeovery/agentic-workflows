@@ -363,21 +363,43 @@ async function runSystemConfigStep(rl) {
   // openai path.
   const model = await ask(rl, 'Embedding model', OPENAI_DEFAULT_MODEL);
   const dimsRaw = await ask(rl, 'Vector dimensions', String(OPENAI_DEFAULT_DIMENSIONS));
+  // parseInt is lenient ('1536abc' → 1536); insist on a clean digits-only
+  // string before parsing so partial-numeric input is rejected up front.
+  if (!/^\d+$/.test(dimsRaw.trim())) {
+    process.stderr.write(`Invalid dimensions: "${dimsRaw}". Must be a positive integer.\n`);
+    process.exit(1);
+  }
   const dimensions = parseInt(dimsRaw, 10);
   if (!Number.isInteger(dimensions) || dimensions <= 0) {
     process.stderr.write(`Invalid dimensions: "${dimsRaw}". Must be a positive integer.\n`);
     process.exit(1);
   }
 
-  // Write the non-secret config first so it's on disk even if the key
-  // step aborts or the user interrupts mid-prompt.
+  // Resolve and validate the API key BEFORE writing any system config.
+  // Writing `provider: openai` to disk with no working key leaves the
+  // system in a state where the next `knowledge index` misreports a
+  // provider/model change. ensureOpenAIKey aborts on irrecoverable
+  // failures (bad env var, bad stored key kept) and returns a status
+  // for the recoverable cases.
+  const envVar = config.PROVIDER_ENV_VARS.openai;
+  const keyStatus = await ensureOpenAIKey(rl, { envVar, model, dimensions });
+
+  if (keyStatus === 'opted-out') {
+    // User explicitly chose to skip past the inline prompt without a
+    // working key. Honour the "skip to proceed without" feature by
+    // writing stub-mode system config rather than openai-with-no-key.
+    config.writeConfigFile(sysPath, buildSystemConfigStub());
+    process.stdout.write(`\nWrote stub-mode system config to ${sysPath}\n`);
+    process.stdout.write(
+      'Stub mode uses keyword-only (BM25) search. Semantic search is disabled. ' +
+      'Re-run `knowledge setup` once you have a working API key.\n'
+    );
+    return { provider: null, previouslyStub };
+  }
+
+  // keyStatus === 'validated' — safe to commit the openai config.
   config.writeConfigFile(sysPath, buildSystemConfigOpenAI({ model, dimensions }));
   process.stdout.write(`\nWrote system config to ${sysPath}\n`);
-
-  // Resolve the API key: env first, then credentials file, then prompt.
-  const envVar = config.PROVIDER_ENV_VARS.openai;
-  await ensureOpenAIKey(rl, { envVar, model, dimensions });
-
   return { provider: 'openai', previouslyStub };
 }
 
@@ -385,6 +407,14 @@ async function runSystemConfigStep(rl) {
  * Ensure an OpenAI API key is available for this run and validate it.
  * Resolution order: process.env → credentials file → inline prompt.
  * Newly entered keys are written to the credentials file at 0600.
+ *
+ * Returns:
+ *   'validated' — a working key is in place (env, file, or freshly stored)
+ *   'opted-out' — user explicitly skipped after a failed inline prompt
+ *
+ * Aborts (process.exit 1) on irrecoverable failures: bad env-var key, or
+ * bad stored key that the user opts to keep. Both leave the system in a
+ * state where openai-mode setup cannot honestly proceed.
  */
 async function ensureOpenAIKey(rl, { envVar, model, dimensions }) {
   const credPath = config.credentialsPath();
@@ -396,16 +426,16 @@ async function ensureOpenAIKey(rl, { envVar, model, dimensions }) {
     try {
       await validateApiKey({ apiKey: fromEnv.trim(), model, dimensions });
       process.stdout.write('API key works.\n');
+      return 'validated';
     } catch (err) {
       const { message, hint } = describeValidationError(err);
-      process.stdout.write(`${message}\n  ${hint}\n`);
-      process.stdout.write(
+      process.stderr.write(`\n${message}\n  ${hint}\n`);
+      process.stderr.write(
         `The failing key came from $${envVar}. Fix or unset it in your shell, ` +
-        'then re-run `knowledge setup`. Setup will continue — indexing will queue until ' +
-        'the key is corrected.\n'
+        'then re-run `knowledge setup`.\n'
       );
+      process.exit(1);
     }
-    return;
   }
 
   // 2. Existing credentials file. Validate; let the user replace it if broken.
@@ -415,24 +445,24 @@ async function ensureOpenAIKey(rl, { envVar, model, dimensions }) {
     try {
       await validateApiKey({ apiKey: fromFile, model, dimensions });
       process.stdout.write('API key works.\n');
-      return;
+      return 'validated';
     } catch (err) {
       const { message, hint } = describeValidationError(err);
       process.stdout.write(`${message}\n  ${hint}\n`);
       const replace = await askYesNo(rl, 'Enter a new key to replace it?', true);
       if (!replace) {
-        process.stdout.write(
-          'Keeping the existing stored key. Indexing will fail until it is rotated.\n' +
+        process.stderr.write(
+          `\nKeeping the existing stored key would leave setup in an inconsistent state.\n` +
           `Edit ${credPath} or re-run \`knowledge setup\` when you have a new key.\n`
         );
-        return;
+        process.exit(1);
       }
       // Fall through to prompt path to collect and store a replacement.
     }
   }
 
   // 3. No valid key anywhere — prompt inline and store.
-  await promptForKeyAndStore(rl, { envVar, model, dimensions, credPath });
+  return await promptForKeyAndStore(rl, { envVar, model, dimensions, credPath });
 }
 
 /**
@@ -475,10 +505,10 @@ async function promptForKeyAndStore(rl, { envVar, model, dimensions, credPath })
       const retry = await askYesNo(rl, 'Try a different key?', true);
       if (!retry) {
         process.stdout.write(
-          'No key stored. Setup continues but indexing will skip until a key is provided.\n' +
-          `Set $${envVar} in your shell or re-run \`knowledge setup\`.\n`
+          `No key stored. Falling back to stub mode — semantic search disabled.\n` +
+          `Set $${envVar} in your shell or re-run \`knowledge setup\` once you have a working key.\n`
         );
-        return;
+        return 'opted-out';
       }
       continue;
     }
@@ -486,7 +516,7 @@ async function promptForKeyAndStore(rl, { envVar, model, dimensions, credPath })
     // Validated — write the credentials file.
     config.writeCredentials(credPath, 'openai', key);
     process.stdout.write(`API key works. Stored at ${credPath} (mode 0600).\n`);
-    return;
+    return 'validated';
   }
 }
 
@@ -495,12 +525,29 @@ async function promptForKeyAndStore(rl, { envVar, model, dimensions, credPath })
 // ---------------------------------------------------------------------------
 
 async function runProjectInitStep(rl) {
-  const projectDir = path.resolve(process.cwd(), '.workflows', '.knowledge');
+  const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
   const storeFile = path.join(projectDir, 'store.msp');
   const metadataFile = path.join(projectDir, 'metadata.json');
 
   const detected = detectProjectInit(projectDir);
+
+  // Reject the dangerous partial-state where the store has chunks but
+  // metadata is missing. Writing fresh metadata against an existing
+  // populated store would create a provider/model/dimensions mismatch
+  // we cannot detect from the store alone — the next `knowledge index`
+  // would surface a misleading error or, worse, mix incompatible
+  // vectors. The escape hatch is `knowledge rebuild`.
+  if (detected.storeExists && !detected.metadataExists) {
+    process.stderr.write(
+      `\nProject knowledge base at ${projectDir} is in an inconsistent state:\n` +
+      `  store.msp is present but metadata.json is missing.\n` +
+      `  Setup cannot recover this safely — run \`knowledge rebuild\` (which\n` +
+      `  re-creates the store from scratch and writes matching metadata) and\n` +
+      `  then re-run \`knowledge setup\` if needed.\n`
+    );
+    process.exit(1);
+  }
 
   if (detected.fullyInitialised) {
     process.stdout.write(`\nProject knowledge base already initialised at ${projectDir}\n`);
@@ -533,14 +580,18 @@ async function runProjectInitStep(rl) {
     : KEYWORD_ONLY_DIMENSIONS;
 
   // Create empty store and save.
-  if (!detected.storeExists || detected.fullyInitialised) {
+  const wroteStore = !detected.storeExists || detected.fullyInitialised;
+  if (wroteStore) {
     const db = await store.createStore(dims);
     await store.saveStore(db, storeFile);
     process.stdout.write(`  store.msp written (${dims} dimensions)\n`);
   }
 
-  // Write initial metadata.
-  if (!detected.metadataExists || detected.fullyInitialised) {
+  // Write initial metadata. Also rewrite whenever a new store was just
+  // created — stale metadata paired with a fresh empty store surfaces
+  // as a misleading "Provider/model changed — run rebuild" error on
+  // the next `knowledge index` (the partial-state recovery case).
+  if (!detected.metadataExists || detected.fullyInitialised || wroteStore) {
     store.writeMetadata(metadataFile, {
       provider: provider || null,
       model: provider && cfg.model ? cfg.model : null,
@@ -582,8 +633,8 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
 async function cmdSetup(cmdIndexBulk, args, options) {
   requireTTY();
 
-  // Guard: .workflows/ must exist.
-  const workflowsDir = path.resolve(process.cwd(), '.workflows');
+  // Guard: .workflows/ must exist somewhere at or above cwd.
+  const workflowsDir = path.resolve(config.findProjectRoot(), '.workflows');
   if (!fs.existsSync(workflowsDir)) {
     process.stderr.write(
       'No .workflows/ directory found. Initialise a workflow project first.\n'

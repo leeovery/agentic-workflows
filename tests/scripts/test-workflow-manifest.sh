@@ -1192,7 +1192,7 @@ run_cli init-phase key-of-miss.planning.key-of-miss >/dev/null 2>&1
 run_cli set key-of-miss.planning.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
 
 exit_code=$(run_cli_exit_code key-of key-of-miss.planning.key-of-miss task_map ext-notfound)
-assert_equals "$exit_code" "1" "key-of errors when value not found"
+assert_equals "$exit_code" "2" "key-of value-not-found exits 2 (expected miss)"
 
 echo ""
 
@@ -1623,7 +1623,7 @@ echo -e "${YELLOW}Test: resolve errors for non-existent work unit${NC}"
 setup_fixture
 exit_code=$(run_cli_exit_code resolve nonexistent.discussion.foo)
 
-assert_equals "$exit_code" "1" "Non-existent work unit exits 1"
+assert_equals "$exit_code" "2" "Non-existent work unit exits 2 (expected miss)"
 
 echo ""
 
@@ -1707,6 +1707,31 @@ exit_code=$(run_cli_exit_code init first-unit --work-type feature --description 
 assert_equals "$exit_code" "0" "First init succeeds without existing manifest"
 registered=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/manifest.json', 'utf8')).work_units).join(','))" 2>/dev/null)
 assert_equals "$registered" "first-unit" "Manifest registers the first work unit"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: exit codes distinguish expected miss (2) from real error (1)${NC}"
+setup_fixture
+# Missing work unit → expected miss → exit 2.
+exit_code=$(run_cli_exit_code get nonexistent status)
+assert_equals "$exit_code" "2" "Missing work unit → exit 2"
+
+run_cli init real --work-type feature --description "Real" >/dev/null 2>&1
+# Missing path inside existing manifest → expected miss → exit 2.
+exit_code=$(run_cli_exit_code get real nonexistent_field)
+assert_equals "$exit_code" "2" "Missing path in existing manifest → exit 2"
+
+# Invalid work_type → validation error → exit 1.
+exit_code=$(run_cli_exit_code init bad --work-type bogus --description "x")
+assert_equals "$exit_code" "1" "Invalid work-type → exit 1"
+
+# Corrupt manifest JSON → real error → exit 1.
+mkdir -p "$TEST_DIR/.workflows/corrupt-wu"
+echo "{not valid json" > "$TEST_DIR/.workflows/corrupt-wu/manifest.json"
+exit_code=$(run_cli_exit_code get corrupt-wu status)
+assert_equals "$exit_code" "1" "Corrupt work-unit JSON → exit 1"
 
 echo ""
 

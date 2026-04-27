@@ -257,6 +257,33 @@ perform_release() {
         exit 1
     fi
 
+    # Rebuild the knowledge CLI bundle so every tagged release ships a fresh
+    # skills/workflow-knowledge/scripts/knowledge.cjs. AGNTC installs from tags
+    # with no build step, so the bundle must be committed before the tag.
+    # Use `npm ci` (not `npm install`) so the lockfile can never drift mid-release.
+    # `npm install` would mutate package-lock.json on any resolvable version change,
+    # bypassing the dirty-tree gate and leaving uncommitted state after the tag.
+    echo "Installing build dependencies..."
+    if ! npm ci; then
+        echo "Error: npm ci failed. Aborting release." >&2
+        exit 1
+    fi
+
+    echo "Building knowledge bundle..."
+    if ! npm run build; then
+        echo "Error: npm run build failed. Refusing to tag with a stale or missing bundle." >&2
+        exit 1
+    fi
+
+    local bundle_path="skills/workflow-knowledge/scripts/knowledge.cjs"
+    if ! git diff --quiet -- "$bundle_path"; then
+        echo "Knowledge bundle changed — committing."
+        git add "$bundle_path"
+        git commit -m "chore(release): rebuild knowledge bundle for v${new_version}"
+    else
+        echo "Knowledge bundle unchanged — no commit needed."
+    fi
+
     # Generate commit message
     local commit_message
     if $skip_ai; then

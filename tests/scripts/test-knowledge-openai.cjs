@@ -5,6 +5,7 @@ const assert = require('node:assert');
 
 const {
   OpenAIProvider,
+  AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
 } = require('../../src/knowledge/providers/openai');
@@ -85,13 +86,27 @@ describe('OpenAIProvider embed (mocked)', () => {
     assert.deepStrictEqual(result, fakeVector);
   });
 
-  it('throws on 401 with descriptive message', async () => {
+  it('throws AuthError on 401 with descriptive message and recovery hint', async () => {
     globalThis.fetch = mockFetchError(401, 'Unauthorized');
     const p = new OpenAIProvider({ apiKey: 'sk-bad' });
 
     await assert.rejects(
       () => p.embed('hello'),
-      /OpenAI API key is invalid or expired/
+      (err) =>
+        err instanceof AuthError &&
+        /invalid or expired/.test(err.message) &&
+        /knowledge setup/.test(err.message)
+    );
+  });
+
+  it('throws AuthError on 403 with recovery hint', async () => {
+    globalThis.fetch = mockFetchError(403, 'Forbidden');
+    const p = new OpenAIProvider({ apiKey: 'sk-test' });
+
+    await assert.rejects(
+      () => p.embed('hello'),
+      (err) =>
+        err instanceof AuthError && /403/.test(err.message) && /knowledge setup/.test(err.message)
     );
   });
 
@@ -192,6 +207,31 @@ describe('OpenAIProvider embedBatch (mocked)', () => {
     const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
     const result = await p.embedBatch(['single']);
     assert.deepStrictEqual(result, [vec]);
+  });
+
+  it('throws on short response (fewer rows than requested)', async () => {
+    // API returned 2 rows for a 3-item request. Previously: results[2]
+    // stayed undefined and propagated silently into the store.
+    globalThis.fetch = mockFetchSuccess({
+      data: [
+        { index: 0, embedding: [0.1, 0.2] },
+        { index: 1, embedding: [0.3, 0.4] },
+      ],
+    });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await assert.rejects(
+      () => p.embedBatch(['a', 'b', 'c']),
+      /response length mismatch.*requested 3, received 2/
+    );
+  });
+
+  it('throws on missing data array', async () => {
+    globalThis.fetch = mockFetchSuccess({ data: null });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await assert.rejects(
+      () => p.embedBatch(['a']),
+      /response length mismatch/
+    );
   });
 });
 

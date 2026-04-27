@@ -43,9 +43,14 @@ const LOCK_TIMEOUT_MS = 10000;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function die(msg) {
+// Exit-code convention:
+//   1 — unexpected error (corrupt JSON, bad args, I/O, validation failure)
+//   2 — expected miss (work unit / path / value not found) — callers that
+//       do best-effort lookups can distinguish this from real errors
+//       without pattern-matching the stderr text.
+function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
-  process.exit(1);
+  process.exit(code);
 }
 
 function manifestDir(name) {
@@ -62,7 +67,7 @@ function lockPath(name) {
 
 function readManifest(name) {
   const p = manifestPath(name);
-  if (!fs.existsSync(p)) die(`Work unit "${name}" not found`);
+  if (!fs.existsSync(p)) die(`Work unit "${name}" not found`, 2);
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
 
@@ -288,7 +293,7 @@ function resolveSegments(phase, topic, fieldSegments) {
 
 function requireWorkUnit(workUnit) {
   if (!fs.existsSync(manifestPath(workUnit))) {
-    die(`Work unit "${workUnit}" not found`);
+    die(`Work unit "${workUnit}" not found`, 2);
   }
 }
 
@@ -512,7 +517,7 @@ function cmdGet(args) {
     }
     const value = getByPath(manifest, proj.fieldSegments);
     if (value === undefined) {
-      die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);
+      die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`, 2);
     }
     outputValue(value);
     return;
@@ -530,7 +535,7 @@ function cmdGet(args) {
     const segments = args[1].split('.');
     const value = getByPath(manifest, segments);
     if (value === undefined) {
-      die(`Path "${args[1]}" not found in "${workUnit}"`);
+      die(`Path "${args[1]}" not found in "${workUnit}"`, 2);
     }
     outputValue(value);
     return;
@@ -543,7 +548,7 @@ function cmdGet(args) {
   if (topic === '*') {
     const results = resolveWildcardTopic(manifest, phase, fieldSegments);
     if (results.length === 0) {
-      die(`No items found in phase "${phase}" of "${workUnit}"`);
+      die(`No items found in phase "${phase}" of "${workUnit}"`, 2);
     }
     process.stdout.write(JSON.stringify(results, null, 2) + '\n');
     return;
@@ -552,7 +557,7 @@ function cmdGet(args) {
   const segments = resolvePhaseSegments(phase, topic, fieldSegments);
   const value = getByPath(manifest, segments);
   if (value === undefined) {
-    die(`Path "${segments.join('.')}" not found in "${workUnit}"`);
+    die(`Path "${segments.join('.')}" not found in "${workUnit}"`, 2);
   }
   outputValue(value);
 }
@@ -604,7 +609,7 @@ function cmdDelete(args) {
     withProjectLock(() => {
       const manifest = readProjectManifest();
       if (!deleteByPath(manifest, proj.fieldSegments)) {
-        die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);
+        die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`, 2);
       }
       writeProjectManifestAtomic(manifest);
     });
@@ -623,7 +628,7 @@ function cmdDelete(args) {
   withLock(workUnit, () => {
     const manifest = readManifest(workUnit);
     if (!deleteByPath(manifest, segments)) {
-      die(`Path "${segments.join('.')}" not found in "${workUnit}"`);
+      die(`Path "${segments.join('.')}" not found in "${workUnit}"`, 2);
     }
     writeManifestAtomic(workUnit, manifest);
   });
@@ -892,10 +897,10 @@ function cmdProject(args) {
     const name = args[1];
     if (!name) die('Usage: project get <name>');
     const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
-    if (!fs.existsSync(projPath)) die(`Project manifest not found`);
+    if (!fs.existsSync(projPath)) die(`Project manifest not found`, 2);
     const proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
     const entry = (proj.work_units || {})[name];
-    if (!entry) die(`Work unit "${name}" not found in project manifest`);
+    if (!entry) die(`Work unit "${name}" not found in project manifest`, 2);
     process.stdout.write(`work_type: ${entry.work_type}\n`);
     return;
   }
@@ -921,7 +926,7 @@ function cmdKeyOf(args) {
   const key = Object.keys(obj).find(k => String(obj[k]) === searchValue);
 
   if (key === undefined) {
-    die(`Value "${searchValue}" not found in "${segments.join('.')}"`);
+    die(`Value "${searchValue}" not found in "${segments.join('.')}"`, 2);
   }
 
   process.stdout.write(key + '\n');

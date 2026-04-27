@@ -215,8 +215,9 @@ Load **[planning-principles.md](references/planning-principles.md)** and follow 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading the usage guide for the knowledge base so
-> proactive querying is available while planning tasks.
+> Loading the usage guide for the knowledge base. Planning operates
+> from the spec as the golden source — the guide documents the narrow
+> cases where a KB query is warranted, and those where it is not.
 ```
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.

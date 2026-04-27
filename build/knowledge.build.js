@@ -25,6 +25,12 @@ esbuild
     format: 'cjs',
     target: 'node18',
     minify: true,
+    // Force ESM resolution for dependencies even though we emit CJS output.
+    // Orama and @msgpack/msgpack both ship ESM dists with sideEffects: false;
+    // ESM resolution lets esbuild tree-shake in a way CJS barrel files block.
+    // Net effect measured: ~22 KB shaved off the bundle with no behaviour change.
+    conditions: ['node', 'import'],
+    mainFields: ['module', 'main'],
     logLevel: 'info',
   })
   .catch((err) => {

@@ -57,6 +57,24 @@ npx agntc remove leeovery/agentic-workflows
 ### Requirements
 
 - Node.js 18+
+- (Optional) OpenAI API key — enables semantic search across your workflow history. See [Knowledge Base](#knowledge-base) below; stub mode is available if you'd rather skip embeddings.
+
+### Knowledge Base
+
+Workflows record what's been researched, decided, and built into a per-project knowledge base. Subsequent phases query this base to surface prior context — e.g. discussion checks if a similar topic was already decided, planning checks how comparable specs were structured, review checks for cross-work-unit consistency.
+
+**First run** — before any workflow command can execute, the system checks that the knowledge base is initialised. New installs and existing projects upgrading to this version will be prompted to run setup once:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
+```
+
+The wizard is interactive and walks through:
+- **Embedding provider**: choose `openai` (semantic + keyword search) or `skip` (keyword-only).
+- **OpenAI API key** (only if you chose openai): provided via `$OPENAI_API_KEY` in your shell, or stored at `~/.config/workflows/credentials.json` (mode 0600). The wizard validates the key with a test embed before committing config.
+- **Project init**: creates `.workflows/.knowledge/` with the store, metadata, and config.
+
+**Stub mode** — if you don't want to use an embedding API, choose `skip` at the provider prompt. Search falls back to BM25 keyword matching only. You can switch to OpenAI later by re-running `knowledge setup`.
 
 ### Your First Workflow
 

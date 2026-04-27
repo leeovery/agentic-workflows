@@ -81,7 +81,7 @@ If either command fails, display the error but do not block — the move is alre
 ```
 ⚑ Knowledge warning
   {error details}
-  The discussion is moved. You can run knowledge index/remove manually later.
+  The discussion is moved. Removals are queued automatically (retry on next `knowledge remove` / `knowledge compact`). Index the moved discussion manually if the automatic background index did not run.
 ```
 
 → Proceed to **D. Move Specification**.
@@ -143,7 +143,7 @@ If the remove command fails, display the error but do not block — the promotio
 ```
 ⚑ Knowledge removal warning
   {error details}
-  The spec is promoted. You can run knowledge remove manually later.
+  The spec is promoted. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
 ```
 
 → Proceed to **F. Commit and Display**.

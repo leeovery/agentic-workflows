@@ -2,7 +2,7 @@
 # Tests for migration 010: gitignore-sessions
 # Run: bash tests/scripts/test-migration-010.sh
 
-set -eo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"

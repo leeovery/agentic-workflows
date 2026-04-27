@@ -14,6 +14,16 @@ const DEFAULT_DIMENSIONS = 1536;
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 const MAX_BATCH_SIZE = 2048;
 
+// AuthError — marker class for HTTP 401/403 from the embeddings API.
+// Bad/expired keys do not fix themselves between retries, so withRetry
+// short-circuits this class instead of burning the backoff budget.
+class AuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 class OpenAIProvider {
   /**
    * @param {{ apiKey: string, model?: string, dimensions?: number }} options
@@ -42,6 +52,9 @@ class OpenAIProvider {
     });
 
     const res = await this._fetch(body);
+    if (!res.data || res.data.length === 0) {
+      throw new Error('OpenAI embed returned no data (empty response)');
+    }
     return res.data[0].embedding;
   }
 
@@ -60,8 +73,17 @@ class OpenAIProvider {
     if (texts.length <= MAX_BATCH_SIZE) {
       const body = JSON.stringify({ model: this._model, input: texts, dimensions: this._dimensions });
       const res = await this._fetch(body);
+      // Validate response length — a short response silently propagates
+      // undefined embeddings into Orama and degrades chunks to keyword-only
+      // with no warning. Rare (OpenAI usually 400s on empty input) but
+      // cheap to guard.
+      if (!Array.isArray(res.data) || res.data.length !== texts.length) {
+        throw new Error(
+          `OpenAI embedBatch response length mismatch: requested ${texts.length}, received ${res.data ? res.data.length : 0}`
+        );
+      }
       // OpenAI returns data sorted by index — ensure correct order.
-      const sorted = res.data.sort((a, b) => a.index - b.index);
+      const sorted = [...res.data].sort((a, b) => a.index - b.index);
       return sorted.map((d) => d.embedding);
     }
 
@@ -71,7 +93,12 @@ class OpenAIProvider {
       const slice = texts.slice(offset, offset + MAX_BATCH_SIZE);
       const body = JSON.stringify({ model: this._model, input: slice, dimensions: this._dimensions });
       const res = await this._fetch(body);
-      const sorted = res.data.sort((a, b) => a.index - b.index);
+      if (!Array.isArray(res.data) || res.data.length !== slice.length) {
+        throw new Error(
+          `OpenAI embedBatch response length mismatch on chunk offset=${offset}: requested ${slice.length}, received ${res.data ? res.data.length : 0}`
+        );
+      }
+      const sorted = [...res.data].sort((a, b) => a.index - b.index);
       for (let i = 0; i < sorted.length; i++) {
         results[offset + i] = sorted[i].embedding;
       }
@@ -117,8 +144,13 @@ class OpenAIProvider {
       }
 
       if (res.status === 401) {
-        throw new Error(
-          'OpenAI API key is invalid or expired. Check your OPENAI_API_KEY environment variable.'
+        throw new AuthError(
+          'OpenAI API key is invalid or expired. Run `knowledge setup` to fix.'
+        );
+      }
+      if (res.status === 403) {
+        throw new AuthError(
+          `OpenAI API key lacks permission for this request (HTTP 403). Run \`knowledge setup\` to fix. ${detail}`
         );
       }
       if (res.status === 429) {
@@ -144,6 +176,7 @@ class OpenAIProvider {
 
 module.exports = {
   OpenAIProvider,
+  AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
   MAX_BATCH_SIZE,

@@ -206,8 +206,10 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading the usage guide for the knowledge base so
-> proactive querying is available while tasks execute.
+> Loading the usage guide for the knowledge base. Implementation reads
+> the code as the source of truth for *what* exists — the guide
+> documents the rare cases where the KB is useful for the *why*
+> behind an existing pattern.
 ```
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.

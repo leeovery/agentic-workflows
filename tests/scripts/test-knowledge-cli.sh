@@ -24,6 +24,14 @@ assert_eq() {
   fi
 }
 
+# Isolate tests from the developer's real system config (~/.config/workflows/).
+# Without this, a real OpenAI config leaks into keyword-only tests and breaks
+# Test 11 onward. The knowledge CLI resolves the system path via os.homedir(),
+# which honours $HOME — that's the only var that matters.
+FAKE_HOME=$(mktemp -d)
+export HOME="$FAKE_HOME"
+trap 'rm -rf "$FAKE_HOME"' EXIT
+
 # Create a temp dir as the project root for each test group.
 TEST_ROOT=""
 setup_project() {
@@ -323,6 +331,27 @@ cd "$TEST_ROOT"
 output=$(node "$BUNDLE" index .workflows/auth-flow/planning/auth-flow/planning.md 2>&1 || true)
 node "$BUNDLE" index .workflows/auth-flow/planning/auth-flow/planning.md 2>/dev/null || exit_code=$?
 assert_eq "rejects non-indexed phase" "1" "$exit_code"
+# User-visible validation error should be a clean message — no stack
+# trace noise. UserError class handles this centrally. Note: for
+# /planning/ paths the regex rejects first, producing the 'Cannot
+# derive identity' message rather than 'not indexed'.
+assert_eq "no node stack frames in error" "false" \
+  "$(echo "$output" | grep -qE '^    at [A-Za-z_]+ \(' && echo true || echo false)"
+assert_eq "error message surfaces" "true" \
+  "$(echo "$output" | grep -qE 'Cannot derive identity|not indexed' && echo true || echo false)"
+teardown_project
+
+# --- Test 14b: Non-.workflows path also produces clean user-facing error ---
+echo "Test 14b: Non-.workflows path — clean error, no stack"
+setup_project
+write_stub_config
+echo "hello" > "$TEST_ROOT/outside.md"
+cd "$TEST_ROOT"
+output=$(node "$BUNDLE" index outside.md 2>&1 || true)
+assert_eq "no stack frames" "false" \
+  "$(echo "$output" | grep -qE '^    at [A-Za-z_]+ \(' && echo true || echo false)"
+assert_eq "error message surfaces" "true" \
+  "$(echo "$output" | grep -q 'Cannot derive identity' && echo true || echo false)"
 teardown_project
 
 # --- Test 15: metadata.json created with empty pending array on first index ---
@@ -447,6 +476,41 @@ assert_eq "query refuses mismatch" "true" "$([ "$exit_code" -ne 0 ] && echo true
 assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
 
+# --- Test 22b: Bulk index also refuses provider/dimension mismatch ---
+# Previously: bulk index with a mismatching config short-circuited at
+# isIndexed() for every file, reported 'N already indexed' as if fine,
+# and the stored embeddings silently diverged from the configured dims.
+# Now: preflight resolveProviderState check fires before the per-file
+# loop, same 'Run knowledge rebuild' message as query.
+echo "Test 22b: Bulk index refuses provider mismatch"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Simulate a provider/dimension change by editing metadata.
+node -e "
+  const fs = require('fs');
+  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.provider = 'openai';
+  m.model = 'text-embedding-3-small';
+  m.dimensions = 1536;
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" set auth-flow.discussion.auth-flow status completed >/dev/null 2>&1
+exit_code=0
+# Bulk-index (no file arg) should now error on the mismatch instead of
+# silently reporting 'N already indexed'.
+output=$(run_kb index 2>&1) || exit_code=$?
+assert_eq "bulk index refuses mismatch" "true" \
+  "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "error mentions rebuild" "true" \
+  "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
+assert_eq "bulk did NOT report 'already indexed'" "false" \
+  "$(echo "$output" | grep -q 'already indexed' && echo true || echo false)"
+teardown_project
+
 # --- Test 23: Stub-to-full upgrade note ---
 echo "Test 23: Stub-to-full upgrade note"
 setup_project
@@ -458,6 +522,46 @@ run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
 assert_eq "shows upgrade note" "true" "$(echo "$output" | grep -q 'keyword-only mode' && echo true || echo false)"
+teardown_project
+
+# --- Test 23b: Stub-to-full upgrade note also fires on `index` (not just query) ---
+echo "Test 23b: Upgrade note on index"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_keyword_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Upgrade config to have a provider.
+write_stub_config
+# Re-index: should emit upgrade note on stderr.
+output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
+assert_eq "shows upgrade note on index" "true" "$(echo "$output" | grep -q 'Run .knowledge rebuild.' && echo true || echo false)"
+teardown_project
+
+# --- Test 23c: Empty-string query rejected (no "match everything") ---
+# Orama treats empty term as wildcard and returns up to `limit` chunks.
+# That's almost always a caller bug (unsubstituted template variable,
+# accidental empty positional) — surface it as an error rather than
+# returning arbitrary hits.
+echo "Test 23c: Empty query term rejected"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb query "" 2>&1) || exit_code=$?
+assert_eq "empty query exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "error message surfaces" "true" \
+  "$(echo "$output" | grep -q 'Empty search term' && echo true || echo false)"
+# Whitespace-only term also rejected.
+exit_code=0
+output=$(run_kb query "   " 2>&1) || exit_code=$?
+assert_eq "whitespace-only query exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+# Any non-empty term still works.
+exit_code=0
+run_kb query "content" >/dev/null 2>&1 || exit_code=$?
+assert_eq "valid query still succeeds" "0" "$exit_code"
 teardown_project
 
 # --- Test 24: Query on empty store returns [0 results] ---
@@ -586,11 +690,71 @@ Line 48. Line 49. Line 50. Line 51. Line 52. Line 53.
 MD
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
-# Query with --work-unit auth-flow: auth-flow results should appear first.
-output=$(run_kb query "token refresh" --work-unit auth-flow --limit 2 2>&1)
+# Query with --boost:work-unit auth-flow: auth-flow results should appear first.
+output=$(run_kb query "token refresh" --boost:work-unit auth-flow --limit 2 2>&1)
 # Extract the first provenance line's work_unit.
 first_wu=$(echo "$output" | grep -m1 '^\[discussion' | sed 's/.*| \([^/]*\)\/.*/\1/')
 assert_eq "boosted work-unit appears first" "auth-flow" "$first_wu"
+# Cross-work-unit context still surfaces — data-model should be present too.
+assert_eq "boost keeps cross-work-unit results" "true" \
+  "$(echo "$output" | grep -q 'data-model' && echo true || echo false)"
+teardown_project
+
+# --- Test 31b: --work-unit is a hard filter on query (excludes other units) ---
+echo "Test 31b: --work-unit filters on query"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+create_work_unit "data-model" "feature" "Data"
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
+mkdir -p "$TEST_ROOT/.workflows/data-model/discussion"
+cat > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md" <<'MD'
+# Auth Discussion
+## Token refresh
+Token refresh design. Rate limiting. Padding line 1. Padding line 2. Padding line 3.
+Padding line 4. Padding line 5. Padding line 6. Padding line 7. Padding line 8.
+Padding line 9. Padding line 10. Padding line 11. Padding line 12. Padding line 13.
+MD
+cat > "$TEST_ROOT/.workflows/data-model/discussion/data-model.md" <<'MD'
+# Data Model Discussion
+## Token storage
+Token refresh storage. Rate limiting. Padding line 1. Padding line 2. Padding line 3.
+Padding line 4. Padding line 5. Padding line 6. Padding line 7. Padding line 8.
+Padding line 9. Padding line 10. Padding line 11. Padding line 12. Padding line 13.
+MD
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
+output=$(run_kb query "token" --work-unit auth-flow --limit 10 2>&1)
+assert_eq "filter includes auth-flow" "true" "$(echo "$output" | grep -q 'auth-flow/' && echo true || echo false)"
+assert_eq "filter excludes data-model" "false" "$(echo "$output" | grep -q 'data-model/' && echo true || echo false)"
+teardown_project
+
+# --- Test 31c: unknown boost field errors out ---
+echo "Test 31c: Unknown --boost field errors"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb query "anything" --boost:bogus foo 2>&1) || exit_code=$?
+assert_eq "unknown boost field exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "unknown boost field error mentions valid fields" "true" \
+  "$(echo "$output" | grep -q 'work-unit, work-type, phase, topic, confidence' && echo true || echo false)"
+teardown_project
+
+# --- Test 31d: missing --boost value errors out ---
+echo "Test 31d: Missing --boost value errors"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+exit_code=0
+output=$(run_kb query "anything" --boost:work-unit 2>&1) || exit_code=$?
+assert_eq "missing boost value exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "missing boost value error explicit" "true" \
+  "$(echo "$output" | grep -q 'requires a value' && echo true || echo false)"
 teardown_project
 
 # --- Test 32: Query errors when metadata missing but store exists ---
@@ -675,6 +839,54 @@ assert_eq "outputs not-ready" "not-ready" "$(echo "$output" | tr -d '\n')"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
 
+# --- Test 37b: Check not-ready when config.json is corrupt (invalid JSON) ---
+echo "Test 37b: Check not-ready (corrupt config JSON)"
+setup_project
+# Write invalid JSON to the config — previously this slipped through and
+# check reported 'ready'; user only discovered the problem on a later
+# index/query with a cryptic JSON parse error.
+echo 'not valid json{{' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+stdout=$(run_kb check 2>/dev/null)
+stderr=$(run_kb check 2>&1 >/dev/null)
+assert_eq "outputs not-ready on corrupt config" "not-ready" "$(echo "$stdout" | tr -d '\n')"
+assert_eq "writes config diagnostic on stderr" "true" \
+  "$(echo "$stderr" | grep -q 'config error' && echo true || echo false)"
+teardown_project
+
+# --- Test 37c: Check not-ready when config lacks 'knowledge' key ---
+echo "Test 37c: Check not-ready (config missing knowledge key)"
+setup_project
+echo '{"other":"stuff"}' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+stdout=$(run_kb check 2>/dev/null)
+stderr=$(run_kb check 2>&1 >/dev/null)
+assert_eq "outputs not-ready on shape mismatch" "not-ready" "$(echo "$stdout" | tr -d '\n')"
+assert_eq "diagnostic mentions 'knowledge' key" "true" \
+  "$(echo "$stderr" | grep -q 'knowledge' && echo true || echo false)"
+teardown_project
+
+# --- Test 37d: Corrupt config overrides otherwise-ready state ---
+# Strongest guard: an otherwise-healthy KB (valid store, valid metadata)
+# whose config gets corrupted. Pre-fix, cmdCheck only checked file
+# existence for config — so this reported 'ready' and deferred the
+# parse error to the next index/query. Now: not-ready.
+echo "Test 37d: Check not-ready (corrupt config overrides ready state)"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Sanity: with valid config, check reports ready.
+baseline=$(run_kb check 2>/dev/null | tr -d '\n')
+assert_eq "baseline is ready" "ready" "$baseline"
+# Now corrupt the config; store + metadata remain intact.
+echo 'not valid json{{' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+stdout=$(run_kb check 2>/dev/null)
+stderr=$(run_kb check 2>&1 >/dev/null)
+assert_eq "flips to not-ready on corrupt config" "not-ready" "$(echo "$stdout" | tr -d '\n')"
+assert_eq "stderr explains why" "true" \
+  "$(echo "$stderr" | grep -q 'config error' && echo true || echo false)"
+teardown_project
+
 # ============================================================================
 # REMOVE COMMAND TESTS
 # ============================================================================
@@ -700,6 +912,31 @@ assert_eq "reports removed chunks" "true" "$(echo "$output" | grep -qE 'Removed 
 query_output=$(run_kb query "content" --limit 10 2>&1)
 assert_eq "data-model chunks unaffected" "true" "$(echo "$query_output" | grep -q 'data-model' && echo true || echo false)"
 assert_eq "auth-flow chunks gone" "false" "$(echo "$query_output" | grep -q 'auth-flow/auth-flow' && echo true || echo false)"
+teardown_project
+
+# --- Test 38b: remove --dry-run previews without deleting ---
+echo "Test 38b: remove --dry-run is observational"
+setup_project
+create_work_unit "preview-wu" "feature" "Preview"
+write_stub_config
+create_discussion_file "preview-wu" "preview-wu"
+run_kb index .workflows/preview-wu/discussion/preview-wu.md >/dev/null 2>&1
+# Use a term that appears in the fixture ('content') to count chunks —
+# empty-string queries are now a UserError (intentional, to catch
+# unsubstituted template variables).
+# grep -c exits 1 on zero matches; absorb under set -eo pipefail.
+before=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+dry_output=$(run_kb remove --work-unit preview-wu --dry-run 2>&1)
+assert_eq "dry-run says 'Would remove'" "true" \
+  "$(echo "$dry_output" | grep -q 'Would remove' && echo true || echo false)"
+assert_eq "dry-run does NOT say 'Removed'" "false" \
+  "$(echo "$dry_output" | grep -qE '^Removed' && echo true || echo false)"
+after=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+assert_eq "chunk count unchanged after dry-run" "$before" "$after"
+# Sanity: a real remove afterwards DOES delete.
+run_kb remove --work-unit preview-wu >/dev/null 2>&1
+after_real=$(run_kb query "content" --limit 100 2>&1 | grep -c '^\[discussion' || true)
+assert_eq "real remove actually deletes" "0" "$after_real"
 teardown_project
 
 # --- Test 39: Remove chunks for a work unit + phase ---
@@ -735,15 +972,30 @@ assert_eq "invoicing chunks unaffected" "true" "$(echo "$query_output" | grep -q
 assert_eq "billing chunks gone" "false" "$(echo "$query_output" | grep -q 'billing' && echo true || echo false)"
 teardown_project
 
-# --- Test 41: Remove reports 0 when no chunks match ---
-echo "Test 41: Remove 0 when no match"
+# --- Test 41: Remove rejects unknown work unit (registry lookup) ---
+# Previously this silently succeeded with 'Removed 0 chunks' — a fat-fingered
+# --work-unit looked identical to a legitimate no-op removal. Now the work
+# unit must exist in the project registry (migration 031 keeps the registry
+# in sync with the filesystem).
+echo "Test 41: Remove rejects unknown work unit"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-output=$(run_kb remove --work-unit nonexistent 2>&1)
-assert_eq "reports 0 removed" "true" "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
+exit_code=0
+output=$(run_kb remove --work-unit nonexistent 2>&1) || exit_code=$?
+assert_eq "exits non-zero on unknown wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "error names the wu" "true" \
+  "$(echo "$output" | grep -q '"nonexistent"' && echo true || echo false)"
+assert_eq "error mentions project manifest" "true" \
+  "$(echo "$output" | grep -q 'project manifest' && echo true || echo false)"
+# Legitimate removal of an existing wu with 0 matching chunks still succeeds.
+exit_code=0
+output=$(run_kb remove --work-unit auth-flow --phase research --topic nothing 2>&1) || exit_code=$?
+assert_eq "wu-exists + no-match still succeeds" "0" "$exit_code"
+assert_eq "reports 0 removed on real miss" "true" \
+  "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
 teardown_project
 
 # --- Test 42: Remove errors when --topic given without --phase ---
@@ -768,10 +1020,12 @@ assert_eq "exits 1" "1" "$exit_code"
 assert_eq "shows usage" "true" "$(echo "$output" | grep -q 'Usage:' && echo true || echo false)"
 teardown_project
 
-# --- Test 44: Remove from empty store reports 0 ---
+# --- Test 44: Remove from empty/nonexistent store reports 0 (WU exists) ---
 echo "Test 44: Remove from empty/nonexistent store"
 setup_project
+create_work_unit "auth-flow" "feature" "Auth"
 write_stub_config
+# WU exists in registry but no store yet — should cleanly no-op.
 output=$(run_kb remove --work-unit auth-flow 2>&1)
 assert_eq "reports 0 removed" "true" "$(echo "$output" | grep -q 'Removed 0 chunks' && echo true || echo false)"
 teardown_project
@@ -1379,6 +1633,224 @@ run_kb remove --work-unit cancelled-wu >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 status_output=$(run_kb status 2>&1)
 assert_eq "bulk index skipped cancelled wu" "true" "$(echo "$status_output" | grep -q 'cancelled-wu' && echo false || echo true)"
+teardown_project
+
+# --- Test 81: pending-removal queue survives writes + drain works ---
+echo "Test 81: Pending removal queue"
+setup_project
+create_work_unit "drop-me" "feature" "Drop"
+write_stub_config
+create_discussion_file "drop-me" "drop-me"
+run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
+meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
+# Seed a pending removal (simulates a prior failure).
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$meta','utf8'));
+m.pending_removals=[{workUnit:'stale-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'seeded',attempts:1}];
+fs.writeFileSync('$meta', JSON.stringify(m));
+"
+# Status surfaces pending removal.
+status_output=$(run_kb status 2>&1)
+assert_eq "status shows pending removal" "true" "$(echo "$status_output" | grep -q 'Pending removals: 1' && echo true || echo false)"
+# Part A — a metadata-mutating operation (index) must PRESERVE the queue, not strip it.
+# This is the direct regression guard for the writeMetadata-whitelist bug that
+# shipped the pending-removal feature broken. Indexing writes metadata; if
+# pending_removals is absent from the whitelist, this assertion fails.
+create_work_unit "other-wu" "feature" "Other"
+create_discussion_file "other-wu" "other-wu"
+run_kb index .workflows/other-wu/discussion/other-wu.md >/dev/null 2>&1
+queue_after_index=$(node -e "
+const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
+process.stdout.write(String((m.pending_removals||[]).length));
+")
+assert_eq "pending_removals survives an index write" "1" "$queue_after_index"
+# Part B — a normal remove call drains the queue on the no-op success path
+# (stale-wu has no chunks; performRemoval returns 0 chunks, processPendingRemovals
+# then removes the entry). Pairs with Parts C and D below which exercise the
+# real-failure paths.
+run_kb remove --work-unit drop-me >/dev/null 2>&1
+queue_after_remove=$(node -e "
+const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
+process.stdout.write(String((m.pending_removals||[]).length));
+")
+assert_eq "queue drains on no-op success" "0" "$queue_after_remove"
+teardown_project
+
+# --- Test 81b: pending-removal queue evicts after REMOVAL_MAX_ATTEMPTS ---
+# Guards processPendingRemovals' eviction branch — without a real-failure
+# test, all observed behaviour was on the no-op success path above.
+echo "Test 81b: Pending removal eviction"
+setup_project
+create_work_unit "drop-me" "feature" "Drop"
+write_stub_config
+create_discussion_file "drop-me" "drop-me"
+run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
+meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
+# Seed a pending removal already at the eviction threshold.
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$meta','utf8'));
+m.pending_removals=[{workUnit:'capped-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'simulated permanent failure',attempts:10}];
+fs.writeFileSync('$meta', JSON.stringify(m));
+"
+# Triggering processPendingRemovals (any command that calls it works).
+evict_stderr=$(run_kb remove --work-unit drop-me 2>&1 >/dev/null)
+queue_after_evict=$(node -e "
+const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
+process.stdout.write(String((m.pending_removals||[]).length));
+")
+assert_eq "queue empty after eviction at MAX_ATTEMPTS" "0" "$queue_after_evict"
+assert_eq "eviction surfaces stderr notice" "true" "$(echo "$evict_stderr" | grep -q 'exceeded 10 attempts.*evicting' && echo true || echo false)"
+teardown_project
+
+# --- Test 81c: pending-removal failure increments attempts ---
+# Guards the addPendingRemoval bump in processPendingRemovals' catch branch.
+# Simulates a real failure by corrupting store.msp before the drain runs.
+echo "Test 81c: Pending removal attempts increment on failure"
+setup_project
+create_work_unit "drop-me" "feature" "Drop"
+write_stub_config
+create_discussion_file "drop-me" "drop-me"
+run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
+meta="$TEST_ROOT/.workflows/.knowledge/metadata.json"
+store_msp="$TEST_ROOT/.workflows/.knowledge/store.msp"
+# Seed a pending removal mid-attempts and corrupt the store so loadStore throws.
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$meta','utf8'));
+m.pending_removals=[{workUnit:'flaky-wu',phase:null,topic:null,queued_at:new Date().toISOString(),error:'prior failure',attempts:5}];
+fs.writeFileSync('$meta', JSON.stringify(m));
+"
+# Backup and corrupt the store.
+cp "$store_msp" "$store_msp.bak"
+printf 'corrupt-msgpack-bytes' > "$store_msp"
+# Trigger processPendingRemovals — this will fail and bump attempts.
+run_kb compact >/dev/null 2>&1 || true
+attempts_after=$(node -e "
+const m=JSON.parse(require('fs').readFileSync('$meta','utf8'));
+const r=(m.pending_removals||[]).find(r=>r.workUnit==='flaky-wu');
+process.stdout.write(String(r ? r.attempts : 'evicted'));
+")
+# Restore the store (so teardown_project can run cleanly if needed).
+mv "$store_msp.bak" "$store_msp"
+assert_eq "attempts incremented from 5 to 6 after real failure" "6" "$attempts_after"
+teardown_project
+
+# --- Test 82: Rebuild cleans up .bak files on success and on leftover ---
+echo "Test 82: Rebuild backup handling"
+setup_project
+create_work_unit "wu-a" "feature" "A"
+write_stub_config
+create_discussion_file "wu-a" "wu-a"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase wu-a.discussion.wu-a >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$MANIFEST_JS" set wu-a.discussion.wu-a status completed >/dev/null 2>&1
+run_kb index .workflows/wu-a/discussion/wu-a.md >/dev/null 2>&1
+# Simulate a leftover .bak from a prior aborted rebuild.
+touch "$TEST_ROOT/.workflows/.knowledge/store.msp.bak"
+touch "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak"
+echo "rebuild" | run_kb rebuild >/dev/null 2>&1
+assert_eq "leftover .bak cleaned after successful rebuild" "true" \
+  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.msp.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+assert_eq "store still present after rebuild" "true" \
+  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+teardown_project
+
+# --- Test 84: Stranded-chunks orphan cleanup ---
+# When the registry has no entry for a work unit but the store has
+# chunks for it (post-absorption / manual mutation), `knowledge remove
+# --work-unit <name>` should clean the chunks rather than dead-end on
+# the typo error.
+echo "Test 84: Stranded-chunks orphan cleanup"
+setup_project
+create_work_unit "absorbed-wu" "feature" "Absorbed"
+write_stub_config
+create_discussion_file "absorbed-wu" "absorbed-wu"
+run_kb index .workflows/absorbed-wu/discussion/absorbed-wu.md >/dev/null 2>&1
+# Simulate post-absorption state: registry entry deleted, chunks linger.
+project_manifest="$TEST_ROOT/.workflows/manifest.json"
+node -e "
+const fs=require('fs');
+const m=JSON.parse(fs.readFileSync('$project_manifest','utf8'));
+if (m.work_units) delete m.work_units['absorbed-wu'];
+delete m['absorbed-wu'];
+fs.writeFileSync('$project_manifest', JSON.stringify(m, null, 2));
+"
+exit_code=0
+output=$(run_kb remove --work-unit absorbed-wu 2>&1) || exit_code=$?
+assert_eq "orphan cleanup succeeds (exit 0)" "0" "$exit_code"
+assert_eq "stderr surfaces orphan-cleanup notice" "true" \
+  "$(echo "$output" | grep -q 'orphan cleanup' && echo true || echo false)"
+assert_eq "removed chunks reported" "true" \
+  "$(echo "$output" | grep -qE 'Removed [1-9].* chunks' && echo true || echo false)"
+# Subsequent run must surface the typo error (registry empty, store empty).
+exit_code=0
+output=$(run_kb remove --work-unit absorbed-wu 2>&1) || exit_code=$?
+assert_eq "subsequent typo case rejects" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "subsequent error mentions no matching chunks" "true" \
+  "$(echo "$output" | grep -q 'no matching chunks exist' && echo true || echo false)"
+teardown_project
+
+# --- Test 85: Setup aborts on store-without-metadata partial state ---
+# The inverse of #7 — when store.msp exists but metadata.json is missing,
+# writing fresh metadata against an unknown store would create a
+# provider/dimensions mismatch we cannot detect from the store alone.
+# Setup must abort with rebuild advice instead.
+echo "Test 85: Setup aborts on store-without-metadata"
+setup_project
+write_stub_config
+# Seed a store but not metadata.
+create_work_unit "seed-wu" "feature" "Seed"
+create_discussion_file "seed-wu" "seed-wu"
+run_kb index .workflows/seed-wu/discussion/seed-wu.md >/dev/null 2>&1
+rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+exit_code=0
+# Pipe input "n" so reconfigure prompt (if reached) declines — but we expect
+# abort before that. setup is a TTY wizard, but here we just need the project
+# init step to surface the partial-state guard. Run via a wrapper that fakes
+# a TTY by redirecting stdin from /dev/tty is overkill; instead invoke the
+# wrapper script that runs runProjectInitStep directly via node -e.
+# The setup CLI requires a TTY; invoke runProjectInitStep directly so
+# the partial-state guard fires without needing the readline wizard.
+output=$(cd "$TEST_ROOT" && node -e "
+const setup = require('$BUNDLE').setup;
+(async () => {
+  try {
+    await setup.runProjectInitStep({ question: () => '', close: () => {} });
+    console.log('UNEXPECTED_SUCCESS');
+  } catch (e) {
+    console.log('THREW:', e.message);
+  }
+})();
+" 2>&1) || true
+assert_eq "setup partial-state guard surfaces inconsistent-state error" "true" \
+  "$(echo "$output" | grep -q 'inconsistent state' && echo true || echo false)"
+assert_eq "setup partial-state guard mentions knowledge rebuild" "true" \
+  "$(echo "$output" | grep -q 'knowledge rebuild' && echo true || echo false)"
+teardown_project
+
+# --- Test 83: Subdirectory invocation finds project root ---
+# Pre-fix, knowledgeDir() / orphan check / manifest reads anchored at
+# process.cwd(). Running `knowledge status` from a subdirectory of the
+# project marked every chunk as orphaned (and broke other commands).
+# After the findProjectRoot walk-up, KB commands work from any
+# subdirectory of a project.
+echo "Test 83: Subdirectory invocation"
+setup_project
+create_work_unit "subdir-wu" "feature" "Subdir"
+write_stub_config
+create_discussion_file "subdir-wu" "subdir-wu"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase subdir-wu.discussion.subdir-wu >/dev/null 2>&1
+run_kb index .workflows/subdir-wu/discussion/subdir-wu.md >/dev/null 2>&1
+# Now invoke status from a deeply nested subdirectory of the project.
+mkdir -p "$TEST_ROOT/.workflows/subdir-wu/discussion"
+cd "$TEST_ROOT/.workflows/subdir-wu/discussion"
+status_from_subdir=$(node "$BUNDLE" status 2>&1)
+cd "$TEST_ROOT"
+assert_eq "status from subdir reports zero orphans" "true" \
+  "$(echo "$status_from_subdir" | grep -q 'Orphaned chunks' && echo false || echo true)"
+assert_eq "status from subdir reports the indexed chunks" "true" \
+  "$(echo "$status_from_subdir" | grep -qE 'Total chunks: [1-9]' && echo true || echo false)"
 teardown_project
 
 # --- Summary ---

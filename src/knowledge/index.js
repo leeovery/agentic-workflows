@@ -11,7 +11,7 @@ const path = require('path');
 const store = require('./store');
 const chunker = require('./chunker');
 const { StubProvider } = require('./embeddings');
-const { OpenAIProvider } = require('./providers/openai');
+const { OpenAIProvider, AuthError } = require('./providers/openai');
 const config = require('./config');
 const setup = require('./setup');
 
@@ -24,32 +24,84 @@ const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specificatio
 // Resolve manifest CLI path. In the bundled form, __dirname is
 // skills/workflow-knowledge/scripts/. In source, __dirname is
 // src/knowledge/. Both need to resolve to skills/workflow-manifest/scripts/manifest.cjs.
-const MANIFEST_JS = fs.existsSync(path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'))
-  ? path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs')
-  : path.join(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+const MANIFEST_JS = (() => {
+  const srcCandidate = path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs');
+  const bundledCandidate = path.join(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+  if (fs.existsSync(srcCandidate)) return srcCandidate;
+  if (fs.existsSync(bundledCandidate)) return bundledCandidate;
+  // Fail loud at load time — a missing manifest CLI would otherwise turn
+  // every manifest-dependent command into a silent no-op (deferred-issue #5).
+  throw new Error(
+    'Could not locate manifest.cjs. Tried:\n' +
+      `  ${srcCandidate}\n` +
+      `  ${bundledCandidate}\n` +
+      'This is an installation problem — the knowledge CLI cannot work without the manifest CLI.'
+  );
+})();
 
 const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
 const PENDING_CATCHUP_LIMIT = 5;
+const PENDING_MAX_ATTEMPTS = 10;
 
 // Default dimensions when creating a store in keyword-only mode.
 // The store schema requires a dimension parameter, but keyword-only docs
 // omit the embedding field entirely — this value just satisfies the schema.
 const KEYWORD_ONLY_DIMENSIONS = 1536;
 
+// Emit the stub-to-full upgrade note at most once per process to avoid
+// spamming bulk-index runs that iterate over many files.
+let stubUpgradeWarned = false;
+
+// ---------------------------------------------------------------------------
+// UserError — marker class for user-visible validation failures. Thrown at
+// input-validation sites (bad path, provider mismatch, missing chunking
+// config, etc.) where the error message is actionable advice for the user.
+//
+// Two behavioural contracts:
+//   1. withRetry does not retry UserError (same treatment as programming
+//      errors — retry would waste backoff budget on a permanent failure).
+//   2. The top-level main().catch prints the message alone, no stack trace.
+// ---------------------------------------------------------------------------
+
+class UserError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'UserError';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Flag parsing
 // ---------------------------------------------------------------------------
 
 /**
- * Parse argv-style args into { positional: string[], flags: object }.
- * Handles --flag value and --flag=value forms.
+ * Parse argv-style args into { positional, flags, boosts }.
+ * Handles --flag value and --flag=value forms for regular flags.
+ *
+ * `--boost:<field> <value>` is special — repeatable, collected into an
+ * ordered list. The field name is embedded in the flag name (not the value)
+ * so skill templates never have to parse or escape a key/value separator.
  */
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
+  const boosts = [];
   let i = 0;
   while (i < argv.length) {
     const arg = argv[i];
+    if (arg.startsWith('--boost:')) {
+      const field = arg.slice('--boost:'.length);
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        boosts.push({ field, value: argv[i + 1] });
+        i += 2;
+      } else {
+        // Missing value — leave null so the command handler can error out
+        // with a clear message at validation time.
+        boosts.push({ field, value: null });
+        i++;
+      }
+      continue;
+    }
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       if (eqIdx !== -1) {
@@ -69,13 +121,16 @@ function parseArgs(argv) {
     }
     i++;
   }
-  return { positional, flags };
+  return { positional, flags, boosts };
 }
 
 /**
  * Build an options object from parsed flags for command handlers.
+ * `--work-unit` is a hard filter on every command that accepts it
+ * (consistent with --phase, --topic, --work-type). Re-ranking happens
+ * exclusively through --boost:<field>.
  */
-function buildOptions(flags) {
+function buildOptions(flags, boosts) {
   return {
     workType: flags['work-type'] || null,
     phase: flags['phase'] || null,
@@ -83,6 +138,7 @@ function buildOptions(flags) {
     topic: flags['topic'] || null,
     limit: flags['limit'] ? parseInt(flags['limit'], 10) : null,
     dryRun: flags['dry-run'] === true || flags['dry-run'] === 'true',
+    boosts: boosts || [],
   };
 }
 
@@ -102,20 +158,28 @@ Commands:
   rebuild   Rebuild the knowledge base from scratch
   setup     Interactive setup wizard
 
-Options:
-  --work-type <type>   Filter by work type
-  --work-unit <unit>   Re-rank boost for this work unit (not a filter)
-  --phase <phase>      Filter by phase
-  --topic <topic>      Filter by topic
-  --limit <n>          Limit number of results
-  --dry-run            Preview without making changes`;
+Filter options (hard filters — non-matching chunks excluded):
+  --work-type <type>        Filter by work type
+  --work-unit <unit>        Filter by work unit
+  --phase <phase>           Filter by phase
+  --topic <topic>           Filter by topic
+
+Re-ranking (query only, additive; repeat for multiple boosts):
+  --boost:<field> <value>   Boost chunks matching <field>:<value> by +0.1
+                            Valid fields: work-unit, work-type, phase,
+                            topic, confidence
+
+Other options:
+  --limit <n>               Limit number of results
+  --dry-run                 Preview without making changes
+  --help, -h                Show this usage and exit 0`;
 
 // ---------------------------------------------------------------------------
 // Path helpers
 // ---------------------------------------------------------------------------
 
 function knowledgeDir() {
-  return path.resolve(process.cwd(), '.workflows', '.knowledge');
+  return path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
 }
 
 function storePath() {
@@ -152,6 +216,20 @@ async function withRetry(fn, opts) {
     try {
       return await fn();
     } catch (err) {
+      // Don't retry programming errors — retrying a TypeError just burns
+      // 7s of backoff before the stack trace reaches the user.
+      // Also don't retry UserError or AuthError: validation failures and
+      // bad/expired API keys will fail identically on every retry.
+      if (
+        err instanceof UserError ||
+        err instanceof AuthError ||
+        err instanceof TypeError ||
+        err instanceof ReferenceError ||
+        err instanceof SyntaxError ||
+        err instanceof RangeError
+      ) {
+        throw err;
+      }
       lastErr = err;
       if (attempt < maxAttempts - 1) {
         const delay = backoff[attempt] || backoff[backoff.length - 1];
@@ -177,7 +255,7 @@ function deriveIdentity(filePath) {
   // Match .workflows/{work_unit}/{phase}/{rest}
   const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification)\/(.+)$/.exec(norm);
   if (!match) {
-    throw new Error(
+    throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
         'Expected path matching: .workflows/{work_unit}/{phase}/...'
     );
@@ -191,12 +269,12 @@ function deriveIdentity(filePath) {
   // anything-without-slash, which would otherwise accept `..` or `.`
   // and escape the .workflows directory when path.resolve() is applied.
   if (workUnit === '.' || workUnit === '..' || workUnit.startsWith('.')) {
-    throw new Error(`Invalid work unit name: "${workUnit}"`);
+    throw new UserError(`Invalid work unit name: "${workUnit}"`);
   }
 
   // Validate indexed phase.
   if (!INDEXED_PHASES.includes(phase)) {
-    throw new Error(`File is in phase "${phase}" which is not indexed.`);
+    throw new UserError(`File is in phase "${phase}" which is not indexed.`);
   }
 
   let topic;
@@ -204,7 +282,7 @@ function deriveIdentity(filePath) {
     // .workflows/{wu}/specification/{topic}/specification.md
     const specMatch = /^([^/]+)\/specification\.md$/.exec(rest);
     if (!specMatch) {
-      throw new Error(
+      throw new UserError(
         `Unexpected specification path structure: ${rest}\n` +
           'Expected: .workflows/{work_unit}/specification/{topic}/specification.md'
       );
@@ -214,7 +292,7 @@ function deriveIdentity(filePath) {
     // .workflows/{wu}/{phase}/{topic}.md — flat file, no subdirectories.
     const flatMatch = /^([^/]+)\.md$/.exec(rest);
     if (!flatMatch) {
-      throw new Error(
+      throw new UserError(
         `Unexpected ${phase} path structure: ${rest}\n` +
           `Expected: .workflows/{work_unit}/${phase}/{topic}.md`
       );
@@ -224,7 +302,7 @@ function deriveIdentity(filePath) {
     // .workflows/{wu}/research/{filename}.md — flat file.
     const resMatch = /^([^/]+)\.md$/.exec(rest);
     if (!resMatch) {
-      throw new Error(
+      throw new UserError(
         `Unexpected research path structure: ${rest}\n` +
           'Expected: .workflows/{work_unit}/research/{filename}.md'
       );
@@ -233,7 +311,7 @@ function deriveIdentity(filePath) {
   }
 
   if (topic === '.' || topic === '..' || topic.startsWith('.')) {
-    throw new Error(`Invalid topic name: "${topic}"`);
+    throw new UserError(`Invalid topic name: "${topic}"`);
   }
 
   return { workUnit, phase, topic };
@@ -243,13 +321,13 @@ function deriveIdentity(filePath) {
  * Read the work_type from the work unit's manifest.json.
  */
 function readWorkType(workUnit) {
-  const manifestFile = path.resolve(process.cwd(), '.workflows', workUnit, 'manifest.json');
+  const manifestFile = path.resolve(config.findProjectRoot(), '.workflows', workUnit, 'manifest.json');
   if (!fs.existsSync(manifestFile)) {
-    throw new Error(`Work unit manifest not found: ${manifestFile}`);
+    throw new UserError(`Work unit manifest not found: ${manifestFile}`);
   }
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   if (!manifest.work_type) {
-    throw new Error(`Work unit manifest missing work_type field: ${manifestFile}`);
+    throw new UserError(`Work unit manifest missing work_type field: ${manifestFile}`);
   }
   return manifest.work_type;
 }
@@ -270,7 +348,16 @@ function resolveProviderState(metadata, cfg, provider) {
 
   // Case 4: metadata.provider is null (keyword-only store).
   // Always allowed — index WITHOUT vectors regardless of current config.
+  // If the user has since configured a provider, warn once so they know
+  // they're still in keyword-only mode and must `rebuild` to upgrade.
   if (metaProvider === null || metaProvider === undefined) {
+    if (provider && !stubUpgradeWarned) {
+      stubUpgradeWarned = true;
+      process.stderr.write(
+        'Note: store is keyword-only but an embedding provider is now configured. ' +
+        'Run `knowledge rebuild` to switch to full hybrid search.\n'
+      );
+    }
     return { mode: 'keyword-only', provider: null };
   }
 
@@ -286,7 +373,7 @@ function resolveProviderState(metadata, cfg, provider) {
     }
 
     // Case 2: mismatch.
-    throw new Error(
+    throw new UserError(
       'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
         `  Store: provider=${metaProvider}, model=${metaModel}, dimensions=${metaDimensions}\n` +
         `  Config: provider=${cfg.provider}, model=${curModel}, dimensions=${curDimensions}`
@@ -294,7 +381,7 @@ function resolveProviderState(metadata, cfg, provider) {
   }
 
   // Case 3: metadata has provider but current config does not.
-  throw new Error(
+  throw new UserError(
     'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
       `  Store was indexed with: provider=${metaProvider}, model=${metaModel}\n` +
       '  Current config has no provider configured.'
@@ -346,7 +433,7 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   // Load chunking config.
   const chunkConfigPath = path.join(__dirname, '..', 'chunking', identity.phase + '.json');
   if (!fs.existsSync(chunkConfigPath)) {
-    throw new Error(`Chunking config not found: ${chunkConfigPath}`);
+    throw new UserError(`Chunking config not found: ${chunkConfigPath}`);
   }
   const chunkConfig = JSON.parse(fs.readFileSync(chunkConfigPath, 'utf8'));
 
@@ -356,7 +443,7 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   const chunks = chunker.chunk(content, chunkConfig);
 
   if (chunks.length === 0) {
-    throw new Error(
+    throw new UserError(
       `No chunks produced from ${sourceFile}. Refusing to index an empty file — ` +
         'this would silently wipe any existing indexed chunks for this topic. ' +
         'Use `knowledge remove` explicitly if that is what you want.'
@@ -454,6 +541,23 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
       db = await store.loadStore(sp);
     }
 
+    // Re-validate provider state inside the lock. A concurrent rebuild or
+    // another indexer could have rewritten the store with different
+    // dimensions between our embedBatch call (outside the lock) and now
+    // (deferred-issue #1 TOCTOU). If dimensions diverged, our embeddings
+    // are the wrong width — abort, and withRetry at the CLI layer will
+    // re-enter with fresh state.
+    if (effectiveMode === 'full' && fs.existsSync(mp)) {
+      const reloadedMeta = store.readMetadata(mp);
+      const expectedDims = effectiveProvider.dimensions();
+      if (reloadedMeta.provider && reloadedMeta.dimensions !== expectedDims) {
+        throw new Error(
+          'Store schema changed during index (concurrent rebuild). ' +
+          `Embeddings produced for dims=${expectedDims}, store now has dims=${reloadedMeta.dimensions}. Retrying.`
+        );
+      }
+    }
+
     await store.removeByIdentity(db, {
       work_unit: identity.workUnit,
       phase: identity.phase,
@@ -502,11 +606,29 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
  */
 function runManifest(args) {
   const { execFileSync } = require('child_process');
+  // Spawn with cwd anchored at the project root so the manifest CLI's
+  // own cwd-relative resolution lands at the right place even when KB
+  // commands are invoked from a subdirectory.
   return execFileSync('node', [MANIFEST_JS, ...args], {
-    cwd: process.cwd(),
+    cwd: config.findProjectRoot(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });
+}
+
+/**
+ * Distinguish expected "not found" misses from broken-manifest / corrupt-JSON
+ * / bad-path errors. Knowledge-base helpers swallow the former (lookups are
+ * best-effort); the latter must be surfaced or bulk operations become silent
+ * no-ops (deferred-issue #4).
+ *
+ * manifest.cjs uses exit code 2 for expected misses, 1 for real errors —
+ * stable and unambiguous. execFileSync surfaces the code on err.status.
+ */
+function reportUnexpectedManifestError(context, err) {
+  if (err && err.status === 2) return;
+  const msg = err && err.stderr ? String(err.stderr).trim() : err.message;
+  process.stderr.write(`Warning: manifest CLI failed in ${context}: ${msg}\n`);
 }
 
 /**
@@ -536,7 +658,8 @@ function discoverArtifacts() {
   try {
     const raw = runManifest(['list']);
     workUnits = JSON.parse(raw);
-  } catch (_) {
+  } catch (err) {
+    reportUnexpectedManifestError('discoverArtifacts:list', err);
     return items;
   }
 
@@ -561,8 +684,11 @@ function discoverArtifacts() {
           if (filePath && fs.existsSync(path.resolve(filePath))) {
             items.push({ file: filePath, workUnit: wuName, phase, topic: topicName });
           }
-        } catch (_) {
-          // Skip unresolvable items.
+        } catch (err) {
+          reportUnexpectedManifestError(
+            `discoverArtifacts:resolve(${wuName}.${phase}.${topicName})`,
+            err
+          );
         }
       }
     }
@@ -576,10 +702,24 @@ async function cmdIndexBulk(options, cfg, provider) {
 
   const kDir = knowledgeDir();
   const sp = storePath();
+  const mp = metadataPath();
 
   // Ensure knowledge directory exists.
   if (!fs.existsSync(kDir)) {
     fs.mkdirSync(kDir, { recursive: true });
+  }
+
+  // Preflight: if a prior store exists, validate the current config's
+  // provider/model/dimensions match what the store was built with. Without
+  // this check, a config change (e.g. 128-dim stub → 1536-dim OpenAI) that
+  // triggers bulk index would short-circuit at the isIndexed() step for
+  // every file and report "Indexed 0 files. N already indexed." as though
+  // everything were fine — while the stored embeddings are still at the old
+  // dimensions. resolveProviderState throws a UserError with the "Run
+  // `knowledge rebuild`" hint, same as `query` surfaces on mismatch.
+  if (fs.existsSync(mp)) {
+    const meta = store.readMetadata(mp);
+    resolveProviderState(meta, cfg, provider);
   }
 
   // Load existing store to check what's already indexed.
@@ -617,11 +757,17 @@ async function cmdIndexBulk(options, cfg, provider) {
         db = await store.loadStore(sp);
       }
     } catch (err) {
-      // All retries exhausted — add to pending queue.
+      // All retries exhausted — add to pending queue. Write the stack to
+      // stderr so debugging does not depend on users capturing it later.
+      // Skip the stack for UserError and AuthError — both are user-config
+      // failures (validation / bad API key) where the message line alone
+      // is the actionable signal.
       await addToPendingQueue(item.file, err.message);
       process.stderr.write(
         `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
       );
+      const isUserFacing = err instanceof UserError || err instanceof AuthError;
+      if (err.stack && !isUserFacing) process.stderr.write(err.stack + '\n');
     }
   }
 
@@ -664,11 +810,12 @@ async function addToPendingQueue(file, errorMsg) {
     if (!Array.isArray(metadata.pending)) metadata.pending = [];
 
     const existing = metadata.pending.findIndex((p) => p.file === file);
-    const entry = { file, failed_at: new Date().toISOString(), error: errorMsg };
+    const base = { file, failed_at: new Date().toISOString(), error: errorMsg };
     if (existing >= 0) {
-      metadata.pending[existing] = entry;
+      const prior = metadata.pending[existing];
+      metadata.pending[existing] = { ...base, attempts: (prior.attempts || 1) + 1 };
     } else {
-      metadata.pending.push(entry);
+      metadata.pending.push({ ...base, attempts: 1 });
     }
     store.writeMetadata(mp, metadata);
   });
@@ -703,6 +850,15 @@ async function processPendingQueue(cfg, provider, limit) {
   const toProcess = metadata.pending.slice(0, limit);
 
   for (const item of toProcess) {
+    if ((item.attempts || 0) >= PENDING_MAX_ATTEMPTS) {
+      // Permanent failure — evict so the queue doesn't grow forever.
+      process.stderr.write(
+        `Pending item ${item.file} exceeded ${PENDING_MAX_ATTEMPTS} attempts — evicting. Last error: ${item.error}\n`
+      );
+      await removePendingItem(item.file);
+      continue;
+    }
+
     const absFile = path.resolve(item.file);
     if (!fs.existsSync(absFile)) {
       // File no longer exists — remove from queue.
@@ -726,10 +882,139 @@ async function processPendingQueue(cfg, provider, limit) {
         { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
       );
       await removePendingItem(item.file);
-    } catch (_) {
-      // Still failing — leave in queue.
+    } catch (err) {
+      // Still failing — bump attempts so eviction eventually fires.
+      await addToPendingQueue(item.file, err.message);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pending removal queue — mirrors the pending-index queue but for failed
+// `knowledge remove` calls (lock timeout, store I/O error). Without this,
+// a cancelled/superseded/promoted work unit's stale chunks persist in the
+// store until the user manually retries.
+// ---------------------------------------------------------------------------
+
+const REMOVAL_MAX_ATTEMPTS = 10;
+
+function removalKey(r) {
+  return `${r.workUnit}|${r.phase || ''}|${r.topic || ''}`;
+}
+
+async function addPendingRemoval(opts, errorMsg) {
+  const mp = metadataPath();
+  const kDir = knowledgeDir();
+  const lp = lockFilePath();
+  if (!fs.existsSync(kDir)) fs.mkdirSync(kDir, { recursive: true });
+
+  await store.withLock(lp, async () => {
+    let metadata;
+    if (fs.existsSync(mp)) {
+      metadata = store.readMetadata(mp);
+    } else {
+      metadata = {
+        provider: null,
+        model: null,
+        dimensions: null,
+        last_indexed: null,
+        pending: [],
+        pending_removals: [],
+      };
+    }
+    if (!Array.isArray(metadata.pending_removals)) metadata.pending_removals = [];
+
+    const key = removalKey(opts);
+    const existing = metadata.pending_removals.findIndex((r) => removalKey(r) === key);
+    const base = {
+      workUnit: opts.workUnit,
+      phase: opts.phase || null,
+      topic: opts.topic || null,
+      queued_at: new Date().toISOString(),
+      error: errorMsg,
+    };
+    if (existing >= 0) {
+      const prior = metadata.pending_removals[existing];
+      metadata.pending_removals[existing] = { ...base, attempts: (prior.attempts || 0) + 1 };
+    } else {
+      metadata.pending_removals.push({ ...base, attempts: 1 });
+    }
+    store.writeMetadata(mp, metadata);
+  });
+}
+
+async function removePendingRemoval(opts) {
+  const mp = metadataPath();
+  const lp = lockFilePath();
+  if (!fs.existsSync(mp)) return;
+
+  await store.withLock(lp, async () => {
+    if (!fs.existsSync(mp)) return;
+    const metadata = store.readMetadata(mp);
+    if (!Array.isArray(metadata.pending_removals)) return;
+    const key = removalKey(opts);
+    metadata.pending_removals = metadata.pending_removals.filter((r) => removalKey(r) !== key);
+    store.writeMetadata(mp, metadata);
+  });
+}
+
+// Lock semantics mirror processPendingQueue: never call while holding the
+// store lock — each queued retry acquires the lock itself.
+async function processPendingRemovals() {
+  const mp = metadataPath();
+  if (!fs.existsSync(mp)) return;
+
+  const metadata = store.readMetadata(mp);
+  if (!Array.isArray(metadata.pending_removals) || metadata.pending_removals.length === 0) return;
+
+  const toProcess = metadata.pending_removals.slice();
+
+  for (const item of toProcess) {
+    if ((item.attempts || 0) >= REMOVAL_MAX_ATTEMPTS) {
+      process.stderr.write(
+        `Pending removal for ${removalKey(item)} exceeded ${REMOVAL_MAX_ATTEMPTS} attempts — evicting.\n`
+      );
+      await removePendingRemoval(item);
+      continue;
+    }
+
+    try {
+      await performRemoval({ workUnit: item.workUnit, phase: item.phase, topic: item.topic });
+      process.stderr.write(`Drained pending removal for ${removalKey(item)}.\n`);
+      await removePendingRemoval(item);
+    } catch (err) {
+      // Still failing — bump attempts so we eventually evict.
+      try {
+        await addPendingRemoval(
+          { workUnit: item.workUnit, phase: item.phase, topic: item.topic },
+          err.message
+        );
+      } catch (_) {
+        // Metadata write failed — the next invocation will retry.
+      }
+    }
+  }
+}
+
+// Perform the actual remove-by-filter operation under the store lock.
+// Extracted from cmdRemove so the pending-removal queue can invoke it
+// without re-running the CLI layer (argument parsing, exit codes).
+async function performRemoval(opts) {
+  const sp = storePath();
+  const lp = lockFilePath();
+
+  if (!fs.existsSync(sp)) return 0;
+
+  let removed = 0;
+  await store.withLock(lp, async () => {
+    const db = await store.loadStore(sp);
+    const where = { work_unit: { eq: opts.workUnit } };
+    if (opts.phase) where.phase = { eq: opts.phase };
+    if (opts.topic) where.topic = { eq: opts.topic };
+    removed = await store.removeByFilter(db, where);
+    await store.saveStore(db, sp);
+  });
+  return removed;
 }
 
 // ---------------------------------------------------------------------------
@@ -772,15 +1057,31 @@ function formatDate(ts) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// CLI boost field → store schema field. Kebab-case on the CLI surface,
+// snake_case in the schema. Keeps the CLI consistent with --work-unit /
+// --work-type while matching the indexed field names internally.
+const BOOST_FIELD_MAP = {
+  'work-unit': 'work_unit',
+  'work-type': 'work_type',
+  'phase': 'phase',
+  'topic': 'topic',
+  'confidence': 'confidence',
+};
+const BOOST_AMOUNT = 0.1;
+
 /**
  * Application-level re-ranking per design doc lines 566-574.
- * Adjusts Orama scores based on work-unit proximity, confidence tier,
- * and recency. Returns the array sorted by adjusted score (descending).
+ * Adjusts Orama scores based on user-specified boosts (+0.1 per match,
+ * additive across boosts), plus always-on confidence tier and recency
+ * signals. Returns the array sorted by adjusted score (descending).
+ *
+ * @param {Array} results  raw result rows
+ * @param {Array<{field: string, value: string}>} boosts  normalised boost
+ *        list — field is already mapped to the store schema name
  */
-function rerank(results, workUnitHint) {
+function rerank(results, boosts) {
   if (results.length === 0) return results;
 
-  // Find the most recent timestamp for normalisation.
   const maxTs = Math.max(...results.map((r) => r.timestamp || 0));
   const minTs = Math.min(...results.map((r) => r.timestamp || 0));
   const tsRange = maxTs - minTs || 1;
@@ -789,22 +1090,49 @@ function rerank(results, workUnitHint) {
     .map((r) => {
       let adjustedScore = r.score || 0;
 
-      // Work-unit proximity boost (0.1 when matching).
-      if (workUnitHint && r.work_unit === workUnitHint) {
-        adjustedScore += 0.1;
+      // User-specified boosts — +0.1 per match, additive.
+      if (Array.isArray(boosts)) {
+        for (const b of boosts) {
+          if (r[b.field] === b.value) {
+            adjustedScore += BOOST_AMOUNT;
+          }
+        }
       }
 
-      // Confidence tier boost (0 to 0.04).
+      // Always-on confidence tier boost (0 to 0.04).
       const confRank = CONFIDENCE_RANK[r.confidence] || 0;
       adjustedScore += confRank * 0.01;
 
-      // Recency boost (0 to 0.05).
+      // Always-on recency boost (0 to 0.05).
       const recency = ((r.timestamp || 0) - minTs) / tsRange;
       adjustedScore += recency * 0.05;
 
       return Object.assign({}, r, { score: adjustedScore });
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Validate user-supplied boost directives and map CLI field names to the
+ * store schema field names. Exits with a clear error on unknown field or
+ * missing value so skill-template typos don't silently no-op.
+ */
+function normaliseBoosts(boosts) {
+  const out = [];
+  for (const b of boosts) {
+    if (!b.field || !BOOST_FIELD_MAP[b.field]) {
+      process.stderr.write(
+        `Unknown --boost field: "${b.field}". Valid fields: ${Object.keys(BOOST_FIELD_MAP).join(', ')}\n`
+      );
+      process.exit(1);
+    }
+    if (b.value == null || b.value === '') {
+      process.stderr.write(`--boost:${b.field} requires a value\n`);
+      process.exit(1);
+    }
+    out.push({ field: BOOST_FIELD_MAP[b.field], value: b.value });
+  }
+  return out;
 }
 
 /**
@@ -828,7 +1156,7 @@ function resolveQueryMode(metadata, cfg, provider) {
   // Store has vectors — check provider compatibility.
   if (!provider) {
     // Config has no provider but store has vectors — mismatch.
-    throw new Error(
+    throw new UserError(
       'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
         `  Store was indexed with: provider=${metaProvider}, model=${metaModel}\n` +
         '  Current config has no provider configured.'
@@ -843,7 +1171,7 @@ function resolveQueryMode(metadata, cfg, provider) {
   }
 
   // Mismatch.
-  throw new Error(
+  throw new UserError(
     'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
       `  Store: provider=${metaProvider}, model=${metaModel}, dimensions=${metaDimensions}\n` +
       `  Config: provider=${cfg.provider}, model=${curModel}, dimensions=${curDimensions}`
@@ -852,8 +1180,21 @@ function resolveQueryMode(metadata, cfg, provider) {
 
 async function cmdQuery(args, options, cfg, provider) {
   if (args.length === 0) {
-    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--phase ...] [--work-type ...] [--work-unit ...] [--limit N]\n');
+    process.stderr.write('Usage: knowledge query <search_term> [<term2>...] [--work-unit ...] [--work-type ...] [--phase ...] [--topic ...] [--boost:<field> <value>]... [--limit N]\n');
     process.exit(1);
+  }
+
+  // Reject empty/whitespace-only terms. Orama treats an empty term as
+  // "match everything" and returns up to `limit` arbitrary chunks — almost
+  // certainly a caller mistake (fat-finger, variable template that wasn't
+  // substituted) rather than an intentional "give me anything" request.
+  for (const t of args) {
+    if (typeof t !== 'string' || t.trim() === '') {
+      throw new UserError(
+        'Empty search term. `knowledge query` requires at least one non-empty positional term. ' +
+          'If you intended to list everything indexed, use `knowledge status` instead.'
+      );
+    }
   }
 
   const searchTerms = args; // batch: multiple positional args
@@ -888,9 +1229,8 @@ async function cmdQuery(args, options, cfg, provider) {
     stubNote = '[keyword-only mode but embedding provider configured — run knowledge rebuild for full hybrid search]';
   }
 
-  // Build where clause from filters. --work-unit is NOT a filter — it's a
-  // re-rank proximity hint used after search, so other work units can still
-  // appear in results but rank lower.
+  // Build where clause from hard filters. Every --flag that names a
+  // dimension is a filter; re-ranking happens exclusively via --boost:<field>.
   const where = {};
   if (options.phase) {
     const phases = options.phase.split(',').map((s) => s.trim());
@@ -900,12 +1240,19 @@ async function cmdQuery(args, options, cfg, provider) {
     const types = options.workType.split(',').map((s) => s.trim());
     where.work_type = types.length === 1 ? { eq: types[0] } : { in: types };
   }
+  if (options.workUnit) {
+    const units = options.workUnit.split(',').map((s) => s.trim());
+    where.work_unit = units.length === 1 ? { eq: units[0] } : { in: units };
+  }
   if (options.topic) {
     const topics = options.topic.split(',').map((s) => s.trim());
     where.topic = topics.length === 1 ? { eq: topics[0] } : { in: topics };
   }
 
-  const similarity = cfg.similarity_threshold || 0.8;
+  // ?? (not ||) so an explicit `similarity_threshold: 0` — a legitimate
+  // "accept all vector matches, no filtering" setting — isn't silently
+  // rewritten to the default.
+  const similarity = cfg.similarity_threshold ?? 0.8;
   const whereClause = Object.keys(where).length > 0 ? where : undefined;
 
   // Run a search per term and merge.
@@ -942,8 +1289,9 @@ async function cmdQuery(args, options, cfg, provider) {
     }
   }
 
-  // Re-rank merged results.
-  let results = rerank(Array.from(allResults.values()), options.workUnit);
+  // Re-rank merged results using --boost:<field> directives.
+  const normalisedBoosts = normaliseBoosts(options.boosts);
+  let results = rerank(Array.from(allResults.values()), normalisedBoosts);
 
   if (results.length > limit) {
     results = results.slice(0, limit);
@@ -986,6 +1334,18 @@ async function cmdCheck(/* args, options, cfg, provider */) {
     return;
   }
 
+  // Condition 2b: config.json parses and has the expected shape.
+  // Without this, a corrupted config would pass `check` and the user
+  // would only see the JSON parse error later on `index` or `query`,
+  // with no hint that the root cause is the config file itself.
+  try {
+    config.readConfigFile(configFile);
+  } catch (err) {
+    process.stderr.write(`config error: ${err.message}\n`);
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
   // Condition 3: store.msp exists and is loadable.
   if (!fs.existsSync(sp)) {
     process.stdout.write('not-ready\n');
@@ -1024,7 +1384,7 @@ async function cmdStatus() {
   }
 
   const db = await store.loadStore(sp);
-  const allChunks = await store.searchFulltext(db, { term: '', limit: 100000 });
+  const allChunks = await store.searchAllFulltext(db);
 
   // 1. Index summary.
   out.push(`Total chunks: ${allChunks.length}`);
@@ -1086,7 +1446,17 @@ async function cmdStatus() {
       out.push('');
       out.push(`Pending items: ${metadata.pending.length}`);
       for (const p of metadata.pending) {
-        out.push(`  ${p.file} — ${p.error} (${p.failed_at})`);
+        const a = p.attempts || 1;
+        out.push(`  ${p.file} — ${p.error} (attempt ${a}/${PENDING_MAX_ATTEMPTS}, ${p.failed_at})`);
+      }
+    }
+
+    // 4b. Pending removals.
+    if (Array.isArray(metadata.pending_removals) && metadata.pending_removals.length > 0) {
+      out.push('');
+      out.push(`Pending removals: ${metadata.pending_removals.length}`);
+      for (const r of metadata.pending_removals) {
+        out.push(`  ${removalKey(r)} — ${r.error} (attempt ${r.attempts || 1}/${REMOVAL_MAX_ATTEMPTS})`);
       }
     }
 
@@ -1115,12 +1485,16 @@ async function cmdStatus() {
   }
 
   // 7. Orphan detection — source files that no longer exist.
+  // Resolve relative to the project root (found by walking up from cwd)
+  // rather than cwd directly, so status invoked from a subdirectory
+  // does not mark every chunk as orphaned.
+  const projectRoot = config.findProjectRoot();
   const orphans = [];
   const seenSources = new Set();
   for (const c of allChunks) {
     if (seenSources.has(c.source_file)) continue;
     seenSources.add(c.source_file);
-    if (!fs.existsSync(path.resolve(c.source_file))) {
+    if (!fs.existsSync(path.resolve(projectRoot, c.source_file))) {
       orphans.push(c.source_file);
     }
   }
@@ -1147,30 +1521,43 @@ async function cmdStatus() {
         out.push(`  ${f}`);
       }
     }
-  } catch (_) {
-    // Discovery may fail if no manifest — skip.
+  } catch (err) {
+    // Discovery may fail if no manifest — surface so user can tell.
+    process.stderr.write(`Warning: unindexed-artifact discovery failed: ${err.message}\n`);
   }
 
-  // 9. Manifest-knowledge consistency.
+  // 9. Manifest-knowledge consistency. Load all manifests once via
+  // `manifest list` rather than shelling out per spec topic — status was
+  // O(specs) processes before, which meant ~5s on 50-spec repos.
   const consistency = [];
+  let allManifests = null;
+  try {
+    allManifests = JSON.parse(runManifest(['list']));
+  } catch (err) {
+    reportUnexpectedManifestError('cmdStatus:list', err);
+  }
+  const manifestByName = new Map();
+  if (Array.isArray(allManifests)) {
+    for (const m of allManifests) if (m && m.name) manifestByName.set(m.name, m);
+  }
+
   for (const wu of Object.keys(byWu)) {
-    const meta = getWorkUnitMeta(wu);
-    if (!meta) continue;
-    if (meta.status === 'cancelled') {
+    const m = manifestByName.get(wu);
+    if (!m) continue;
+    if (m.status === 'cancelled') {
       consistency.push(`Cancelled work unit still indexed: ${wu}`);
     }
   }
-  // Check for superseded specs.
+  // Superseded specs: look up each topic in the cached manifest tree.
   const specChunks = allChunks.filter((c) => c.phase === 'specification');
   const specTopics = new Set(specChunks.map((c) => `${c.work_unit}.specification.${c.topic}`));
   for (const key of specTopics) {
-    try {
-      const status = runManifest(['get', key, 'status']).trim();
-      if (status === 'superseded') {
-        consistency.push(`Superseded spec still indexed: ${key}`);
-      }
-    } catch (_) {
-      // Skip if manifest lookup fails.
+    const [wuName, , topicName] = key.split('.');
+    const m = manifestByName.get(wuName);
+    if (!m || !m.phases || !m.phases.specification || !m.phases.specification.items) continue;
+    const topicData = m.phases.specification.items[topicName];
+    if (topicData && topicData.status === 'superseded') {
+      consistency.push(`Superseded spec still indexed: ${key}`);
     }
   }
   if (consistency.length > 0) {
@@ -1205,7 +1592,9 @@ async function cmdRebuild(_args, options, cfg, provider) {
   const input = await readStdinLine();
 
   if (input !== 'rebuild') {
-    process.stderr.write('Aborted.\n');
+    // Leading newline so the message doesn't run into whatever the user
+    // typed at the prompt line.
+    process.stderr.write('\nAborted.\n');
     process.exit(1);
   }
 
@@ -1222,14 +1611,24 @@ async function cmdRebuild(_args, options, cfg, provider) {
     process.exit(1);
   }
 
-  // Acquire lock before deleting files so a concurrent index/remove/
+  const spBak = sp + '.bak';
+  const mpBak = mp + '.bak';
+
+  // Acquire lock before mutating files so a concurrent index/remove/
   // compact does not race past and resurrect partial state. Then write
   // an empty placeholder store+metadata inside the same lock so there
   // is no "uninitialised" window where another process could build a
   // fresh store racing with our bulk-index.
+  //
+  // Use .bak rename rather than delete so a bulk-index failure (network
+  // outage, provider down, Ctrl-C) can be rolled back — otherwise a
+  // transient failure leaves the user with no store and no metadata.
   await store.withLock(lp, async () => {
-    if (fs.existsSync(sp)) fs.unlinkSync(sp);
-    if (fs.existsSync(mp)) fs.unlinkSync(mp);
+    // Clean any leftover .bak from a prior aborted rebuild.
+    if (fs.existsSync(spBak)) fs.unlinkSync(spBak);
+    if (fs.existsSync(mpBak)) fs.unlinkSync(mpBak);
+    if (fs.existsSync(sp)) fs.renameSync(sp, spBak);
+    if (fs.existsSync(mp)) fs.renameSync(mp, mpBak);
 
     // Write a sentinel empty store + keyword-only metadata so cmdCheck
     // and concurrent invocations see a valid (empty) state. The bulk
@@ -1249,8 +1648,40 @@ async function cmdRebuild(_args, options, cfg, provider) {
   });
   process.stdout.write('Deleted existing index.\n');
 
-  // Run bulk index (acquires the lock per-file internally).
-  await cmdIndexBulk(options, cfg, provider);
+  try {
+    // Run bulk index (acquires the lock per-file internally).
+    await cmdIndexBulk(options, cfg, provider);
+  } catch (err) {
+    // Roll back to the pre-rebuild state. Best-effort: if the rollback
+    // itself fails (disk full, permission change), we surface both errors
+    // so the user has enough to recover manually.
+    try {
+      await store.withLock(lp, async () => {
+        if (fs.existsSync(spBak)) {
+          if (fs.existsSync(sp)) fs.unlinkSync(sp);
+          fs.renameSync(spBak, sp);
+        }
+        if (fs.existsSync(mpBak)) {
+          if (fs.existsSync(mp)) fs.unlinkSync(mp);
+          fs.renameSync(mpBak, mp);
+        }
+      });
+      process.stderr.write(
+        'Rebuild failed; restored previous index from backup.\n'
+      );
+    } catch (rollbackErr) {
+      process.stderr.write(
+        `Rebuild failed and rollback also failed. Previous index is at:\n` +
+        `  ${spBak}\n  ${mpBak}\n` +
+        `Rename them back manually to recover. Rollback error: ${rollbackErr.message}\n`
+      );
+    }
+    throw err;
+  }
+
+  // Bulk index succeeded — discard the backup.
+  if (fs.existsSync(spBak)) fs.unlinkSync(spBak);
+  if (fs.existsSync(mpBak)) fs.unlinkSync(mpBak);
 }
 
 /**
@@ -1276,6 +1707,9 @@ function readStdinLine() {
       if (/\r|\n/.test(buf)) {
         process.stdin.removeListener('data', onData);
         process.stdin.removeListener('end', onEnd);
+        // Pause to release the reference — otherwise an unused stdin keeps
+        // the event loop alive if the CLI is used as a library.
+        process.stdin.pause();
         finish();
       }
     };
@@ -1296,7 +1730,7 @@ function readStdinLine() {
 
 async function cmdRemove(_args, options) {
   if (!options.workUnit) {
-    process.stderr.write('Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>]\n');
+    process.stderr.write('Usage: knowledge remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]\n');
     process.exit(1);
   }
 
@@ -1305,30 +1739,95 @@ async function cmdRemove(_args, options) {
     process.exit(1);
   }
 
+  // Validate the work unit exists in the project registry. Without this,
+  // `remove --work-unit <typo>` silently succeeds with "Removed 0 chunks"
+  // — a fat-finger is indistinguishable from a real no-op. The registry
+  // is authoritative (migration 031 backfills it from the filesystem),
+  // so a miss here means the caller has the wrong name.
+  //
+  // This check lives in cmdRemove only, not performRemoval — the pending-
+  // removal queue's drain path may legitimately target a WU that has since
+  // been removed from the registry (e.g. after absorption), and the stored
+  // chunks can still be cleaned up even when the WU entry is gone.
+  // Registry presence determines whether this is a "named WU" remove (the
+  // common path) or an "orphan-chunk cleanup" remove (the escape hatch
+  // when chunks linger after absorption / manual registry mutation). On
+  // registry-not-found, fall through to a store probe — if the store has
+  // chunks for this WU we treat it as an orphan cleanup and proceed; if
+  // not, surface the typo error.
+  let isOrphanCleanup = false;
+  try {
+    runManifest(['project', 'get', options.workUnit]);
+  } catch (err) {
+    if (err && err.status === 2) {
+      const sp = storePath();
+      let storeMatch = 0;
+      if (fs.existsSync(sp)) {
+        const db = await store.loadStore(sp);
+        const where = { work_unit: { eq: options.workUnit } };
+        if (options.phase) where.phase = { eq: options.phase };
+        if (options.topic) where.topic = { eq: options.topic };
+        storeMatch = await store.countByFilter(db, where);
+      }
+      if (storeMatch === 0) {
+        throw new UserError(
+          `Work unit "${options.workUnit}" not found in project manifest, ` +
+            `and no matching chunks exist in the knowledge base.\n` +
+            `  Check the name with \`knowledge status\`.`
+        );
+      }
+      // Stranded chunks. Proceed with removal as an orphan cleanup.
+      isOrphanCleanup = true;
+      process.stderr.write(
+        `Work unit "${options.workUnit}" is not in the project manifest, but ` +
+          `${storeMatch} chunks remain in the store. Removing as an orphan cleanup.\n`
+      );
+    } else {
+      // Any other manifest error is unexpected — rethrow so the stack shows.
+      throw err;
+    }
+  }
+
   const sp = storePath();
-  const lp = lockFilePath();
+  const desc = formatRemoveDesc(options) + (isOrphanCleanup ? ' (orphan cleanup)' : '');
+
+  // --dry-run is observational only: count what would be removed, touch
+  // nothing on disk. Don't drain the pending-removal queue either — that
+  // would be a real side effect.
+  if (options.dryRun) {
+    if (!fs.existsSync(sp)) {
+      process.stdout.write(`Would remove 0 chunks for ${desc} (store not initialised)\n`);
+      return;
+    }
+    const db = await store.loadStore(sp);
+    const where = { work_unit: { eq: options.workUnit } };
+    if (options.phase) where.phase = { eq: options.phase };
+    if (options.topic) where.topic = { eq: options.topic };
+    const count = await store.countByFilter(db, where);
+    process.stdout.write(`Would remove ${count} chunks for ${desc}\n`);
+    return;
+  }
+
+  // Drain any previously-failed removals first so stale chunks from earlier
+  // cancellations/supersessions don't linger just because the store was
+  // briefly locked.
+  await processPendingRemovals();
 
   if (!fs.existsSync(sp)) {
-    const desc = formatRemoveDesc(options);
     process.stdout.write(`Removed 0 chunks for ${desc}\n`);
     return;
   }
 
-  let removed = 0;
-
-  await store.withLock(lp, async () => {
-    const db = await store.loadStore(sp);
-
-    const where = { work_unit: { eq: options.workUnit } };
-    if (options.phase) where.phase = { eq: options.phase };
-    if (options.topic) where.topic = { eq: options.topic };
-
-    removed = await store.removeByFilter(db, where);
-    await store.saveStore(db, sp);
-  });
-
-  const desc = formatRemoveDesc(options);
-  process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
+  try {
+    const removed = await performRemoval(options);
+    process.stdout.write(`Removed ${removed} chunks for ${desc}\n`);
+  } catch (err) {
+    await addPendingRemoval(options, err.message);
+    process.stderr.write(
+      `Removal of ${desc} failed (${err.message}). Queued for automatic retry on next remove/compact.\n`
+    );
+    process.exit(1);
+  }
 }
 
 function formatRemoveDesc(options) {
@@ -1354,25 +1853,33 @@ function getWorkUnitMeta(workUnit) {
       if (completedAt === '' || completedAt === 'undefined' || completedAt === 'null') {
         completedAt = null;
       }
-    } catch (_) {
-      // completed_at may not exist.
+    } catch (err) {
+      // completed_at may not exist — expected. But surface unexpected errors.
+      reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.completed_at)`, err);
     }
     return { status, completed_at: completedAt };
-  } catch (_) {
-    // Manifest lookup failed (e.g., orphaned work unit).
+  } catch (err) {
+    // Work unit missing or manifest broken. "Not found" is expected for
+    // orphaned work units referenced by stale chunks; anything else is a
+    // real problem the user should see.
+    reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.status)`, err);
     return null;
   }
 }
 
 async function cmdCompact(_args, options, cfg) {
+  // Drain any previously-failed removals first.
+  await processPendingRemovals();
+
   const sp = storePath();
   const lp = lockFilePath();
 
-  // Check decay config. Accept only: false (disabled) or non-negative integer.
-  // Reject strings, negatives, NaN, non-integers — these would silently
-  // produce either no-op (NaN cutoff) or mass deletion (negative cutoff).
+  // Check decay config. Accept: false or null (both disable), or a
+  // non-negative integer. Reject strings, negatives, NaN, non-integers
+  // — these would silently produce either no-op (NaN cutoff) or mass
+  // deletion (negative cutoff).
   const rawDecay = cfg && cfg.decay_months !== undefined ? cfg.decay_months : config.DEFAULTS.decay_months;
-  if (rawDecay === false) {
+  if (rawDecay === false || rawDecay === null) {
     process.stdout.write('Compaction disabled\n');
     return;
   }
@@ -1394,7 +1901,7 @@ async function cmdCompact(_args, options, cfg) {
   cutoffDate.setMonth(cutoffDate.getMonth() - decayMonths);
 
   // Discover unique work units in the store by searching for all docs.
-  const allResults = await store.searchFulltext(db, { term: '', limit: 100000 });
+  const allResults = await store.searchAllFulltext(db);
   if (allResults.length === 0) return;
 
   // Group by work unit.
@@ -1481,10 +1988,20 @@ async function cmdCompact(_args, options, cfg) {
 
 async function main() {
   const rawArgs = process.argv.slice(2);
-  const { positional, flags } = parseArgs(rawArgs);
+
+  // Informational help: --help / -h / `help` subcommand. Writes USAGE to
+  // stdout and exits 0 so scripts can probe the CLI without treating
+  // help as a failure. `knowledge` with no args is still an error —
+  // the user forgot a command (stderr, exit 1, handled below).
+  if (rawArgs.includes('--help') || rawArgs.includes('-h') || rawArgs[0] === 'help') {
+    process.stdout.write(USAGE + '\n');
+    process.exit(0);
+  }
+
+  const { positional, flags, boosts } = parseArgs(rawArgs);
   const command = positional[0];
   const commandArgs = positional.slice(1);
-  const options = buildOptions(flags);
+  const options = buildOptions(flags, boosts);
 
   if (!command) {
     process.stderr.write(USAGE + '\n');
@@ -1520,6 +2037,8 @@ module.exports = {
   deriveIdentity,
   resolveProviderState,
   withRetry,
+  UserError,
+  AuthError,
   main,
   cmdIndexBulk,
   StubProvider,
@@ -1538,7 +2057,13 @@ module.exports = {
 
 if (require.main === module) {
   main().catch((err) => {
-    process.stderr.write(String(err && err.stack ? err.stack : err) + '\n');
+    // UserError: validation failure — show the message alone, no stack.
+    // Anything else: full stack (likely a bug worth investigating).
+    if (err instanceof UserError) {
+      process.stderr.write('Error: ' + err.message + '\n');
+    } else {
+      process.stderr.write(String(err && err.stack ? err.stack : err) + '\n');
+    }
     process.exit(1);
   });
 }

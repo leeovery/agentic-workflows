@@ -60,7 +60,6 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 ```
 > Running migrations to keep workflow files in sync.
-> This ensures everything is up to date before we proceed.
 ```
 
 **Run migrations — this is mandatory. You must complete it before proceeding.**
