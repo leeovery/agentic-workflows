@@ -557,14 +557,18 @@ async function runProjectInitStep(rl) {
     : KEYWORD_ONLY_DIMENSIONS;
 
   // Create empty store and save.
-  if (!detected.storeExists || detected.fullyInitialised) {
+  const wroteStore = !detected.storeExists || detected.fullyInitialised;
+  if (wroteStore) {
     const db = await store.createStore(dims);
     await store.saveStore(db, storeFile);
     process.stdout.write(`  store.msp written (${dims} dimensions)\n`);
   }
 
-  // Write initial metadata.
-  if (!detected.metadataExists || detected.fullyInitialised) {
+  // Write initial metadata. Also rewrite whenever a new store was just
+  // created — stale metadata paired with a fresh empty store surfaces
+  // as a misleading "Provider/model changed — run rebuild" error on
+  // the next `knowledge index` (the partial-state recovery case).
+  if (!detected.metadataExists || detected.fullyInitialised || wroteStore) {
     store.writeMetadata(metadataFile, {
       provider: provider || null,
       model: provider && cfg.model ? cfg.model : null,

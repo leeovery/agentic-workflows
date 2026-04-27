@@ -108,8 +108,8 @@ Project knowledge base partially initialised at ${e}
 `)):process.stdout.write(`
 Initialising project knowledge base at ${e}
 `);le.mkdirSync(e,{recursive:!0}),(!i.configExists||i.fullyInitialised)&&(B.writeConfigFile(n,ao()),process.stdout.write(`  config.json written
-`));let o=B.loadConfig(),c=o.provider||null,a=Number.isInteger(o.dimensions)&&o.dimensions>0?o.dimensions:ro;if(!i.storeExists||i.fullyInitialised){let l=await ar.createStore(a);await ar.saveStore(l,r),process.stdout.write(`  store.msp written (${a} dimensions)
-`)}return(!i.metadataExists||i.fullyInitialised)&&(ar.writeMetadata(s,{provider:c||null,model:c&&o.model?o.model:null,dimensions:c?a:null,last_indexed:null,pending:[]}),process.stdout.write(`  metadata.json written
+`));let o=B.loadConfig(),c=o.provider||null,a=Number.isInteger(o.dimensions)&&o.dimensions>0?o.dimensions:ro,l=!i.storeExists||i.fullyInitialised;if(l){let u=await ar.createStore(a);await ar.saveStore(u,r),process.stdout.write(`  store.msp written (${a} dimensions)
+`)}return(!i.metadataExists||i.fullyInitialised||l)&&(ar.writeMetadata(s,{provider:c||null,model:c&&o.model?o.model:null,dimensions:c?a:null,last_indexed:null,pending:[]}),process.stdout.write(`  metadata.json written
 `)),{created:!0,provider:c,dimensions:a}}async function mo(t,e){let n=B.loadConfig(),r=B.resolveProvider(n);process.stdout.write(`
 Initial indexing
 `),process.stdout.write(`----------------
