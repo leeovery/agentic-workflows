@@ -165,6 +165,26 @@ The manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the singl
 
 **Shell quoting**: Always single-quote values that zsh would interpret — `'[]'`, `'[...]'`, `'{}'`, `'~'`. Bare `[]` is a glob pattern (causes `no matches found` errors) and bare `~` expands to the home directory.
 
+## Knowledge Base Subsystem
+
+A retrieval-augmented store of completed workflow artifacts (research, discussion, investigation, specification — never planning/implementation/review). Every entry-point skill gates on the knowledge base being initialised before any phase can run.
+
+**Source vs bundle**: Source lives in `src/knowledge/` (multi-file Node.js — `index.js`, `store.js`, `chunker.js`, `embeddings.js`, `config.js`, `setup.js`, `providers/openai.js`). The committed CLI at `skills/workflow-knowledge/scripts/knowledge.cjs` is a single-file esbuild bundle. AGNTC installs from git tags with no build step, so the bundle must be present and current at tag time.
+
+**Building**: `npm run build` runs `node build/knowledge.build.js`, which esbuild-bundles `src/knowledge/index.js` into `skills/workflow-knowledge/scripts/knowledge.cjs`. Always rebuild after editing `src/knowledge/` and commit the bundle alongside the source change.
+
+**Allowed tools**: Skills that invoke the CLI must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in their frontmatter. The skill's own SKILL.md is the authoritative API reference — read it before adding a new call site.
+
+**Mandatory Step 0.3 gate**: Every entry-point skill ends Step 0 with `Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)**`. The reference runs `knowledge check` → if `not-ready`, terminal stop directing the user to `knowledge setup`; if `ready`, runs `knowledge compact` (TTL-based decay) and returns. Setup is human-only (interactive readline) — Claude cannot run it.
+
+**Phase-completion indexing**: Processing skills invoke `knowledge index <path>` at phase completion to add the new artifact. Spec promotion and work-unit cancellation invoke `knowledge remove --work-unit ... [--phase ...] [--topic ...]` to clean up. The pending queue handles transient failures with retry on next `index` call.
+
+**Stub mode**: When no embedding provider is configured, the CLI runs in keyword-only mode (BM25). Treat as a supported degraded mode, not a broken state. `query` output prepends a `[keyword-only mode — ...]` note.
+
+**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Run via the same harness as migration tests. Add a test alongside any `src/knowledge/` change.
+
+**Project layout**: `.workflows/.knowledge/` (per-project store + metadata + config), `~/.config/workflows/config.json` (system defaults), `~/.config/workflows/credentials.json` (mode 0600, optional API key store).
+
 ## Display & Output Conventions (MANDATORY)
 
 These are hard rules, not suggestions. All entry-point skills that present discovery state, menus, or interactive choices MUST follow these conventions exactly. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
@@ -577,8 +597,9 @@ Load **[casing-conventions.md](...)** and follow its instructions as written.
 [run migrations + CRITICAL note]
 → Proceed to **Step 0.3**.
 
-### Step 0.3: Knowledge Check
-Load **[knowledge-check.md](...)** and follow its instructions as written.
+### Step 0.3: Intro and Knowledge Check
+[phase title + intro signpost]
+Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
 → Proceed to **Step 1**.
 ```
 
