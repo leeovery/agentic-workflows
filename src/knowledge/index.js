@@ -1379,7 +1379,7 @@ async function cmdStatus() {
   }
 
   const db = await store.loadStore(sp);
-  const allChunks = await store.searchFulltext(db, { term: '', limit: 100000 });
+  const allChunks = await store.searchAllFulltext(db);
 
   // 1. Index summary.
   out.push(`Total chunks: ${allChunks.length}`);
@@ -1865,7 +1865,7 @@ async function cmdCompact(_args, options, cfg) {
   cutoffDate.setMonth(cutoffDate.getMonth() - decayMonths);
 
   // Discover unique work units in the store by searching for all docs.
-  const allResults = await store.searchFulltext(db, { term: '', limit: 100000 });
+  const allResults = await store.searchAllFulltext(db);
   if (allResults.length === 0) return;
 
   // Group by work unit.

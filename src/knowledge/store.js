@@ -112,10 +112,51 @@ async function insertDocument(db, doc) {
   return orama.insert(db, payload);
 }
 
+// Page size for whole-store enumeration. Paged iteration replaces a
+// previous fixed `limit: 100000` so very large stores are not silently
+// truncated. 1000 keeps round-trip overhead negligible for in-process
+// Orama while bounding peak memory per page.
+const ENUMERATION_PAGE_SIZE = 1000;
+
+// Limit for filtered single-shot reads. Orama's `where` clause is an
+// indexed lookup — the matched subset is small in practice (one identity,
+// one phase, one work unit), so a single search with a high limit is the
+// right shape. Pagination is reserved for unfiltered whole-store
+// enumeration because Orama 3.1.x's offset+where combination drops pages.
+//
+// 1M is well above any realistic per-identity / per-topic / per-phase
+// chunk count (a giant topic might have low thousands; a per-work-unit
+// remove on a long-lived project, low tens of thousands). Orama
+// pre-allocates an array of size `limit` for results, so this cannot be
+// `Number.MAX_SAFE_INTEGER` — it would throw RangeError.
+const FILTERED_QUERY_LIMIT = 1_000_000;
+
+/**
+ * Enumerate every document in the store, paged via offset+limit until
+ * exhausted. Used by status, compact, and any caller that needs a
+ * complete unfiltered view. Filtered enumerations should call Orama's
+ * `where` directly with an unbounded limit (see findInternalIdsByIdentity).
+ */
+async function searchAllFulltext(db) {
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const res = await orama.search(db, {
+      term: '',
+      limit: ENUMERATION_PAGE_SIZE,
+      offset,
+    });
+    if (res.hits.length === 0) break;
+    all.push(...res.hits.map(normaliseHit));
+    if (res.hits.length < ENUMERATION_PAGE_SIZE) break;
+    offset += ENUMERATION_PAGE_SIZE;
+  }
+  return all;
+}
+
 /**
  * Find all internal document IDs whose (work_unit, phase, topic) matches
- * the given identity key. Uses Orama's search with `where` filters and
- * a large limit so we get every match in one pass.
+ * the given identity key. Internal IDs are what `removeMultiple` accepts.
  */
 async function findInternalIdsByIdentity(db, { work_unit, phase, topic }) {
   const res = await orama.search(db, {
@@ -125,7 +166,7 @@ async function findInternalIdsByIdentity(db, { work_unit, phase, topic }) {
       phase: { eq: phase },
       topic: { eq: topic },
     },
-    limit: 100000,
+    limit: FILTERED_QUERY_LIMIT,
   });
   return res.hits.map((h) => h.id);
 }
@@ -164,11 +205,15 @@ async function removeByFilter(db, where) {
   const res = await orama.search(db, {
     term: '',
     where,
-    limit: 100000,
+    limit: FILTERED_QUERY_LIMIT,
   });
   const ids = res.hits.map((h) => h.id);
   if (ids.length === 0) return 0;
-  const removed = await orama.removeMultiple(db, ids);
+  // Orama's sync removeMultiple chains batches via setTimeout but
+  // returns the result count after only the first batch — pass
+  // batchSize == ids.length to force a single batch and get an
+  // accurate total when removing > 1000 chunks.
+  const removed = await orama.removeMultiple(db, ids, ids.length);
   return removed;
 }
 
@@ -184,7 +229,7 @@ async function countByFilter(db, where) {
   const res = await orama.search(db, {
     term: '',
     where,
-    limit: 100000,
+    limit: FILTERED_QUERY_LIMIT,
   });
   return res.hits.length;
 }
@@ -492,6 +537,7 @@ module.exports = {
   removeByFilter,
   countByFilter,
   searchFulltext,
+  searchAllFulltext,
   searchVector,
   searchHybrid,
   saveStore,

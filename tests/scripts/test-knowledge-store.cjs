@@ -10,7 +10,10 @@ const {
   createStore,
   insertDocument,
   removeByIdentity,
+  removeByFilter,
+  countByFilter,
   searchFulltext,
+  searchAllFulltext,
   searchVector,
   searchHybrid,
   saveStore,
@@ -336,6 +339,42 @@ describe('knowledge store', () => {
       where: { phase: { eq: 'research' } },
     });
     assert.deepStrictEqual(hits, []);
+  });
+
+  // Pin two contracts the previous `limit: 100000` cap silently relied on:
+  //   1. Whole-store enumeration (searchAllFulltext) must paginate so it
+  //      returns every doc regardless of count.
+  //   2. Filtered single-shot reads (countByFilter, removeByFilter) must
+  //      surface every match, not stop at an internal cap.
+  // Seeding 2500 docs forces both to handle counts above any single
+  // Orama batch (and above the previous 100k cap if Orama ever changes
+  // its internal page defaults).
+  it('whole-store enumeration and filtered reads return every match (no truncation)', async () => {
+    const db = await createStore(STUB_DIMS);
+    const TOTAL = 2500; // > ENUMERATION_PAGE_SIZE (1000) — forces multiple pages
+    for (let i = 0; i < TOTAL; i++) {
+      await insertDocument(db, makeDoc({
+        id: `page-${i}`,
+        work_unit: i % 2 === 0 ? 'wu-even' : 'wu-odd',
+      }));
+    }
+
+    // 1. Paginated whole-store enumeration returns every document.
+    const all = await searchAllFulltext(db);
+    assert.strictEqual(all.length, TOTAL, 'searchAllFulltext returns every document');
+    const allIds = new Set(all.map((h) => h.id));
+    assert.strictEqual(allIds.size, TOTAL, 'no duplicate IDs across paginated results');
+
+    // 2. Filtered reads via Orama's where clause return every match.
+    const evenCount = await countByFilter(db, { work_unit: { eq: 'wu-even' } });
+    assert.strictEqual(evenCount, TOTAL / 2);
+
+    // 3. removeByFilter removes every match (including the > 1000 batch case
+    //    that exposed Orama's sync removeMultiple count bug).
+    const removed = await removeByFilter(db, { work_unit: { eq: 'wu-odd' } });
+    assert.strictEqual(removed, TOTAL / 2);
+    const remaining = await searchAllFulltext(db);
+    assert.strictEqual(remaining.length, TOTAL / 2);
   });
 });
 
