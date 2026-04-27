@@ -220,7 +220,7 @@ Note: `validateApiKey` already exists and does a real test embed call. The bug i
 
 ---
 
-### #7 — Setup partial-state recovery gap
+### #7 — Setup partial-state recovery gap (✅ commit `3ecd1f1e`)
 
 **File:** `src/knowledge/setup.js:536-552`
 
@@ -323,7 +323,7 @@ Or: when registry says "not found" but chunks exist for that WU in the store, ro
 
 ## Minor / polish (skip-by-default unless paired with a related fix)
 
-### #13 — `contextual-query.md:3` header stale
+### #13 — `contextual-query.md:3` header stale (✅ commit `9b0ba424`)
 
 Says "loaded at phase start in research, discussion, and investigation processing skills" — but is also loaded by scoping (per Minor #9 of the cleanup). Update header to include scoping.
 
