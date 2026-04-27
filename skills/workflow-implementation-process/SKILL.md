@@ -1,7 +1,7 @@
 ---
 name: workflow-implementation-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 # Implementation Process
@@ -195,7 +195,28 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 
 ---
 
-## Step 6: Task Loop
+## Step 6: Knowledge Usage
+
+> *Output the next fenced block as a code block:*
+
+```
+── Knowledge Usage ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the usage guide for the knowledge base so
+> proactive querying is available while tasks execute.
+```
+
+Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+
+→ Proceed to **Step 7**.
+
+---
+
+## Step 7: Task Loop
 
 > *Output the next fenced block as a code block:*
 
@@ -213,21 +234,23 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 
 Load **[task-loop.md](references/task-loop.md)** and follow its instructions as written.
 
+*Knowledge-base nudge — code is the source of truth for *what* exists; read it rather than query. Reach for the KB only when you need the *why* behind an existing pattern (rare). Never to fill spec gaps — those are blockers. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+
 After the loop completes:
 
 #### If the task loop exited early (user chose `stop`)
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 #### Otherwise
 
-**CRITICAL**: This routing applies on **every** task loop completion — including after returning from Step 7 with analysis-created tasks. Step 6 and Step 7 form a mandatory cycle: tasks execute → analysis runs → new tasks may be created → tasks execute again → analysis runs again. Never skip Step 7 after a task loop completes.
+**CRITICAL**: This routing applies on **every** task loop completion — including after returning from Step 8 with analysis-created tasks. Step 7 and Step 8 form a mandatory cycle: tasks execute → analysis runs → new tasks may be created → tasks execute again → analysis runs again. Never skip Step 8 after a task loop completes.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Analysis Loop
+## Step 8: Analysis Loop
 
 > *Output the next fenced block as a code block:*
 
@@ -247,15 +270,15 @@ Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instruct
 
 #### If new tasks were created in the plan
 
-→ Return to **Step 6**.
+→ Return to **Step 7**.
 
 #### If no tasks were created
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 ---
 
-## Step 8: Compliance Self-Check
+## Step 9: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -271,11 +294,11 @@ Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instruct
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ Proceed to **Step 10**.
 
 ---
 
-## Step 9: Mark Implementation Complete
+## Step 10: Mark Implementation Complete
 
 > *Output the next fenced block as a code block:*
 

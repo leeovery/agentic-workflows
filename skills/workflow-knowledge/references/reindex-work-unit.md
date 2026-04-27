@@ -1,6 +1,6 @@
 # Re-Index Work Unit
 
-*Shared reference for skills that need to re-index all completed artifacts of a work unit (e.g., reactivation after cancellation, feature-to-epic pivot).*
+*Reference for **[workflow-knowledge](../SKILL.md)** — loaded by skills that need to re-index all completed artifacts of a work unit (e.g., reactivation after cancellation, feature-to-epic pivot).*
 
 ---
 

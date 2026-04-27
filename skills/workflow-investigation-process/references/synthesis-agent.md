@@ -119,6 +119,6 @@ Synthesis: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
 Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md
 ```
 
-Carry the synthesis context forward — Step 6 (Findings Review) will incorporate these gaps into the findings presentation.
+Carry the synthesis context forward — Step 8 (Findings Review) will incorporate these gaps into the findings presentation.
 
 → Return to caller.

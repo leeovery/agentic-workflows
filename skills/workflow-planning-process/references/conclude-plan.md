@@ -21,7 +21,7 @@ Ready to conclude?
 
 #### If `no`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
 
 #### If `yes`
 

@@ -63,4 +63,4 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 
 #### If `no`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.

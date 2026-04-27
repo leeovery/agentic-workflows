@@ -75,7 +75,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > pipeline ends at specification — no planning or implementation.
 ```
 
-Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
+Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 

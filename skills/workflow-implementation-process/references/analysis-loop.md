@@ -55,7 +55,7 @@ You MUST NOT choose on the user's behalf.
 
 **If `skip`:**
 
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+→ Return to **[the skill](../SKILL.md)** for **Step 9**.
 
 ---
 
@@ -139,7 +139,7 @@ impl({work_unit}): analysis cycle {N} — findings
 
 #### If all three agents returned `STATUS: clean`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+→ Return to **[the skill](../SKILL.md)** for **Step 9**.
 
 #### Otherwise
 
@@ -161,7 +161,7 @@ impl({work_unit}): analysis cycle {N} — synthesis
 
 #### If `STATUS` is `clean`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+→ Return to **[the skill](../SKILL.md)** for **Step 9**.
 
 #### If `STATUS` is `tasks_proposed`
 
@@ -289,7 +289,7 @@ Commit the staging file updates:
 impl({work_unit}): analysis cycle {N} — tasks skipped
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 8**.
+→ Return to **[the skill](../SKILL.md)** for **Step 9**.
 
 ---
 

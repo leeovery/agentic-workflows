@@ -102,7 +102,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} s
 
 **If `selected.status` was `cancelled`:**
 
-Cancellation removed the work unit's chunks from the knowledge base. Restore them by loading **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
+Cancellation removed the work unit's chunks from the knowledge base. Restore them by loading **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
 
 > *Output the next fenced block as a code block:*
 

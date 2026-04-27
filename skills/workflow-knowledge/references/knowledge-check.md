@@ -1,6 +1,6 @@
 # Knowledge Check
 
-*Shared reference for all entry-point skills.*
+*Reference for **[workflow-knowledge](../SKILL.md)** — loaded by all entry-point skills in Step 0.*
 
 ---
 

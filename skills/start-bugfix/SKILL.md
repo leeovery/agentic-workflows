@@ -73,7 +73,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 > then hand off to investigation to diagnose the root cause.
 ```
 
-Load **[knowledge-check.md](../workflow-shared/references/knowledge-check.md)** and follow its instructions as written.
+Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 

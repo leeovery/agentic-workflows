@@ -128,7 +128,28 @@ Load **[initialize-investigation.md](references/initialize-investigation.md)** a
 
 ---
 
-## Step 2: Symptom Gathering
+## Step 2: Knowledge Usage
+
+> *Output the next fenced block as a code block:*
+
+```
+── Knowledge Usage ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the usage guide for the knowledge base so
+> proactive querying is available throughout the investigation.
+```
+
+Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
+
+→ Proceed to **Step 3**.
+
+---
+
+## Step 3: Symptom Gathering
 
 > *Output the next fenced block as a code block:*
 
@@ -149,11 +170,32 @@ Document symptoms in the investigation file as you gather them. Commit after eac
 
 When symptoms are sufficiently understood to begin code analysis:
 
-→ Proceed to **Step 3**.
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 3: Code Analysis
+## Step 4: Contextual Query
+
+> *Output the next fenced block as a code block:*
+
+```
+── Contextual Query ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking the knowledge base for prior investigations or
+> related work that matches the symptoms just gathered.
+```
+
+Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Code Analysis
 
 > *Output the next fenced block as a code block:*
 
@@ -172,11 +214,11 @@ Load **[analysis-patterns.md](references/analysis-patterns.md)** and use its tec
 
 Document findings in the investigation file as you analyze. Commit after each significant finding.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 4: Root Cause Synthesis
+## Step 6: Root Cause Synthesis
 
 > *Output the next fenced block as a code block:*
 
@@ -200,11 +242,13 @@ Synthesize findings into a clear root cause:
 
 Document in the investigation file and commit.
 
-→ Proceed to **Step 5**.
+*Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
+
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 5: Root Cause Validation
+## Step 7: Root Cause Validation
 
 > *Output the next fenced block as a code block:*
 
@@ -221,11 +265,11 @@ Document in the investigation file and commit.
 
 Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 6: Findings Review & Fix Discussion
+## Step 8: Findings Review & Fix Discussion
 
 > *Output the next fenced block as a code block:*
 
@@ -242,11 +286,11 @@ Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its inst
 
 Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 9**.
 
 ---
 
-## Step 7: Compliance Self-Check
+## Step 9: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -262,11 +306,11 @@ Load **[findings-review.md](references/findings-review.md)** and follow its inst
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 10**.
 
 ---
 
-## Step 8: Conclude Investigation
+## Step 10: Conclude Investigation
 
 > *Output the next fenced block as a code block:*
 

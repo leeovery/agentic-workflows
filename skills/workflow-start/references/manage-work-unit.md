@@ -205,7 +205,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} w
 
 Re-index all completed artifacts so their chunks carry the new `work_type: epic`:
 
-Load **[reindex-work-unit.md](../workflow-shared/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
+Load **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
 
 > *Output the next fenced block as markdown (not a code block):*
 
