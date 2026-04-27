@@ -1480,12 +1480,16 @@ async function cmdStatus() {
   }
 
   // 7. Orphan detection — source files that no longer exist.
+  // Resolve relative to the project root (where .workflows/.knowledge
+  // lives) rather than process.cwd(), so status invoked from a
+  // subdirectory does not mark every chunk as orphaned.
+  const projectRoot = path.resolve(knowledgeDir(), '..', '..');
   const orphans = [];
   const seenSources = new Set();
   for (const c of allChunks) {
     if (seenSources.has(c.source_file)) continue;
     seenSources.add(c.source_file);
-    if (!fs.existsSync(path.resolve(c.source_file))) {
+    if (!fs.existsSync(path.resolve(projectRoot, c.source_file))) {
       orphans.push(c.source_file);
     }
   }
