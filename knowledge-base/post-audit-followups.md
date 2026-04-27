@@ -238,7 +238,7 @@ Note: `validateApiKey` already exists and does a real test embed call. The bug i
 
 ## Defer (real but non-blocking; log as deferred-issue or fix later)
 
-### #8 — Whole-store enumeration capped at 100k
+### #8 — Whole-store enumeration capped at 100k (✅ commit `8d7432fb`)
 
 **Files:** `src/knowledge/index.js:1379, 1865`; `src/knowledge/store.js:128, 167, 187`
 
@@ -255,7 +255,7 @@ Note: `validateApiKey` already exists and does a real test embed call. The bug i
 
 ---
 
-### #9 — Empty-term `searchFulltext` is undocumented Orama behaviour with no test
+### #9 — Empty-term `searchFulltext` is undocumented Orama behaviour with no test (✅ commit `8d7432fb`)
 
 **Files:** `src/knowledge/store.js:122, 165, 187`; `src/knowledge/index.js:635, 1379, 1865`
 
