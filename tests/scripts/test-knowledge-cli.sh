@@ -1756,6 +1756,30 @@ assert_eq "store still present after rebuild" "true" \
   "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
 teardown_project
 
+# --- Test 83: Subdirectory invocation finds project root ---
+# Pre-fix, knowledgeDir() / orphan check / manifest reads anchored at
+# process.cwd(). Running `knowledge status` from a subdirectory of the
+# project marked every chunk as orphaned (and broke other commands).
+# After the findProjectRoot walk-up, KB commands work from any
+# subdirectory of a project.
+echo "Test 83: Subdirectory invocation"
+setup_project
+create_work_unit "subdir-wu" "feature" "Subdir"
+write_stub_config
+create_discussion_file "subdir-wu" "subdir-wu"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase subdir-wu.discussion.subdir-wu >/dev/null 2>&1
+run_kb index .workflows/subdir-wu/discussion/subdir-wu.md >/dev/null 2>&1
+# Now invoke status from a deeply nested subdirectory of the project.
+mkdir -p "$TEST_ROOT/.workflows/subdir-wu/discussion"
+cd "$TEST_ROOT/.workflows/subdir-wu/discussion"
+status_from_subdir=$(node "$BUNDLE" status 2>&1)
+cd "$TEST_ROOT"
+assert_eq "status from subdir reports zero orphans" "true" \
+  "$(echo "$status_from_subdir" | grep -q 'Orphaned chunks' && echo false || echo true)"
+assert_eq "status from subdir reports the indexed chunks" "true" \
+  "$(echo "$status_from_subdir" | grep -qE 'Total chunks: [1-9]' && echo true || echo false)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

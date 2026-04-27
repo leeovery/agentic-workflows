@@ -525,7 +525,7 @@ async function promptForKeyAndStore(rl, { envVar, model, dimensions, credPath })
 // ---------------------------------------------------------------------------
 
 async function runProjectInitStep(rl) {
-  const projectDir = path.resolve(process.cwd(), '.workflows', '.knowledge');
+  const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
   const projectConfigFile = path.join(projectDir, 'config.json');
   const storeFile = path.join(projectDir, 'store.msp');
   const metadataFile = path.join(projectDir, 'metadata.json');
@@ -616,8 +616,8 @@ async function runInitialIndexStep(cmdIndexBulk, options) {
 async function cmdSetup(cmdIndexBulk, args, options) {
   requireTTY();
 
-  // Guard: .workflows/ must exist.
-  const workflowsDir = path.resolve(process.cwd(), '.workflows');
+  // Guard: .workflows/ must exist somewhere at or above cwd.
+  const workflowsDir = path.resolve(config.findProjectRoot(), '.workflows');
   if (!fs.existsSync(workflowsDir)) {
     process.stderr.write(
       'No .workflows/ directory found. Initialise a workflow project first.\n'

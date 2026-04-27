@@ -40,12 +40,32 @@ function systemConfigPath() {
 }
 
 /**
- * Resolve the project config path relative to CWD.
+ * Find the project root by walking up from `startFrom` (default cwd)
+ * looking for a `.workflows/` directory. This lets KB commands work
+ * regardless of which subdirectory of the project the user invoked
+ * them from. Falls back to `startFrom` if no `.workflows/` is found
+ * — callers (e.g. setup) can then surface their own pre-init error.
+ * @param {string} [startFrom]
+ * @returns {string}
+ */
+function findProjectRoot(startFrom) {
+  let dir = path.resolve(startFrom || process.cwd());
+  const fallback = dir;
+  while (true) {
+    if (fs.existsSync(path.join(dir, '.workflows'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return fallback;
+    dir = parent;
+  }
+}
+
+/**
+ * Resolve the project config path relative to the project root.
  * @param {string} [cwd]
  * @returns {string}
  */
 function projectConfigPath(cwd) {
-  return path.join(cwd || process.cwd(), '.workflows', '.knowledge', 'config.json');
+  return path.join(findProjectRoot(cwd), '.workflows', '.knowledge', 'config.json');
 }
 
 /**
@@ -355,6 +375,7 @@ module.exports = {
   PROVIDER_ENV_VARS,
   systemConfigPath,
   projectConfigPath,
+  findProjectRoot,
   credentialsPath,
   readConfigFile,
   loadConfig,

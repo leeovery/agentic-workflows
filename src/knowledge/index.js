@@ -179,7 +179,7 @@ Other options:
 // ---------------------------------------------------------------------------
 
 function knowledgeDir() {
-  return path.resolve(process.cwd(), '.workflows', '.knowledge');
+  return path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
 }
 
 function storePath() {
@@ -321,7 +321,7 @@ function deriveIdentity(filePath) {
  * Read the work_type from the work unit's manifest.json.
  */
 function readWorkType(workUnit) {
-  const manifestFile = path.resolve(process.cwd(), '.workflows', workUnit, 'manifest.json');
+  const manifestFile = path.resolve(config.findProjectRoot(), '.workflows', workUnit, 'manifest.json');
   if (!fs.existsSync(manifestFile)) {
     throw new UserError(`Work unit manifest not found: ${manifestFile}`);
   }
@@ -606,8 +606,11 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
  */
 function runManifest(args) {
   const { execFileSync } = require('child_process');
+  // Spawn with cwd anchored at the project root so the manifest CLI's
+  // own cwd-relative resolution lands at the right place even when KB
+  // commands are invoked from a subdirectory.
   return execFileSync('node', [MANIFEST_JS, ...args], {
-    cwd: process.cwd(),
+    cwd: config.findProjectRoot(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });
@@ -1482,10 +1485,10 @@ async function cmdStatus() {
   }
 
   // 7. Orphan detection — source files that no longer exist.
-  // Resolve relative to the project root (where .workflows/.knowledge
-  // lives) rather than process.cwd(), so status invoked from a
-  // subdirectory does not mark every chunk as orphaned.
-  const projectRoot = path.resolve(knowledgeDir(), '..', '..');
+  // Resolve relative to the project root (found by walking up from cwd)
+  // rather than cwd directly, so status invoked from a subdirectory
+  // does not mark every chunk as orphaned.
+  const projectRoot = config.findProjectRoot();
   const orphans = [];
   const seenSources = new Set();
   for (const c of allChunks) {
