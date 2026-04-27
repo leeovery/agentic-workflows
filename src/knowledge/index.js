@@ -756,13 +756,15 @@ async function cmdIndexBulk(options, cfg, provider) {
     } catch (err) {
       // All retries exhausted — add to pending queue. Write the stack to
       // stderr so debugging does not depend on users capturing it later.
-      // Skip the stack for UserError — those are user-config validation
-      // failures and the message line alone is the actionable signal.
+      // Skip the stack for UserError and AuthError — both are user-config
+      // failures (validation / bad API key) where the message line alone
+      // is the actionable signal.
       await addToPendingQueue(item.file, err.message);
       process.stderr.write(
         `Failed to index ${item.file} after 3 attempts: ${err.message}. Added to pending queue.\n`
       );
-      if (err.stack && !(err instanceof UserError)) process.stderr.write(err.stack + '\n');
+      const isUserFacing = err instanceof UserError || err instanceof AuthError;
+      if (err.stack && !isUserFacing) process.stderr.write(err.stack + '\n');
     }
   }
 
