@@ -41,29 +41,18 @@ Standalone improvements. Can be done in any order within this phase.
 | 10 | [Integration Validation Agent](integration-validation-agent.md) | Implementation phase |
 | 11 | [Task Backtracking](task-backtracking.md) | Implementation phase (investigation needed) |
 
-## Phase 5 — Infrastructure & Intelligence
-
-Larger systemic changes. Project memory benefits from all other improvements being in place so it has richer material to learn from. Discovery engine is a maintenance play — best done when discovery scripts next need changes.
-
-| # | Idea | Scope |
-|---|------|-------|
-| 12 | [Project Memory](project-memory.md) | Cross-cutting, all phases |
-| 13 | [Dynamic Discovery Engine](dynamic-discovery-engine.md) | All discovery scripts |
-
-## Phase 6 — Model Routing
+## Phase 5 — Model Routing
 
 Leverage multiple AI models by dispatching work to the best model for each task type.
 
 | # | Idea | Scope |
 |---|------|-------|
-| 14 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
+| 12 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
 
 ## Unphased — New Ideas
 
 | # | Idea | Scope |
 |---|------|-------|
-| 15 | [Selection Menu Display Pattern](selection-menu-pattern.md) | All selection menus across skills |
-| 16 | [Background Sub-Agents in Research](research-background-agents.md) | Research processing skill |
-| 17 | [Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md) | Convention drift across ~53 skill files |
-| 18 | [Loop-Based Surfacing Nudge](loop-based-surfacing-nudge.md) | Background agent surfacing (discussion + spec) |
-
+| 13 | [Selection Menu Display Pattern](selection-menu-pattern.md) | All selection menus across skills |
+| 14 | [Background Sub-Agents in Research](research-background-agents.md) | Research processing skill |
+| 15 | [Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md) | Convention drift across ~53 skill files |
