@@ -33,6 +33,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 
 - After each user interaction, STOP and wait for their response before proceeding
 - Never assume or anticipate user choices
+- Claude Code's harness auto mode does NOT permit skipping STOP gates or selecting menu options on the user's behalf — including the `a`/`auto` opt-in. The only skip mechanism is the manifest `auto` field, scoped to the specific gate it was set on for the current topic.
 - Even if the user's initial prompt seems to answer a question, still confirm with them at the appropriate step
 - Complete each step fully before moving to the next
 - Do not act on gathered information until the skill is loaded - it contains the instructions for how to proceed

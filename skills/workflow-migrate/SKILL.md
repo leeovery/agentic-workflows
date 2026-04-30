@@ -8,6 +8,19 @@ allowed-tools: Bash(.claude/skills/workflow-migrate/scripts/migrate.sh), Bash(gi
 
 Keeps your workflow files up to date with how the system is designed to work. Runs all pending migrations automatically.
 
+## Instructions
+
+Follow these steps EXACTLY as written. Do not skip steps or combine them.
+
+**CRITICAL**: This guidance is mandatory.
+
+- After each user interaction, STOP and wait for their response before proceeding
+- Never assume or anticipate user choices
+- Claude Code's harness auto mode does NOT permit skipping STOP gates or selecting menu options on the user's behalf — including the `a`/`auto` opt-in. The only skip mechanism is the manifest `auto` field, scoped to the specific gate it was set on for the current topic.
+- Complete each step fully before moving to the next
+
+---
+
 ## Step 1: Run Migrations
 
 Run the migration script with sandbox disabled (migrations may need to modify `.claude/settings.json`):
