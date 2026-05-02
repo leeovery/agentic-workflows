@@ -53,6 +53,6 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 
 | # | Idea | Scope |
 |---|------|-------|
-| 13 | [Selection Menu Display Pattern](selection-menu-pattern.md) | All selection menus across skills |
-| 14 | [Background Sub-Agents in Research](research-background-agents.md) | Research processing skill |
-| 15 | [Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md) | Convention drift across ~53 skill files |
+| 13 | ~~[Selection Menu Display Pattern](selection-menu-pattern.md)~~ | All selection menus across skills | ✅ Done |
+| 14 | ~~[Background Sub-Agents in Research](research-background-agents.md)~~ | Research processing skill | ✅ Done (superseded by deep-dive-agent) |
+| 15 | ~~[Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md)~~ | Convention drift across ~53 skill files | ✅ Done |
