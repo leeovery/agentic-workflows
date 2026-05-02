@@ -426,38 +426,23 @@ Store the selected phase and topic.
 
 Display pending discussion topics from both research analysis and discussion gap analysis. Uses `pending_from_research` and `pending_from_gaps` from discovery output.
 
-> *Output the next fenced block as a code block:*
-
-```
-Pending Discussion Topics
-
-Topics identified by research analysis and discussion
-gap analysis that have not yet been discussed.
-
-@foreach(topic in pending_from_research)
-  {N}. {topic.name:(titlecase)} [from research]
-@endforeach
-@foreach(topic in pending_from_gaps)
-  {N}. {topic.name:(titlecase)} [from gap analysis]
-@endforeach
-```
-
 Number all topics sequentially across both lists. Track the source of each item for routing the skip action.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Start a discussion for a pending topic, or skip one:
+Pending discussion topics from research and gap analysis.
+Start a discussion for one, or skip:
 
-- **`1`** — Start discussion for "{topic_1.name:(titlecase)}"
-- **`2`** — Start discussion for "{topic_2.name:(titlecase)}"
+- **`1`** — Start discussion for "{topic_1.name:(titlecase)}" [from research]
+- **`2`** — Start discussion for "{topic_2.name:(titlecase)}" [from gap analysis]
 - **`s`/`skip`** — Remove a topic from pending list
 - **`b`/`back`** — Return to menu
 · · · · · · · · · · · ·
 ```
 
-Numbered items correspond to the list above. Recreate with actual topics from discovery.
+Recreate the numbered options with actual topics from discovery, preserving the source marker (`[from research]` or `[from gap analysis]`) on each.
 
 **STOP.** Wait for user response.
 

@@ -471,6 +471,8 @@ Select an option (enter number):
 · · · · · · · · · · · ·
 ```
 
+**Single source of truth** — items appear once, inside the menu. Do not display items as a numbered list (or tree) above the menu and then re-list them as numbered options below. The menu IS the display. Sub-detail (statuses, sources, plan progress) goes inline on each option using `[term]` or `— description`. The exception is when items have rich multi-line child detail (blocking reasons, dependency chains) that genuinely doesn't fit a one-line option — in that case keep the tree display and reference it from a short prompt below, but this should be rare.
+
 **Yes/no prompt:**
 
 ```
@@ -649,6 +651,22 @@ Use H4 headings for if/else branches within a step:
 ...
 ```
 
+**Prelude and post-STOP exception** — at file prelude (above any `## A.` lettered section) and immediately after STOP-gate responses, bold `**If ...:**` is acceptable for top-level conditionals. H4 in these positions visually competes with the lettered section headings that follow, and disrupts the prelude flow. Inside a lettered section's body, top-level conditionals stay H4.
+
+```
+**Trigger checklist** — evaluate after every commit:
+- □ Meaningful content committed?
+- □ All prior reviews drained?
+
+**If all checked:**
+
+→ Proceed to **A. Dispatch**.
+
+**If any unchecked:**
+
+No dispatch needed. Continue with the session loop.
+```
+
 Rules:
 - Never use else-if chains — each condition gets its own `#### If` heading
 - Lowercase after "If" (e.g., `#### If completed_count == 1`)
@@ -656,7 +674,7 @@ Rules:
 - Use backticks around specific values, variables, and statuses in H4 headings (e.g., `` #### If `STATUS` is `clean` ``, `` #### If work type is `feature` ``). Natural language conditions stay plain text (e.g., `#### If no plan provided`)
 - Use "and" between conditions, not commas
 - Drop implied conditions (e.g., if Step 2 already gates on `completed_count >= 1`, Step 3 doesn't need to repeat it on every branch)
-- H4 for top-level conditionals, bold text for nested — never use H5/H6 for conditional nesting
+- H4 for top-level conditionals inside lettered sections, bold text for nested or for prelude/post-STOP positions — never use H5/H6 for conditional nesting
 - If double-nesting would occur, flatten by combining the parent and child conditions into a single bold conditional
 - Every conditional branch must include its own routing instruction (`→ Proceed to` or `→ Return to`). Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
 
