@@ -39,7 +39,6 @@ Standalone improvements. Can be done in any order within this phase.
 | # | Idea | Scope |
 |---|------|-------|
 | 10 | [Integration Validation Agent](integration-validation-agent.md) | Implementation phase |
-| 11 | [Task Backtracking](task-backtracking.md) | Implementation phase (investigation needed) |
 
 ## Phase 5 — Model Routing
 
@@ -47,12 +46,12 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 
 | # | Idea | Scope |
 |---|------|-------|
-| 12 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
+| 11 | [Codex Review Dispatch](codex-review-dispatch.md) | All review agents |
 
 ## Unphased — New Ideas
 
 | # | Idea | Scope |
 |---|------|-------|
-| 13 | ~~[Selection Menu Display Pattern](selection-menu-pattern.md)~~ | All selection menus across skills | ✅ Done |
-| 14 | ~~[Background Sub-Agents in Research](research-background-agents.md)~~ | Research processing skill | ✅ Done (superseded by deep-dive-agent) |
-| 15 | ~~[Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md)~~ | Convention drift across ~53 skill files | ✅ Done |
+| 12 | ~~[Selection Menu Display Pattern](selection-menu-pattern.md)~~ | All selection menus across skills | ✅ Done |
+| 13 | ~~[Background Sub-Agents in Research](research-background-agents.md)~~ | Research processing skill | ✅ Done (superseded by deep-dive-agent) |
+| 14 | ~~[Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md)~~ | Convention drift across ~53 skill files | ✅ Done |
