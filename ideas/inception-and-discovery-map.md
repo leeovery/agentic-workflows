@@ -402,15 +402,90 @@ Most existing skills are unaffected (specification, planning, implementation, re
 
 ## Migration
 
-Existing in-progress epics need the inception phase added:
+For each in-progress epic without an inception phase, a migration script seeds the discovery map from existing state.
 
-- A migration script seeds `phases.inception.items.{topic}` for every existing research and discussion topic in the work unit, using the topic name as the link.
-- Routing is inferred: if a research item exists, set `routing: research`; otherwise `routing: discussion`.
-- Source is set to `migration-seeded`.
-- Summary is left empty (or pulled from the file's frontmatter / first heading if available); the user populates it on first inception refinement session.
-- The user is prompted on first inception entry post-migration to review the seeded map.
+### Topic collection — discovery items only
 
-The migration is non-destructive — existing files stay where they are; the map just registers them.
+Discovery topics live in research and discussion. Spec onwards is downstream — spec topics may be *regroupings* of discussions (e.g., spec `authentication` merging discussions `auth-flow` and `session-management`), not standalone discovery topics. The map shows the underlying discussion items, not the spec name.
+
+Walk research and discussion items + the two existing pending arrays:
+
+```
+   Source                                    Routing assigned
+   ────────────────────────────────────────────────────────────
+   topic in phases.research.items            research
+   topic in phases.discussion.items only     discussion
+   topic in phases.research.surfaced_topics  discussion
+   topic in phases.discussion.gap_topics     discussion
+```
+
+If a topic has both research and discussion items, a single inception item with `routing: research` (the natural flow). The lifecycle computation later joins these against per-phase statuses to produce the rendered state, so a `decided` topic naturally shows up in spec when sourced — no phantom inception items needed.
+
+### Source classification
+
+```
+   Origin                                Source value
+   ──────────────────────────────────────────────────────────
+   Has phase items                       migration-seeded
+   In surfaced_topics only               migration-seeded:research-analysis
+   In gap_topics only                    migration-seeded:gap-analysis
+```
+
+Sub-classification helps future self-healing avoid re-proposing items the user accepted via migration.
+
+### Order of operations
+
+```
+   for each work_unit (epic only, in-progress):
+     ensure phases.inception exists
+     collect topic names from research and discussion items
+     for each topic:
+       skip if inception item already exists
+       infer routing
+       create inception item with empty summary, source: migration-seeded
+     for each topic in surfaced_topics:
+       skip if inception item already exists
+       create with routing: discussion, source: migration-seeded:research-analysis
+     for each topic in gap_topics:
+       skip if inception item already exists
+       create with routing: discussion, source: migration-seeded:gap-analysis
+```
+
+### Idempotency
+
+Per-topic check: `manifest exists {wu}.inception.{topic}` → if true, skip. If false, create.
+
+This handles partial migration gracefully (script crashed halfway, re-run completes the work). Migration log entry only writes on full success; re-running on a crashed migration runs the whole script again, which is safe due to per-topic idempotency.
+
+### What migration does NOT do
+
+- **Doesn't touch `surfaced_topics` and `gap_topics` arrays.** They become redundant after migration but removing them is part of the larger refactor (continue-epic, display-options need to read from inception instead). Migration leaves them in place; refactor cleans up in a follow-up migration.
+- **Doesn't back-fill summaries.** Migration scripts are bash/node, not LLM sessions. Summaries are populated in the user's first refinement session post-migration.
+- **Doesn't infer cancellation.** Even if a topic has all phase items cancelled, migration creates the inception item as `active`. The user explicitly decides during refinement whether to remove it from the map.
+
+### Post-migration UX
+
+First time the user runs `/continue-epic` post-migration, the discovery map renders with all empty summaries. To make the migration visible:
+
+```
+  Discovery Map (5 topics)
+  ⚑ Migrated to discovery map. 5 items have no summary —
+    open `f`/`refine` to populate.
+```
+
+The callout disappears once all items have summaries.
+
+When the user opens `f`/`refine`, the refinement session detects empty summaries and prompts: "Some items don't have summaries yet — populate them now?" User says yes, the session walks through each empty-summary item asking for a one-line summary, with a `skip` option per item.
+
+### Edge cases
+
+- **Cross-cutting work units.** `cross-cutting` work_type is single-topic, project-level — no decomposition needed. Migration check: if `work_type != epic`, skip entirely.
+- **Other work types.** Feature, bugfix, quick-fix don't get an inception phase.
+- **Completed and cancelled epics.** Migration filter: `status: in-progress` only. Reactivation flow (if a completed epic is reopened post-deployment) triggers migration for that work unit at reactivation time.
+
+### Migration is non-destructive
+
+Existing files stay where they are; the map just registers them. No file moves, no content rewrites.
 
 ## Files Affected (Estimated Scope)
 
@@ -432,13 +507,11 @@ The migration is non-destructive — existing files stay where they are; the map
 
 These are the gaps still to push on before implementation:
 
-1. **Migration approach detail.** Order of operations, idempotency, what happens if the user has a partially-migrated state, how summaries get back-filled. Worth a dry-run on a real existing epic.
+1. **Sorting within tiers.** Alphabetical is simplest and stable, last-updated reads better for active sessions ("what was I just working on"). Adding `last_updated` on items is cheap. Pick before implementation.
 
-2. **Sorting within tiers.** Alphabetical is simplest and stable, last-updated reads better for active sessions ("what was I just working on"). Adding `last_updated` on items is cheap. Pick before implementation.
+2. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
 
-3. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
-
-4. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
+3. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
 
 Items deferred to implementation (not blocking design):
 
