@@ -231,22 +231,81 @@ The map stays current through analyses that propose updates at trigger points. T
 
 **State determination uses the manifest only** — fast, cheap. File reading happens only inside the analyses, which are cached against input checksums.
 
-**Triggers:**
+### Two distinct events
 
-- Entering inception (refinement session) — re-runs cached analyses, surfaces any pending proposals.
-- Concluding a research topic — research findings might have surfaced new map items; analyses re-run.
-- Concluding a discussion topic — decisions might have spawned siblings or merged items; analyses re-run.
-- On demand from `continue-epic` (`f`/`refine`).
-- Optional: notification at `continue-epic` display time when self-healing detects new content.
+**Analysis runs** (writes to cache):
 
-**Mechanics:**
+- At **phase conclusion** — when a research or discussion topic completes, the relevant analysis re-runs (research-analysis after research, gap-analysis after discussion). Input checksum is stale by definition; analysis re-computes and writes proposals to cache.
+- At **inception entry** (`f`/`refine`) — checks each analysis cache; runs if stale, no-ops if current.
 
-- Existing `research-analysis` (in `workflow-discussion-entry`) re-points to the map: instead of generating discussion topics directly, it proposes new inception items.
-- Existing `discussion-gap-analysis` re-points the same way: gaps surface as proposed inception items, not as direct discussion topics.
-- Both retain their cache mechanisms — input checksum, skip if unchanged. The expanded trigger set is cheap when nothing's changed.
+**Cache is read** (no analysis):
+
+- At **`continue-epic` display time** — reads existing cache for the proposal count. Never triggers an analysis run. If cache is stale, the count is unknown and the indicator simply doesn't show.
+
+This keeps `continue-epic` cheap (it's invoked frequently) while ensuring proposals exist before the user's next opportunity to act on them.
+
+### Cache lifecycle
+
+Each analysis cache holds:
+
+- Input checksum at time of run
+- Timestamp and list of input files
+- **Pending proposals** — items proposed but not yet surfaced or dismissed
+- **Dismissed list** — proposals the user explicitly rejected, so they don't re-surface
+
+Cache invalidates on input checksum mismatch (new file content, new map items affecting grouping). When invalidated and re-run, proposals are reconciled — anything still relevant carries forward; previously-dismissed items stay dismissed.
+
+The existing `analysis_cache` and `gap_analysis_cache` manifest fields extend rather than replace — same shape, plus the dismissed list.
+
+### Surfacing mechanics
+
+Proposals surface **only inside inception sessions**, never in research/discussion sessions. This keeps map-level curation contained to the curatorial phase.
+
+Flow inside a refinement session:
+
+1. Self-healing check reads cache.
+2. If proposals exist: announce ("I have N proposed map updates from recent {phase}. Review now?").
+3. If yes: surface each one at a time via the existing two-phase protocol — show the proposal, the source files, the rationale, then `add to map` / `dismiss` / `defer`.
+4. Approved → manifest write, item joins the map.
+5. Dismissed → added to cache's dismissed list.
+6. Deferred → stays in pending, surfaces again next session.
+7. After all surfaced (or user opts to defer all), continue with open refinement.
+
+Existing analysis behaviour preserved:
+
+- `research-analysis` (in `workflow-discussion-entry`) re-points to the map: instead of generating discussion topics directly, it proposes new inception items.
+- `discussion-gap-analysis` re-points the same way: gaps surface as proposed inception items, not as direct discussion topics.
+- Both retain their cache mechanisms — input checksum, skip if unchanged.
 - Output goes through the existing two-phase surfacing protocol: announce-then-raise, one finding at a time.
 
 The current `pending_from_research` and `pending_from_gaps` concepts in `continue-epic` discovery collapse into "map items in `fresh` state, not yet started". One concept, one rendering.
+
+### Notification UX
+
+At `continue-epic` display time, when cache shows pending proposals: a `⚑` callout above the discovery map plus a count on the `f`/`refine` menu entry.
+
+```
+  Discovery Map (8 topics — ...)
+  ⚑ Discovery in progress — 6 topics not yet decided.
+  ⚑ 3 proposed map updates from recent research/discussion.
+    Open `f`/`refine` to review.
+
+  ├─ →  Kitchen Hardware            ...
+```
+
+```
+- **`f`/`refine`** — Refine map (3 proposed updates)
+```
+
+Both signals — neither blocks. When no proposals: callout disappears, menu entry shows just `Refine map`. The callout sits above the map for visibility (user reads top-down; proposals are time-sensitive).
+
+### Dismissal persistence
+
+A dismissed proposal stays dismissed forever, with an explicit "show dismissed proposals" option available in inception for the user who changes their mind. Avoids re-pestering by default while allowing recovery.
+
+### Source-of-proposal deduplication
+
+A topic surfaced by both research-analysis AND gap-analysis (same theme via two paths) is deduplicated in analysis output and surfaced once, with both source paths noted in the proposal detail.
 
 ## Topic Splitting and Elevation
 
@@ -373,19 +432,17 @@ The migration is non-destructive — existing files stay where they are; the map
 
 These are the gaps still to push on before implementation:
 
-1. **`inception-guidelines.md` content.** The bullet rules above need expansion with worked examples for each curatorial move (decomposition pattern, missing-piece prompt, coarseness check, classify dialogue, refinement walkthrough). Mirrors how `research-guidelines.md` and `discussion-guidelines.md` are structured today.
+1. **Migration approach detail.** Order of operations, idempotency, what happens if the user has a partially-migrated state, how summaries get back-filled. Worth a dry-run on a real existing epic.
 
-2. **Self-healing trigger detail.** When each analysis fires precisely — at phase conclusion, at inception entry, at `continue-epic` display time. Cache invalidation rules. Notification UX (a `⚑` callout above the map? Just a count on the `f`/`refine` menu entry? Both?).
+2. **Sorting within tiers.** Alphabetical is simplest and stable, last-updated reads better for active sessions ("what was I just working on"). Adding `last_updated` on items is cheap. Pick before implementation.
 
-3. **Migration approach detail.** Order of operations, idempotency, what happens if the user has a partially-migrated state, how summaries get back-filled. Worth a dry-run on a real existing epic.
+3. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
 
-4. **Sorting within tiers.** Alphabetical is simplest and stable, last-updated reads better for active sessions ("what was I just working on"). Adding `last_updated` on items is cheap. Pick before implementation.
+4. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
 
-5. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
+Items deferred to implementation (not blocking design):
 
-6. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
-
-7. **`f`/`refine` notification.** When self-healing has new proposals visible at `continue-epic` display time, how prominent should the indicator be? A `⚑` callout above the map, plus a count on the menu entry, is the current sketch — needs validation.
+- `inception-guidelines.md` content — worked examples for each curatorial move; figured out during build.
 
 ## Status
 
