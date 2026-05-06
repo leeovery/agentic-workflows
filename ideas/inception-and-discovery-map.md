@@ -346,7 +346,7 @@ Asymmetry to enforce: research and discussion *spawn* new map items but never mo
     ⊘  cancelled
 ```
 
-Order: `→` first (ready to advance), then `◐` (in flight), then `✓` (decided), then `○` (fresh), then `⊘` (cancelled). Stable sort within each tier (open: alphabetical or last-updated — see Open Questions).
+Order: `→` first (ready to advance), then `◐` (in flight), then `✓` (decided), then `○` (fresh), then `⊘` (cancelled). Within each tier, sort alphabetically by `name`. Tier grouping handles most of the actionability prioritisation; alphabetical within a tier is stable and free. Revisit only if real use on large maps surfaces frustration.
 
 Source provenance shows on a sub-line under the row when present.
 
@@ -507,11 +507,9 @@ Existing files stay where they are; the map just registers them. No file moves, 
 
 These are the gaps still to push on before implementation:
 
-1. **Sorting within tiers.** Alphabetical is simplest and stable, last-updated reads better for active sessions ("what was I just working on"). Adding `last_updated` on items is cheap. Pick before implementation.
+1. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
 
-2. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
-
-3. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
+2. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
 
 Items deferred to implementation (not blocking design):
 
