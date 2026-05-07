@@ -131,7 +131,7 @@ Initial inception session for an epic flows like:
 Re-entry sessions skip the description and decompose moves. They:
 
 1. **Read state** — load `phases.inception.items.*` and per-phase statuses from the manifest. Manifest is authoritative; no file reading required for state.
-2. **Self-healing check** — if `research-analysis` or `gap-analysis` cache is stale, run the analyses (this is the only place file reading happens, and only when needed). Surface any new proposals one at a time via the existing two-phase surfacing protocol.
+2. **Self-healing check** — if `research-analysis` or `gap-analysis` cache is stale (covering the case where the user opens refinement directly without going through `continue-epic`), run the analyses and apply results to the map. Same auto-add behaviour as continue-epic boot-up.
 3. **Open refinement** — conversational, following the discussion-process convention. The user names what they want to change; Claude validates, presents the change, STOP-gates for confirmation, applies, logs, commits. One change per gate. After each, "anything else?".
 4. **Conclude** — when the user signals done, persist any final state and end the session.
 
@@ -265,22 +265,21 @@ What changes is the recommendation logic in `continue-epic`'s menu:
 
 ## Self-Healing
 
-The map stays current through analyses that propose updates at trigger points. The user always approves; nothing auto-applies.
+The map stays current through analyses that update the map directly at trigger points. The user reviews changes via the map render; unwanted items can be removed via refinement.
 
 **State determination uses the manifest only** — fast, cheap. File reading happens only inside the analyses, which are cached against input checksums.
 
-### Two distinct events
+### When analysis runs
 
-**Analysis runs** (writes to cache):
+**At `continue-epic` boot-up, before the display is rendered.** Cache check first; if input checksums match the cached state, skip. If stale (input files have changed), run the analyses inline. Their output is applied directly to the map — new items are added with appropriate `source` provenance, and a callout in the display notes what changed.
 
-- At **phase conclusion** — when a research or discussion topic completes, the relevant analysis re-runs (research-analysis after research, gap-analysis after discussion). Input checksum is stale by definition; analysis re-computes and writes proposals to cache.
-- At **inception entry** (`f`/`refine`) — checks each analysis cache; runs if stale, no-ops if current.
+**Also at inception entry** (`f`/`refine`). Same cache-check behaviour. Catches the case where the user opens refinement directly without going through continue-epic first.
 
-**Cache is read** (no analysis):
+**Bridge boot-up implication.** When a phase concludes and the bridge brings the user back to continue-epic, that boot-up triggers the analysis check. The user sees any new map items naturally on the next display — no mid-conclusion interruption.
 
-- At **`continue-epic` display time** — reads existing cache for the proposal count. Never triggers an analysis run. If cache is stale, the count is unknown and the indicator simply doesn't show.
+**Self-recovering.** If the user exits at any point — mid-conclusion, mid-discussion, anywhere — the next `continue-epic` invocation re-runs the check. The system catches up automatically.
 
-This keeps `continue-epic` cheap (it's invoked frequently) while ensuring proposals exist before the user's next opportunity to act on them.
+This keeps curation activity at the right scope (cross-topic, where the map lives), removes friction (no per-proposal approval gates), and matches the convention used by existing analyses (the spec phase already runs analyses at entry rather than at conclusion).
 
 ### Cache lifecycle
 
@@ -288,73 +287,79 @@ Each analysis cache holds:
 
 - Input checksum at time of run
 - Timestamp and list of input files
-- **Pending proposals** — items proposed but not yet surfaced or dismissed
-- **Dismissed list** — proposals the user explicitly rejected, so they don't re-surface
+- **Dismissed list** — items previously proposed but removed from the map by the user; these don't get re-added on subsequent runs
 
-Cache invalidates on input checksum mismatch (new file content, new map items affecting grouping). When invalidated and re-run, proposals are reconciled — anything still relevant carries forward; previously-dismissed items stay dismissed.
+Cache invalidates on input checksum mismatch (new or changed file content). When the analysis re-runs, candidate topics are filtered:
+
+- Already exists on map (by name match) → skip
+- In dismissed list → skip
+- Otherwise → add to map with `source: research-analysis` or `source: gap-analysis`
+
+Removing a map item via refinement automatically adds it to the dismissed list, so the same analysis won't re-propose it next time.
 
 The existing `analysis_cache` and `gap_analysis_cache` manifest fields extend rather than replace — same shape, plus the dismissed list.
 
-### Surfacing mechanics
+### Auto-add to map, no approval gate
 
-Proposals surface in two places — both via the existing two-phase protocol, both with `add to map` / `dismiss` / `defer` choices per proposal:
+When the analysis runs and identifies new candidate topics, they are **added to the map directly** — no per-proposal approval prompt. The user sees them in the discovery map render with their `source` provenance and decides what to do with them via the existing menu (start work, leave fresh, edit, remove).
 
-**1. Inline at phase conclusion.** When research or discussion concludes and analysis identifies new proposals, the conclude flow asks: *"N proposed map updates from this {phase}. Review now or later?"*
+If the user removes an auto-added item via refinement, it joins the dismissed list and won't re-appear.
 
-- **Now**: walk through each proposal one at a time. Approved → manifest write. Dismissed → cache dismissed list. Deferred → stays in pending.
-- **Later**: stays cached, surfaced at next continue-epic + refinement session.
+### Notification
 
-This avoids forcing the user back through `f`/`refine` for proposals that surface at natural transition points. Context is fresh from the just-completed work; the user can quickly accept or dismiss.
+The continue-epic display shows a callout summarising what changed:
 
-**2. In refinement sessions** (`f`/`refine`). The user explicitly entered to curate the map. Self-healing check reads cache; any unsurfaced or deferred proposals are walked through before open refinement begins.
+```
+  Discovery Map (10 topics — ...)
+  ⚑ 3 new topics added to the map from gap-analysis.
+```
 
-What does **not** surface proposals: in-flight research and discussion sessions. While the user is doing the work, we don't interrupt with map-level proposals. Those wait for conclusion or for a refinement session.
+Informational, not actionable. The new items are visible in the map; the user picks them up like any other item.
 
-### Trigger pattern for analyses
+### Content extraction
 
-- **Research-analysis** runs after research conclusion. Reads research files. Proposals enter the cache.
-- **Gap-analysis** runs after discussion conclusion. Reads discussion files + the cached `research-analysis.md` state. Proposals enter the same cache.
-- **Both run on inception entry** if their caches are stale.
-- **Both feed the same proposal pool** — deduped at source-of-proposal level.
-
-What this gives the user: as discussions complete and the product takes shape, gaps that weren't visible before become visible. Each conclusion is a moment to consider what just emerged.
-
-### Content extraction at proposal acceptance
-
-**No content extraction.** When a proposal is accepted, only an inception item is created — no file movement, no rewriting of the source research/discussion file.
+**No content extraction.** When the analysis adds a topic to the map, only an inception item is created — no file movement, no rewriting of the source research/discussion file.
 
 The new map item carries `source: research-analysis:{parent}` (or `gap-analysis`, etc.) as provenance. When the user later starts research or discussion on the new topic, the entry skill can read the source file as reference context. The source research/discussion file stays as-is — it's a historical record of what was actually said in that session.
 
-The exception is the existing in-session mechanisms (`topic-splitting` in research, `topic-elevation` in discussion) — those *do* extract content because they fire mid-conversation, before the source is concluded. Post-conclusion proposals don't extract.
+The exception is the existing in-session mechanisms (`topic-splitting` in research, `topic-elevation` in discussion) — those *do* extract content because they fire mid-conversation, before the source is concluded. Post-conclusion analysis-derived items don't extract.
+
+### Trigger summary
+
+- **Research-analysis** reads research files. Cache invalidates when research files change.
+- **Gap-analysis** reads discussion files + the cached `research-analysis.md` state. Cache invalidates when either changes.
+- **Both run at continue-epic boot-up and inception entry** if their respective caches are stale.
+- **Both write directly to the map** — adding new inception items with `source` provenance.
+
+As discussions complete and the product takes shape, gaps that weren't visible before become visible — they appear on the map at the user's next continue-epic display.
 
 The current `pending_from_research` and `pending_from_gaps` concepts in `continue-epic` discovery collapse into "map items in `fresh` state, not yet started". One concept, one rendering.
 
 ### Notification UX
 
-At `continue-epic` display time, when cache shows pending proposals: a `⚑` callout above the discovery map plus a count on the `f`/`refine` menu entry.
+When boot-up runs an analysis and adds new items to the map, a `⚑` callout above the discovery map summarises what changed:
 
 ```
-  Discovery Map (8 topics — ...)
-  ⚑ Discovery in progress — 6 topics not yet decided.
-  ⚑ 3 proposed map updates from recent research/discussion.
-    Open `f`/`refine` to review.
+  Discovery Map (10 topics — ...)
+  ⚑ Discovery in progress — 8 topics not yet decided.
+  ⚑ 3 new topics added to the map from gap-analysis.
 
   ├─ →  Kitchen Hardware            ...
+  ├─ ○  Image Moderation            fresh · routed to discussion · from gap-analysis
+  ...
 ```
 
-```
-- **`f`/`refine`** — Refine map (3 proposed updates)
-```
+Informational, not actionable. The new items are visible in the map (sorted into their tier with `source` provenance shown); the user picks them up via the existing menu like any other item.
 
-Both signals — neither blocks. When no proposals: callout disappears, menu entry shows just `Refine map`. The callout sits above the map for visibility (user reads top-down; proposals are time-sensitive).
+The callout is shown once at the boot-up that added the items. Subsequent continue-epic invocations don't re-show it — the items are now part of the map, no longer "new."
 
 ### Dismissal persistence
 
-A dismissed proposal stays dismissed forever, with an explicit "show dismissed proposals" option available in inception for the user who changes their mind. Avoids re-pestering by default while allowing recovery.
+Dismissed items (those removed from the map via refinement) stay dismissed — the same analysis won't re-add them. An explicit "show dismissed items" option is available in refinement for the user who changes their mind. Avoids re-noise by default while allowing recovery.
 
-### Source-of-proposal deduplication
+### Source deduplication
 
-A topic surfaced by both research-analysis AND gap-analysis (same theme via two paths) is deduplicated in analysis output and surfaced once, with both source paths noted in the proposal detail.
+A topic that both analyses would add (same theme via two paths) is deduplicated — added once, with both source paths noted in the inception item's `source` field.
 
 ## Topic Splitting and Elevation
 
@@ -412,7 +417,7 @@ What would you like to do?
 - **`4`** — Continue "Print Server Protocol" — research
 - **`5`** — Start discussion for "Customer Portal"
 
-- **`f`/`refine`** — Refine map [(N proposed updates)]
+- **`f`/`refine`** — Refine map
 - **`d`/`discuss`** — Start a discussion on a new topic
 - **`r`/`research`** — Start research on a new topic
 - **`s`/`spec`** — Start specification — N discussion(s) not yet in a spec
@@ -440,7 +445,7 @@ Build-phase entries (planning, implementation, review) follow the same pattern w
 - `start-epic`'s `route-first-phase.md` collapses to "always inception" for epics. Research / discussion / import options move into inception's flow (import becomes "import existing files and seed the map from them").
 - `workflow-research-entry`'s explore-vs-specific mode goes away. Research is always scoped to a map item; topic comes from the inception item.
 - Research's `file-strategy.md` simplifies — no multi-file branching for epic. One item, one file.
-- `workflow-discussion-entry` Steps 4 and 5 (research-analysis, gap-analysis) re-point to map proposals. The analyses run, but their output is "propose these map items" rather than "show these as suggested discussion topics". The cache mechanisms are preserved.
+- `workflow-discussion-entry` Steps 4 and 5 (research-analysis, gap-analysis) move out of discussion-entry — the analyses now run at `continue-epic` boot-up (and inception entry) instead. Their output writes directly to the discovery map rather than being shown as suggested discussion topics in a menu. The cache mechanisms are preserved.
 - `continue-epic`'s state display gains a Discovery Map section at the top. Per-phase entries collapse into per-topic entries with computed lifecycle.
 - `continue-epic`'s menu gains `f`/`refine`. `p`/`pending` is removed.
 - `continue-epic`'s discovery script joins inception items with per-phase items to compute lifecycle.
