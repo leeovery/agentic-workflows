@@ -297,24 +297,35 @@ The existing `analysis_cache` and `gap_analysis_cache` manifest fields extend ra
 
 ### Surfacing mechanics
 
-Proposals surface **only inside inception sessions**, never in research/discussion sessions. This keeps map-level curation contained to the curatorial phase.
+Proposals surface in two places — both via the existing two-phase protocol, both with `add to map` / `dismiss` / `defer` choices per proposal:
 
-Flow inside a refinement session:
+**1. Inline at phase conclusion.** When research or discussion concludes and analysis identifies new proposals, the conclude flow asks: *"N proposed map updates from this {phase}. Review now or later?"*
 
-1. Self-healing check reads cache.
-2. If proposals exist: announce ("I have N proposed map updates from recent {phase}. Review now?").
-3. If yes: surface each one at a time via the existing two-phase protocol — show the proposal, the source files, the rationale, then `add to map` / `dismiss` / `defer`.
-4. Approved → manifest write, item joins the map.
-5. Dismissed → added to cache's dismissed list.
-6. Deferred → stays in pending, surfaces again next session.
-7. After all surfaced (or user opts to defer all), continue with open refinement.
+- **Now**: walk through each proposal one at a time. Approved → manifest write. Dismissed → cache dismissed list. Deferred → stays in pending.
+- **Later**: stays cached, surfaced at next continue-epic + refinement session.
 
-Existing analysis behaviour preserved:
+This avoids forcing the user back through `f`/`refine` for proposals that surface at natural transition points. Context is fresh from the just-completed work; the user can quickly accept or dismiss.
 
-- `research-analysis` (in `workflow-discussion-entry`) re-points to the map: instead of generating discussion topics directly, it proposes new inception items.
-- `discussion-gap-analysis` re-points the same way: gaps surface as proposed inception items, not as direct discussion topics.
-- Both retain their cache mechanisms — input checksum, skip if unchanged.
-- Output goes through the existing two-phase surfacing protocol: announce-then-raise, one finding at a time.
+**2. In refinement sessions** (`f`/`refine`). The user explicitly entered to curate the map. Self-healing check reads cache; any unsurfaced or deferred proposals are walked through before open refinement begins.
+
+What does **not** surface proposals: in-flight research and discussion sessions. While the user is doing the work, we don't interrupt with map-level proposals. Those wait for conclusion or for a refinement session.
+
+### Trigger pattern for analyses
+
+- **Research-analysis** runs after research conclusion. Reads research files. Proposals enter the cache.
+- **Gap-analysis** runs after discussion conclusion. Reads discussion files + the cached `research-analysis.md` state. Proposals enter the same cache.
+- **Both run on inception entry** if their caches are stale.
+- **Both feed the same proposal pool** — deduped at source-of-proposal level.
+
+What this gives the user: as discussions complete and the product takes shape, gaps that weren't visible before become visible. Each conclusion is a moment to consider what just emerged.
+
+### Content extraction at proposal acceptance
+
+**No content extraction.** When a proposal is accepted, only an inception item is created — no file movement, no rewriting of the source research/discussion file.
+
+The new map item carries `source: research-analysis:{parent}` (or `gap-analysis`, etc.) as provenance. When the user later starts research or discussion on the new topic, the entry skill can read the source file as reference context. The source research/discussion file stays as-is — it's a historical record of what was actually said in that session.
+
+The exception is the existing in-session mechanisms (`topic-splitting` in research, `topic-elevation` in discussion) — those *do* extract content because they fire mid-conversation, before the source is concluded. Post-conclusion proposals don't extract.
 
 The current `pending_from_research` and `pending_from_gaps` concepts in `continue-epic` discovery collapse into "map items in `fresh` state, not yet started". One concept, one rendering.
 
