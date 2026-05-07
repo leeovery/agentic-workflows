@@ -132,8 +132,46 @@ Re-entry sessions skip the description and decompose moves. They:
 
 1. **Read state** — load `phases.inception.items.*` and per-phase statuses from the manifest. Manifest is authoritative; no file reading required for state.
 2. **Self-healing check** — if `research-analysis` or `gap-analysis` cache is stale, run the analyses (this is the only place file reading happens, and only when needed). Surface any new proposals one at a time via the existing two-phase surfacing protocol.
-3. **Open refinement** — free-form conversation. The user adds, removes, renames, edits, or re-routes; Claude validates and confirms each change.
-4. **Persist** — write `session-NNN.md` capturing what changed and why, commit.
+3. **Open refinement** — conversational, following the discussion-process convention. The user names what they want to change; Claude validates, presents the change, STOP-gates for confirmation, applies, logs, commits. One change per gate. After each, "anything else?".
+4. **Conclude** — when the user signals done, persist any final state and end the session.
+
+### Convention — same conversational pattern as discussion-process
+
+Inception is the second conversational phase in the system; discussion-process is the precedent. Both follow the same model:
+
+- Conversation IS the work — the user expresses intent in free text.
+- Writes are gated by explicit STOP-then-confirm prompts, the same way decisions land in a discussion session.
+- One write per gate, per-change commits — matches existing convention.
+- Menu-driven prompts only for finite-choice moments (start/conclude session, surface findings via two-phase protocol).
+
+What this is **not**:
+
+- No batch confirmations — even when the user names several changes in one message, Claude works through them one at a time, each with its own STOP gate.
+- No menu-driven CRUD for editing operations — the operations are open-ended (rename WHAT to WHAT, add a topic with WHAT properties); free-text intent + STOP gate is lighter than nested sub-menus.
+- No special "bulk mode" or `step` opt-in — the existing per-change pattern handles bulk naturally (the user just names multiple things in succession).
+
+Example of multi-change interaction:
+
+```
+   User:   "Remove A, rename B to B2, add C."
+
+   Claude: "Three changes — I'll work through them in order.
+
+            First: remove A. A has no work started, safe to remove.
+            Confirm? (y/n)"
+
+   User:   y
+
+   Claude: [removes, logs, commits]
+           "Next: rename B to B2. B has no work started, safe to
+            rename. Confirm? (y/n)"
+
+   User:   y
+
+   ... etc.
+```
+
+Same conversational feel from the user side; every write goes through its own gate.
 
 ### Map editing operations
 
@@ -507,9 +545,7 @@ Existing files stay where they are; the map just registers them. No file moves, 
 
 These are the gaps still to push on before implementation:
 
-1. **Bulk operations and safety.** Renaming six topics in one session, removing several items — fine? Confirmation per change for safety, with the user able to sequence them quickly. Worth confirming.
-
-2. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
+1. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
 
 Items deferred to implementation (not blocking design):
 
