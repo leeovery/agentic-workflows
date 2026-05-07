@@ -541,13 +541,15 @@ Existing files stay where they are; the map just registers them. No file moves, 
 - Modified: `workflow-manifest/scripts/manifest.cjs` (add `inception` to phase validation)
 - Modified: CLAUDE.md, README phase model documentation
 
+## Settled Decisions
+
+The map is **flat, not hierarchical**. Source provenance lines cover the splits/elevations case; sub-domains belong in discussion subtopics (the existing Discussion Map handles within-topic structure). Nesting at the discovery layer would conflate two distinct levels of hierarchy and add real machinery — tree rendering, parent/child operations, cascade semantics, filesystem nesting questions — for cosmetic gain.
+
+Migration path if real use surfaces a need we haven't anticipated: add a `parent` field, backward compatible, no data loss. Deferring this until evidence demands it.
+
 ## Open Questions
 
-These are the gaps still to push on before implementation:
-
-1. **Hierarchical map (children) versus flat.** Flat is current decision. Discussion's subtopic-with-children is a working precedent we could borrow if flat feels cramped. Revisit only if real use surfaces a need.
-
-Items deferred to implementation (not blocking design):
+None blocking design. Items deferred to implementation:
 
 - `inception-guidelines.md` content — worked examples for each curatorial move; figured out during build.
 
