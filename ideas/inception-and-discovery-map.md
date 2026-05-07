@@ -103,28 +103,89 @@ When phase items contradict the original routing intent (e.g. `routing: research
 
 ## Inception Phase — Behaviour
 
-Inception is conversational like research and discussion, but operates in a **curatorial mode** distinct from both:
+Inception is conversational like research and discussion, but operates in a **curatorial mode** distinct from both. The job is naming and shaping topics, not investigating or deciding.
 
-- **Macro view always.** Don't tunnel into one item. If the user goes deep, gently park the detail as a note on the topic and return to the map level.
-- **Decomposition patterns.** Suggest groupings: "this could be three things, or one thing with two sub-concerns — which feels right?"
-- **Missing-piece prompts.** "You haven't mentioned anything about [auth / payments / observability]. Out of scope, or just hasn't surfaced?"
-- **Coarseness check.** "We have 15 topics; that feels granular for a first pass. Any worth consolidating?"
-- **Routing as pragmatism.** "If you have an answer in your head, route to discussion. If you'd say 'I'm not sure how this works', route to research."
+### Curatorial moves
+
+- **Macro view always.** Don't tunnel into one item. If the user goes deep, gently anchor and return to the map level.
+- **Reflective decomposition.** Read back what you're hearing as distinct surfaces; suggest tentative groupings. *"Hearing X, Y, Z as distinct shapes — agree?"*
+- **Tentative grouping.** *"Those two feel like one thing — agree?"*
+- **Coarseness check.** Surface when items pile up, but don't push exhaustiveness. *"We've got 15; some feel small enough they'll fall out of bigger discussions."*
+- **Anchor and return.** When the conversation pulls into detail, gently re-anchor. *"We got pulled into payments detail; want to come back to mapping the rest first?"*
+- **Routing inference.** Read the user's framing for cues; tentatively propose; let them flip. (See *Routing Inference* below.)
+
+### Hard rules
+
+- **Initial spike, not exhaustive.** This is opening framing, not a complete inventory. 2 topics is fine, 20 is fine. The map fills out as work progresses — analyses auto-add, splits and elevations spawn. Don't push for completeness; the user signals when they have enough to start.
+- **No active missing-piece probes.** Don't list things the user "hasn't mentioned." If they go quiet, a soft *"anything else come to mind, or are we good?"* is enough.
 - **No decisions, no investigations.** Defer mechanism questions to discussion. Use what you and the user already know; don't go searching.
 
 These behaviours belong in `inception-guidelines.md`, parallel to `research-guidelines.md` and `discussion-guidelines.md`. The guidelines load once at session start.
 
+### Routing inference
+
+Topics get routed (`research` | `discussion`) based on how the user frames them. Claude reads cues, proposes tentatively, lets the user flip.
+
+**Research-shaped signals:**
+
+- *"I don't know..."* / *"I'm not sure how X works"* / *"What's possible with..."*
+- Open feasibility / cost / capability questions
+- External dependencies the user hasn't worked through
+- Technology, market, or competitor questions
+
+**Discussion-shaped signals:**
+
+- The user describes the thing in present tense, with actors and flows (*"operators add items, set prices, control availability"*)
+- Standard patterns the user clearly knows (auth, RBAC, payments)
+- *"We just need to decide between A and B"*
+- Architectural questions where multiple approaches are familiar
+
+**Neutral / unclear:** topic mentioned in passing, no elaboration. Ask explicitly with the soft framing — *"do you have a sense of how this works, or would we need to look into it?"* — never force a binary research/discussion pick.
+
+Worked examples of how this plays:
+
+```
+User: "Kitchen printers — I don't know what protocols are available
+       cheaply, or how reliable network vs USB printers are."
+
+Claude: "Kitchen-printers — sounds like investigation territory.
+        I'd put it as research. Yes?"
+```
+
+```
+User: "Menu management — operators add items, set prices, control
+       availability windows, mark items unavailable when they
+       run out."
+
+Claude: "Menu-management — you've got a clear shape in mind.
+        Discussion sounds right. OK?"
+```
+
+```
+User: "We'll need analytics for the operator."
+
+Claude: "For analytics — do you have a sense of what views and
+        data you need, or is the question more about what's
+        possible to track? First would be discussion territory,
+        second research."
+```
+
+**Routing is mutable for fresh items** (no per-phase work yet) — the user can always re-route via refinement. So the initial proposal is low-stakes, an opening best guess, not a binding commitment.
+
+The same approach applies in refinement sessions when adding new topics. If the user provides explicit routing in their request (*"add offline-mode as research"*), use it. If not, infer from cues and propose.
+
 ### Initial session
 
-Initial inception session for an epic flows like:
+The initial inception session unfolds conversationally, not as a sequence of discrete steps. The shape:
 
-1. **Read description** — already captured by `start-epic` in the work-unit manifest. No "brief" artefact.
-2. **Decompose** — "what are the major moving parts?" The user lists items at whatever scope makes sense (whole product for greenfield, just the change for an existing-project epic).
-3. **Refine** — consolidate, push back, prompt for gaps. Iterative.
-4. **Classify** — research or discussion per topic. Items can stay unrouted ("not sure yet") and remain on the map.
-5. **Confirm** — render the proposed map; the user approves or amends.
-6. **Persist** — manifest writes (one inception item per topic), session log to disk, commit.
-7. **Conclude** — optional suggestion of where to start ("AI image generation looks like the highest-uncertainty item; suggest research that first").
+1. **Read description** — silently load the work-unit description as context. No "brief" artefact.
+2. **Open** — invite the user to describe what they want to build, with no framework imposed. *"Tell me about what you want to build."*
+3. **Surface** — as the user describes, reflect back distinct shapes, propose tentative groupings, infer routing from cues. Topics emerge from the conversation, each with a routing tentatively assigned.
+4. **Confirm** — when the user signals they have enough, render the resulting map and ask for approval.
+5. **Persist** — manifest writes (one inception item per topic), session log to disk, commit.
+6. **Conclude** — close the session. Optional suggestion of where to start (*"AI image generation looks highest-uncertainty; suggest research first"*).
+
+The user can stop at any point with whatever's in the map so far. The point is opening framing, not exhaustive coverage.
 
 ### Refinement session (re-entry)
 
@@ -140,38 +201,72 @@ Re-entry sessions skip the description and decompose moves. They:
 Inception is the second conversational phase in the system; discussion-process is the precedent. Both follow the same model:
 
 - Conversation IS the work — the user expresses intent in free text.
-- Writes are gated by explicit STOP-then-confirm prompts, the same way decisions land in a discussion session.
-- One write per gate, per-change commits — matches existing convention.
+- Writes are gated by explicit STOP-then-confirm prompts.
 - Menu-driven prompts only for finite-choice moments (start/conclude session, surface findings via two-phase protocol).
 
-What this is **not**:
+### Safety scales with destructiveness
 
-- No batch confirmations — even when the user names several changes in one message, Claude works through them one at a time, each with its own STOP gate.
-- No menu-driven CRUD for editing operations — the operations are open-ended (rename WHAT to WHAT, add a topic with WHAT properties); free-text intent + STOP gate is lighter than nested sub-menus.
-- No special "bulk mode" or `step` opt-in — the existing per-change pattern handles bulk naturally (the user just names multiple things in succession).
+Not every operation needs a per-item gate. The risk profile differs:
 
-Example of multi-change interaction:
+- **Adds and summary edits batch.** Low-risk, easy to undo (a wrong addition is a one-action removal next session). When the user names several adds or edits in one message, Claude validates the lot, presents a single render of what's being applied, single STOP gate, single commit, single session-log entry covering the batch.
+- **Destructive operations stay per-item.** Remove, rename, change routing — these modify or delete existing state. Each gets its own STOP gate, even when the user lists several. Per-item commits.
+
+Mixed batches (e.g. *"remove A, rename B, add C"*) work through items in order; the destructive ones are per-item, the additive ones can be batched.
+
+This principle — gate by destructiveness rather than uniformly per-item — could plausibly extend to other workflow contexts over time.
+
+### Examples
+
+**Batched adds:**
 
 ```
-   User:   "Remove A, rename B to B2, add C."
+User: "Add offline-mode as research, billing-history as discussion,
+       and tax-handling as research"
 
-   Claude: "Three changes — I'll work through them in order.
+Claude: "Adding 3 topics:
 
-            First: remove A. A has no work started, safe to remove.
-            Confirm? (y/n)"
+  - offline-mode      (routing: research, source: manual)
+  - billing-history   (routing: discussion, source: manual)
+  - tax-handling      (routing: research, source: manual)
 
-   User:   y
+Add all? (y/n)"
 
-   Claude: [removes, logs, commits]
-           "Next: rename B to B2. B has no work started, safe to
-            rename. Confirm? (y/n)"
+User: y
 
-   User:   y
-
-   ... etc.
+Claude: [writes 3 inception items, single session-log entry,
+        single commit]
+"Done. Anything else?"
 ```
 
-Same conversational feel from the user side; every write goes through its own gate.
+**Per-item for destructive:**
+
+```
+User: "Remove A, rename B to B2, add C."
+
+Claude: "Three changes — I'll work through them in order.
+
+         First: remove A. A has no work started, safe to remove.
+         Confirm? (y/n)"
+
+User: y
+
+Claude: [removes, logs, commits]
+        "Next: rename B to B2. B has no work started, safe to
+         rename. Confirm? (y/n)"
+
+User: y
+
+Claude: [renames, logs, commits]
+        "Last: add C. (routing: discussion, source: manual)
+         Add? (y/n)"
+
+User: y
+
+Claude: [adds, logs, commits]
+        "Done. Anything else?"
+```
+
+Same conversational feel from the user side; risk-appropriate gating under the hood.
 
 ### Map editing operations
 
