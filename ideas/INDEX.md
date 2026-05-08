@@ -55,3 +55,4 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 12 | ~~[Selection Menu Display Pattern](selection-menu-pattern.md)~~ | All selection menus across skills | ✅ Done |
 | 13 | ~~[Background Sub-Agents in Research](research-background-agents.md)~~ | Research processing skill | ✅ Done (superseded by deep-dive-agent) |
 | 14 | ~~[Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md)~~ | Convention drift across ~53 skill files | ✅ Done |
+| 15 | [STOP Gate Override Protection](stop-gate-override-protection.md) | All workflow skills with STOP gates |
