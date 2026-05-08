@@ -505,6 +505,82 @@ Both mechanisms exist today with their own STOP-gated flows. The changes are min
 
 After spawn, the new topic is visible on the next `continue-epic` display with its `source: ...` provenance shown.
 
+## Imports
+
+Imported seed material lives at `.workflows/{wu}/imports/`. Imports are user-provided files containing prior thinking — chat exports, early notes, loose explorations — that seed an epic or feature without being treated as completed work.
+
+### What imports are
+
+- **Seed material, not finished artefacts.** Often a single file covering many topics at surface level.
+- **Persistent reference** for the work unit's life. Future sessions can re-read or query them.
+- **Indexed into the knowledge base at import time.** Chunked, retrievable per-topic at session start.
+- **Never adopted** as research/discussion artefacts or treated as completed work.
+
+### Layout
+
+```
+.workflows/{wu}/
+├── manifest.json
+├── imports/                          ← seed files
+│   ├── seed-conversation.md
+│   └── early-thoughts.md
+├── inception/                        ← epic only
+├── research/
+├── discussion/
+└── ...
+```
+
+### Manifest tracking
+
+Imports are tracked at work-unit level (not under `phases`):
+
+```json
+{
+  "imports": [
+    {"path": "imports/seed-conversation.md", "imported_at": "..."},
+    {"path": "imports/early-thoughts.md", "imported_at": "..."}
+  ]
+}
+```
+
+Lets `continue-epic` display "1 imported seed" without scanning the directory.
+
+### Import flow — epics
+
+`/start-epic` → `i`/`import`:
+
+1. User provides one or more file paths (existing markdown on disk).
+2. Files copy to `.workflows/{wu}/imports/`.
+3. Manifest records the imports.
+4. `knowledge.cjs index` runs on each file — chunks indexed with `source: import:{filename}`.
+5. Inception session opens, reads the imports as starting context.
+6. Conversation: Claude reflects what's in the imports, uses them as the launchpad rather than asking "what do you want to build?" from scratch. Topics emerge from discussing the seed material.
+7. Imports remain under `imports/` after inception. They're not adopted, not extracted-from, not treated as research output.
+
+### Import flow — features
+
+`/start-feature` → `i`/`import`:
+
+1. Same first 4 steps as epics — files copy, manifest records, KB indexes.
+2. Research (or discussion) session opens for the feature's single topic.
+3. Session entry queries the KB for chunks relevant to the topic; relevant import content surfaces as context.
+4. Research file starts blank — content is not dumped from imports into the research file.
+
+### How imports surface to sessions
+
+- **Inception's first session** (epic only): imports are read directly into context. No topics yet to query against — the conversation is shaping topics out of the seed material itself.
+- **All other sessions** (research, discussion, refinement, subsequent inception): KB retrieval, no auto-read. Session entry queries the KB with topic name + summary; relevant chunks (from imports + prior phase artefacts) surface as context.
+
+A single loose import covering 12 topics doesn't dump all 12 into every session — the KB filters per topic at query time. This is the answer to "imports are loose, how do we avoid dumping irrelevant content into every session": let retrieval handle it.
+
+### Behaviour change for features
+
+Today's feature import flow drops content directly into the research file. Under the new model, content stays as a separate import file under `imports/`; research starts blank. Small but visible change — flag in changelog and migration notes.
+
+### Why not split imports into per-topic files at import time
+
+Considered and dropped. Splitting requires either an LLM call (expensive at import time, fallible) or a heuristic (too rigid for loose-content imports). KB retrieval handles per-topic relevance at query time without committing to a split at import time. Source integrity preserved.
+
 ## Map Render and Menu
 
 ### State display
@@ -676,20 +752,41 @@ When the user opens `f`/`refine`, the refinement session detects empty summaries
 
 Existing files stay where they are; the map just registers them. No file moves, no content rewrites.
 
+### Legacy `exploration.md` and merged imports
+
+Existing epics may carry artefacts from the older flow:
+
+- An `exploration.md` file from open-mode research (the `e`/`explore` option that's going away).
+- Research files (epic `exploration.md` or feature `{topic}.md`) with merged import content from the old import-drops-into-research flow.
+
+Migration leaves these as-is:
+
+- An existing `exploration.md` becomes a regular research item under the topic name "Exploration." The map shows it like any other topic.
+- Merged import content stays in the research file. There's no marker delineating import-vs-research, so retroactive separation isn't possible.
+
+If the user wants to clean up legacy state:
+
+- `topic-splitting` in research-process can break "Exploration" into properly-named topics (existing mechanism — splits create new map items with `source: research-split:exploration`).
+- The user can manually move content into `imports/` if they want the cleaner separation.
+
+Migration doesn't add a `legacy` flag or special marker. The "Exploration" topic looks slightly out of place alongside properly-named ones, but that's self-evident and a one-time wart per migrated epic. New epics and new imports follow the new pattern.
+
 ## Files Affected (Estimated Scope)
 
 - New: `skills/workflow-inception-entry/` (entry skill, references)
 - New: `skills/workflow-inception-process/` (process skill, references including `inception-guidelines.md`)
 - New: `workflow-bridge` continuation reference for inception → continue-epic. Inception conclusion follows the standard epic pattern — bridge back to continue-epic, user picks the next move from the menu. No special routing through the bridge; the menu does the work.
 - New: migration script to add inception phase to existing epic manifests
-- Modified: `start-epic` route-first-phase, name-check, gather-epic-context flow
-- Modified: `workflow-research-entry` (drop explore mode for epic), `workflow-research-process/file-strategy.md`, `epic-session.md`, `topic-splitting.md`
-- Modified: `workflow-discussion-entry` (research-analysis and gap-analysis re-point to map)
+- New: imports machinery — `.workflows/{wu}/imports/` directory convention, manifest `imports[]` field, KB indexing on import.
+- Modified: `start-epic` route-first-phase, name-check, gather-epic-context flow. Import option preserves but routes content to `imports/` instead of dropping into research.
+- Modified: `start-feature` import handling — same change: imports go to `imports/`, research file starts blank.
+- Modified: `workflow-research-entry` (drop explore mode for epic), `workflow-research-process/file-strategy.md`, `epic-session.md`, `topic-splitting.md`. Research session entry queries KB for relevant chunks (including imports) at session start.
+- Modified: `workflow-discussion-entry` (research-analysis and gap-analysis re-point to map). Discussion session entry queries KB similarly.
 - Modified: `workflow-discussion-process/discussion-session.md` (topic elevation writes to map)
-- Modified: `continue-epic` (display map at top, collapse menu, add Refine map, remove pending menu)
-- Modified: `continue-epic/scripts/discovery.cjs` (compute lifecycle from joined phase items)
+- Modified: `continue-epic` (display map at top, collapse menu, add Refine map, remove pending menu, show imports count if any)
+- Modified: `continue-epic/scripts/discovery.cjs` (compute lifecycle from joined phase items; surface import metadata)
 - Modified: `workflow-bridge` (epic continuation reference handles new transitions)
-- Modified: `workflow-manifest/scripts/manifest.cjs` (add `inception` to phase validation)
+- Modified: `workflow-manifest/scripts/manifest.cjs` (add `inception` to phase validation; add top-level `imports` array support)
 - Modified: CLAUDE.md, README phase model documentation
 
 ## Settled Decisions
