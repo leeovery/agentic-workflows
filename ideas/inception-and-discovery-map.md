@@ -82,10 +82,11 @@ The map lives in the work-unit manifest at `phases.inception.items.{topic}`. Eac
 - `summary` — one-line description of what the topic covers
 - `routing` — `research` | `discussion`. The *initial intent* set in inception. Source of truth for menu routing only when no per-phase items exist; otherwise the actual flow is determined by which phase items exist.
 - `source` — provenance: `inception`, `research-split:{parent}`, `discussion-elevation:{parent}`, `gap-analysis`, `research-analysis`, `direct-start`
-- `status` — `active` | `cancelled` (only used when a topic is removed from the active map)
 - `created`, `updated` — timestamps
 
 Inception items are **topic records**, not work artefacts. They carry metadata about a topic's place on the map. There is no work-in-progress state on an inception item — the work happens in research and discussion phase items.
+
+**Items exist or they don't.** No `status` field. Removal via refinement deletes the item entirely (and adds the name to the dismissed list). Soft-delete with a "cancelled" status was considered and dropped — the session log captures the journey; the map shouldn't carry ⊘ rows for items the user explicitly removed.
 
 **Lifecycle is computed, not stored.** The "where is this topic in the discovery flow?" is derived at render time by joining the inception item against `phases.research.items.{topic}` and `phases.discussion.items.{topic}` (and onwards into spec). Concretely:
 
@@ -97,9 +98,11 @@ Inception items are **topic records**, not work artefacts. They carry metadata a
    ready for discussion          research completed, no discussion item
    discussing                    discussion item in-progress
    decided                       discussion item completed
-   cancelled (work)              all relevant phase items cancelled
-   cancelled (topic)             inception item.status = cancelled
+   cancelled                     all relevant phase items cancelled
+                                 (renders as ⊘ on the map; topic remains)
 ```
+
+There is no "topic-cancelled" state — removal from the map deletes the inception item entirely. The ⊘ marker is reserved for cancelled phase work where the topic itself is still around.
 
 When phase items contradict the original routing intent (e.g. `routing: research` but research was cancelled and discussion started), the computation reflects current reality and the original intent becomes historical metadata.
 
@@ -333,16 +336,17 @@ Looping back into a phase that's already complete is impossible because the comp
 
 **Direct entry on unmapped topics.** `d`/`discuss` and `r`/`research` for a topic *not* on the map auto-create a map item with `source: direct-start` and the corresponding routing, then proceed to the phase entry. The map stays honest without forcing the user through inception.
 
-## Cancellation
+## Cancellation and Removal
 
-Cancellation operates **only on phase items** through the existing `a`/`cancel` flow. The map then reflects the cancellation visually (⊘ for cancelled work).
+Two distinct mechanisms for "I don't want this anymore":
 
-Two scenarios in practice:
+**Cancel phase work** — via the existing `a`/`cancel` flow in `continue-epic`. Affects phase items only (research, discussion, etc.). The inception item remains; the map shows ⊘ for the cancelled phase. Useful for "abandon this research, but the topic still matters" — the user can re-enter inception to re-route, or just start a different phase directly.
 
-1. **Abandon specific work, keep the topic** — research went sideways, but the topic still matters. Cancel the research item; topic remains on the map; user can re-enter inception to re-route, or just start discussion directly (which auto-updates routing).
-2. **Remove a topic from active consideration** — only meaningful for never-started topics. Done in inception via the refinement session. For in-flight or completed topics, the user cancels phase items via `a`/`cancel`, and the cancellation is visible in the map.
+**Remove from map** — via a refinement session. Only meaningful for **never-started** topics (no phase items exist). Hard-deletes the inception item from the manifest and adds the name to the dismissed list (so analyses won't auto-re-add it). The topic disappears from the map entirely — no ⊘ row.
 
-There is no separate "cancel inception item" action in `continue-epic`. The map is curated through inception sessions; phase work is managed through phase commands; cancellation lives in the latter.
+For in-flight or completed topics, removal isn't an option. The user cancels phase work via `a`/`cancel`; the inception item stays as a record. Once a topic has phase items (any state, including cancelled), it stays on the map permanently as historical record — the rule is "started = visible forever." This is intentional: audit trail beats a clean map.
+
+The "show dismissed items" option in refinement provides recovery — the user can reactivate something they removed if they change their mind.
 
 ## Spec Gating
 
@@ -676,7 +680,7 @@ Existing files stay where they are; the map just registers them. No file moves, 
 
 - New: `skills/workflow-inception-entry/` (entry skill, references)
 - New: `skills/workflow-inception-process/` (process skill, references including `inception-guidelines.md`)
-- New: `workflow-bridge` continuation reference for inception → research/discussion handoffs
+- New: `workflow-bridge` continuation reference for inception → continue-epic. Inception conclusion follows the standard epic pattern — bridge back to continue-epic, user picks the next move from the menu. No special routing through the bridge; the menu does the work.
 - New: migration script to add inception phase to existing epic manifests
 - Modified: `start-epic` route-first-phase, name-check, gather-epic-context flow
 - Modified: `workflow-research-entry` (drop explore mode for epic), `workflow-research-process/file-strategy.md`, `epic-session.md`, `topic-splitting.md`
