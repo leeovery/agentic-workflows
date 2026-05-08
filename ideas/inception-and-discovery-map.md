@@ -60,6 +60,10 @@ The **discovery map** is the cross-phase spine — a list of topics with routing
 
 Greenfield versus existing-project epics use the same inception shape. Scope emerges from the user's responses, not from a flag. There are no flavours — one skill, one shape, adapts naturally.
 
+## Scope
+
+**Inception is epic-only.** Other work types (feature, bugfix, quick-fix, cross-cutting) are single-topic by definition and don't need decomposition into a map. Their existing pipelines are unchanged.
+
 ## Core Principle
 
 **The map reflects what's happening; it doesn't curate.**
@@ -400,17 +404,6 @@ When the analysis runs and identifies new candidate topics, they are **added to 
 
 If the user removes an auto-added item via refinement, it joins the dismissed list and won't re-appear.
 
-### Notification
-
-The continue-epic display shows a callout summarising what changed:
-
-```
-  Discovery Map (10 topics — ...)
-  ⚑ 3 new topics added to the map from gap-analysis.
-```
-
-Informational, not actionable. The new items are visible in the map; the user picks them up like any other item.
-
 ### Content extraction
 
 **No content extraction.** When the analysis adds a topic to the map, only an inception item is created — no file movement, no rewriting of the source research/discussion file.
@@ -458,12 +451,55 @@ A topic that both analyses would add (same theme via two paths) is deduplicated 
 
 ## Topic Splitting and Elevation
 
-Both existing mechanisms — research's topic-splitting and discussion's topic-elevation — write to the discovery map rather than directly creating siblings:
+Both existing mechanisms — research's topic-splitting and discussion's topic-elevation — write to the discovery map alongside their existing per-phase artefact creation:
 
-- **Research topic-splitting**: when a thread is promoted, creates a new inception item with `source: research-split:{parent-topic}`. The new research file is created against the new topic name as today.
-- **Discussion topic-elevation**: when a subtopic outgrows its parent, creates a new inception item with `source: discussion-elevation:{parent-topic}`.
+- **Research topic-splitting**: when a thread becomes substantial enough to warrant its own work, the existing flow extracts content into a new research file. Under the new model, also create an inception item with `routing: research`, `source: research-split:{parent-topic}`.
+- **Discussion topic-elevation**: when a subtopic outgrows its parent, the existing flow seeds a new discussion file with extracted context. Under the new model, also create an inception item with `routing: discussion`, `source: discussion-elevation:{parent-topic}`.
 
-Asymmetry to enforce: research and discussion *spawn* new map items but never modify existing ones. Only inception sessions modify existing items (refine summary, change routing while not-yet-started). This discipline keeps the map authoritative.
+### Lifecycle on spawn
+
+Spawned topics appear on the map as `◐ in flight`, not `○ fresh`. Both mechanisms seed a phase artefact (research file or discussion file) with extracted content from the source — by the time the spawn happens, content already exists, so the new topic immediately has a phase item in `in-progress` state. The user can later pick it up, cancel it, or leave it in flight on the map.
+
+We always seed the artefact when spawning. Content exists in the source by definition; carrying it forward is the right move. No "spawn but defer" mode.
+
+### Content extraction — the explicit exception
+
+The "no content extraction" rule covers analysis-derived auto-adds (research-analysis, gap-analysis). Splits and elevations are different: they fire mid-conversation, before the source is concluded. Extracting a thread out of an in-flight session is part of how the user is actively shaping the work — not a post-hoc rewriting of a closed artefact.
+
+So:
+
+- Analysis-derived items: no extraction; source provenance is the link, source file stays as-is.
+- Split / elevation items: full content extraction into the new artefact, just like today.
+
+### Name collision rules
+
+When the user names the spawned topic:
+
+- **Active map item with same name** → block; prompt for an alternative or offer to merge into the existing topic.
+- **Name in dismissed list, no active item** → allowed. Remove from dismissed list, create the new active item.
+
+User-explicit spawns (split, elevation, manual add via refinement) **bypass the dismissed list**. The list only blocks automatic re-adds by analyses; user intent overrides it.
+
+### Cascade behaviour
+
+The spawned topic is independent on the map after creation. The `source: ...:{parent}` provenance is historical metadata, not a live reference:
+
+- Parent's phase work cancelled → spawned children unaffected.
+- Parent renamed → blocked anyway (rename is only allowed for never-started items, and a parent of a split/elevation has phase work by definition).
+- Parent inception removed → edge case requiring all parent phase items cancelled first; children's source strings reference a name that no longer exists on the map. Fine as historical record.
+
+### Asymmetry to enforce
+
+Research and discussion *spawn* new map items but never modify existing ones. Only inception sessions (initial or refinement) modify existing items — refine summary, change routing while not-yet-started, etc. This discipline keeps the map authoritative.
+
+### What changes in the existing flows
+
+Both mechanisms exist today with their own STOP-gated flows. The changes are minimal:
+
+- **topic-splitting**: add map awareness — validate the proposed name against active map items and the dismissed list, write the new inception item alongside the new research item, set the `source` provenance string. The user-visible flow is unchanged; one extra manifest write under the hood.
+- **topic-elevation**: same shape — validate name, write inception item, set source.
+
+After spawn, the new topic is visible on the next `continue-epic` display with its `source: ...` provenance shown.
 
 ## Map Render and Menu
 
