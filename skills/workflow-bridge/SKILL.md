@@ -46,7 +46,11 @@ The output contains: `work_type`, `phases` (per-phase status), and `next_phase`.
 
 ## Step 2: Route to Continuation Reference
 
-Based on work type, load the appropriate continuation reference:
+Based on the completed phase and work type, load the appropriate continuation reference. The completed-phase check runs first so an epic concluding inception routes to the deterministic inception continuation; non-inception epic completions fall through to the work-type branches below.
+
+#### If completed phase is `inception`
+
+Load **[inception-continuation.md](references/inception-continuation.md)** and follow its instructions as written.
 
 #### If work type is `feature`
 
