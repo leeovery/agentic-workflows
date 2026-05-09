@@ -317,6 +317,72 @@ Session logs capture the conversation: the description as-of-session, the decomp
 
 No `brief.md`, no `inception/manifest.json`, no per-item rationale files. Manifest is the source of truth for structured state; session logs are the journey-of-shaping record.
 
+### Session log shape
+
+Lightweight markdown, not a transcript. The manifest holds the data; logs hold the rationale. Concrete shape (implementation can flesh out):
+
+**Initial session — `session-001.md`:**
+
+```markdown
+# Inception Session 001 — Initial Framing
+
+Date: {date}
+Work unit: {wu}
+
+## Description (as of session)
+{the work-unit description at session time — captured because the
+description can evolve, and we want to know what framing the
+session worked from}
+
+## Imports
+- imports/{filename}.md
+- ...
+
+## Topics Identified
+
+### {topic-name}
+- Routing: {research|discussion}
+- Why: {one-line rationale — what cue drove the routing}
+
+### {topic-name}
+...
+
+## Considered and Discarded
+- {item} — {reason}
+
+## Conclusion
+{N} topics seeded. {Optional: suggested first stop with reasoning.}
+```
+
+**Refinement session — `session-NNN.md`:**
+
+```markdown
+# Inception Session NNN — Refinement
+
+Date: {date}
+Work unit: {wu}
+
+## Map State at Start
+{one-line summary: N topics, counts by lifecycle}
+
+## Self-Healing Arrivals
+{items added by analyses since last session, if any}
+- {topic} (added by {analysis}, source: {provenance})
+
+## Changes
+- Added: {topic} (routing: ..., source: ...) — {reason}
+- Renamed: {old} → {new} — {reason}
+- Removed: {topic} — {reason}
+- ...
+
+## Conclusion
+{N} changes applied. Map now has {N} topics.
+```
+
+The shape is suggestive, not prescriptive. The point is that the log is **brief**, **rationale-focused**, and **keyed by event** (topics surfaced, changes made) rather than transcript-style. Two paragraphs of prose are fine if the session was light; ten short sections are fine if it was heavy.
+
+Implementation can refine the templates, add a frontmatter block if useful, drop sections that didn't apply (e.g., no "Considered and Discarded" if nothing was), etc.
+
 ## Auto-Routing
 
 When the user picks a per-topic entry from the `continue-epic` menu, the system computes the next phase from `routing intent + per-phase progress`. The menu collapses from per-phase entries (Continue X — research, Continue X — discussion, etc.) to a single per-topic entry that does the right thing.
