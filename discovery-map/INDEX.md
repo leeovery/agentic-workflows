@@ -75,6 +75,33 @@ This pattern means:
 - Earlier phases can be revised while later ones are still being built — rebases propagate the changes.
 - The implementer should rebase later branches when an earlier branch changes during review.
 
+### Branch Names and Merge Order
+
+The merge sequence at the end of the initiative is **strictly bottom-to-top of this table**. Each branch's base is the row above it; rebase onto the new `main` as each lower row lands.
+
+| Branch | Base | Phase | PR | Status |
+|---|---|---|---|---|
+| `idea/inception-pr-1-manifest-foundations` | `main` | Phase 1 — Manifest Foundations | [#264](https://github.com/leeovery/agentic-workflows/pull/264) | Done |
+| `idea/inception-rephase` | Phase 1 branch | (doc-only meta change — phase rebalance) | [#266](https://github.com/leeovery/agentic-workflows/pull/266) | Review |
+| `idea/inception-pr-2-entry-bridge` | rephase | Phase 2 — Inception Entry Skill + Bridge Plumbing | — | Not started |
+| `idea/inception-pr-3-process` | Phase 2 branch | Phase 3 — Inception Process Skill | — | Not started |
+| `idea/inception-pr-4-wire-start-epic` | Phase 3 branch | Phase 4 — Wire start-epic to Inception | — | Not started |
+| `idea/inception-pr-5-map-render` | Phase 4 branch | Phase 5 — Discovery Map Render | — | Not started |
+| `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | — | Not started |
+| `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | — | Not started |
+| `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | — | Not started |
+| `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | — | Not started |
+| `idea/inception-pr-10-direct-entry` | Phase 7 branch | Phase 10 — Direct-Entry Auto-Add | — | Not started |
+| `idea/inception-pr-11-migration` | Phase 5 branch | Phase 11 — Migration | — | Not started |
+| `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
+| `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | — | Not started |
+
+**Conventions:**
+- Branch slug = `idea/inception-pr-{N}-{short-slug}`. Whole numbers only — no `2a`/`2b`.
+- Doc-only or meta branches (like `idea/inception-rephase`) skip the phase number.
+- Update the *PR* and *Status* columns as each PR opens / merges.
+- For phases that branch from a non-immediate-predecessor (e.g., Phases 8/9/10 all branch from Phase 7; Phase 11 branches from Phase 5), the *Base* column records the actual divergence point.
+
 ## Other Conventions
 
 - Each phase planned individually via plan mode when implementation begins. The plan-mode plan lives at `~/.claude/plans/{slug}.md`; the phase doc here is the durable scope reference loaded as context.
