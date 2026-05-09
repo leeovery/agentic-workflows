@@ -1,6 +1,6 @@
-# Phase 3 — Discovery Map Render in continue-epic
+# Phase 5 — Discovery Map Render in continue-epic
 
-**Status:** Not started · **Depends on:** Phase 2
+**Status:** Not started · **Depends on:** Phase 4
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Make the discovery map visible. Updates `continue-epic`'s state display to show 
 - Source provenance shown on a sub-line under each topic when present.
 - Per-phase entries collapse to per-topic menu entries with auto-routing (Start research/Start discussion/Continue X — phase).
 - Recommendation logic: top discovery item (`→` first, then `◐`) during discovery; build-phase items once settled.
-- New menu entries: `f`/`refine` (no behaviour yet — Phase 4 wires it).
+- New menu entries: `f`/`refine` (no behaviour yet — Phase 6 wires it).
 - `p`/`pending` removed (map covers it).
 - `s`/`spec` continues to operate when applicable but isn't recommended during discovery.
 
@@ -34,14 +34,14 @@ Make the discovery map visible. Updates `continue-epic`'s state display to show 
 
 ## Out of scope
 
-- Refinement session itself (Phase 4 — `f`/`refine` menu entry leads here, but Phase 3 only wires the route).
-- Self-healing callouts ("3 new topics added") — Phase 5.
-- Imports count display ("N imported seeds") — Phase 6.
-- Migration callouts — Phase 9.
+- Refinement session itself (Phase 6 — `f`/`refine` menu entry leads here, but Phase 5 only wires the route).
+- Self-healing callouts ("3 new topics added") — Phase 7.
+- Imports count display ("N imported seeds") — Phase 8.
+- Migration callouts — Phase 11.
 
 ## Verification
 
-1. Continue from a Phase 2 test epic that has been through inception.
+1. Continue from a Phase 4 test epic that has been through inception.
 2. `/continue-epic` shows the discovery map at the top with all items in `○ fresh` state.
 3. Counts in the summary line are correct.
 4. Convergence signal reads `⚑ Discovery in progress`.

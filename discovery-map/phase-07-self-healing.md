@@ -1,6 +1,6 @@
-# Phase 5 — Self-Healing Analyses Re-point to Map
+# Phase 7 — Self-Healing Analyses Re-point to Map
 
-**Status:** Not started · **Depends on:** Phase 4
+**Status:** Not started · **Depends on:** Phase 6
 
 ## Purpose
 
@@ -41,12 +41,12 @@ Move `research-analysis` and `gap-analysis` from `workflow-discussion-entry` to 
 
 ## Out of scope
 
-- Imports as analysis input (Phase 6 — analyses still operate on research/discussion files only).
-- Topic-splitting / elevation behaviour change (Phase 7).
+- Imports as analysis input (Phase 8 — analyses still operate on research/discussion files only).
+- Topic-splitting / elevation behaviour change (Phase 9).
 
 ## Verification
 
-1. Continue from a Phase 4 test epic.
+1. Continue from a Phase 6 test epic.
 2. Complete a research session for a topic. Return to `/continue-epic`.
 3. Boot-up runs research-analysis (cache stale because new research file). If new themes surface, callout reads `⚑ N new topics added to the map from research-analysis`. New items appear on the map with `source: research-analysis` provenance.
 4. Complete a discussion session. Boot-up runs gap-analysis. If new gaps surface, callout shows; new items on the map.

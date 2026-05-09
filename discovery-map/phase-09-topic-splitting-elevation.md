@@ -1,6 +1,6 @@
-# Phase 7 — Topic Splitting and Elevation
+# Phase 9 — Topic Splitting and Elevation
 
-**Status:** Not started · **Depends on:** Phase 5 (and Phase 2 for inception items)
+**Status:** Not started · **Depends on:** Phase 7 (and Phase 4 for inception items)
 
 ## Purpose
 
@@ -29,17 +29,17 @@ Update the existing `topic-splitting` (research) and `topic-elevation` (discussi
 - `skills/workflow-discussion-process/references/discussion-session.md` — Section F (Topic Elevation): same pattern for the seeded discussion file. Inception item with `routing: discussion`, source `discussion-elevation:{parent}`. Same name validation.
 
 **Possibly new — shared validation reference:**
-- `skills/workflow-shared/references/topic-name-validation.md` — validates a proposed topic name against active map items and the dismissed list. Returns "ok / collision-active / matches-dismissed". Used by topic-splitting, topic-elevation, refinement adds, direct-entry adds (Phase 8).
+- `skills/workflow-shared/references/topic-name-validation.md` — validates a proposed topic name against active map items and the dismissed list. Returns "ok / collision-active / matches-dismissed". Used by topic-splitting, topic-elevation, refinement adds, direct-entry adds (Phase 10).
 
 ## Out of scope
 
-- Direct-entry auto-add for unmapped topics (Phase 8).
+- Direct-entry auto-add for unmapped topics (Phase 10).
 - Renaming existing topics that already have phase items (deliberately not supported per the editing-rules matrix — rename is for never-started only).
 - Reactivating cancelled phase work via splits (out of scope; user uses existing `e`/`reactivate`).
 
 ## Verification
 
-1. Continue from a Phase 5 test epic where research is in progress on a topic with multiple threads.
+1. Continue from a Phase 7 test epic where research is in progress on a topic with multiple threads.
 2. Trigger topic-splitting (research-process detects substantial side-thread; offers to split). Confirm split.
 3. Verify:
    - New research file created with extracted content.
@@ -47,14 +47,14 @@ Update the existing `topic-splitting` (research) and `topic-elevation` (discussi
    - `phases.inception.items.{new-topic}` exists with `routing: research`, `source: research-split:{parent-topic}`.
    - Map render shows the new item as `◐ researching` with provenance line "from {parent-topic}".
 4. Try splitting with a name that's already on the map — blocked, prompted for alternative.
-5. Remove a topic via refinement (Phase 4) — name now in dismissed list. Try splitting with that name — allowed, dismissed-list entry removed.
+5. Remove a topic via refinement (Phase 6) — name now in dismissed list. Try splitting with that name — allowed, dismissed-list entry removed.
 6. Repeat for `topic-elevation` in a discussion session: same outcomes with `routing: discussion` and source `discussion-elevation:{parent-topic}`.
 7. Compliance self-check passes on touched skill files.
 
 ## Notes for the implementer
 
 - **Asymmetry to enforce** — research and discussion *spawn* new map items but never modify existing ones. Don't accidentally add update-existing logic here.
-- **User-explicit spawns bypass the dismissed list** — split/elevation are user-initiated; the dismissed list only blocks automatic re-adds by analyses (Phase 5).
+- **User-explicit spawns bypass the dismissed list** — split/elevation are user-initiated; the dismissed list only blocks automatic re-adds by analyses (Phase 7).
 - **Cascade behaviour** — provenance is historical metadata, not a live reference. If the parent's phase work is later cancelled, the children stay on the map untouched.
 - **Renaming the parent post-split is blocked anyway** — parents of splits/elevations have phase work, so the editing-rules matrix forbids rename. No special-case handling needed.
 - **Content extraction is the explicit exception** — these flows do extract content (unlike post-conclusion analysis-derived items). Keep that distinction clear in any code comments and docs touched.
