@@ -1,7 +1,7 @@
 ---
 name: workflow-inception-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
 ---
 
 # Inception Process
@@ -33,12 +33,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 - Failure mode — "the user already set this, confirmation is redundant": that IS the auto-answer the rule forbids. Stored values are suggestions, not consent for this run.
 - After rendering a gate block, the turn MUST end. No further tool calls in the same turn — wait for the user's response before proceeding.
 - Complete each step fully before moving to the next.
-
-**Hard rules for inception:**
-
-- **Initial spike, not exhaustive.** 2 topics is fine, 20 is fine. The map fills out over time as analyses auto-add and splits/elevations spawn. Don't push for completeness.
-- **No active missing-piece probes.** Don't list things the user "hasn't mentioned." If they go quiet, a soft *"anything else come to mind, or are we good?"* is enough.
-- **No decisions, no investigations.** Defer mechanism questions to discussion. Use what you and the user already know; don't go searching.
 
 ---
 
@@ -97,7 +91,7 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**.
 
 #### If `continue`
 
-→ Proceed to **Step 5** to resume the session loop. The draft session log is your working list; reflect it back to the user when the loop opens.
+→ Proceed to **Step 3** to resume the session loop. The draft session log is your working list; reflect it back to the user when the loop opens.
 
 #### If `restart`
 
@@ -176,50 +170,7 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 
 ---
 
-## Step 3: Knowledge Usage
-
-> *Output the next fenced block as a code block:*
-
-```
-── Knowledge Usage ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading the usage guide for the knowledge base so proactive
-> querying is available throughout the session.
-```
-
-Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
-
-→ Proceed to **Step 4**.
-
----
-
-## Step 4: Contextual Query
-
-> *Output the next fenced block as a code block:*
-
-```
-── Contextual Query ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the knowledge base for prior work that relates to
-> this work unit's description before the session begins. Fresh
-> epics will return zero results and proceed silently.
-```
-
-Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
-
-→ Proceed to **Step 5**.
-
----
-
-## Step 5: Session Loop
+## Step 3: Session Loop
 
 > *Output the next fenced block as a code block:*
 
@@ -238,11 +189,11 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 6: Confirm and Persist
+## Step 4: Confirm and Persist
 
 > *Output the next fenced block as a code block:*
 
@@ -260,11 +211,11 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 5**.
 
 ---
 
-## Step 7: Document Review
+## Step 5: Document Review
 
 > *Output the next fenced block as a code block:*
 
@@ -281,11 +232,11 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 8: Compliance Self-Check
+## Step 6: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -302,11 +253,11 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 9: Conclude Inception
+## Step 7: Conclude Inception
 
 > *Output the next fenced block as a code block:*
 

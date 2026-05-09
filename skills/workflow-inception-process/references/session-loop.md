@@ -6,7 +6,7 @@
 
 The inception session is an organic conversation. The working list of surfaced topics — held in conversation memory and mirrored to the draft `session-001.md` — is your tracking backbone. Follow the curatorial moves and hard rules from **[inception-guidelines.md](inception-guidelines.md)** throughout.
 
-No background agents, no review cycles, no perspective dispatches. Inception is curatorial — surfacing topics, not investigating or deciding.
+No background agents, no review cycles, no perspective dispatches.
 
 ## A. Open
 
@@ -94,6 +94,6 @@ The working list lives in **two places** during the session:
 
 These must stay in sync at natural pauses. After a topic settles (added, merged, renamed, routed, dropped), append or update the draft and commit. If you defer the write, the next context refresh loses the surface state.
 
-Manifest writes are **not** part of the session loop — they are deferred to the confirm-and-persist gate (Step 6 of the backbone). During the session, the manifest holds zero inception items. This is intentional: a wrong addition is a one-action removal at the gate, and one batched commit captures the entire framing decision.
+Manifest writes are **not** part of the session loop — they are deferred to the confirm-and-persist gate (Step 4 of the backbone). During the session, the manifest holds zero inception items. This is intentional: a wrong addition is a one-action removal at the gate, and one batched commit captures the entire framing decision.
 
 → Return to caller.

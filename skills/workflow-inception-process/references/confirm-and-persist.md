@@ -37,7 +37,7 @@ Confirm and persist?
 
 #### If `no`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 3**.
 
 #### If `yes`
 

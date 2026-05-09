@@ -60,13 +60,13 @@ session worked from.}
 4. Populate the **Imports** section if the handoff lists any; omit the section entirely if there are none.
 5. Leave **Topics Identified**, **Considered and Discarded**, and **Conclusion** as placeholders to fill in during the session.
 
-**During the session** (Step 5):
+**During the session** (Step 3):
 
 - Append to **Topics Identified** as topics surface and tentative routing is agreed. The on-disk draft is the recovery surface for context refresh — keep it current at natural pauses, not after every exchange.
 - Note items the user raised and then dropped under **Considered and Discarded** (with the reason).
 - Commit the draft at natural breaks. Do not hold the working list only in conversation memory — context compaction is lossy.
 
-**At confirm-and-persist** (Step 6):
+**At confirm-and-persist** (Step 4):
 
 - Reconcile the draft against the proposed map the user just approved. Add or remove topic entries to match. Populate the **Conclusion** with the topic count and any suggested first stop.
 - Drop the **Imports** or **Considered and Discarded** sections if they remained empty.

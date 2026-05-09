@@ -27,7 +27,7 @@ Conclude inception and return to the epic menu?
 
 #### If `no`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+→ Return to **[the skill](../SKILL.md)** for **Step 3**.
 
 #### If `yes`
 
