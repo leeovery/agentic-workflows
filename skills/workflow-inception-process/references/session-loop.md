@@ -8,7 +8,7 @@ Follow the curatorial moves and hard rules from **[inception-guidelines.md](ince
 
 ## A. Open
 
-Invite the user to describe what they want to build with no framework imposed. The work-unit description has already been read silently — do not narrate or summarise it back unless asked.
+The work-unit description has been read silently — don't narrate or summarise it back. Open with this prompt:
 
 > *Output the next fenced block as a code block:*
 
@@ -78,7 +78,5 @@ Ready to seed this map and start work?
 → Return to caller.
 
 #### If keep going
-
-Apply the user's changes inline. Update the draft session log when items settle. When the user signals convergence again, re-render the map.
 
 → Return to **B. Session Loop**.

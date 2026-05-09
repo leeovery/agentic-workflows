@@ -29,8 +29,6 @@ Notes:
 
 ## B. Finalise the session log
 
-Document review (Step 4) has already reconciled the draft against the conversation. The only remaining edit is the Conclusion section.
-
 Populate the **Conclusion** section with the topic count. Optionally add a one-line suggestion for where to start (e.g. *"highest-uncertainty: kitchen-printers — research first"*) — only if the rationale is clear from the conversation. Skip the suggestion otherwise.
 
 → Proceed to **C. Single commit**.

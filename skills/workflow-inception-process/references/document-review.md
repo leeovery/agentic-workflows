@@ -49,7 +49,7 @@ git commit -m "docs(inception/{work_unit}): reconcile session log with conversat
 
 ```
 > Document review complete. {N} correction(s) applied to the
-> session log. Proceeding to the final compliance check.
+> session log.
 ```
 
 → Return to caller.
