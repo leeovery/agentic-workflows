@@ -15,7 +15,7 @@ These are the moves that shape inception. Use them; lean on them when the conver
 - **Tentative grouping.** *"Those two feel like one thing — agree?"*
 - **Coarseness check.** Surface when items pile up, but don't push exhaustiveness. *"We've got 15; some feel small enough they'll fall out of bigger discussions."*
 - **Anchor and return.** When the conversation pulls into detail, gently re-anchor. *"We got pulled into payments detail; want to come back to mapping the rest first?"*
-- **Routing inference.** Read the user's framing for cues; tentatively propose; let them flip. See **[routing-inference.md](routing-inference.md)** — load it now.
+- **Routing inference.** Read the user's framing for cues; tentatively propose; let them flip.
 
 → Load **[routing-inference.md](routing-inference.md)** and follow its instructions as written.
 
