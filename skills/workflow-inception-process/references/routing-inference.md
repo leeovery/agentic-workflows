@@ -4,31 +4,31 @@
 
 ---
 
-Topics get routed (`research` | `discussion`) based on how the user frames them. Read cues, propose tentatively, let the user flip. Routing is mutable for fresh items (no per-phase work yet) — the user can always re-route later via refinement. So the initial proposal is low-stakes, an opening best guess, not a binding commitment.
+Read cues from the user's framing, propose `research` or `discussion` tentatively, let them flip. Routing is mutable for fresh items, so the initial proposal is low-stakes.
 
 ## A. Cue Lists
 
-### Research-shaped signals
+**Research-shaped signals**
 
 - *"I don't know..."* / *"I'm not sure how X works"* / *"What's possible with..."*
 - Open feasibility / cost / capability questions
 - External dependencies the user hasn't worked through
 - Technology, market, or competitor questions
 
-### Discussion-shaped signals
+**Discussion-shaped signals**
 
 - The user describes the thing in present tense, with actors and flows (*"operators add items, set prices, control availability"*)
 - Standard patterns the user clearly knows (auth, RBAC, payments)
 - *"We just need to decide between A and B"*
 - Architectural questions where multiple approaches are familiar
 
-### Neutral / unclear
+**Neutral / unclear**
 
 Topic mentioned in passing, no elaboration. Ask explicitly with the soft framing — *"do you have a sense of how this works, or would we need to look into it?"* — never force a binary research/discussion pick.
 
 ## B. Worked Examples
 
-### Research-shaped
+**Research-shaped**
 
 ```
 User: "Kitchen printers — I don't know what protocols are
@@ -39,7 +39,7 @@ Claude: "Kitchen-printers — sounds like investigation territory.
         I'd put it as research. Yes?"
 ```
 
-### Discussion-shaped
+**Discussion-shaped**
 
 ```
 User: "Menu management — operators add items, set prices,
@@ -50,7 +50,7 @@ Claude: "Menu-management — you've got a clear shape in mind.
         Discussion sounds right. OK?"
 ```
 
-### Neutral / unclear
+**Neutral / unclear**
 
 ```
 User: "We'll need analytics for the operator."
@@ -63,7 +63,7 @@ Claude: "For analytics — do you have a sense of what views and
 
 ## C. How to Propose
 
-Once a cue lands, propose the routing inline as part of reflecting the topic back. Keep it tentative — *"I'd put it as research"*, *"discussion sounds right"*, *"sounds like investigation territory"*. The user flips with a single word; treat that flip as authoritative without re-asking.
+Propose routing inline when reflecting the topic back. Keep it tentative — *"I'd put it as research"*, *"discussion sounds right"*. The user flips with a single word; treat that flip as authoritative without re-asking.
 
 Avoid:
 

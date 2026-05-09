@@ -4,13 +4,11 @@
 
 ---
 
-The inception session is an organic conversation. The working list of surfaced topics — held in conversation memory and mirrored to the draft `session-001.md` — is your tracking backbone. Follow the curatorial moves and hard rules from **[inception-guidelines.md](inception-guidelines.md)** throughout.
-
-No background agents, no review cycles, no perspective dispatches.
+Follow the curatorial moves and hard rules from **[inception-guidelines.md](inception-guidelines.md)** throughout. No background agents, no review cycles, no perspective dispatches.
 
 ## A. Open
 
-Greet the user briefly and invite them to describe what they want to build, with no framework imposed. The work-unit description has already been read silently — do not narrate or summarise it back unless they ask.
+Invite the user to describe what they want to build with no framework imposed. The work-unit description has already been read silently — do not narrate or summarise it back unless asked.
 
 > *Output the next fenced block as a code block:*
 
@@ -26,7 +24,7 @@ who needs to understand the rough shape.
 
 ## B. Session Loop
 
-The loop runs until the user signals convergence. It has no fixed cadence — follow the conversation, not a checklist.
+No fixed cadence — follow the conversation, not a checklist. The loop runs until the user signals convergence.
 
 1. **Listen.** Take in what the user just said.
 2. **Surface.** When you hear a distinct shape, reflect it back as a candidate topic with tentative routing inferred from the user's framing. Use the curatorial moves — reflective decomposition, tentative grouping, coarseness check. Multiple topics can come out of one user turn; reflect them as a set if so.
@@ -42,13 +40,13 @@ Do not push for completeness. The user signals convergence when they've got enou
 
 ## C. Convergence Signal
 
-Convergence is the natural end state — not a forced conclusion. Watch for:
+Watch for these convergence signals:
 
 - The user explicitly says they're done (*"that covers it"*, *"good enough to start"*, *"let's wrap"*).
 - The conversation has stalled — no new shapes are surfacing and the user has gone quiet on prompts.
 - The user keeps re-framing items already on the map rather than naming new ones.
 
-When you see a signal, render the proposed map and offer to conclude.
+When you see one, render the proposed map and offer to conclude.
 
 > *Output the next fenced block as a code block:*
 
@@ -81,19 +79,17 @@ Ready to seed this map and start work?
 
 #### If keep going
 
-The user wants to refine — adjust, add, drop, re-route, rename. Stay in the loop and apply changes inline as they come. Update the draft session log when items settle. When the user signals convergence again, re-render the map.
+Apply the user's changes inline. Update the draft session log when items settle. When the user signals convergence again, re-render the map.
 
 → Return to **B. Session Loop**.
 
 ## D. Working List Discipline
 
-The working list lives in **two places** during the session:
+The working list lives in two places during the session:
 
 1. **Conversation memory** — the active state you reference when surfacing or anchoring.
 2. **Draft `session-001.md` on disk** — the recovery surface for context refresh.
 
-These must stay in sync at natural pauses. After a topic settles (added, merged, renamed, routed, dropped), append or update the draft and commit. If you defer the write, the next context refresh loses the surface state.
+Keep them in sync at natural pauses. After a topic settles (added, merged, renamed, routed, dropped), append or update the draft and commit. If you defer the write, the next context refresh loses the surface state.
 
-Manifest writes are **not** part of the session loop — they are deferred to the confirm-and-persist gate (Step 4 of the backbone). During the session, the manifest holds zero inception items. This is intentional: a wrong addition is a one-action removal at the gate, and one batched commit captures the entire framing decision.
-
-→ Return to caller.
+Manifest writes are **not** part of the session loop — they are deferred to the confirm-and-persist gate (Step 4 of the backbone). During the session, the manifest holds zero inception items.

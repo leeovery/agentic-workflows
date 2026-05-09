@@ -4,50 +4,7 @@
 
 ---
 
-The session loop has returned with the user's `yes` on the proposed map. This step takes the working list and turns it into manifest items + a finalised session log + one commit. This is the only persistence gate in the inception phase — adds batch under one approval per the design's "safety scales with destructiveness" rule.
-
-## A. Render the Final Map
-
-Re-render the proposed map one more time so the user sees exactly what is about to be persisted. Use the same shape as the convergence display, but with the heading shifted to indicate this is the persistence preview:
-
-> *Output the next fenced block as a code block:*
-
-```
-Persisting Discovery Map — {work_unit:(titlecase)}
-
-  • {topic-1} — {summary}    [routing: {research|discussion}]
-  • {topic-2} — {summary}    [routing: {research|discussion}]
-  • {topic-3} — {summary}    [routing: {research|discussion}]
-
-{N} topic(s) · all source: inception · all status: in-progress
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Confirm and persist?
-
-- **`y`/`yes`** — Write items to the manifest and finalise the session log
-- **`n`/`no`** — Return to the session for further refinement
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `no`
-
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
-
-#### If `yes`
-
-→ Proceed to **B. Persist**.
-
-## B. Persist
-
-Apply the writes in this order. Treat the whole sequence as one logical change — if any step fails, surface the error and stop before the commit so the user can recover.
-
-### B.1. Manifest writes — per topic
+## A. Manifest writes — per topic
 
 For each topic on the working list, in the order the user surfaced them:
 
@@ -58,15 +15,19 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source inception
 ```
 
+If any command fails, surface the error and stop before the commit so the user can recover.
+
 Notes:
 
 - `init-phase` creates the item with `status: in-progress` automatically. Inception items have no other valid status — do not pass `status` explicitly.
 - The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
 - `summary` is the one-line description from the working list. Quote the value in shell — single quotes if it contains `[]`, `{}`, `~`, or backticks.
-- `routing` is the one the user agreed to in the session.
+- `routing` is the value the user agreed to during the session.
 - `source: inception` distinguishes initial-session topics from later-phase additions (`research-analysis`, `gap-analysis`, `split`, `elevation`, `direct-start`, `migration-seeded`).
 
-### B.2. Finalise the session log
+→ Proceed to **B. Finalise the session log**.
+
+## B. Finalise the session log
 
 Re-read the draft `session-001.md`. Reconcile against the persisted map:
 
@@ -76,7 +37,9 @@ Re-read the draft `session-001.md`. Reconcile against the persisted map:
 - Drop the **Considered and Discarded** section if nothing was dropped during the session.
 - Populate the **Conclusion** section with the topic count. Optionally add a one-line suggestion for where to start (e.g. *"highest-uncertainty: kitchen-printers — research first"*) — only if the rationale is clear from the conversation. Skip the suggestion otherwise.
 
-### B.3. Single commit
+→ Proceed to **C. Single commit**.
+
+## C. Single commit
 
 Stage the manifest and the finalised session log together and commit once:
 

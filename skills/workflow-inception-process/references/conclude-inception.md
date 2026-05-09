@@ -4,11 +4,10 @@
 
 ---
 
-The persistence step has already written manifest items, finalised the session log, and committed. Document review and compliance self-check have run. This step closes the session and bridges back to the epic menu.
+Two anti-patterns to avoid (the discussion-process precedent does both, but inception does neither):
 
-Inception is **not** a knowledge-base indexed phase — session logs are journey records, not retrievable artifacts. There is no `knowledge index` call here.
-
-There is also no per-phase `status: completed` write. Inception is alive as long as the work unit is in-progress; individual items exist or don't. Phase completion is an emergent property of the items themselves, not a manifest field on the phase.
+- **Do not call `knowledge index`.** Inception is not a knowledge-base indexed phase — session logs are journey records, not retrievable artifacts.
+- **Do not set a phase-level `status: completed`.** Inception is alive as long as the work unit is in-progress; phase completion is emergent from the items themselves, not a manifest field on the phase.
 
 ## A. Final Confirmation
 
@@ -35,7 +34,7 @@ Conclude inception and return to the epic menu?
 
 ## B. Final Sweep
 
-Check `git status`. If the working tree is dirty (review fixes that were not committed, or any other stray edit), commit the residual changes now with a descriptive message:
+Check `git status`. If the working tree is dirty, commit the residual changes:
 
 ```bash
 git add -- .workflows/{work_unit}/
@@ -47,8 +46,6 @@ If the working tree is already clean, skip the commit.
 → Proceed to **C. Bridge**.
 
 ## C. Bridge
-
-Hand off to the bridge skill. The bridge enters plan mode with deterministic continuation instructions for `/continue-epic {work_unit}`.
 
 > *Output the next fenced block as markdown (not a code block):*
 

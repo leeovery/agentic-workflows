@@ -100,6 +100,8 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**.
 
 → Proceed to **Step 1**.
 
+
+
 #### If any `session-NNN.md` for N > 1 exists
 
 The work unit has previously concluded an inception session and is being re-entered. Refinement is a future-phase deliverable in this initiative.
@@ -204,9 +206,8 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Rendering the proposed map for approval. On confirmation,
-> manifest writes batch into one commit alongside the finalised
-> session log.
+> Persisting the approved map. Manifest writes batch into one
+> commit alongside the finalised session log.
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
