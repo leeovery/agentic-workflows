@@ -4,7 +4,7 @@
 
 ---
 
-Structure for `.workflows/{work_unit}/inception/session-001.md`. Guide, not a form — drop sections that didn't apply. Two paragraphs of prose are fine for a light session; a handful of short sections for a heavy one.
+Structure for `.workflows/{work_unit}/inception/session-001.md`. Keep all section headings — write `(none)` under any that have no content rather than removing the section. The empty section is a positive signal it was considered, not missed. Two paragraphs of prose are fine for a light session; a handful of short sections for a heavy one.
 
 ## Template
 

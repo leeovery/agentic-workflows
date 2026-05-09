@@ -33,8 +33,7 @@ Re-read the draft `session-001.md`. Reconcile against the persisted map:
 
 - Ensure every persisted topic appears under **Topics Identified** with its routing and one-line "Why".
 - Remove any draft entries the user dropped during refinement that were never confirmed.
-- Drop the **Imports** section if it is empty.
-- Drop the **Considered and Discarded** section if nothing was dropped during the session.
+- Keep all section headings, even when a section has no content. Write `(none)` under the heading — the empty section is a positive signal it was considered, not missed.
 - Populate the **Conclusion** section with the topic count. Optionally add a one-line suggestion for where to start (e.g. *"highest-uncertainty: kitchen-printers — research first"*) — only if the rationale is clear from the conversation. Skip the suggestion otherwise.
 
 → Proceed to **C. Single commit**.

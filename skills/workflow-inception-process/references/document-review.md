@@ -28,7 +28,7 @@ Read `.workflows/{work_unit}/inception/session-001.md` in full. Don't rely on me
 Walk the conversation against the log. Three checks:
 
 1. **Every persisted topic appears** under **Topics Identified** with the routing the user agreed to and a one-line "Why" that matches the cue actually used in conversation. Missing entries or wrong routing are gaps.
-2. **Dropped items appear** under **Considered and Discarded** with the reason given at the time. If something was raised and dropped but isn't recorded, add it. If the section is empty, drop it.
+2. **Dropped items appear** under **Considered and Discarded** with the reason given at the time. If something was raised and dropped but isn't recorded, add it. If nothing was dropped, write `(none)` under the heading rather than removing the section.
 3. **No drift in the "Why" lines.** The rationale should be one short clause naming the cue (*"clear shape and standard pattern"*, *"open feasibility question"*, *"user wasn't sure how protocol options compared"*). Reject embellishments that didn't come up in conversation.
 
 Apply corrections directly to the file. Stage and commit the fixes:
