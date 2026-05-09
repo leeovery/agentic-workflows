@@ -195,7 +195,29 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 ---
 
-## Step 4: Confirm and Persist
+## Step 4: Document Review
+
+> *Output the next fenced block as a code block:*
+
+```
+── Document Review ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Reconciling the draft session log against the conversation
+> before persisting. Catches drift so the manifest is written
+> from a known-good source.
+```
+
+Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
+
+→ Proceed to **Step 5**.
+
+---
+
+## Step 5: Confirm and Persist
 
 > *Output the next fenced block as a code block:*
 
@@ -211,27 +233,6 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
-
-→ Proceed to **Step 5**.
-
----
-
-## Step 5: Document Review
-
-> *Output the next fenced block as a code block:*
-
-```
-── Document Review ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reconciling the session conversation against the session log
-> to catch substance that was discussed but never captured.
-```
-
-Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
