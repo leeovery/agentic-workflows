@@ -8,7 +8,30 @@ Follow the curatorial moves and hard rules from **[inception-guidelines.md](ince
 
 ## A. Open
 
-The work-unit description has been read silently — don't narrate or summarise it back. Open with this prompt:
+Read `.workflows/{work_unit}/inception/session-001.md` to load the working list (if any) into context.
+
+#### If **Topics Identified** already has entries
+
+This is a resume. Brief the user with the working list and ask where to pick up:
+
+> *Output the next fenced block as a code block:*
+
+```
+Picking up where we left off. Working list so far:
+
+  • {topic-1} — {summary}    [routing: {research|discussion}]
+  • {topic-2} — {summary}    [routing: {research|discussion}]
+
+Where do you want to take it from here?
+```
+
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Session Loop**.
+
+#### Otherwise
+
+Fresh start. The work-unit description has been read silently — don't narrate or summarise it back. Open with this prompt:
 
 > *Output the next fenced block as a code block:*
 

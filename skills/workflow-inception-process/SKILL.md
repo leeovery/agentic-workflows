@@ -91,7 +91,7 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**.
 
 #### If `continue`
 
-→ Proceed to **Step 3** to resume the session loop. The draft session log is your working list; reflect it back to the user when the loop opens.
+→ Proceed to **Step 2**. The draft session log is your working list — session-loop will brief the user on resume.
 
 #### If `restart`
 
