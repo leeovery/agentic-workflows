@@ -30,8 +30,8 @@ No fixed cadence — follow the conversation, not a checklist. The loop runs unt
 2. **Surface.** When you hear a distinct shape, reflect it back as a candidate topic with tentative routing inferred from the user's framing. Use the curatorial moves — reflective decomposition, tentative grouping, coarseness check. Multiple topics can come out of one user turn; reflect them as a set if so.
 3. **Confirm inline.** Each topic surfaces as *"hearing X — sounds like research, yes?"* — the user agrees, flips routing, merges with another topic, drops it, or renames it. Treat their response as authoritative; don't re-litigate.
 4. **Anchor and return** if the conversation tunnels into one item's mechanism. Re-pose the question at the map level: *"want to come back to the rest first?"*
-5. **Update the working list.** Add, rename, merge, or drop entries to match what the user just confirmed.
-6. **Update the draft session log** at natural pauses. Append topics to **Topics Identified**; note dropped items under **Considered and Discarded** with the reason. Do not write after every exchange — write when a topic settles, when the conversation is about to branch, or when context compaction is a realistic risk. Then commit.
+5. **Update the working list.** Add, rename, merge, or drop entries to match what the user just confirmed. The working list lives in two places: conversation memory and the draft `session-001.md`. Manifest writes are **deferred to the confirm-and-persist gate** (Step 4 of the backbone) — do not write inception items to the manifest mid-loop.
+6. **Update the draft session log** at natural pauses. Append topics to **Topics Identified**; note dropped items under **Considered and Discarded** with the reason. Write when a topic settles, when the conversation is about to branch, or when context compaction is a realistic risk — not after every exchange. Then commit. If you defer the write, the next context refresh loses the surface state.
 7. **Continue.** Stay open. Surface more topics, follow tangents that produce new topics, anchor when the conversation drifts.
 
 Do not push for completeness. The user signals convergence when they've got enough.
@@ -82,14 +82,3 @@ Ready to seed this map and start work?
 Apply the user's changes inline. Update the draft session log when items settle. When the user signals convergence again, re-render the map.
 
 → Return to **B. Session Loop**.
-
-## D. Working List Discipline
-
-The working list lives in two places during the session:
-
-1. **Conversation memory** — the active state you reference when surfacing or anchoring.
-2. **Draft `session-001.md` on disk** — the recovery surface for context refresh.
-
-Keep them in sync at natural pauses. After a topic settles (added, merged, renamed, routed, dropped), append or update the draft and commit. If you defer the write, the next context refresh loses the surface state.
-
-Manifest writes are **not** part of the session loop — they are deferred to the confirm-and-persist gate (Step 4 of the backbone). During the session, the manifest holds zero inception items.
