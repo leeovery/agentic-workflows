@@ -69,7 +69,7 @@ Proposed Discovery Map — {work_unit:(titlecase)}
 Ready to seed this map and start work?
 
 - **`y`/`yes`** — Persist the map and conclude inception
-- **Keep going** — Stay in the session and refine further
+- **Keep going** — Tell me what to adjust (add, drop, rename, re-route, edit summary)
 · · · · · · · · · · · ·
 ```
 
