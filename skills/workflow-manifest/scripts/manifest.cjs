@@ -13,12 +13,13 @@ const WORKFLOWS_DIR = path.resolve(process.cwd(), '.workflows');
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
 
 const VALID_PHASES = [
-  'research', 'discussion', 'investigation', 'scoping',
+  'inception', 'research', 'discussion', 'investigation', 'scoping',
   'specification', 'planning', 'implementation',
   'review'
 ];
 
 const VALID_PHASE_STATUSES = {
+  inception:      ['in-progress'],
   research:       ['in-progress', 'completed', 'cancelled'],
   discussion:     ['in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],
@@ -438,6 +439,36 @@ function parseValue(raw) {
   }
 }
 
+// Deep equality used by `pull` so object-shaped array entries (e.g. imports[]
+// records) can be matched by value, not by reference. Order-independent for
+// object keys.
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!deepEqual(a[i], b[i])) return false;
+    return true;
+  }
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
+  if (ak.length !== bk.length) return false;
+  for (const k of ak) {
+    if (!Object.prototype.hasOwnProperty.call(b, k)) return false;
+    if (!deepEqual(a[k], b[k])) return false;
+  }
+  return true;
+}
+
+function findDeepIndex(arr, value) {
+  for (let i = 0; i < arr.length; i++) {
+    if (deepEqual(arr[i], value)) return i;
+  }
+  return -1;
+}
+
 function outputValue(value) {
   if (value !== null && typeof value === 'object') {
     process.stdout.write(JSON.stringify(value, null, 2) + '\n');
@@ -780,7 +811,7 @@ function cmdPull(args) {
       const manifest = readProjectManifest();
       const current = getByPath(manifest, proj.fieldSegments);
       if (!Array.isArray(current)) return; // no-op
-      const idx = current.indexOf(value);
+      const idx = findDeepIndex(current, value);
       if (idx === -1) return; // no-op
       current.splice(idx, 1);
       writeProjectManifestAtomic(manifest);
@@ -802,7 +833,7 @@ function cmdPull(args) {
     const manifest = readManifest(workUnit);
     const current = getByPath(manifest, segments);
     if (!Array.isArray(current)) return; // no-op
-    const idx = current.indexOf(value);
+    const idx = findDeepIndex(current, value);
     if (idx === -1) return; // no-op
     current.splice(idx, 1);
     writeManifestAtomic(workUnit, manifest);

@@ -1541,6 +1541,247 @@ assert_equals "$prev_exists" "false" "previous_status deleted after reactivation
 echo ""
 
 # ============================================================================
+# INCEPTION PHASE TESTS
+# ============================================================================
+
+echo -e "${YELLOW}Test: init-phase succeeds for inception${NC}"
+setup_fixture
+run_cli init incept-init --work-type epic --description "Inception init" >/dev/null 2>&1
+exit_code=$(run_cli_exit_code init-phase incept-init.inception.foo)
+output=$(run_cli_stdout get incept-init.inception.foo status)
+
+assert_equals "$exit_code" "0" "init-phase inception succeeds"
+assert_equals "$output" "in-progress" "Inception item status defaults to in-progress"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: inception accepts in-progress status${NC}"
+setup_fixture
+run_cli init incept-status --work-type epic --description "Inception status" >/dev/null 2>&1
+run_cli init-phase incept-status.inception.foo >/dev/null 2>&1
+run_cli set incept-status.inception.foo status in-progress >/dev/null 2>&1
+output=$(run_cli_stdout get incept-status.inception.foo status)
+
+assert_equals "$output" "in-progress" "Set status in-progress accepted"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: inception rejects cancelled status (hard-delete model)${NC}"
+setup_fixture
+run_cli init incept-cancel --work-type epic --description "Inception cancel" >/dev/null 2>&1
+run_cli init-phase incept-cancel.inception.foo >/dev/null 2>&1
+exit_code=$(run_cli_exit_code set incept-cancel.inception.foo status cancelled)
+output=$(run_cli set incept-cancel.inception.foo status cancelled 2>&1 || true)
+
+assert_equals "$exit_code" "1" "Set status cancelled exits non-zero"
+assert_contains "$output" "Invalid status" "Error mentions invalid status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: inception rejects completed status (hard-delete model)${NC}"
+setup_fixture
+run_cli init incept-comp --work-type epic --description "Inception completed" >/dev/null 2>&1
+run_cli init-phase incept-comp.inception.foo >/dev/null 2>&1
+exit_code=$(run_cli_exit_code set incept-comp.inception.foo status completed)
+
+assert_equals "$exit_code" "1" "Set status completed exits non-zero"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: inception accepts free-form routing field${NC}"
+setup_fixture
+run_cli init incept-route --work-type epic --description "Inception routing" >/dev/null 2>&1
+run_cli init-phase incept-route.inception.foo >/dev/null 2>&1
+run_cli set incept-route.inception.foo routing research >/dev/null 2>&1
+output=$(run_cli_stdout get incept-route.inception.foo routing)
+
+assert_equals "$output" "research" "Routing field stored unchanged"
+
+# Discussion routing also accepted (no validation enforced)
+run_cli set incept-route.inception.foo routing discussion >/dev/null 2>&1
+output=$(run_cli_stdout get incept-route.inception.foo routing)
+assert_equals "$output" "discussion" "Routing can be updated to discussion"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: inception accepts summary field${NC}"
+setup_fixture
+run_cli init incept-sum --work-type epic --description "Inception summary" >/dev/null 2>&1
+run_cli init-phase incept-sum.inception.foo >/dev/null 2>&1
+run_cli set incept-sum.inception.foo summary "A short summary of the topic" >/dev/null 2>&1
+output=$(run_cli_stdout get incept-sum.inception.foo summary)
+
+assert_equals "$output" "A short summary of the topic" "Summary stored unchanged"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get returns full inception item${NC}"
+setup_fixture
+run_cli init incept-get --work-type epic --description "Inception get" >/dev/null 2>&1
+run_cli init-phase incept-get.inception.foo >/dev/null 2>&1
+run_cli set incept-get.inception.foo summary "A topic" >/dev/null 2>&1
+run_cli set incept-get.inception.foo routing research >/dev/null 2>&1
+output=$(run_cli_stdout get incept-get.inception.foo)
+
+assert_contains "$output" '"status": "in-progress"' "Item JSON includes status"
+assert_contains "$output" '"summary": "A topic"' "Item JSON includes summary"
+assert_contains "$output" '"routing": "research"' "Item JSON includes routing"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete hard-removes inception item${NC}"
+setup_fixture
+run_cli init incept-del --work-type epic --description "Inception delete" >/dev/null 2>&1
+run_cli init-phase incept-del.inception.foo >/dev/null 2>&1
+run_cli set incept-del.inception.foo summary "to be deleted" >/dev/null 2>&1
+# Hard-delete the entire item via the items.<topic> field path (existing convention)
+run_cli delete incept-del.inception items.foo >/dev/null 2>&1
+exists_after=$(run_cli_stdout exists incept-del.inception.foo)
+
+assert_equals "$exists_after" "false" "Inception item gone after hard-delete"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: wildcard get on inception phase${NC}"
+setup_fixture
+run_cli init incept-wild --work-type epic --description "Inception wildcard" >/dev/null 2>&1
+run_cli init-phase incept-wild.inception.alpha >/dev/null 2>&1
+run_cli init-phase incept-wild.inception.beta >/dev/null 2>&1
+output=$(run_cli_stdout get 'incept-wild.inception.*' status)
+
+assert_contains "$output" '"topic": "alpha"' "Wildcard returns alpha topic"
+assert_contains "$output" '"topic": "beta"' "Wildcard returns beta topic"
+assert_contains "$output" '"value": "in-progress"' "Wildcard returns in-progress status"
+
+echo ""
+
+# ============================================================================
+# IMPORTS[] FIELD TESTS
+# ============================================================================
+
+echo -e "${YELLOW}Test: push creates imports[] array on first call${NC}"
+setup_fixture
+run_cli init imp-create --work-type epic --description "Imports create" >/dev/null 2>&1
+run_cli push imp-create imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
+output=$(run_cli_stdout get imp-create imports)
+
+assert_contains "$output" '"path": "imports/seed.md"' "First push creates array with entry"
+assert_contains "$output" '"imported_at": "2026-05-09T10:00:00Z"' "Entry preserves imported_at"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: push appends subsequent entries to imports[]${NC}"
+setup_fixture
+run_cli init imp-append --work-type epic --description "Imports append" >/dev/null 2>&1
+run_cli push imp-append imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
+run_cli push imp-append imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
+output=$(run_cli_stdout get imp-append imports)
+
+assert_contains "$output" "imports/seed.md" "First entry preserved after append"
+assert_contains "$output" "imports/notes.md" "Second entry appended"
+
+# Verify it's a proper array of length 2
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/imp-append/manifest.json','utf8')); console.log(m.imports.length)")
+assert_equals "$length" "2" "imports[] has two entries after two pushes"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: pull removes a single imports[] entry by deep equality${NC}"
+setup_fixture
+run_cli init imp-pull --work-type epic --description "Imports pull" >/dev/null 2>&1
+run_cli push imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
+run_cli push imp-pull imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
+run_cli pull imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
+output=$(run_cli_stdout get imp-pull imports)
+
+assert_not_contains "$output" "imports/seed.md" "Pull removed seed.md entry"
+assert_contains "$output" "imports/notes.md" "Pull kept notes.md entry"
+
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/imp-pull/manifest.json','utf8')); console.log(m.imports.length)")
+assert_equals "$length" "1" "imports[] has one entry after pull"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: pull is no-op when entry shape does not match${NC}"
+setup_fixture
+run_cli init imp-pull-miss --work-type epic --description "Imports pull miss" >/dev/null 2>&1
+run_cli push imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
+run_cli pull imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T99:99:99Z"}' >/dev/null 2>&1
+output=$(run_cli_stdout get imp-pull-miss imports)
+
+assert_contains "$output" "imports/seed.md" "Non-matching pull preserved entry"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: push onto non-array imports field fails${NC}"
+setup_fixture
+run_cli init imp-bad --work-type epic --description "Imports bad" >/dev/null 2>&1
+# Set imports to a non-array value first
+run_cli set imp-bad imports '"not-an-array"' >/dev/null 2>&1
+# Single invocation: capture both output and exit code (the failing call holds
+# the work-unit lock past die() since process.exit skips finally blocks).
+combined=$(cd "$TEST_DIR" && node "$MANIFEST_JS" push imp-bad imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' 2>&1; echo "__EXIT__=$?")
+exit_code=$(echo "$combined" | grep -o '__EXIT__=[0-9]*' | tail -1 | cut -d= -f2)
+output=$(echo "$combined" | grep -v '__EXIT__=')
+
+assert_equals "$exit_code" "1" "Push onto non-array exits non-zero"
+assert_contains "$output" "not an array" "Error mentions not an array"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: imports[] round-trip preserves entry shape${NC}"
+setup_fixture
+run_cli init imp-roundtrip --work-type epic --description "Imports round-trip" >/dev/null 2>&1
+run_cli push imp-roundtrip imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
+output=$(run_cli_stdout get imp-roundtrip imports)
+
+# Parse the JSON and confirm shape
+parsed=$(echo "$output" | node -e "
+let s='';
+process.stdin.on('data',c=>s+=c);
+process.stdin.on('end',()=>{
+  const arr = JSON.parse(s);
+  if (!Array.isArray(arr)) { console.log('not-array'); return; }
+  if (arr.length !== 1) { console.log('wrong-length'); return; }
+  const e = arr[0];
+  if (e.path === 'imports/seed.md' && e.imported_at === '2026-05-09T10:00:00Z') {
+    console.log('shape-ok');
+  } else {
+    console.log('shape-wrong');
+  }
+});
+")
+assert_equals "$parsed" "shape-ok" "Round-tripped entry has expected fields"
+
+echo ""
+
+# ============================================================================
 # RESOLVE COMMAND TESTS
 # ============================================================================
 
