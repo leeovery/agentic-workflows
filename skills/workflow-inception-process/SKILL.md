@@ -60,11 +60,22 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an existing inception session log on disk. The
-> entry skill has already verified there are no inception items
-> in the manifest — this check is purely about within-session
-> recovery after a context refresh.
+> Reading the handoff source. Refinement re-entry routes
+> straight to the refinement flow; first-session entry checks
+> for an interrupted draft session log on disk.
 ```
+
+Read the `Source:` field from the handoff in the prior message.
+
+#### If `source` is `refinement`
+
+Inception items already exist for this work unit. Open the refinement session — the initial-session detection logic below does not apply.
+
+Load **[refinement-session.md](references/refinement-session.md)** and follow its instructions as written.
+
+#### Otherwise (`source` is `first-session`)
+
+The entry skill has already verified there are no inception items in the manifest. The remaining checks below recover from a context refresh that interrupted a prior first-session draft.
 
 Check whether any file matching `.workflows/{work_unit}/inception/session-*.md` exists.
 
@@ -104,25 +115,25 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**.
 
 #### If any `session-NNN.md` for N > 1 exists
 
-The work unit has previously concluded an inception session and is being re-entered. Refinement is a future-phase deliverable in this initiative.
+This is a defensive guard. The entry skill should have routed `source = refinement` when prior session logs and inception items exist, but the handoff said `first-session`. State is inconsistent — likely the inception items were removed from the manifest but the session logs were not.
 
 > *Output the next fenced block as a code block:*
 
 ```
 ●───────────────────────────────────────────────●
-  Inception Refinement
+  Inception — Inconsistent State
 ●───────────────────────────────────────────────●
 
-Refinement of the discovery map is not yet implemented.
+Prior inception session logs exist but the manifest reports no
+inception items for "{work_unit}".
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> A prior inception session has concluded for "{work_unit}". The
-> refinement flow — adding, renaming, removing topics, editing
-> summaries, changing routing — lands in a later phase of the
-> inception/discovery-map initiative.
+> Stopping here so you can reconcile. Either restore the
+> manifest items (refinement re-entry) or archive the session
+> logs out of the way (fresh first session).
 ```
 
 **STOP.** Do not proceed — terminal condition.
