@@ -49,12 +49,12 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
-## Step 0: Resume Detection
+## Step 0: Source-Aware Detection
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Resume Detection ─────────────────────────────
+── Source-Aware Detection ───────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -69,74 +69,15 @@ Read the `Source:` field from the handoff in the prior message.
 
 #### If `source` is `refinement`
 
-Inception items already exist for this work unit. Open the refinement session — the initial-session detection logic below does not apply.
+Inception items already exist for this work unit. Open the refinement session.
 
 Load **[refinement-session.md](references/refinement-session.md)** and follow its instructions as written.
 
-#### Otherwise (`source` is `first-session`)
+#### If `source` is `first-session`
 
-The entry skill has already verified there are no inception items in the manifest. The remaining checks below recover from a context refresh that interrupted a prior first-session draft.
+The entry skill has verified there are no inception items in the manifest. Check the inception directory for an interrupted draft before starting fresh.
 
-Check whether any file matching `.workflows/{work_unit}/inception/session-*.md` exists.
-
-#### If no file exists
-
-→ Proceed to **Step 1**.
-
-#### If `session-001.md` is the only session file
-
-A prior in-session draft is on disk and the session was interrupted (likely a context refresh). Read the file, then offer continue or restart.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found an in-progress inception session log for **{work_unit:(titlecase)}**.
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the draft session log and start fresh
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-→ Proceed to **Step 2**. The draft session log is your working list — session-loop will brief the user on resume.
-
-#### If `restart`
-
-1. Delete the draft session log.
-2. Commit: `inception({work_unit}): restart inception session`.
-
-→ Proceed to **Step 1**.
-
-
-
-#### If any `session-NNN.md` for N > 1 exists
-
-This is a defensive guard. The entry skill should have routed `source = refinement` when prior session logs and inception items exist, but the handoff said `first-session`. State is inconsistent — likely the inception items were removed from the manifest but the session logs were not.
-
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Inception — Inconsistent State
-●───────────────────────────────────────────────●
-
-Prior inception session logs exist but the manifest reports no
-inception items for "{work_unit}".
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Stopping here so you can reconcile. Either restore the
-> manifest items (refinement re-entry) or archive the session
-> logs out of the way (fresh first session).
-```
-
-**STOP.** Do not proceed — terminal condition.
+Load **[first-session-resume.md](references/first-session-resume.md)** and follow its instructions as written.
 
 ---
 
