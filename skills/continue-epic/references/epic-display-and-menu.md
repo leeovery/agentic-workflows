@@ -28,7 +28,72 @@ No work started yet.
 
 → Proceed to **C. Menu**.
 
-#### If phases have items
+#### If `discovery_map` is non-empty
+
+The discovery map block renders at the top, replacing the per-phase tree for research and discussion. The build-phase tree (specification, planning, implementation, review) continues to render below.
+
+> *Output the next fenced block as a code block:*
+
+```
+●───────────────────────────────────────────────●
+  {work_unit:(titlecase)}
+●───────────────────────────────────────────────●
+
+  Discovery Map ({summary_line})
+  @if(convergence_state == 'in-progress')
+  ⚑ Discovery in progress — {N} topics not yet decided.
+  @else
+  ✓ Discovery settled — ready for specification.
+  @endif
+
+@foreach(topic in discovery_map)
+  @if(not last_topic) ├─ @else └─ @endif {topic.tier}  {topic.name:(titlecase)}  {lifecycle_label}
+@if(topic.source_provenance)
+       {topic.source_provenance}
+@endif
+@endforeach
+
+@foreach(phase in [specification, planning, implementation, review])
+@if(phase.items)
+  {phase:(titlecase)} ({phase.count_summary})
+@foreach(item in phase.items)
+    @if(last_item_in_phase) └─ @else ├─ @endif {item.name:(titlecase)} [{item.status}]@if(phase == planning and item.format) · {item.format}@endif
+@if(phase == specification and item.sources)
+       └─ {source.topic:(titlecase)} [{source.status}]
+@endif
+@if(phase == implementation and item.current_phase)
+       └─ Phase {item.current_phase}, {item.completed_tasks.length} task(s) completed
+@else
+@if(phase == implementation and item.completed_tasks)
+       └─ {item.completed_tasks.length} task(s) completed
+@endif
+@endif
+@endforeach
+
+@endif
+@endforeach
+```
+
+**Discovery map display rules:**
+
+- **Summary line**: `{total} topics — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled`. Read counts from `map_summary`. **Omit zero-count categories** from the dot-separated list. Always render `{total} topics`.
+  - Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
+  - Example with zeros omitted: `5 topics — 5 fresh`
+- **Convergence callout**: rendered immediately under the summary line, before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`. No callout when `discovery_map` is empty (handled by other branches).
+- **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
+- **Topic row**: `{tier}  {name:(titlecase)}  {lifecycle_label}` with two spaces between each segment. Use tree grammar (`├─` non-final, `└─` final).
+- **Lifecycle label** by tier:
+  - `→` (ready_for_discussion) — `research complete · ready for discussion`
+  - `◐` (researching) — `researching`
+  - `◐` (discussing) — `discussing`
+  - `✓` (decided) — `decided`
+  - `○` (fresh) — `fresh · routed to {topic.routing}`
+  - `⊘` (cancelled) — `cancelled`
+- **Source provenance sub-line**: render only when `topic.source_provenance` is non-null. Indent at 7 spaces (under the title text, past the tree branch). Example: `       from kitchen-hardware`. Source `inception` has no provenance line.
+- **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Do NOT render `research`, `discussion`, or `inception` — those are subsumed into the discovery map. Tree grammar, format, source rows, implementation progress lines all behave as in the legacy fallback render. Skip phases with no items. Blank line between sections.
+- **No trailing recommendation callout**: the convergence callout above replaces the legacy `⚑ {recommendation}` line. Build-phase recommendations attach to menu entries (see **C. Menu**), not the state display.
+
+#### Otherwise (legacy epic — phases have items but no `discovery_map`)
 
 > *Output the next fenced block as a code block:*
 
@@ -81,7 +146,7 @@ No work started yet.
 @endif
 ```
 
-**Display rules:**
+**Legacy display rules:**
 
 - Phase headers as section labels (titlecased) with a parenthetical count summary — e.g., `Discussion (3 completed, 1 cancelled)`, `Research (1 completed)`, `Specification (2 in-progress)`. Combine statuses present in that phase; omit zero counts
 - Items under each phase use proper tree grammar: `├─` for non-final siblings, `└─` for the final item. Pending discussion topics from research count as siblings when determining the final item
@@ -94,7 +159,7 @@ No work started yet.
 - Blank line between phase sections
 - No trailing blank line after the last phase section (the code block ends immediately after the last item or recommendation)
 
-**Recommendations:** Check the following conditions in order. Show the first that applies as a `⚑`-prefixed line within the state display code block, 2-space indented and separated by a blank line from the last phase section. If the recommendation text is long, wrap it across two lines (both 2-space indented, only the first has `⚑`). If none apply, no recommendation.
+**Legacy recommendations:** Check the following conditions in order. Show the first that applies as a `⚑`-prefixed line within the state display code block, 2-space indented and separated by a blank line from the last phase section. If the recommendation text is long, wrap it across two lines (both 2-space indented, only the first has `⚑`). If none apply, no recommendation. Applies only to legacy epics (no `discovery_map`).
 
 | Condition | Recommendation |
 |-----------|---------------|
@@ -134,6 +199,34 @@ Use the `deps_blocking` array from the planning phase items. Show each blocking 
 ## B. Key
 
 Show only statuses and categories that appear in the current display. No `---` separator before this section.
+
+#### If `discovery_map` is non-empty
+
+> *Output the next fenced block as a code block:*
+
+```
+  Key:
+    Discovery tier:
+      →  ready for next phase   ◐  in flight
+      ✓  decided                ○  fresh
+      ⊘  cancelled
+
+    Status:
+      in-progress — work is ongoing
+      completed   — phase or implementation done
+      cancelled   — topic removed from active work
+      promoted    — moved to its own cross-cutting work unit
+
+    Blocking reason:
+      blocked by {plan}:{task} — depends on another plan's task
+      blocked by {plan}        — dependency unresolved
+```
+
+Show only categories present in the current display: include the Discovery tier block whenever `discovery_map` has entries; include the Status block when `phases` (specification onwards) has items; include the Blocking reason block when any plan has `deps_blocking`.
+
+→ Proceed to **C. Menu**.
+
+#### Otherwise (legacy epic)
 
 > *Output the next fenced block as a code block:*
 
