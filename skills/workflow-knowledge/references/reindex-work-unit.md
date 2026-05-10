@@ -55,4 +55,24 @@ If any index command fails, display the error but do not block — the caller's 
 
 Process the remaining items in this phase, then move on to the next phase in the list.
 
-→ Return to caller once every indexed phase has been processed.
+→ Proceed to **B. Re-Index Imports**.
+
+## B. Re-Index Imports
+
+Imports live at the work-unit level (not under `phases`) so they need a separate pass. Read the imports list:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
+```
+
+If the value is `[]` or absent, no imports to process — return.
+
+For each entry in the imports array, resolve the path as `.workflows/{work_unit}/{entry.path}` (the `path` field is stored relative to the work-unit directory) and run:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/{entry.path}
+```
+
+Apply the same warning-but-do-not-block pattern from **A** when individual index calls fail.
+
+→ Return to caller.
