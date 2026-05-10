@@ -1,6 +1,6 @@
 'use strict';
 
-const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computePendingFromResearch, computePendingFromGaps } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computePendingFromResearch, computePendingFromGaps, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, TIER_RANK } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 const EPIC_PHASES = ['inception', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
@@ -166,6 +166,38 @@ function buildEpicDetail(cwd, manifest) {
   const hasPendingGaps = pendingFromGaps.length > 0;
   const hasPendingDiscussions = pendingFromResearch.length > 0 || hasPendingGaps;
 
+  const inceptionItems = phaseItems(manifest, 'inception');
+  let discoveryMap = [];
+  let convergenceState = null;
+  let mapSummary = null;
+  if (inceptionItems.length > 0) {
+    discoveryMap = inceptionItems.map(item => {
+      const { lifecycle, tier, current_phase } = computeTopicLifecycle(manifest, item.name);
+      const next_action = computeNextAction(item.routing, lifecycle);
+      const source_provenance = computeSourceProvenance(item.source);
+      return {
+        name: item.name,
+        summary: item.summary || null,
+        routing: item.routing || null,
+        source: item.source || 'inception',
+        source_provenance,
+        lifecycle,
+        tier,
+        current_phase,
+        next_action,
+      };
+    });
+    discoveryMap.sort((a, b) => {
+      const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
+      const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+    mapSummary = computeMapSummary(discoveryMap);
+    const allSettled = discoveryMap.every(t => t.lifecycle === 'decided' || t.lifecycle === 'cancelled');
+    convergenceState = allSettled ? 'settled' : 'in-progress';
+  }
+
   return {
     phases,
     in_progress: inProgressItems,
@@ -176,6 +208,9 @@ function buildEpicDetail(cwd, manifest) {
     reopened_discussions: reopenedDiscussions,
     pending_from_research: pendingFromResearch.map(t => ({ name: t, phase: 'discussion' })),
     pending_from_gaps: pendingFromGaps.map(t => ({ name: t, phase: 'discussion' })),
+    discovery_map: discoveryMap,
+    convergence_state: convergenceState,
+    map_summary: mapSummary,
     gating: {
       has_research: hasResearch,
       has_pending_discussions: hasPendingDiscussions,
@@ -271,6 +306,16 @@ function format(result) {
         if (item.current_phase) {
           line += ` [phase: ${item.current_phase}]`;
         }
+        lines.push(line);
+      }
+    }
+    if (d.discovery_map && d.discovery_map.length > 0) {
+      const s = d.map_summary;
+      lines.push(`    discovery_map (${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled, convergence: ${d.convergence_state}):`);
+      for (const t of d.discovery_map) {
+        let line = `      - ${t.tier} ${t.name} [${t.lifecycle}]`;
+        if (t.next_action) line += ` -> ${t.next_action}`;
+        if (t.source_provenance) line += ` (${t.source_provenance})`;
         lines.push(line);
       }
     }
