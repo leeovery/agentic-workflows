@@ -19,7 +19,7 @@ const setup = require('./setup');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports'];
 
 // Resolve manifest CLI path. In the bundled form, __dirname is
 // skills/workflow-knowledge/scripts/. In source, __dirname is
@@ -253,7 +253,7 @@ function deriveIdentity(filePath) {
   const norm = filePath.replace(/\\/g, '/');
 
   // Match .workflows/{work_unit}/{phase}/{rest}
-  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification)\/(.+)$/.exec(norm);
+  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports)\/(.+)$/.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
@@ -308,6 +308,17 @@ function deriveIdentity(filePath) {
       );
     }
     topic = resMatch[1];
+  } else if (phase === 'imports') {
+    // .workflows/{wu}/imports/{filename}.md — flat file. Topic is the
+    // basename without extension.
+    const impMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!impMatch) {
+      throw new UserError(
+        `Unexpected imports path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/imports/{filename}.md'
+      );
+    }
+    topic = impMatch[1];
   }
 
   if (topic === '.' || topic === '..' || topic.startsWith('.')) {
