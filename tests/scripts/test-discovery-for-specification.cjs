@@ -297,44 +297,6 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.cache.entries[0].status, 'stale');
   });
 
-  it('has_pending true when undiscussed surfaced topics exist', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: { surfaced_topics: ['auth', 'billing', 'data-model'] },
-        discussion: { items: { auth: { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.current_state.has_pending, true);
-    assert.strictEqual(r.current_state.pending_from_research_count, 2);
-  });
-
-  it('has_pending false when all surfaced topics discussed', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: { surfaced_topics: ['auth'] },
-        discussion: { items: { auth: { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.current_state.has_pending, false);
-    assert.strictEqual(r.current_state.pending_from_research_count, 0);
-  });
-
-  it('has_pending false when no surfaced_topics', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { explore: { status: 'completed' } } },
-        discussion: { items: { auth: { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.current_state.has_pending, false);
-  });
-
   it('bugfix work unit with investigation as source', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',

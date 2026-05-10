@@ -10,7 +10,7 @@ const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
-  phaseStatus, phaseItems, phaseData, computeNextPhase, computePendingFromResearch, computePendingFromGaps,
+  phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
@@ -624,137 +624,6 @@ describe('discovery-utils', () => {
       });
       // No statuses found, aggregation returns null, falls through to default
       assert.strictEqual(r.next_phase, 'discussion');
-    });
-  });
-
-  describe('computePendingFromResearch', () => {
-    it('returns empty when no surfaced_topics', () => {
-      const result = computePendingFromResearch({ phases: { research: {} } });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('returns all surfaced topics when no discussions exist', () => {
-      const result = computePendingFromResearch({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing', 'data-model'] },
-        },
-      });
-      assert.deepStrictEqual(result, ['auth', 'billing', 'data-model']);
-    });
-
-    it('returns only undiscussed topics', () => {
-      const result = computePendingFromResearch({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing', 'data-model'] },
-          discussion: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      assert.deepStrictEqual(result, ['billing', 'data-model']);
-    });
-
-    it('returns empty when all surfaced topics have discussions', () => {
-      const result = computePendingFromResearch({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing'] },
-          discussion: {
-            items: {
-              auth: { status: 'completed' },
-              billing: { status: 'in-progress' },
-            },
-          },
-        },
-      });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('returns empty when no research phase exists', () => {
-      const result = computePendingFromResearch({ phases: {} });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('returns empty when no phases key', () => {
-      const result = computePendingFromResearch({});
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('handles surfaced_topics that is not an array', () => {
-      const result = computePendingFromResearch({
-        phases: { research: { surfaced_topics: 'not-an-array' } },
-      });
-      assert.deepStrictEqual(result, []);
-    });
-  });
-
-  describe('computePendingFromGaps', () => {
-    it('returns empty when no gap_topics', () => {
-      const result = computePendingFromGaps({ phases: { discussion: {} } });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('returns all gap topics when no discussions exist', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          discussion: { gap_topics: ['integration', 'error-handling'] },
-        },
-      });
-      assert.deepStrictEqual(result, ['integration', 'error-handling']);
-    });
-
-    it('returns only undiscussed gap topics', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          discussion: {
-            gap_topics: ['integration', 'error-handling', 'caching'],
-            items: { integration: { status: 'completed' } },
-          },
-        },
-      });
-      assert.deepStrictEqual(result, ['error-handling', 'caching']);
-    });
-
-    it('returns empty when all gap topics have discussions', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          discussion: {
-            gap_topics: ['integration', 'caching'],
-            items: {
-              integration: { status: 'completed' },
-              caching: { status: 'in-progress' },
-            },
-          },
-        },
-      });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('returns empty when no discussion phase exists', () => {
-      const result = computePendingFromGaps({ phases: {} });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('returns empty when no phases key', () => {
-      const result = computePendingFromGaps({});
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('handles gap_topics that is not an array', () => {
-      const result = computePendingFromGaps({
-        phases: { discussion: { gap_topics: 'not-an-array' } },
-      });
-      assert.deepStrictEqual(result, []);
-    });
-
-    it('is independent of surfaced_topics', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing'] },
-          discussion: {
-            gap_topics: ['integration'],
-            items: { auth: { status: 'completed' } },
-          },
-        },
-      });
-      assert.deepStrictEqual(result, ['integration']);
     });
   });
 

@@ -211,20 +211,6 @@ function computeNextPhase(manifest) {
   return { next_phase: 'discussion', phase_label: 'ready for discussion' };
 }
 
-function computePendingFromResearch(manifest) {
-  const rd = (manifest.phases || {}).research || {};
-  const surfaced = Array.isArray(rd.surfaced_topics) ? rd.surfaced_topics : [];
-  const discussed = new Set(phaseItems(manifest, 'discussion').map(i => i.name));
-  return surfaced.filter(t => !discussed.has(t));
-}
-
-function computePendingFromGaps(manifest) {
-  const dd = (manifest.phases || {}).discussion || {};
-  const gaps = Array.isArray(dd.gap_topics) ? dd.gap_topics : [];
-  const discussed = new Set(phaseItems(manifest, 'discussion').map(i => i.name));
-  return gaps.filter(t => !discussed.has(t));
-}
-
 function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   if (!manifest || !manifest.name) return { status: 'absent', generated: null, files: [] };
   const wuDir = path.join(workflowsDir, manifest.name);
@@ -368,8 +354,6 @@ module.exports = {
   loadManifest,
   filesChecksum,
   computeNextPhase,
-  computePendingFromResearch,
-  computePendingFromGaps,
   computeAnalysisCacheStatus,
   loadActiveManifests,
   loadAllManifests,

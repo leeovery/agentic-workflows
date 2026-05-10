@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, phaseItems, phaseData, listFiles, listDirs, filesChecksum, fileExists, computePendingFromResearch } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, phaseItems, phaseData, listFiles, listDirs, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 function discover(cwd, workUnit) {
   const allManifests = loadActiveManifests(cwd);
@@ -137,12 +137,6 @@ function discover(cwd, workUnit) {
   allDiscFiles.sort();
   const discussionsChecksum = allDiscFiles.length > 0 ? filesChecksum(allDiscFiles) : null;
 
-  // --- Pending from research ---
-  let pendingFromResearchCount = 0;
-  for (const m of manifests) {
-    pendingFromResearchCount += computePendingFromResearch(m).length;
-  }
-
   return {
     discussions: discussions,
     specifications: specifications,
@@ -152,11 +146,9 @@ function discover(cwd, workUnit) {
       discussion_count: discCount,
       completed_count: completedCount,
       in_progress_count: inProgressCount,
-      pending_from_research_count: pendingFromResearchCount,
       spec_count: specCount,
       has_discussions: discCount > 0,
       has_completed: completedCount > 0,
-      has_pending: pendingFromResearchCount > 0,
       has_specs: specCount > 0,
     },
   };

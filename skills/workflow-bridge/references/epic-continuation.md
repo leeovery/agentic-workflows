@@ -18,9 +18,36 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 Parse the output. Use the epic's `detail` object as the discovery data for the display.
 
-→ Proceed to **B. Check All-Done**.
+→ Proceed to **B. Self-Healing**.
 
-## B. Check All-Done
+## B. Self-Healing
+
+A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the `detail` object parsed in A:
+
+- `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
+- `analysis_caches.gap_analysis.status` — same
+
+#### If both caches are `valid` or `absent`
+
+No analyses to run.
+
+→ Proceed to **C. Check All-Done**.
+
+#### If at least one cache is `stale`
+
+→ Load **[self-healing.md](../../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+
+On return, store the orchestrator's `new_arrivals` tracker in conversation memory — section D reads it to render the callout above the discovery map.
+
+Re-run discovery for fresh state including auto-added items:
+
+```bash
+node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
+```
+
+→ Proceed to **C. Check All-Done**.
+
+## C. Check All-Done
 
 Using the enriched discovery data from section A, check if ALL topics across ALL phases have review status `completed`. Specifically: check if any review items exist, and if so, whether every one has `status: completed`, and no topics in earlier phases are still `in-progress`.
 
@@ -63,13 +90,13 @@ Epic Completed
 
 **If user chose `n`/`no`:**
 
-→ Proceed to **C. Display and Menu**.
+→ Proceed to **D. Display and Menu**.
 
 #### Otherwise
 
-→ Proceed to **C. Display and Menu**.
+→ Proceed to **D. Display and Menu**.
 
-## C. Display and Menu
+## D. Display and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -77,15 +104,15 @@ Epic Completed
 {completed_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
 ```
 
-→ Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** and follow its instructions as written.
+→ Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when section B did not load the orchestrator).
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
-→ Proceed to **D. Enter Plan Mode**.
+→ Proceed to **E. Enter Plan Mode**.
 
 ---
 
-## D. Enter Plan Mode
+## E. Enter Plan Mode
 
 Map the selection to a skill invocation using this routing table:
 
