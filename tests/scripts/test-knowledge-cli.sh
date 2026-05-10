@@ -1912,6 +1912,24 @@ assert_eq "query post-remove returns no imports chunks" "true" \
   "$(echo "$query_after" | grep -q 'imports | seeded-wu/seed-conversation' && echo false || echo true)"
 teardown_project
 
+# --- Test 87a: Bulk index discovers imports listed in manifest.imports[] ---
+echo "Test 87a: Bulk index picks up imports from manifest.imports[]"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+# Track the import on the manifest the way import-files.md does.
+node "$MANIFEST_JS" push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+# Bulk index (no args) — should find the import via discoverArtifacts.
+output=$(run_kb index 2>&1)
+assert_eq "bulk index processes imports" "true" \
+  "$(echo "$output" | grep -q 'imports/seed-conversation.md' && echo true || echo false)"
+# Confirm chunks were actually written.
+query_after=$(run_kb query "OAuth" 2>&1)
+assert_eq "query after bulk index returns imports chunks" "true" \
+  "$(echo "$query_after" | grep -q 'imports | seeded-wu/seed-conversation' && echo true || echo false)"
+teardown_project
+
 # --- Test 87: Re-indexing imports replaces chunks (idempotent) ---
 echo "Test 87: Re-indexing imports replaces chunks"
 setup_project
