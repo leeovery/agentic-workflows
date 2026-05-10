@@ -7,6 +7,7 @@
 Display the full phase-by-phase breakdown for the selected epic, then present an interactive menu of actionable items. The caller is responsible for providing:
 - Discovery output from `continue-epic/scripts/discovery.cjs` (the `detail` object for the selected epic)
 - `work_unit` — the epic's work unit name
+- `new_arrivals` (optional) — tracker from `self-healing.md` listing topic names added during this boot-up, per analysis. Used to render the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 
 This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.).
 
@@ -45,6 +46,12 @@ Render the discovery map block at the top, then the build-phase tree (specificat
   @else
   ✓ Discovery settled — ready for specification.
   @endif
+@if(new_arrivals.research_analysis.length > 0)
+  ⚑ {N} new topic(s) added to the map from research-analysis.
+@endif
+@if(new_arrivals.gap_analysis.length > 0)
+  ⚑ {N} new topic(s) added to the map from gap-analysis.
+@endif
 
 @foreach(topic in discovery_map)
   @if(not last_topic) ├─ @else └─ @endif {topic.tier}  {topic.name:(titlecase)}  {lifecycle_label}
@@ -80,6 +87,7 @@ Render the discovery map block at the top, then the build-phase tree (specificat
   - Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
   - Example with zeros omitted: `5 topics — 5 fresh`
 - **Convergence callout**: rendered immediately under the summary line, before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
+- **New-arrivals callout** (optional): when the caller passes a non-empty `new_arrivals.research_analysis` or `new_arrivals.gap_analysis` list, render `⚑ {N} new topic(s) added to the map from {analysis}.` lines beneath the convergence callout, one per analysis with arrivals. Shown once per boot-up that added items — subsequent invocations without changes don't repeat it (the items are now part of the map). Sub-line provenance on the topic rows is the persistent surface afterwards.
 - **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
 - **Topic row**: `{tier}  {name:(titlecase)}  {lifecycle_label}` with two spaces between each segment. Use tree grammar (`├─` non-final, `└─` final).
 - **Lifecycle label** by tier:
@@ -107,10 +115,10 @@ After the render block, run the **Plans Not Ready Check** below; it applies to b
 ●───────────────────────────────────────────────●
 
 @foreach(phase in phases)
-@if(phase.items or (phase == discussion and gating.has_pending_discussions))
+@if(phase.items)
   {phase:(titlecase)} ({phase.count_summary})
 @foreach(item in phase.items)
-    @if(last_item_in_phase and not (phase == discussion and gating.has_pending_discussions)) └─ @else ├─ @endif {item.name:(titlecase)} [{item.status}]@if(phase == planning and item.format) · {item.format}@endif
+    @if(last_item_in_phase) └─ @else ├─ @endif {item.name:(titlecase)} [{item.status}]@if(phase == planning and item.format) · {item.format}@endif
 @if(phase == specification and item.sources)
        └─ {source.topic:(titlecase)} [{source.status}]
 @endif
@@ -122,29 +130,9 @@ After the render block, run the **Plans Not Ready Check** below; it applies to b
 @endif
 @endif
 @endforeach
-@if(phase == discussion and pending_from_research.length > 0)
-@foreach(topic in pending_from_research)
-    @if(last_pending_topic and not gating.has_pending_gaps) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
-@endforeach
-@endif
-@if(phase == discussion and gating.has_pending_gaps)
-@foreach(topic in pending_from_gaps)
-    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from gap analysis]
-@endforeach
-@endif
 @endif
 
 @endforeach
-@if(gating.has_pending_discussions and not phases.discussion)
-  Discussion ({pending_from_research.length + pending_from_gaps.length} pending)
-@foreach(topic in pending_from_research)
-    @if(last_pending_topic and not gating.has_pending_gaps) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from research]
-@endforeach
-@foreach(topic in pending_from_gaps)
-    @if(last_pending_topic) └─ @else ├─ @endif {topic.name:(titlecase)} [pending from gap analysis]
-@endforeach
-
-@endif
 @if(recommendation)
   ⚑ {recommendation text}
 @endif
@@ -158,8 +146,7 @@ After the render block, run the **Plans Not Ready Check** below; it applies to b
 - Specification items show their source discussions as a sub-tree beneath, one `└─` per source
 - Source status: `[incorporated]` or `[pending]` from manifest
 - Implementation items show progress: `Phase {N}, {M} task(s) completed` if in-progress with current_phase; `{M} task(s) completed` otherwise
-- Pending discussion topics from research appear under the Discussion phase heading with `[pending from research]` status, after any existing discussion items. If no discussion items exist yet, render a Discussion section with only the pending topics
-- Phases with no items don't appear (except Discussion, which appears if pending topics from research exist)
+- Phases with no items don't appear
 - Blank line between phase sections
 - No trailing blank line after the last phase section (the code block ends immediately after the last item or recommendation)
 
@@ -170,8 +157,7 @@ After the render block, run the **Plans Not Ready Check** below; it applies to b
 | In-progress items across multiple phases | No recommendation |
 | Some research in-progress, some completed | "Consider completing remaining research before starting discussion. Topic analysis works best with all research available." |
 | Some discussions in-progress, some completed | "Consider completing remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
-| All discussions completed, specs not started, `gating.has_pending_discussions` is false | "All discussions are completed. Specification will analyze and group them." |
-| All discussions completed, specs not started, `gating.has_pending_discussions` is true | "Pending discussion topic(s) from research remain. Consider starting these before specification." |
+| All discussions completed, specs not started | "All discussions are completed. Specification will analyze and group them." |
 | Some specs completed, some in-progress | "Completing all specifications before planning helps identify cross-cutting dependencies." |
 | Some plans completed, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
@@ -242,11 +228,9 @@ Show only categories present in the current display: include the Discovery tier 
   Key:
     Status:
       in-progress — work is ongoing
-      completed            — phase or implementation done
-      cancelled            — topic removed from active work
-      pending from research — identified by research, not yet discussed
-      pending from gap analysis — identified by discussion gap analysis
-      promoted             — moved to its own cross-cutting work unit
+      completed   — phase or implementation done
+      cancelled   — topic removed from active work
+      promoted    — moved to its own cross-cutting work unit
 
     Blocking reason:
       blocked by {plan}:{task} — depends on another plan's task
@@ -370,14 +354,12 @@ Recreate with actual items from discovery.
 
 **Command options** — entry-point actions that launch a flow handling its own selection. Use letter shortcuts (first letter of command; second letter if disambiguation needed):
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
-- **`d`/`discuss`** — Start new discussion (always present). When `gating.has_pending_discussions` is true, append pending counts: ` — {N} pending from research` and/or `{M} from gap analysis` (only show each count if > 0)
+- **`d`/`discuss`** — Start new discussion (always present)
 - **`r`/`research`** — Start new research (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
 - **`a`/`cancel`** — Cancel a topic (only shown when non-cancelled, non-promoted items exist in any phase)
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
 - **`m`/`map`** — View epic dependency map (always present when at least one phase has items)
-
-Pending topics from research/gap-analysis appear in the Discussion phase tree as `[pending from research]` / `[pending from gap analysis]` rows. They have no dedicated menu option; start them via `d`/`discuss`.
 
 **Phase-forward gating:**
 - No "Start planning" unless `gating.can_start_planning` is true
@@ -386,8 +368,7 @@ Pending topics from research/gap-analysis appear in the Discussion phase tree as
 - No "Start specification" unless `gating.can_start_specification` is true
 
 **Ordering:** The recommended item always appears first. Mark one item as `(recommended)` based on phase completion state:
-- All discussions completed, no specifications exist, `gating.has_pending_discussions` is false → `s`/`spec` (recommended)
-- All discussions completed, no specifications exist, `gating.has_pending_discussions` is true → `d`/`discuss` (recommended)
+- All discussions completed, no specifications exist → `s`/`spec` (recommended)
 - All plannable specifications completed, some without plans → first plannable spec "(recommended)"
 - All plans completed (and deps satisfied), some without implementations → first implementable plan "(recommended)"
 - All implementations completed, some without reviews → first reviewable implementation "(recommended)"
@@ -503,9 +484,8 @@ Set selection to `Refine map`. The caller routes this to `/workflow-inception-en
 
 | User selected phase | Condition | Gate message |
 |---------------------|-----------|--------------|
-| discussion (new or continue) | `gating.has_research` is true and some research items are in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
+| discussion (new or continue) | research items exist with some in-progress | "{N} of {M} research topics still in-progress. Topic analysis works best with all research available." |
 | specification (new or continue) | discussion items exist with some in-progress | "{N} of {M} discussions still in-progress. Grouping analysis works best with all discussions available." |
-| specification (new or continue) | `gating.has_pending_discussions` is true | "{N} pending discussion topic(s) from research/gap analysis have not been started. Starting these first ensures the specification covers all identified topics." |
 | planning | specification items exist with some in-progress | "{N} of {M} specifications still in-progress. Cross-cutting dependencies are easier to identify with all completed." |
 | implementation | planning items exist with some in-progress | "{N} of {M} plans still in-progress. Task dependencies across plans may be missed." |
 
