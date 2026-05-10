@@ -682,6 +682,10 @@ function discoverArtifacts() {
     if (wu.status === 'cancelled') continue;
 
     for (const phase of INDEXED_PHASES) {
+      // Imports live at top-level wu.imports[], not under wu.phases.imports —
+      // they need a separate traversal. Skip in this loop and handle below.
+      if (phase === 'imports') continue;
+
       const phaseData = wu.phases && wu.phases[phase];
       if (!phaseData || !phaseData.items) continue;
 
@@ -701,6 +705,20 @@ function discoverArtifacts() {
             err
           );
         }
+      }
+    }
+
+    // Imports — top-level array on the work unit, no per-item status. Each
+    // entry's path is relative to the work-unit directory. Topic identity is
+    // the basename without .md (matches deriveIdentity).
+    if (Array.isArray(wu.imports)) {
+      for (const entry of wu.imports) {
+        if (!entry || typeof entry.path !== 'string') continue;
+        const filePath = path.posix.join('.workflows', wuName, entry.path);
+        if (!fs.existsSync(path.resolve(filePath))) continue;
+        const base = path.basename(entry.path, '.md');
+        if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
+        items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
       }
     }
   }
