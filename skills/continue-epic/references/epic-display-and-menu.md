@@ -41,8 +41,11 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 ●───────────────────────────────────────────────●
 
   Discovery Map ({summary_line})
-@if(imports_count > 0)
-  · {imports_count} imported seed@if(imports_count > 1)s@endif
+@if(imports_count == 1)
+  · 1 imported seed
+@endif
+@if(imports_count > 1)
+  · {imports_count} imported seeds
 @endif
   @if(convergence_state == 'in-progress')
   ⚑ Discovery in progress — {N} topics not yet decided.

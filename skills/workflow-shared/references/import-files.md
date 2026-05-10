@@ -53,7 +53,7 @@ For each validated path, derive a destination filename from its basename:
 4. Ensure the name ends with `.md`. If the original extension is missing or differs, append `.md`.
 5. Reject names that resolve to `.`, `..`, or begin with `.` (dotfile). Report the rejected source path and skip that file.
 
-If the normalised name collides with a file already under `.workflows/{work_unit}/imports/`, suffix the stem with `-2`, `-3`, … until the name is unique. (Re-importing the same source path is permitted — see **C. Copy and Track**.)
+If the normalised name collides with a file already under `.workflows/{work_unit}/imports/` **or** with a destination filename chosen earlier in this same batch, suffix the stem with `-2`, `-3`, … until the name is unique. The batch check matters when the user provides the same source path twice in one prompt — without it, the second entry would silently overwrite the first. (Re-importing the same source path across separate runs is also permitted — see **C. Copy and Track**.)
 
 Hold the resulting `(source_path, destination_filename)` pairs for the next section.
 
