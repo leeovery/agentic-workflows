@@ -177,7 +177,9 @@ The user's most recent message names one or more changes in natural language, as
 
 Triggers include *"show dismissed"*, *"what was removed"*, *"let me see what I dropped"*.
 
-Load **[show-dismissed.md](show-dismissed.md)** and follow its instructions as written. When it returns:
+→ Load **[show-dismissed.md](show-dismissed.md)** and follow its instructions as written.
+
+When it returns:
 
 → Proceed to **G. Anything Else?**.
 
@@ -189,7 +191,11 @@ Triggers include *"no"*, *"done"*, *"that's it"*, *"all good"*, *"wrap up"*.
 
 #### Otherwise
 
-The message names operations. Load **[map-operations.md](map-operations.md)** and follow its instructions as written. It parses, validates, applies safety-by-destructiveness gating, writes the manifest, appends to the active session log, and commits per its own pattern. When it returns:
+The message names operations.
+
+→ Load **[map-operations.md](map-operations.md)** and follow its instructions as written.
+
+`map-operations.md` parses, validates, applies safety-by-destructiveness gating, writes the manifest, appends to the active session log, and commits per its own pattern. When it returns:
 
 → Proceed to **G. Anything Else?**.
 
@@ -234,7 +240,11 @@ Replace `(none)` with: `No changes applied — browse only. Map has {M} topics.`
 
 ## I. Compliance Self-Check
 
-Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written. The check audits the refinement against this file, the parent SKILL.md, and any other references loaded during the session (`map-operations.md`, `show-dismissed.md`, `refinement-template.md`). Apply silent corrections inline; surface significant issues per the shared protocol.
+→ Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+The check audits the refinement against this file, the parent SKILL.md, and any other references loaded during the session (`map-operations.md`, `show-dismissed.md`, `refinement-template.md`). Apply silent corrections inline; surface significant issues per the shared protocol.
+
+When it returns:
 
 → Proceed to **J. Final Sweep**.
 
