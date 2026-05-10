@@ -74,8 +74,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ```
 > Starting a new epic. I'll ask what you're building, suggest
-> a name, then you'll choose whether to research first or go
-> straight to discussion.
+> a name, then we'll begin an inception session to map the
+> topics.
 ```
 
 Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
@@ -166,15 +166,14 @@ Load **[route-first-phase.md](references/route-first-phase.md)** and follow its 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the selected phase. The next skill will load
-> and guide you through the process.
+> Handing off to inception. The next skill will load and
+> guide the session.
 ```
 
-Invoke the appropriate entry-point skill based on the selected phase:
+Invoke the inception entry skill:
 
 | Phase | Invoke |
 |-------|--------|
-| research | `/workflow-research-entry epic {work_unit}` |
-| discussion | `/workflow-discussion-entry epic {work_unit}` |
+| inception | `/workflow-inception-entry epic {work_unit}` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
