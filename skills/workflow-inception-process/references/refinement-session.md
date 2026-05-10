@@ -8,6 +8,8 @@ This reference drives the re-entry path into inception. Items already exist on t
 
 The convention is conversational, not menu-driven. STOP gates wrap manifest writes, scaled to destructiveness — additive operations batch, destructive operations are per-item. The map-operations reference owns parsing, validation, and persistence; this file owns the conversation shape.
 
+State for this reference comes from the discovery script at `skills/workflow-inception-process/scripts/discovery.cjs`. Sections invoke it via Bash and read the structured output — they never invoke the underlying Node helpers inline.
+
 Two anti-patterns to avoid:
 
 - **Do not call `knowledge index`.** Inception session logs (initial or refinement) are journey records, not retrievable artifacts.
@@ -18,45 +20,50 @@ Two anti-patterns to avoid:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading current inception items and per-topic lifecycle from
-> the manifest. The map is the source of truth — no file reads
-> needed for state.
+> Loading the current discovery map, dismissed list, and the latest
+> session log status.
 ```
 
-Load the work unit's manifest and read `phases.inception.items.*`. For each topic, compute its lifecycle using `computeTopicLifecycle(manifest, topicName)` from `skills/workflow-shared/scripts/discovery-utils.cjs`. The returned `{ lifecycle, tier, current_phase }` informs which operations are allowed in the operations loop.
+Run discovery for the work unit:
 
-Also read `phases.inception.dismissed` (an array of previously removed topic names; may be missing or empty). The dismissed list governs name collision and the show-dismissed flow.
+```bash
+node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+```
+
+The output drives the rest of this file:
+
+- **`map_summary`** — `{total} topics — ...` line. Used in **D** (session log header) and **E** (render).
+- **`discovery_map`** — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`. Used in **E** (render).
+- **`dismissed`** — names of topics previously removed via refinement. Used by `show-dismissed.md`.
+- **`latest_session`** — `{filename, number, is_refinement, is_in_progress, conclusion_text, relative_path}`. Used in **B** (resume detection).
+- **`next_session_number`** — zero-padded next session number to seed in **D**.
 
 → Proceed to **B. Resume Check**.
 
 ## B. Resume Check
 
-Find the highest-numbered session log on disk:
+Read `latest_session` and `next_session_number` from the discovery output produced in **A**.
 
-```bash
-ls .workflows/{work_unit}/inception/session-*.md 2>/dev/null | sort | tail -1
-```
+#### If `latest_session` is null or `latest_session.is_refinement` is `false`
 
-If the result is empty or matches `session-001.md`, no refinement is in flight. Otherwise read the matched `session-NNN.md` and inspect its **Conclusion** section — `(none)` means the prior refinement was interrupted (context refresh or user exit) before finalisation.
-
-#### If only `session-001.md` exists or no log was found
+No refinement is in flight (only the initial session log exists, or no logs at all).
 
 → Proceed to **C. Self-Healing Check**.
 
-#### If a refinement log exists with non-`(none)` Conclusion
+#### If `latest_session.is_refinement` is `true` and `latest_session.is_in_progress` is `false`
 
 The prior refinement concluded normally. Treat this as a fresh entry.
 
 → Proceed to **C. Self-Healing Check**.
 
-#### If a refinement log exists with `(none)` Conclusion
+#### If `latest_session.is_refinement` is `true` and `latest_session.is_in_progress` is `true`
 
-The prior refinement was interrupted. Offer continue or restart:
+The prior refinement was interrupted (Conclusion is `(none)`). Offer continue or restart:
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Found an in-progress refinement session log for **{work_unit:(titlecase)}**: `session-{NNN}.md`.
+Found an in-progress refinement session log for **{work_unit:(titlecase)}**: `{latest_session.filename}`.
 
 · · · · · · · · · · · ·
 - **`c`/`continue`** — Pick up where you left off
@@ -68,7 +75,7 @@ Found an in-progress refinement session log for **{work_unit:(titlecase)}**: `se
 
 **If `continue`:**
 
-The active session log is `session-{NNN}.md`. No new log is initialised; subsequent operations append to the existing log.
+The active session log is `{latest_session.filename}`. No new log is initialised; subsequent operations append to the existing log.
 
 → Proceed to **E. Render and Prompt**.
 
@@ -77,7 +84,7 @@ The active session log is `session-{NNN}.md`. No new log is initialised; subsequ
 Delete the in-progress log and commit:
 
 ```bash
-rm .workflows/{work_unit}/inception/session-{NNN}.md
+rm {latest_session.relative_path}
 git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): restart refinement session"
 ```
@@ -93,27 +100,26 @@ git commit -m "inception({work_unit}): restart refinement session"
 > gap-analysis) are wired in Phase 7. Nothing runs here yet.
 ```
 
-No-op for Phase 6. Phase 7 will run the analyses inline at this point and apply results to the map (auto-add with `source: research-analysis` or `source: gap-analysis`, filtered against `phases.inception.dismissed`). Any items added by analyses will be recorded under **Self-Healing Arrivals** in the session log initialised in **D**.
+No-op for Phase 6. Phase 7 will run the analyses inline at this point and apply results to the map (auto-add with `source: research-analysis` or `source: gap-analysis`, filtered against `dismissed`). Any items added by analyses will be recorded under **Self-Healing Arrivals** in the session log initialised in **D**.
 
 → Proceed to **D. Initialise Session Log**.
 
 ## D. Initialise Session Log
 
-Determine the next session number:
+Re-run discovery to pick up any state changes from a `restart` in **B**:
 
 ```bash
-n=$(ls .workflows/{work_unit}/inception/session-*.md 2>/dev/null | wc -l)
-next=$(printf "%03d" $((n + 1)))
+node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 ```
 
-Counts existing files (initial = `001`, prior refinements = `002+`) and increments to the next zero-padded value.
+Read `next_session_number` and `map_summary` from the output. The new session log path is `.workflows/{work_unit}/inception/session-{next_session_number}.md`.
 
-Create `.workflows/{work_unit}/inception/session-{next}.md` from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the summary line computed in **A**. Leave **Self-Healing Arrivals**, **Changes**, and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **B**.
+Create the file from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the `map_summary` text. Leave **Self-Healing Arrivals**, **Changes**, and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **B**.
 
 Commit:
 
 ```bash
-git add -- .workflows/{work_unit}/inception/session-{next}.md
+git add -- .workflows/{work_unit}/inception/session-{next_session_number}.md
 git commit -m "inception({work_unit}): seed refinement session log"
 ```
 
@@ -129,7 +135,7 @@ git commit -m "inception({work_unit}): seed refinement session log"
 > one message are fine; I'll work through them.
 ```
 
-Render the current map as a status-display anchor:
+Render the current map as a status-display anchor, using `discovery_map` and `map_summary` from **A** (or from the resumed log's matching state if **B** routed `continue`):
 
 > *Output the next fenced block as a code block:*
 
@@ -147,13 +153,13 @@ Render the current map as a status-display anchor:
 
 **Render rules** (subset of continue-epic's discovery map block):
 
-- `summary_line`: `{total} topics — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled`. Omit zero-count categories. Always include `{total} topics`.
-- Tier and ordering — sort by tier rank `→ ◐ ✓ ○ ⊘`, alphabetical within each tier (matches continue-epic).
+- `summary_line`: `{total} topics — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled`. Omit zero-count categories from the dot-separated tail. Always include `{total} topics`.
+- Tier and ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊘`, alphabetical within tier). Render in the order given.
 - `lifecycle_label` by tier:
   - `→` — `research complete · ready for discussion`
-  - `◐` — `researching` or `discussing` (use `current_phase`)
+  - `◐` — `researching` or `discussing` (use `topic.current_phase`)
   - `✓` — `decided`
-  - `○` — `fresh · routed to {topic.routing}` (omit ` · routed to ...` if `routing` is null)
+  - `○` — `fresh · routed to {topic.routing}` (omit ` · routed to ...` if `topic.routing` is null)
   - `⊘` — `cancelled`
 - No source provenance sub-line, no key block, no menu — this is an anchor, not the continue-epic display.
 
@@ -195,7 +201,7 @@ The message names operations.
 
 → Load **[map-operations.md](map-operations.md)** and follow its instructions as written.
 
-`map-operations.md` parses, validates, applies safety-by-destructiveness gating, writes the manifest, appends to the active session log, and commits per its own pattern. When it returns:
+`map-operations.md` re-runs discovery for fresh state, parses, validates, applies safety-by-destructiveness gating, writes the manifest, appends to the active session log, and commits per its own pattern. When it returns:
 
 → Proceed to **G. Anything Else?**.
 
@@ -224,17 +230,23 @@ Anything else to change?
 
 ## H. Finalise Session Log
 
-Replace the `(none)` placeholder in the **Conclusion** section of `inception/session-{NNN}.md`. The replacement is non-optional — leaving `(none)` would make the log indistinguishable from an interrupted session on the next refinement entry.
+Re-run discovery to pick up the post-operations state:
+
+```bash
+node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+```
+
+Read `map_summary.total` from the output. Replace the `(none)` placeholder in the **Conclusion** section of the active session log. The replacement is non-optional — leaving `(none)` would make the log indistinguishable from an interrupted session on the next refinement entry.
 
 #### If at least one operation was applied during the session
 
-Replace `(none)` with: `{N} changes applied. Map now has {M} topics.`
+Replace `(none)` with: `{N} changes applied. Map now has {map_summary.total} topics.`
 
 → Proceed to **I. Compliance Self-Check**.
 
 #### Otherwise (browse-only refinement, no operations applied)
 
-Replace `(none)` with: `No changes applied — browse only. Map has {M} topics.`
+Replace `(none)` with: `No changes applied — browse only. Map has {map_summary.total} topics.`
 
 → Proceed to **I. Compliance Self-Check**.
 

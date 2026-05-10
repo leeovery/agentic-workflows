@@ -6,11 +6,21 @@
 
 Per-operation handling for refinement. Owns parsing, validation, manifest writes, session-log entries, and commits. Loaded by **[refinement-session.md](refinement-session.md)** when the user names one or more changes.
 
-The parent reference owns the conversation shape; this file owns the writes. After all of the user's operations have been processed, return to caller.
+The parent reference owns the conversation shape; this file owns the writes. State for validation comes from `skills/workflow-inception-process/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
+
+After all of the user's operations have been processed, return to caller.
 
 ## A. Parse Operations
 
-Read the user's most recent message. Extract one or more operations. Recognised intents:
+Re-run discovery to pick up state changes since the last invocation (operations applied earlier in the session, or the parent's initial discovery):
+
+```bash
+node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+```
+
+Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.
+
+Then read the user's most recent message. Extract one or more operations. Recognised intents:
 
 | User phrasing                                   | Operation       | Required values                          |
 | ----------------------------------------------- | --------------- | ---------------------------------------- |
@@ -37,7 +47,7 @@ Walk the groups in user order. For mixed batches (e.g. *"remove A, rename B to B
 
 Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — for destructive operations (Remove, Rename, Change routing), compute the topic's lifecycle via `computeTopicLifecycle(manifest, topicName)` from `discovery-utils.cjs`. The operation is allowed only when:
+**Lifecycle gates** — for destructive operations (Remove, Rename, Change routing), look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
 
 | Operation       | Allowed lifecycles | Disallowed                                                                  |
 | --------------- | ------------------ | --------------------------------------------------------------------------- |
@@ -67,7 +77,7 @@ Render the rejection in a code block:
 - `decided` — `discussion has concluded`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
-**Name collision gates** — for Add and Rename, the new name is rejected if an **active** map item already uses it (case-sensitive match against `phases.inception.items.{name}`):
+**Name collision gates** — for Add and Rename, check the new name against `discovery_map`'s topic names (case-sensitive). A match means an **active** map item already uses the name — reject:
 
 > *Output the next fenced block as a code block:*
 
@@ -76,7 +86,7 @@ Render the rejection in a code block:
 edit-summary / change-routing on the existing item.
 ```
 
-For Add, a name appearing in `phases.inception.dismissed` is **allowed** — it counts as a re-add. The Add flow pulls the name from the dismissed list before creating the new item.
+For Add, a name appearing in `dismissed` is **allowed** — it counts as a re-add. The Add flow pulls the name from the dismissed list before creating the new item.
 
 → Proceed to **C. Apply**.
 
@@ -145,7 +155,7 @@ Skip the batch. No manifest writes, no session-log entry, no commit.
 
 For each name in the batch:
 
-1. If the name is in `phases.inception.dismissed`, pull it:
+1. If the name appears in `dismissed` (from the discovery output read in **A**), pull it:
 
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{name}"
