@@ -11,6 +11,7 @@ const {
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
   phaseStatus, phaseItems, phaseData, computeNextPhase, computePendingFromResearch, computePendingFromGaps,
+  computeAnalysisCacheStatus, computeSourceProvenance,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
 describe('discovery-utils', () => {
@@ -754,6 +755,157 @@ describe('discovery-utils', () => {
         },
       });
       assert.deepStrictEqual(result, ['integration']);
+    });
+  });
+
+  describe('computeSourceProvenance', () => {
+    it('returns null for null/undefined source', () => {
+      assert.strictEqual(computeSourceProvenance(null), null);
+      assert.strictEqual(computeSourceProvenance(undefined), null);
+    });
+
+    it('returns null for source=inception', () => {
+      assert.strictEqual(computeSourceProvenance('inception'), null);
+    });
+
+    it('returns "from {source}" for plain source', () => {
+      assert.strictEqual(computeSourceProvenance('research-analysis'), 'from research-analysis');
+    });
+
+    it('unwraps colon-prefixed source to "from {parent}"', () => {
+      assert.strictEqual(computeSourceProvenance('research-split:kitchen-hardware'), 'from kitchen-hardware');
+    });
+
+    it('handles comma-joined plain sources', () => {
+      assert.strictEqual(
+        computeSourceProvenance('research-analysis,gap-analysis'),
+        'from research-analysis + gap-analysis',
+      );
+    });
+
+    it('handles comma-joined sources with whitespace', () => {
+      assert.strictEqual(
+        computeSourceProvenance('research-analysis, gap-analysis'),
+        'from research-analysis + gap-analysis',
+      );
+    });
+
+    it('handles mixed colon-prefixed and plain in a comma-joined source', () => {
+      assert.strictEqual(
+        computeSourceProvenance('research-split:billing,gap-analysis'),
+        'from billing + gap-analysis',
+      );
+    });
+
+    it('returns null for empty source', () => {
+      assert.strictEqual(computeSourceProvenance(''), null);
+    });
+  });
+
+  describe('computeAnalysisCacheStatus', () => {
+    const { createManifest } = require('./discovery-test-utils.cjs');
+
+    it('research-analysis: returns absent when no research files and no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'absent');
+      assert.strictEqual(r.generated, null);
+      assert.deepStrictEqual(r.files, []);
+    });
+
+    it('research-analysis: returns stale when files exist but no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('research-analysis: returns valid when checksum matches', () => {
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-a');
+      const checksum = filesChecksum([path.join(dir, '.workflows/alpha/research/topic-a.md')]);
+      createManifest(dir, 'alpha', {
+        phases: { research: { analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] } } },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'valid');
+      assert.strictEqual(r.generated, '2026-05-01');
+      assert.deepStrictEqual(r.files, ['topic-a.md']);
+    });
+
+    it('research-analysis: returns stale when files changed', () => {
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
+      createManifest(dir, 'alpha', {
+        phases: { research: { analysis_cache: { checksum: 'stale-hash', generated: '2026-05-01', files: ['topic-a.md'] } } },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('research-analysis: returns stale when cache exists but files were deleted', () => {
+      createManifest(dir, 'alpha', {
+        phases: { research: { analysis_cache: { checksum: 'old', generated: '2026-05-01', files: ['gone.md'] } } },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'stale');
+      assert.deepStrictEqual(r.files, ['gone.md']);
+    });
+
+    it('gap-analysis: returns absent when no discussions and no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('gap-analysis: returns stale when discussions exist but no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('gap-analysis: returns valid when checksum matches discussion files', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
+      const checksum = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { gap_analysis_cache: { checksum, generated: '2026-05-02', discussion_files: ['auth.md'] } } },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'valid');
+      assert.strictEqual(r.generated, '2026-05-02');
+      assert.deepStrictEqual(r.files, ['auth.md']);
+    });
+
+    it('gap-analysis: includes research-analysis.md in checksum when present', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
+      createFile(dir, '.workflows/alpha/.state/research-analysis.md', 'analysis content');
+      const checksumDOnly = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { gap_analysis_cache: { checksum: checksumDOnly, generated: '2026-05-02', discussion_files: ['auth.md'] } } },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      // Cache only saw discussion file's checksum, but reality includes research-analysis.md
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('returns absent for unknown kind', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'nonsense');
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('returns absent for null manifest', () => {
+      const r = computeAnalysisCacheStatus(null, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'absent');
     });
   });
 });

@@ -484,6 +484,53 @@ Additional commentary on multiple lines.
     assert.strictEqual(r.latest_session.relative_path, '.workflows/payments/inception/session-002.md');
   });
 
+  // --- analysis_caches ---
+
+  describe('analysis_caches', () => {
+    it('returns absent statuses when no research and no discussion files exist', () => {
+      createManifest(dir, 'payments', { work_type: 'epic' });
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.analysis_caches.research_analysis.status, 'absent');
+      assert.strictEqual(r.analysis_caches.gap_analysis.status, 'absent');
+    });
+
+    it('returns stale for research-analysis when files exist but no cache', () => {
+      createManifest(dir, 'payments', { work_type: 'epic' });
+      createFile(dir, '.workflows/payments/research/topic-a.md', 'content');
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.analysis_caches.research_analysis.status, 'stale');
+    });
+
+    it('returns valid for research-analysis when checksum matches', () => {
+      createFile(dir, '.workflows/payments/research/topic-a.md', 'content-x');
+      const crypto = require('crypto');
+      const buf = fs.readFileSync(path.join(dir, '.workflows/payments/research/topic-a.md'));
+      const checksum = crypto.createHash('md5').update(buf).digest('hex');
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { research: { analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] } } },
+      });
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.analysis_caches.research_analysis.status, 'valid');
+      assert.strictEqual(r.analysis_caches.research_analysis.generated, '2026-05-01');
+    });
+
+    it('returns stale for gap-analysis when discussions exist but no cache', () => {
+      createManifest(dir, 'payments', { work_type: 'epic' });
+      createFile(dir, '.workflows/payments/discussion/auth.md', 'content');
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.analysis_caches.gap_analysis.status, 'stale');
+    });
+
+    it('format() renders analysis_caches statuses', () => {
+      createManifest(dir, 'payments', { work_type: 'epic' });
+      const out = format(discover(dir, 'payments'));
+      assert.match(out, /analysis_caches:/);
+      assert.match(out, /research_analysis: absent/);
+      assert.match(out, /gap_analysis: absent/);
+    });
+  });
+
   // --- next_session_number ---
 
   it('next_session_number is 1 when no logs exist', () => {
@@ -689,7 +736,7 @@ describe('workflow-inception-process format', () => {
     assert.ok(out.endsWith('\n'));
   });
 
-  it('renders all five named sections in order', () => {
+  it('renders all named sections in order', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     const out = format(discover(dir, 'payments'));
     const order = [
@@ -697,6 +744,7 @@ describe('workflow-inception-process format', () => {
       out.indexOf('map_summary:'),
       out.indexOf('discovery_map ('),
       out.indexOf('dismissed ('),
+      out.indexOf('analysis_caches:'),
       out.indexOf('latest_session:'),
       out.indexOf('next_session_number:'),
     ];
