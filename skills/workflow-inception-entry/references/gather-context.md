@@ -28,7 +28,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} im
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
 ```
 
-Parse the JSON array. Store the list of `path` values as `imports`. Knowledge-base indexing of imports lands in a later phase of this initiative — for this session, the filenames surface to the process skill as additional context the user has provided.
+Parse the JSON array. Store the list of `path` values as `imports`. Files were already copied to `imports/` and indexed into the knowledge base when the user provided them at start-epic — this read is just to surface the filenames in the inception handoff.
 
 → Return to caller.
 
