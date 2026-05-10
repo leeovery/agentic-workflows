@@ -225,6 +225,66 @@ function computePendingFromGaps(manifest) {
   return gaps.filter(t => !discussed.has(t));
 }
 
+function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
+  if (!manifest || !manifest.name) return { status: 'absent', generated: null, files: [] };
+  const wuDir = path.join(workflowsDir, manifest.name);
+
+  if (kind === 'research-analysis') {
+    const cache = ((manifest.phases || {}).research || {}).analysis_cache;
+    const researchDir = path.join(wuDir, 'research');
+    const rFiles = listFiles(researchDir, '.md');
+
+    if (!cache || !cache.checksum) {
+      return rFiles.length > 0
+        ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
+        : { status: 'absent', generated: null, files: [] };
+    }
+
+    if (rFiles.length === 0) {
+      return { status: 'stale', generated: cache.generated || null, files: Array.isArray(cache.files) ? cache.files : [], reason: 'no research files to compare' };
+    }
+
+    const currentChecksum = filesChecksum(rFiles.map(f => path.join(researchDir, f)));
+    const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
+    return {
+      status,
+      generated: cache.generated || null,
+      files: Array.isArray(cache.files) ? cache.files : [],
+      reason: status === 'valid' ? 'checksums match' : 'research has changed since cache was generated',
+    };
+  }
+
+  if (kind === 'gap-analysis') {
+    const cache = ((manifest.phases || {}).discussion || {}).gap_analysis_cache;
+    const discussionDir = path.join(wuDir, 'discussion');
+    const dFiles = listFiles(discussionDir, '.md');
+    const inputPaths = dFiles.map(f => path.join(discussionDir, f));
+    const researchAnalysisPath = path.join(wuDir, '.state', 'research-analysis.md');
+    if (fileExists(researchAnalysisPath)) inputPaths.push(researchAnalysisPath);
+
+    if (!cache || !cache.checksum) {
+      return inputPaths.length > 0
+        ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
+        : { status: 'absent', generated: null, files: [] };
+    }
+
+    if (inputPaths.length === 0) {
+      return { status: 'stale', generated: cache.generated || null, files: Array.isArray(cache.discussion_files) ? cache.discussion_files : [], reason: 'no discussion files to compare' };
+    }
+
+    const currentChecksum = filesChecksum(inputPaths);
+    const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
+    return {
+      status,
+      generated: cache.generated || null,
+      files: Array.isArray(cache.discussion_files) ? cache.discussion_files : [],
+      reason: status === 'valid' ? 'checksums match' : 'discussions have changed since gap analysis was generated',
+    };
+  }
+
+  return { status: 'absent', generated: null, files: [] };
+}
+
 const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊘': 4 };
 
 function computeTopicLifecycle(manifest, topicName) {
@@ -288,12 +348,13 @@ function computeMapSummary(items) {
 
 function computeSourceProvenance(source) {
   if (!source || source === 'inception') return null;
-  const colonIdx = source.indexOf(':');
-  if (colonIdx > 0) {
-    const parent = source.slice(colonIdx + 1);
-    return `from ${parent}`;
-  }
-  return `from ${source}`;
+  const parts = source.split(',').map(s => s.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+  const labels = parts.map(p => {
+    const colonIdx = p.indexOf(':');
+    return colonIdx > 0 ? p.slice(colonIdx + 1) : p;
+  });
+  return `from ${labels.join(' + ')}`;
 }
 
 module.exports = {
@@ -309,6 +370,7 @@ module.exports = {
   computeNextPhase,
   computePendingFromResearch,
   computePendingFromGaps,
+  computeAnalysisCacheStatus,
   loadActiveManifests,
   loadAllManifests,
   loadProjectManifest,
