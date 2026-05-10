@@ -207,7 +207,50 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ---
 
-## Step 5: Display State and Menu
+## Step 5: Self-Healing
+
+> *Output the next fenced block as a code block:*
+
+```
+── Self-Healing ─────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking analysis caches for the selected epic. Stale caches
+> trigger inline research-analysis or gap-analysis runs that add
+> any new themes directly to the discovery map.
+```
+
+Read `analysis_caches` from the selected epic's `detail` (parsed in Step 1):
+
+- `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
+- `analysis_caches.gap_analysis.status` — same
+
+#### If both caches are `valid` or `absent`
+
+No analyses to run.
+
+→ Proceed to **Step 6**.
+
+#### If at least one cache is `stale`
+
+→ Load **[self-healing.md](../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+
+On return, store the orchestrator's `new_arrivals` tracker in conversation memory — Step 6 reads it to render the callout above the discovery map.
+
+Re-run discovery for the work unit so Step 6 has fresh state including auto-added items:
+
+```bash
+node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
+```
+
+→ Proceed to **Step 6**.
+
+---
+
+## Step 6: Display State and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -221,13 +264,13 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 > Showing the full phase-by-phase breakdown and available actions.
 ```
 
-Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** and follow its instructions as written.
+Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** and follow its instructions as written. Pass `new_arrivals` if Step 5 captured any.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Route Selection
+## Step 7: Route Selection
 
 > *Output the next fenced block as a code block:*
 
