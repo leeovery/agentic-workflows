@@ -241,7 +241,7 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** and fol
 > Handing off to the selected phase for this epic.
 ```
 
-Invoke the appropriate skill based on the user's menu selection:
+Invoke the appropriate skill based on the user's menu selection. Match by **prefix** — labels may carry a trailing context segment (e.g., `— research completed`, `— spec completed`, `(Phase 2, Task 3)`) which doesn't change the routing target.
 
 | Menu option | Invoke |
 |-------------|--------|

@@ -87,11 +87,15 @@ Render the discovery map block at the top, then the build-phase tree (specificat
   - `◐` (researching) — `researching`
   - `◐` (discussing) — `discussing`
   - `✓` (decided) — `decided`
-  - `○` (fresh) — `fresh · routed to {topic.routing}`
+  - `○` (fresh) — `fresh · routed to {topic.routing}` (omit the ` · routed to ...` segment if `topic.routing` is null)
   - `⊘` (cancelled) — `cancelled`
 - **Source provenance sub-line**: render only when `topic.source_provenance` is non-null. Indent at 7 spaces (under the title text, past the tree branch). Example: `       from kitchen-hardware`. Source `inception` has no provenance line.
 - **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Skip `research`, `discussion`, and `inception` — they are represented in the map above. Tree grammar (`├─` non-final, `└─` final), planning format suffix (`· {format}`), specification source rows, and implementation progress lines render the same way as the otherwise branch below. Skip phases with no items. Blank line between sections.
 - **No trailing recommendation callout** in this code block. Build-phase recommendations attach to menu entries (see **C. Menu**), not the state display.
+
+After the render block, run the **Plans Not Ready Check** below; it applies to both this branch and the otherwise branch.
+
+→ Proceed to **B. Key**.
 
 #### Otherwise
 
@@ -172,7 +176,13 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 | Some plans completed, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
 
-**Not-ready block:** After the main state display, check for plans with `deps_blocking` entries. If any exist, show in a separate code block:
+After the render block, run the **Plans Not Ready Check** below.
+
+→ Proceed to **B. Key**.
+
+---
+
+**Plans Not Ready Check** (shared post-render check, used by both populated branches above): check for plans with `deps_blocking` entries. If any exist, show in a separate code block:
 
 > *Output the next fenced block as a code block:*
 
@@ -191,8 +201,6 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 ```
 
 Use the `deps_blocking` array from the planning phase items. Show each blocking dependency with its cross-plan task reference using colon notation (`{plan}:{internal_id}`) when an `internal_id` is present. Omit this block entirely if no plans are blocked.
-
-→ Proceed to **B. Key**.
 
 ---
 
@@ -537,7 +545,7 @@ Gate messages are self-contained first lines. For "N of M in-progress" condition
 
 ## E. Route Selection
 
-Store the selected action, phase, and topic (if applicable). Map to a routing entry:
+Store the selected action, phase, and topic (if applicable). Match the user's selection to a routing entry by **prefix** — selection labels may carry a trailing context segment (e.g., `Start discussion for "X" — research completed`, `Continue "Y" — implementation (Phase 2, Task 3)`) which doesn't change the routing target.
 
 | Selection | Phase | Topic |
 |-----------|-------|-------|

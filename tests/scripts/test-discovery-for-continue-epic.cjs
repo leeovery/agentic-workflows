@@ -894,6 +894,37 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(s.cancelled, 1);
     });
 
+    it('excludes inception from phases output (lives in discovery_map only)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+          discussion: { items: { topic: { status: 'in-progress' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.phases.inception, undefined);
+      assert.ok(d.phases.discussion);
+    });
+
+    it('inception items are not flagged as in-progress / cancelled / completed', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              alpha: { routing: 'research', source: 'inception' },
+              beta: { routing: 'discussion', source: 'inception' },
+            },
+          },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.in_progress.length, 0);
+      assert.strictEqual(d.completed.length, 0);
+      assert.strictEqual(d.cancelled.length, 0);
+    });
+
     it('preserves summary and routing fields on map entries', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',

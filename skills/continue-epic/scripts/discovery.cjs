@@ -55,6 +55,7 @@ function buildEpicDetail(cwd, manifest) {
   const nextPhaseReady = [];
 
   for (const phase of EPIC_PHASES) {
+    if (phase === 'inception') continue;
     const items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
 
