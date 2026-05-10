@@ -711,13 +711,32 @@ function discoverArtifacts() {
     // Imports — top-level array on the work unit, no per-item status. Each
     // entry's path is relative to the work-unit directory. Topic identity is
     // the basename without .md (matches deriveIdentity).
+    //
+    // Path validation: import-files.md only ever writes "imports/<basename>.md"
+    // to the manifest. A different shape here means either manual tampering
+    // or a flow we don't recognise — refuse to index in either case so the
+    // store can't be poisoned by a manifest-injection vector. The validation
+    // mirrors deriveIdentity's checks (no slash beyond the imports/ prefix,
+    // no .. segments, no dotfile basenames).
+    const seenImportTopics = new Set();
     if (Array.isArray(wu.imports)) {
       for (const entry of wu.imports) {
         if (!entry || typeof entry.path !== 'string') continue;
-        const filePath = path.posix.join('.workflows', wuName, entry.path);
-        if (!fs.existsSync(path.resolve(filePath))) continue;
-        const base = path.basename(entry.path, '.md');
+        const rel = entry.path;
+        // Must be exactly imports/{filename}.md — no subdirectories, no escapes.
+        const m = /^imports\/([^/]+\.md)$/.exec(rel);
+        if (!m) continue;
+        const filename = m[1];
+        if (filename.includes('..') || filename.startsWith('.')) continue;
+        const base = filename.slice(0, -3); // strip .md
         if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
+        // Dedupe by topic identity — re-imports may push duplicate manifest
+        // entries (acceptable noise per the design), but bulk index should
+        // process each identity once.
+        if (seenImportTopics.has(base)) continue;
+        seenImportTopics.add(base);
+        const filePath = path.posix.join('.workflows', wuName, rel);
+        if (!fs.existsSync(path.resolve(filePath))) continue;
         items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
       }
     }
