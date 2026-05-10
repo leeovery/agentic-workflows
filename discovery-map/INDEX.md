@@ -13,7 +13,7 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 1. **[Manifest Foundations](phase-01-manifest-foundations.md)** — `inception` phase + `imports` field validation in manifest CLI. **Status:** Done (PR #264)
 2. **[Inception Entry Skill + Bridge Plumbing](phase-02-inception-entry-bridge.md)** — entry skill scaffold + bridge continuation + discovery.cjs awareness. **Status:** Review (PR #267)
 3. **[Inception Process Skill](phase-03-inception-process.md)** — the conversational inception session itself (initial-session flow). **Status:** Review (PR #268)
-4. **[Wire start-epic to Inception](phase-04-wire-start-epic.md)** — collapses the research/discussion menu; user-visible flip. **Status:** Not started
+4. **[Wire start-epic to Inception](phase-04-wire-start-epic.md)** — collapses the research/discussion menu; user-visible flip. **Status:** Review (PR #269)
 5. **[Discovery Map Render](phase-05-discovery-map-render.md)** — continue-epic display + menu collapse + auto-routing. **Status:** Not started
 6. **[Refinement Session](phase-06-refinement-session.md)** — re-entry path, map editing operations, safety-by-destructiveness. **Status:** Not started
 7. **[Self-Healing Re-point](phase-07-self-healing.md)** — research-analysis and gap-analysis re-point to map at continue-epic boot-up. **Status:** Not started
@@ -85,7 +85,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-rephase` | Phase 1 branch | (doc-only meta change — phase rebalance) | [#266](https://github.com/leeovery/agentic-workflows/pull/266) | Review |
 | `idea/inception-pr-2-entry-bridge` | rephase | Phase 2 — Inception Entry Skill + Bridge Plumbing | [#267](https://github.com/leeovery/agentic-workflows/pull/267) | Review |
 | `idea/inception-pr-3-process` | Phase 2 branch | Phase 3 — Inception Process Skill | [#268](https://github.com/leeovery/agentic-workflows/pull/268) | Review |
-| `idea/inception-pr-4-wire-start-epic` | Phase 3 branch | Phase 4 — Wire start-epic to Inception | — | Not started |
+| `idea/inception-pr-4-wire-start-epic` | Phase 3 branch | Phase 4 — Wire start-epic to Inception | [#269](https://github.com/leeovery/agentic-workflows/pull/269) | Review |
 | `idea/inception-pr-5-map-render` | Phase 4 branch | Phase 5 — Discovery Map Render | — | Not started |
 | `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | — | Not started |
 | `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | — | Not started |
