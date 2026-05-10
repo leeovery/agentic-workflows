@@ -33,10 +33,9 @@ Work unit: {work_unit}
 Source: import
 Output: .workflows/{work_unit}/research/{resolved_filename}
 
-Import files:
-  • {path_1}
-  • {path_2}
-  • ...
+Imports tracked in manifest.imports[] and indexed into the
+knowledge base — relevant chunks will surface via the
+session-start contextual query. Starting Point stays empty.
 
 Invoke the workflow-research-process skill.
 ```
