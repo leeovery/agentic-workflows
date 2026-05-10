@@ -130,9 +130,40 @@ What would you like to change?
 
 ## D. Operations Loop
 
-Phase 6 wiring landed in a follow-up commit. Until then, this section is a stub — when the user's first message arrives, route directly to **E. Conclude** so the bridge still resolves cleanly.
+The user's message names one or more changes in natural language, asks to see dismissed items, or signals they're done.
+
+**Reserved phrase — show dismissed**: if the user's message is a request to see what's been removed (e.g. *"show dismissed"*, *"what was removed"*, *"let me see what I dropped"*), load **[show-dismissed.md](show-dismissed.md)** and follow its instructions as written. After it returns, → Proceed to **D.1. Anything Else?**.
+
+**Reserved phrase — conclude**: if the user signals they're done (e.g. *"no"*, *"done"*, *"that's it"*, *"all good"*, *"wrap up"*), → Proceed to **E. Conclude**.
+
+**Otherwise** — the message names operations. Dispatch:
+
+→ Load **[map-operations.md](map-operations.md)** and follow its instructions as written.
+
+`map-operations.md` parses operations, applies safety-by-destructiveness gating (additive batched, destructive per-item), writes the manifest, appends to the in-progress refinement session log, and commits per its own pattern. When it returns, → Proceed to **D.1. Anything Else?**.
+
+### D.1. Anything Else?
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Anything else to change?
+
+- **Tell me what's next** — Name more changes (or "show dismissed")
+- **`d`/`done`** — Conclude refinement and return to the epic menu
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `done`
 
 → Proceed to **E. Conclude**.
+
+#### Otherwise
+
+→ Return to **D. Operations Loop**.
 
 ## E. Conclude
 
