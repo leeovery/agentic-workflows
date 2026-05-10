@@ -15,7 +15,7 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 3. **[Inception Process Skill](phase-03-inception-process.md)** — the conversational inception session itself (initial-session flow). **Status:** Review (PR #268)
 4. **[Wire start-epic to Inception](phase-04-wire-start-epic.md)** — collapses the research/discussion menu; user-visible flip. **Status:** Review (PR #269)
 5. **[Discovery Map Render](phase-05-discovery-map-render.md)** — continue-epic display + menu collapse + auto-routing. **Status:** Review (PR #270)
-6. **[Refinement Session](phase-06-refinement-session.md)** — re-entry path, map editing operations, safety-by-destructiveness. **Status:** Not started
+6. **[Refinement Session](phase-06-refinement-session.md)** — re-entry path, map editing operations, safety-by-destructiveness. **Status:** Review (PR #271)
 7. **[Self-Healing Re-point](phase-07-self-healing.md)** — research-analysis and gap-analysis re-point to map at continue-epic boot-up. **Status:** Not started
 8. **[Imports](phase-08-imports.md)** — `imports/` directory, manifest tracking, KB indexing, behaviour change for features. **Status:** Not started
 9. **[Topic Splitting and Elevation](phase-09-topic-splitting-elevation.md)** — write inception items alongside; name collision validation. **Status:** Not started
@@ -87,7 +87,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-3-process` | Phase 2 branch | Phase 3 — Inception Process Skill | [#268](https://github.com/leeovery/agentic-workflows/pull/268) | Review |
 | `idea/inception-pr-4-wire-start-epic` | Phase 3 branch | Phase 4 — Wire start-epic to Inception | [#269](https://github.com/leeovery/agentic-workflows/pull/269) | Review |
 | `idea/inception-pr-5-map-render` | Phase 4 branch | Phase 5 — Discovery Map Render | [#270](https://github.com/leeovery/agentic-workflows/pull/270) | Review |
-| `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | — | Not started |
+| `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | [#271](https://github.com/leeovery/agentic-workflows/pull/271) | Review |
 | `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | — | Not started |
 | `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | — | Not started |
 | `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | — | Not started |
