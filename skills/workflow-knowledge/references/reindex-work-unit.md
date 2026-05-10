@@ -59,15 +59,29 @@ Process the remaining items in this phase, then move on to the next phase in the
 
 ## B. Re-Index Imports
 
-Imports live at the work-unit level (not under `phases`) so they need a separate pass. Read the imports list:
+Imports live at the work-unit level (not under `phases`) so they need a separate pass. Probe before reading — `get` exits with code 2 when the field is absent, which would otherwise read as a hard failure:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} imports
+```
+
+#### If not exists (`false`)
+
+No imports to process.
+
+→ Return to caller.
+
+#### If exists (`true`)
+
+Read the imports list:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
 ```
 
-If the value is `[]` or absent, no imports to process — return.
+The result is a JSON array. Each entry's `path` field is relative to the work-unit directory and must match the shape `imports/{filename}.md` (no subdirectories, no `..`, no leading dot on the filename). Skip any entry that doesn't match — these signal a tampered or malformed manifest entry, not a legitimate import.
 
-For each entry in the imports array, resolve the path as `.workflows/{work_unit}/{entry.path}` (the `path` field is stored relative to the work-unit directory) and run:
+For each valid entry, run:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/{entry.path}

@@ -118,7 +118,7 @@ Confidence is intrinsic to the source phase. It tells you how much weight to giv
 | `high` | Specification — a decision that was validated and written down. Trust the *what*, verify the *why* against the source if it matters |
 | `medium` | Investigation — diagnostic work tied to specific symptoms. Trust the diagnosis, but check whether the symptom is still current |
 | `low-medium` | Discussion — conversational, may contain assumptions that were corrected later in the same file. Read for context, not conclusions |
-| `low` | Research — exploratory. May be a dead end, a rejected path, or an unvalidated idea |
+| `low` | Research or Imports — research is exploratory (may be a dead end, rejected path, or unvalidated idea); imports are user-supplied seed material (often loose, may cover multiple topics surface-level). Disambiguate via the provenance line's phase field |
 
 **Low confidence is not low value.** A research chunk that rejected an approach prevents the next work unit from re-exploring the same dead end. A discussion chunk showing a corrected assumption explains *why* the spec says what it says. Don't filter out low-confidence results — weigh them.
 
@@ -203,7 +203,7 @@ Human-readable report of the store's state: chunk counts by work unit, phase, an
 
 ## `rebuild` and `compact` — maintenance commands
 
-- **`rebuild`** — destructive. Deletes the existing index and re-indexes all completed artifacts. Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
+- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification) plus all entries on each work unit's `imports[]` array. Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
 - **`compact [--dry-run]`** — removes chunks from work units whose `completed_at` date exceeds the configured `decay_months` TTL. Specifications are exempt. `--dry-run` previews without deleting.
 
 Skills do not call these directly during normal operation. Users run them manually.
