@@ -117,6 +117,8 @@ Set `source` = `first-session`.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
+→ Proceed to **Step 4**.
+
 ---
 
 ## Step 4: Gather Context
