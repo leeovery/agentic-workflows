@@ -299,7 +299,7 @@ Build a menu with two types of options:
 - **`d`/`discuss`** — Start a discussion on a new topic (always present)
 - **`r`/`research`** — Start research on a new topic (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
-- **`a`/`cancel`** — Cancel a topic (only shown when non-cancelled, non-promoted items exist in any phase)
+- **`a`/`cancel`** — Cancel a topic (phase work) (only shown when non-cancelled, non-promoted items exist in any phase)
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
 - **`m`/`map`** — View pipeline map (always present when at least one phase has items)
 
@@ -339,7 +339,7 @@ What would you like to do?
 - **`r`/`research`** — Start research on a new topic
 - **`s`/`spec`** — Start specification — 2 discussion(s) not yet in a spec
 - **`c`/`completed`** — Resume a completed topic
-- **`a`/`cancel`** — Cancel a topic
+- **`a`/`cancel`** — Cancel a topic (phase work)
 - **`e`/`reactivate`** — Reactivate a cancelled topic
 - **`m`/`map`** — View pipeline map
 
