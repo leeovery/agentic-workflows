@@ -132,7 +132,7 @@ Read `next_session_number` and `map_summary` from the output. The new session lo
 
 Create the file from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the `map_summary` text. Leave **Changes** and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **B**.
 
-#### If **C** captured `new_arrivals`
+#### If **C** captured at least one arrival
 
 Replace the `(none)` placeholder under **Self-Healing Arrivals** with one bullet per arrival, in the order they were added by the orchestrator:
 
@@ -142,22 +142,27 @@ Replace the `(none)` placeholder under **Self-Healing Arrivals** with one bullet
 - {topic} (added by research-analysis, source: research-analysis,gap-analysis)
 ```
 
-Use the `source` value the analysis wrote to the manifest (comma-joined when both surfaced the same theme). When the same name appears in both arrival lists, render it once attributed to research-analysis (per the orchestrator's **C. Dedupe Sources**).
+Use the `source` value the analysis wrote to the manifest (comma-joined when both surfaced the same theme). When the same name appears in both arrival lists, render it once attributed to research-analysis (per the orchestrator's **D. Dedupe Sources**).
 
-#### If **C** captured no arrivals
-
-Leave **Self-Healing Arrivals** as `(none)` — analyses ran but added nothing, or the section had no analyses to run.
-
----
-
-Commit:
+Then commit — single commit covers the new session log plus the analyses' manifest writes:
 
 ```bash
 git add -- .workflows/{work_unit}/
-git commit -m "inception({work_unit}): seed refinement session log"
+git commit -m "inception({work_unit}): self-healing added {N} topic(s) to map; seed refinement session log"
 ```
 
-The commit covers the new session log plus any manifest writes the analyses produced — single commit so the log and the new inception items land together.
+`{N}` is the total arrival count after dedupe.
+
+→ Proceed to **E. Render and Prompt**.
+
+#### Otherwise (no arrivals captured, or **C** had no analyses to run)
+
+Leave **Self-Healing Arrivals** as `(none)`. Commit the seeded session log:
+
+```bash
+git add -- .workflows/{work_unit}/inception/session-{next_session_number}.md
+git commit -m "inception({work_unit}): seed refinement session log"
+```
 
 → Proceed to **E. Render and Prompt**.
 

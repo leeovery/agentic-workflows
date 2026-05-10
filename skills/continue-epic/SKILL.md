@@ -264,7 +264,7 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 > Showing the full phase-by-phase breakdown and available actions.
 ```
 
-Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** and follow its instructions as written. Pass `new_arrivals` if Step 5 captured any.
+Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when Step 5 did not load the orchestrator).
 
 → Proceed to **Step 7**.
 

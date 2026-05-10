@@ -19,7 +19,7 @@ The caller provides these via context before loading:
 > *Output the next fenced block as a code block:*
 
 ```
-·· Self-Healing Check ·····························
+·· Self-Healing Check ···························
 ```
 
 Run discovery for the work unit:
@@ -39,59 +39,65 @@ Initialise an in-conversation tracker:
 new_arrivals = { research_analysis: [], gap_analysis: [] }
 ```
 
-This tracker captures topic names added during this run, per analysis. The caller reads it after **D. Return**.
+This tracker captures topic names added during this run, per analysis. The caller reads it after **E. Return**.
 
-→ Proceed to **B. Dispatch Stale Caches**.
+→ Proceed to **B. Run Research Analysis if Stale**.
 
-## B. Dispatch Stale Caches
+## B. Run Research Analysis if Stale
 
-Run analyses in fixed order — research-analysis first (gap-analysis reads its cache file as input).
+Research-analysis runs first because gap-analysis reads its cache file as a secondary input.
 
 #### If `analysis_caches.research_analysis.status` is `stale`
 
 > *Output the next fenced block as a code block:*
 
 ```
-·· Research Analysis ·······························
+·· Research Analysis ····························
 ```
 
 → Load **[research-analysis.md](research-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.research_analysis`.
 
-On return, the tracker holds the names of any inception items just added by research-analysis. Continue.
+On return, the tracker holds the names of any inception items just added by research-analysis.
 
-#### If `analysis_caches.research_analysis.status` is `valid` or `absent`
+→ Proceed to **C. Run Gap Analysis if Stale**.
 
-No dispatch. Continue.
+#### Otherwise (`valid` or `absent`)
 
----
+No dispatch.
+
+→ Proceed to **C. Run Gap Analysis if Stale**.
+
+## C. Run Gap Analysis if Stale
 
 #### If `analysis_caches.gap_analysis.status` is `stale`
 
 > *Output the next fenced block as a code block:*
 
 ```
-·· Gap Analysis ····································
+·· Gap Analysis ·································
 ```
 
 → Load **[discussion-gap-analysis.md](discussion-gap-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.gap_analysis`.
 
-On return, the tracker holds the names of any inception items just added by gap-analysis. Continue.
+On return, the tracker holds the names of any inception items just added by gap-analysis.
 
-#### If `analysis_caches.gap_analysis.status` is `valid` or `absent`
+→ Proceed to **D. Dedupe Sources**.
 
-No dispatch. Continue.
+#### Otherwise (`valid` or `absent`)
 
-→ Proceed to **C. Dedupe Sources**.
+No dispatch.
 
-## C. Dedupe Sources
+→ Proceed to **D. Dedupe Sources**.
 
-When both analyses surface the same kebab-case theme, the second analysis writes the inception item with `source` already comma-joined (`research-analysis,gap-analysis`) — see Note 4 in each analysis's **Save Results** section.
+## D. Dedupe Sources
+
+When both analyses surface the same kebab-case theme, the second analysis writes the inception item with `source` already comma-joined (`research-analysis,gap-analysis`) — see each analysis's **D. Filter and Save** section.
 
 If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap_analysis`, treat it as a research-analysis arrival only for caller-side display purposes (single callout entry, single Self-Healing Arrivals bullet). The manifest already records the comma-joined source.
 
-→ Proceed to **D. Return**.
+→ Proceed to **E. Return**.
 
-## D. Return
+## E. Return
 
 The caller reads `new_arrivals` from conversation memory:
 
