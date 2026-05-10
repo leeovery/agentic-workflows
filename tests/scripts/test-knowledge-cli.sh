@@ -132,6 +132,27 @@ Some research content.
 MD
 }
 
+# Create an import artifact file.
+create_import_file() {
+  local wu="$1" filename="$2"
+  mkdir -p "$TEST_ROOT/.workflows/$wu/imports"
+  cat > "$TEST_ROOT/.workflows/$wu/imports/$filename.md" <<'MD'
+# Imported Seed
+
+## OAuth Notes
+
+Loose thinking about OAuth flows on mobile clients. Token refresh
+timing and PKCE were the open questions. This is the kind of seed
+material a user might paste in from an early conversation export.
+
+## Identity Strategy
+
+Preferred UUID v7 for identifiers. Email as profile attribute, not
+identifier. Open question: how to migrate the legacy email-based
+records without downtime.
+MD
+}
+
 # Run the knowledge CLI from the test project root.
 run_kb() {
   cd "$TEST_ROOT"
@@ -1851,6 +1872,59 @@ assert_eq "status from subdir reports zero orphans" "true" \
   "$(echo "$status_from_subdir" | grep -q 'Orphaned chunks' && echo false || echo true)"
 assert_eq "status from subdir reports the indexed chunks" "true" \
   "$(echo "$status_from_subdir" | grep -qE 'Total chunks: [1-9]' && echo true || echo false)"
+teardown_project
+
+# --- Test 84: Index an imports file with imports/ phase ---
+echo "Test 84: Index an imports file"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+output=$(run_kb index .workflows/seeded-wu/imports/seed-conversation.md 2>&1)
+assert_eq "indexes imports file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+teardown_project
+
+# --- Test 85: Query an indexed imports file shows imports provenance ---
+echo "Test 85: Query an imports file shows [imports | wu/topic]"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+output=$(run_kb query "OAuth" 2>&1)
+assert_eq "has imports provenance line" "true" \
+  "$(echo "$output" | grep -q 'imports | seeded-wu/seed-conversation' && echo true || echo false)"
+assert_eq "imports tier is low" "true" \
+  "$(echo "$output" | grep -q 'imports | seeded-wu/seed-conversation | low' && echo true || echo false)"
+teardown_project
+
+# --- Test 86: Remove imports chunks by phase ---
+echo "Test 86: Remove imports chunks via --phase imports --topic"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit seeded-wu --phase imports --topic seed-conversation 2>&1)
+assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
+query_after=$(run_kb query "OAuth" 2>&1)
+assert_eq "query post-remove returns no imports chunks" "true" \
+  "$(echo "$query_after" | grep -q 'imports | seeded-wu/seed-conversation' && echo false || echo true)"
+teardown_project
+
+# --- Test 87: Re-indexing imports replaces chunks (idempotent) ---
+echo "Test 87: Re-indexing imports replaces chunks"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+first_status=$(run_kb status 2>&1)
+first_chunks=$(echo "$first_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+second_status=$(run_kb status 2>&1)
+second_chunks=$(echo "$second_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
+assert_eq "chunk count stable across re-index" "$first_chunks" "$second_chunks"
 teardown_project
 
 # --- Summary ---

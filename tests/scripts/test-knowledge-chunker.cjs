@@ -415,7 +415,7 @@ describe('phase chunking configs', () => {
     'chunking'
   );
 
-  const phases = ['research', 'discussion', 'investigation', 'specification'];
+  const phases = ['research', 'discussion', 'investigation', 'specification', 'imports'];
 
   for (const phase of phases) {
     it('has a valid ' + phase + '.json config with required fields', () => {
@@ -444,12 +444,48 @@ describe('phase chunking configs', () => {
   });
 
   it('non-discussion configs have empty special_sections', () => {
-    for (const phase of ['research', 'investigation', 'specification']) {
+    for (const phase of ['research', 'investigation', 'specification', 'imports']) {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
       assert.deepStrictEqual(cfg.special_sections, {});
     }
+  });
+
+  it('imports.json declares low confidence (matches research tier)', () => {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
+    );
+    assert.strictEqual(cfg.confidence, 'low');
+  });
+
+  it('imports config chunks a multi-section seed file into per-section chunks', () => {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
+    );
+    const src = [
+      '# Seed Conversation',
+      '',
+      '## OAuth Notes',
+      '',
+      Array.from({ length: 60 }, (_, i) => 'oauth line ' + (i + 1)).join('\n'),
+      '',
+      '## Identity Strategy',
+      '',
+      Array.from({ length: 60 }, (_, i) => 'identity line ' + (i + 1)).join('\n'),
+      '',
+    ].join('\n');
+    const chunks = chunk(src, cfg);
+    assert.ok(chunks.length >= 2, 'expected at least one chunk per H2 section');
+    const contents = chunks.map((c) => c.content);
+    assert.ok(
+      contents.some((c) => /## OAuth Notes/.test(c)),
+      'expected an OAuth Notes chunk'
+    );
+    assert.ok(
+      contents.some((c) => /## Identity Strategy/.test(c)),
+      'expected an Identity Strategy chunk'
+    );
   });
 });
 
