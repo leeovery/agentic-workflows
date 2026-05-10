@@ -41,9 +41,9 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the session log** at `.workflows/{work_unit}/inception/session-001.md` if it exists. The Topics Identified section is your primary progress indicator — it shows which topics have already been surfaced and tentatively routed.
+2. **Read the most recent session log** — find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md`. For initial sessions this is `session-001.md` and the **Topics Identified** section is your primary progress indicator. For refinement sessions (`session-NNN.md`, NNN > 1) the **Changes** section shows what has already been applied; an unfinalised log has `(none)` under **Conclusion** and should be resumed via **B. Resume Check** in `references/refinement-session.md`.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages reveal what has been completed.
-4. **Announce your position** to the user before continuing: render the current working list of topics, state what step you believe you're at, and what comes next. Wait for confirmation.
+4. **Announce your position** to the user before continuing: render the current working list (initial) or the changes applied so far (refinement), state what step you believe you're at, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
