@@ -225,6 +225,77 @@ function computePendingFromGaps(manifest) {
   return gaps.filter(t => !discussed.has(t));
 }
 
+const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊘': 4 };
+
+function computeTopicLifecycle(manifest, topicName) {
+  const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
+  const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
+
+  const rs = research ? research.status : null;
+  const ds = discussion ? discussion.status : null;
+
+  if (ds === 'completed') {
+    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion' };
+  }
+  if (ds === 'in-progress') {
+    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion' };
+  }
+  if (rs === 'completed') {
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' };
+  }
+  if (rs === 'in-progress') {
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research' };
+  }
+  // All attempted phase items are cancelled (both research and discussion items exist
+  // and are cancelled). Single-cancelled (only research, or only discussion) falls
+  // through to fresh — the alternate path remains open.
+  if (rs === 'cancelled' && ds === 'cancelled') {
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null };
+  }
+  return { lifecycle: 'fresh', tier: '○', current_phase: null };
+}
+
+function computeNextAction(routing, lifecycle) {
+  switch (lifecycle) {
+    case 'fresh':
+      return routing === 'research' ? 'start_research' : 'start_discussion';
+    case 'researching':
+      return 'continue_research';
+    case 'ready_for_discussion':
+      return 'start_discussion_after_research';
+    case 'discussing':
+      return 'continue_discussion';
+    case 'decided':
+    case 'cancelled':
+    default:
+      return null;
+  }
+}
+
+function computeMapSummary(items) {
+  const counts = { total: items.length, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 };
+  for (const it of items) {
+    switch (it.tier) {
+      case '✓': counts.decided++; break;
+      case '◐': counts.in_flight++; break;
+      case '→': counts.ready++; break;
+      case '○': counts.fresh++; break;
+      case '⊘': counts.cancelled++; break;
+    }
+  }
+  return counts;
+}
+
+function computeSourceProvenance(source) {
+  if (!source || source === 'inception') return null;
+  const colonIdx = source.indexOf(':');
+  if (colonIdx > 0) {
+    const parent = source.slice(colonIdx + 1);
+    return `from ${parent}`;
+  }
+  return `from ${source}`;
+}
+
 module.exports = {
   listFiles,
   listDirs,
@@ -241,4 +312,9 @@ module.exports = {
   loadActiveManifests,
   loadAllManifests,
   loadProjectManifest,
+  computeTopicLifecycle,
+  computeNextAction,
+  computeMapSummary,
+  computeSourceProvenance,
+  TIER_RANK,
 };
