@@ -29,7 +29,7 @@ Where do you want to take it from here?
 
 → Proceed to **B. Session Loop**.
 
-#### If imports exist
+#### If **Topics Identified** is empty and imports exist
 
 Check for imports:
 
