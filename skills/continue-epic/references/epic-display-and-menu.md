@@ -41,6 +41,9 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 ●───────────────────────────────────────────────●
 
   Discovery Map ({summary_line})
+@if(imports_count > 0)
+  · {imports_count} imported seed@if(imports_count > 1)s@endif
+@endif
   @if(convergence_state == 'in-progress')
   ⚑ Discovery in progress — {N} topics not yet decided.
   @else
@@ -86,7 +89,8 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 - **Summary line**: `{total} topics — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled`. Read counts from `map_summary`. **Omit zero-count categories** from the dot-separated list. Always render `{total} topics`.
   - Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
   - Example with zeros omitted: `5 topics — 5 fresh`
-- **Convergence callout**: rendered immediately under the summary line, before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
+- **Imports callout**: rendered immediately under the summary line when `imports_count > 0`. Format: `· {imports_count} imported seed` for 1, `· {imports_count} imported seeds` for 2+. Sits above the convergence callout — both stack under the summary line. Omitted when `imports_count == 0`.
+- **Convergence callout**: rendered immediately under the imports callout (or under the summary line if imports are absent), before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
 - **New-arrivals callout** (optional): when the caller passes a non-empty `new_arrivals.research_analysis` or `new_arrivals.gap_analysis` list, render `⚑ {N} new topic(s) added to the map from {analysis}.` lines beneath the convergence callout, one per analysis with arrivals. Shown once per boot-up that added items — subsequent invocations without changes don't repeat it (the items are now part of the map). Sub-line provenance on the topic rows is the persistent surface afterwards.
 - **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
 - **Topic row**: `{tier}  {name:(titlecase)}  {lifecycle_label}` with two spaces between each segment. Use tree grammar (`├─` non-final, `└─` final).
