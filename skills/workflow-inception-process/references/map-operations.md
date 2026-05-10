@@ -6,7 +6,7 @@
 
 Per-operation handling for refinement. Owns parsing, validation, manifest writes, session-log entries, and commits. Loaded by **[refinement-session.md](refinement-session.md)** when the user names one or more changes.
 
-The parent reference owns the conversation shape; this file owns the writes. After completing the user's batch, return to caller.
+The parent reference owns the conversation shape; this file owns the writes. After all of the user's operations have been processed, return to caller.
 
 ## A. Parse Operations
 
@@ -24,34 +24,32 @@ If routing is omitted on Add, infer from cues in the user's framing (factual unk
 
 If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one clarifying question before proceeding. No STOP gate is needed for clarification — it's part of conversational flow, not a manifest write.
 
-**Classify operations:**
+**Group operations** for safety-by-destructiveness:
 
-- **Additive** — Add, Edit summary. Batched.
-- **Destructive** — Remove, Rename, Change routing. Per-item.
+- **Additive group** — a contiguous run of Add operations *or* a contiguous run of Edit summary operations. Each group batches into one STOP gate, one commit, one session-log entry.
+- **Destructive group** — a single Remove, Rename, or Change routing operation. Each is its own group of one with its own STOP gate and commit.
 
-**Process order:** in the order the user listed them. For pure additive batches, group into a single STOP gate, single commit, single session-log entry covering the batch. For pure destructive batches, per-item. For mixed batches, walk in order — destructive ops gate per-item, the contiguous additive ops in between can batch.
+Walk the groups in user order. For mixed batches (e.g. *"remove A, rename B to B2, add C"*), each destructive op is its own group; contiguous additive ops in between batch.
 
 → Proceed to **B. Validate**.
 
 ## B. Validate
 
-Apply per-operation validation gates **before** any STOP gate. If validation fails, surface the rejection with a clear next-step pointer (don't just say "blocked") and skip that operation. Continue with the rest of the batch.
+Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-### B.1. Lifecycle gates
+**Lifecycle gates** — for destructive operations (Remove, Rename, Change routing), compute the topic's lifecycle via `computeTopicLifecycle(manifest, topicName)` from `discovery-utils.cjs`. The operation is allowed only when:
 
-For destructive operations (Remove, Rename, Change routing), compute the topic's lifecycle via `computeTopicLifecycle(manifest, topicName)` from `discovery-utils.cjs`. The operation is allowed only when:
-
-| Operation       | Allowed lifecycles | Disallowed                                   |
-| --------------- | ------------------ | -------------------------------------------- |
+| Operation       | Allowed lifecycles | Disallowed                                                                  |
+| --------------- | ------------------ | --------------------------------------------------------------------------- |
 | Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `cancelled` |
-| Rename          | `fresh`            | all others                                   |
-| Change routing  | `fresh`            | all others (routing is implicit once a phase item exists) |
-| Edit summary    | any                | —                                            |
-| Add             | n/a (new item)     | —                                            |
+| Rename          | `fresh`            | all others                                                                  |
+| Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
+| Edit summary    | any                | —                                                                           |
+| Add             | n/a (new item)     | —                                                                           |
 
-Note: `cancelled` is also disallowed for Remove because the inception item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
+`cancelled` is also disallowed for Remove because the inception item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
 
-**Rejection messages** — render in a code block, then continue with the rest of the batch:
+Render the rejection in a code block:
 
 > *Output the next fenced block as a code block:*
 
@@ -69,9 +67,7 @@ Note: `cancelled` is also disallowed for Remove because the inception item is th
 - `decided` — `discussion has concluded`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
-### B.2. Name collision gates
-
-For Add and Rename, the new name is rejected if an **active** map item already uses it (case-sensitive match against `phases.inception.items.{name}`). Render:
+**Name collision gates** — for Add and Rename, the new name is rejected if an **active** map item already uses it (case-sensitive match against `phases.inception.items.{name}`):
 
 > *Output the next fenced block as a code block:*
 
@@ -82,17 +78,39 @@ edit-summary / change-routing on the existing item.
 
 For Add, a name appearing in `phases.inception.dismissed` is **allowed** — it counts as a re-add. The Add flow pulls the name from the dismissed list before creating the new item.
 
-→ Proceed to **C. Apply Operations**.
+→ Proceed to **C. Apply**.
 
-## C. Apply Operations
+## C. Apply
 
-Walk the validated operations in user order. For each, render the proposed change, gate per the safety rule, apply via the manifest CLI, append to the session log, and commit.
+Walk the validated operation groups in user order. For the next pending group:
 
-The session log path is `.workflows/{work_unit}/inception/session-{NNN}.md` (already initialised by the parent reference's **C.1**). Append entries under the **Changes** section in user order. Replace `(none)` with the first entry.
+#### If the group is one or more Add operations
 
-### C.1. Add (additive — batched)
+→ Proceed to **D. Add**.
 
-For a contiguous run of Add operations, render the proposal once:
+#### If the group is one or more Edit summary operations
+
+→ Proceed to **E. Edit Summary**.
+
+#### If the group is a Remove operation
+
+→ Proceed to **F. Remove**.
+
+#### If the group is a Rename operation
+
+→ Proceed to **G. Rename**.
+
+#### If the group is a Change routing operation
+
+→ Proceed to **H. Change Routing**.
+
+#### Otherwise (no groups remain)
+
+→ Proceed to **I. Done**.
+
+## D. Add
+
+Render the proposal once for the whole batch:
 
 > *Output the next fenced block as a code block:*
 
@@ -119,7 +137,9 @@ Add all?
 
 #### If `no`
 
-Skip the batch. Continue with the next operation in the user's list (if any) or return to caller.
+Skip the batch. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
 
 #### If `yes`
 
@@ -142,7 +162,7 @@ For each name in the batch:
 
    Source is `inception` for refinement-added topics — they are user-curated, indistinguishable from initial-session items for provenance purposes.
 
-3. Append a single batch entry to the session log under **Changes** (one bullet per name):
+3. Append a single batch entry to the session log under **Changes** (one bullet per name). If the section currently reads `(none)`, replace it with the bullets:
 
    ```markdown
    - Added: {name_1} (routing: {research|discussion}, source: inception) — {short rationale}
@@ -152,15 +172,15 @@ For each name in the batch:
 4. Single commit covering all adds in the batch:
 
    ```bash
-   git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-*.md
+   git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{NNN}.md
    git commit -m "inception({work_unit}): add {N} topic(s) to map"
    ```
 
-→ Proceed to the next operation in the user's list.
+→ Return to **C. Apply** for the next group.
 
-### C.2. Edit summary (additive — batched)
+## E. Edit Summary
 
-For a contiguous run of Edit summary operations, render the proposal once:
+Render the proposal once for the whole batch:
 
 > *Output the next fenced block as a code block:*
 
@@ -187,7 +207,9 @@ Apply?
 
 #### If `no`
 
-Skip the batch. Continue.
+Skip the batch. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
 
 #### If `yes`
 
@@ -197,7 +219,7 @@ For each:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{new summary}"
 ```
 
-Append a single batch entry to the session log under **Changes**:
+Append a single batch entry to the session log under **Changes**. If the section currently reads `(none)`, replace it with the bullets:
 
 ```markdown
 - Edited summary: {name_1} — {short note}
@@ -207,15 +229,15 @@ Append a single batch entry to the session log under **Changes**:
 Single commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-*.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{NNN}.md
 git commit -m "inception({work_unit}): edit {N} summary(ies)"
 ```
 
-→ Proceed to the next operation in the user's list.
+→ Return to **C. Apply** for the next group.
 
-### C.3. Remove (destructive — per-item)
+## F. Remove
 
-For each Remove operation:
+Render the proposal:
 
 > *Output the next fenced block as a code block:*
 
@@ -242,7 +264,9 @@ Confirm removal?
 
 #### If `no`
 
-Skip this operation. Continue with the next.
+Skip this operation. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
 
 #### If `yes`
 
@@ -253,7 +277,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.in
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.inception dismissed "{name}"
 ```
 
-Append a Changes entry to the session log:
+Append a Changes entry to the session log. If the section currently reads `(none)`, replace it with the bullet:
 
 ```markdown
 - Removed: {name} — {short reason}
@@ -262,15 +286,15 @@ Append a Changes entry to the session log:
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-*.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{NNN}.md
 git commit -m "inception({work_unit}): remove {name} from map"
 ```
 
-→ Proceed to the next operation in the user's list.
+→ Return to **C. Apply** for the next group.
 
-### C.4. Rename (destructive — per-item)
+## G. Rename
 
-For each Rename operation:
+Render the proposal:
 
 > *Output the next fenced block as a code block:*
 
@@ -296,27 +320,29 @@ Confirm rename?
 
 #### If `no`
 
-Skip this operation. Continue.
+Skip this operation. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
 
 #### If `yes`
 
 Read the existing fields, delete the old key, create the new key, re-write the fields:
 
 ```bash
-summary=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} summary)
-routing=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} routing)
-source=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} source)
+saved_summary=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} summary)
+saved_routing=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} routing)
+saved_source=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} source)
 
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{old}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary "$summary"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing "$routing"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source "$source"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary "$saved_summary"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing "$saved_routing"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source "$saved_source"
 ```
 
-If any command fails, surface the error and stop before the commit so the user can recover — the rename is partial otherwise.
+If any command fails, surface the error and stop before the commit so the user can recover — a partial rename leaves the manifest in an inconsistent state otherwise.
 
-Append a Changes entry to the session log:
+Append a Changes entry to the session log. If the section currently reads `(none)`, replace it with the bullet:
 
 ```markdown
 - Renamed: {old} → {new} — {short reason}
@@ -325,15 +351,15 @@ Append a Changes entry to the session log:
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-*.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{NNN}.md
 git commit -m "inception({work_unit}): rename {old} → {new}"
 ```
 
-→ Proceed to the next operation in the user's list.
+→ Return to **C. Apply** for the next group.
 
-### C.5. Change routing (destructive — per-item)
+## H. Change Routing
 
-For each Change-routing operation:
+Render the proposal:
 
 > *Output the next fenced block as a code block:*
 
@@ -359,7 +385,9 @@ Confirm routing change?
 
 #### If `no`
 
-Skip this operation. Continue.
+Skip this operation. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
 
 #### If `yes`
 
@@ -367,7 +395,7 @@ Skip this operation. Continue.
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing {research|discussion}
 ```
 
-Append a Changes entry:
+Append a Changes entry to the session log. If the section currently reads `(none)`, replace it with the bullet:
 
 ```markdown
 - Changed routing: {name} → {new routing} — {short reason}
@@ -376,14 +404,14 @@ Append a Changes entry:
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-*.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{NNN}.md
 git commit -m "inception({work_unit}): re-route {name} to {new routing}"
 ```
 
-→ Proceed to the next operation in the user's list.
+→ Return to **C. Apply** for the next group.
 
-## D. Done
+## I. Done
 
-Once all operations in the user's batch have been processed (applied or skipped), return to caller. The parent reference re-prompts with `Anything else?`.
+All operation groups have been processed.
 
 → Return to caller.
