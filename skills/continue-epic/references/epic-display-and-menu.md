@@ -253,6 +253,102 @@ Show only categories present in the current display: include the Discovery tier 
 
 Build a menu with two types of options:
 
+**Numbered items** — topic-targeting actions where you're selecting a specific topic. Use sequential numbers. The set differs based on whether the epic uses a discovery map.
+
+#### If `discovery_map` is non-empty
+
+**Numbered items, in order:**
+
+1. **Discovery topics** — one entry per `discovery_map` row whose `next_action` is non-null. Skip rows with tier `✓` (decided) and `⊘` (cancelled) — those have no menu entry. Label by `next_action`:
+
+   | next_action                       | Label                                                            |
+   |-----------------------------------|------------------------------------------------------------------|
+   | `start_research`                  | `Start research for "{topic:(titlecase)}"`                       |
+   | `start_discussion`                | `Start discussion for "{topic:(titlecase)}"`                     |
+   | `continue_research`               | `Continue "{topic:(titlecase)}" — research`                      |
+   | `continue_discussion`             | `Continue "{topic:(titlecase)}" — discussion`                    |
+   | `start_discussion_after_research` | `Start discussion for "{topic:(titlecase)}" — research completed`|
+
+   Discovery-topic order matches the `discovery_map` row order: tier `→`, then `◐`, then `○` (alphabetical within each tier).
+
+2. **Build-phase entries** — from `next_phase_ready` and any in-progress items in `phases.specification`/`planning`/`implementation`/`review`:
+   - In-progress in build phases:
+     - Specification in-progress: `Continue "{topic:(titlecase)}" — specification [in-progress]`
+     - Planning in-progress: `Continue "{topic:(titlecase)}" — planning [in-progress]`
+     - Implementation in-progress with progress: `Continue "{topic:(titlecase)}" — implementation (Phase {N}, Task {M})`
+     - Implementation in-progress without progress: `Continue "{topic:(titlecase)}" — implementation [in-progress]`
+     - Review in-progress: `Continue "{topic:(titlecase)}" — review [in-progress]`
+   - From `next_phase_ready`:
+     - Completed spec with no plan: `Start planning for "{topic:(titlecase)}" — spec completed`
+     - Completed plan with no implementation:
+       - If `blocked`: shown but not selectable — `Start implementation of "{topic:(titlecase)}" — blocked by {dep_topic}:{internal_id}`
+       - Otherwise: `Start implementation of "{topic:(titlecase)}" — plan completed`
+     - Completed implementation with no review: `Start review for "{topic:(titlecase)}" — implementation completed`
+
+**Command options:**
+- **`f`/`refine`** — Refine map (always present when `discovery_map` is non-empty)
+- **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
+- **`d`/`discuss`** — Start a discussion on a new topic (always present)
+- **`r`/`research`** — Start research on a new topic (always present)
+- **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
+- **`a`/`cancel`** — Cancel a topic (only shown when non-cancelled, non-promoted items exist in any phase)
+- **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
+- **`m`/`map`** — View pipeline map (always present when at least one phase has items)
+
+**`p`/`pending` is removed** — pending-from-research and pending-from-gaps surfaces are subsumed by the discovery map.
+
+**Phase-forward gating** (build-phase entries only):
+- No "Start planning" unless `gating.can_start_planning` is true
+- No "Start implementation" unless `gating.can_start_implementation` is true
+- No "Start review" unless `gating.can_start_review` is true
+- No "Start specification" unless `gating.can_start_specification` is true
+
+**Ordering and recommendation** — evaluate by `convergence_state`:
+
+| Convergence state | Recommendation source                                               |
+|-------------------|---------------------------------------------------------------------|
+| `in-progress`     | Top of `discovery_map` — first row with non-null `next_action` (tier order: `→` first, then `◐`, then `○`). Never `✓` or `⊘`. |
+| `settled`         | First build-phase `next_phase_ready` item in pipeline order (planning before implementation before review). If none, `s`/`spec` when applicable. Otherwise no recommendation. |
+
+The recommended item always appears first. Mark it `(recommended)`. After the recommended item, list remaining numbered items in their natural order (discovery topics, then build-phase items), then command options.
+
+**Promoted items:** Items with `[promoted]` status are shown in the state display but are **not listed in the menu** — they've been moved to their own cross-cutting work unit and are no longer actionable in this epic.
+
+**Blocked items:** Items marked `blocked` in `next_phase_ready` are shown in the menu but are **not selectable**. If the user picks a blocked item, explain why it's blocked and re-present the menu.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+What would you like to do?
+
+- **`1`** — Start discussion for "Kitchen Hardware" — research completed (recommended)
+- **`2`** — Continue "AI Image Generation" — research
+- **`3`** — Continue "Tenant Onboarding" — discussion
+- **`4`** — Start research for "Customer Portal"
+- **`5`** — Start planning for "Roles And Permissions" — spec completed
+
+- **`f`/`refine`** — Refine map
+- **`d`/`discuss`** — Start a discussion on a new topic
+- **`r`/`research`** — Start research on a new topic
+- **`s`/`spec`** — Start specification — 2 discussion(s) not yet in a spec
+- **`c`/`completed`** — Resume a completed topic
+- **`a`/`cancel`** — Cancel a topic
+- **`e`/`reactivate`** — Reactivate a cancelled topic
+- **`m`/`map`** — View pipeline map
+
+Select an option:
+· · · · · · · · · · · ·
+```
+
+Recreate with actual items from discovery.
+
+**STOP.** Wait for user response.
+
+→ Proceed to **D. Handle Selection**.
+
+#### Otherwise (legacy epic)
+
 **Numbered items** — topic-targeting actions where you're selecting a specific topic. Use sequential numbers. These include:
 - Continue items: any item with status `in-progress` in any phase
   - Planning in-progress: `Continue "{topic:(titlecase)}" — planning [in-progress]`
@@ -269,12 +365,13 @@ Build a menu with two types of options:
 **Command options** — entry-point actions that launch a flow handling its own selection. Use letter shortcuts (first letter of command; second letter if disambiguation needed):
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
 - **`d`/`discuss`** — Start new discussion (always present). When `gating.has_pending_discussions` is true, append pending counts: ` — {N} pending from research` and/or `{M} from gap analysis` (only show each count if > 0)
-- **`p`/`pending`** — Manage pending discussion topics (only shown when `gating.has_pending_discussions` is true)
 - **`r`/`research`** — Start new research (always present)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
 - **`a`/`cancel`** — Cancel a topic (only shown when non-cancelled, non-promoted items exist in any phase)
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
 - **`m`/`map`** — View epic dependency map (always present when at least one phase has items)
+
+**`p`/`pending` is removed** — even on legacy epics, the pending menu has been retired. Pending topics still display under the Discussion phase tree as `[pending from research]` / `[pending from gap analysis]` rows.
 
 **Phase-forward gating:**
 - No "Start planning" unless `gating.can_start_planning` is true
@@ -376,9 +473,11 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 
 → Return to **C. Menu**.
 
-#### If user chose `p`/`pending`
+#### If user chose `f`/`refine`
 
-→ Proceed to **G. Manage Pending**.
+Set selection to `refine` — the caller routes this to `/workflow-inception-entry` for the work unit (no topic argument). Phase 6 will wire the refinement-session behaviour inside inception-entry's downstream; Phase 5 only routes here.
+
+→ Return to caller.
 
 #### If user chose `c`/`completed`
 
@@ -444,18 +543,21 @@ Store the selected action, phase, and topic (if applicable). Map to a routing en
 
 | Selection | Phase | Topic |
 |-----------|-------|-------|
+| Start research for {topic} | research | {topic} |
+| Start discussion for {topic} | discussion | {topic} |
 | Continue {topic} — discussion | discussion | {topic} |
 | Continue {topic} — research | research | {topic} |
 | Continue {topic} — specification | specification | {topic} |
 | Continue {topic} — planning | planning | {topic} |
 | Continue {topic} — implementation | implementation | {topic} |
+| Continue {topic} — review | review | {topic} |
 | Start planning for {topic} | planning | {topic} |
 | Start implementation of {topic} | implementation | {topic} |
 | Start review for {topic} | review | {topic} |
 | Start specification | specification | — |
 | Start new discussion | discussion | — |
-| Discuss pending topic {topic} | discussion | {topic} |
 | Start new research | research | — |
+| Refine map | inception | — |
 
 → Return to caller.
 
