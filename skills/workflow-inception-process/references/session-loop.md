@@ -29,6 +29,33 @@ Where do you want to take it from here?
 
 → Proceed to **B. Session Loop**.
 
+#### If imports exist
+
+Check for imports:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} imports
+```
+
+If `true`, read each file listed under `manifest.imports[]` (paths are relative to `.workflows/{work_unit}/`). Use the import content as the conversation launchpad: reflect what's actually in the seed material, propose tentative topic shapes drawn from it, and ask which to develop first. Don't dump the imports back at the user verbatim — synthesise.
+
+> *Output the next fenced block as a code block:*
+
+```
+Read your import(s). Here's what I'm picking up so far:
+
+  • {tentative-topic-1} — {one-line shape inferred from seed}
+  • {tentative-topic-2} — {one-line shape inferred from seed}
+
+These are openers, not commitments. Which would you like
+to develop first, or is there something else in there I
+should be reading differently?
+```
+
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Session Loop**.
+
 #### Otherwise
 
 Fresh start. The work-unit description has been read silently — don't narrate or summarise it back. Open with this prompt:
