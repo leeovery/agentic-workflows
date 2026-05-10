@@ -87,9 +87,9 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.incep
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed via refinement.
 
-For each candidate topic from **C** (kebab-case name + summary):
+For each candidate topic from **C** (kebab-case name + summary), evaluate the conditions below in order. Each branch is self-contained and concludes by moving on to the next candidate.
 
-**If the name is already on the active map** (a key in `items`):
+#### If the name is already on the active map (a key in `items`)
 
 Check if the existing item's `source` field already includes `gap-analysis`. If not, the same theme is now surfacing both via the existing source and via gap-analysis — extend the source list to record dual provenance:
 
@@ -100,11 +100,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 
 Do not add to `tracker` — the item was already on the map. Do not write a new manifest entry.
 
-**If the name appears in `dismissed`**:
+#### If the name appears in `dismissed`
 
 Skip silently. The user removed this topic via refinement; the dismissed semantic is "don't auto-re-propose."
 
-**Otherwise (new candidate)**:
+#### Otherwise (new candidate)
 
 Initialise the inception item and write its fields:
 
@@ -118,6 +118,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 Routing is `discussion` — gap topics are discussion candidates by definition.
 
 Append the name to the caller's `tracker` so the orchestrator can surface it via callout / Self-Healing Arrivals.
+
+---
+
+Once all candidates have been evaluated:
 
 → Proceed to **E. Update Cache**.
 
