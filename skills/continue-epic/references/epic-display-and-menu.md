@@ -30,7 +30,7 @@ No work started yet.
 
 #### If `discovery_map` is non-empty
 
-The discovery map block renders at the top, replacing the per-phase tree for research and discussion. The build-phase tree (specification, planning, implementation, review) continues to render below.
+Render the discovery map block at the top, then the build-phase tree (specification, planning, implementation, review) below it.
 
 > *Output the next fenced block as a code block:*
 
@@ -79,7 +79,7 @@ The discovery map block renders at the top, replacing the per-phase tree for res
 - **Summary line**: `{total} topics — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled`. Read counts from `map_summary`. **Omit zero-count categories** from the dot-separated list. Always render `{total} topics`.
   - Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
   - Example with zeros omitted: `5 topics — 5 fresh`
-- **Convergence callout**: rendered immediately under the summary line, before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`. No callout when `discovery_map` is empty (handled by other branches).
+- **Convergence callout**: rendered immediately under the summary line, before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
 - **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
 - **Topic row**: `{tier}  {name:(titlecase)}  {lifecycle_label}` with two spaces between each segment. Use tree grammar (`├─` non-final, `└─` final).
 - **Lifecycle label** by tier:
@@ -90,10 +90,10 @@ The discovery map block renders at the top, replacing the per-phase tree for res
   - `○` (fresh) — `fresh · routed to {topic.routing}`
   - `⊘` (cancelled) — `cancelled`
 - **Source provenance sub-line**: render only when `topic.source_provenance` is non-null. Indent at 7 spaces (under the title text, past the tree branch). Example: `       from kitchen-hardware`. Source `inception` has no provenance line.
-- **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Do NOT render `research`, `discussion`, or `inception` — those are subsumed into the discovery map. Tree grammar, format, source rows, implementation progress lines all behave as in the legacy fallback render. Skip phases with no items. Blank line between sections.
-- **No trailing recommendation callout**: the convergence callout above replaces the legacy `⚑ {recommendation}` line. Build-phase recommendations attach to menu entries (see **C. Menu**), not the state display.
+- **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Skip `research`, `discussion`, and `inception` — they are represented in the map above. Tree grammar (`├─` non-final, `└─` final), planning format suffix (`· {format}`), specification source rows, and implementation progress lines render the same way as the otherwise branch below. Skip phases with no items. Blank line between sections.
+- **No trailing recommendation callout** in this code block. Build-phase recommendations attach to menu entries (see **C. Menu**), not the state display.
 
-#### Otherwise (legacy epic — phases have items but no `discovery_map`)
+#### Otherwise
 
 > *Output the next fenced block as a code block:*
 
@@ -146,7 +146,7 @@ The discovery map block renders at the top, replacing the per-phase tree for res
 @endif
 ```
 
-**Legacy display rules:**
+**Display rules:**
 
 - Phase headers as section labels (titlecased) with a parenthetical count summary — e.g., `Discussion (3 completed, 1 cancelled)`, `Research (1 completed)`, `Specification (2 in-progress)`. Combine statuses present in that phase; omit zero counts
 - Items under each phase use proper tree grammar: `├─` for non-final siblings, `└─` for the final item. Pending discussion topics from research count as siblings when determining the final item
@@ -159,7 +159,7 @@ The discovery map block renders at the top, replacing the per-phase tree for res
 - Blank line between phase sections
 - No trailing blank line after the last phase section (the code block ends immediately after the last item or recommendation)
 
-**Legacy recommendations:** Check the following conditions in order. Show the first that applies as a `⚑`-prefixed line within the state display code block, 2-space indented and separated by a blank line from the last phase section. If the recommendation text is long, wrap it across two lines (both 2-space indented, only the first has `⚑`). If none apply, no recommendation. Applies only to legacy epics (no `discovery_map`).
+**Recommendations:** Check the following conditions in order. Show the first that applies as a `⚑`-prefixed line within the state display code block, 2-space indented and separated by a blank line from the last phase section. If the recommendation text is long, wrap it across two lines (both 2-space indented, only the first has `⚑`). If none apply, no recommendation.
 
 | Condition | Recommendation |
 |-----------|---------------|
@@ -226,7 +226,7 @@ Show only categories present in the current display: include the Discovery tier 
 
 → Proceed to **C. Menu**.
 
-#### Otherwise (legacy epic)
+#### Otherwise
 
 > *Output the next fenced block as a code block:*
 
@@ -295,8 +295,6 @@ Build a menu with two types of options:
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
 - **`m`/`map`** — View pipeline map (always present when at least one phase has items)
 
-**`p`/`pending` is removed** — pending-from-research and pending-from-gaps surfaces are subsumed by the discovery map.
-
 **Phase-forward gating** (build-phase entries only):
 - No "Start planning" unless `gating.can_start_planning` is true
 - No "Start implementation" unless `gating.can_start_implementation` is true
@@ -347,7 +345,7 @@ Recreate with actual items from discovery.
 
 → Proceed to **D. Handle Selection**.
 
-#### Otherwise (legacy epic)
+#### Otherwise
 
 **Numbered items** — topic-targeting actions where you're selecting a specific topic. Use sequential numbers. These include:
 - Continue items: any item with status `in-progress` in any phase
@@ -371,7 +369,7 @@ Recreate with actual items from discovery.
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
 - **`m`/`map`** — View epic dependency map (always present when at least one phase has items)
 
-**`p`/`pending` is removed** — even on legacy epics, the pending menu has been retired. Pending topics still display under the Discussion phase tree as `[pending from research]` / `[pending from gap analysis]` rows.
+Pending topics from research/gap-analysis appear in the Discussion phase tree as `[pending from research]` / `[pending from gap analysis]` rows. They have no dedicated menu option; start them via `d`/`discuss`.
 
 **Phase-forward gating:**
 - No "Start planning" unless `gating.can_start_planning` is true
@@ -475,7 +473,7 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 
 #### If user chose `f`/`refine`
 
-Set selection to `refine` — the caller routes this to `/workflow-inception-entry` for the work unit (no topic argument). Phase 6 will wire the refinement-session behaviour inside inception-entry's downstream; Phase 5 only routes here.
+Set selection to `Refine map`. The caller routes this to `/workflow-inception-entry` for the work unit (no topic argument).
 
 → Return to caller.
 

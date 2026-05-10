@@ -112,7 +112,7 @@ Parse the discovery output to understand:
   - `next_phase_ready` - items ready for the next phase (name + action + label)
   - `unaccounted_discussions` - completed discussions not sourced in any spec
   - `reopened_discussions` - in-progress discussions that are sourced in a spec
-  - `discovery_map` - per-topic lifecycle for the inception/research/discussion span (tier-sorted; empty for legacy or non-inception epics)
+  - `discovery_map` - per-topic lifecycle for the inception/research/discussion span (tier-sorted; empty when no inception items exist)
   - `convergence_state` - `'in-progress'` | `'settled'` | `null` (when no map)
   - `map_summary` - count totals for the map (`total`, `decided`, `in_flight`, `ready`, `fresh`, `cancelled`)
   - `gating` - boolean flags for phase-forward gating
