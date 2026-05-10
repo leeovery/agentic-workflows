@@ -23,23 +23,28 @@ Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
 
 ## Self-Healing Arrivals
 
-{Items added by analyses since the last session, if any. Phase 6
-leaves this as `(none)` — Phase 7 fills it when analyses run.}
-
-- {topic} (added by {analysis}, source: {provenance})
+(none)
 
 ## Changes
 
-- Added: {topic} (routing: {research|discussion}, source: inception) — {reason}
-- Edited summary: {topic} — {short note}
-- Renamed: {old} → {new} — {reason}
-- Removed: {topic} — {reason}
-- Changed routing: {topic} → {new routing} — {reason}
+(none)
 
 ## Conclusion
 
-{N} changes applied. Map now has {M} topics.
+(none)
 ```
+
+## Initialisation vs finalisation
+
+The template is written to disk **at session start** with `(none)` placeholders under **Self-Healing Arrivals**, **Changes**, and **Conclusion**. The header and **Map State at Start** are populated immediately.
+
+- **Self-Healing Arrivals** — Phase 6 leaves `(none)`. Phase 7 will replace it with the items added by analyses (one bullet each: `- {topic} (added by {analysis}, source: {provenance})`) or leave `(none)` if no analyses ran.
+- **Changes** — when the first operation is applied, the `(none)` placeholder is replaced with the operation bullet(s). Subsequent operations append.
+- **Conclusion** — the `(none)` placeholder is replaced **only at finalisation** (after the operations loop ends). The replacement is one of:
+  - `{N} changes applied. Map now has {M} topics.` — when one or more changes were applied.
+  - `No changes applied — browse only. Map has {M} topics.` — when the user opened refinement, looked, and exited without changes.
+
+The `(none)` Conclusion is the **resume-detection signal**: if a later refinement entry finds a session log whose Conclusion is still `(none)`, that session was interrupted (context refresh, user exit) before finalisation. Always replace it at finalisation so the next entry sees a clean state.
 
 ## Anti-patterns
 
