@@ -10,16 +10,14 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-This is **Phase 5** of the six-phase workflow:
+You are in the **Implementation** phase — executing the plan: tests first, then code (or verification flow for quick-fix). Where Implementation sits in the pipeline depends on the work type:
 
-| Phase | Focus | You |
-|-------|-------|-----|
-| 1. Research | EXPLORE - ideas, feasibility, market, business | |
-| 2. Discussion | WHAT and WHY - decisions, architecture, edge cases | |
-| 3. Specification | REFINE - validate into standalone spec | |
-| 4. Planning | HOW - phases, tasks, acceptance criteria | |
-| **5. Implementation** | DOING - tests first, then code | ◀ HERE |
-| 6. Review | VALIDATING - check work against artifacts | |
+| Work type | Pipeline |
+|---|---|
+| Epic | Inception → Research → Discussion → Specification → Planning → **Implementation** → Review |
+| Feature | Discussion → Specification → Planning → **Implementation** → Review |
+| Bugfix | Investigation → Specification → Planning → **Implementation** → Review |
+| Quick-fix | Scoping → **Implementation** → Review |
 
 **Stay in your lane**: Execute the plan via strict TDD (or verification workflow for quick-fix). Don't re-debate decisions from the specification or expand scope beyond the plan. The plan is your authority.
 

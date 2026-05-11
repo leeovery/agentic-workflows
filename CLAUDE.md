@@ -14,14 +14,15 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 ## Workflow Phases
 
-1. **Research** (`workflow-research-process`): EXPLORE — feasibility, market, viability, early ideas. Import existing research verbatim via `i`/`import` at phase selection (epic, feature). Background review agent for topical gaps; document review reconciles session against research file to catch undocumented substance (both mandatory before conclusion); deep-dive agents for independent thread investigation.
-2. **Discussion** (`workflow-discussion-process`): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Background review agent for topical gaps; document review reconciles session against discussion file to catch undocumented substance (both mandatory before conclusion). Topic elevation seeds sibling discussions (epics only). Discussion gap analysis (epics only) reads all completed discussions holistically to surface cross-discussion themes, elevated-but-uncreated topics, emergent topics, integration gaps — cached and manifest-tracked under `phases.discussion`.
-3. **Investigation** (`workflow-investigation-process`): Bugfix-specific — symptom gathering + code analysis → root cause.
-4. **Scoping** (`workflow-scoping-process`): Quick-fix-specific — context, spec, plan in one pass.
-5. **Specification** (`workflow-specification-process`): Validate and refine into standalone spec.
-6. **Planning** (`workflow-planning-process`): Define HOW — phases, tasks, acceptance criteria.
-7. **Implementation** (`workflow-implementation-process`): Execute plan via TDD (or verification workflow for quick-fix).
-8. **Review** (`workflow-review-process`): Validate work against discussion, specification, plan.
+1. **Inception** (`workflow-inception-process`): CURATE — epic-only. Name topics, classify each as research or discussion, build the discovery map. Refinement session for add/dismiss/edit-summary/change-routing/split/elevate; self-healing dispatch for research-analysis and discussion-gap-analysis caches; direct-entry items land here with `source: direct-start`.
+2. **Research** (`workflow-research-process`): EXPLORE — feasibility, market, viability, early ideas. Import existing research verbatim via `i`/`import` at phase selection (epic, feature). Background review agent for topical gaps; document review reconciles session against research file to catch undocumented substance (both mandatory before conclusion); deep-dive agents for independent thread investigation.
+3. **Discussion** (`workflow-discussion-process`): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Background review agent for topical gaps; document review reconciles session against discussion file to catch undocumented substance (both mandatory before conclusion). Topic elevation seeds sibling discussions (epics only). Discussion gap analysis (epics only) reads all completed discussions holistically to surface cross-discussion themes, elevated-but-uncreated topics, emergent topics, integration gaps — cached and manifest-tracked under `phases.discussion`.
+4. **Investigation** (`workflow-investigation-process`): Bugfix-specific — symptom gathering + code analysis → root cause.
+5. **Scoping** (`workflow-scoping-process`): Quick-fix-specific — context, spec, plan in one pass.
+6. **Specification** (`workflow-specification-process`): Validate and refine into standalone spec.
+7. **Planning** (`workflow-planning-process`): Define HOW — phases, tasks, acceptance criteria.
+8. **Implementation** (`workflow-implementation-process`): Execute plan via TDD (or verification workflow for quick-fix).
+9. **Review** (`workflow-review-process`): Validate work against discussion, specification, plan.
 
 ## Skill Architecture
 
@@ -54,7 +55,7 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 
 **Work types and work units**: *Work type* = one of five pipeline shapes: epic, feature, bugfix, quick-fix, cross-cutting. *Work unit* = named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
-- **Epic**: Multi-topic, multi-session, phase-centric (Research → Discussion → Specification → Planning → Implementation → Review)
+- **Epic**: Multi-topic, multi-session, phase-centric (Inception → Research → Discussion → Specification → Planning → Implementation → Review)
 - **Feature**: Single-topic, single-session, linear (Discussion → Specification → Planning → Implementation → Review)
 - **Bugfix**: Single-topic, investigation-centric (Investigation → Specification → Planning → Implementation → Review)
 - **Quick-fix**: Single-topic, scoping-centric (Scoping → Implementation → Review)

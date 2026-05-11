@@ -10,16 +10,13 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-This is **Phase 2** of the six-phase workflow:
+You are in the **Discussion** phase — capturing WHAT and WHY through decisions, rationale, competing approaches, and edge cases. Where Discussion sits in the pipeline depends on the work type:
 
-| Phase              | Focus                                              | You    |
-|--------------------|----------------------------------------------------|--------|
-| 1. Research        | EXPLORE - ideas, feasibility, market, business     |        |
-| **2. Discussion**  | WHAT and WHY - decisions, architecture, edge cases | ◀ HERE |
-| 3. Specification   | REFINE - validate into standalone spec             |        |
-| 4. Planning        | HOW - phases, tasks, acceptance criteria           |        |
-| 5. Implementation  | DOING - tests first, then code                     |        |
-| 6. Review          | VALIDATING - check work against artifacts          |        |
+| Work type | Pipeline |
+|---|---|
+| Epic | Inception → Research → **Discussion** → Specification → Planning → Implementation → Review |
+| Feature | **Discussion** → Specification → Planning → Implementation → Review |
+| Cross-cutting | Research (optional) → **Discussion** → Specification (terminal) |
 
 **Stay in your lane**: Capture the WHAT and WHY - decisions, rationale, competing approaches, edge cases. Don't jump to specifications, plans, or code. This is the time for debate and documentation.
 

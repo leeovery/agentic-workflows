@@ -10,15 +10,11 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-This is **Phase 1** of the bugfix pipeline:
+You are in the **Investigation** phase of the bugfix pipeline:
 
-| Phase              | Focus                                              | You    |
-|--------------------|----------------------------------------------------|--------|
-| **Investigation**  | Symptom gathering + code analysis → root cause     | ◀ HERE |
-| 2. Specification   | REFINE - validate into fix specification           |        |
-| 3. Planning        | HOW - phases, tasks, acceptance criteria           |        |
-| 4. Implementation  | DOING - tests first, then code                     |        |
-| 5. Review          | VALIDATING - check work against artifacts          |        |
+**Investigation** → Specification → Planning → Implementation → Review
+
+Investigation gathers symptoms and traces code to find the root cause before any fix is written.
 
 **Stay in your lane**: Investigate the bug — gather symptoms, trace code, find root cause. Don't jump to fixing or implementing. This is the time for deep analysis.
 
