@@ -18,7 +18,7 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 6. **[Refinement Session](phase-06-refinement-session.md)** — re-entry path, map editing operations, safety-by-destructiveness. **Status:** Review (PR #271)
 7. **[Self-Healing Re-point](phase-07-self-healing.md)** — research-analysis and gap-analysis re-point to map at continue-epic boot-up. **Status:** Review (PR #272)
 8. **[Imports](phase-08-imports.md)** — `imports/` directory, manifest tracking, KB indexing, behaviour change for features. **Status:** Review (PR #273)
-9. **[Topic Splitting and Elevation](phase-09-topic-splitting-elevation.md)** — write inception items alongside; name collision validation. **Status:** Not started
+9. **[Topic Splitting and Elevation](phase-09-topic-splitting-elevation.md)** — write inception items alongside; name collision validation. **Status:** Review (PR #274)
 10. **[Direct-Entry Auto-Add](phase-10-direct-entry-auto-add.md)** — `d`/`discuss` and `r`/`research` for unmapped topics auto-create map items. **Status:** Not started
 11. **[Migration](phase-11-migration.md)** — seed inception items for existing in-progress epics. **Status:** Not started
 12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Not started
@@ -93,7 +93,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | [#271](https://github.com/leeovery/agentic-workflows/pull/271) | Review |
 | `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | [#272](https://github.com/leeovery/agentic-workflows/pull/272) | Review |
 | `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | [#273](https://github.com/leeovery/agentic-workflows/pull/273) | Review |
-| `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | — | Not started |
+| `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
 | `idea/inception-pr-10-direct-entry` | Phase 7 branch | Phase 10 — Direct-Entry Auto-Add | — | Not started |
 | `idea/inception-pr-11-migration` | Phase 5 branch | Phase 11 — Migration | — | Not started |
 | `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
