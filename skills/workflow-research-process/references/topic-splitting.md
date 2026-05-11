@@ -34,13 +34,13 @@ Want to split these into separate research files?
 
 #### If yes
 
-For each split topic, run the following sub-flow:
+For each split topic, in order, run steps 1–4 below. After all accepted threads have been processed, run step 5 once.
 
 **1. Propose and validate the new topic name.**
 
 Pick a kebab-case name reflecting the thread's content (e.g. `image-moderation`, `kitchen-utensils`). Surface it to the user for confirmation before continuing. Then validate:
 
-→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`, caller_context = `research-split`.
+→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`.
 
 Branch on `result`:
 
@@ -78,9 +78,11 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 
 The inception item carries `routing: research` (this split is firing inside a research session, so research is where the new topic enters the pipeline) and `source: research-split:{parent_topic}` (provenance is historical; the parent's later state changes don't cascade).
 
-**5. Commit.**
+→ Loop back to step 1 for the next accepted thread. When all accepted threads have been processed, proceed to step 5.
 
-After all accepted threads in this batch have been processed, single commit covering the manifest writes and the new research files:
+**5. Commit (once, after all threads).**
+
+Single commit covering the manifest writes and the new research files:
 
 ```bash
 git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/research/

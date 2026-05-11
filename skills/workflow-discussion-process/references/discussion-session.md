@@ -127,7 +127,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
 1. **Propose and validate the new topic name.** Pick a kebab-case name reflecting the elevated concern. Surface it to the user for confirmation. Then validate:
 
-   → Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`, caller_context = `discussion-elevation`.
+   → Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`.
 
    Branch on `result`:
 

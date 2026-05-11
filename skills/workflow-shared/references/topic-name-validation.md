@@ -12,7 +12,6 @@ The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
 - `proposed_name` — the topic name the user has proposed. Always present.
-- `caller_context` — short label identifying the flow (e.g. `research-split`, `discussion-elevation`, `refinement-add`, `direct-entry`). Used in the rejection display for clarity. Optional; defaults to `add`.
 
 After return, the caller reads `result` from conversation memory. Possible values:
 

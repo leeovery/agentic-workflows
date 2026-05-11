@@ -79,7 +79,7 @@ Render the rejection in a code block:
 
 **Name validation** — for each Add and Rename operation, validate the proposed name via the shared reference:
 
-→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{name}`, caller_context = `refinement-add` (for Add) or `refinement-rename` (for Rename).
+→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{name}`.
 
 Branch on `result`:
 
