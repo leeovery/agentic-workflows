@@ -669,6 +669,24 @@ describe('discovery-utils', () => {
     it('returns null for empty source', () => {
       assert.strictEqual(computeSourceProvenance(''), null);
     });
+
+    it('strips colon prefix for migration-seeded:research-analysis', () => {
+      assert.strictEqual(
+        computeSourceProvenance('migration-seeded:research-analysis'),
+        'from research-analysis',
+      );
+    });
+
+    it('strips colon prefix for migration-seeded:gap-analysis', () => {
+      assert.strictEqual(
+        computeSourceProvenance('migration-seeded:gap-analysis'),
+        'from gap-analysis',
+      );
+    });
+
+    it('renders bare migration-seeded as "from migration-seeded"', () => {
+      assert.strictEqual(computeSourceProvenance('migration-seeded'), 'from migration-seeded');
+    });
   });
 
   describe('computeAnalysisCacheStatus', () => {
@@ -777,4 +795,5 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.status, 'absent');
     });
   });
+
 });
