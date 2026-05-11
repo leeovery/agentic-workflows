@@ -93,9 +93,9 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | [#271](https://github.com/leeovery/agentic-workflows/pull/271) | Review |
 | `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | [#272](https://github.com/leeovery/agentic-workflows/pull/272) | Review |
 | `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | [#273](https://github.com/leeovery/agentic-workflows/pull/273) | Review |
-| `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
-| `idea/inception-pr-10-direct-entry` | Phase 7 branch | Phase 10 — Direct-Entry Auto-Add | [#275](https://github.com/leeovery/agentic-workflows/pull/275) | Review |
-| `idea/inception-pr-11-migration` | Phase 5 branch | Phase 11 — Migration | — | Not started |
+| `idea/inception-pr-9-split-elevation` | Phase 8 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
+| `idea/inception-pr-10-direct-entry` | Phase 9 branch | Phase 10 — Direct-Entry Auto-Add | [#275](https://github.com/leeovery/agentic-workflows/pull/275) | Review |
+| `idea/inception-pr-11-migration` | Phase 10 branch | Phase 11 — Migration | [#276](https://github.com/leeovery/agentic-workflows/pull/276) | Review |
 | `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
 | `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | — | Not started |
 | `idea/inception-pr-14-cleanup` | Phase 13 branch | Phase 14 — Final Review and Cleanup | — | Not started |
@@ -104,7 +104,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 - Branch slug = `idea/inception-pr-{N}-{short-slug}`. Whole numbers only — no `2a`/`2b`.
 - Doc-only or meta branches (like `idea/inception-rephase`) skip the phase number.
 - Update the *PR* and *Status* columns as each PR opens / merges.
-- For phases that branch from a non-immediate-predecessor (e.g., Phases 8/9/10 all branch from Phase 7; Phase 11 branches from Phase 5), the *Base* column records the actual divergence point.
+- For phases that branch from a non-immediate-predecessor (e.g., Phases 8/9/10 all branch from Phase 7; Phase 11 branches from Phase 6), the *Base* column records the actual divergence point.
 
 ## Other Conventions
 
