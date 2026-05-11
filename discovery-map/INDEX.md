@@ -38,26 +38,26 @@ Phase 1 (manifest foundations)
                   │
                   └──▶ Phase 5 (map render)
                        │
-                       ├──▶ Phase 6 (refinement)
-                       │    │
-                       │    └──▶ Phase 7 (self-healing)
-                       │         │
-                       │         ├──▶ Phase 8 (imports — also depends on Phase 4)
-                       │         │
-                       │         ├──▶ Phase 9 (split/elevation)
-                       │         │
-                       │         └──▶ Phase 10 (direct-entry)
-                       │
-                       └──▶ Phase 11 (migration)
+                       └──▶ Phase 6 (refinement)
                             │
-                            └──▶ Phase 12 (drop explore mode)
+                            └──▶ Phase 7 (self-healing)
                                  │
-                                 └──▶ Phase 13 (docs)
+                                 └──▶ Phase 8 (imports)
                                       │
-                                      └──▶ Phase 14 (final cleanup)
+                                      └──▶ Phase 9 (split/elevation)
+                                           │
+                                           └──▶ Phase 10 (direct-entry)
+                                                │
+                                                └──▶ Phase 11 (migration)
+                                                     │
+                                                     └──▶ Phase 12 (drop explore mode)
+                                                          │
+                                                          └──▶ Phase 13 (docs)
+                                                               │
+                                                               └──▶ Phase 14 (final cleanup)
 ```
 
-Phases 8, 9, 10 can be parallelised after Phase 7. Phases 11-14 sequence after the rest.
+Each phase's branch is based on the immediately preceding phase's branch. PRs merge to main bottom-to-top of the table.
 
 ## Branching Strategy — Stacked PRs
 
@@ -73,7 +73,6 @@ Each phase's PR has its own scope and review. When the implementer is happy with
 
 This pattern means:
 
-- Reviews can happen in parallel.
 - No incomplete state ever sits on main.
 - Earlier phases can be revised while later ones are still being built — rebases propagate the changes.
 - The implementer should rebase later branches when an earlier branch changes during review.
@@ -104,7 +103,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 - Branch slug = `idea/inception-pr-{N}-{short-slug}`. Whole numbers only — no `2a`/`2b`.
 - Doc-only or meta branches (like `idea/inception-rephase`) skip the phase number.
 - Update the *PR* and *Status* columns as each PR opens / merges.
-- For phases that branch from a non-immediate-predecessor (e.g., Phases 8/9/10 all branch from Phase 7; Phase 11 branches from Phase 6), the *Base* column records the actual divergence point.
+- Each phase branches off the immediately preceding phase's branch. No parallel siblings — the stack is strictly linear.
 
 ## Other Conventions
 
