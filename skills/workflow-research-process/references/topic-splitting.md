@@ -34,16 +34,60 @@ Want to split these into separate research files?
 
 #### If yes
 
-For each split topic:
-1. Create `.workflows/{work_unit}/research/{topic}.md` using **[template.md](template.md)**
-2. Move content verbatim from the source file — reword only for flow and readability, no summarisation
-3. Remove the extracted content from the source file
-4. Init manifest item for the new topic:
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{topic}
-   ```
+For each split topic, run the following sub-flow:
 
-Commit after splitting.
+**1. Propose and validate the new topic name.**
+
+Pick a kebab-case name reflecting the thread's content (e.g. `image-moderation`, `kitchen-utensils`). Surface it to the user for confirmation before continuing. Then validate:
+
+→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`, caller_context = `research-split`.
+
+Branch on `result`:
+
+- `format-invalid` or `collision-active` — rejection already rendered by the reference. Re-prompt the user for an alternative name and re-validate. Loop until `ok` or `matches-dismissed`, or the user abandons this thread.
+- `matches-dismissed` — the name was previously removed via refinement. User-explicit spawns bypass the dismissed list, so proceed; the dismissed entry is pulled in step 4.
+- `ok` — proceed.
+
+**2. Extract content into the new research file.**
+
+- Create `.workflows/{work_unit}/research/{new_topic}.md` using **[template.md](template.md)**.
+- Move content verbatim from the source file — reword only for flow and readability, no summarisation.
+- Remove the extracted content from the source file.
+
+**3. Capture a one-line summary.**
+
+Propose a one-sentence framing of the extracted content (drawn from the thread itself). Ask the user to confirm or refine. This becomes the inception item's `summary` field, used in map renders.
+
+**4. Write manifest items — research first, then inception.**
+
+If the validation returned `matches-dismissed`, pull the name from the dismissed list before the inception writes:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{new_topic}"
+```
+
+Then write both phase items:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{new_topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new_topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} routing research
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} summary "{one-line summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} source "research-split:{parent_topic}"
+```
+
+The inception item carries `routing: research` (this split is firing inside a research session, so research is where the new topic enters the pipeline) and `source: research-split:{parent_topic}` (provenance is historical; the parent's later state changes don't cascade).
+
+**5. Commit.**
+
+After all accepted threads in this batch have been processed, single commit covering the manifest writes and the new research files:
+
+```bash
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/research/
+git commit -m "research({work_unit}/{parent_topic}): split into {N} topic(s)"
+```
+
+Then offer the user a choice of which topic to continue with:
 
 > *Output the next fenced block as markdown (not a code block):*
 
