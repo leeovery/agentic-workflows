@@ -44,7 +44,7 @@ For each split topic:
 
 2. Create `.workflows/{work_unit}/research/{new_topic}.md` using **[template.md](template.md)**. Move content verbatim from the source file — reword only for flow and readability, no summarisation. Remove the extracted content from the source file.
 
-3. Propose a one-sentence summary of the extracted content (drawn from the thread itself). Ask the user to confirm or refine. This becomes the inception item's `summary` field, used in map renders.
+3. Generate a one-sentence summary of the extracted content (drawn from the thread itself). This becomes the inception item's `summary` field, used in map renders.
 
 4. Write manifest items — research first, then inception. If the validation returned `matches-dismissed`, pull from the dismissed list first:
 
