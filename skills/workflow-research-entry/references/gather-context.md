@@ -126,8 +126,8 @@ Any constraints or context I should know about upfront?
 
 ## F. Ensure Inception Item
 
-The no-topic-epic path enters this reference with no inception item written and bypasses Step 2 on exit. Run the auto-create here so direct-entry topics land on the discovery map. The check is idempotent — if the caller (Step 4 from Step 2's not-exists branch) already ran it, this is a no-op.
+The no-topic-epic path enters this reference with no inception item written and bypasses Step 2 on exit. Run the auto-create here so direct-entry topics land on the discovery map. The shared reference is idempotent — if the caller (Step 4 from Step 2's not-exists branch) already ran it, this is a no-op; if `work_type` is not `epic`, it returns immediately.
 
-Load **[ensure-inception-item.md](../../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
+→ Load **[ensure-inception-item.md](../../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
 
 → Return to caller.

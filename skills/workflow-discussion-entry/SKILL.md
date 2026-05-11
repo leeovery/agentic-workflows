@@ -79,7 +79,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.di
 
 Set `source = "topic-provided"`.
 
-Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
 → Proceed to **Step 3** (Gather Context).
 
@@ -116,7 +116,7 @@ Use the response as `{topic}` (convert to kebab-case via the casing conventions)
 > in progress, or completed.
 ```
 
-Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
