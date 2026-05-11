@@ -73,7 +73,7 @@ Imports already populated context via `imports/` and the knowledge base — skip
 
 → Proceed to **Step 5**.
 
-#### If work_type is `feature`
+#### If work_type is `feature` or `cross-cutting`
 
 `resolved_filename = {topic}.md`
 

@@ -23,7 +23,9 @@ Do you have a specific topic to research, or explore openly?
 
 **If `explore`:**
 
-`resolved_filename = exploration.md`
+`topic = exploration`
+
+`resolved_filename = {topic}.md`
 
 → Proceed to **B. Seed Idea**.
 
@@ -37,11 +39,11 @@ What topic would you like to research?
 
 **STOP.** Wait for user response.
 
-User provides topic name → `resolved_filename = {topic:(kebabcase)}.md`
+User provides topic name → set `topic` to the kebab-cased response, `resolved_filename = {topic}.md`.
 
 → Proceed to **B. Seed Idea**.
 
-#### If work_type is `feature`
+#### If work_type is `feature` or `cross-cutting`
 
 No question needed. `resolved_filename = {topic}.md`
 
