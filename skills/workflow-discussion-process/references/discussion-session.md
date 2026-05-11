@@ -131,7 +131,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
    Branch on `result`:
 
-   - `format-invalid` or `collision-active` — rejection already rendered. Re-prompt for an alternative name and re-validate. Loop until `ok` or `matches-dismissed`, or the user cancels the elevation.
+   - `collision-active` — rejection already rendered. Re-prompt for an alternative name and re-validate. Loop until `ok` or `matches-dismissed`, or the user cancels the elevation.
    - `matches-dismissed` — proceed; user-explicit spawns bypass the dismissed list. The dismissed entry is pulled in step 4.
    - `ok` — proceed.
 

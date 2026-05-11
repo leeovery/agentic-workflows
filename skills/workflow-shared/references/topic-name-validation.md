@@ -4,7 +4,7 @@
 
 ---
 
-Validates a proposed topic name against three gates: format (kebab-case), active map collision, and dismissed-list match. Returns a `result` the caller branches on. The reference is read-only — it never mutates the manifest. The caller decides what to do with the result (proceed, re-prompt, pull from dismissed, etc.).
+Validates a proposed topic name. First step normalises to kebab-case silently (callers always have Claude pick the name, so a slip should self-correct rather than escalate). Then checks against active discovery-map items (collision rejects) and the dismissed list (informational — caller pulls before writing). Returns a `result` the caller branches on. The reference is read-only — it never mutates the manifest.
 
 ## Parameters
 
@@ -15,32 +15,25 @@ The caller provides these via context before loading:
 
 After return, the caller reads `result` from conversation memory. Possible values:
 
-- `format-invalid` — `proposed_name` is not kebab-case. Rejection rendered.
 - `collision-active` — name matches an active discovery-map item. Rejection rendered.
 - `matches-dismissed` — name matches an entry on the dismissed list. **Informational** — caller pulls before writing.
 - `ok` — no conflict. Caller proceeds.
 
-## A. Validate Format
+## A. Normalise to Kebab-Case
 
-A kebab-case name is lowercase ASCII letters, digits, and `-`. No leading or trailing `-`, no consecutive `-`, no other characters. This matches the kebab-case rule in **[casing-conventions.md](casing-conventions.md)** and what every other map writer normalises to before persisting.
+Callers always have Claude generate or extract the proposed name before invoking this reference, so a non-kebab-case `proposed_name` is a Claude-side slip — not a user-facing error. The fix is to self-correct silently, then carry on.
+
+A kebab-case name is lowercase ASCII letters, digits, and `-`. No leading or trailing `-`, no consecutive `-`, no other characters. See **[casing-conventions.md](casing-conventions.md)** for the canonical rule.
 
 Test `proposed_name` against this pattern: `^[a-z0-9]+(-[a-z0-9]+)*$`.
 
-#### If the name does not match
+#### If the name matches
 
-Set `result = "format-invalid"` and render the rejection:
-
-> *Output the next fenced block as a code block:*
-
-```
-"{proposed_name}" is not a valid topic name for the map —
-names must be kebab-case (lowercase letters, digits, and `-`,
-no spaces or capitals). See casing-conventions.md.
-```
-
-→ Return to caller.
+→ Proceed to **B. Read Map and Dismissed List**.
 
 #### Otherwise
+
+Re-derive a kebab-case form for `proposed_name` per casing-conventions.md (lowercase, split on spaces/underscores/punctuation, join with single hyphens, strip leading/trailing hyphens). Use the corrected value as `proposed_name` for all subsequent steps. Do not render a rejection or surface the correction to the user — the caller and the user only see the normalised name from this point onward.
 
 → Proceed to **B. Read Map and Dismissed List**.
 

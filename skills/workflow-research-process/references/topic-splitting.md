@@ -44,7 +44,7 @@ Pick a kebab-case name reflecting the thread's content (e.g. `image-moderation`,
 
 Branch on `result`:
 
-- `format-invalid` or `collision-active` — rejection already rendered by the reference. Re-prompt the user for an alternative name and re-validate. Loop until `ok` or `matches-dismissed`, or the user abandons this thread.
+- `collision-active` — rejection already rendered by the reference. Re-prompt the user for an alternative name and re-validate. Loop until `ok` or `matches-dismissed`, or the user abandons this thread.
 - `matches-dismissed` — the name was previously removed via refinement. User-explicit spawns bypass the dismissed list, so proceed; the dismissed entry is pulled in step 4.
 - `ok` — proceed.
 

@@ -83,7 +83,7 @@ Render the rejection in a code block:
 
 Branch on `result`:
 
-- `format-invalid` or `collision-active` — rejection already rendered by the reference. Remove the operation from its group.
+- `collision-active` — rejection already rendered by the reference. Remove the operation from its group.
 - `matches-dismissed` — allowed. For Add, the **D. Add** flow pulls the name from `dismissed` before writing. For Rename, proceed without pulling (a Rename target that happens to match a dismissed name leaves the dismissed entry alone; the new active item simply exists alongside it as historical record).
 - `ok` — proceed.
 
