@@ -120,4 +120,14 @@ Any constraints or context I should know about upfront?
 
 **STOP.** Wait for user response.
 
+→ Proceed to **F. Ensure Inception Item**.
+
+---
+
+## F. Ensure Inception Item
+
+The no-topic-epic path enters this reference with no inception item written and bypasses Step 2 on exit. Run the auto-create here so direct-entry topics land on the discovery map. The check is idempotent — if the caller (Step 4 from Step 2's not-exists branch) already ran it, this is a no-op.
+
+Load **[ensure-inception-item.md](../../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
+
 → Return to caller.

@@ -107,6 +107,8 @@ Deferred — gather-context will resolve it.
 > Checking if research already exists for this topic.
 ```
 
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
+
 Check if the research phase entry exists:
 
 ```bash
