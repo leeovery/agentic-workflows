@@ -79,6 +79,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.di
 
 Set `source = "topic-provided"`.
 
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+
 → Proceed to **Step 3** (Gather Context).
 
 #### If no `topic` (epic — no-topic path)
@@ -113,6 +115,8 @@ Use the response as `{topic}` (convert to kebab-case via the casing conventions)
 > Checking the status of this discussion — new,
 > in progress, or completed.
 ```
+
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
