@@ -21,13 +21,13 @@ The caller provides these via context before loading:
 
 The discovery map is epic-only. Features, bugfixes, quick-fixes, and cross-cutting work units have no inception phase, and writing one would corrupt their manifests.
 
-#### If `work_type` is not `epic`
-
-→ Return to caller.
-
 #### If `work_type` is `epic`
 
 → Proceed to **B. Check Existence**.
+
+#### Otherwise
+
+→ Return to caller.
 
 ## B. Check Existence
 
@@ -35,13 +35,13 @@ The discovery map is epic-only. Features, bugfixes, quick-fixes, and cross-cutti
 node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{topic}
 ```
 
-#### If `true`
+#### If exists (`true`)
 
 The topic is already on the map. Nothing to do — fall through to the caller's existing flow.
 
 → Return to caller.
 
-#### If `false`
+#### If not exists (`false`)
 
 → Proceed to **C. Check Dismissed and Pull**.
 
@@ -53,13 +53,7 @@ Most epics never dismiss anything, so the dismissed list is usually absent. Prob
 node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception dismissed
 ```
 
-#### If `false`
-
-No dismissed list — nothing to pull.
-
-→ Proceed to **D. Create Inception Item**.
-
-#### If `true`
+#### If exists (`true`)
 
 Read the list:
 
@@ -72,6 +66,12 @@ If `{topic}` appears in the returned JSON array, pull it (user-explicit spawns b
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{topic}"
 ```
+
+→ Proceed to **D. Create Inception Item**.
+
+#### If not exists (`false`)
+
+No dismissed list — nothing to pull.
 
 → Proceed to **D. Create Inception Item**.
 
