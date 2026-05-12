@@ -96,9 +96,9 @@ Source: .workflows/auth-flow/specification/auth-flow/specification.md
 Debated UUID vs email for identity. UUID won because email changes are common.
 Source: .workflows/payments-overhaul/discussion/data-model.md
 
-[research | payments-overhaul/exploration | low | 2026-02-28]
+[research | payments-overhaul/identity | low | 2026-02-28]
 Explored identity approaches. Email-based ruled out due to GDPR right-to-erasure.
-Source: .workflows/payments-overhaul/research/exploration.md
+Source: .workflows/payments-overhaul/research/identity.md
 ```
 
 - **Header line**: `[N results]` where N is the merged, deduplicated, re-ranked count after `--limit`.
