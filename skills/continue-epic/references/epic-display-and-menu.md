@@ -58,10 +58,6 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 @if(new_arrivals.gap_analysis.length > 0)
   ⚑ {N} new topic(s) added to the map from gap-analysis.
 @endif
-@if(empty_summary_count > 0)
-  ⚑ Migrated to discovery map. {empty_summary_count} items have no
-    summary — open `f`/`refine` to populate.
-@endif
 
 @foreach(topic in discovery_map)
   @if(not last_topic) ├─ @else └─ @endif {topic.tier}  {topic.name:(titlecase)}  {lifecycle_label}
@@ -99,7 +95,6 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 - **Imports callout**: rendered immediately under the summary line when `imports_count > 0`. Format: `· {imports_count} imported seed` for 1, `· {imports_count} imported seeds` for 2+. Sits above the convergence callout — both stack under the summary line. Omitted when `imports_count == 0`.
 - **Convergence callout**: rendered immediately under the imports callout (or under the summary line if imports are absent), before the topic rows. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
 - **New-arrivals callout** (optional): when the caller passes a non-empty `new_arrivals.research_analysis` or `new_arrivals.gap_analysis` list, render `⚑ {N} new topic(s) added to the map from {analysis}.` lines beneath the convergence callout, one per analysis with arrivals. Shown once per boot-up that added items — subsequent invocations without changes don't repeat it (the items are now part of the map). Sub-line provenance on the topic rows is the persistent surface afterwards.
-- **Empty-summary callout**: rendered immediately under the new-arrivals callout (or the convergence callout if no arrivals), in the same code block. `empty_summary_count` is `discovery_map.filter(t => !t.summary).length` — items whose `summary` field is null or missing (typically migration-seeded items awaiting refinement, plus any direct-start additions). Render the `⚑ Migrated to discovery map. {N} items have no summary — open `f`/`refine` to populate.` line only when `empty_summary_count > 0`; the callout vanishes when every item has a summary.
 - **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
 - **Topic row**: `{tier}  {name:(titlecase)}  {lifecycle_label}` with two spaces between each segment. Use tree grammar (`├─` non-final, `└─` final).
 - **Lifecycle label** by tier:

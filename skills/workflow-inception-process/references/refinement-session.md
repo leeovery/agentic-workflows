@@ -77,7 +77,7 @@ Found an in-progress refinement session log for **{work_unit:(titlecase)}**: `{l
 
 The active session log is `{latest_session.filename}`. No new log is initialised; subsequent operations append to the existing log.
 
-→ Proceed to **F. Render and Prompt**.
+→ Proceed to **E. Render and Prompt**.
 
 **If `restart`:**
 
@@ -153,7 +153,7 @@ git commit -m "inception({work_unit}): self-healing added {N} topic(s) to map; s
 
 `{N}` is the total arrival count after dedupe.
 
-→ Proceed to **E. Empty-Summary Walkthrough**.
+→ Proceed to **E. Render and Prompt**.
 
 #### Otherwise (no arrivals captured, or **C** had no analyses to run)
 
@@ -164,77 +164,9 @@ git add -- .workflows/{work_unit}/inception/session-{next_session_number}.md
 git commit -m "inception({work_unit}): seed refinement session log"
 ```
 
-→ Proceed to **E. Empty-Summary Walkthrough**.
+→ Proceed to **E. Render and Prompt**.
 
-## E. Empty-Summary Walkthrough
-
-Read `discovery_map` from the discovery output produced in **A**. Filter for items where `summary` is null — these are typically migration-seeded items waiting for their first summary, plus any direct-start additions that landed without one.
-
-#### If no items have empty summaries
-
-→ Proceed to **F. Render and Prompt**.
-
-#### Otherwise
-
-Let `N` be the count of empty-summary items.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-{N} items don't have summaries yet (from the recent migration).
-Populate them now?
-
-- **`y`/`yes`** — Walk through each item, one prompt at a time
-- **`n`/`no`** — Skip; go to the regular refinement menu
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `no`
-
-→ Proceed to **F. Render and Prompt**.
-
-#### If `yes`
-
-Loop through each empty-summary item from `discovery_map` in render order. For each, render the topic name and prompt for a one-line summary. The user may type `skip` to leave the summary blank and move on.
-
-> *Output the next fenced block as a code block:*
-
-```
-Summary for "{topic.name:(titlecase)}":
-
-(One line, or type `skip` to leave blank.)
-```
-
-**STOP.** Wait for user response.
-
-For each non-skip response, write via manifest CLI:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} summary "{response}"
-```
-
-After the loop completes, append a single batch entry to the active session log under **Changes** (one bullet per populated item). If the section currently reads `(none)`, replace it with the bullets:
-
-```markdown
-- Edited summary: {name_1} — populated post-migration
-- Edited summary: {name_2} — populated post-migration
-```
-
-Single commit covering all populated summaries:
-
-```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{next_session_number}.md
-git commit -m "inception({work_unit}): populate {N} post-migration summary(ies)"
-```
-
-If every item was skipped (no summaries written), no session-log entry and no commit. The walkthrough's purpose is to surface the gap — accepting the offer and skipping each item is a valid outcome.
-
-→ Proceed to **F. Render and Prompt**.
-
-## F. Render and Prompt
+## E. Render and Prompt
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -282,9 +214,9 @@ What would you like to change?
 
 **STOP.** Wait for user response.
 
-→ Proceed to **G. Operations Loop**.
+→ Proceed to **F. Operations Loop**.
 
-## G. Operations Loop
+## F. Operations Loop
 
 The user's most recent message names one or more changes in natural language, asks to see dismissed items, or signals they are done.
 
@@ -296,13 +228,13 @@ Triggers include *"show dismissed"*, *"what was removed"*, *"let me see what I d
 
 When it returns:
 
-→ Proceed to **H. Anything Else?**.
+→ Proceed to **G. Anything Else?**.
 
 #### If the user's message signals they are done
 
 Triggers include *"no"*, *"done"*, *"that's it"*, *"all good"*, *"wrap up"*.
 
-→ Proceed to **I. Finalise Session Log**.
+→ Proceed to **H. Finalise Session Log**.
 
 #### Otherwise
 
@@ -312,9 +244,9 @@ The message names operations.
 
 `map-operations.md` re-runs discovery for fresh state, parses, validates, applies safety-by-destructiveness gating, writes the manifest, appends to the active session log, and commits per its own pattern. When it returns:
 
-→ Proceed to **H. Anything Else?**.
+→ Proceed to **G. Anything Else?**.
 
-## H. Anything Else?
+## G. Anything Else?
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -331,13 +263,13 @@ Anything else to change?
 
 #### If `done`
 
-→ Proceed to **I. Finalise Session Log**.
+→ Proceed to **H. Finalise Session Log**.
 
 #### Otherwise
 
-→ Return to **G. Operations Loop**.
+→ Return to **F. Operations Loop**.
 
-## I. Finalise Session Log
+## H. Finalise Session Log
 
 Re-run discovery to pick up the post-operations state:
 
@@ -351,15 +283,15 @@ Read `map_summary.total` from the output. Replace the `(none)` placeholder in th
 
 Replace `(none)` with: `{N} changes applied. Map now has {map_summary.total} topics.`
 
-→ Proceed to **J. Compliance Self-Check**.
+→ Proceed to **I. Compliance Self-Check**.
 
 #### Otherwise (browse-only refinement, no operations applied)
 
 Replace `(none)` with: `No changes applied — browse only. Map has {map_summary.total} topics.`
 
-→ Proceed to **J. Compliance Self-Check**.
+→ Proceed to **I. Compliance Self-Check**.
 
-## J. Compliance Self-Check
+## I. Compliance Self-Check
 
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
@@ -367,9 +299,9 @@ The check audits the refinement against this file, the parent SKILL.md, and any 
 
 When it returns:
 
-→ Proceed to **K. Final Sweep**.
+→ Proceed to **J. Final Sweep**.
 
-## K. Final Sweep
+## J. Final Sweep
 
 Check `git status`.
 
@@ -380,13 +312,13 @@ git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): finalise refinement session log"
 ```
 
-→ Proceed to **L. Bridge**.
+→ Proceed to **K. Bridge**.
 
 #### If the working tree is clean
 
-→ Proceed to **L. Bridge**.
+→ Proceed to **K. Bridge**.
 
-## L. Bridge
+## K. Bridge
 
 > *Output the next fenced block as markdown (not a code block):*
 
