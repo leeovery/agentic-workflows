@@ -74,8 +74,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ```
 > Starting a new epic. I'll ask what you're building, suggest
-> a name, then we'll begin an inception session to map the
-> topics.
+> a name, optionally import any seed files, then begin an
+> inception session to map the topics.
 ```
 
 Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
