@@ -70,13 +70,7 @@ Imports already populated context via `imports/` and the knowledge base — skip
 
 → Proceed to **Step 5**.
 
-#### If work_type is `feature` or `cross-cutting`
-
-`resolved_filename = {topic}.md`
-
-→ Proceed to **Step 2**.
-
-#### If work_type is `epic`
+#### Otherwise
 
 `resolved_filename = {topic}.md`
 
