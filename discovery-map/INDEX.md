@@ -21,7 +21,7 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 9. **[Topic Splitting and Elevation](phase-09-topic-splitting-elevation.md)** — write inception items alongside; name collision validation. **Status:** Review (PR #274)
 10. **[Direct-Entry Auto-Add](phase-10-direct-entry-auto-add.md)** — `d`/`discuss` and `r`/`research` for unmapped topics auto-create map items. **Status:** Not started
 11. **[Migration](phase-11-migration.md)** — seed inception items for existing in-progress epics. **Status:** Not started
-12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Not started
+12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Review (PR #277)
 13. **[Documentation Cleanup](phase-13-documentation.md)** — CLAUDE.md, README, phase tables, compliance checks. **Status:** Not started
 14. **[Two-Tier Provenance](phase-14-provenance.md)** — add `description` field to inception items; every write surface populates it; entry skills load it as session opening context; direct-entry derives summary + description from the opening question. **Status:** Not started
 15. **[KB Index Analysis Caches](phase-15-kb-index-analysis.md)** — index `.state/research-analysis.md` and `.state/discussion-gap-analysis.md` so the analysis content is searchable via knowledge queries. **Status:** Not started
@@ -101,7 +101,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-9-split-elevation` | Phase 8 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
 | `idea/inception-pr-10-direct-entry` | Phase 9 branch | Phase 10 — Direct-Entry Auto-Add | [#275](https://github.com/leeovery/agentic-workflows/pull/275) | Review |
 | `idea/inception-pr-11-migration` | Phase 10 branch | Phase 11 — Migration | [#276](https://github.com/leeovery/agentic-workflows/pull/276) | Review |
-| `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
+| `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | [#277](https://github.com/leeovery/agentic-workflows/pull/277) | Review |
 | `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | — | Not started |
 | `idea/inception-pr-14-provenance` | Phase 13 branch | Phase 14 — Two-Tier Provenance | — | Not started |
 | `idea/inception-pr-15-kb-index-analysis` | Phase 14 branch | Phase 15 — KB Index Analysis Caches | — | Not started |
