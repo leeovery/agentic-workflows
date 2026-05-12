@@ -4,15 +4,7 @@
 
 ---
 
-## A. Topic and Filename
-
-Topic is provided by the caller. `resolved_filename = {topic}.md`.
-
-→ Proceed to **B. Seed Idea**.
-
----
-
-## B. Seed Idea
+## A. Seed Idea
 
 Ask each question below **one at a time**. After each, **STOP** and wait for the user's response before proceeding.
 
@@ -27,11 +19,11 @@ What's on your mind?
 
 **STOP.** Wait for user response.
 
-→ Proceed to **C. Current Knowledge**.
+→ Proceed to **B. Current Knowledge**.
 
 ---
 
-## C. Current Knowledge
+## B. Current Knowledge
 
 > *Output the next fenced block as a code block:*
 
@@ -44,11 +36,11 @@ What do you already know?
 
 **STOP.** Wait for user response.
 
-→ Proceed to **D. Starting Point**.
+→ Proceed to **C. Starting Point**.
 
 ---
 
-## D. Starting Point
+## C. Starting Point
 
 > *Output the next fenced block as a code block:*
 
@@ -61,11 +53,11 @@ Where should we start?
 
 **STOP.** Wait for user response.
 
-→ Proceed to **E. Final Context**.
+→ Proceed to **D. Final Context**.
 
 ---
 
-## E. Final Context
+## D. Final Context
 
 > *Output the next fenced block as a code block:*
 

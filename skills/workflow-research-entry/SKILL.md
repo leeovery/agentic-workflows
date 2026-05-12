@@ -76,9 +76,7 @@ Imports already populated context via `imports/` and the knowledge base — skip
 
 → Proceed to **Step 2**.
 
-#### If no `topic` (epic — no-topic path)
-
-The user invoked `/workflow-research-entry epic {work_unit}` without a topic — typically via `r`/`research` from continue-epic, signalling "start research on a fresh topic." The discovery map is the curation surface for known topics; this path covers ad-hoc names that aren't (yet) on the map.
+#### If no `topic`
 
 > *Output the next fenced block as a code block:*
 
@@ -88,7 +86,7 @@ What topic would you like to research?
 
 **STOP.** Wait for user response.
 
-Use the response as `{topic}` (convert to kebab-case via the casing conventions). `resolved_filename = {topic}.md`.
+Kebab-case the response, store as `{topic}`. `resolved_filename = {topic}.md`.
 
 → Proceed to **Step 2**.
 
