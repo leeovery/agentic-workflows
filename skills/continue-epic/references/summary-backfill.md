@@ -4,12 +4,12 @@
 
 ---
 
-Loaded by continue-epic Step 6 when one or more inception items need summaries derived from their source files. The caller passes:
+The caller passes:
 
 - `work_unit` — the selected epic
 - `items_to_recover` — list of inception items missing summaries; each has at minimum `name` and `routing`
 
-On exit, this reference re-runs discovery so the caller has fresh state.
+On exit, re-runs discovery so the caller has fresh state.
 
 ## A. Read Source Files
 
