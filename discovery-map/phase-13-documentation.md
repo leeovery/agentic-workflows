@@ -49,6 +49,7 @@ Update project-level documentation to reflect the new phase model. CLAUDE.md, RE
 
 - New skill behaviour (everything functional shipped in Phases 1-12).
 - Removing legacy file references that have been deprecated but not deleted (e.g., the post-migration legacy `exploration.md` files stay; documentation should describe them as legacy if it mentions them at all).
+- **`workflow-explorer.html`** — explicitly excluded per the project-wide exclusion in [INDEX.md](INDEX.md). The visualisation gets its own refresh effort after the initiative merges; do not patch any stale block in this phase.
 
 ## Verification
 

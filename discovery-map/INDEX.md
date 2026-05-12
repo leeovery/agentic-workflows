@@ -120,6 +120,10 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 - Compliance self-check passes on all touched skill files (`workflow-shared/references/compliance-check.md`).
 - Standing project rules apply: never commit to main; branch first; commit and push after every change.
 
+## Project-Wide Exclusions
+
+**`workflow-explorer.html` is out of scope for every phase of this initiative.** The HTML visualisation is large, already out of sync with multiple parts of the codebase, and needs its own dedicated focus. It will be refreshed as a separate effort once the discovery-map work is fully merged — do not patch it in any phase between 1 and 16. If a phase surfaces a stale block in `workflow-explorer.html`, leave it untouched and flag it for the post-merge refresh.
+
 ## Planning Branch Plan
 
 1. All phase docs in this directory get reviewed.

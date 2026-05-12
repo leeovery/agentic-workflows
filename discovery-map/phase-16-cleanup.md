@@ -73,6 +73,7 @@ This is a pre-existing gap from Phase 4, not Phase 8 — but Phase 8's KB indexi
 - New behaviour beyond the four items above. If a fifth gap surfaces during this phase's implementation, capture it and decide: ship in this phase, or open a follow-up.
 - Reworking design choices that are explicitly final (the no-content-extraction rule, hard-delete model for inception items, etc.). This phase is mop-up, not redesign.
 - Removing legacy `surfaced_topics` / `gap_topics` arrays — Phase 11's note already defers this to a separate cleanup migration.
+- **`workflow-explorer.html`** — explicitly excluded per the project-wide exclusion in [INDEX.md](INDEX.md). Even though this phase is "final cleanup", the visualisation refresh is its own dedicated post-merge effort. Do not touch.
 
 ## Verification
 
