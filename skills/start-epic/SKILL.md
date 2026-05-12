@@ -141,15 +141,41 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ---
 
-## Step 3: Route to First Phase
+## Step 3: Optional Import
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Choose Starting Phase ────────────────────────
+── Optional Import ──────────────────────────────
 ```
 
-Load **[route-first-phase.md](references/route-first-phase.md)** and follow its instructions as written.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Inception is the next step. If you have existing notes or
+> research files for this epic, you can import them now — they
+> will be copied into the work unit, indexed into the knowledge
+> base, and surfaced during inception.
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+- **`y`/`yes`** — Import existing files first
+- **`n`/`no`** — Continue straight to inception
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `yes`
+
+Load **[collect-import.md](references/collect-import.md)** and follow its instructions as written.
+
+→ Proceed to **Step 4**.
+
+#### If `no`
 
 → Proceed to **Step 4**.
 
