@@ -39,7 +39,7 @@ teardown() {
   rm -rf "$TEST_DIR"
 }
 
-# --- Test 1: Empty epic — no items, no arrays → no inception phase ---
+# --- Test 1: Empty epic — no items → no inception phase ---
 test_empty_epic() {
   setup
 
@@ -193,130 +193,25 @@ JSON
   teardown
 }
 
-# --- Test 5: surfaced_topics only → migration-seeded:research-analysis ---
-test_surfaced_only() {
+# --- Test 5: surfaced_topics / gap_topics arrays are NOT migrated ---
+test_legacy_arrays_not_migrated() {
   setup
 
-  local wu_dir="$TEST_DIR/.workflows/surf"
+  local wu_dir="$TEST_DIR/.workflows/arrays"
   mkdir -p "$wu_dir"
   cat > "$wu_dir/manifest.json" << 'JSON'
 {
-  "name": "surf",
-  "work_type": "epic",
-  "status": "in-progress",
-  "phases": {
-    "research": {"items": {}, "surfaced_topics": ["data-model"]}
-  }
-}
-JSON
-
-  source "$MIGRATION"
-
-  local routing=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items['data-model'].routing);
-  ")
-  assert_eq "surfaced-only: routing=discussion" "discussion" "$routing"
-
-  local source=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items['data-model'].source);
-  ")
-  assert_eq "surfaced-only: source sub-tag" "migration-seeded:research-analysis" "$source"
-
-  teardown
-}
-
-# --- Test 6: gap_topics only → migration-seeded:gap-analysis ---
-test_gap_only() {
-  setup
-
-  local wu_dir="$TEST_DIR/.workflows/gap"
-  mkdir -p "$wu_dir"
-  cat > "$wu_dir/manifest.json" << 'JSON'
-{
-  "name": "gap",
-  "work_type": "epic",
-  "status": "in-progress",
-  "phases": {
-    "discussion": {"items": {}, "gap_topics": ["error-handling"]}
-  }
-}
-JSON
-
-  source "$MIGRATION"
-
-  local routing=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items['error-handling'].routing);
-  ")
-  assert_eq "gap-only: routing=discussion" "discussion" "$routing"
-
-  local source=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items['error-handling'].source);
-  ")
-  assert_eq "gap-only: source sub-tag" "migration-seeded:gap-analysis" "$source"
-
-  teardown
-}
-
-# --- Test 7: Topic in research items AND surfaced_topics → migration-seeded (phase items win) ---
-test_phase_items_win_over_legacy() {
-  setup
-
-  local wu_dir="$TEST_DIR/.workflows/overlap"
-  mkdir -p "$wu_dir"
-  cat > "$wu_dir/manifest.json" << 'JSON'
-{
-  "name": "overlap",
+  "name": "arrays",
   "work_type": "epic",
   "status": "in-progress",
   "phases": {
     "research": {
       "items": {"auth": {"status": "completed"}},
-      "surfaced_topics": ["auth"]
-    }
-  }
-}
-JSON
-
-  source "$MIGRATION"
-
-  local source=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items.auth.source);
-  ")
-  assert_eq "overlap: phase items win, no sub-tag" "migration-seeded" "$source"
-
-  teardown
-}
-
-# --- Test 8: End-to-end mixed fixture (verification #8 from the plan) ---
-test_end_to_end_mixed() {
-  setup
-
-  local wu_dir="$TEST_DIR/.workflows/mixed"
-  mkdir -p "$wu_dir"
-  cat > "$wu_dir/manifest.json" << 'JSON'
-{
-  "name": "mixed",
-  "work_type": "epic",
-  "status": "in-progress",
-  "phases": {
-    "research": {
-      "items": {
-        "a": {"status": "in-progress"},
-        "b": {"status": "in-progress"}
-      },
-      "surfaced_topics": ["d"]
+      "surfaced_topics": ["data-model"]
     },
     "discussion": {
-      "items": {
-        "b": {"status": "in-progress"},
-        "c": {"status": "in-progress"}
-      },
-      "gap_topics": ["e"]
+      "items": {},
+      "gap_topics": ["error-handling"]
     }
   }
 }
@@ -324,53 +219,42 @@ JSON
 
   source "$MIGRATION"
 
-  local a_routing=$(node -e "
+  # Only auth (from research.items) should be migrated
+  local count=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items.a.routing + ',' + m.phases.inception.items.a.source);
+    console.log(Object.keys(m.phases.inception.items).length);
   ")
-  assert_eq "mixed: a research/migration-seeded" "research,migration-seeded" "$a_routing"
+  assert_eq "arrays: only research/discussion items migrated" "1" "$count"
 
-  local b_routing=$(node -e "
+  local has_dm=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items.b.routing + ',' + m.phases.inception.items.b.source);
+    console.log('data-model' in m.phases.inception.items);
   ")
-  assert_eq "mixed: b research/migration-seeded (research wins)" "research,migration-seeded" "$b_routing"
+  assert_eq "arrays: surfaced_topics not migrated" "false" "$has_dm"
 
-  local c_routing=$(node -e "
+  local has_eh=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items.c.routing + ',' + m.phases.inception.items.c.source);
+    console.log('error-handling' in m.phases.inception.items);
   ")
-  assert_eq "mixed: c discussion/migration-seeded" "discussion,migration-seeded" "$c_routing"
+  assert_eq "arrays: gap_topics not migrated" "false" "$has_eh"
 
-  local d_routing=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items.d.routing + ',' + m.phases.inception.items.d.source);
-  ")
-  assert_eq "mixed: d discussion/research-analysis" "discussion,migration-seeded:research-analysis" "$d_routing"
-
-  local e_routing=$(node -e "
-    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(m.phases.inception.items.e.routing + ',' + m.phases.inception.items.e.source);
-  ")
-  assert_eq "mixed: e discussion/gap-analysis" "discussion,migration-seeded:gap-analysis" "$e_routing"
-
-  # surfaced_topics and gap_topics arrays must remain untouched
+  # Arrays themselves stay in place (inert legacy data)
   local surf=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
     console.log(JSON.stringify(m.phases.research.surfaced_topics));
   ")
-  assert_eq "mixed: surfaced_topics preserved" '["d"]' "$surf"
+  assert_eq "arrays: surfaced_topics preserved" '["data-model"]' "$surf"
 
   local gaps=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
     console.log(JSON.stringify(m.phases.discussion.gap_topics));
   ")
-  assert_eq "mixed: gap_topics preserved" '["e"]' "$gaps"
+  assert_eq "arrays: gap_topics preserved" '["error-handling"]' "$gaps"
 
   teardown
 }
 
-# --- Test 9: Cross-cutting work unit skipped ---
+# --- Test 6: Cross-cutting work unit skipped ---
 test_cross_cutting_skipped() {
   setup
 
@@ -398,7 +282,7 @@ JSON
   teardown
 }
 
-# --- Test 10: Feature/bugfix/quick-fix all skipped ---
+# --- Test 7: Feature/bugfix/quick-fix all skipped ---
 test_non_epic_skipped() {
   setup
 
@@ -433,7 +317,7 @@ JSON
   teardown
 }
 
-# --- Test 11: Completed epic skipped ---
+# --- Test 8: Completed epic skipped ---
 test_completed_epic_skipped() {
   setup
 
@@ -461,7 +345,7 @@ JSON
   teardown
 }
 
-# --- Test 12: Cancelled epic skipped ---
+# --- Test 9: Cancelled epic skipped ---
 test_cancelled_epic_skipped() {
   setup
 
@@ -489,7 +373,7 @@ JSON
   teardown
 }
 
-# --- Test 13: Partial migration — pre-existing inception item is preserved, missing topic added ---
+# --- Test 10: Partial migration — pre-existing inception item is preserved, missing topic added ---
 test_partial_migration_idempotent() {
   setup
 
@@ -546,7 +430,7 @@ JSON
   teardown
 }
 
-# --- Test 14: Re-run on fully-migrated epic is a no-op ---
+# --- Test 11: Re-run on fully-migrated epic is a no-op ---
 test_full_rerun_noop() {
   setup
 
@@ -577,7 +461,7 @@ JSON
   teardown
 }
 
-# --- Test 15: session-001.md back-filled when missing ---
+# --- Test 12: session-001.md back-filled when missing ---
 test_session_back_fill() {
   setup
 
@@ -589,8 +473,8 @@ test_session_back_fill() {
   "work_type": "epic",
   "status": "in-progress",
   "phases": {
-    "research": {"items": {"auth": {"status": "completed"}}, "surfaced_topics": ["x"]},
-    "discussion": {"gap_topics": ["y"]}
+    "research": {"items": {"auth": {"status": "completed"}}},
+    "discussion": {"items": {"caching": {"status": "in-progress"}}}
   }
 }
 JSON
@@ -602,14 +486,13 @@ JSON
   local content
   content=$(cat "$wu_dir/inception/session-001.md")
   assert_eq "session: contains migration heading" "true" "$(echo "$content" | grep -qF -- 'Initial Framing — Pre-Inception Migration' && echo true || echo false)"
-  assert_eq "session: lists phase-item count" "true" "$(echo "$content" | grep -qF -- '1 item(s) from research/discussion items' && echo true || echo false)"
-  assert_eq "session: lists surfaced-only count" "true" "$(echo "$content" | grep -qF -- '1 item(s) from surfaced_topics' && echo true || echo false)"
-  assert_eq "session: lists gap-only count" "true" "$(echo "$content" | grep -qF -- '1 item(s) from gap_topics' && echo true || echo false)"
+  assert_eq "session: counts items" "true" "$(echo "$content" | grep -qF -- '2 existing research/discussion item(s)' && echo true || echo false)"
+  assert_eq "session: mentions continue-epic" "true" "$(echo "$content" | grep -qF -- '/continue-epic' && echo true || echo false)"
 
   teardown
 }
 
-# --- Test 16: Pre-existing session-001.md content unchanged ---
+# --- Test 13: Pre-existing session-001.md content unchanged ---
 test_session_preserved() {
   setup
 
@@ -642,7 +525,7 @@ JSON
   teardown
 }
 
-# --- Test 17: Legacy 'exploration' topic preserved as research-routed inception item ---
+# --- Test 14: Legacy 'exploration' topic preserved as research-routed inception item ---
 test_legacy_exploration() {
   setup
 
@@ -684,10 +567,7 @@ test_empty_epic
 test_research_only
 test_discussion_only
 test_research_and_discussion
-test_surfaced_only
-test_gap_only
-test_phase_items_win_over_legacy
-test_end_to_end_mixed
+test_legacy_arrays_not_migrated
 test_cross_cutting_skipped
 test_non_epic_skipped
 test_completed_epic_skipped

@@ -3,22 +3,28 @@
 # Migration 038: Seed discovery-map inception phase for legacy epics
 #
 # Walks in-progress epic manifests that pre-date the inception phase and
-# seeds phases.inception.items.* from existing research/discussion items
-# plus the legacy phases.research.surfaced_topics and
-# phases.discussion.gap_topics arrays. Per-topic idempotent.
+# seeds phases.inception.items.* from existing research and discussion items.
+# Per-topic idempotent.
 #
-# Topic collection (research-precedence on dedup):
-#   - research items                          → routing: research, source: migration-seeded
-#   - discussion items (only)                 → routing: discussion, source: migration-seeded
-#   - surfaced_topics (only, no phase item)   → routing: discussion, source: migration-seeded:research-analysis
-#   - gap_topics (only, no phase item)        → routing: discussion, source: migration-seeded:gap-analysis
+# Routing rules (research wins on dedup):
+#   - topic in research items           → routing: research
+#   - topic in discussion items only    → routing: discussion
+#   - topic in both                     → routing: research (single item)
+#
+# Every migrated item gets source: migration-seeded. No summary field —
+# downstream legacy-recovery flow derives summaries from the source files.
+#
+# The legacy phases.research.surfaced_topics and phases.discussion.gap_topics
+# arrays are intentionally NOT migrated. Those are just topic names with no
+# context. Phase 7's self-healing analyses re-run on next continue-epic and
+# surface fresh themes with proper summaries from current source content.
+# The arrays sit on disk as inert legacy data.
 #
 # Also back-fills a placeholder session-001.md so refinement-session's
 # numbering logic ("Initial Framing" assumption at session-001) holds.
 #
-# Non-destructive: legacy surfaced_topics / gap_topics arrays stay in place
-# (a later migration drops them as part of the larger refactor). No file
-# moves, no content rewrites. Skips non-epic and non-in-progress work units.
+# Non-destructive: no file moves, no content rewrites. Skips non-epic and
+# non-in-progress work units.
 #
 # Idempotent. Direct node for JSON — never uses manifest CLI.
 #
@@ -51,50 +57,29 @@ for (const entry of entries) {
   const phases = m.phases || {};
   const researchItems = (phases.research && phases.research.items) || {};
   const discussionItems = (phases.discussion && phases.discussion.items) || {};
-  const surfaced = Array.isArray(phases.research && phases.research.surfaced_topics)
-    ? phases.research.surfaced_topics
-    : [];
-  const gaps = Array.isArray(phases.discussion && phases.discussion.gap_topics)
-    ? phases.discussion.gap_topics
-    : [];
 
-  // Build per-topic provenance set
+  // Collect topic names from both sources; track which phase each topic appears in
   const topics = {};
-  function ensure(name) {
-    if (!topics[name]) topics[name] = { research: false, discussion: false, surfaced: false, gap: false };
-    return topics[name];
+  for (const name of Object.keys(researchItems)) {
+    topics[name] = topics[name] || { research: false, discussion: false };
+    topics[name].research = true;
   }
-  for (const name of Object.keys(researchItems)) ensure(name).research = true;
-  for (const name of Object.keys(discussionItems)) ensure(name).discussion = true;
-  for (const name of surfaced) ensure(name).surfaced = true;
-  for (const name of gaps) ensure(name).gap = true;
+  for (const name of Object.keys(discussionItems)) {
+    topics[name] = topics[name] || { research: false, discussion: false };
+    topics[name].discussion = true;
+  }
 
-  // Counts for session-001 back-fill (only items the migration would create)
-  let phaseItemCount = 0;
-  let surfacedOnlyCount = 0;
-  let gapOnlyCount = 0;
+  if (Object.keys(topics).length === 0) continue;
 
-  // Resolve routing + source for each topic (phase items win over legacy arrays)
+  // Resolve routing — research wins on dedup
   const toAdd = {};
   for (const [name, src] of Object.entries(topics)) {
-    let routing, source;
-    if (src.research || src.discussion) {
-      routing = src.research ? 'research' : 'discussion';
-      source = 'migration-seeded';
-      phaseItemCount++;
-    } else if (src.surfaced) {
-      routing = 'discussion';
-      source = 'migration-seeded:research-analysis';
-      surfacedOnlyCount++;
-    } else {
-      routing = 'discussion';
-      source = 'migration-seeded:gap-analysis';
-      gapOnlyCount++;
-    }
-    toAdd[name] = { status: 'in-progress', routing, source };
+    toAdd[name] = {
+      status: 'in-progress',
+      routing: src.research ? 'research' : 'discussion',
+      source: 'migration-seeded',
+    };
   }
-
-  if (Object.keys(toAdd).length === 0) continue;
 
   // Per-topic idempotency: only add topics that don't already exist
   if (!m.phases) m.phases = {};
@@ -118,23 +103,15 @@ for (const entry of entries) {
   const sessionPath = path.join(incDir, 'session-001.md');
   if (!fs.existsSync(sessionPath)) {
     fs.mkdirSync(incDir, { recursive: true });
+    const count = Object.keys(toAdd).length;
     const lines = [];
     lines.push('# Initial Framing — Pre-Inception Migration');
     lines.push('');
     lines.push('This work unit pre-dates the discovery-map system. The map was seeded');
-    lines.push('from existing artifacts:');
+    lines.push('from ' + count + ' existing research/discussion item(s) (source: migration-seeded).');
     lines.push('');
-    if (phaseItemCount > 0) {
-      lines.push('- ' + phaseItemCount + ' item(s) from research/discussion items (source: migration-seeded)');
-    }
-    if (surfacedOnlyCount > 0) {
-      lines.push('- ' + surfacedOnlyCount + ' item(s) from surfaced_topics (source: migration-seeded:research-analysis)');
-    }
-    if (gapOnlyCount > 0) {
-      lines.push('- ' + gapOnlyCount + ' item(s) from gap_topics (source: migration-seeded:gap-analysis)');
-    }
-    lines.push('');
-    lines.push('Open \`f\`/\`refine\` to populate summaries and curate the map.');
+    lines.push('Open the epic via \`/continue-epic\` — the legacy-recovery flow will');
+    lines.push('walk through populating summaries from the existing source files.');
     lines.push('');
     fs.writeFileSync(sessionPath, lines.join('\n'));
   }
