@@ -58,3 +58,7 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 15 | [STOP Gate Override Protection](stop-gate-override-protection.md) | All workflow skills with STOP gates |
 | 16 | [Investigation: Show Interim Findings](investigation-show-interim-findings.md) | Investigation processing skill (bugfix) |
 | 17 | [Bugfix: Prior Spec Knowledge Check](bugfix-prior-spec-knowledge-check.md) | Investigation or specification phase (bugfix) |
+| 18 | [Inbox Pickup Actions](inbox-pickup-actions.md) | `workflow-start` inbox menu + `start-quickfix` archive path |
+| 19 | [Review Classifier Quality](review-classifier-quality.md) | `workflow-review-task-verifier` tagging rules |
+| 20 | [Review Finding Grouping](review-finding-grouping.md) | `workflow-review-process` produce-review clustering |
+| 21 | [Cross-Plan Implementation Ordering](cross-plan-implementation-ordering.md) | Planning content-appraisal + format-level enforcement + epic menu collapse to "next available task" |
