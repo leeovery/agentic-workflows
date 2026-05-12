@@ -134,8 +134,8 @@ Load **[initialize-research.md](references/initialize-research.md)** and follow 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Determining how research files are organized for this
-> work type — single file or multiple topics.
+> Confirming where the research file lives — one topic,
+> one file.
 ```
 
 Load **[file-strategy.md](references/file-strategy.md)** and follow its instructions as written.
