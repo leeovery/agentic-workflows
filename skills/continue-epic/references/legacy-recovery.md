@@ -29,7 +29,7 @@ For each item in `items_to_recover`:
 - If `routing` is `discussion`: read `.workflows/{work_unit}/discussion/{item.name}.md`
 - If the file is missing or empty (rare — the topic exists in the manifest but the file is gone), record `summary: null` and a note `(source file missing)` for that item
 
-For each readable file, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the file's headings and opening paragraphs as the primary signal.
+For each readable file, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the file's headings and opening paragraphs as the primary signal. Attach each derived summary to its item in conversation memory as `item.derived_summary` — section **B** reads it from there.
 
 → Proceed to **B. Batch Review**.
 

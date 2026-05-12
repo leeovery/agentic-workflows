@@ -292,7 +292,7 @@ Store the filtered list as `items_to_recover`.
 
 Load **[legacy-recovery.md](references/legacy-recovery.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
 
-On return, re-read `detail` (legacy-recovery re-ran discovery before returning) so Step 7 renders the updated map.
+On return, re-read `detail` from the most recent discovery output — if legacy-recovery wrote any summaries it re-ran discovery before returning, otherwise the prior `detail` is still current. Step 7 reads the current `detail` either way.
 
 → Proceed to **Step 7**.
 

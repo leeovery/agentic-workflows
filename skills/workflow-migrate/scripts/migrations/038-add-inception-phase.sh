@@ -108,7 +108,7 @@ for (const entry of entries) {
     lines.push('# Initial Framing — Pre-Inception Migration');
     lines.push('');
     lines.push('This work unit pre-dates the discovery-map system. The map was seeded');
-    lines.push('from ' + count + ' existing research/discussion item(s) (source: migration-seeded).');
+    lines.push('from ' + count + ' topic(s) found in existing research/discussion items (source: migration-seeded).');
     lines.push('');
     lines.push('Open the epic via \`/continue-epic\` — the legacy-recovery flow will');
     lines.push('draft summaries from the existing source files and present them for review.');
