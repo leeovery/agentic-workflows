@@ -198,10 +198,6 @@ Load **[collect-import.md](references/collect-import.md)** and follow its instru
 > guide the session.
 ```
 
-Invoke the inception entry skill:
-
-| Phase | Invoke |
-|-------|--------|
-| inception | `/workflow-inception-entry epic {work_unit}` |
+Invoke `/workflow-inception-entry epic {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
