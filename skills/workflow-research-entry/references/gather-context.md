@@ -77,14 +77,4 @@ Any constraints or context I should know about upfront?
 
 **STOP.** Wait for user response.
 
-→ Proceed to **F. Ensure Inception Item**.
-
----
-
-## F. Ensure Inception Item
-
-Idempotent safety call. Step 2 already loaded the shared reference for the resolved topic, so this is normally a no-op; non-epic work_types short-circuit inside the shared reference.
-
-→ Load **[ensure-inception-item.md](../../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
-
 → Return to caller.
