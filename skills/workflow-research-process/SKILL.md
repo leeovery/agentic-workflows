@@ -16,7 +16,7 @@ First phase in the pipeline — explore feasibility (technical, business, market
 
 - **Topic** (required) - What to research/explore
 - **Output path** (required) - Research file path from the handoff
-- **Work type** (required) - `epic` or `feature`. Determines session behaviour — only epic sessions offer topic-splitting on convergence
+- **Work type** (required) - `epic`, `feature`, or `cross-cutting`. Determines session behaviour — only epic sessions offer topic-splitting on convergence; feature and cross-cutting use the single-topic session
 - **Context** (optional) - Prior research, constraints, starting direction
 
 ---
