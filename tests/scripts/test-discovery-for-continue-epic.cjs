@@ -296,6 +296,40 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
+
+    it('discovery_map exposes source and summary per item for legacy-recovery filter', () => {
+      // Continue-epic Step 6 (Legacy Recovery) filters discovery_map by
+      // source === 'migration-seeded' && !summary. This locks the shape.
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              'pristine': { routing: 'research', source: 'inception', summary: 'Brand-new topic with summary' },
+              'migrated-no-summary': { routing: 'research', source: 'migration-seeded' },
+              'migrated-with-summary': { routing: 'discussion', source: 'migration-seeded', summary: 'Already populated' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const map = r.epics[0].detail.discovery_map;
+      const byName = Object.fromEntries(map.map(t => [t.name, t]));
+
+      assert.strictEqual(byName['pristine'].source, 'inception');
+      assert.strictEqual(byName['pristine'].summary, 'Brand-new topic with summary');
+
+      assert.strictEqual(byName['migrated-no-summary'].source, 'migration-seeded');
+      assert.strictEqual(byName['migrated-no-summary'].summary, null);
+
+      assert.strictEqual(byName['migrated-with-summary'].source, 'migration-seeded');
+      assert.strictEqual(byName['migrated-with-summary'].summary, 'Already populated');
+
+      // The legacy-recovery filter contract
+      const toRecover = map.filter(t => t.source === 'migration-seeded' && !t.summary);
+      assert.strictEqual(toRecover.length, 1);
+      assert.strictEqual(toRecover[0].name, 'migrated-no-summary');
+    });
   });
 
   describe('edge cases', () => {
