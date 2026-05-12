@@ -258,9 +258,17 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 ── Legacy Recovery ──────────────────────────────
 ```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking for inception items seeded by migration that still need
+> summaries. If any are found, drafting them from the existing
+> research/discussion files for batch review.
+```
+
 Read `discovery_map` from the selected epic's `detail` (parsed in Step 1, refreshed by Step 5 if self-healing ran). Filter for items where:
 
-- `source === 'migration-seeded'`, and
+- `source` starts with `'migration-seeded'` (matches both `migration-seeded` and `migration-seeded,<analysis>` — the latter happens when Phase 7's self-healing re-surfaces a migrated topic and appends its own tag), and
 - `summary` is null or missing
 
 These are inception items seeded by migration 038 from legacy research/discussion state — their source files exist on disk but no summary has been populated yet.

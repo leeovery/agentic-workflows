@@ -111,7 +111,7 @@ for (const entry of entries) {
     lines.push('from ' + count + ' existing research/discussion item(s) (source: migration-seeded).');
     lines.push('');
     lines.push('Open the epic via \`/continue-epic\` — the legacy-recovery flow will');
-    lines.push('walk through populating summaries from the existing source files.');
+    lines.push('draft summaries from the existing source files and present them for review.');
     lines.push('');
     fs.writeFileSync(sessionPath, lines.join('\n'));
   }

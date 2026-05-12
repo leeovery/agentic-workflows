@@ -73,7 +73,7 @@ To keep `main` clean of incomplete-feature work until the whole initiative is re
 - **Phase 1** branches off `main` (after the planning branch has merged).
 - **Phase 2** branches off Phase 1's branch (not main).
 - **Phase 3** branches off Phase 2's branch.
-- And so on through Phase 13.
+- And so on through Phase 16.
 
 Each phase's PR has its own scope and review. When the implementer is happy with all phases, the PRs merge in turn — Phase 1 first, then Phase 2 (rebased onto main if needed), then Phase 3, etc. — until the whole initiative lands.
 

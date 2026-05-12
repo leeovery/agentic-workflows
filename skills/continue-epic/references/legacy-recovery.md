@@ -6,7 +6,7 @@
 
 One-time recovery flow for inception items seeded by migration 038. Migrated items have routing + source but no `summary` — this reference reads the corresponding research/discussion file for each item, derives a one-line summary, and writes it to the manifest after user review.
 
-Loaded conditionally from continue-epic Step 6 when the discovery output contains items where `source === 'migration-seeded' && summary` is null. When all migration-seeded items have summaries, the conditional never fires — this reference becomes unreachable and can be deleted in a follow-up cleanup PR.
+Loaded conditionally from continue-epic Step 6 when the discovery output contains items where `source` starts with `'migration-seeded'` and `summary` is null. The `startsWith` check matches both `migration-seeded` and `migration-seeded,<analysis>` — the latter happens when Phase 7's self-healing analyses re-surface a migrated topic and append their tag without writing a summary. When all migration-seeded items have summaries, the conditional never fires — this reference becomes unreachable and can be deleted in a follow-up cleanup PR.
 
 The caller passes:
 - `work_unit` — the epic being viewed
@@ -44,7 +44,11 @@ Proposed summaries for {N} migrated topic(s):
 
 @foreach(item in items_to_recover)
   {N}. {item.name:(titlecase)}  ({item.routing})
-       {derived_summary | "(source file missing — please provide)"}
+@if(item.derived_summary)
+       {item.derived_summary}
+@else
+       (source file missing — please provide)
+@endif
 @endforeach
 ```
 
