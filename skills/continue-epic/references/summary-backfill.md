@@ -1,26 +1,29 @@
-# Legacy Recovery
+# Summary Backfill
 
 *Reference for **[continue-epic](../SKILL.md)***
 
 ---
 
-One-time recovery flow for inception items seeded by migration 038. Migrated items have routing + source but no `summary` — this reference reads the corresponding research/discussion file for each item, derives a one-line summary, and writes it to the manifest after user review.
+Loaded by continue-epic Step 6 when one or more inception items need summaries derived from their source files. The caller passes:
 
-Loaded conditionally from continue-epic Step 6 when the discovery output contains items where `source` starts with `'migration-seeded'` and `summary` is null. The `startsWith` check matches both `migration-seeded` and `migration-seeded,<analysis>` — the latter happens when Phase 7's self-healing analyses re-surface a migrated topic and append their tag without writing a summary. When all migration-seeded items have summaries, the conditional never fires — this reference becomes unreachable and can be deleted in a follow-up cleanup PR.
+- `work_unit` — the selected epic
+- `items_to_recover` — list of inception items missing summaries; each has at minimum `name` and `routing`
 
-The caller passes:
-- `work_unit` — the epic being viewed
-- `items_to_recover` — the list of migration-seeded items with null summary, sourced from the discovery output's `discovery_map`
-
-Each item has at minimum `name` and `routing`. `routing` determines which source file to read.
+On exit, this reference re-runs discovery so the caller has fresh state.
 
 ## A. Read Source Files
+
+> *Output the next fenced block as a code block:*
+
+```
+── Summary Backfill ─────────────────────────────
+```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Found {N} item(s) carried over from before the discovery-map system.
-> Reading the existing research/discussion file(s) to draft summaries.
+> Inception items missing summaries. Drafting them from the
+> existing research and discussion files for review.
 ```
 
 For each item in `items_to_recover`:
@@ -40,7 +43,7 @@ Render the proposed summaries as a single batch:
 > *Output the next fenced block as a code block:*
 
 ```
-Proposed summaries for {N} migrated topic(s):
+Proposed summaries for {N} topic(s):
 
 @foreach(item in items_to_recover)
   {N}. {item.name:(titlecase)}  ({item.routing})
@@ -120,10 +123,10 @@ Single commit covering all writes:
 
 ```bash
 git add -- .workflows/{work_unit}/manifest.json
-git commit -m "inception({work_unit}): populate {N} migration-seeded summary(ies) from source files"
+git commit -m "inception({work_unit}): populate {N} inception summary(ies) from source files"
 ```
 
-Re-run discovery so continue-epic's display step renders fresh state:
+Re-run discovery so the caller has fresh state:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}

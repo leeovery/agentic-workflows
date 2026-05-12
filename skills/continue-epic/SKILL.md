@@ -240,7 +240,7 @@ No analyses to run.
 
 On return, store the orchestrator's `new_arrivals` tracker in conversation memory — Step 7 reads it to render the callout above the discovery map.
 
-Re-run discovery for the work unit so Step 6 (legacy recovery) and Step 7 (display) have fresh state including auto-added items:
+Re-run discovery for the work unit so Step 6 (summary backfill) and Step 7 (display) have fresh state including auto-added items:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
@@ -250,32 +250,11 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 ---
 
-## Step 6: Legacy Recovery
+## Step 6: Summary Backfill
 
-> *Output the next fenced block as a code block:*
-
-```
-── Legacy Recovery ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking for inception items seeded by migration that still need
-> summaries. If any are found, drafting them from the existing
-> research/discussion files for batch review.
-```
-
-Read `discovery_map` from the selected epic's `detail` (parsed in Step 1, refreshed by Step 5 if self-healing ran). Filter for items where:
-
-- `source` starts with `'migration-seeded'` (matches both `migration-seeded` and `migration-seeded,<analysis>` — the latter happens when Phase 7's self-healing re-surfaces a migrated topic and appends its own tag), and
-- `summary` is null or missing
-
-These are inception items seeded by migration 038 from legacy research/discussion state — their source files exist on disk but no summary has been populated yet.
+Read `discovery_map` from the selected epic's `detail`. Filter for items where `source` starts with `'migration-seeded'` and `summary` is null or missing.
 
 #### If no items match
-
-No recovery needed.
 
 → Proceed to **Step 7**.
 
@@ -283,16 +262,7 @@ No recovery needed.
 
 Store the filtered list as `items_to_recover`.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Carried-over items from before the discovery-map system need
-> summaries. Reading source files and drafting them now.
-```
-
-Load **[legacy-recovery.md](references/legacy-recovery.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
-
-On return, re-read `detail` from the most recent discovery output — if legacy-recovery wrote any summaries it re-ran discovery before returning, otherwise the prior `detail` is still current. Step 7 reads the current `detail` either way.
+Load **[summary-backfill.md](references/summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
 
 → Proceed to **Step 7**.
 
