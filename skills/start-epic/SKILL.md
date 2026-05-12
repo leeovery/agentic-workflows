@@ -162,6 +162,8 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ```
 · · · · · · · · · · · ·
+Import existing files before inception?
+
 - **`y`/`yes`** — Import existing files first
 - **`n`/`no`** — Continue straight to inception
 · · · · · · · · · · · ·
