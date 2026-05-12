@@ -55,8 +55,8 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 > research topic to work with.
 ```
 
-Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
-Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
+Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional for feature/cross-cutting, where it defaults to `$1`; always provided for epic).
+Resolve topic: topic = `$2`, or if not provided, topic = `$1`.
 
 Store work_unit for the handoff.
 
@@ -76,17 +76,11 @@ Imports already populated context via `imports/` and the knowledge base — skip
 
 → Proceed to **Step 2**.
 
-#### If work_type is `epic` and `topic` resolved
+#### If work_type is `epic`
 
 `resolved_filename = {topic}.md`
 
 → Proceed to **Step 2**.
-
-#### If work_type is `epic` and no `topic`
-
-Deferred — gather-context will resolve it.
-
-→ Proceed to **Step 4**.
 
 ---
 

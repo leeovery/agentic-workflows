@@ -53,7 +53,7 @@ Output: .workflows/{work_unit}/research/{resolved_filename}
 Context:
 - Prompted by: {problem, opportunity, or curiosity}
 - Already knows: {any initial thoughts or research, or "starting fresh"}
-- Starting point: {technical feasibility, market, business model, or "open exploration"}
+- Starting point: {technical feasibility, market, business model, or general direction}
 - Constraints: {any constraints mentioned, or "none"}
 
 Invoke the workflow-research-process skill.
