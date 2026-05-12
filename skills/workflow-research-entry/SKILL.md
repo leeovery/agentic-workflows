@@ -55,8 +55,8 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 > research topic to work with.
 ```
 
-Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional for feature/cross-cutting, where it defaults to `$1`; always provided for epic).
-Resolve topic: topic = `$2`, or if not provided, topic = `$1`.
+Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
+Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
 Store work_unit for the handoff.
 
@@ -70,9 +70,25 @@ Imports already populated context via `imports/` and the knowledge base — skip
 
 → Proceed to **Step 5**.
 
-#### Otherwise
+#### If `topic` resolved
 
 `resolved_filename = {topic}.md`
+
+→ Proceed to **Step 2**.
+
+#### If no `topic` (epic — no-topic path)
+
+The user invoked `/workflow-research-entry epic {work_unit}` without a topic — typically via `r`/`research` from continue-epic, signalling "start research on a fresh topic." The discovery map is the curation surface for known topics; this path covers ad-hoc names that aren't (yet) on the map.
+
+> *Output the next fenced block as a code block:*
+
+```
+What topic would you like to research?
+```
+
+**STOP.** Wait for user response.
+
+Use the response as `{topic}` (convert to kebab-case via the casing conventions). `resolved_filename = {topic}.md`.
 
 → Proceed to **Step 2**.
 
