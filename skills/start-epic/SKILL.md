@@ -183,12 +183,12 @@ Load **[collect-import.md](references/collect-import.md)** and follow its instru
 
 ---
 
-## Step 4: Invoke Entry-Point Skill
+## Step 4: Invoke Inception
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Invoke Phase Skill ───────────────────────────
+── Invoke Inception ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
