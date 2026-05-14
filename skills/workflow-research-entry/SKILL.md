@@ -66,8 +66,6 @@ Resolve filename:
 
 `resolved_filename = {topic}.md`
 
-Imports already populated context via `imports/` and the knowledge base — skip the validate and gather-context steps and hand straight off to the processing skill.
-
 → Proceed to **Step 5**.
 
 #### If `topic` resolved
