@@ -83,7 +83,7 @@ describe('workflow-inception-process discovery', () => {
       phases: {
         inception: {
           items: {
-            'auth-flow': { status: 'in-progress', summary: 'oauth + sessions', routing: 'research', source: 'inception' },
+            'auth-flow': { status: 'in-progress', summary: 'oauth + sessions', description: 'two paragraphs of richer context', routing: 'research', source: 'inception' },
           },
         },
       },
@@ -92,12 +92,22 @@ describe('workflow-inception-process discovery', () => {
     const t = r.discovery_map[0];
     assert.strictEqual(t.name, 'auth-flow');
     assert.strictEqual(t.summary, 'oauth + sessions');
+    assert.strictEqual(t.description, 'two paragraphs of richer context');
     assert.strictEqual(t.routing, 'research');
     assert.strictEqual(t.source, 'inception');
     assert.strictEqual(t.lifecycle, 'fresh');
     assert.strictEqual(t.tier, '○');
     assert.strictEqual(t.current_phase, null);
     assert.strictEqual(t.source_provenance, null);
+  });
+
+  it('defaults description to null when missing — legacy/migration-seeded item back-compat', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'migration-seeded' } } } },
+    });
+    const r = discover(dir, 'payments');
+    assert.strictEqual(r.discovery_map[0].description, null);
   });
 
   it('defaults summary to null when missing', () => {
