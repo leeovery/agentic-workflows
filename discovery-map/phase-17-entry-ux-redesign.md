@@ -12,6 +12,8 @@ The other phase docs in this initiative captured already-settled design and list
 
 Treat this as a planning surface, not an implementation plan. Read it as *"here's the thread of conversation that surfaced these questions"* and pick the discussion back up from where it left off.
 
+**The direction described here may change completely before the final design takes shape.** What looks like "the latest landing" right now is just the latest pause in an evolving conversation — not a commitment. Every refinement so far has narrowed *or* widened the scope of change, and the next refinement may do either again. Do not implement anything described in this doc.
+
 ---
 
 ## How we got here — the journey
@@ -80,9 +82,11 @@ This is the most radical of the proposals. It would mean:
 - All entry classification happens conversationally inside inception
 - start-* skills become structurally vestigial unless explicitly preserved
 
-### The latest landing (still tentative)
+### The latest landing (still tentative — all of this may shift)
 
-The user's most recent refinement:
+> **Reminder:** every bullet in this section is provisional. Reviewing this doc in the future, do not treat any of it as committed direction. The shape may change completely before the final design lands.
+
+The user's most recent refinements:
 
 - **Keep the start-* skills** as routing units (don't delete them) — they do real work (gather context, name, manifest creation, optional import collection, route to first phase)
 - **Make them non-user-invocable** — add `disable-model-invocation: true` (or similar) so they only fire via internal routing from workflow-start
@@ -92,6 +96,31 @@ The user's most recent refinement:
 - The pre-committed options keep doing what they do today (route to their respective start-* skills which then call inception for the curatorial pass)
 
 This preserves the existing flow architecture while consolidating the user experience.
+
+### Refinement: brand-new-work entry vs within-epic direct-entry are different cases
+
+A second-pass refinement narrowed the scope of what Phase 17 actually changes. There are two distinct "no-topic" cases that look similar at first but solve different problems:
+
+**Brand-new-work entry** — the user runs `/workflow-start` and wants to start something fresh. They don't yet know if it's an epic / feature / bugfix / quickfix. They may have imports that need decomposition. **This is where inception's classifier earns its keep** — the whole point is figuring out shape.
+
+**Within-epic direct-entry** — the user is already inside an epic, browsing its discovery map via `/continue-epic`, and picks `r`/`research` or `d`/`discuss` to add a fresh topic. They already know what work unit they're in, what kind of work they want (research vs discussion), and have a topic name in mind. **Routing through inception's classifier here would be friction** — shape is already known.
+
+These shouldn't get conflated. If Phase 17 (whatever form it takes) preserves the within-epic direct-entry path, then a chunk of skill-level structure persists that the original sketch implied would collapse:
+
+- continue-epic's `r`/`research` and `d`/`discuss` menu options stay
+- research-entry's no-topic-epic branch stays (load-bearing for the above)
+- discussion-entry's no-topic-epic branch stays (same)
+- workflow-bridge's "Start new research" / "Start new discussion" routing rows stay (same use case from bridge continuations)
+
+What may still collapse or change:
+
+- The `r`/`d`/`i` menu in start-feature/start-cross-cutting research-gating — may be replaced by inception classification on the `s`/`start` path, but might persist for explicit `f`/`feature` invocations
+- start-* skills become non-user-invocable (per the previous landing)
+- workflow-start gains the `s`/`start` option
+
+So the **scope of "things Phase 17 changes" is narrower than the original sketch implied**. Inception classification only enters at brand-new-work time. Within-epic direct-entry remains a fast path that bypasses classification entirely.
+
+Whether this scoping holds, or further refinement narrows / broadens it again, is open. The pattern of "inception is the brand-new-work classifier; existing within-work paths preserve their fast-path UX" is one plausible landing among several.
 
 ---
 
@@ -156,8 +185,10 @@ Listed bluntly so no later reader assumes any of these are settled:
 - Manifest schema decisions for features-with-inception
 - Migration policy for existing in-progress features
 - Naming and timing of all related skill changes
+- Whether within-epic direct-entry paths (continue-epic `r`/`research`, `d`/`discuss`) survive unchanged, get routed through inception, or get reshaped some third way
+- The actual scope of change — what persists, what collapses, what new pieces appear
 
-The conversation has clarified the *direction*, identified the *constraints*, and surfaced the *open questions*. None of the proposals has been signed off.
+The conversation has clarified the *direction*, identified the *constraints*, and surfaced the *open questions*. None of the proposals has been signed off. **A subsequent round of discussion could reshape the entire thing.**
 
 ---
 
