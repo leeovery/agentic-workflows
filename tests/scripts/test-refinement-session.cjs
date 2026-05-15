@@ -199,6 +199,104 @@ describe('refinement: rename mechanical sequence', () => {
   });
 });
 
+describe('refinement: edit description', () => {
+  beforeEach(setupFixture);
+  afterEach(cleanupFixture);
+
+  // Section I. Edit Description mirrors E. Edit Summary — a single
+  // `set ... description` per topic, preserving the other fields.
+  it('overwrites description and preserves summary, routing, source', () => {
+    seedEpic('payments', {
+      'auth-flow': {
+        status: 'in-progress',
+        summary: 'oauth + sessions',
+        description: 'original paragraph',
+        routing: 'research',
+        source: 'inception',
+      },
+    });
+
+    const r = runCli('set', 'payments.inception.auth-flow', 'description', 'replacement description spans\n\ntwo paragraphs');
+    assert.strictEqual(r.status, 0, `set failed: ${r.stderr}`);
+
+    const item = readManifest('payments').phases.inception.items['auth-flow'];
+    assert.strictEqual(item.description, 'replacement description spans\n\ntwo paragraphs');
+    assert.strictEqual(item.summary, 'oauth + sessions');
+    assert.strictEqual(item.routing, 'research');
+    assert.strictEqual(item.source, 'inception');
+  });
+
+  it('is idempotent when the same description is written twice', () => {
+    seedEpic('payments', {
+      'auth-flow': {
+        status: 'in-progress',
+        summary: 'oauth + sessions',
+        description: 'original paragraph',
+        routing: 'research',
+        source: 'inception',
+      },
+    });
+
+    runCli('set', 'payments.inception.auth-flow', 'description', 'second take');
+    const first = readManifest('payments').phases.inception.items['auth-flow'].description;
+    runCli('set', 'payments.inception.auth-flow', 'description', 'second take');
+    const second = readManifest('payments').phases.inception.items['auth-flow'].description;
+
+    assert.strictEqual(first, 'second take');
+    assert.strictEqual(second, 'second take');
+  });
+
+  it('writes description on a lifecycle past fresh — no gate', () => {
+    // Edit description lifecycle row says "any" — researching/discussing items
+    // are valid targets.
+    seedEpic('payments', {
+      'auth-flow': {
+        status: 'in-progress',
+        summary: 'oauth + sessions',
+        description: 'before',
+        routing: 'research',
+        source: 'inception',
+      },
+    });
+    const manifest = readManifest('payments');
+    manifest.phases.research = { items: { 'auth-flow': { status: 'in-progress' } } };
+    fs.writeFileSync(
+      path.join(dir, '.workflows', 'payments', 'manifest.json'),
+      JSON.stringify(manifest, null, 2),
+    );
+
+    const r = runCli('set', 'payments.inception.auth-flow', 'description', 'after');
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(
+      readManifest('payments').phases.inception.items['auth-flow'].description,
+      'after',
+    );
+  });
+});
+
+describe('refinement: add operation persists description', () => {
+  beforeEach(setupFixture);
+  afterEach(cleanupFixture);
+
+  // Section D. Add now writes description after summary when an Add proposal
+  // carries it (the same Claude turn that proposes routing derives both).
+  it('writes description on a newly-added topic', () => {
+    seedEpic('payments', {});
+
+    assert.strictEqual(runCli('init-phase', 'payments.inception.tax-handling').status, 0);
+    assert.strictEqual(runCli('set', 'payments.inception.tax-handling', 'summary', 'VAT + invoice rules').status, 0);
+    assert.strictEqual(runCli('set', 'payments.inception.tax-handling', 'description', 'two-paragraph framing of the tax problem space').status, 0);
+    assert.strictEqual(runCli('set', 'payments.inception.tax-handling', 'routing', 'research').status, 0);
+    assert.strictEqual(runCli('set', 'payments.inception.tax-handling', 'source', 'inception').status, 0);
+
+    const item = readManifest('payments').phases.inception.items['tax-handling'];
+    assert.strictEqual(item.summary, 'VAT + invoice rules');
+    assert.strictEqual(item.description, 'two-paragraph framing of the tax problem space');
+    assert.strictEqual(item.routing, 'research');
+    assert.strictEqual(item.source, 'inception');
+  });
+});
+
 describe('refinement: lifecycle gate via computeTopicLifecycle', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);

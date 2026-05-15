@@ -22,13 +22,14 @@ Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `sour
 
 Then read the user's most recent message. Extract one or more operations. Recognised intents:
 
-| User phrasing                                   | Operation       | Required values                          |
-| ----------------------------------------------- | --------------- | ---------------------------------------- |
-| *"add X as research"*, *"add Y as discussion"*  | Add             | name, routing                            |
-| *"edit summary of X to Y"*, *"reword X's blurb"*| Edit summary    | name, new summary                        |
-| *"remove X"*, *"drop X"*, *"delete X"*          | Remove          | name                                     |
-| *"rename X to Y"*                               | Rename          | old name, new name                       |
-| *"change routing of X to discussion"*           | Change routing  | name, new routing                        |
+| User phrasing                                              | Operation         | Required values        |
+| ---------------------------------------------------------- | ----------------- | ---------------------- |
+| *"add X as research"*, *"add Y as discussion"*             | Add               | name, routing          |
+| *"edit summary of X to Y"*, *"reword X's blurb"*           | Edit summary      | name, new summary      |
+| *"edit description of X to Y"*, *"reword X's description"* | Edit description  | name, new description  |
+| *"remove X"*, *"drop X"*, *"delete X"*                     | Remove            | name                   |
+| *"rename X to Y"*                                          | Rename            | old name, new name     |
+| *"change routing of X to discussion"*                      | Change routing    | name, new routing      |
 
 If routing is omitted on Add, infer from cues in the user's framing (factual unknowns → research; opinion or design → discussion). The proposal is tentative — the STOP gate is where the user flips it.
 
@@ -36,7 +37,7 @@ If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one 
 
 **Group operations** for safety-by-destructiveness:
 
-- **Additive group** — a contiguous run of Add operations *or* a contiguous run of Edit summary operations. Each group batches into one STOP gate, one commit, one session-log entry.
+- **Additive group** — a contiguous run of Add operations *or* a contiguous run of Edit summary operations *or* a contiguous run of Edit description operations. Each group batches into one STOP gate, one commit, one session-log entry.
 - **Destructive group** — a single Remove, Rename, or Change routing operation. Each is its own group of one with its own STOP gate and commit.
 
 Walk the groups in user order. For mixed batches (e.g. *"remove A, rename B to B2, add C"*), each destructive op is its own group; contiguous additive ops in between batch.
@@ -55,6 +56,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Rename          | `fresh`            | all others                                                                  |
 | Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
 | Edit summary    | any                | —                                                                           |
+| Edit description| any                | —                                                                           |
 | Add             | n/a (new item)     | —                                                                           |
 
 `cancelled` is also disallowed for Remove because the inception item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
@@ -113,9 +115,13 @@ Walk the validated operation groups in user order. For the next pending group:
 
 → Proceed to **H. Change Routing**.
 
+#### If the group is one or more Edit description operations
+
+→ Proceed to **I. Edit Description**.
+
 #### Otherwise (no groups remain)
 
-→ Proceed to **I. Done**.
+→ Proceed to **J. Done**.
 
 ## D. Add
 
@@ -165,11 +171,12 @@ For each name in the batch:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{name}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{one-line summary}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{paragraphs}"
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing {research|discussion}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source inception
    ```
 
-   Source is `inception` for refinement-added topics — they are user-curated, indistinguishable from initial-session items for provenance purposes.
+   Source is `inception` for refinement-added topics — they are user-curated, indistinguishable from initial-session items for provenance purposes. Derive `summary` (one-line) and `description` (paragraph or two) from the user's framing of the Add operation in the same turn that proposes the routing. Quote both values with single quotes; description may span multiple paragraphs.
 
 3. Append a single batch entry to the session log under **Changes** (one bullet per name). If the section currently reads `(none)`, replace it with the bullets:
 
@@ -419,7 +426,64 @@ git commit -m "inception({work_unit}): re-route {name} to {new routing}"
 
 → Return to **C. Apply** for the next group.
 
-## I. Done
+## I. Edit Description
+
+Render the proposal once for the whole batch. Description may span paragraphs — show a truncated preview (about 140 characters with `…`) in the proposal block so the STOP gate stays readable; the full description is written verbatim on confirm.
+
+> *Output the next fenced block as a code block:*
+
+```
+Updating {N} description(s):
+
+  • {name_1}: "{truncated description}"
+  • {name_2}: "{truncated description}"
+  ...
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Apply?
+
+- **`y`/`yes`**
+- **`n`/`no`**
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `no`
+
+Skip the batch. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If `yes`
+
+For each, write the full description verbatim (not the truncated preview):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{new description}"
+```
+
+Append a single batch entry to the session log under **Changes**. If the section currently reads `(none)`, replace it with the bullets:
+
+```markdown
+- Edited description: {name_1} — {short note}
+- Edited description: {name_2} — {short note}
+```
+
+Single commit:
+
+```bash
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{NNN}.md
+git commit -m "inception({work_unit}): edit {N} description(s)"
+```
+
+→ Return to **C. Apply** for the next group.
+
+## J. Done
 
 All operation groups have been processed.
 
