@@ -11,9 +11,12 @@ For each topic on the working list, in the order the user surfaced them:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} summary "{one-line summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} description "{paragraphs}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} routing {research|discussion}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source inception
 ```
+
+Derive `summary` and `description` from the same session conversation in the same turn — no separate prompt. The compact `• {topic} — {summary}` form in the working list stays unchanged; description is generated only at persist time.
 
 If any command fails, surface the error and stop before the commit so the user can recover.
 
@@ -22,6 +25,7 @@ Notes:
 - `init-phase` creates the item with `status: in-progress` automatically. Inception items have no other valid status — do not pass `status` explicitly.
 - The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
 - `summary` is the one-line description from the working list. Quote the value in shell — single quotes if it contains `[]`, `{}`, `~`, or backticks.
+- `description` is a paragraph or two of richer context, derived from the same conversation that produced the summary. Entry skills load it as opening context when the user later picks the topic up for research or discussion. Length is not enforced — a paragraph or two is the target, but more or less is fine. Map renders never show it. Quote the value the same way as summary; multi-paragraph content can include embedded newlines.
 - `routing` is the value the user agreed to during the session.
 - `source: inception` distinguishes initial-session topics from later-phase additions (`research-analysis`, `gap-analysis`, `split`, `elevation`, `direct-start`, `migration-seeded`).
 
