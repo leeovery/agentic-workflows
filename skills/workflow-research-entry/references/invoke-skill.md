@@ -10,13 +10,22 @@ This skill's purpose is now fulfilled. Construct the handoff and invoke the proc
 
 ## Load Inception Description
 
-For every source branch except `continue`, read the inception item's `description` so it can be appended to the handoff. The item exists on the map by this point — every non-`continue` branch passed through `ensure-inception-item` earlier in the flow.
+For every source branch except `continue`, attempt to read the inception item's `description` so it can be appended to the handoff. Two preconditions must hold before the read — both must be true, otherwise treat description as null and skip the Description block:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{topic} description
-```
+1. `work_type` is `epic`. Non-epic work units (feature, cross-cutting) have no inception phase — skip.
+2. The `description` subkey exists on the inception item. Probe with `exists` first to avoid surfacing a "Path not found" error from a bare `get`:
 
-The CLI may return empty output (no `description` set on legacy items, or migration-seeded items). Treat empty/null output as "skip the Description block in the handoff" — the legacy fallback. When the value is non-empty, append the block below in the position shown for each branch.
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{topic} description
+   ```
+
+   If the probe returns `true`, read the value:
+
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{topic} description
+   ```
+
+When `description` is loaded and non-empty, append the Description block shown in each source branch below. When either precondition fails, or the read returns empty, omit the Description block entirely — no header, no empty body.
 
 ---
 
