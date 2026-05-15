@@ -131,7 +131,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
    On `collision-active`, re-prompt for an alternative and re-validate — loop until `ok` or `matches-dismissed`, or the user cancels the elevation. On `matches-dismissed`, proceed (the dismissed entry is pulled in step 4). On `ok`, proceed.
 
-2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation). This becomes the inception item's `summary` field.
+2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation). This becomes the inception item's `summary` field. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by discussion-entry as opening context when the user later picks the elevated topic up.
 
 3. Create the seed discussion file at `.workflows/{work_unit}/discussion/{new-topic}.md` with:
    - Context section capturing what prompted the topic and any initial thinking from the current discussion
@@ -151,6 +151,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new-topic}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} routing discussion
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} summary "{one-line summary}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} description "{paragraphs}"
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} source "discussion-elevation:{topic}"
    ```
 
