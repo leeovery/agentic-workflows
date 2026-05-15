@@ -44,7 +44,7 @@ For each split topic:
 
 2. Create `.workflows/{work_unit}/research/{new_topic}.md` using **[template.md](template.md)**. Move content verbatim from the source file — reword only for flow and readability, no summarisation. Remove the extracted content from the source file.
 
-3. Generate a one-sentence summary of the extracted content (drawn from the thread itself). This becomes the inception item's `summary` field, used in map renders.
+3. Generate a one-sentence summary of the extracted content (drawn from the thread itself). This becomes the inception item's `summary` field, used in map renders. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by entry skills as opening context when the user later picks the topic up.
 
 4. Write manifest items — research first, then inception. If the validation returned `matches-dismissed`, pull from the dismissed list first:
 
@@ -59,6 +59,7 @@ For each split topic:
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new_topic}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} routing research
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} summary "{one-line summary}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} description "{paragraphs}"
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new_topic} source "research-split:{parent_topic}"
    ```
 
