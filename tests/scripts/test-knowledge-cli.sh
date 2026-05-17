@@ -2057,10 +2057,10 @@ echo "Test 89: Index gap-analysis cache"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
-create_analysis_cache "auth-flow" "gap-analysis"
-output=$(run_kb index .workflows/auth-flow/.state/gap-analysis.md 2>&1)
+create_analysis_cache "auth-flow" "discussion-gap-analysis"
+output=$(run_kb index .workflows/auth-flow/.state/discussion-gap-analysis.md 2>&1)
 exit_code=0
-run_kb index .workflows/auth-flow/.state/gap-analysis.md >/dev/null 2>&1 || exit_code=$?
+run_kb index .workflows/auth-flow/.state/discussion-gap-analysis.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "indexes gap-analysis cache" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
@@ -2082,9 +2082,9 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
 create_analysis_cache "auth-flow" "research-analysis"
-create_analysis_cache "auth-flow" "gap-analysis"
+create_analysis_cache "auth-flow" "discussion-gap-analysis"
 run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/.state/gap-analysis.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/.state/discussion-gap-analysis.md >/dev/null 2>&1
 before_query=$(run_kb query "caching" 2>&1)
 assert_eq "analysis indexed before remove" "true" "$(echo "$before_query" | grep -q 'analysis' && echo true || echo false)"
 run_kb remove --work-unit auth-flow >/dev/null 2>&1
@@ -2139,12 +2139,12 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
 create_analysis_cache "auth-flow" "research-analysis"
-create_analysis_cache "auth-flow" "gap-analysis"
+create_analysis_cache "auth-flow" "discussion-gap-analysis"
 output=$(run_kb index 2>&1)
 research_lines=$(echo "$output" | grep -c 'research-analysis.md' || true)
-gap_lines=$(echo "$output" | grep -c 'gap-analysis.md' || true)
+gap_lines=$(echo "$output" | grep -c 'discussion-gap-analysis.md' || true)
 assert_eq "bulk discovers research-analysis" "true" "$([ "$research_lines" -ge 1 ] && echo true || echo false)"
-assert_eq "bulk discovers gap-analysis" "true" "$([ "$gap_lines" -ge 1 ] && echo true || echo false)"
+assert_eq "bulk discovers discussion-gap-analysis" "true" "$([ "$gap_lines" -ge 1 ] && echo true || echo false)"
 teardown_project
 
 # --- Test 96: Bulk index skips cancelled wu's analysis caches ---
@@ -2181,7 +2181,7 @@ exit_code=0
 run_kb index >/dev/null 2>&1 || exit_code=$?
 assert_eq "missing cache doesn't fail bulk" "0" "$exit_code"
 assert_eq "present cache discovered" "true" "$(echo "$output" | grep -q 'research-analysis.md' && echo true || echo false)"
-assert_eq "absent cache not mentioned" "true" "$(echo "$output" | grep -q 'gap-analysis.md' && echo false || echo true)"
+assert_eq "absent cache not mentioned" "true" "$(echo "$output" | grep -q 'discussion-gap-analysis.md' && echo false || echo true)"
 teardown_project
 
 # --- Test 99: Path-traversal via .. on .state path rejected ---

@@ -98,8 +98,8 @@ Analysis caches live on disk at `.workflows/{work_unit}/.state/`, outside the ma
 ```bash
 [ -f .workflows/{work_unit}/.state/research-analysis.md ] && \
   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/research-analysis.md
-[ -f .workflows/{work_unit}/.state/gap-analysis.md ] && \
-  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/gap-analysis.md
+[ -f .workflows/{work_unit}/.state/discussion-gap-analysis.md ] && \
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/discussion-gap-analysis.md
 ```
 
 Apply the same warning-but-do-not-block pattern from **A** when individual index calls fail.

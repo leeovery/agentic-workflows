@@ -21,12 +21,13 @@ const setup = require('./setup');
 
 const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'analysis'];
 
-// Whitelist of indexable filenames in .workflows/{wu}/.state/. The .state/
-// directory also holds operational metadata (migrations, environment-setup)
-// that must never enter the KB. Restrict to the two analysis cache files.
+// Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
+// on-disk basename to its KB topic identity. The .state/ directory also holds
+// operational metadata (migrations, environment-setup) that must never enter
+// the KB. Restrict to the two analysis cache files.
 const ANALYSIS_CACHE_FILES = {
   'research-analysis': 'research-analysis',
-  'gap-analysis': 'gap-analysis',
+  'discussion-gap-analysis': 'gap-analysis',
 };
 
 // Resolve manifest CLI path. In the bundled form, __dirname is
