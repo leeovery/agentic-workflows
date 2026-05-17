@@ -37,6 +37,14 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**.
 
 The draft session log is your working list — `session-loop.md` will brief the user on resume.
 
+Before handing back, surface any prior knowledge-base context that might inform the resumed session. This is a non-first session entry (the user is returning to an interrupted draft), so KB retrieval applies per the design's "all other sessions" rule.
+
+Construct the query as a single descriptive sentence using the work unit name: `Resuming inception for {work_unit}.` No map exists yet — only the interrupted draft — so topic names are not available.
+
+→ Load **[../../workflow-knowledge/references/contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written, passing the constructed query and `--boost:work-unit {work_unit}`.
+
+When it returns:
+
 → Return to **[the skill](../SKILL.md)** for **Step 2**.
 
 **If `restart`:**
