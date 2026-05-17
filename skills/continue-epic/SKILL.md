@@ -252,7 +252,7 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 ## Step 6: Summary Backfill
 
-Read `discovery_map` from the selected epic's `detail`. Filter for items where `source` starts with `'migration-seeded'` and `summary` is null or missing.
+Read `discovery_map` from the selected epic's `detail`. Filter for items where `source` starts with `'migration-seeded'` and either `summary` or `description` is null or missing. Both fields are populated together — pre-Phase-14 items backfilled only `summary` and re-enter this flow once for `description`.
 
 #### If no items match
 
@@ -260,7 +260,7 @@ Read `discovery_map` from the selected epic's `detail`. Filter for items where `
 
 #### If one or more items match
 
-Store the filtered list as `items_to_recover`.
+Store the filtered list as `items_to_recover`. Each item carries `name`, `routing`, current `summary` (possibly null), and current `description` (possibly null) — the reference decides which fields to draft.
 
 Load **[summary-backfill.md](references/summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
 

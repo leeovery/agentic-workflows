@@ -182,6 +182,7 @@ function buildEpicDetail(cwd, manifest) {
       return {
         name: item.name,
         summary: item.summary || null,
+        description: item.description || null,
         routing: item.routing || null,
         source: item.source || 'inception',
         source_provenance,
