@@ -1702,7 +1702,7 @@ async function cmdRebuild(_args, options, cfg, provider) {
   const artifacts = discoverArtifacts();
   if (artifacts.length === 0) {
     process.stderr.write(
-      'No completed artifacts found to index. Aborting rebuild — ' +
+      'No artifacts to index. Aborting rebuild — ' +
       'the existing index has NOT been modified.\n' +
       '(If you believe this is wrong, check that .workflows/ exists and ' +
       'that work units have items with status "completed".)\n'
