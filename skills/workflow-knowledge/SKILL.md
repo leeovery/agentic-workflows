@@ -119,7 +119,7 @@ Confidence is intrinsic to the source phase. It tells you how much weight to giv
 | `high` | Specification — a decision that was validated and written down. Trust the *what*, verify the *why* against the source if it matters |
 | `medium` | Investigation — diagnostic work tied to specific symptoms. Trust the diagnosis, but check whether the symptom is still current |
 | `low-medium` | Discussion — conversational, may contain assumptions that were corrected later in the same file. Read for context, not conclusions |
-| `low` | Research or Imports — research is exploratory (may be a dead end, rejected path, or unvalidated idea); imports are user-supplied seed material (often loose, may cover multiple topics surface-level). Disambiguate via the provenance line's phase field |
+| `low` | Research, Imports, or Analysis — research is exploratory (may be a dead end, rejected path, or unvalidated idea); imports are user-supplied seed material (often loose, may cover multiple topics surface-level); analysis caches are meta-summaries derived from research/discussion (themes and gaps surfaced, not validated decisions). Disambiguate via the provenance line's phase field |
 
 **Low confidence is not low value.** A research chunk that rejected an approach prevents the next work unit from re-exploring the same dead end. A discussion chunk showing a corrected assumption explains *why* the spec says what it says. Don't filter out low-confidence results — weigh them.
 
@@ -165,7 +165,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path/to/arti
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index
 ```
 
-- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension.
+- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,discussion-gap-analysis}.md`; the phase is `analysis` and the topic is `research-analysis` or `gap-analysis`.
 - **Without args**: discovers every completed artifact across all work units and indexes anything missing. Used by setup and manual catch-up.
 - Failures are retried (exponential backoff). Files that still fail are pushed to a pending queue and retried on the next `index` call.
 - Exits non-zero if the file doesn't exist or the path can't be parsed.
