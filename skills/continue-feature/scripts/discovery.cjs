@@ -32,11 +32,13 @@ function discover(cwd) {
     if (m.work_type !== 'feature') continue;
     const state = computeNextPhase(m);
     if (state.next_phase === 'done') continue;
+    const importsCount = Array.isArray(m.imports) ? m.imports.length : 0;
     features.push({
       name: m.name,
       next_phase: state.next_phase,
       phase_label: state.phase_label,
       completed_phases: completedPhases(m),
+      imports_count: importsCount,
     });
   }
 
@@ -72,7 +74,8 @@ function format(result) {
   lines.push(`=== FEATURES (${result.count}) ===`);
   lines.push(`summary: ${result.summary}`);
   for (const f of result.features) {
-    lines.push(`  ${f.name}: ${f.phase_label} [completed: ${f.completed_phases.join(', ') || 'none'}]`);
+    const importsClause = f.imports_count > 0 ? ` (${f.imports_count} imports)` : '';
+    lines.push(`  ${f.name}: ${f.phase_label}${importsClause} [completed: ${f.completed_phases.join(', ') || 'none'}]`);
   }
   return lines.join('\n') + '\n';
 }
