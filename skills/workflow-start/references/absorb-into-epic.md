@@ -11,8 +11,8 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion and research into the
-> selected epic as a new topic and delete the feature work unit.
+> This will move the feature's discussion, research, and imports into
+> the selected epic as a new topic and delete the feature work unit.
 > Git history serves as provenance.
 
 · · · · · · · · · · · ·
@@ -133,17 +133,55 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {target_epic}.
 
 Collisions are resolved by appending `-{selected.name}` (e.g. `exploration` becomes `exploration-{selected.name}`). Store the mapping of original name → target name as `research_moves`.
 
-→ Proceed to **E. Confirm**.
+→ Proceed to **E. Imports Check**.
 
 #### Otherwise
 
 Set `has_research` = false.
 
-→ Proceed to **E. Confirm**.
+→ Proceed to **E. Imports Check**.
 
 ---
 
-## E. Confirm
+## E. Imports Check
+
+Check if the feature has imports:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name} imports
+```
+
+#### If `true`
+
+Set `has_imports` = true.
+
+Read the imports list:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} imports
+```
+
+Store as `imports_entries` (list of `{path, imported_at}` objects). Set `imports_count` to its length.
+
+For each entry, derive the basename from `path` (the filename under `imports/`). Check for collision in the target epic's `imports/` directory:
+
+```bash
+test -e .workflows/{target_epic}/imports/<basename>
+```
+
+Collisions are resolved by suffixing the stem with `-{selected.name}` before the `.md` extension (e.g. `seed-conversation.md` becomes `seed-conversation-{selected.name}.md`). Store the mapping of original filename → target filename as `imports_moves`, preserving each entry's original `imported_at` timestamp.
+
+→ Proceed to **F. Confirm**.
+
+#### Otherwise
+
+Set `has_imports` = false. Set `imports_count` = 0.
+
+→ Proceed to **F. Confirm**.
+
+---
+
+## F. Confirm
 
 Read the discussion status:
 
@@ -165,11 +203,17 @@ Absorb Summary
 @if(has_research)
   Research:   {research_item_count} file(s)
 @endif
+@if(has_imports)
+  Imports:    {imports_count} file(s)
+@endif
 
   Actions:
   • Move discussion file to epic
 @if(has_research)
   • Move research file(s) to epic
+@endif
+@if(has_imports)
+  • Move import file(s) to epic
 @endif
   • Register topic in epic manifest
   • Remove feature work unit and directory
@@ -193,11 +237,11 @@ Proceed?
 
 #### If user chose `y`/`yes`
 
-→ Proceed to **F. Move Discussion**.
+→ Proceed to **G. Move Discussion**.
 
 ---
 
-## F. Move Discussion
+## G. Move Discussion
 
 ```bash
 mkdir -p .workflows/{target_epic}/discussion/
@@ -235,15 +279,15 @@ If the index command fails, display the error but do not block — the artifact 
   The artifact is saved. Indexing can be retried later.
 ```
 
-→ Proceed to **G. Move Research**.
+→ Proceed to **H. Move Research**.
 
 #### Otherwise
 
-→ Proceed to **G. Move Research**.
+→ Proceed to **H. Move Research**.
 
 ---
 
-## G. Move Research
+## H. Move Research
 
 #### If `has_research` is `true`
 
@@ -282,15 +326,61 @@ If the index command fails, display the error but do not block — the artifact 
   The artifact is saved. Indexing can be retried later.
 ```
 
-→ Proceed to **H. Cleanup**.
+→ Proceed to **I. Move Imports**.
 
 #### Otherwise
 
-→ Proceed to **H. Cleanup**.
+→ Proceed to **I. Move Imports**.
 
 ---
 
-## H. Cleanup
+## I. Move Imports
+
+#### If `has_imports` is `true`
+
+Ensure the target imports directory exists:
+
+```bash
+mkdir -p .workflows/{target_epic}/imports/
+```
+
+For each item in `imports_moves` (original_filename → target_filename, with preserved `imported_at`):
+
+```bash
+mv .workflows/{selected.name}/imports/<original_filename> .workflows/{target_epic}/imports/<target_filename>
+```
+
+Push the entry into the target epic's `imports[]` manifest array, preserving the original timestamp:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs push {target_epic} imports '{"path":"imports/<target_filename>","imported_at":"<imported_at>"}'
+```
+
+Index the import at its new location in the knowledge base:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/imports/<target_filename>
+```
+
+If the index command fails, display the error but do not block — the file is already saved at its new location and tracked in the target manifest:
+
+> *Output the next fenced block as a code block:*
+
+```
+⚑ Knowledge indexing warning
+  {error details}
+  The artifact is saved. Indexing can be retried later.
+```
+
+→ Proceed to **J. Cleanup**.
+
+#### Otherwise
+
+→ Proceed to **J. Cleanup**.
+
+---
+
+## J. Cleanup
 
 Remove the absorbed feature's chunks from the knowledge base (moved files were re-indexed under the epic):
 
@@ -322,11 +412,11 @@ rm -rf .workflows/{selected.name}/
 
 Commit: `workflow({selected.name}): absorb into {target_epic}`
 
-→ Proceed to **I. Post-Absorption**.
+→ Proceed to **K. Post-Absorption**.
 
 ---
 
-## I. Post-Absorption
+## K. Post-Absorption
 
 > *Output the next fenced block as a code block:*
 
@@ -338,6 +428,9 @@ Absorbed into Epic
   • Discussion: moved
 @if(has_research)
   • Research: moved
+@endif
+@if(has_imports)
+  • Imports: moved
 @endif
   • Feature: removed
 ```
