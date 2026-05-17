@@ -38,6 +38,24 @@ The output drives the rest of this file:
 - **`latest_session`** — `{filename, number, is_refinement, is_in_progress, conclusion_text, relative_path}`. Used in **B** (resume detection).
 - **`next_session_number`** — zero-padded next session number to seed in **D**.
 
+→ Proceed to **A.5 Surface Prior Context**.
+
+## A.5 Surface Prior Context
+
+Before entering the refinement loop, query the knowledge base for prior work relevant to this work unit. Refinement is a non-first inception entry — per the design, all non-first sessions surface prior context via KB retrieval rather than re-reading raw files.
+
+Build the query from the topic names on the current discovery map. Concatenate the comma-joined names as a single descriptive framing:
+
+```
+Refining the discovery map for {work_unit}. Topics: {topic_1}, {topic_2}, ...
+```
+
+If `discovery_map` is empty (no items yet), fall back to a single sentence using the work unit name: `Refining the discovery map for {work_unit}.`
+
+→ Load **[../../workflow-knowledge/references/contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written, passing the constructed query and `--boost:work-unit {work_unit}`.
+
+When it returns:
+
 → Proceed to **B. Resume Check**.
 
 ## B. Resume Check
