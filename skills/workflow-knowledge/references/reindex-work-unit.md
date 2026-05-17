@@ -69,7 +69,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} im
 
 No imports to process.
 
-→ Return to caller.
+→ Proceed to **C. Re-Index Analysis Caches**.
 
 #### If exists (`true`)
 

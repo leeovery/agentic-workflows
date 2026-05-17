@@ -2073,7 +2073,8 @@ write_stub_config
 create_analysis_cache "auth-flow" "research-analysis"
 run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
 output=$(run_kb query "caching" 2>&1)
-assert_eq "query returns analysis hit" "true" "$(echo "$output" | grep -q 'analysis' && echo true || echo false)"
+# Provenance line shape: [analysis | wu/topic | confidence | date]
+assert_eq "query returns analysis-phase hit" "true" "$(echo "$output" | grep -qE '^\[analysis \| auth-flow/research-analysis \| low \|' && echo true || echo false)"
 teardown_project
 
 # --- Test 91: remove --work-unit drops analysis chunks ---
@@ -2086,10 +2087,10 @@ create_analysis_cache "auth-flow" "discussion-gap-analysis"
 run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1
 run_kb index .workflows/auth-flow/.state/discussion-gap-analysis.md >/dev/null 2>&1
 before_query=$(run_kb query "caching" 2>&1)
-assert_eq "analysis indexed before remove" "true" "$(echo "$before_query" | grep -q 'analysis' && echo true || echo false)"
+assert_eq "analysis indexed before remove" "true" "$(echo "$before_query" | grep -qE '^\[analysis \|' && echo true || echo false)"
 run_kb remove --work-unit auth-flow >/dev/null 2>&1
 after_query=$(run_kb query "caching" 2>&1)
-assert_eq "analysis chunks gone after remove" "true" "$(echo "$after_query" | grep -q 'analysis' && echo false || echo true)"
+assert_eq "analysis chunks gone after remove" "true" "$(echo "$after_query" | grep -qE '^\[analysis \|' && echo false || echo true)"
 teardown_project
 
 # --- Test 92: Reject unknown .state file (whitelist enforcement) ---
