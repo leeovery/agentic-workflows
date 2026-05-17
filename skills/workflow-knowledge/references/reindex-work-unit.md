@@ -89,4 +89,19 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{w
 
 Apply the same warning-but-do-not-block pattern from **A** when individual index calls fail.
 
+→ Proceed to **C. Re-Index Analysis Caches**.
+
+## C. Re-Index Analysis Caches
+
+Analysis caches live on disk at `.workflows/{work_unit}/.state/`, outside the manifest. Probe each known cache file and re-index any that exist:
+
+```bash
+[ -f .workflows/{work_unit}/.state/research-analysis.md ] && \
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/research-analysis.md
+[ -f .workflows/{work_unit}/.state/gap-analysis.md ] && \
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/gap-analysis.md
+```
+
+Apply the same warning-but-do-not-block pattern from **A** when individual index calls fail.
+
 → Return to caller.
