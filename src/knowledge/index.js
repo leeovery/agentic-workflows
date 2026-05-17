@@ -19,7 +19,15 @@ const setup = require('./setup');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'analysis'];
+
+// Whitelist of indexable filenames in .workflows/{wu}/.state/. The .state/
+// directory also holds operational metadata (migrations, environment-setup)
+// that must never enter the KB. Restrict to the two analysis cache files.
+const ANALYSIS_CACHE_FILES = {
+  'research-analysis': 'research-analysis',
+  'gap-analysis': 'gap-analysis',
+};
 
 // Resolve manifest CLI path. In the bundled form, __dirname is
 // skills/workflow-knowledge/scripts/. In source, __dirname is
@@ -251,6 +259,37 @@ async function withRetry(fn, opts) {
 function deriveIdentity(filePath) {
   // Normalise to forward slashes for pattern matching.
   const norm = filePath.replace(/\\/g, '/');
+
+  // Analysis caches live at .workflows/{wu}/.state/{filename}.md and need a
+  // separate match — the main phase regex enumerates known phases and would
+  // not accept `.state` as a phase segment.
+  const stateMatch = /\.workflows\/([^/]+)\/\.state\/(.+)$/.exec(norm);
+  if (stateMatch) {
+    const workUnit = stateMatch[1];
+    const rest = stateMatch[2];
+    if (workUnit === '.' || workUnit === '..' || workUnit.startsWith('.')) {
+      throw new UserError(`Invalid work unit name: "${workUnit}"`);
+    }
+    const fileMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!fileMatch) {
+      throw new UserError(
+        `Unexpected .state path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/.state/{filename}.md'
+      );
+    }
+    const basename = fileMatch[1];
+    if (!Object.prototype.hasOwnProperty.call(ANALYSIS_CACHE_FILES, basename)) {
+      throw new UserError(
+        `Refusing to index .state file "${basename}.md" — only analysis caches ` +
+          `(${Object.keys(ANALYSIS_CACHE_FILES).join(', ')}) are indexable.`
+      );
+    }
+    const topic = ANALYSIS_CACHE_FILES[basename];
+    if (topic === '.' || topic === '..' || topic.startsWith('.')) {
+      throw new UserError(`Invalid topic name: "${topic}"`);
+    }
+    return { workUnit, phase: 'analysis', topic };
+  }
 
   // Match .workflows/{work_unit}/{phase}/{rest}
   const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports)\/(.+)$/.exec(norm);
@@ -739,6 +778,14 @@ function discoverArtifacts() {
         if (!fs.existsSync(path.resolve(filePath))) continue;
         items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
       }
+    }
+
+    // Analysis caches — file-based, not manifest-tracked. Two known paths per
+    // work unit; discover by existence on disk.
+    for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
+      const filePath = path.posix.join('.workflows', wuName, '.state', `${basename}.md`);
+      if (!fs.existsSync(path.resolve(filePath))) continue;
+      items.push({ file: filePath, workUnit: wuName, phase: 'analysis', topic });
     }
   }
 
