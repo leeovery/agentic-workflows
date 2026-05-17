@@ -724,6 +724,9 @@ function discoverArtifacts() {
       // Imports live at top-level wu.imports[], not under wu.phases.imports —
       // they need a separate traversal. Skip in this loop and handle below.
       if (phase === 'imports') continue;
+      // Analysis caches are file-based, not manifest-tracked. Handled
+      // separately at the end of this work-unit iteration.
+      if (phase === 'analysis') continue;
 
       const phaseData = wu.phases && wu.phases[phase];
       if (!phaseData || !phaseData.items) continue;
