@@ -2197,6 +2197,39 @@ node "$BUNDLE" index ".workflows/../etc/.state/research-analysis.md" 2>/dev/null
 assert_eq "rejects traversal on .state" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
+# --- Test 100: Absorption KB-fidelity — imports moved from feature to epic ---
+# Simulates the absorb-into-epic flow at the KB level: index imports under
+# the source feature, move files + re-index under the target epic, drop the
+# feature's chunks. Asserts target chunks present, source chunks gone.
+echo "Test 100: Absorption preserves imports in KB under target identity"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth source"
+create_work_unit "payments-overhaul" "epic" "Payments target"
+write_stub_config
+create_import_file "auth-flow" "seed-conversation"
+create_import_file "auth-flow" "early-thoughts"
+# Index under source identity.
+run_kb index .workflows/auth-flow/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .workflows/auth-flow/imports/early-thoughts.md >/dev/null 2>&1
+# Confirm source has chunks before move.
+pre_query=$(run_kb query "OAuth" --limit 10 2>&1)
+assert_eq "source has chunks pre-move" "true" "$(echo "$pre_query" | grep -q 'auth-flow' && echo true || echo false)"
+# Move files to target epic's imports/.
+mkdir -p "$TEST_ROOT/.workflows/payments-overhaul/imports"
+mv "$TEST_ROOT/.workflows/auth-flow/imports/seed-conversation.md" \
+   "$TEST_ROOT/.workflows/payments-overhaul/imports/seed-conversation.md"
+mv "$TEST_ROOT/.workflows/auth-flow/imports/early-thoughts.md" \
+   "$TEST_ROOT/.workflows/payments-overhaul/imports/early-thoughts.md"
+# Index under target identity.
+run_kb index .workflows/payments-overhaul/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .workflows/payments-overhaul/imports/early-thoughts.md >/dev/null 2>&1
+# Drop source chunks (mirrors the cleanup step in absorb-into-epic.md).
+run_kb remove --work-unit auth-flow >/dev/null 2>&1
+post_query=$(run_kb query "OAuth" --limit 10 2>&1)
+assert_eq "target has imports chunks post-move" "true" "$(echo "$post_query" | grep -q 'payments-overhaul' && echo true || echo false)"
+assert_eq "source chunks gone post-cleanup" "false" "$(echo "$post_query" | grep -q 'auth-flow' && echo true || echo false)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
