@@ -168,4 +168,12 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.resea
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research analysis_cache.files "{research-file}.md"
 ```
 
+Index the cache file into the knowledge base so its content surfaces in future contextual queries:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/research-analysis.md
+```
+
+If the index call fails, surface the error to the user but do not abort — the cache file is already on disk and the manifest is updated; the user can re-run `knowledge index` manually or wait for the next analysis re-run to retry.
+
 → Return to caller.
