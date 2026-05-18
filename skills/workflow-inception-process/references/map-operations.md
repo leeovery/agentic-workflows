@@ -342,7 +342,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 
 #### If `yes`
 
-Read the required fields. Note the value of each — they'll be re-written under the new key:
+Read the required fields:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} summary
@@ -350,32 +350,36 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.incep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} source
 ```
 
+Use the returned values as `{summary}`, `{routing}`, and `{source}` in the write commands below.
+
 `description` is optional. Probe with `exists` first so a bare `get` doesn't error on items that have none:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} description
 ```
 
-If the probe returns `true`, also read the description:
+If the probe returns `true`, read the value:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} description
 ```
 
-Delete the old key, create the new key, write each field back using the values just read. Quote with single quotes to protect against shell-active characters in summary or description:
+Use the returned value as `{description}` in the optional write below.
+
+Delete the old key, create the new key, write each captured field back under the new key:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{old}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary '{summary value}'
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing {routing value}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source {source value}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary "{summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing {routing}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source {source}
 ```
 
 If a description was read above, also write it:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} description '{description value}'
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} description "{description}"
 ```
 
 If any command fails, surface the error and stop before the commit so the user can recover — a partial rename leaves the manifest in an inconsistent state otherwise.
