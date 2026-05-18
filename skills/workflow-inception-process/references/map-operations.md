@@ -349,11 +349,20 @@ saved_summary=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {
 saved_routing=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} routing)
 saved_source=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} source)
 
+# Description is optional — probe with `exists` first so a bare `get` doesn't error.
+saved_description=""
+if [ "$(node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} description)" = "true" ]; then
+  saved_description=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} description)
+fi
+
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{old}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary "$saved_summary"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing "$saved_routing"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source "$saved_source"
+if [ -n "$saved_description" ]; then
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} description "$saved_description"
+fi
 ```
 
 If any command fails, surface the error and stop before the commit so the user can recover — a partial rename leaves the manifest in an inconsistent state otherwise.
