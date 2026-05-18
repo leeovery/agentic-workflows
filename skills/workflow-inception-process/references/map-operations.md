@@ -342,27 +342,40 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 
 #### If `yes`
 
-Read the existing fields, delete the old key, create the new key, re-write the fields:
+Read the required fields:
 
 ```bash
 saved_summary=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} summary)
 saved_routing=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} routing)
 saved_source=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} source)
+```
 
-# Description is optional — probe with `exists` first so a bare `get` doesn't error.
-saved_description=""
-if [ "$(node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} description)" = "true" ]; then
-  saved_description=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} description)
-fi
+`description` is optional. Probe with `exists` first so a bare `get` doesn't error on items that have none:
 
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} description
+```
+
+If the probe returns `true`, read the value:
+
+```bash
+saved_description=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} description)
+```
+
+Delete the old key, create the new key, write the required fields:
+
+```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{old}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary "$saved_summary"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing "$saved_routing"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source "$saved_source"
-if [ -n "$saved_description" ]; then
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} description "$saved_description"
-fi
+```
+
+If a description was read above, also write it:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} description "$saved_description"
 ```
 
 If any command fails, surface the error and stop before the commit so the user can recover — a partial rename leaves the manifest in an inconsistent state otherwise.
