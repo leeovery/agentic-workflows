@@ -259,6 +259,41 @@ describe('refinement: rename mechanical sequence', () => {
     const item = readManifest('payments').phases.inception.items['new-name'];
     assert.ok(!('description' in item), 'description field should be absent when source had none');
   });
+
+  it('renames a migration-seeded item with no summary or description', () => {
+    // Migration 038 (and absorption from start-feature) seed items with
+    // routing + source only — no summary, no description. Rename must
+    // handle that shape without erroring on a bare get.
+    seedEpic('payments', {
+      'old-name': {
+        status: 'in-progress',
+        routing: 'discussion',
+        source: 'migration-seeded',
+        // no summary, no description
+      },
+    });
+
+    // Probes return false for both optional fields — skip both reads/writes.
+    const sumExists  = runCli('exists', 'payments.inception.old-name', 'summary').stdout.trimEnd();
+    const descExists = runCli('exists', 'payments.inception.old-name', 'description').stdout.trimEnd();
+    assert.strictEqual(sumExists, 'false');
+    assert.strictEqual(descExists, 'false');
+
+    // Required fields read cleanly.
+    const routing = runCli('get', 'payments.inception.old-name', 'routing').stdout.trimEnd();
+    const src     = runCli('get', 'payments.inception.old-name', 'source').stdout.trimEnd();
+
+    runCli('delete', 'payments.inception', 'items.old-name');
+    runCli('init-phase', 'payments.inception.new-name');
+    runCli('set', 'payments.inception.new-name', 'routing', routing);
+    runCli('set', 'payments.inception.new-name', 'source', src);
+
+    const item = readManifest('payments').phases.inception.items['new-name'];
+    assert.strictEqual(item.routing, 'discussion');
+    assert.strictEqual(item.source, 'migration-seeded');
+    assert.ok(!('summary' in item), 'summary should remain absent');
+    assert.ok(!('description' in item), 'description should remain absent');
+  });
 });
 
 describe('refinement: edit description', () => {
