@@ -46,7 +46,7 @@ A resumed first-session is a non-first inception entry — per the design, surfa
 > the resumed session before handing back.
 ```
 
-→ Load **[../../workflow-knowledge/references/contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+→ Load **[contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
 When it returns:
 

@@ -51,7 +51,7 @@ Refinement is a non-first inception entry — per the design, all non-first sess
 > work unit before the refinement loop begins.
 ```
 
-→ Load **[../../workflow-knowledge/references/contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+→ Load **[contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
 When it returns:
 
