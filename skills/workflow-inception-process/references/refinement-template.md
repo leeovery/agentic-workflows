@@ -38,7 +38,7 @@ Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
 
 The template is written to disk **at session start** with `(none)` placeholders under **Self-Healing Arrivals**, **Changes**, and **Conclusion**. The header and **Map State at Start** are populated immediately.
 
-- **Self-Healing Arrivals** — populated at session start by **D. Initialise Session Log** if **C. Self-Healing Check** ran analyses and they added items. Format: `- {topic} (added by {analysis}, source: {provenance})`. Leave `(none)` when no analyses ran or none added items.
+- **Self-Healing Arrivals** — populated at session start by **E. Initialise Session Log** if **D. Self-Healing Check** ran analyses and they added items. Format: `- {topic} (added by {analysis}, source: {provenance})`. Leave `(none)` when no analyses ran or none added items.
 - **Changes** — when the first operation is applied, the `(none)` placeholder is replaced with the operation bullet(s). Subsequent operations append.
 - **Conclusion** — the `(none)` placeholder is replaced **only at finalisation** (after the operations loop ends). The replacement is one of:
   - `{N} changes applied. Map now has {M} topics.` — when one or more changes were applied.
