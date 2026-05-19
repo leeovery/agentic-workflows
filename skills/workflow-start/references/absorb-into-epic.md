@@ -372,15 +372,45 @@ If the index command fails, display the error but do not block — the file is a
   The artifact is saved. Indexing can be retried later.
 ```
 
-→ Proceed to **J. Cleanup**.
+→ Proceed to **J. Register Inception Item**.
 
 #### Otherwise
 
-→ Proceed to **J. Cleanup**.
+→ Proceed to **J. Register Inception Item**.
 
 ---
 
-## J. Cleanup
+## J. Register Inception Item
+
+The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.inception.items` — without an inception entry, the topic is invisible to refinement, the continue-epic display, map-summary counts, and the dismissed-list flow.
+
+Routing reflects the work already done on the feature. `summary` and `description` are left unset — `source` defaults to `inception` at render time, and the next `/continue-epic` entry will detect the missing fields and route to `summary-backfill.md` so the user can review derived values.
+
+#### If `has_research` is `true`
+
+Set `routing` to `research`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.inception.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.inception.{topic} routing research
+```
+
+→ Proceed to **K. Cleanup**.
+
+#### Otherwise
+
+Set `routing` to `discussion`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.inception.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.inception.{topic} routing discussion
+```
+
+→ Proceed to **K. Cleanup**.
+
+---
+
+## K. Cleanup
 
 Remove the absorbed feature's chunks from the knowledge base (moved files were re-indexed under the epic):
 
@@ -412,11 +442,11 @@ rm -rf .workflows/{selected.name}/
 
 Commit: `workflow({selected.name}): absorb into {target_epic}`
 
-→ Proceed to **K. Post-Absorption**.
+→ Proceed to **L. Post-Absorption**.
 
 ---
 
-## K. Post-Absorption
+## L. Post-Absorption
 
 > *Output the next fenced block as a code block:*
 
