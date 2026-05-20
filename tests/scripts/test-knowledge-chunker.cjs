@@ -415,7 +415,7 @@ describe('phase chunking configs', () => {
     'chunking'
   );
 
-  const phases = ['research', 'discussion', 'investigation', 'specification', 'imports'];
+  const phases = ['research', 'discussion', 'investigation', 'specification', 'imports', 'analysis'];
 
   for (const phase of phases) {
     it('has a valid ' + phase + '.json config with required fields', () => {
@@ -444,7 +444,7 @@ describe('phase chunking configs', () => {
   });
 
   it('non-discussion configs have empty special_sections', () => {
-    for (const phase of ['research', 'investigation', 'specification', 'imports']) {
+    for (const phase of ['research', 'investigation', 'specification', 'imports', 'analysis']) {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
@@ -486,6 +486,70 @@ describe('phase chunking configs', () => {
       contents.some((c) => /## Identity Strategy/.test(c)),
       'expected an Identity Strategy chunk'
     );
+  });
+
+  it('analysis.json declares low confidence (analysis caches are surfacing aids, not source of truth)', () => {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
+    );
+    assert.strictEqual(cfg.confidence, 'low');
+  });
+
+  it('analysis config preserves H3-section content under a single H2 (Topics)', () => {
+    // Real analysis caches have one H2 (## Topics) with H3 subsections per theme.
+    // The config's primary_level=2 keeps the Topics section whole when small;
+    // assert chunks are emitted and the H3 content survives intact.
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
+    );
+    const src = [
+      '# research-analysis',
+      '',
+      '## Topics',
+      '',
+      '### Caching Layer',
+      '',
+      '- **Summary**: Recurring caching theme.',
+      '- **Sources**: discussion/foo.md',
+      '',
+      '### Rate Limiting',
+      '',
+      '- **Summary**: Per-service vs edge gateway.',
+      '- **Sources**: discussion/baz.md',
+      '',
+    ].join('\n');
+    const chunks = chunk(src, cfg);
+    assert.ok(chunks.length >= 1, 'expected at least one chunk emitted');
+    const combined = chunks.map((c) => c.content).join('\n');
+    assert.ok(/Caching Layer/.test(combined), 'expected Caching Layer content preserved');
+    assert.ok(/Rate Limiting/.test(combined), 'expected Rate Limiting content preserved');
+  });
+
+  it('analysis config falls back to H3 splitting when the H2 section is large', () => {
+    // primary_level=2, fallback_level=3, max_lines=200. Force the H2 section
+    // past max_lines so the chunker falls back to splitting at H3.
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(chunkingDir, 'analysis.json'), 'utf8')
+    );
+    const src = [
+      '# research-analysis',
+      '',
+      '## Topics',
+      '',
+      '### Caching Layer',
+      '',
+      Array.from({ length: 120 }, (_, i) => 'caching line ' + (i + 1)).join('\n'),
+      '',
+      '### Rate Limiting',
+      '',
+      Array.from({ length: 120 }, (_, i) => 'rate line ' + (i + 1)).join('\n'),
+      '',
+    ].join('\n');
+    const chunks = chunk(src, cfg);
+    assert.ok(chunks.length >= 2, 'expected H3 fallback splitting on oversized H2 section');
+    const contents = chunks.map((c) => c.content);
+    assert.ok(contents.some((c) => /### Caching Layer/.test(c)), 'expected a Caching Layer chunk');
+    assert.ok(contents.some((c) => /### Rate Limiting/.test(c)), 'expected a Rate Limiting chunk');
   });
 });
 
