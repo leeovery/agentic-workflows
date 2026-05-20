@@ -87,13 +87,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source direct-start
 ```
 
-If `summary` was supplied and is non-empty, write it. Quote with single quotes; preserve apostrophes inside via standard shell escaping:
+If `summary` was supplied and is non-empty, write it:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} summary "{summary}"
 ```
 
-If `description` was supplied and is non-empty, write it. Description may span multiple paragraphs; quote the same way as summary:
+If `description` was supplied and is non-empty, write it (multi-paragraph values are fine):
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} description "{description}"
