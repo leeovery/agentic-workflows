@@ -9,8 +9,6 @@ Two anti-patterns to avoid (the discussion-process precedent does both, but ince
 - **Do not call `knowledge index`.** Inception is not a knowledge-base indexed phase — session logs are journey records, not retrievable artifacts.
 - **Do not set a phase-level `status: completed`.** Inception is alive as long as the work unit is in-progress; phase completion is emergent from the items themselves, not a manifest field on the phase.
 
-By the time this reference loads, **Step 5 (Confirm and Persist) has already written the manifest and committed**. There is no "stay in the session" option here — the map is seeded. For further changes, the user re-enters refinement via `/continue-epic`.
-
 ## A. Final Sweep
 
 Check `git status`. If the working tree is dirty, commit the residual changes:
