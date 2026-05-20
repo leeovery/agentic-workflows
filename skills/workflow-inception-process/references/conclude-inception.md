@@ -9,30 +9,9 @@ Two anti-patterns to avoid (the discussion-process precedent does both, but ince
 - **Do not call `knowledge index`.** Inception is not a knowledge-base indexed phase — session logs are journey records, not retrievable artifacts.
 - **Do not set a phase-level `status: completed`.** Inception is alive as long as the work unit is in-progress; phase completion is emergent from the items themselves, not a manifest field on the phase.
 
-## A. Final Confirmation
+By the time this reference loads, **Step 5 (Confirm and Persist) has already written the manifest and committed**. There is no "stay in the session" option here — the map is seeded. For further changes, the user re-enters refinement via `/continue-epic`.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Conclude inception and return to the epic menu?
-
-- **`y`/`yes`** — Conclude and bridge back to /continue-epic
-- **`n`/`no`** — Stay in the session for further refinement
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `no`
-
-→ Return to **[the skill](../SKILL.md)** for **Step 3**.
-
-#### If `yes`
-
-→ Proceed to **B. Final Sweep**.
-
-## B. Final Sweep
+## A. Final Sweep
 
 Check `git status`. If the working tree is dirty, commit the residual changes:
 
@@ -43,9 +22,9 @@ git commit -m "inception({work_unit}): finalise session log"
 
 If the working tree is already clean, skip the commit.
 
-→ Proceed to **C. Bridge**.
+→ Proceed to **B. Bridge**.
 
-## C. Bridge
+## B. Bridge
 
 > *Output the next fenced block as markdown (not a code block):*
 
