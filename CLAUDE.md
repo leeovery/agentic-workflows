@@ -152,7 +152,7 @@ Migration scripts are point-in-time snapshots. The manifest CLI validates agains
 
 **Testing migrations:**
 
-Every migration must have a corresponding test file at `tests/scripts/test-migration-NNN.sh`. Follow the harness structure in existing test files (`set -eo pipefail`, `PASS`/`FAIL` counters, `report_update`/`report_skip` stubs, `assert_eq` function, `setup`/`teardown` with temp dir). Conventions:
+Every migration must have a corresponding test file at `tests/scripts/test-migration-NNN.sh`. Follow the harness structure in existing test files (`set -euo pipefail`, `PASS`/`FAIL` counters, `report_update`/`report_skip` stubs, `assert_eq` function, `setup`/`teardown` with temp dir). Conventions:
 - **Invocation**: Use `source "$MIGRATION"` for migrations that use `return 0`. Use `bash "$MIGRATION"` with `export -f report_update report_skip` for migrations that use `exit 0`.
 - **Isolation**: Each test function calls `setup` at the start and `teardown` at the end. No shared state between tests.
 - **Assertions**: Use only `assert_eq`. Parameter order: `label`, `expected`, `actual`. Convert other checks inline:
