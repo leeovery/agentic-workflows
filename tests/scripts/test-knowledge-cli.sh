@@ -1406,6 +1406,22 @@ echo "" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
 assert_eq "rebuild aborts empty" "1" "$exit_code"
 teardown_project
 
+# --- Test 63b: Rebuild on an empty project surfaces the corrected wording ---
+# Phase 16 dropped the inaccurate "completed" qualifier from the abort message
+# (artifacts now include imports and analysis caches, neither of which is
+# "completed" in any phase sense). Lock the wording so a future regression
+# is caught.
+echo "Test 63b: Rebuild empty-project wording is current"
+setup_project
+write_stub_config
+exit_code=0
+output=$(echo "rebuild" | run_kb rebuild 2>&1 || true)
+echo "rebuild" | run_kb rebuild >/dev/null 2>&1 || exit_code=$?
+assert_eq "empty-project rebuild aborts" "1" "$exit_code"
+assert_eq "uses new wording" "true" "$(echo "$output" | grep -qF 'No artifacts to index. Aborting rebuild' && echo true || echo false)"
+assert_eq "does not use stale wording" "false" "$(echo "$output" | grep -qF 'No completed artifacts' && echo true || echo false)"
+teardown_project
+
 # ============================================================================
 # BATCH QUERY TESTS
 # ============================================================================
