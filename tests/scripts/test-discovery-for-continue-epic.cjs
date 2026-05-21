@@ -299,13 +299,13 @@ describe('continue-epic discovery', () => {
 
     it('discovery_map exposes source, summary, and description per item for legacy-recovery filter', () => {
       // Continue-epic Step 6 (Summary Backfill) filters discovery_map by
-      // source.startsWith('migration-seeded') && (!summary || !description).
-      // Phase 14 expanded the filter from summary-only to also catch
-      // description-null items, so pre-Phase-14 backfills (summary present,
-      // description null) re-enter the flow once to populate description.
-      // The startsWith check on source remains: Phase 7's analyses append
-      // their tag to existing source values (e.g. 'migration-seeded,research-analysis')
-      // when re-surfacing a migrated topic, without writing summary or description.
+      // (!summary || !description) — source-agnostic. Any write path that
+      // lands an item with missing fields surfaces for review:
+      // - migration-seeded items (legacy back-fill)
+      // - pre-Phase-14 items with summary but no description
+      // - absorption-registered items (no source set, defaults to "inception"
+      //   at render time, summary/description left for backfill)
+      // Items already fully populated are excluded.
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -317,6 +317,7 @@ describe('continue-epic discovery', () => {
               'migrated-fully-populated': { routing: 'discussion', source: 'migration-seeded', summary: 'Both populated', description: 'Backfilled after Phase 14' },
               'migrated-then-resurfaced': { routing: 'discussion', source: 'migration-seeded,research-analysis' },
               'analysis-only': { routing: 'discussion', source: 'research-analysis', summary: 'From analysis', description: 'analysis paragraphs' },
+              'absorbed-no-fields': { routing: 'discussion' },
             },
           },
         },
@@ -345,17 +346,21 @@ describe('continue-epic discovery', () => {
 
       assert.strictEqual(byName['analysis-only'].source, 'research-analysis');
 
-      // The Phase-14 filter contract — migration-seeded items missing either summary or description
-      const toRecover = map.filter(t =>
-        t.source && t.source.startsWith('migration-seeded') && (!t.summary || !t.description)
-      );
+      assert.strictEqual(byName['absorbed-no-fields'].source, 'inception');
+      assert.strictEqual(byName['absorbed-no-fields'].summary, null);
+      assert.strictEqual(byName['absorbed-no-fields'].description, null);
+
+      // Filter contract — any item missing summary OR description, regardless of source.
+      const toRecover = map.filter(t => !t.summary || !t.description);
       const recoverNames = toRecover.map(t => t.name).sort();
       assert.deepStrictEqual(
         recoverNames,
-        ['migrated-no-summary', 'migrated-summary-no-description', 'migrated-then-resurfaced'],
+        ['absorbed-no-fields', 'migrated-no-summary', 'migrated-summary-no-description', 'migrated-then-resurfaced'],
       );
       // Items already fully populated are excluded
       assert.ok(!recoverNames.includes('migrated-fully-populated'));
+      assert.ok(!recoverNames.includes('pristine'));
+      assert.ok(!recoverNames.includes('analysis-only'));
     });
   });
 
