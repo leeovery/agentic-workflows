@@ -115,7 +115,9 @@ Set `source` = `first-session`.
 > session.
 ```
 
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+Set `source` = `refinement` for the handoff.
+
+→ Proceed to **Step 4**.
 
 ---
 

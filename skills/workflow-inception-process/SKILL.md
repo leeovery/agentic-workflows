@@ -1,7 +1,7 @@
 ---
 name: workflow-inception-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-inception-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
 ---
 
 # Inception Process
@@ -41,91 +41,43 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the session log** at `.workflows/{work_unit}/inception/session-001.md` if it exists. The Topics Identified section is your primary progress indicator — it shows which topics have already been surfaced and tentatively routed.
+2. **Read the most recent session log** — find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md`. For initial sessions this is `session-001.md` and the **Topics Identified** section is your primary progress indicator. For refinement sessions (`session-NNN.md`, NNN > 1) the **Changes** section shows what has already been applied; an unfinalised log has `(none)` under **Conclusion** and should be resumed via **B. Resume Check** in `references/refinement-session.md`.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages reveal what has been completed.
-4. **Announce your position** to the user before continuing: render the current working list of topics, state what step you believe you're at, and what comes next. Wait for confirmation.
+4. **Announce your position** to the user before continuing: render the current working list (initial) or the changes applied so far (refinement), state what step you believe you're at, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
 ---
 
-## Step 0: Resume Detection
+## Step 0: Source-Aware Detection
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Resume Detection ─────────────────────────────
+── Source-Aware Detection ───────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an existing inception session log on disk. The
-> entry skill has already verified there are no inception items
-> in the manifest — this check is purely about within-session
-> recovery after a context refresh.
+> Reading the handoff source. Refinement re-entry routes
+> straight to the refinement flow; first-session entry checks
+> for an interrupted draft session log on disk.
 ```
 
-Check whether any file matching `.workflows/{work_unit}/inception/session-*.md` exists.
+Read the `Source:` field from the handoff in the prior message.
 
-#### If no file exists
+#### If `source` is `refinement`
 
-→ Proceed to **Step 1**.
+Inception items already exist for this work unit. Open the refinement session.
 
-#### If `session-001.md` is the only session file
+Load **[refinement-session.md](references/refinement-session.md)** and follow its instructions as written.
 
-A prior in-session draft is on disk and the session was interrupted (likely a context refresh). Read the file, then offer continue or restart.
+#### If `source` is `first-session`
 
-> *Output the next fenced block as markdown (not a code block):*
+The entry skill has verified there are no inception items in the manifest. Check the inception directory for an interrupted draft before starting fresh.
 
-```
-Found an in-progress inception session log for **{work_unit:(titlecase)}**.
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the draft session log and start fresh
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-→ Proceed to **Step 2**. The draft session log is your working list — session-loop will brief the user on resume.
-
-#### If `restart`
-
-1. Delete the draft session log.
-2. Commit: `inception({work_unit}): restart inception session`.
-
-→ Proceed to **Step 1**.
-
-
-
-#### If any `session-NNN.md` for N > 1 exists
-
-The work unit has previously concluded an inception session and is being re-entered. Refinement is a future-phase deliverable in this initiative.
-
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Inception Refinement
-●───────────────────────────────────────────────●
-
-Refinement of the discovery map is not yet implemented.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> A prior inception session has concluded for "{work_unit}". The
-> refinement flow — adding, renaming, removing topics, editing
-> summaries, changing routing — lands in a later phase of the
-> inception/discovery-map initiative.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Load **[first-session-resume.md](references/first-session-resume.md)** and follow its instructions as written.
 
 ---
 
