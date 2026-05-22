@@ -80,6 +80,7 @@ The map lives in the work-unit manifest at `phases.inception.items.{topic}`. Eac
 
 - `name` — the topic identifier (kebab-case, used as filename for downstream phases)
 - `summary` — one-line description of what the topic covers
+- `description` — paragraph or two of richer context, loaded by entry skills as opening context for the session
 - `routing` — `research` | `discussion`. The *initial intent* set in inception. Source of truth for menu routing only when no per-phase items exist; otherwise the actual flow is determined by which phase items exist.
 - `source` — provenance: `inception`, `research-split:{parent}`, `discussion-elevation:{parent}`, `gap-analysis`, `research-analysis`, `direct-start`
 - `created`, `updated` — timestamps

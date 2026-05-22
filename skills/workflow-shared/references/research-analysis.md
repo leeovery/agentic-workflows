@@ -100,11 +100,14 @@ Initialise the inception item and write its fields:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{name}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{one-line summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{paragraphs}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing discussion
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source research-analysis
 ```
 
 Routing is `discussion` — research-surfaced themes are discussion candidates by definition.
+
+`description` is a paragraph or two extracted from the analysis output for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up for discussion. Quote with single quotes; description may span multiple paragraphs.
 
 Append the name to the caller's `tracker` so the orchestrator can surface it via callout / Self-Healing Arrivals.
 

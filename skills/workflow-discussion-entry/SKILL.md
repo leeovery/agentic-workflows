@@ -92,6 +92,8 @@ What topic would you like to discuss?
 
 Kebab-case the response, store as `{topic}`. Set `source = "fresh"`.
 
+Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-inception-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
+
 → Proceed to **Step 2** (Validate Phase).
 
 ---
@@ -111,7 +113,7 @@ Kebab-case the response, store as `{topic}`. Set `source = "fresh"`.
 > in progress, or completed.
 ```
 
-Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`. On the direct-entry path (`source = "fresh"`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. On the topic-resolved path, omit both — the caller didn't derive them.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 

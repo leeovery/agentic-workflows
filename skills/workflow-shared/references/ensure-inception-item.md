@@ -6,7 +6,7 @@
 
 Idempotently ensures a `phases.inception.items.{topic}` entry exists for the given topic on the given work unit. If the work unit is not an epic, returns immediately — only epics have a discovery map. Otherwise: if the item already exists, this reference is a no-op; if not, it pulls the topic from `dismissed[]` (when present) and creates the item with `source: direct-start` and the caller-supplied `routing`.
 
-The reference assumes `topic` is already kebab-case — callers normalise before invoking. No summary is set; direct-entry items have no source content to summarise. The user can backfill via refinement's edit-summary later.
+The reference assumes `topic` is already kebab-case — callers normalise before invoking. Callers may pass `summary` and `description` when they have material to derive from (e.g. the user's opening response to "what topic"); when omitted, the item is created with routing + source only and the user can backfill via refinement later.
 
 ## Parameters
 
@@ -16,6 +16,8 @@ The caller provides these via context before loading:
 - `work_unit` — the epic's work unit name. Always present.
 - `topic` — the kebab-case topic name. Always present.
 - `routing` — the literal `research` or `discussion`. Set by the caller based on which entry verb the user picked.
+- `summary` — optional one-line summary. Written only on creation, only when provided and non-empty.
+- `description` — optional paragraph or two of richer context. Written only on creation, only when provided and non-empty.
 
 ## A. Gate on Work Type
 
@@ -83,6 +85,18 @@ Initialise the item and set provenance fields:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} routing {routing}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source direct-start
+```
+
+If `summary` was supplied and is non-empty, write it. Quote with single quotes; preserve apostrophes inside via standard shell escaping:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} summary "{summary}"
+```
+
+If `description` was supplied and is non-empty, write it. Description may span multiple paragraphs; quote the same way as summary:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} description "{description}"
 ```
 
 No commit here — the manifest writes are folded into the next commit produced by the calling phase's process.

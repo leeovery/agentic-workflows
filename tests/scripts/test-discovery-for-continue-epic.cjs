@@ -297,22 +297,26 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
 
-    it('discovery_map exposes source and summary per item for legacy-recovery filter', () => {
-      // Continue-epic Step 6 (Legacy Recovery) filters discovery_map by
-      // source.startsWith('migration-seeded') && !summary. This locks the shape.
-      // The startsWith check is necessary because Phase 7's analyses append
+    it('discovery_map exposes source, summary, and description per item for legacy-recovery filter', () => {
+      // Continue-epic Step 6 (Summary Backfill) filters discovery_map by
+      // source.startsWith('migration-seeded') && (!summary || !description).
+      // Phase 14 expanded the filter from summary-only to also catch
+      // description-null items, so pre-Phase-14 backfills (summary present,
+      // description null) re-enter the flow once to populate description.
+      // The startsWith check on source remains: Phase 7's analyses append
       // their tag to existing source values (e.g. 'migration-seeded,research-analysis')
-      // when re-surfacing a migrated topic, without writing a summary.
+      // when re-surfacing a migrated topic, without writing summary or description.
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
           inception: {
             items: {
-              'pristine': { routing: 'research', source: 'inception', summary: 'Brand-new topic with summary' },
+              'pristine': { routing: 'research', source: 'inception', summary: 'Brand-new topic with summary', description: 'Already grounded' },
               'migrated-no-summary': { routing: 'research', source: 'migration-seeded' },
-              'migrated-with-summary': { routing: 'discussion', source: 'migration-seeded', summary: 'Already populated' },
+              'migrated-summary-no-description': { routing: 'discussion', source: 'migration-seeded', summary: 'Backfilled before Phase 14' },
+              'migrated-fully-populated': { routing: 'discussion', source: 'migration-seeded', summary: 'Both populated', description: 'Backfilled after Phase 14' },
               'migrated-then-resurfaced': { routing: 'discussion', source: 'migration-seeded,research-analysis' },
-              'analysis-only': { routing: 'discussion', source: 'research-analysis', summary: 'From analysis' },
+              'analysis-only': { routing: 'discussion', source: 'research-analysis', summary: 'From analysis', description: 'analysis paragraphs' },
             },
           },
         },
@@ -323,22 +327,35 @@ describe('continue-epic discovery', () => {
 
       assert.strictEqual(byName['pristine'].source, 'inception');
       assert.strictEqual(byName['pristine'].summary, 'Brand-new topic with summary');
+      assert.strictEqual(byName['pristine'].description, 'Already grounded');
 
       assert.strictEqual(byName['migrated-no-summary'].source, 'migration-seeded');
       assert.strictEqual(byName['migrated-no-summary'].summary, null);
+      assert.strictEqual(byName['migrated-no-summary'].description, null);
 
-      assert.strictEqual(byName['migrated-with-summary'].source, 'migration-seeded');
-      assert.strictEqual(byName['migrated-with-summary'].summary, 'Already populated');
+      assert.strictEqual(byName['migrated-summary-no-description'].summary, 'Backfilled before Phase 14');
+      assert.strictEqual(byName['migrated-summary-no-description'].description, null);
+
+      assert.strictEqual(byName['migrated-fully-populated'].summary, 'Both populated');
+      assert.strictEqual(byName['migrated-fully-populated'].description, 'Backfilled after Phase 14');
 
       assert.strictEqual(byName['migrated-then-resurfaced'].source, 'migration-seeded,research-analysis');
       assert.strictEqual(byName['migrated-then-resurfaced'].summary, null);
+      assert.strictEqual(byName['migrated-then-resurfaced'].description, null);
 
       assert.strictEqual(byName['analysis-only'].source, 'research-analysis');
 
-      // The legacy-recovery filter contract — matches origin via startsWith
-      const toRecover = map.filter(t => t.source && t.source.startsWith('migration-seeded') && !t.summary);
+      // The Phase-14 filter contract — migration-seeded items missing either summary or description
+      const toRecover = map.filter(t =>
+        t.source && t.source.startsWith('migration-seeded') && (!t.summary || !t.description)
+      );
       const recoverNames = toRecover.map(t => t.name).sort();
-      assert.deepStrictEqual(recoverNames, ['migrated-no-summary', 'migrated-then-resurfaced']);
+      assert.deepStrictEqual(
+        recoverNames,
+        ['migrated-no-summary', 'migrated-summary-no-description', 'migrated-then-resurfaced'],
+      );
+      // Items already fully populated are excluded
+      assert.ok(!recoverNames.includes('migrated-fully-populated'));
     });
   });
 
