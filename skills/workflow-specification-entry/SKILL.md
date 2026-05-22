@@ -10,16 +10,14 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-This is **Phase 3** of the six-phase workflow:
+You are in the **Specification** phase — refining prior work into a standalone spec. Where Specification sits in the pipeline depends on the work type:
 
-| Phase                | Focus                                              | You    |
-|----------------------|----------------------------------------------------|--------|
-| 1. Research          | EXPLORE - ideas, feasibility, market, business     |        |
-| 2. Discussion        | WHAT and WHY - decisions, architecture, edge cases |        |
-| **3. Specification** | REFINE - validate into standalone spec             | ◀ HERE |
-| 4. Planning          | HOW - phases, tasks, acceptance criteria           |        |
-| 5. Implementation    | DOING - tests first, then code                     |        |
-| 6. Review            | VALIDATING - check work against artifacts          |        |
+| Work type | Pipeline |
+|---|---|
+| Epic | Inception → Research → Discussion → **Specification** → Planning → Implementation → Review |
+| Feature | Discussion → **Specification** → Planning → Implementation → Review |
+| Bugfix | Investigation → **Specification** → Planning → Implementation → Review |
+| Cross-cutting | Research (optional) → Discussion → **Specification** (terminal) |
 
 **Stay in your lane**: Validate and refine discussion content into standalone specifications. Don't jump to planning, phases, tasks, or code. The specification is the "line in the sand" - everything after this has hard dependencies on it.
 

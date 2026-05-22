@@ -10,16 +10,13 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-This is **Phase 1** of the six-phase workflow:
+You are in the **Research** phase — exploring ideas, feasibility, market, and viability. Where Research sits in the pipeline depends on the work type:
 
-| Phase             | Focus                                              | You    |
-|-------------------|----------------------------------------------------|--------|
-| **1. Research**   | EXPLORE - ideas, feasibility, market, business     | ◀ HERE |
-| 2. Discussion     | WHAT and WHY - decisions, architecture, edge cases |        |
-| 3. Specification  | REFINE - validate into standalone spec             |        |
-| 4. Planning       | HOW - phases, tasks, acceptance criteria           |        |
-| 5. Implementation | DOING - tests first, then code                     |        |
-| 6. Review         | VALIDATING - check work against artifacts          |        |
+| Work type | Pipeline |
+|---|---|
+| Epic | Inception → **Research** → Discussion → Specification → Planning → Implementation → Review |
+| Feature | **Research** (imported) → Discussion → Specification → Planning → Implementation → Review |
+| Cross-cutting | **Research** (optional) → Discussion → Specification (terminal) |
 
 **Stay in your lane**: Explore freely. This is the time for broad thinking, feasibility checks, and learning. Surface options and tradeoffs — don't make decisions. When a topic converges toward a conclusion, that's a signal it's ready for discussion phase, not a cue to start deciding. Park it and move on.
 
@@ -73,7 +70,7 @@ Imports already populated context via `imports/` and the knowledge base — skip
 
 → Proceed to **Step 5**.
 
-#### If work_type is `feature`
+#### If work_type is `feature` or `cross-cutting`
 
 `resolved_filename = {topic}.md`
 
@@ -106,6 +103,8 @@ Deferred — gather-context will resolve it.
 ```
 > Checking if research already exists for this topic.
 ```
+
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
 
 Check if the research phase entry exists:
 

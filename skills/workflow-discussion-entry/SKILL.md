@@ -10,16 +10,13 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-This is **Phase 2** of the six-phase workflow:
+You are in the **Discussion** phase — capturing WHAT and WHY through decisions, rationale, competing approaches, and edge cases. Where Discussion sits in the pipeline depends on the work type:
 
-| Phase              | Focus                                              | You    |
-|--------------------|----------------------------------------------------|--------|
-| 1. Research        | EXPLORE - ideas, feasibility, market, business     |        |
-| **2. Discussion**  | WHAT and WHY - decisions, architecture, edge cases | ◀ HERE |
-| 3. Specification   | REFINE - validate into standalone spec             |        |
-| 4. Planning        | HOW - phases, tasks, acceptance criteria           |        |
-| 5. Implementation  | DOING - tests first, then code                     |        |
-| 6. Review          | VALIDATING - check work against artifacts          |        |
+| Work type | Pipeline |
+|---|---|
+| Epic | Inception → Research → **Discussion** → Specification → Planning → Implementation → Review |
+| Feature | **Discussion** → Specification → Planning → Implementation → Review |
+| Cross-cutting | Research (optional) → **Discussion** → Specification (terminal) |
 
 **Stay in your lane**: Capture the WHAT and WHY - decisions, rationale, competing approaches, edge cases. Don't jump to specifications, plans, or code. This is the time for debate and documentation.
 
@@ -79,6 +76,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.di
 
 Set `source = "topic-provided"`.
 
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+
 → Proceed to **Step 3** (Gather Context).
 
 #### If no `topic` (epic — no-topic path)
@@ -113,6 +112,8 @@ Use the response as `{topic}` (convert to kebab-case via the casing conventions)
 > Checking the status of this discussion — new,
 > in progress, or completed.
 ```
+
+Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 

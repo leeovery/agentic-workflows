@@ -23,7 +23,9 @@ Do you have a specific topic to research, or explore openly?
 
 **If `explore`:**
 
-`resolved_filename = exploration.md`
+`topic = exploration`
+
+`resolved_filename = {topic}.md`
 
 → Proceed to **B. Seed Idea**.
 
@@ -37,11 +39,11 @@ What topic would you like to research?
 
 **STOP.** Wait for user response.
 
-User provides topic name → `resolved_filename = {topic:(kebabcase)}.md`
+User provides topic name → set `topic` to the kebab-cased response, `resolved_filename = {topic}.md`.
 
 → Proceed to **B. Seed Idea**.
 
-#### If work_type is `feature`
+#### If work_type is `feature` or `cross-cutting`
 
 No question needed. `resolved_filename = {topic}.md`
 
@@ -119,5 +121,15 @@ Any constraints or context I should know about upfront?
 ```
 
 **STOP.** Wait for user response.
+
+→ Proceed to **F. Ensure Inception Item**.
+
+---
+
+## F. Ensure Inception Item
+
+The no-topic-epic path enters this reference with no inception item written and bypasses Step 2 on exit, so the auto-create must run here. The shared reference is idempotent: when Step 2 already ran the load on a topic-resolved path, the existence check in the shared reference returns true and F is a no-op; for non-epic work_types, the gate returns immediately.
+
+→ Load **[ensure-inception-item.md](../../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
 
 → Return to caller.

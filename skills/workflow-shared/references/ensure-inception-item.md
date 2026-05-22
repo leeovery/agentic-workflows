@@ -1,0 +1,90 @@
+# Ensure Inception Item
+
+*Shared reference. Loaded by `workflow-research-entry`, `workflow-discussion-entry`, and any flow that needs to auto-create a direct-entry inception item.*
+
+---
+
+Idempotently ensures a `phases.inception.items.{topic}` entry exists for the given topic on the given work unit. If the work unit is not an epic, returns immediately — only epics have a discovery map. Otherwise: if the item already exists, this reference is a no-op; if not, it pulls the topic from `dismissed[]` (when present) and creates the item with `source: direct-start` and the caller-supplied `routing`.
+
+The reference assumes `topic` is already kebab-case — callers normalise before invoking. No summary is set; direct-entry items have no source content to summarise. The user can backfill via refinement's edit-summary later.
+
+## Parameters
+
+The caller provides these via context before loading:
+
+- `work_type` — the work unit's type. The reference no-ops for any value other than `epic`.
+- `work_unit` — the epic's work unit name. Always present.
+- `topic` — the kebab-case topic name. Always present.
+- `routing` — the literal `research` or `discussion`. Set by the caller based on which entry verb the user picked.
+
+## A. Gate on Work Type
+
+The discovery map is epic-only. Features, bugfixes, quick-fixes, and cross-cutting work units have no inception phase, and writing one would corrupt their manifests.
+
+#### If `work_type` is `epic`
+
+→ Proceed to **B. Check Existence**.
+
+#### Otherwise
+
+→ Return to caller.
+
+## B. Check Existence
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{topic}
+```
+
+#### If exists (`true`)
+
+The topic is already on the map. Nothing to do — fall through to the caller's existing flow.
+
+→ Return to caller.
+
+#### If not exists (`false`)
+
+→ Proceed to **C. Check Dismissed and Pull**.
+
+## C. Check Dismissed and Pull
+
+Most epics never dismiss anything, so the dismissed list is usually absent. Probe for its existence first to avoid surfacing a "Path not found" error from a bare `get`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception dismissed
+```
+
+#### If exists (`true`)
+
+Read the list:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception dismissed
+```
+
+If `{topic}` appears in the returned JSON array, pull it (user-explicit spawns bypass dismissal):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{topic}"
+```
+
+→ Proceed to **D. Create Inception Item**.
+
+#### If not exists (`false`)
+
+No dismissed list — nothing to pull.
+
+→ Proceed to **D. Create Inception Item**.
+
+## D. Create Inception Item
+
+Initialise the item and set provenance fields:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} routing {routing}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source direct-start
+```
+
+No commit here — the manifest writes are folded into the next commit produced by the calling phase's process.
+
+→ Return to caller.

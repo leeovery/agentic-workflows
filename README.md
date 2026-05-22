@@ -99,11 +99,11 @@ Each command gathers context through a brief interview, then pipelines you throu
 Five work types, each with its own pipeline:
 
 ```
-Epic:          Research → Discussion → Specification → Planning → Implementation → Review
-Feature:     (Research) → Discussion → Specification → Planning → Implementation → Review
-Bugfix:                Investigation → Specification → Planning → Implementation → Review
-Quick-fix:                   Scoping → Implementation → Review
-Cross-cutting: (Research) → Discussion → Specification (terminal)
+Epic:          Inception → Research → Discussion → Specification → Planning → Implementation → Review
+Feature:                (Research) → Discussion → Specification → Planning → Implementation → Review
+Bugfix:                             Investigation → Specification → Planning → Implementation → Review
+Quick-fix:                                                Scoping → Implementation → Review
+Cross-cutting:          (Research) → Discussion → Specification (terminal)
 ```
 
 These aren't just different shapes — every phase adapts its behaviour to the work type. This runs deep, from how research is analysed to how plans are structured to how review findings are prioritised.
