@@ -238,9 +238,9 @@ No analyses to run.
 
 → Load **[self-healing.md](../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
 
-On return, store the orchestrator's `new_arrivals` tracker in conversation memory — Step 6 reads it to render the callout above the discovery map.
+On return, store the orchestrator's `new_arrivals` tracker in conversation memory — Step 7 reads it to render the callout above the discovery map.
 
-Re-run discovery for the work unit so Step 6 has fresh state including auto-added items:
+Re-run discovery for the work unit so Step 6 (summary backfill) and Step 7 (display) have fresh state including auto-added items:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
@@ -250,7 +250,25 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 ---
 
-## Step 6: Display State and Menu
+## Step 6: Summary Backfill
+
+Read `discovery_map` from the selected epic's `detail`. Filter for items where `source` starts with `'migration-seeded'` and `summary` is null or missing.
+
+#### If no items match
+
+→ Proceed to **Step 7**.
+
+#### If one or more items match
+
+Store the filtered list as `items_to_recover`.
+
+Load **[summary-backfill.md](references/summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
+
+→ Proceed to **Step 7**.
+
+---
+
+## Step 7: Display State and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -266,11 +284,11 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when Step 5 did not load the orchestrator).
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Route Selection
+## Step 8: Route Selection
 
 > *Output the next fenced block as a code block:*
 

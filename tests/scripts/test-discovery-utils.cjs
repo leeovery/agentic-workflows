@@ -669,6 +669,10 @@ describe('discovery-utils', () => {
     it('returns null for empty source', () => {
       assert.strictEqual(computeSourceProvenance(''), null);
     });
+
+    it('renders bare migration-seeded as "from migration-seeded"', () => {
+      assert.strictEqual(computeSourceProvenance('migration-seeded'), 'from migration-seeded');
+    });
   });
 
   describe('computeAnalysisCacheStatus', () => {
@@ -777,4 +781,5 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.status, 'absent');
     });
   });
+
 });

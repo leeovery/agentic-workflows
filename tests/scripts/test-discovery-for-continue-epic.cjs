@@ -296,6 +296,50 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
+
+    it('discovery_map exposes source and summary per item for legacy-recovery filter', () => {
+      // Continue-epic Step 6 (Legacy Recovery) filters discovery_map by
+      // source.startsWith('migration-seeded') && !summary. This locks the shape.
+      // The startsWith check is necessary because Phase 7's analyses append
+      // their tag to existing source values (e.g. 'migration-seeded,research-analysis')
+      // when re-surfacing a migrated topic, without writing a summary.
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              'pristine': { routing: 'research', source: 'inception', summary: 'Brand-new topic with summary' },
+              'migrated-no-summary': { routing: 'research', source: 'migration-seeded' },
+              'migrated-with-summary': { routing: 'discussion', source: 'migration-seeded', summary: 'Already populated' },
+              'migrated-then-resurfaced': { routing: 'discussion', source: 'migration-seeded,research-analysis' },
+              'analysis-only': { routing: 'discussion', source: 'research-analysis', summary: 'From analysis' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const map = r.epics[0].detail.discovery_map;
+      const byName = Object.fromEntries(map.map(t => [t.name, t]));
+
+      assert.strictEqual(byName['pristine'].source, 'inception');
+      assert.strictEqual(byName['pristine'].summary, 'Brand-new topic with summary');
+
+      assert.strictEqual(byName['migrated-no-summary'].source, 'migration-seeded');
+      assert.strictEqual(byName['migrated-no-summary'].summary, null);
+
+      assert.strictEqual(byName['migrated-with-summary'].source, 'migration-seeded');
+      assert.strictEqual(byName['migrated-with-summary'].summary, 'Already populated');
+
+      assert.strictEqual(byName['migrated-then-resurfaced'].source, 'migration-seeded,research-analysis');
+      assert.strictEqual(byName['migrated-then-resurfaced'].summary, null);
+
+      assert.strictEqual(byName['analysis-only'].source, 'research-analysis');
+
+      // The legacy-recovery filter contract — matches origin via startsWith
+      const toRecover = map.filter(t => t.source && t.source.startsWith('migration-seeded') && !t.summary);
+      const recoverNames = toRecover.map(t => t.name).sort();
+      assert.deepStrictEqual(recoverNames, ['migrated-no-summary', 'migrated-then-resurfaced']);
+    });
   });
 
   describe('edge cases', () => {

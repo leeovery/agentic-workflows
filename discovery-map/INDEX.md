@@ -23,7 +23,9 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 11. **[Migration](phase-11-migration.md)** — seed inception items for existing in-progress epics. **Status:** Not started
 12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Not started
 13. **[Documentation Cleanup](phase-13-documentation.md)** — CLAUDE.md, README, phase tables, compliance checks. **Status:** Not started
-14. **[Final Review and Cleanup](phase-14-cleanup.md)** — catch-all for behavioural gaps and stale wording surfaced during phase reviews (absorption + imports, continue-feature display, rebuild error wording, inception KB query). **Status:** Not started
+14. **[Two-Tier Provenance](phase-14-provenance.md)** — add `description` field to inception items; every write surface populates it; entry skills load it as session opening context; direct-entry derives summary + description from the opening question. **Status:** Not started
+15. **[KB Index Analysis Caches](phase-15-kb-index-analysis.md)** — index `.state/research-analysis.md` and `.state/discussion-gap-analysis.md` so the analysis content is searchable via knowledge queries. **Status:** Not started
+16. **[Final Review and Cleanup](phase-16-cleanup.md)** — catch-all for behavioural gaps and stale wording surfaced during phase reviews (absorption + imports, continue-feature display, rebuild error wording, inception KB query). **Status:** Not started
 
 ## Dependencies
 
@@ -38,26 +40,30 @@ Phase 1 (manifest foundations)
                   │
                   └──▶ Phase 5 (map render)
                        │
-                       ├──▶ Phase 6 (refinement)
-                       │    │
-                       │    └──▶ Phase 7 (self-healing)
-                       │         │
-                       │         ├──▶ Phase 8 (imports — also depends on Phase 4)
-                       │         │
-                       │         ├──▶ Phase 9 (split/elevation)
-                       │         │
-                       │         └──▶ Phase 10 (direct-entry)
-                       │
-                       └──▶ Phase 11 (migration)
+                       └──▶ Phase 6 (refinement)
                             │
-                            └──▶ Phase 12 (drop explore mode)
+                            └──▶ Phase 7 (self-healing)
                                  │
-                                 └──▶ Phase 13 (docs)
+                                 └──▶ Phase 8 (imports)
                                       │
-                                      └──▶ Phase 14 (final cleanup)
+                                      └──▶ Phase 9 (split/elevation)
+                                           │
+                                           └──▶ Phase 10 (direct-entry)
+                                                │
+                                                └──▶ Phase 11 (migration)
+                                                     │
+                                                     └──▶ Phase 12 (drop explore mode)
+                                                          │
+                                                          └──▶ Phase 13 (docs)
+                                                               │
+                                                               └──▶ Phase 14 (two-tier provenance)
+                                                                    │
+                                                                    └──▶ Phase 15 (KB index analyses)
+                                                                         │
+                                                                         └──▶ Phase 16 (final cleanup)
 ```
 
-Phases 8, 9, 10 can be parallelised after Phase 7. Phases 11-14 sequence after the rest.
+Each phase's branch is based on the immediately preceding phase's branch. PRs merge to main bottom-to-top of the table.
 
 ## Branching Strategy — Stacked PRs
 
@@ -67,13 +73,12 @@ To keep `main` clean of incomplete-feature work until the whole initiative is re
 - **Phase 1** branches off `main` (after the planning branch has merged).
 - **Phase 2** branches off Phase 1's branch (not main).
 - **Phase 3** branches off Phase 2's branch.
-- And so on through Phase 13.
+- And so on through Phase 16.
 
 Each phase's PR has its own scope and review. When the implementer is happy with all phases, the PRs merge in turn — Phase 1 first, then Phase 2 (rebased onto main if needed), then Phase 3, etc. — until the whole initiative lands.
 
 This pattern means:
 
-- Reviews can happen in parallel.
 - No incomplete state ever sits on main.
 - Earlier phases can be revised while later ones are still being built — rebases propagate the changes.
 - The implementer should rebase later branches when an earlier branch changes during review.
@@ -93,18 +98,20 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | [#271](https://github.com/leeovery/agentic-workflows/pull/271) | Review |
 | `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | [#272](https://github.com/leeovery/agentic-workflows/pull/272) | Review |
 | `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | [#273](https://github.com/leeovery/agentic-workflows/pull/273) | Review |
-| `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
-| `idea/inception-pr-10-direct-entry` | Phase 7 branch | Phase 10 — Direct-Entry Auto-Add | [#275](https://github.com/leeovery/agentic-workflows/pull/275) | Review |
-| `idea/inception-pr-11-migration` | Phase 5 branch | Phase 11 — Migration | — | Not started |
+| `idea/inception-pr-9-split-elevation` | Phase 8 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
+| `idea/inception-pr-10-direct-entry` | Phase 9 branch | Phase 10 — Direct-Entry Auto-Add | [#275](https://github.com/leeovery/agentic-workflows/pull/275) | Review |
+| `idea/inception-pr-11-migration` | Phase 10 branch | Phase 11 — Migration | [#276](https://github.com/leeovery/agentic-workflows/pull/276) | Review |
 | `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
 | `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | — | Not started |
-| `idea/inception-pr-14-cleanup` | Phase 13 branch | Phase 14 — Final Review and Cleanup | — | Not started |
+| `idea/inception-pr-14-provenance` | Phase 13 branch | Phase 14 — Two-Tier Provenance | — | Not started |
+| `idea/inception-pr-15-kb-index-analysis` | Phase 14 branch | Phase 15 — KB Index Analysis Caches | — | Not started |
+| `idea/inception-pr-16-cleanup` | Phase 15 branch | Phase 16 — Final Review and Cleanup | — | Not started |
 
 **Conventions:**
 - Branch slug = `idea/inception-pr-{N}-{short-slug}`. Whole numbers only — no `2a`/`2b`.
 - Doc-only or meta branches (like `idea/inception-rephase`) skip the phase number.
 - Update the *PR* and *Status* columns as each PR opens / merges.
-- For phases that branch from a non-immediate-predecessor (e.g., Phases 8/9/10 all branch from Phase 7; Phase 11 branches from Phase 5), the *Base* column records the actual divergence point.
+- Each phase branches off the immediately preceding phase's branch. No parallel siblings — the stack is strictly linear.
 
 ## Other Conventions
 

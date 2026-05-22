@@ -1,6 +1,6 @@
-# Phase 14 — Final Review and Cleanup
+# Phase 16 — Final Review and Cleanup
 
-**Status:** Not started · **Depends on:** Phase 13 (final phase)
+**Status:** Not started · **Depends on:** Phase 15 (KB index analysis caches) — runs at the very end of the initiative
 
 ## Purpose
 
