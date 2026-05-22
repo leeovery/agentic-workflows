@@ -9,8 +9,9 @@ Let the user choose whether to start with research or go directly to discussion.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Choose your starting point. Research is open-ended exploration
-> — gather context, weigh options, no commitments. Discussion is
+> Choose your starting point. Research is a scoped, per-topic
+> investigation that produces a focused file at
+> .workflows/{work_unit}/research/{topic}.md. Discussion is a
 > structured conversation that works toward decisions. If you're
 > unsure, research is a safe place to start.
 

@@ -4,7 +4,7 @@
 
 ---
 
-Gather the file paths to import, then hand off to the shared import-files reference to copy, register, and index each one. The research session opens with a blank Starting Point — relevant import chunks surface via the knowledge base at session start.
+Gather the file paths to import, then hand off to the shared import-files reference to copy each one into the work unit's `imports/` directory, register it in the manifest's `imports[]` list, and index it into the knowledge base. The research session opens fresh — imported content surfaces via knowledge base retrieval when relevant.
 
 > *Output the next fenced block as a code block:*
 

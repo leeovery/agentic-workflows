@@ -869,4 +869,4 @@ None blocking design. Items deferred to implementation:
 
 ## Status
 
-Design phase — not yet implemented. This document captures the converged thinking from a long design conversation. Open questions remain (see above). Implementation should proceed only after those are settled and a worked example walkthrough has been validated against a real session.
+Implementation underway. Phases 1–12 have shipped — manifest foundations, the inception entry and process skills, wiring `start-epic` through inception, the discovery-map render, refinement, self-healing re-point, imports, topic splitting/elevation, direct-entry auto-add, the legacy migration, and the removal of explore mode. Documentation cleanup (Phase 13) and follow-on phases (14 — provenance, 15 — KB indexing of analysis caches, 16 — final cleanup) remain; Phase 17 is exploratory. This document stays the canonical reference for the system's behaviour, data model, conventions, and rationale.

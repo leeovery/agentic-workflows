@@ -497,7 +497,7 @@ skills/workflow-knowledge/
 
 The `resolve` command is a new addition to the manifest CLI. The manifest already encodes all directory conventions internally — this exposes them as resolved paths. Keeps path knowledge in one place rather than duplicating conventions across scripts.
 
-**Note on research files**: Research in epics can have multiple files with non-predictable names (`exploration.md`, `networking.md`, etc.). The `resolve` command for research should return all files in the research directory for that work unit, not a single path. The manifest's `phases.research.items` tracks individual research topics — resolve returns the path for each.
+**Note on research files**: Research in epics is per-topic with one file per topic (e.g., `auth-flow.md`, `payments-model.md`). The `resolve` command for research should return all files in the research directory for that work unit, not a single path. The manifest's `phases.research.items` tracks individual research topics — resolve returns the path for each.
 
 ### No Metadata Prefix in Content
 
@@ -601,9 +601,9 @@ Source: .workflows/auth-flow/specification/auth-flow/specification.md
 Debated UUID vs email for identity. UUID won because email changes are common.
 Source: .workflows/payments-overhaul/discussion/data-model.md
 
-[research | payments-overhaul/exploration | low | 2026-02-28]
+[research | payments-overhaul/auth-flow | low | 2026-02-28]
 Explored identity approaches. Email-based ruled out due to GDPR right-to-erasure.
-Source: .workflows/payments-overhaul/research/exploration.md
+Source: .workflows/payments-overhaul/research/auth-flow.md
 ```
 
 - Result count header
