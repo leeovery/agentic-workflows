@@ -2,7 +2,7 @@
 
 const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computePendingFromResearch, computePendingFromGaps } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
-const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+const EPIC_PHASES = ['inception', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
 function lastCompletedPhaseEpic(manifest) {
   let last = null;
