@@ -112,6 +112,9 @@ Parse the discovery output to understand:
   - `next_phase_ready` - items ready for the next phase (name + action + label)
   - `unaccounted_discussions` - completed discussions not sourced in any spec
   - `reopened_discussions` - in-progress discussions that are sourced in a spec
+  - `discovery_map` - per-topic lifecycle for the inception/research/discussion span (tier-sorted; empty when no inception items exist)
+  - `convergence_state` - `'in-progress'` | `'settled'` | `null` (when no map)
+  - `map_summary` - count totals for the map (`total`, `decided`, `in_flight`, `ready`, `fresh`, `cancelled`)
   - `gating` - boolean flags for phase-forward gating
 
 **From top-level fields:**
@@ -238,22 +241,25 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** and fol
 > Handing off to the selected phase for this epic.
 ```
 
-Invoke the appropriate skill based on the user's menu selection:
+Invoke the appropriate skill based on the user's menu selection. Match by **prefix** — labels may carry a trailing context segment (e.g., `— research completed`, `— spec completed`, `(Phase 2, Task 3)`) which doesn't change the routing target.
 
 | Menu option | Invoke |
 |-------------|--------|
+| Start research for {topic} | `/workflow-research-entry epic {work_unit} {topic}` |
+| Start discussion for {topic} | `/workflow-discussion-entry epic {work_unit} {topic}` |
 | Continue {topic} — discussion | `/workflow-discussion-entry epic {work_unit} {topic}` |
 | Continue {topic} — research | `/workflow-research-entry epic {work_unit} {topic}` |
 | Continue {topic} — specification | `/workflow-specification-entry epic {work_unit} {topic}` |
 | Continue {topic} — planning | `/workflow-planning-entry epic {work_unit} {topic}` |
 | Continue {topic} — implementation | `/workflow-implementation-entry epic {work_unit} {topic}` |
+| Continue {topic} — review | `/workflow-review-entry epic {work_unit} {topic}` |
 | Start planning for {topic} | `/workflow-planning-entry epic {work_unit} {topic}` |
 | Start implementation of {topic} | `/workflow-implementation-entry epic {work_unit} {topic}` |
 | Start review for {topic} | `/workflow-review-entry epic {work_unit} {topic}` |
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
-| Discuss pending topic {topic} | `/workflow-discussion-entry epic {work_unit} {topic}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
+| Refine map | `/workflow-inception-entry epic {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
 

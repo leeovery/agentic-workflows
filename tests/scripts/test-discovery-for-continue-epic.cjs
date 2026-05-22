@@ -563,6 +563,389 @@ describe('continue-epic discovery', () => {
     });
   });
 
+  describe('discovery map', () => {
+    it('discovery_map empty and convergence absent when inception phase has no items', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.deepStrictEqual(d.discovery_map, []);
+      assert.strictEqual(d.convergence_state, null);
+      assert.strictEqual(d.map_summary, null);
+    });
+
+    it('discovery_map empty for non-epic work types', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { inception: { items: { 'topic-a': { routing: 'research', source: 'inception' } } } },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.count, 0);
+    });
+
+    it('inception items only render as fresh / ○ tier', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              'kitchen-hardware': { routing: 'research', source: 'inception' },
+              'tenant-onboarding': { routing: 'discussion', source: 'inception' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const d = r.epics[0].detail;
+      assert.strictEqual(d.discovery_map.length, 2);
+      assert.ok(d.discovery_map.every(t => t.tier === '○'));
+      assert.ok(d.discovery_map.every(t => t.lifecycle === 'fresh'));
+      assert.strictEqual(d.map_summary.total, 2);
+      assert.strictEqual(d.map_summary.fresh, 2);
+      assert.strictEqual(d.convergence_state, 'in-progress');
+    });
+
+    it('tier ordering: → ◐ ✓ ○ ⊘ with alphabetical within tier', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              'zeta-fresh': { routing: 'research', source: 'inception' },
+              'alpha-fresh': { routing: 'discussion', source: 'inception' },
+              'ready-topic': { routing: 'research', source: 'inception' },
+              'in-flight': { routing: 'research', source: 'inception' },
+              'decided-topic': { routing: 'discussion', source: 'inception' },
+              'cancelled-topic': { routing: 'research', source: 'inception' },
+            },
+          },
+          research: {
+            items: {
+              'ready-topic': { status: 'completed' },
+              'in-flight': { status: 'in-progress' },
+              'cancelled-topic': { status: 'cancelled' },
+            },
+          },
+          discussion: {
+            items: {
+              'decided-topic': { status: 'completed' },
+              'cancelled-topic': { status: 'cancelled' },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const tiers = r.epics[0].detail.discovery_map.map(t => `${t.tier} ${t.name}`);
+      assert.deepStrictEqual(tiers, [
+        '→ ready-topic',
+        '◐ in-flight',
+        '✓ decided-topic',
+        '○ alpha-fresh',
+        '○ zeta-fresh',
+        '⊘ cancelled-topic',
+      ]);
+    });
+
+    it('lifecycle: routing=research no phase items → fresh', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'fresh');
+      assert.strictEqual(t.tier, '○');
+      assert.strictEqual(t.next_action, 'start_research');
+    });
+
+    it('lifecycle: routing=discussion no phase items → fresh, next=start_discussion', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'discussion', source: 'inception' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'fresh');
+      assert.strictEqual(t.next_action, 'start_discussion');
+    });
+
+    it('lifecycle: research in-progress → researching, ◐, continue_research', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+          research: { items: { topic: { status: 'in-progress' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'researching');
+      assert.strictEqual(t.tier, '◐');
+      assert.strictEqual(t.next_action, 'continue_research');
+      assert.strictEqual(t.current_phase, 'research');
+    });
+
+    it('lifecycle: research completed, no discussion → ready_for_discussion, →', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+          research: { items: { topic: { status: 'completed' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'ready_for_discussion');
+      assert.strictEqual(t.tier, '→');
+      assert.strictEqual(t.next_action, 'start_discussion_after_research');
+    });
+
+    it('lifecycle: discussion in-progress → discussing, ◐, continue_discussion', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'discussion', source: 'inception' } } },
+          discussion: { items: { topic: { status: 'in-progress' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'discussing');
+      assert.strictEqual(t.tier, '◐');
+      assert.strictEqual(t.next_action, 'continue_discussion');
+      assert.strictEqual(t.current_phase, 'discussion');
+    });
+
+    it('lifecycle: discussion completed → decided, ✓, no next_action', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'discussion', source: 'inception' } } },
+          discussion: { items: { topic: { status: 'completed' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'decided');
+      assert.strictEqual(t.tier, '✓');
+      assert.strictEqual(t.next_action, null);
+    });
+
+    it('lifecycle: research cancelled, no discussion → fresh (single-cancelled)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+          research: { items: { topic: { status: 'cancelled' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'fresh');
+      assert.strictEqual(t.tier, '○');
+    });
+
+    it('lifecycle: research cancelled AND discussion cancelled → cancelled, ⊘', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+          research: { items: { topic: { status: 'cancelled' } } },
+          discussion: { items: { topic: { status: 'cancelled' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.lifecycle, 'cancelled');
+      assert.strictEqual(t.tier, '⊘');
+      assert.strictEqual(t.next_action, null);
+    });
+
+    it('convergence: all decided → settled', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              a: { routing: 'discussion', source: 'inception' },
+              b: { routing: 'discussion', source: 'inception' },
+            },
+          },
+          discussion: {
+            items: {
+              a: { status: 'completed' },
+              b: { status: 'completed' },
+            },
+          },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.convergence_state, 'settled');
+    });
+
+    it('convergence: all decided or cancelled → settled', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              a: { routing: 'discussion', source: 'inception' },
+              b: { routing: 'research', source: 'inception' },
+            },
+          },
+          research: { items: { b: { status: 'cancelled' } } },
+          discussion: {
+            items: {
+              a: { status: 'completed' },
+              b: { status: 'cancelled' },
+            },
+          },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.convergence_state, 'settled');
+    });
+
+    it('convergence: any non-decided → in-progress', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              a: { routing: 'discussion', source: 'inception' },
+              b: { routing: 'research', source: 'inception' },
+            },
+          },
+          discussion: { items: { a: { status: 'completed' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.convergence_state, 'in-progress');
+    });
+
+    it('source provenance: inception → null', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { inception: { items: { topic: { routing: 'research', source: 'inception' } } } },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.source_provenance, null);
+    });
+
+    it('source provenance: research-split:{parent} → from {parent}', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { inception: { items: { topic: { routing: 'research', source: 'research-split:kitchen-hardware' } } } },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.source_provenance, 'from kitchen-hardware');
+    });
+
+    it('source provenance: gap-analysis → from gap-analysis', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { inception: { items: { topic: { routing: 'discussion', source: 'gap-analysis' } } } },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.source_provenance, 'from gap-analysis');
+    });
+
+    it('source provenance: direct-start → from direct-start', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { inception: { items: { topic: { routing: 'research', source: 'direct-start' } } } },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.source_provenance, 'from direct-start');
+    });
+
+    it('map_summary counts omit nothing — all categories present', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              ready: { routing: 'research', source: 'inception' },
+              flight: { routing: 'research', source: 'inception' },
+              done: { routing: 'discussion', source: 'inception' },
+              fresh1: { routing: 'discussion', source: 'inception' },
+              cancelled: { routing: 'research', source: 'inception' },
+            },
+          },
+          research: {
+            items: {
+              ready: { status: 'completed' },
+              flight: { status: 'in-progress' },
+              cancelled: { status: 'cancelled' },
+            },
+          },
+          discussion: {
+            items: {
+              done: { status: 'completed' },
+              cancelled: { status: 'cancelled' },
+            },
+          },
+        },
+      });
+      const s = discover(dir).epics[0].detail.map_summary;
+      assert.strictEqual(s.total, 5);
+      assert.strictEqual(s.ready, 1);
+      assert.strictEqual(s.in_flight, 1);
+      assert.strictEqual(s.decided, 1);
+      assert.strictEqual(s.fresh, 1);
+      assert.strictEqual(s.cancelled, 1);
+    });
+
+    it('excludes inception from phases output (lives in discovery_map only)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: { items: { topic: { routing: 'research', source: 'inception' } } },
+          discussion: { items: { topic: { status: 'in-progress' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.phases.inception, undefined);
+      assert.ok(d.phases.discussion);
+    });
+
+    it('inception items are not flagged as in-progress / cancelled / completed', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              alpha: { routing: 'research', source: 'inception' },
+              beta: { routing: 'discussion', source: 'inception' },
+            },
+          },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.in_progress.length, 0);
+      assert.strictEqual(d.completed.length, 0);
+      assert.strictEqual(d.cancelled.length, 0);
+    });
+
+    it('preserves summary and routing fields on map entries', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          inception: {
+            items: {
+              topic: {
+                routing: 'discussion',
+                source: 'inception',
+                summary: 'A one-line description',
+              },
+            },
+          },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.summary, 'A one-line description');
+      assert.strictEqual(t.routing, 'discussion');
+    });
+  });
+
   describe('work_unit filtering', () => {
     it('returns only the specified epic when work_unit provided', () => {
       createManifest(dir, 'v1', {
