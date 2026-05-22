@@ -77,16 +77,15 @@ Render the rejection in a code block:
 - `decided` — `discussion has concluded`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
-**Name collision gates** — for Add and Rename, check the new name against `discovery_map`'s topic names (case-sensitive). A match means an **active** map item already uses the name — reject:
+**Name validation** — for each Add and Rename operation, validate the proposed name via the shared reference:
 
-> *Output the next fenced block as a code block:*
+→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{name}`.
 
-```
-"{name}" is already on the map. Pick a different name or use
-edit-summary / change-routing on the existing item.
-```
+Branch on `result`:
 
-For Add, a name appearing in `dismissed` is **allowed** — it counts as a re-add. The Add flow pulls the name from the dismissed list before creating the new item.
+- `collision-active` — rejection already rendered by the reference. Remove the operation from its group.
+- `matches-dismissed` — allowed. For Add, the **D. Add** flow pulls the name from `dismissed` before writing. For Rename, proceed without pulling (a Rename target that happens to match a dismissed name leaves the dismissed entry alone; the new active item simply exists alongside it as historical record).
+- `ok` — proceed.
 
 → Proceed to **C. Apply**.
 

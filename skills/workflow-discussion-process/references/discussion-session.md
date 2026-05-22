@@ -125,16 +125,40 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
 #### If `elevate`
 
-1. Create a seed discussion file at `.workflows/{work_unit}/discussion/{new-topic}.md` with:
+1. Pick a kebab-case name reflecting the elevated concern. Surface it to the user for confirmation. Then validate:
+
+   → Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`.
+
+   On `collision-active`, re-prompt for an alternative and re-validate — loop until `ok` or `matches-dismissed`, or the user cancels the elevation. On `matches-dismissed`, proceed (the dismissed entry is pulled in step 4). On `ok`, proceed.
+
+2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation). This becomes the inception item's `summary` field.
+
+3. Create the seed discussion file at `.workflows/{work_unit}/discussion/{new-topic}.md` with:
    - Context section capturing what prompted the topic and any initial thinking from the current discussion
    - A Discussion Map with initial subtopics derived from what's been discussed so far
    - No decisions — those happen in the new discussion
-2. Register in manifest:
+
+4. Write manifest items — discussion first, then inception. If validation returned `matches-dismissed`, pull from the dismissed list first:
+
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{new-topic}"
+   ```
+
+   Then:
+
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discussion.{new-topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new-topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} routing discussion
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} summary "{one-line summary}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} source "discussion-elevation:{topic}"
    ```
-3. Update the current Discussion Map: replace the subtopic with `→ Elevated: {new-topic}`
-4. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
+
+   `routing: discussion` because elevation fires inside a discussion session. `source: discussion-elevation:{parent_topic}` is historical provenance; no cascade.
+
+5. Update the current Discussion Map — replace the subtopic with `→ Elevated: {new-topic}`.
+
+6. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
 
 → Return to **B. Session Loop**.
 
