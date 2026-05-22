@@ -100,7 +100,7 @@ $MANIFEST list [--status s] [--work-type t]
 ### Naming Constraints
 
 - **Work unit names must not contain dots** — dots are the path separator
-- **Work unit names must not match phase names** (`research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`)
+- **Work unit names must not match phase names** (`inception`, `research`, `discussion`, `investigation`, `specification`, `planning`, `implementation`, `review`)
 - **Work unit names must not be reserved** — `project` is reserved for project-level manifest access
 
 ## Commands
@@ -192,7 +192,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set <name>.planning.a
 Values are parsed as JSON first (for arrays, objects, numbers, booleans), falling back to string. Validates structural fields:
 
 - **work_type**: `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`
-- **phase names**: `research`, `discussion`, `investigation`, `scoping`, `specification`, `planning`, `implementation`, `review`
+- **phase names**: `inception`, `research`, `discussion`, `investigation`, `scoping`, `specification`, `planning`, `implementation`, `review`
 - **phase statuses**: per-phase valid values (see Validation section)
 - **gate modes**: `gated`, `auto`
 - **work unit status**: `in-progress`, `completed`, `cancelled`
@@ -362,6 +362,20 @@ Project-wide settings are stored in the `defaults` section of the project manife
 
 The cascade is: **project defaults** (suggestion) → **topic level** (actual value used). There is no phase-level storage.
 
+### Top-Level Work-Unit Fields
+
+Most work-unit data lives under `phases.{phase}.items.{topic}`. A small number of fields sit at the work-unit root — identity (`name`, `work_type`, `status`, `created`, `description`), the `phases` map, and a top-level `imports` array.
+
+**`imports[]`** — entries describing seed files copied into `.workflows/{work_unit}/imports/` at work-unit creation. Each entry is a `{path, imported_at}` object. The CLI does not validate entry shape; the importing skill is responsible for forming well-shaped entries.
+
+```bash
+$MANIFEST push {work_unit} imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}'
+$MANIFEST get {work_unit} imports
+$MANIFEST pull {work_unit} imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}'
+```
+
+`imports[]` is the first top-level array field on work-unit manifests — every other array lives under `phases`. Convention for new top-level array fields: use `push`/`pull` for incremental updates (auto-creates the array on first push); use `set` for full replacement. `pull` matches values by deep equality, so the JSON passed to remove an entry must match the stored shape exactly.
+
 ## Validation
 
 The CLI validates structural values to prevent invalid state:
@@ -370,6 +384,7 @@ The CLI validates structural values to prevent invalid state:
 |--------------------------------|----------------------------------------------------|
 | `work_type`                    | `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting` |
 | `status` (work unit)           | `in-progress`, `completed`, `cancelled`            |
+| Item `status` (inception)      | `in-progress`                                      |
 | Item `status` (research)       | `in-progress`, `completed`                         |
 | Item `status` (discussion)     | `in-progress`, `completed`                         |
 | Item `status` (investigation)  | `in-progress`, `completed`                         |
