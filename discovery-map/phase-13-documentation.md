@@ -1,6 +1,6 @@
-# Phase 11 — Documentation Cleanup
+# Phase 13 — Documentation Cleanup
 
-**Status:** Not started · **Depends on:** Phase 10 (final phase)
+**Status:** Not started · **Depends on:** Phase 12 (final phase)
 
 ## Purpose
 
@@ -47,7 +47,7 @@ Update project-level documentation to reflect the new phase model. CLAUDE.md, RE
 
 ## Out of scope
 
-- New skill behaviour (everything functional shipped in Phases 1-10).
+- New skill behaviour (everything functional shipped in Phases 1-12).
 - Removing legacy file references that have been deprecated but not deleted (e.g., the post-migration legacy `exploration.md` files stay; documentation should describe them as legacy if it mentions them at all).
 
 ## Verification

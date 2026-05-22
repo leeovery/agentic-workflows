@@ -1,6 +1,6 @@
-# Phase 10 — Drop Explore Mode in Research; Finalise start-epic
+# Phase 12 — Drop Explore Mode in Research; Finalise start-epic
 
-**Status:** Not started · **Depends on:** Phase 9 (migration must run first so existing epics with `exploration.md` are migrated)
+**Status:** Not started · **Depends on:** Phase 11 (migration must run first so existing epics with `exploration.md` are migrated)
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Remove the open-mode (`e`/`explore`) research path. Under the new model, researc
 - `workflow-research-process/epic-session.md` no longer handles explore-mode logic — epic and feature sessions are now identical (per-topic).
 - `start-epic` Step 3 invokes `workflow-inception-entry` directly. No more menu.
 - `start-epic/references/route-first-phase.md` is **deleted**.
-- The `i`/`import` flow at start-epic time is preserved (Phase 6 wired it through inception).
+- The `i`/`import` flow at start-epic time is preserved (Phase 8 wired it through inception with KB indexing).
 - Cross-references to removed files cleaned up.
 
 ## Files
@@ -39,13 +39,13 @@ Remove the open-mode (`e`/`explore`) research path. Under the new model, researc
 
 ## Out of scope
 
-- Migrating legacy `exploration.md` files (Phase 9 handled it; legacy stays as a regular topic).
+- Migrating legacy `exploration.md` files (Phase 11 handled it; legacy stays as a regular topic).
 - Removing `surfaced_topics` / `gap_topics` arrays from manifests (a separate cleanup migration if/when it lands).
-- Documentation updates (Phase 11).
+- Documentation updates (Phase 13).
 
 ## Verification
 
-1. Continue from a Phase 9 test epic.
+1. Continue from a Phase 11 test epic.
 2. `/start-epic` for a brand-new epic goes directly to inception with no intermediate menu.
 3. From `continue-epic`, picking a research-routed item (`Start research for "{topic}"`) invokes `workflow-research-entry epic {wu} {topic}` with the topic argument. No explore-vs-specific prompt.
 4. Research session proceeds on the topic; file is `research/{topic}.md`. No `exploration.md` is created for new topics.
@@ -54,7 +54,7 @@ Remove the open-mode (`e`/`explore`) research path. Under the new model, researc
 
 ## Notes for the implementer
 
-- **Sequencing matters** — Phase 9 must merge before this so existing epics are already migrated. Otherwise users with legacy state might lose visibility into their `exploration.md` files (the migration registers them; without migration, dropping explore-mode could orphan them).
+- **Sequencing matters** — Phase 11 must merge before this so existing epics are already migrated. Otherwise users with legacy state might lose visibility into their `exploration.md` files (the migration registers them; without migration, dropping explore-mode could orphan them).
 - **Don't try to retroactively rename legacy "exploration" topics** — the editing-rules matrix forbids rename for items with phase work. Legacy stays as-is. New epics use proper topic names.
 - **epic-session.md and feature-session.md may converge** — once explore-mode is gone, the only difference between them is the topic-splitting offer (which exists only in epic). Implementer may want to consolidate; or keep separate for clarity. Either is fine.
 - **Cross-references** — search the codebase for any remaining references to `route-first-phase`, `exploration.md`, `e`/`explore` mode and update.

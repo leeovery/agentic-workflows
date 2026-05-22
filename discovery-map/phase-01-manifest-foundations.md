@@ -39,8 +39,8 @@ Foundation for everything that follows. Adds `inception` as a recognised phase a
 
 ## Out of scope
 
-- Inception-related skills (Phase 2).
-- Display of inception items in `continue-epic` (Phase 3).
+- Inception-related skills (Phases 2-4).
+- Display of inception items in `continue-epic` (Phase 5).
 - Anything user-visible.
 
 ## Verification

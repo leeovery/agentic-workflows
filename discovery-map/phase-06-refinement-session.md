@@ -1,6 +1,6 @@
-# Phase 4 — Refinement Session
+# Phase 6 — Refinement Session
 
-**Status:** Not started · **Depends on:** Phase 3
+**Status:** Not started · **Depends on:** Phase 5
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Add the re-entry path to inception so users can refine the map after it's been s
 
 - [Design](design.md) — Refinement session subsection; Map editing operations subsection; Safety scales with destructiveness; Cancellation and Removal section (hard-delete + dismissed list).
 - `skills/workflow-discussion-process/references/discussion-session.md` — conversational pattern precedent.
-- `skills/workflow-shared/references/background-agent-surfacing.md` — surfacing protocol (Phase 5 will use it; not needed here yet).
+- `skills/workflow-shared/references/background-agent-surfacing.md` — surfacing protocol (Phase 7 will use it; not needed here yet).
 
 ## What ships
 
@@ -29,7 +29,7 @@ Add the re-entry path to inception so users can refine the map after it's been s
 ## Files
 
 **New — `skills/workflow-inception-process/references/`:**
-- `refinement-session.md` — re-entry flow: read state, self-healing check (placeholder/no-op until Phase 5), open refinement, persist, conclude.
+- `refinement-session.md` — re-entry flow: read state, self-healing check (placeholder/no-op until Phase 7), open refinement, persist, conclude.
 - `map-operations.md` — per-operation handling with the editing-rules matrix from the design doc. Validation logic (never-started gate, name collision check). Hard-delete on remove + add to dismissed list.
 - `show-dismissed.md` — surface dismissed items with their original source; allow user to re-add.
 
@@ -40,13 +40,13 @@ Add the re-entry path to inception so users can refine the map after it's been s
 
 ## Out of scope
 
-- Self-healing analyses (Phase 5 — refinement session loads them but the analyses themselves are not yet rewired).
-- Imports interaction (Phase 6 — refinement may eventually offer "remove import" but not in this phase).
-- Migration-driven empty-summary back-fill prompt (Phase 9).
+- Self-healing analyses (Phase 7 — refinement session loads them but the analyses themselves are not yet rewired).
+- Imports interaction (Phase 8 — refinement may eventually offer "remove import" but not in this phase).
+- Migration-driven empty-summary back-fill prompt (Phase 11).
 
 ## Verification
 
-1. Continue from a Phase 3 test epic.
+1. Continue from a Phase 5 test epic.
 2. `/continue-epic` → `f`/`refine` → refinement session opens.
 3. Add a new topic via natural language ("add offline mode as research") — single STOP gate, manifest written, session log entry added.
 4. Add multiple topics in one message ("add A as research, B as discussion, C as research") — single STOP gate showing all three, single commit.

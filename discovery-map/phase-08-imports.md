@@ -1,6 +1,6 @@
-# Phase 6 — Imports
+# Phase 8 — Imports
 
-**Status:** Not started · **Depends on:** Phase 5 (and Phase 2 for inception)
+**Status:** Not started · **Depends on:** Phase 7 (and Phase 4 for inception fully wired)
 
 ## Purpose
 
@@ -9,15 +9,15 @@ Add the imports machinery: a top-level `imports/` directory, manifest tracking, 
 ## Reference
 
 - [Design](design.md) — Imports section in full (what imports are, layout, manifest tracking, flows for epic and feature, KB retrieval, behaviour change for features, why not auto-split).
-- `skills/start-epic/references/route-first-phase.md` and `skills/start-epic/references/collect-import.md` — existing import flow (epic).
-- `skills/start-feature/references/research-gating.md` and `skills/start-feature/references/collect-import.md` — existing import flow (feature).
+- `skills/start-epic/references/route-first-phase.md` and `skills/start-epic/references/collect-import.md` — existing import flow (epic) — Phase 4 already routes epic imports to `imports/`; this phase adds KB indexing and the broader convention.
+- `skills/start-feature/references/research-gating.md` and `skills/start-feature/references/collect-import.md` — existing import flow (feature). Feature flow is *unchanged* until this phase.
 - `skills/workflow-knowledge/SKILL.md` and `scripts/knowledge.cjs` — KB indexing API.
 - `skills/workflow-knowledge/references/knowledge-usage.md` and `contextual-query.md` — existing query patterns.
 
 ## What ships
 
-- New `.workflows/{wu}/imports/` directory convention.
-- Manifest top-level `imports[]` array tracks imported files with `path` and `imported_at`.
+- New `.workflows/{wu}/imports/` directory convention (already partially in place from Phase 4 for epics; this phase formalises it as the project-wide convention).
+- Manifest top-level `imports[]` array tracks imported files with `path` and `imported_at` (Phase 1 added storage; Phase 4 wired epic-side writes; this phase adds KB indexing on those writes).
 - `start-epic` and `start-feature` `i`/`import` flows:
   - User provides one or more file paths.
   - Files copied to `.workflows/{wu}/imports/` (filename normalised if needed).
@@ -34,8 +34,8 @@ Add the imports machinery: a top-level `imports/` directory, manifest tracking, 
 - `skills/workflow-shared/references/import-files.md` — shared reference: copy files to `imports/`, push manifest entry, run KB index. Used by both `start-epic` and `start-feature`.
 
 **Modified:**
-- `skills/start-epic/references/collect-import.md` — drop content into research file; route through inception. Use shared import-files reference.
-- `skills/start-epic/references/route-first-phase.md` — `i`/`import` collects files, copies to imports/, then routes to inception (Phase 10 fully removes this file; here we modify it).
+- `skills/start-epic/references/collect-import.md` — fold KB indexing into the existing flow (the file copy + manifest push were wired in Phase 4). Use shared import-files reference.
+- `skills/start-epic/references/route-first-phase.md` — `i`/`import` flow continues to route through inception (Phase 12 fully removes this file).
 - `skills/start-feature/references/collect-import.md` — drop content into research file; copy to imports/, route to research with blank research file.
 - `skills/start-feature/references/research-gating.md` — adjust import flow.
 - `skills/workflow-inception-process/references/initialize-inception.md` — read imports from manifest at session start; load file content as context.
@@ -48,7 +48,7 @@ Add the imports machinery: a top-level `imports/` directory, manifest tracking, 
 
 - Auto-split imports into per-topic files (deliberately rejected — see design doc).
 - Removing imports via refinement (could be added later; not in this phase).
-- Migration to relocate legacy merged-import content out of research files (legacy stays — see Phase 9 / design doc Migration section on legacy).
+- Migration to relocate legacy merged-import content out of research files (legacy stays — see Phase 11 / design doc Migration section on legacy).
 
 ## Verification
 
@@ -72,5 +72,5 @@ Add the imports machinery: a top-level `imports/` directory, manifest tracking, 
 - **Filename normalisation** — be deterministic and avoid collisions (e.g. lowercase, replace spaces with hyphens). If a name conflict occurs in `imports/`, suffix with a counter or timestamp.
 - **KB metadata** — `source: import:{filename}` tag enables the user to ask "where did this context come from?" in any session. Useful for debugging.
 - **Inception reads directly, others use KB.** Inception doesn't have topics yet to query against, so reading imports as raw context makes sense. Once topics exist, KB retrieval is more efficient and per-topic-relevant.
-- **Behaviour change for features is real and visible.** Document in changelog when Phase 11 ships.
+- **Behaviour change for features is real and visible.** Document in changelog when Phase 13 ships.
 - **Don't split imports at import time.** Source integrity matters. KB chunking handles per-topic relevance dynamically.

@@ -1,6 +1,6 @@
-# Phase 8 — Direct-Entry Auto-Add
+# Phase 10 — Direct-Entry Auto-Add
 
-**Status:** Not started · **Depends on:** Phase 5 (and Phase 7 for shared name validation if extracted)
+**Status:** Not started · **Depends on:** Phase 7 (and Phase 9 for shared name validation if extracted)
 
 ## Purpose
 
@@ -12,7 +12,7 @@ When the user picks `d`/`discuss` or `r`/`research` from `continue-epic` and pro
 - `skills/continue-epic/references/epic-display-and-menu.md` — current `d`/`discuss` and `r`/`research` flows.
 - `skills/workflow-research-entry/SKILL.md` — entry skill that gets invoked.
 - `skills/workflow-discussion-entry/SKILL.md` — same.
-- `skills/workflow-shared/references/topic-name-validation.md` (if extracted in Phase 7) — name validation helper.
+- `skills/workflow-shared/references/topic-name-validation.md` (if extracted in Phase 9) — name validation helper.
 
 ## What ships
 
@@ -39,7 +39,7 @@ When the user picks `d`/`discuss` or `r`/`research` from `continue-epic` and pro
 
 ## Verification
 
-1. Continue from a Phase 7 test epic.
+1. Continue from a Phase 9 test epic.
 2. From `/continue-epic`, pick `d`/`discuss`; provide a topic name not on the map (e.g., "feedback-mechanisms"). Verify:
    - Inception item created: `phases.inception.items.feedback-mechanisms` with `routing: discussion, source: direct-start`.
    - Discussion entry invoked with the topic.
