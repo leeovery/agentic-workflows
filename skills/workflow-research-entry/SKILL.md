@@ -65,17 +65,11 @@ Store work_unit for the handoff.
 
 Resolve filename:
 
-#### If source is `import` and work_type is `feature`
+#### If source is `import`
 
 `resolved_filename = {topic}.md`
 
-→ Proceed to **Step 5**.
-
-#### If source is `import` and work_type is `epic`
-
-`topic = exploration`
-
-`resolved_filename = {topic}.md`
+Imports already populated context via `imports/` and the knowledge base — skip the validate and gather-context steps and hand straight off to the processing skill.
 
 → Proceed to **Step 5**.
 

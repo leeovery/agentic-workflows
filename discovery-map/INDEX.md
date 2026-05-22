@@ -17,12 +17,13 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 5. **[Discovery Map Render](phase-05-discovery-map-render.md)** — continue-epic display + menu collapse + auto-routing. **Status:** Review (PR #270)
 6. **[Refinement Session](phase-06-refinement-session.md)** — re-entry path, map editing operations, safety-by-destructiveness. **Status:** Review (PR #271)
 7. **[Self-Healing Re-point](phase-07-self-healing.md)** — research-analysis and gap-analysis re-point to map at continue-epic boot-up. **Status:** Review (PR #272)
-8. **[Imports](phase-08-imports.md)** — `imports/` directory, manifest tracking, KB indexing, behaviour change for features. **Status:** Not started
+8. **[Imports](phase-08-imports.md)** — `imports/` directory, manifest tracking, KB indexing, behaviour change for features. **Status:** Review (PR #273)
 9. **[Topic Splitting and Elevation](phase-09-topic-splitting-elevation.md)** — write inception items alongside; name collision validation. **Status:** Not started
 10. **[Direct-Entry Auto-Add](phase-10-direct-entry-auto-add.md)** — `d`/`discuss` and `r`/`research` for unmapped topics auto-create map items. **Status:** Not started
 11. **[Migration](phase-11-migration.md)** — seed inception items for existing in-progress epics. **Status:** Not started
 12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Not started
 13. **[Documentation Cleanup](phase-13-documentation.md)** — CLAUDE.md, README, phase tables, compliance checks. **Status:** Not started
+14. **[Final Review and Cleanup](phase-14-cleanup.md)** — catch-all for behavioural gaps and stale wording surfaced during phase reviews (absorption + imports, continue-feature display, rebuild error wording, inception KB query). **Status:** Not started
 
 ## Dependencies
 
@@ -52,9 +53,11 @@ Phase 1 (manifest foundations)
                             └──▶ Phase 12 (drop explore mode)
                                  │
                                  └──▶ Phase 13 (docs)
+                                      │
+                                      └──▶ Phase 14 (final cleanup)
 ```
 
-Phases 8, 9, 10 can be parallelised after Phase 7. Phases 11-13 sequence after the rest.
+Phases 8, 9, 10 can be parallelised after Phase 7. Phases 11-14 sequence after the rest.
 
 ## Branching Strategy — Stacked PRs
 
@@ -89,12 +92,13 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-5-map-render` | Phase 4 branch | Phase 5 — Discovery Map Render | [#270](https://github.com/leeovery/agentic-workflows/pull/270) | Review |
 | `idea/inception-pr-6-refinement` | Phase 5 branch | Phase 6 — Refinement Session | [#271](https://github.com/leeovery/agentic-workflows/pull/271) | Review |
 | `idea/inception-pr-7-self-healing` | Phase 6 branch | Phase 7 — Self-Healing Re-point | [#272](https://github.com/leeovery/agentic-workflows/pull/272) | Review |
-| `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | — | Not started |
+| `idea/inception-pr-8-imports` | Phase 7 branch | Phase 8 — Imports | [#273](https://github.com/leeovery/agentic-workflows/pull/273) | Review |
 | `idea/inception-pr-9-split-elevation` | Phase 7 branch | Phase 9 — Topic Splitting and Elevation | — | Not started |
 | `idea/inception-pr-10-direct-entry` | Phase 7 branch | Phase 10 — Direct-Entry Auto-Add | — | Not started |
 | `idea/inception-pr-11-migration` | Phase 5 branch | Phase 11 — Migration | — | Not started |
 | `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
 | `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | — | Not started |
+| `idea/inception-pr-14-cleanup` | Phase 13 branch | Phase 14 — Final Review and Cleanup | — | Not started |
 
 **Conventions:**
 - Branch slug = `idea/inception-pr-{N}-{short-slug}`. Whole numbers only — no `2a`/`2b`.

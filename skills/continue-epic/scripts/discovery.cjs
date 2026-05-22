@@ -202,6 +202,8 @@ function buildEpicDetail(cwd, manifest) {
     convergenceState = allSettled ? 'settled' : 'in-progress';
   }
 
+  const importsCount = Array.isArray(manifest.imports) ? manifest.imports.length : 0;
+
   return {
     phases,
     in_progress: inProgressItems,
@@ -213,6 +215,7 @@ function buildEpicDetail(cwd, manifest) {
     discovery_map: discoveryMap,
     convergence_state: convergenceState,
     map_summary: mapSummary,
+    imports_count: importsCount,
     analysis_caches: buildAnalysisCaches(cwd, manifest),
     gating: {
       can_start_discussion: hasCompletedResearch,
@@ -308,6 +311,9 @@ function format(result) {
         }
         lines.push(line);
       }
+    }
+    if (d.imports_count && d.imports_count > 0) {
+      lines.push(`    imports_count: ${d.imports_count}`);
     }
     if (d.discovery_map && d.discovery_map.length > 0) {
       const s = d.map_summary;

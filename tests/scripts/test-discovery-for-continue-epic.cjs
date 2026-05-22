@@ -1103,4 +1103,48 @@ describe('continue-epic format', () => {
     const out = format(discover(dir));
     assert.ok(out.includes('    unaccounted_discussions: payments'));
   });
+
+  describe('imports_count', () => {
+    it('reports zero when no imports tracked', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.imports_count, 0);
+    });
+
+    it('reports zero when imports field is missing entirely', () => {
+      createManifest(dir, 'v1', { work_type: 'epic' });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.imports_count, 0);
+    });
+
+    it('reports the length of manifest.imports[]', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        imports: [
+          { path: 'imports/seed-conversation.md', imported_at: '2026-05-10T10:00:00Z' },
+          { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
+        ],
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.imports_count, 2);
+    });
+
+    it('format output shows imports_count when non-zero', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        imports: [{ path: 'imports/seed.md', imported_at: '2026-05-10T10:00:00Z' }],
+      });
+      const out = format(discover(dir));
+      assert.ok(out.includes('    imports_count: 1'));
+    });
+
+    it('format output omits imports_count when zero', () => {
+      createManifest(dir, 'v1', { work_type: 'epic' });
+      const out = format(discover(dir));
+      assert.ok(!out.includes('imports_count:'));
+    });
+  });
 });

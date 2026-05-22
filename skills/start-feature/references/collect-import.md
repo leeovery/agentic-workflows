@@ -4,9 +4,7 @@
 
 ---
 
-Gather the file paths to import. No topic naming needed — feature topic equals the work unit name.
-
-## A. File Paths
+Gather the file paths to import, then hand off to the shared import-files reference to copy, register, and index each one. The research session opens with a blank Starting Point — relevant import chunks surface via the knowledge base at session start.
 
 > *Output the next fenced block as a code block:*
 
@@ -18,7 +16,7 @@ Gather the file paths to import. No topic naming needed — feature topic equals
 
 ```
 > Provide the path(s) to the files you want to import.
-> Content will be ingested verbatim — no summarization.
+> Files are copied verbatim and indexed into the knowledge base.
 
 · · · · · · · · · · · ·
 Which files should be imported?
@@ -29,8 +27,8 @@ Which files should be imported?
 
 **STOP.** Wait for user response.
 
-Validate each path exists. If any are missing, report which ones and ask again.
+Capture the paths from the user's response as `import_paths`.
 
-Store the validated paths as `import_files`.
+→ Load **[import-files.md](../../workflow-shared/references/import-files.md)** with work_unit = `{work_unit}`, import_paths = `{import_paths}`.
 
 → Return to caller.

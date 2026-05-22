@@ -19,7 +19,7 @@ const setup = require('./setup');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports'];
 
 // Resolve manifest CLI path. In the bundled form, __dirname is
 // skills/workflow-knowledge/scripts/. In source, __dirname is
@@ -253,7 +253,7 @@ function deriveIdentity(filePath) {
   const norm = filePath.replace(/\\/g, '/');
 
   // Match .workflows/{work_unit}/{phase}/{rest}
-  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification)\/(.+)$/.exec(norm);
+  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports)\/(.+)$/.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
@@ -308,6 +308,17 @@ function deriveIdentity(filePath) {
       );
     }
     topic = resMatch[1];
+  } else if (phase === 'imports') {
+    // .workflows/{wu}/imports/{filename}.md — flat file. Topic is the
+    // basename without extension.
+    const impMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!impMatch) {
+      throw new UserError(
+        `Unexpected imports path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/imports/{filename}.md'
+      );
+    }
+    topic = impMatch[1];
   }
 
   if (topic === '.' || topic === '..' || topic.startsWith('.')) {
@@ -671,6 +682,10 @@ function discoverArtifacts() {
     if (wu.status === 'cancelled') continue;
 
     for (const phase of INDEXED_PHASES) {
+      // Imports live at top-level wu.imports[], not under wu.phases.imports —
+      // they need a separate traversal. Skip in this loop and handle below.
+      if (phase === 'imports') continue;
+
       const phaseData = wu.phases && wu.phases[phase];
       if (!phaseData || !phaseData.items) continue;
 
@@ -690,6 +705,39 @@ function discoverArtifacts() {
             err
           );
         }
+      }
+    }
+
+    // Imports — top-level array on the work unit, no per-item status. Each
+    // entry's path is relative to the work-unit directory. Topic identity is
+    // the basename without .md (matches deriveIdentity).
+    //
+    // Path validation: import-files.md only ever writes "imports/<basename>.md"
+    // to the manifest. A different shape here means either manual tampering
+    // or a flow we don't recognise — refuse to index in either case so the
+    // store can't be poisoned by a manifest-injection vector. The validation
+    // mirrors deriveIdentity's checks (no slash beyond the imports/ prefix,
+    // no .. segments, no dotfile basenames).
+    const seenImportTopics = new Set();
+    if (Array.isArray(wu.imports)) {
+      for (const entry of wu.imports) {
+        if (!entry || typeof entry.path !== 'string') continue;
+        const rel = entry.path;
+        // Must be exactly imports/{filename}.md — no subdirectories, no escapes.
+        const m = /^imports\/([^/]+\.md)$/.exec(rel);
+        if (!m) continue;
+        const filename = m[1];
+        if (filename.includes('..') || filename.startsWith('.')) continue;
+        const base = filename.slice(0, -3); // strip .md
+        if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
+        // Dedupe by topic identity — re-imports may push duplicate manifest
+        // entries (acceptable noise per the design), but bulk index should
+        // process each identity once.
+        if (seenImportTopics.has(base)) continue;
+        seenImportTopics.add(base);
+        const filePath = path.posix.join('.workflows', wuName, rel);
+        if (!fs.existsSync(path.resolve(filePath))) continue;
+        items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
       }
     }
   }

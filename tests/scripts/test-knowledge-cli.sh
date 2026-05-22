@@ -132,6 +132,27 @@ Some research content.
 MD
 }
 
+# Create an import artifact file.
+create_import_file() {
+  local wu="$1" filename="$2"
+  mkdir -p "$TEST_ROOT/.workflows/$wu/imports"
+  cat > "$TEST_ROOT/.workflows/$wu/imports/$filename.md" <<'MD'
+# Imported Seed
+
+## OAuth Notes
+
+Loose thinking about OAuth flows on mobile clients. Token refresh
+timing and PKCE were the open questions. This is the kind of seed
+material a user might paste in from an early conversation export.
+
+## Identity Strategy
+
+Preferred UUID v7 for identifiers. Email as profile attribute, not
+identifier. Open question: how to migrate the legacy email-based
+records without downtime.
+MD
+}
+
 # Run the knowledge CLI from the test project root.
 run_kb() {
   cd "$TEST_ROOT"
@@ -1851,6 +1872,138 @@ assert_eq "status from subdir reports zero orphans" "true" \
   "$(echo "$status_from_subdir" | grep -q 'Orphaned chunks' && echo false || echo true)"
 assert_eq "status from subdir reports the indexed chunks" "true" \
   "$(echo "$status_from_subdir" | grep -qE 'Total chunks: [1-9]' && echo true || echo false)"
+teardown_project
+
+# --- Test 84: Index an imports file with imports/ phase ---
+echo "Test 84: Index an imports file"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+output=$(run_kb index .workflows/seeded-wu/imports/seed-conversation.md 2>&1)
+assert_eq "indexes imports file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+teardown_project
+
+# --- Test 85: Query an indexed imports file shows imports provenance ---
+echo "Test 85: Query an imports file shows [imports | wu/topic]"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+output=$(run_kb query "OAuth" 2>&1)
+assert_eq "has imports provenance line" "true" \
+  "$(echo "$output" | grep -q 'imports | seeded-wu/seed-conversation' && echo true || echo false)"
+assert_eq "imports tier is low" "true" \
+  "$(echo "$output" | grep -q 'imports | seeded-wu/seed-conversation | low' && echo true || echo false)"
+teardown_project
+
+# --- Test 86: Remove imports chunks by phase ---
+echo "Test 86: Remove imports chunks via --phase imports --topic"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit seeded-wu --phase imports --topic seed-conversation 2>&1)
+assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
+query_after=$(run_kb query "OAuth" 2>&1)
+assert_eq "query post-remove returns no imports chunks" "true" \
+  "$(echo "$query_after" | grep -q 'imports | seeded-wu/seed-conversation' && echo false || echo true)"
+teardown_project
+
+# --- Test 87a: Bulk index discovers imports listed in manifest.imports[] ---
+echo "Test 87a: Bulk index picks up imports from manifest.imports[]"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+# Track the import on the manifest the way import-files.md does.
+node "$MANIFEST_JS" push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+# Bulk index (no args) — should find the import via discoverArtifacts.
+output=$(run_kb index 2>&1)
+assert_eq "bulk index processes imports" "true" \
+  "$(echo "$output" | grep -q 'imports/seed-conversation.md' && echo true || echo false)"
+# Confirm chunks were actually written.
+query_after=$(run_kb query "OAuth" 2>&1)
+assert_eq "query after bulk index returns imports chunks" "true" \
+  "$(echo "$query_after" | grep -q 'imports | seeded-wu/seed-conversation' && echo true || echo false)"
+teardown_project
+
+# --- Test 87d: Work-unit-level remove clears imports chunks ---
+echo "Test 87d: remove --work-unit (no --phase) clears imports too"
+setup_project
+create_work_unit "mixed-wu" "epic" "Mixed"
+write_stub_config
+# Index a discussion file and an imports file under the same work unit.
+create_discussion_file "mixed-wu" "mixed-wu"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase mixed-wu.discussion.mixed-wu >/dev/null 2>&1
+run_kb index .workflows/mixed-wu/discussion/mixed-wu.md >/dev/null 2>&1
+create_import_file "mixed-wu" "seed-conversation"
+run_kb index .workflows/mixed-wu/imports/seed-conversation.md >/dev/null 2>&1
+# Sanity: both phases queryable before removal.
+before=$(run_kb query "OAuth" 2>&1)
+assert_eq "imports chunk indexed pre-remove" "true" \
+  "$(echo "$before" | grep -q 'imports | mixed-wu/seed-conversation' && echo true || echo false)"
+# Remove the entire work unit (cancellation flow).
+run_kb remove --work-unit mixed-wu >/dev/null 2>&1
+after=$(run_kb query "OAuth" 2>&1)
+assert_eq "imports chunks removed by work-unit-level remove" "true" \
+  "$(echo "$after" | grep -q 'imports | mixed-wu/seed-conversation' && echo false || echo true)"
+after_disc=$(run_kb query "topic" 2>&1)
+assert_eq "discussion chunks also removed" "true" \
+  "$(echo "$after_disc" | grep -q 'discussion | mixed-wu/mixed-wu' && echo false || echo true)"
+teardown_project
+
+# --- Test 87b: Bulk index rejects malformed manifest.imports[] entries ---
+echo "Test 87b: Bulk index ignores tampered import paths"
+setup_project
+create_work_unit "guarded-wu" "epic" "Guarded"
+write_stub_config
+create_import_file "guarded-wu" "legit-seed"
+# Push one legitimate entry plus three malformed ones (path-traversal, dotfile, subdir).
+node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/legit-seed.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/../escape.md","imported_at":"2026-05-10T10:01:00Z"}' >/dev/null 2>&1
+node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/.dotfile.md","imported_at":"2026-05-10T10:02:00Z"}' >/dev/null 2>&1
+node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/sub/nested.md","imported_at":"2026-05-10T10:03:00Z"}' >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "indexes the legit import" "true" \
+  "$(echo "$output" | grep -q 'imports/legit-seed.md' && echo true || echo false)"
+assert_eq "skips path-traversal entry" "true" \
+  "$(echo "$output" | grep -q 'imports/../escape.md' && echo false || echo true)"
+assert_eq "skips dotfile entry" "true" \
+  "$(echo "$output" | grep -q 'imports/.dotfile.md' && echo false || echo true)"
+assert_eq "skips subdirectory entry" "true" \
+  "$(echo "$output" | grep -q 'imports/sub/nested.md' && echo false || echo true)"
+teardown_project
+
+# --- Test 87c: Bulk index dedupes duplicate imports[] entries ---
+echo "Test 87c: Bulk index dedupes duplicate manifest entries"
+setup_project
+create_work_unit "dup-wu" "epic" "Dup"
+write_stub_config
+create_import_file "dup-wu" "seed-conversation"
+# Two pushes of the same path — re-import noise.
+node "$MANIFEST_JS" push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+node "$MANIFEST_JS" push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:05:00Z"}' >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+indexing_lines=$(echo "$output" | grep -c 'Indexing .workflows/dup-wu/imports/seed-conversation.md')
+assert_eq "deduped to one index call per identity" "1" "$indexing_lines"
+teardown_project
+
+# --- Test 87: Re-indexing imports replaces chunks (idempotent) ---
+echo "Test 87: Re-indexing imports replaces chunks"
+setup_project
+create_work_unit "seeded-wu" "epic" "Seeded"
+write_stub_config
+create_import_file "seeded-wu" "seed-conversation"
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+first_status=$(run_kb status 2>&1)
+first_chunks=$(echo "$first_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
+run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+second_status=$(run_kb status 2>&1)
+second_chunks=$(echo "$second_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
+assert_eq "chunk count stable across re-index" "$first_chunks" "$second_chunks"
 teardown_project
 
 # --- Summary ---

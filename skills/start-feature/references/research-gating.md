@@ -19,7 +19,7 @@ How would you like to start?
 
 - **`r`/`research`** — Explore ideas and options first, no decisions yet
 - **`d`/`discussion`** — Ready to discuss and make decisions
-- **`i`/`import`** — Import existing research files verbatim
+- **`i`/`import`** — Import existing files as seed material (kept under imports/, indexed for retrieval; research starts blank)
 
 Select an option:
 · · · · · · · · · · · ·

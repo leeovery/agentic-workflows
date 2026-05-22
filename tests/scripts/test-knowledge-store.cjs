@@ -149,6 +149,40 @@ describe('knowledge store', () => {
     assert.strictEqual(hits[0].id, 'other-doc');
   });
 
+  it('round-trips identity for phase: imports', async () => {
+    const db = await createStore(STUB_DIMS);
+    const provider = new StubProvider({ dimensions: STUB_DIMS });
+    const doc = makeDoc({
+      id: 'import-1',
+      work_unit: 'seeded-wu',
+      work_type: 'epic',
+      phase: 'imports',
+      topic: 'seed-conversation',
+      confidence: 'low',
+      source_file: '.workflows/seeded-wu/imports/seed-conversation.md',
+      content: 'oauth pkce mobile token refresh',
+      embedding: provider.embed('oauth pkce mobile token refresh'),
+    });
+    await insertDocument(db, doc);
+
+    const hits = await searchFulltext(db, {
+      term: 'pkce',
+      where: { phase: { eq: 'imports' } },
+    });
+    assert.strictEqual(hits.length, 1);
+    assert.strictEqual(hits[0].id, 'import-1');
+    assert.strictEqual(hits[0].phase, 'imports');
+    assert.strictEqual(hits[0].topic, 'seed-conversation');
+    assert.strictEqual(hits[0].confidence, 'low');
+
+    const removed = await removeByIdentity(db, {
+      work_unit: 'seeded-wu',
+      phase: 'imports',
+      topic: 'seed-conversation',
+    });
+    assert.strictEqual(removed, 1);
+  });
+
   it('removeByIdentity is a no-op when nothing matches', async () => {
     const db = await createStore(STUB_DIMS);
     await insertDocument(db, makeDoc());
