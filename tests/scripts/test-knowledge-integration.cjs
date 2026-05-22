@@ -102,6 +102,17 @@ const FIXTURE_DOCS = [
     source_file: '.workflows/data-model/specification/data-model/specification.md',
     timestamp: 1700000050000,
   },
+  {
+    id: 'data-analysis-1',
+    content: 'Analysis surfaced caching layer as a recurring theme across discussions.',
+    work_unit: 'data-model',
+    work_type: 'epic',
+    phase: 'analysis',
+    topic: 'gap-analysis',
+    confidence: 'low',
+    source_file: '.workflows/data-model/.state/discussion-gap-analysis.md',
+    timestamp: 1700000060000,
+  },
 ];
 
 async function seedStore(db, provider) {
@@ -215,6 +226,42 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     });
     const multiIds = multi.map((h) => h.id).sort();
     assert.deepStrictEqual(multiIds, ['data-disc-1', 'data-spec-1']);
+  });
+
+  it('surfaces analysis-phase documents in queries with correct provenance', async () => {
+    const db = await createStore(STUB_DIMS);
+    await seedStore(db, provider);
+
+    const hits = await searchFulltext(db, { term: 'caching' });
+    assert.strictEqual(hits.length, 1);
+    const hit = hits[0];
+    assert.strictEqual(hit.id, 'data-analysis-1');
+    assert.strictEqual(hit.phase, 'analysis');
+    assert.strictEqual(hit.topic, 'gap-analysis');
+    assert.strictEqual(hit.work_unit, 'data-model');
+    assert.strictEqual(hit.confidence, 'low');
+
+    const filtered = await searchFulltext(db, {
+      term: 'caching',
+      where: { phase: { eq: 'analysis' } },
+    });
+    assert.strictEqual(filtered.length, 1);
+    assert.strictEqual(filtered[0].id, 'data-analysis-1');
+  });
+
+  it('removes analysis-phase documents by identity', async () => {
+    const db = await createStore(STUB_DIMS);
+    await seedStore(db, provider);
+
+    const removed = await removeByIdentity(db, {
+      work_unit: 'data-model',
+      phase: 'analysis',
+      topic: 'gap-analysis',
+    });
+    assert.strictEqual(removed, 1);
+
+    const gone = await searchFulltext(db, { term: 'caching' });
+    assert.strictEqual(gone.length, 0);
   });
 
   it('returns an empty array for queries with zero matches', async () => {

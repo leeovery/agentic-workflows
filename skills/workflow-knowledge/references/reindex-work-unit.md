@@ -69,7 +69,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} im
 
 No imports to process.
 
-→ Return to caller.
+→ Proceed to **C. Re-Index Analysis Caches**.
 
 #### If exists (`true`)
 
@@ -85,6 +85,23 @@ For each valid entry, run:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/{entry.path}
+```
+
+Apply the same warning-but-do-not-block pattern from **A** when individual index calls fail.
+
+→ Proceed to **C. Re-Index Analysis Caches**.
+
+## C. Re-Index Analysis Caches
+
+Analysis caches live on disk at `.workflows/{work_unit}/.state/`, outside the manifest. Probe each known cache file and re-index any that exist. The `|| true` suffix prevents a missing-file probe from exiting non-zero (a fresh epic has neither cache yet):
+
+```bash
+if [ -f .workflows/{work_unit}/.state/research-analysis.md ]; then
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/research-analysis.md
+fi
+if [ -f .workflows/{work_unit}/.state/discussion-gap-analysis.md ]; then
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/discussion-gap-analysis.md
+fi
 ```
 
 Apply the same warning-but-do-not-block pattern from **A** when individual index calls fail.

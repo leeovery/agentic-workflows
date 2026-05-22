@@ -107,7 +107,7 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | [#277](https://github.com/leeovery/agentic-workflows/pull/277) | Review |
 | `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | [#278](https://github.com/leeovery/agentic-workflows/pull/278) | Review |
 | `idea/inception-pr-14-provenance` | Phase 13 branch | Phase 14 — Two-Tier Provenance | [#279](https://github.com/leeovery/agentic-workflows/pull/279) | Review |
-| `idea/inception-pr-15-kb-index-analysis` | Phase 14 branch | Phase 15 — KB Index Analysis Caches | — | Not started |
+| `idea/inception-pr-15-kb-index-analysis` | Phase 14 branch | Phase 15 — KB Index Analysis Caches | [#280](https://github.com/leeovery/agentic-workflows/pull/280) | Review |
 | `idea/inception-pr-16-cleanup` | Phase 15 branch | Phase 16 — Final Review and Cleanup | — | Not started |
 | TBD | Phase 16 branch | Phase 17 — Entry UX & Inception Unification | — | Exploratory (design not settled) |
 
