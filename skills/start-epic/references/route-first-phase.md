@@ -4,22 +4,22 @@
 
 ---
 
-Let the user choose whether to start with research or go directly to discussion.
+New epics route to inception. The only branch here is whether the user wants to import seed material first.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Choose your starting point. Research is open-ended exploration
-> — gather context, weigh options, no commitments. Discussion is
-> structured conversation that works toward decisions. If you're
-> unsure, research is a safe place to start.
+> Inception is a short conversational session that surfaces
+> the topics this epic will cover and tags each as research
+> or discussion. If you have existing notes or research files,
+> you can import them first — they become the launchpad for
+> the session.
 
 · · · · · · · · · · · ·
 How would you like to start?
 
-- **`r`/`research`** — Explore ideas and options first, no decisions yet
-- **`d`/`discussion`** — Ready to discuss and make decisions
-- **`i`/`import`** — Import existing research files verbatim
+- **`c`/`continue`** — Begin the inception session now
+- **`i`/`import`** — Import existing files first, then begin inception
 
 Select an option:
 · · · · · · · · · · · ·
@@ -27,22 +27,12 @@ Select an option:
 
 **STOP.** Wait for user response.
 
-#### If user chooses research
-
-Set phase="research".
-
-→ Return to caller.
-
-#### If user chooses discussion
-
-Set phase="discussion".
+#### If user chooses continue
 
 → Return to caller.
 
 #### If user chooses import
 
 Load **[collect-import.md](collect-import.md)** and follow its instructions as written.
-
-Set phase="research" and source="import".
 
 → Return to caller.
