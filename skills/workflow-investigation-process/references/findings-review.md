@@ -8,8 +8,6 @@ Present your analysis to the user for validation, then collaboratively agree on 
 
 ## A. Confirm Findings
 
-Findings have already been presented upthread (and any synthesis gaps with them). This is the confirmation gate before fix discussion. If you resumed mid-flow and the findings aren't visible above, ask and I'll re-render.
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -35,7 +33,7 @@ Do these findings match your understanding?
 
 ## B. Findings Updated — Re-Present
 
-Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections, and commit.
+Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit.
 
 Re-render the updated findings so the user is gating against the new content, not the old. Pull current values from the investigation file.
 

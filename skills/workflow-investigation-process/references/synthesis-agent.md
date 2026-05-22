@@ -4,7 +4,7 @@
 
 ---
 
-An independent synthesis agent validates the root cause hypothesis by tracing code fresh. This step is optional — the user chooses whether to run it, with the findings visible first.
+An independent synthesis agent validates the root cause hypothesis by tracing code fresh. This step is optional — the user chooses whether to run it.
 
 ## A. Present Findings
 
@@ -146,7 +146,5 @@ Synthesis: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
 
 Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md
 ```
-
-The gaps are now visible upthread alongside the findings — Step 8 (Findings Review) is purely a confirmation gate and does not re-render.
 
 → Return to caller.
