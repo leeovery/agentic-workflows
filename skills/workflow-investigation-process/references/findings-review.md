@@ -6,9 +6,38 @@
 
 Present your analysis to the user for validation, then collaboratively agree on fix direction. Simple bugs flow fast (2 STOP gates). Complex bugs expand naturally through discussion.
 
-## A. Present Findings
+## A. Confirm Findings
 
-Summarize the investigation findings in a structured display. Pull from the investigation file — do not invent or embellish.
+Findings have already been presented upthread (and any synthesis gaps with them). This is the confirmation gate before fix discussion. If you resumed mid-flow and the findings aren't visible above, ask and I'll re-render.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Do these findings match your understanding?
+
+- **`y`/`yes`** — Findings are correct, discuss fix direction
+- **Provide feedback** — Tell me what's off or unclear
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `yes`
+
+→ Proceed to **C. Fix Direction Discussion**.
+
+#### If the user provides feedback
+
+→ Proceed to **B. Findings Updated — Re-Present**.
+
+---
+
+## B. Findings Updated — Re-Present
+
+Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections, and commit.
+
+Re-render the updated findings so the user is gating against the new content, not the old. Pull current values from the investigation file.
 
 > *Output the next fenced block as a code block:*
 
@@ -30,19 +59,6 @@ Why It Wasn't Caught:
   {testing gap, edge case, recent change}
 ```
 
-**If synthesis validation was run and found gaps**, add a synthesis block:
-
-> *Output the next fenced block as a code block:*
-
-```
-Synthesis Validation ({CONFIDENCE} confidence):
-  {gap 1}
-  {gap 2}
-
-These gaps may affect the root cause assessment. Consider them
-during your review.
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -56,19 +72,17 @@ Do these findings match your understanding?
 
 **STOP.** Wait for user response.
 
-#### If the user provides feedback
-
-Address their concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit.
-
-→ Return to **A. Present Findings**.
-
 #### If `yes`
 
-→ Proceed to **B. Fix Direction Discussion**.
+→ Proceed to **C. Fix Direction Discussion**.
+
+#### If the user provides feedback
+
+→ Return to **B. Findings Updated — Re-Present**.
 
 ---
 
-## B. Fix Direction Discussion
+## C. Fix Direction Discussion
 
 Present what the analysis surfaced about how to fix this. Let the findings guide the shape — there's no required number of approaches:
 
@@ -109,7 +123,7 @@ Engage collaboratively. Stay bounded — focus on:
 
 Do not go into implementation detail — that belongs in the specification.
 
-→ Return to **B. Fix Direction Discussion**.
+→ Return to **C. Fix Direction Discussion**.
 
 #### If `yes`
 
