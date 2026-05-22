@@ -8,6 +8,19 @@ Offer the user a choice between proceeding to the next phase or revisiting an ea
 
 ## A. Check for Earlier Phases
 
+If `feature.imports_count > 0`, render an imports callout signpost before the rest of this section runs — it must surface on every feature continuation that has imports, regardless of which branch below fires.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+@if(feature.imports_count == 1)
+> · 1 imported seed
+@endif
+@if(feature.imports_count > 1)
+> · {feature.imports_count} imported seeds
+@endif
+```
+
 Using the selected feature's `completed_phases` list, determine if there are any completed phases that come before `next_phase` in the pipeline.
 
 #### If no earlier completed phases exist

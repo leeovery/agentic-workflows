@@ -12,6 +12,8 @@ const {
   loadProjectManifest,
   phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
+  computeTopicLifecycle, computeNextAction, computeMapSummary,
+  TIER_RANK,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
 describe('discovery-utils', () => {
@@ -779,6 +781,168 @@ describe('discovery-utils', () => {
     it('returns absent for null manifest', () => {
       const r = computeAnalysisCacheStatus(null, path.join(dir, '.workflows'), 'research-analysis');
       assert.strictEqual(r.status, 'absent');
+    });
+  });
+
+  describe('TIER_RANK', () => {
+    it('orders tiers from ready → in-flight → decided → fresh → cancelled', () => {
+      assert.strictEqual(TIER_RANK['→'], 0);
+      assert.strictEqual(TIER_RANK['◐'], 1);
+      assert.strictEqual(TIER_RANK['✓'], 2);
+      assert.strictEqual(TIER_RANK['○'], 3);
+      assert.strictEqual(TIER_RANK['⊘'], 4);
+    });
+  });
+
+  describe('computeTopicLifecycle', () => {
+    const { createManifest } = require('./discovery-test-utils.cjs');
+
+    // Build a manifest with the named topic placed under the given phase
+    // statuses, then resolve and load it.
+    function loadWithPhases(name, phaseStatuses) {
+      const phases = {};
+      for (const [phase, status] of Object.entries(phaseStatuses)) {
+        phases[phase] = { items: { [name]: { status } } };
+      }
+      createManifest(dir, 'alpha', { phases });
+      return loadManifest(dir, 'alpha');
+    }
+
+    it('returns fresh when neither research nor discussion item exists', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+    });
+
+    it('returns researching when research item is in-progress', () => {
+      const m = loadWithPhases('auth', { research: 'in-progress' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research' });
+    });
+
+    it('returns ready_for_discussion when research is completed and no discussion item yet', () => {
+      const m = loadWithPhases('auth', { research: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' });
+    });
+
+    it('returns discussing when discussion item is in-progress', () => {
+      const m = loadWithPhases('auth', { discussion: 'in-progress' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion' });
+    });
+
+    it('returns decided when discussion item is completed', () => {
+      const m = loadWithPhases('auth', { discussion: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion' });
+    });
+
+    it('returns cancelled only when BOTH research and discussion items are cancelled', () => {
+      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'cancelled' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null });
+    });
+
+    it('falls through to fresh when only research is cancelled (discussion path still open)', () => {
+      const m = loadWithPhases('auth', { research: 'cancelled' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+    });
+
+    it('falls through to fresh when only discussion is cancelled (research path still open)', () => {
+      const m = loadWithPhases('auth', { discussion: 'cancelled' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+    });
+
+    it('discussion status wins over research status — decided overrides ready_for_discussion', () => {
+      const m = loadWithPhases('auth', { research: 'completed', discussion: 'completed' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'decided');
+    });
+
+    it('discussion status wins over research status — discussing overrides researching', () => {
+      const m = loadWithPhases('auth', { research: 'in-progress', discussion: 'in-progress' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'discussing');
+    });
+  });
+
+  describe('computeNextAction', () => {
+    it('fresh + research → start_research', () => {
+      assert.strictEqual(computeNextAction('research', 'fresh'), 'start_research');
+    });
+
+    it('fresh + discussion → start_discussion', () => {
+      assert.strictEqual(computeNextAction('discussion', 'fresh'), 'start_discussion');
+    });
+
+    it('researching → continue_research', () => {
+      assert.strictEqual(computeNextAction('research', 'researching'), 'continue_research');
+      assert.strictEqual(computeNextAction('discussion', 'researching'), 'continue_research');
+    });
+
+    it('ready_for_discussion → start_discussion_after_research', () => {
+      assert.strictEqual(computeNextAction('research', 'ready_for_discussion'), 'start_discussion_after_research');
+      assert.strictEqual(computeNextAction('discussion', 'ready_for_discussion'), 'start_discussion_after_research');
+    });
+
+    it('discussing → continue_discussion', () => {
+      assert.strictEqual(computeNextAction('research', 'discussing'), 'continue_discussion');
+      assert.strictEqual(computeNextAction('discussion', 'discussing'), 'continue_discussion');
+    });
+
+    it('decided → null (no next action)', () => {
+      assert.strictEqual(computeNextAction('research', 'decided'), null);
+      assert.strictEqual(computeNextAction('discussion', 'decided'), null);
+    });
+
+    it('cancelled → null (no next action)', () => {
+      assert.strictEqual(computeNextAction('research', 'cancelled'), null);
+      assert.strictEqual(computeNextAction('discussion', 'cancelled'), null);
+    });
+
+    it('unknown lifecycle → null', () => {
+      assert.strictEqual(computeNextAction('research', 'made-up'), null);
+    });
+  });
+
+  describe('computeMapSummary', () => {
+    it('returns zero counts for an empty items array', () => {
+      assert.deepStrictEqual(
+        computeMapSummary([]),
+        { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 },
+      );
+    });
+
+    it('counts items by tier glyph', () => {
+      const items = [
+        { tier: '→' },
+        { tier: '→' },
+        { tier: '◐' },
+        { tier: '✓' },
+        { tier: '○' },
+        { tier: '○' },
+        { tier: '○' },
+        { tier: '⊘' },
+      ];
+      assert.deepStrictEqual(
+        computeMapSummary(items),
+        { total: 8, decided: 1, in_flight: 1, ready: 2, fresh: 3, cancelled: 1 },
+      );
+    });
+
+    it('ignores items with unrecognised tier glyphs but still counts total', () => {
+      const items = [{ tier: '✓' }, { tier: '?' }, { tier: undefined }];
+      const r = computeMapSummary(items);
+      assert.strictEqual(r.total, 3);
+      assert.strictEqual(r.decided, 1);
+      assert.strictEqual(r.in_flight, 0);
+      assert.strictEqual(r.ready, 0);
+      assert.strictEqual(r.fresh, 0);
+      assert.strictEqual(r.cancelled, 0);
     });
   });
 

@@ -37,6 +37,19 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**.
 
 The draft session log is your working list — `session-loop.md` will brief the user on resume.
 
+A resumed first-session is a non-first inception entry — per the design, surface prior knowledge-base context before handing back rather than re-reading raw files.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking the knowledge base for prior work that might inform
+> the resumed session before handing back.
+```
+
+→ Load **[contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+
+When it returns:
+
 → Return to **[the skill](../SKILL.md)** for **Step 2**.
 
 **If `restart`:**

@@ -41,7 +41,7 @@ $MANIFEST get project.work_units                    # All work units
 $MANIFEST get project.defaults.plan_format          # Specific default
 
 # Write (field path + value):
-$MANIFEST set project.defaults.plan_format local-markdown
+$MANIFEST set project.defaults.plan_format {format}
 $MANIFEST push project.defaults.project_skills ".claude/skills/golang-pro"
 
 # Check existence:
@@ -179,7 +179,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set <name> status com
 
 **Phase level** (2 segments):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set <name>.planning format local-markdown
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set <name>.planning format {format}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set <name>.research analysis_cache '{"checksum":"..."}'
 ```
 
@@ -356,7 +356,7 @@ Project-wide settings are stored in the `defaults` section of the project manife
 
 | Default | Description | Used by |
 |---------|-------------|---------|
-| `plan_format` | Output format for plans (e.g., `tick`, `linear`, `local-markdown`) | Planning |
+| `plan_format` | Output format for plans (see `workflow-planning-process/references/output-formats.md` for available values) | Planning |
 | `project_skills` | Array of skill paths used during implementation | Implementation |
 | `linters` | Array of linter configs used during TDD cycle | Implementation |
 

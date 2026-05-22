@@ -149,7 +149,7 @@ After the render block, run the **Plans Not Ready Check** below; it applies to b
 
 - Phase headers as section labels (titlecased) with a parenthetical count summary — e.g., `Discussion (3 completed, 1 cancelled)`, `Research (1 completed)`, `Specification (2 in-progress)`. Combine statuses present in that phase; omit zero counts
 - Items under each phase use proper tree grammar: `├─` for non-final siblings, `└─` for the final item. Pending discussion topics from research count as siblings when determining the final item
-- Planning items show format after status, separated by a middle dot: `[in-progress] · linear`
+- Planning items show format after status, separated by a middle dot: `[in-progress] · {format}`
 - Specification items show their source discussions as a sub-tree beneath, one `└─` per source
 - Source status: `[incorporated]` or `[pending]` from manifest
 - Implementation items show progress: `Phase {N}, {M} task(s) completed` if in-progress with current_phase; `{M} task(s) completed` otherwise

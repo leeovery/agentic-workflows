@@ -148,6 +148,39 @@ describe('continue-feature discovery', () => {
       assert.deepStrictEqual(r.features[0].completed_phases, ['research']);
     });
   });
+
+  describe('imports_count', () => {
+    it('reports zero when no imports tracked', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.features[0].imports_count, 0);
+    });
+
+    it('reports zero when imports field is missing entirely', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.features[0].imports_count, 0);
+    });
+
+    it('reports the length of manifest.imports[]', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+        imports: [
+          { path: 'imports/seed-conversation.md', imported_at: '2026-05-10T10:00:00Z' },
+          { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
+        ],
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.features[0].imports_count, 2);
+    });
+  });
 });
 
 describe('continue-feature format', () => {
@@ -197,5 +230,24 @@ describe('continue-feature format', () => {
     });
     const out = format(discover(dir));
     assert.ok(out.includes('[completed: discussion, specification]'));
+  });
+
+  it('format output shows imports count when non-zero', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      imports: [{ path: 'imports/seed.md', imported_at: '2026-05-10T10:00:00Z' }],
+    });
+    const out = format(discover(dir));
+    assert.ok(out.includes('(1 imports)'));
+  });
+
+  it('format output omits imports clause when zero', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+    });
+    const out = format(discover(dir));
+    assert.ok(!out.includes('imports)'));
   });
 });

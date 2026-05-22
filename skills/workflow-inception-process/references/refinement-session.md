@@ -32,15 +32,32 @@ node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 
 The output drives the rest of this file:
 
-- **`map_summary`** — `{total} topics — ...` line. Used in **D** (session log header) and **E** (render).
-- **`discovery_map`** — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`. Used in **E** (render).
+- **`map_summary`** — `{total} topics — ...` line. Used in **E** (session log header) and **F** (render).
+- **`discovery_map`** — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`. Used in **F** (render).
 - **`dismissed`** — names of topics previously removed via refinement. Used by `show-dismissed.md`.
-- **`latest_session`** — `{filename, number, is_refinement, is_in_progress, conclusion_text, relative_path}`. Used in **B** (resume detection).
-- **`next_session_number`** — zero-padded next session number to seed in **D**.
+- **`latest_session`** — `{filename, number, is_refinement, is_in_progress, conclusion_text, relative_path}`. Used in **C** (resume detection).
+- **`next_session_number`** — zero-padded next session number to seed in **E**.
 
-→ Proceed to **B. Resume Check**.
+→ Proceed to **B. Surface Prior Context**.
 
-## B. Resume Check
+## B. Surface Prior Context
+
+Refinement is a non-first inception entry — per the design, all non-first sessions surface prior context via knowledge-base retrieval rather than re-reading raw files.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking the knowledge base for prior work related to this
+> work unit before the refinement loop begins.
+```
+
+→ Load **[contextual-query.md](../../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
+
+When it returns:
+
+→ Proceed to **C. Resume Check**.
+
+## C. Resume Check
 
 Read `latest_session` and `next_session_number` from the discovery output produced in **A**.
 
@@ -48,13 +65,13 @@ Read `latest_session` and `next_session_number` from the discovery output produc
 
 No refinement is in flight (only the initial session log exists, or no logs at all).
 
-→ Proceed to **C. Self-Healing Check**.
+→ Proceed to **D. Self-Healing Check**.
 
 #### If `latest_session.is_refinement` is `true` and `latest_session.is_in_progress` is `false`
 
 The prior refinement concluded normally. Treat this as a fresh entry.
 
-→ Proceed to **C. Self-Healing Check**.
+→ Proceed to **D. Self-Healing Check**.
 
 #### If `latest_session.is_refinement` is `true` and `latest_session.is_in_progress` is `true`
 
@@ -77,7 +94,7 @@ Found an in-progress refinement session log for **{work_unit:(titlecase)}**: `{l
 
 The active session log is `{latest_session.filename}`. No new log is initialised; subsequent operations append to the existing log.
 
-→ Proceed to **E. Render and Prompt**.
+→ Proceed to **F. Render and Prompt**.
 
 **If `restart`:**
 
@@ -89,9 +106,9 @@ git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): restart refinement session"
 ```
 
-→ Proceed to **C. Self-Healing Check**.
+→ Proceed to **D. Self-Healing Check**.
 
-## C. Self-Healing Check
+## D. Self-Healing Check
 
 Read `analysis_caches` from the discovery output produced in **A**. The shape is:
 
@@ -102,7 +119,7 @@ Read `analysis_caches` from the discovery output produced in **A**. The shape is
 
 No analyses to run. The map is up to date relative to the source files.
 
-→ Proceed to **D. Initialise Session Log**.
+→ Proceed to **E. Initialise Session Log**.
 
 #### If at least one cache is `stale`
 
@@ -116,13 +133,13 @@ No analyses to run. The map is up to date relative to the source files.
 
 → Load **[self-healing.md](../../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
 
-On return, read the orchestrator's `new_arrivals` tracker. The session log isn't created until **D**, so hold the arrivals in conversation memory and append them under **Self-Healing Arrivals** in **D** after the template is written.
+On return, read the orchestrator's `new_arrivals` tracker. The session log isn't created until **E**, so hold the arrivals in conversation memory and append them under **Self-Healing Arrivals** in **E** after the template is written.
 
-→ Proceed to **D. Initialise Session Log**.
+→ Proceed to **E. Initialise Session Log**.
 
-## D. Initialise Session Log
+## E. Initialise Session Log
 
-Re-run discovery to pick up any state changes from a `restart` in **B** or self-healing arrivals from **C**:
+Re-run discovery to pick up any state changes from a `restart` in **C** or self-healing arrivals from **D**:
 
 ```bash
 node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
@@ -130,9 +147,9 @@ node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 
 Read `next_session_number` and `map_summary` from the output. The new session log path is `.workflows/{work_unit}/inception/session-{next_session_number}.md`.
 
-Create the file from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the `map_summary` text. Leave **Changes** and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **B**.
+Create the file from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the `map_summary` text. Leave **Changes** and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **C**.
 
-#### If **C** captured at least one arrival
+#### If **D** captured at least one arrival
 
 Replace the `(none)` placeholder under **Self-Healing Arrivals** with one bullet per arrival, in the order they were added by the orchestrator:
 
@@ -153,9 +170,9 @@ git commit -m "inception({work_unit}): self-healing added {N} topic(s) to map; s
 
 `{N}` is the total arrival count after dedupe.
 
-→ Proceed to **E. Render and Prompt**.
+→ Proceed to **F. Render and Prompt**.
 
-#### Otherwise (no arrivals captured, or **C** had no analyses to run)
+#### Otherwise (no arrivals captured, or **D** had no analyses to run)
 
 Leave **Self-Healing Arrivals** as `(none)`. Commit the seeded session log:
 
@@ -164,9 +181,9 @@ git add -- .workflows/{work_unit}/inception/session-{next_session_number}.md
 git commit -m "inception({work_unit}): seed refinement session log"
 ```
 
-→ Proceed to **E. Render and Prompt**.
+→ Proceed to **F. Render and Prompt**.
 
-## E. Render and Prompt
+## F. Render and Prompt
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -176,7 +193,7 @@ git commit -m "inception({work_unit}): seed refinement session log"
 > one message are fine; I'll work through them.
 ```
 
-Render the current map as a status-display anchor, using `discovery_map` and `map_summary` from **A** (or from the resumed log's matching state if **B** routed `continue`):
+Render the current map as a status-display anchor, using `discovery_map` and `map_summary` from **A** (or from the resumed log's matching state if **C** routed `continue`):
 
 > *Output the next fenced block as a code block:*
 
@@ -214,9 +231,9 @@ What would you like to change?
 
 **STOP.** Wait for user response.
 
-→ Proceed to **F. Operations Loop**.
+→ Proceed to **G. Operations Loop**.
 
-## F. Operations Loop
+## G. Operations Loop
 
 The user's most recent message names one or more changes in natural language, asks to see dismissed items, or signals they are done.
 
@@ -228,13 +245,13 @@ Triggers include *"show dismissed"*, *"what was removed"*, *"let me see what I d
 
 When it returns:
 
-→ Proceed to **G. Anything Else?**.
+→ Proceed to **H. Anything Else?**.
 
 #### If the user's message signals they are done
 
 Triggers include *"no"*, *"done"*, *"that's it"*, *"all good"*, *"wrap up"*.
 
-→ Proceed to **H. Finalise Session Log**.
+→ Proceed to **I. Finalise Session Log**.
 
 #### Otherwise
 
@@ -244,9 +261,9 @@ The message names operations.
 
 `map-operations.md` re-runs discovery for fresh state, parses, validates, applies safety-by-destructiveness gating, writes the manifest, appends to the active session log, and commits per its own pattern. When it returns:
 
-→ Proceed to **G. Anything Else?**.
+→ Proceed to **H. Anything Else?**.
 
-## G. Anything Else?
+## H. Anything Else?
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -263,13 +280,13 @@ Anything else to change?
 
 #### If `done`
 
-→ Proceed to **H. Finalise Session Log**.
+→ Proceed to **I. Finalise Session Log**.
 
 #### Otherwise
 
-→ Return to **F. Operations Loop**.
+→ Return to **G. Operations Loop**.
 
-## H. Finalise Session Log
+## I. Finalise Session Log
 
 Re-run discovery to pick up the post-operations state:
 
@@ -283,15 +300,15 @@ Read `map_summary.total` from the output. Replace the `(none)` placeholder in th
 
 Replace `(none)` with: `{N} changes applied. Map now has {map_summary.total} topics.`
 
-→ Proceed to **I. Compliance Self-Check**.
+→ Proceed to **J. Compliance Self-Check**.
 
 #### Otherwise (browse-only refinement, no operations applied)
 
 Replace `(none)` with: `No changes applied — browse only. Map has {map_summary.total} topics.`
 
-→ Proceed to **I. Compliance Self-Check**.
+→ Proceed to **J. Compliance Self-Check**.
 
-## I. Compliance Self-Check
+## J. Compliance Self-Check
 
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
@@ -299,9 +316,9 @@ The check audits the refinement against this file, the parent SKILL.md, and any 
 
 When it returns:
 
-→ Proceed to **J. Final Sweep**.
+→ Proceed to **K. Final Sweep**.
 
-## J. Final Sweep
+## K. Final Sweep
 
 Check `git status`.
 
@@ -312,13 +329,13 @@ git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): finalise refinement session log"
 ```
 
-→ Proceed to **K. Bridge**.
+→ Proceed to **L. Bridge**.
 
 #### If the working tree is clean
 
-→ Proceed to **K. Bridge**.
+→ Proceed to **L. Bridge**.
 
-## K. Bridge
+## L. Bridge
 
 > *Output the next fenced block as markdown (not a code block):*
 

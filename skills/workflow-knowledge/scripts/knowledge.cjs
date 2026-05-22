@@ -207,7 +207,7 @@ Expected: .workflows/{work_unit}/imports/{filename}.md`);c=a[1]}if(c==="."||c===
 This is non-deterministic \u2014 the rebuilt index will differ from the original.
 Type 'rebuild' to confirm: `),await Pl()!=="rebuild"&&(process.stderr.write(`
 Aborted.
-`),process.exit(1)),br().length===0&&(process.stderr.write(`No completed artifacts found to index. Aborting rebuild \u2014 the existing index has NOT been modified.
+`),process.exit(1)),br().length===0&&(process.stderr.write(`No artifacts to index. Aborting rebuild \u2014 the existing index has NOT been modified.
 (If you believe this is wrong, check that .workflows/ exists and that work units have items with status "completed".)
 `),process.exit(1));let l=s+".bak",u=i+".bak";await v.withLock(o,async()=>{k.existsSync(l)&&k.unlinkSync(l),k.existsSync(u)&&k.unlinkSync(u),k.existsSync(s)&&k.renameSync(s,l),k.existsSync(i)&&k.renameSync(i,u);let d=r?r.dimensions():n&&n.dimensions||wr,f=await v.createStore(d);await v.saveStore(f,s),v.writeMetadata(i,{provider:r?n.provider:null,model:r?r.model():null,dimensions:r?r.dimensions():null,last_indexed:new Date().toISOString(),pending:[]})}),process.stdout.write(`Deleted existing index.
 `);try{await Jt(e,n,r)}catch(d){try{await v.withLock(o,async()=>{k.existsSync(l)&&(k.existsSync(s)&&k.unlinkSync(s),k.renameSync(l,s)),k.existsSync(u)&&(k.existsSync(i)&&k.unlinkSync(i),k.renameSync(u,i))}),process.stderr.write(`Rebuild failed; restored previous index from backup.
