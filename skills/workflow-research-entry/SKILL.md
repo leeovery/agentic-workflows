@@ -15,7 +15,7 @@ You are in the **Research** phase — exploring ideas, feasibility, market, and 
 | Work type | Pipeline |
 |---|---|
 | Epic | Inception → **Research** → Discussion → Specification → Planning → Implementation → Review |
-| Feature | **Research** (imported) → Discussion → Specification → Planning → Implementation → Review |
+| Feature | **Research** (optional) → Discussion → Specification → Planning → Implementation → Review |
 | Cross-cutting | **Research** (optional) → Discussion → Specification (terminal) |
 
 **Stay in your lane**: Explore freely. This is the time for broad thinking, feasibility checks, and learning. Surface options and tradeoffs — don't make decisions. When a topic converges toward a conclusion, that's a signal it's ready for discussion phase, not a cue to start deciding. Park it and move on.
@@ -66,27 +66,27 @@ Resolve filename:
 
 `resolved_filename = {topic}.md`
 
-Imports already populated context via `imports/` and the knowledge base — skip the validate and gather-context steps and hand straight off to the processing skill.
-
 → Proceed to **Step 5**.
 
-#### If work_type is `feature` or `cross-cutting`
+#### If `topic` resolved
 
 `resolved_filename = {topic}.md`
 
 → Proceed to **Step 2**.
 
-#### If work_type is `epic` and `topic` resolved
+#### If no `topic`
 
-`resolved_filename = {topic}.md`
+> *Output the next fenced block as a code block:*
+
+```
+What topic would you like to research?
+```
+
+**STOP.** Wait for user response.
+
+Kebab-case the response, store as `{topic}`. `resolved_filename = {topic}.md`.
 
 → Proceed to **Step 2**.
-
-#### If work_type is `epic` and no `topic`
-
-Deferred — gather-context will resolve it.
-
-→ Proceed to **Step 4**.
 
 ---
 

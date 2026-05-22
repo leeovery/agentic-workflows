@@ -15,7 +15,7 @@ You are in the **Discussion** phase — capturing WHAT and WHY through decisions
 | Work type | Pipeline |
 |---|---|
 | Epic | Inception → Research → **Discussion** → Specification → Planning → Implementation → Review |
-| Feature | **Discussion** → Specification → Planning → Implementation → Review |
+| Feature | Research (optional) → **Discussion** → Specification → Planning → Implementation → Review |
 | Cross-cutting | Research (optional) → **Discussion** → Specification (terminal) |
 
 **Stay in your lane**: Capture the WHAT and WHY - decisions, rationale, competing approaches, edge cases. Don't jump to specifications, plans, or code. This is the time for debate and documentation.
@@ -80,9 +80,7 @@ Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception
 
 → Proceed to **Step 3** (Gather Context).
 
-#### If no `topic` (epic — no-topic path)
-
-The user invoked `/workflow-discussion-entry epic {work_unit}` without a topic — typically via `d`/`discuss` from continue-epic, signalling "start a new discussion on a fresh topic." The discovery map is the curation surface for known topics; this path covers ad-hoc names that aren't (yet) on the map.
+#### If no `topic`
 
 > *Output the next fenced block as a code block:*
 
@@ -92,7 +90,7 @@ What topic would you like to discuss?
 
 **STOP.** Wait for user response.
 
-Use the response as `{topic}` (convert to kebab-case via the casing conventions). Set `source = "fresh"`.
+Kebab-case the response, store as `{topic}`. Set `source = "fresh"`.
 
 → Proceed to **Step 2** (Validate Phase).
 

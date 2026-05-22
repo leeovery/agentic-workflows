@@ -21,11 +21,12 @@ Each phase is its own PR off the previous phase's branch (stacked PRs — see *B
 9. **[Topic Splitting and Elevation](phase-09-topic-splitting-elevation.md)** — write inception items alongside; name collision validation. **Status:** Review (PR #274)
 10. **[Direct-Entry Auto-Add](phase-10-direct-entry-auto-add.md)** — `d`/`discuss` and `r`/`research` for unmapped topics auto-create map items. **Status:** Not started
 11. **[Migration](phase-11-migration.md)** — seed inception items for existing in-progress epics. **Status:** Not started
-12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Not started
+12. **[Drop Explore Mode](phase-12-drop-explore-mode.md)** — remove research's `e`/`explore`; collapse start-epic's `route-first-phase`. **Status:** Review (PR #277)
 13. **[Documentation Cleanup](phase-13-documentation.md)** — CLAUDE.md, README, phase tables, compliance checks. **Status:** Not started
 14. **[Two-Tier Provenance](phase-14-provenance.md)** — add `description` field to inception items; every write surface populates it; entry skills load it as session opening context; direct-entry derives summary + description from the opening question. **Status:** Not started
 15. **[KB Index Analysis Caches](phase-15-kb-index-analysis.md)** — index `.state/research-analysis.md` and `.state/discussion-gap-analysis.md` so the analysis content is searchable via knowledge queries. **Status:** Not started
 16. **[Final Review and Cleanup](phase-16-cleanup.md)** — catch-all for behavioural gaps and stale wording surfaced during phase reviews (absorption + imports, continue-feature display, rebuild error wording, inception KB query). **Status:** Not started
+17. **[Entry UX & Inception Unification (Exploratory Design)](phase-17-entry-ux-redesign.md)** — captures the in-flight design conversation about reshaping entry UX (universal inception, conversation-first start, project-level imports). **Nothing decided.** May become its own successor initiative rather than ship as a single phase. **Status:** Exploratory
 
 ## Dependencies
 
@@ -61,6 +62,8 @@ Phase 1 (manifest foundations)
                                                                     └──▶ Phase 15 (KB index analyses)
                                                                          │
                                                                          └──▶ Phase 16 (final cleanup)
+                                                                              │
+                                                                              └──▶ Phase 17 (exploratory — design only, not queued)
 ```
 
 Each phase's branch is based on the immediately preceding phase's branch. PRs merge to main bottom-to-top of the table.
@@ -101,11 +104,12 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 | `idea/inception-pr-9-split-elevation` | Phase 8 branch | Phase 9 — Topic Splitting and Elevation | [#274](https://github.com/leeovery/agentic-workflows/pull/274) | Review |
 | `idea/inception-pr-10-direct-entry` | Phase 9 branch | Phase 10 — Direct-Entry Auto-Add | [#275](https://github.com/leeovery/agentic-workflows/pull/275) | Review |
 | `idea/inception-pr-11-migration` | Phase 10 branch | Phase 11 — Migration | [#276](https://github.com/leeovery/agentic-workflows/pull/276) | Review |
-| `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | — | Not started |
+| `idea/inception-pr-12-drop-explore` | Phase 11 branch | Phase 12 — Drop Explore Mode | [#277](https://github.com/leeovery/agentic-workflows/pull/277) | Review |
 | `idea/inception-pr-13-docs` | Phase 12 branch | Phase 13 — Documentation Cleanup | — | Not started |
 | `idea/inception-pr-14-provenance` | Phase 13 branch | Phase 14 — Two-Tier Provenance | — | Not started |
 | `idea/inception-pr-15-kb-index-analysis` | Phase 14 branch | Phase 15 — KB Index Analysis Caches | — | Not started |
 | `idea/inception-pr-16-cleanup` | Phase 15 branch | Phase 16 — Final Review and Cleanup | — | Not started |
+| TBD | Phase 16 branch | Phase 17 — Entry UX & Inception Unification | — | Exploratory (design not settled) |
 
 **Conventions:**
 - Branch slug = `idea/inception-pr-{N}-{short-slug}`. Whole numbers only — no `2a`/`2b`.
@@ -120,6 +124,10 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 - Compliance self-check passes on all touched skill files (`workflow-shared/references/compliance-check.md`).
 - Standing project rules apply: never commit to main; branch first; commit and push after every change.
 
+## Project-Wide Exclusions
+
+**`workflow-explorer.html` is out of scope for every phase of this initiative.** The HTML visualisation is large, already out of sync with multiple parts of the codebase, and needs its own dedicated focus. It will be refreshed as a separate effort once the discovery-map work is fully merged — do not patch it in any phase between 1 and 16. If a phase surfaces a stale block in `workflow-explorer.html`, leave it untouched and flag it for the post-merge refresh.
+
 ## Planning Branch Plan
 
 1. All phase docs in this directory get reviewed.
@@ -133,5 +141,6 @@ The merge sequence at the end of the initiative is **strictly bottom-to-top of t
 - **In progress** — implementation underway.
 - **Review** — PR open, awaiting merge.
 - **Done** — merged to main.
+- **Exploratory** — design conversation captured but nothing committed; needs more discussion before any phase doc is finalised or work begins.
 
 Update this index as phases progress.

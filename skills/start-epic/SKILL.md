@@ -74,8 +74,8 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 
 ```
 > Starting a new epic. I'll ask what you're building, suggest
-> a name, then we'll begin an inception session to map the
-> topics.
+> a name, optionally import any seed files, then begin an
+> inception session to map the topics.
 ```
 
 Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
@@ -141,26 +141,54 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ---
 
-## Step 3: Route to First Phase
+## Step 3: Optional Import
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Choose Starting Phase ────────────────────────
+── Optional Import ──────────────────────────────
 ```
 
-Load **[route-first-phase.md](references/route-first-phase.md)** and follow its instructions as written.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Inception is the next step. If you have existing notes or
+> research files for this epic, you can import them now — they
+> will be copied into the work unit, indexed into the knowledge
+> base, and surfaced during inception.
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Import existing files before inception?
+
+- **`y`/`yes`** — Import existing files first
+- **`n`/`no`** — Continue straight to inception
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `yes`
+
+Load **[collect-import.md](references/collect-import.md)** and follow its instructions as written.
+
+→ Proceed to **Step 4**.
+
+#### If `no`
 
 → Proceed to **Step 4**.
 
 ---
 
-## Step 4: Invoke Entry-Point Skill
+## Step 4: Invoke Inception
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Invoke Phase Skill ───────────────────────────
+── Invoke Inception ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -170,10 +198,6 @@ Load **[route-first-phase.md](references/route-first-phase.md)** and follow its 
 > guide the session.
 ```
 
-Invoke the inception entry skill:
-
-| Phase | Invoke |
-|-------|--------|
-| inception | `/workflow-inception-entry epic {work_unit}` |
+Invoke `/workflow-inception-entry epic {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

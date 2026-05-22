@@ -16,7 +16,7 @@ Two types of background agent operate during research. Load their lifecycle inst
 
 ## B. Session Loop
 
-Multi-file, topic-aware session with convergence routing.
+Per-topic session with topic awareness and convergence routing.
 
 → Load **[session-loop.md](session-loop.md)** and follow its conversation process.
 

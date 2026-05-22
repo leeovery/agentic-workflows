@@ -10,7 +10,7 @@ Read `work_type` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
 ```
 
-#### If work_type is `feature`
+#### If work_type is `feature` or `cross-cutting`
 
 → Load **[feature-session.md](feature-session.md)** and follow its instructions as written.
 
