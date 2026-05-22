@@ -1,6 +1,7 @@
 'use strict';
 
-const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computePendingFromResearch, computePendingFromGaps, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, TIER_RANK } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const path = require('path');
+const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, computeAnalysisCacheStatus, TIER_RANK } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 const EPIC_PHASES = ['inception', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
@@ -44,6 +45,14 @@ function resolveDeps(cwd, manifest, planItem) {
   }
 
   return { deps_satisfied: depsSatisfied, deps_blocking: depsBlocking };
+}
+
+function buildAnalysisCaches(cwd, manifest) {
+  const workflowsDir = path.join(cwd, '.workflows');
+  return {
+    research_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'research-analysis'),
+    gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
+  };
 }
 
 function buildEpicDetail(cwd, manifest) {
@@ -155,17 +164,11 @@ function buildEpicDetail(cwd, manifest) {
     }
   }
 
-  const hasResearch = researchItems.some(r => r.status !== 'cancelled');
   const hasCompletedResearch = researchItems.some(r => r.status === 'completed');
   const hasCompletedSpec = specItems.some(s => s.status === 'completed');
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
   const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
-
-  const pendingFromResearch = computePendingFromResearch(manifest);
-  const pendingFromGaps = computePendingFromGaps(manifest);
-  const hasPendingGaps = pendingFromGaps.length > 0;
-  const hasPendingDiscussions = pendingFromResearch.length > 0 || hasPendingGaps;
 
   const inceptionItems = phaseItems(manifest, 'inception');
   let discoveryMap = [];
@@ -207,15 +210,11 @@ function buildEpicDetail(cwd, manifest) {
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
-    pending_from_research: pendingFromResearch.map(t => ({ name: t, phase: 'discussion' })),
-    pending_from_gaps: pendingFromGaps.map(t => ({ name: t, phase: 'discussion' })),
     discovery_map: discoveryMap,
     convergence_state: convergenceState,
     map_summary: mapSummary,
+    analysis_caches: buildAnalysisCaches(cwd, manifest),
     gating: {
-      has_research: hasResearch,
-      has_pending_discussions: hasPendingDiscussions,
-      has_pending_gaps: hasPendingGaps,
       can_start_discussion: hasCompletedResearch,
       can_start_specification: hasCompletedDiscussion,
       can_start_planning: hasCompletedSpec,
@@ -338,11 +337,8 @@ function format(result) {
     if (d.reopened_discussions.length > 0) {
       lines.push(`    reopened_discussions: ${d.reopened_discussions.join(', ')}`);
     }
-    if (d.pending_from_research.length > 0) {
-      lines.push(`    pending_from_research: ${d.pending_from_research.map(p => p.name).join(', ')}`);
-    }
-    if (d.pending_from_gaps.length > 0) {
-      lines.push(`    pending_from_gaps: ${d.pending_from_gaps.map(p => p.name).join(', ')}`);
+    if (d.analysis_caches) {
+      lines.push(`    analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
     }
     if (d.completed.length > 0) {
       lines.push('    completed:');

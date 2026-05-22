@@ -232,7 +232,6 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.has_research, true);
       assert.strictEqual(g.can_start_discussion, true);
       assert.strictEqual(g.can_start_specification, true);
       assert.strictEqual(g.can_start_planning, true);
@@ -250,23 +249,9 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.has_research, true);
       assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
-    });
-
-    it('has_research is false when no research items exist', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const r = discover(dir);
-      const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.has_research, false);
-      assert.strictEqual(g.can_start_discussion, false);
     });
 
     it('includes spec sources in phase items', () => {
@@ -301,55 +286,15 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.completed.length, 0);
     });
 
-    it('computes pending_from_research from surfaced_topics diff', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing', 'data-model'] },
-          discussion: { items: { auth: { status: 'completed' } } },
-        },
-      });
+    it('exposes analysis_caches shape on epic detail', () => {
+      createManifest(dir, 'v1', { work_type: 'epic' });
       const r = discover(dir);
       const d = r.epics[0].detail;
-      assert.strictEqual(d.pending_from_research.length, 2);
-      assert.deepStrictEqual(d.pending_from_research.map(p => p.name), ['billing', 'data-model']);
-      assert.strictEqual(d.pending_from_research[0].phase, 'discussion');
-    });
-
-    it('has_pending_discussions true when undiscussed surfaced topics exist', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing'] },
-          discussion: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.gating.has_pending_discussions, true);
-    });
-
-    it('has_pending_discussions false when all surfaced topics are discussed', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          research: { surfaced_topics: ['auth'] },
-          discussion: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.gating.has_pending_discussions, false);
-    });
-
-    it('pending_from_research empty when no surfaced_topics', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          research: { items: { explore: { status: 'completed' } } },
-        },
-      });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.pending_from_research.length, 0);
-      assert.strictEqual(r.epics[0].detail.gating.has_pending_discussions, false);
+      assert.ok(d.analysis_caches);
+      assert.ok(d.analysis_caches.research_analysis);
+      assert.ok(d.analysis_caches.gap_analysis);
+      assert.strictEqual(d.analysis_caches.research_analysis.status, 'absent');
+      assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
   });
 
@@ -459,8 +404,6 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.has_research, false);
-      assert.strictEqual(g.has_pending_discussions, false);
       assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
@@ -1110,15 +1053,10 @@ describe('continue-epic format', () => {
     assert.ok(out.includes('      - auth (discussion)'));
   });
 
-  it('includes pending_from_research in format output', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: { surfaced_topics: ['auth', 'billing'] },
-      },
-    });
+  it('includes analysis_caches in format output', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
     const out = format(discover(dir));
-    assert.ok(out.includes('    pending_from_research: auth, billing'));
+    assert.ok(out.includes('analysis_caches: research_analysis=absent, gap_analysis=absent'));
   });
 
   it('formats object-format sources correctly', () => {

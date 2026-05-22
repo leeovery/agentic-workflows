@@ -112,7 +112,7 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
   ──────
 
 @foreach(phase in [research, discussion, specification, planning, implementation, review])
-@if(phase has items or (phase == discussion and pending_from_research exists))
+@if(phase has items)
   {phase:(titlecase)} {phase_status_icon} ({completed_count} of {total_count})
   │
 @foreach(item in phase.items)
@@ -129,11 +129,6 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
   │  └─ Phase {item.current_phase}, {item.completed_tasks.length} task(s) completed
 @endif
 @endforeach
-@if(phase == discussion and pending_from_research exists)
-@foreach(topic in pending_from_research)
-  @if(last_pending_topic) └─ @else ├─ @endif ○ {topic.name} [pending from research]
-@endforeach
-@endif
 
 @endif
 @endforeach
@@ -154,9 +149,8 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
 - Specification items show source discussions as `← {source-topic}` sub-items using tree grammar
 - Promoted items show `→ promoted to {work_unit}` as a sub-item
 - Implementation items show progress as a sub-item when in-progress
-- Pending discussion topics from research appear at the end of the Discussion section with `○` and `[pending from research]`
 - Blank line between phase sections
-- Only show phases that have items (exception: Discussion appears if pending topics from research exist)
+- Only show phases that have items
 - Unassigned discussions section: `⚑` callout with each discussion listed. Separated from the last phase by a blank line. These are completed discussions so use `✓` icon.
 - Item names in kebabcase as stored — these are technical identifiers
 
@@ -185,7 +179,6 @@ Only output this block if at least one insight applies.
 
 | Condition | Text |
 |-----------|------|
-| `pending_from_research` has items | `{N} topic(s) from research not yet discussed.` |
 | `unaccounted_discussions` has items | `{N} completed discussion(s) not assigned to any specification.` |
 | Any plan has `deps_blocking` entries | `{topic:(titlecase)} plan blocked by {dep_topic}@if(dep.internal_id):{internal_id}@endif.` (one line per blocked plan) |
 | Critical path: an in-progress item whose completion unblocks 2+ downstream items in the same pipeline | `Critical path: completing {item.name} ({phase}) unblocks {N} downstream phase(s).` |

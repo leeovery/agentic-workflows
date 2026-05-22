@@ -14,21 +14,9 @@ New discussion entry: topic was provided by the caller.
 
 → Proceed to **B. Check Research**.
 
-#### If source is `research`
-
-→ Load **[gather-context-research.md](gather-context-research.md)** and follow its instructions as written.
-
-→ Return to caller.
-
-#### If source is `gap-analysis`
-
-→ Load **[gather-context-gap-analysis.md](gather-context-gap-analysis.md)** and follow its instructions as written.
-
-→ Return to caller.
-
 #### If source is `fresh`
 
-→ Load **[name-topic.md](name-topic.md)** and follow its instructions as written.
+The user named the topic in Step 1's no-topic-epic prompt; Step 2 confirmed no existing discussion for it.
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 

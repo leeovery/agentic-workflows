@@ -10,7 +10,8 @@ const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
-  phaseStatus, phaseItems, phaseData, computeNextPhase, computePendingFromResearch, computePendingFromGaps,
+  phaseStatus, phaseItems, phaseData, computeNextPhase,
+  computeAnalysisCacheStatus, computeSourceProvenance,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
 describe('discovery-utils', () => {
@@ -626,134 +627,154 @@ describe('discovery-utils', () => {
     });
   });
 
-  describe('computePendingFromResearch', () => {
-    it('returns empty when no surfaced_topics', () => {
-      const result = computePendingFromResearch({ phases: { research: {} } });
-      assert.deepStrictEqual(result, []);
+  describe('computeSourceProvenance', () => {
+    it('returns null for null/undefined source', () => {
+      assert.strictEqual(computeSourceProvenance(null), null);
+      assert.strictEqual(computeSourceProvenance(undefined), null);
     });
 
-    it('returns all surfaced topics when no discussions exist', () => {
-      const result = computePendingFromResearch({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing', 'data-model'] },
-        },
-      });
-      assert.deepStrictEqual(result, ['auth', 'billing', 'data-model']);
+    it('returns null for source=inception', () => {
+      assert.strictEqual(computeSourceProvenance('inception'), null);
     });
 
-    it('returns only undiscussed topics', () => {
-      const result = computePendingFromResearch({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing', 'data-model'] },
-          discussion: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      assert.deepStrictEqual(result, ['billing', 'data-model']);
+    it('returns "from {source}" for plain source', () => {
+      assert.strictEqual(computeSourceProvenance('research-analysis'), 'from research-analysis');
     });
 
-    it('returns empty when all surfaced topics have discussions', () => {
-      const result = computePendingFromResearch({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing'] },
-          discussion: {
-            items: {
-              auth: { status: 'completed' },
-              billing: { status: 'in-progress' },
-            },
-          },
-        },
-      });
-      assert.deepStrictEqual(result, []);
+    it('unwraps colon-prefixed source to "from {parent}"', () => {
+      assert.strictEqual(computeSourceProvenance('research-split:kitchen-hardware'), 'from kitchen-hardware');
     });
 
-    it('returns empty when no research phase exists', () => {
-      const result = computePendingFromResearch({ phases: {} });
-      assert.deepStrictEqual(result, []);
+    it('handles comma-joined plain sources', () => {
+      assert.strictEqual(
+        computeSourceProvenance('research-analysis,gap-analysis'),
+        'from research-analysis + gap-analysis',
+      );
     });
 
-    it('returns empty when no phases key', () => {
-      const result = computePendingFromResearch({});
-      assert.deepStrictEqual(result, []);
+    it('handles comma-joined sources with whitespace', () => {
+      assert.strictEqual(
+        computeSourceProvenance('research-analysis, gap-analysis'),
+        'from research-analysis + gap-analysis',
+      );
     });
 
-    it('handles surfaced_topics that is not an array', () => {
-      const result = computePendingFromResearch({
-        phases: { research: { surfaced_topics: 'not-an-array' } },
-      });
-      assert.deepStrictEqual(result, []);
+    it('handles mixed colon-prefixed and plain in a comma-joined source', () => {
+      assert.strictEqual(
+        computeSourceProvenance('research-split:billing,gap-analysis'),
+        'from billing + gap-analysis',
+      );
+    });
+
+    it('returns null for empty source', () => {
+      assert.strictEqual(computeSourceProvenance(''), null);
     });
   });
 
-  describe('computePendingFromGaps', () => {
-    it('returns empty when no gap_topics', () => {
-      const result = computePendingFromGaps({ phases: { discussion: {} } });
-      assert.deepStrictEqual(result, []);
+  describe('computeAnalysisCacheStatus', () => {
+    const { createManifest } = require('./discovery-test-utils.cjs');
+
+    it('research-analysis: returns absent when no research files and no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'absent');
+      assert.strictEqual(r.generated, null);
+      assert.deepStrictEqual(r.files, []);
     });
 
-    it('returns all gap topics when no discussions exist', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          discussion: { gap_topics: ['integration', 'error-handling'] },
-        },
+    it('research-analysis: returns stale when files exist but no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('research-analysis: returns valid when checksum matches', () => {
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-a');
+      const checksum = filesChecksum([path.join(dir, '.workflows/alpha/research/topic-a.md')]);
+      createManifest(dir, 'alpha', {
+        phases: { research: { analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] } } },
       });
-      assert.deepStrictEqual(result, ['integration', 'error-handling']);
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'valid');
+      assert.strictEqual(r.generated, '2026-05-01');
+      assert.deepStrictEqual(r.files, ['topic-a.md']);
     });
 
-    it('returns only undiscussed gap topics', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          discussion: {
-            gap_topics: ['integration', 'error-handling', 'caching'],
-            items: { integration: { status: 'completed' } },
-          },
-        },
+    it('research-analysis: returns stale when files changed', () => {
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
+      createManifest(dir, 'alpha', {
+        phases: { research: { analysis_cache: { checksum: 'stale-hash', generated: '2026-05-01', files: ['topic-a.md'] } } },
       });
-      assert.deepStrictEqual(result, ['error-handling', 'caching']);
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'stale');
     });
 
-    it('returns empty when all gap topics have discussions', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          discussion: {
-            gap_topics: ['integration', 'caching'],
-            items: {
-              integration: { status: 'completed' },
-              caching: { status: 'in-progress' },
-            },
-          },
-        },
+    it('research-analysis: returns stale when cache exists but files were deleted', () => {
+      createManifest(dir, 'alpha', {
+        phases: { research: { analysis_cache: { checksum: 'old', generated: '2026-05-01', files: ['gone.md'] } } },
       });
-      assert.deepStrictEqual(result, []);
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'stale');
+      assert.deepStrictEqual(r.files, ['gone.md']);
     });
 
-    it('returns empty when no discussion phase exists', () => {
-      const result = computePendingFromGaps({ phases: {} });
-      assert.deepStrictEqual(result, []);
+    it('gap-analysis: returns absent when no discussions and no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'absent');
     });
 
-    it('returns empty when no phases key', () => {
-      const result = computePendingFromGaps({});
-      assert.deepStrictEqual(result, []);
+    it('gap-analysis: returns stale when discussions exist but no cache', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'stale');
     });
 
-    it('handles gap_topics that is not an array', () => {
-      const result = computePendingFromGaps({
-        phases: { discussion: { gap_topics: 'not-an-array' } },
+    it('gap-analysis: returns valid when checksum matches discussion files', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
+      const checksum = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { gap_analysis_cache: { checksum, generated: '2026-05-02', discussion_files: ['auth.md'] } } },
       });
-      assert.deepStrictEqual(result, []);
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'valid');
+      assert.strictEqual(r.generated, '2026-05-02');
+      assert.deepStrictEqual(r.files, ['auth.md']);
     });
 
-    it('is independent of surfaced_topics', () => {
-      const result = computePendingFromGaps({
-        phases: {
-          research: { surfaced_topics: ['auth', 'billing'] },
-          discussion: {
-            gap_topics: ['integration'],
-            items: { auth: { status: 'completed' } },
-          },
-        },
+    it('gap-analysis: includes research-analysis.md in checksum when present', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
+      createFile(dir, '.workflows/alpha/.state/research-analysis.md', 'analysis content');
+      const checksumDOnly = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { gap_analysis_cache: { checksum: checksumDOnly, generated: '2026-05-02', discussion_files: ['auth.md'] } } },
       });
-      assert.deepStrictEqual(result, ['integration']);
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      // Cache only saw discussion file's checksum, but reality includes research-analysis.md
+      assert.strictEqual(r.status, 'stale');
+    });
+
+    it('returns absent for unknown kind', () => {
+      createManifest(dir, 'alpha', { phases: {} });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'nonsense');
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('returns absent for null manifest', () => {
+      const r = computeAnalysisCacheStatus(null, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'absent');
     });
   });
 });

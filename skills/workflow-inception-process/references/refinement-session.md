@@ -93,20 +93,36 @@ git commit -m "inception({work_unit}): restart refinement session"
 
 ## C. Self-Healing Check
 
+Read `analysis_caches` from the discovery output produced in **A**. The shape is:
+
+- `analysis_caches.research_analysis` — `{status, generated, files}` for the research-analysis cache. `status` is `valid` | `stale` | `absent`.
+- `analysis_caches.gap_analysis` — same shape for gap-analysis.
+
+#### If both caches are `valid` or `absent`
+
+No analyses to run. The map is up to date relative to the source files.
+
+→ Proceed to **D. Initialise Session Log**.
+
+#### If at least one cache is `stale`
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Phase 6 placeholder — self-healing analyses (research-analysis,
-> gap-analysis) are wired in Phase 7. Nothing runs here yet.
+> Source files have changed since the last analysis. Running
+> self-healing analyses to surface any new themes or gaps before
+> opening refinement.
 ```
 
-No-op for Phase 6. Phase 7 will run the analyses inline at this point and apply results to the map (auto-add with `source: research-analysis` or `source: gap-analysis`, filtered against `dismissed`). Any items added by analyses will be recorded under **Self-Healing Arrivals** in the session log initialised in **D**.
+→ Load **[self-healing.md](../../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+
+On return, read the orchestrator's `new_arrivals` tracker. The session log isn't created until **D**, so hold the arrivals in conversation memory and append them under **Self-Healing Arrivals** in **D** after the template is written.
 
 → Proceed to **D. Initialise Session Log**.
 
 ## D. Initialise Session Log
 
-Re-run discovery to pick up any state changes from a `restart` in **B**:
+Re-run discovery to pick up any state changes from a `restart` in **B** or self-healing arrivals from **C**:
 
 ```bash
 node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
@@ -114,9 +130,34 @@ node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 
 Read `next_session_number` and `map_summary` from the output. The new session log path is `.workflows/{work_unit}/inception/session-{next_session_number}.md`.
 
-Create the file from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the `map_summary` text. Leave **Self-Healing Arrivals**, **Changes**, and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **B**.
+Create the file from **[refinement-template.md](refinement-template.md)**. Populate the header (date, work unit) and **Map State at Start** with the `map_summary` text. Leave **Changes** and **Conclusion** as `(none)` placeholders — they fill in as operations are applied and at finalisation. The `(none)` Conclusion is the resume-detection signal used by **B**.
 
-Commit:
+#### If **C** captured at least one arrival
+
+Replace the `(none)` placeholder under **Self-Healing Arrivals** with one bullet per arrival, in the order they were added by the orchestrator:
+
+```markdown
+- {topic} (added by research-analysis, source: research-analysis)
+- {topic} (added by gap-analysis, source: gap-analysis)
+- {topic} (added by research-analysis, source: research-analysis,gap-analysis)
+```
+
+Use the `source` value the analysis wrote to the manifest (comma-joined when both surfaced the same theme). When the same name appears in both arrival lists, render it once attributed to research-analysis (per the orchestrator's **D. Dedupe Sources**).
+
+Then commit — single commit covers the new session log plus the analyses' manifest writes:
+
+```bash
+git add -- .workflows/{work_unit}/
+git commit -m "inception({work_unit}): self-healing added {N} topic(s) to map; seed refinement session log"
+```
+
+`{N}` is the total arrival count after dedupe.
+
+→ Proceed to **E. Render and Prompt**.
+
+#### Otherwise (no arrivals captured, or **C** had no analyses to run)
+
+Leave **Self-Healing Arrivals** as `(none)`. Commit the seeded session log:
 
 ```bash
 git add -- .workflows/{work_unit}/inception/session-{next_session_number}.md

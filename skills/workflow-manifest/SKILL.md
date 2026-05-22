@@ -280,7 +280,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs pull <name> tags "v1"
 
 **Phase level** (2 segments):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs pull <name>.research surfaced_topics "topic-name"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs pull <name>.inception dismissed "topic-name"
 ```
 
 **Topic level** (3 segments):

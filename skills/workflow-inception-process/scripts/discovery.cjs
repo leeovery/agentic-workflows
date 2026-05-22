@@ -8,6 +8,7 @@ const {
   computeTopicLifecycle,
   computeMapSummary,
   computeSourceProvenance,
+  computeAnalysisCacheStatus,
   TIER_RANK,
 } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
@@ -87,11 +88,17 @@ function discover(cwd, workUnit) {
   const { map, summary } = buildDiscoveryMap(manifest);
   const latestSession = findLatestSessionLog(cwd, workUnit);
   const nextSessionNumber = latestSession ? latestSession.number + 1 : 1;
+  const workflowsDir = path.join(cwd, '.workflows');
+  const analysisCaches = {
+    research_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'research-analysis'),
+    gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
+  };
   return {
     work_unit: workUnit,
     discovery_map: map,
     map_summary: summary,
     dismissed,
+    analysis_caches: analysisCaches,
     latest_session: latestSession,
     next_session_number: nextSessionNumber,
   };
@@ -130,6 +137,17 @@ function format(result) {
     for (const name of result.dismissed) {
       lines.push(`  - ${name}`);
     }
+  }
+  lines.push('');
+
+  lines.push('analysis_caches:');
+  const caches = result.analysis_caches || {};
+  for (const kind of ['research_analysis', 'gap_analysis']) {
+    const c = caches[kind] || { status: 'absent' };
+    let line = `  ${kind}: ${c.status}`;
+    if (c.generated) line += ` (generated ${c.generated})`;
+    if (c.reason) line += ` — ${c.reason}`;
+    lines.push(line);
   }
   lines.push('');
 
