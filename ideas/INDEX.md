@@ -56,4 +56,11 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 13 | ~~[Background Sub-Agents in Research](research-background-agents.md)~~ | Research processing skill | ✅ Done (superseded by deep-dive-agent) |
 | 14 | ~~[Top-Level Conditional Routing: Bold vs H4](top-level-conditional-routing.md)~~ | Convention drift across ~53 skill files | ✅ Done |
 | 15 | [STOP Gate Override Protection](stop-gate-override-protection.md) | All workflow skills with STOP gates |
-| 16 | [Embedding Provider `base_url` Override](embedding-provider-base-url.md) | Knowledge base CLI — `OpenAIProvider` + config |
+| 16 | [Investigation: Show Interim Findings](investigation-show-interim-findings.md) | Investigation processing skill (bugfix) |
+| 17 | [Bugfix: Prior Spec Knowledge Check](bugfix-prior-spec-knowledge-check.md) | Investigation or specification phase (bugfix) |
+| 18 | [Inbox Pickup Actions](inbox-pickup-actions.md) | `workflow-start` inbox menu + `start-quickfix` archive path |
+| 19 | [Review Classifier Quality](review-classifier-quality.md) | `workflow-review-task-verifier` tagging rules |
+| 20 | [Review Finding Grouping](review-finding-grouping.md) | `workflow-review-process` produce-review clustering |
+| 21 | [Cross-Plan Implementation Ordering](cross-plan-implementation-ordering.md) | Planning content-appraisal + format-level enforcement + epic menu collapse to "next available task" |
+| 22 | [Editing Historical Phase Artefacts](editing-historical-phase-artefacts.md) | Planning / implementation / knowledge base — corrigendum + reindex convention |
+| 23 | [Embedding Provider `base_url` Override](embedding-provider-base-url.md) | Knowledge base CLI — `OpenAIProvider` + config |
