@@ -4,7 +4,9 @@
 
 ---
 
-Drives cache-based dispatch of `research-analysis` and `discussion-gap-analysis` against an epic's discovery map. The analyses write directly to `phases.inception.items.{topic}` with `source` provenance and respect the per-work-unit `phases.inception.dismissed[]` list.
+Drives cache-based dispatch of `research-analysis` and `inception-gap-analysis` against an epic's discovery map. The analyses write directly to `phases.inception.items.{topic}` with `source` provenance and respect the per-work-unit `phases.inception.dismissed[]` list.
+
+The analyses self-gate on a precondition: they return without action when no completed research (for research-analysis) or no completed research-or-discussion (for gap-analysis) exists. Cache `stale` does not imply work to do — caller can safely dispatch unconditionally on `stale`.
 
 The caller is responsible for surfacing the result — `continue-epic` shows a callout above the discovery map; `refinement-session.md` records names under **Self-Healing Arrivals** in the active session log.
 
@@ -77,7 +79,7 @@ No dispatch.
 ·· Gap Analysis ·································
 ```
 
-→ Load **[discussion-gap-analysis.md](discussion-gap-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.gap_analysis`.
+→ Load **[inception-gap-analysis.md](inception-gap-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.gap_analysis`.
 
 On return, the tracker holds the names of any inception items just added by gap-analysis.
 

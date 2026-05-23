@@ -689,8 +689,21 @@ describe('discovery-utils', () => {
       assert.deepStrictEqual(r.files, []);
     });
 
-    it('research-analysis: returns stale when files exist but no cache', () => {
-      createManifest(dir, 'alpha', { phases: {} });
+    it('research-analysis: returns absent when files exist but no completed research item', () => {
+      createManifest(dir, 'alpha', {
+        phases: { research: { items: { 'topic-a': { status: 'in-progress' } } } },
+      });
+      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      // Completed-only input: no completed items → absent (analysis won't fire)
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('research-analysis: returns stale when completed research items exist but no cache', () => {
+      createManifest(dir, 'alpha', {
+        phases: { research: { items: { 'topic-a': { status: 'completed' } } } },
+      });
       createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
@@ -701,7 +714,12 @@ describe('discovery-utils', () => {
       createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-a');
       const checksum = filesChecksum([path.join(dir, '.workflows/alpha/research/topic-a.md')]);
       createManifest(dir, 'alpha', {
-        phases: { research: { analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] } } },
+        phases: {
+          research: {
+            items: { 'topic-a': { status: 'completed' } },
+            analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] },
+          },
+        },
       });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
@@ -713,43 +731,64 @@ describe('discovery-utils', () => {
     it('research-analysis: returns stale when files changed', () => {
       createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
       createManifest(dir, 'alpha', {
-        phases: { research: { analysis_cache: { checksum: 'stale-hash', generated: '2026-05-01', files: ['topic-a.md'] } } },
+        phases: {
+          research: {
+            items: { 'topic-a': { status: 'completed' } },
+            analysis_cache: { checksum: 'stale-hash', generated: '2026-05-01', files: ['topic-a.md'] },
+          },
+        },
       });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
       assert.strictEqual(r.status, 'stale');
     });
 
-    it('research-analysis: returns stale when cache exists but files were deleted', () => {
+    it('research-analysis: returns absent when cache exists but no completed items remain', () => {
+      // No completed items on disk → analysis precondition fails → absent
       createManifest(dir, 'alpha', {
         phases: { research: { analysis_cache: { checksum: 'old', generated: '2026-05-01', files: ['gone.md'] } } },
       });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
-      assert.strictEqual(r.status, 'stale');
+      assert.strictEqual(r.status, 'absent');
       assert.deepStrictEqual(r.files, ['gone.md']);
     });
 
-    it('gap-analysis: returns absent when no discussions and no cache', () => {
+    it('gap-analysis: returns absent when no completed material and no cache', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
     });
 
-    it('gap-analysis: returns stale when discussions exist but no cache', () => {
-      createManifest(dir, 'alpha', { phases: {} });
+    it('gap-analysis: returns absent when discussion file exists but no completed item', () => {
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'absent');
+    });
+
+    it('gap-analysis: returns stale when completed discussions exist but no cache', () => {
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { items: { auth: { status: 'completed' } } } },
+      });
       createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
       assert.strictEqual(r.status, 'stale');
     });
 
-    it('gap-analysis: returns valid when checksum matches discussion files', () => {
+    it('gap-analysis: returns valid when checksum matches completed discussion files', () => {
       createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
       const checksum = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
       createManifest(dir, 'alpha', {
-        phases: { discussion: { gap_analysis_cache: { checksum, generated: '2026-05-02', discussion_files: ['auth.md'] } } },
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          inception: { gap_analysis_cache: { checksum, generated: '2026-05-02', input_files: ['auth.md'] } },
+        },
       });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
@@ -758,16 +797,20 @@ describe('discovery-utils', () => {
       assert.deepStrictEqual(r.files, ['auth.md']);
     });
 
-    it('gap-analysis: includes research-analysis.md in checksum when present', () => {
+    it('gap-analysis: includes completed research files in checksum alongside discussions', () => {
       createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
-      createFile(dir, '.workflows/alpha/.state/research-analysis.md', 'analysis content');
+      createFile(dir, '.workflows/alpha/research/auth.md', 'content-r');
       const checksumDOnly = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
       createManifest(dir, 'alpha', {
-        phases: { discussion: { gap_analysis_cache: { checksum: checksumDOnly, generated: '2026-05-02', discussion_files: ['auth.md'] } } },
+        phases: {
+          research: { items: { auth: { status: 'completed' } } },
+          discussion: { items: { auth: { status: 'completed' } } },
+          inception: { gap_analysis_cache: { checksum: checksumDOnly, generated: '2026-05-02', input_files: ['auth.md'] } },
+        },
       });
       const m = loadManifest(dir, 'alpha');
       const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
-      // Cache only saw discussion file's checksum, but reality includes research-analysis.md
+      // Cache only saw discussion checksum, but reality includes the completed research file too
       assert.strictEqual(r.status, 'stale');
     });
 

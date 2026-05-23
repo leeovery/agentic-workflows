@@ -104,9 +104,9 @@ function phaseStatus(manifest, phase) {
     if (keys.length === 0) return null;
     if (keys.length === 1) {
       const status = (p.items[keys[0]] || {}).status || null;
-      return status === 'cancelled' ? null : status;
+      return (status === 'cancelled' || status === 'superseded') ? null : status;
     }
-    const statuses = keys.map(k => (p.items[k] || {}).status).filter(s => s && s !== 'cancelled');
+    const statuses = keys.map(k => (p.items[k] || {}).status).filter(s => s && s !== 'cancelled' && s !== 'superseded');
     if (statuses.length === 0) return null;
     if (statuses.every(s => s === 'completed')) return 'completed';
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
@@ -218,35 +218,49 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   if (kind === 'research-analysis') {
     const cache = ((manifest.phases || {}).research || {}).analysis_cache;
     const researchDir = path.join(wuDir, 'research');
-    const rFiles = listFiles(researchDir, '.md');
+    const researchItems = phaseItems(manifest, 'research');
+    const completedFiles = researchItems
+      .filter(it => it.status === 'completed')
+      .map(it => path.join(researchDir, `${it.name}.md`))
+      .filter(p => fileExists(p));
 
     if (!cache || !cache.checksum) {
-      return rFiles.length > 0
+      return completedFiles.length > 0
         ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
         : { status: 'absent', generated: null, files: [] };
     }
 
-    if (rFiles.length === 0) {
-      return { status: 'stale', generated: cache.generated || null, files: Array.isArray(cache.files) ? cache.files : [], reason: 'no research files to compare' };
+    if (completedFiles.length === 0) {
+      return { status: 'absent', generated: cache.generated || null, files: Array.isArray(cache.files) ? cache.files : [], reason: 'no completed research files' };
     }
 
-    const currentChecksum = filesChecksum(rFiles.map(f => path.join(researchDir, f)));
+    const currentChecksum = filesChecksum(completedFiles);
     const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
     return {
       status,
       generated: cache.generated || null,
       files: Array.isArray(cache.files) ? cache.files : [],
-      reason: status === 'valid' ? 'checksums match' : 'research has changed since cache was generated',
+      reason: status === 'valid' ? 'checksums match' : 'completed research has changed since cache was generated',
     };
   }
 
   if (kind === 'gap-analysis') {
-    const cache = ((manifest.phases || {}).discussion || {}).gap_analysis_cache;
+    const cache = ((manifest.phases || {}).inception || {}).gap_analysis_cache;
+    const researchDir = path.join(wuDir, 'research');
     const discussionDir = path.join(wuDir, 'discussion');
-    const dFiles = listFiles(discussionDir, '.md');
-    const inputPaths = dFiles.map(f => path.join(discussionDir, f));
-    const researchAnalysisPath = path.join(wuDir, '.state', 'research-analysis.md');
-    if (fileExists(researchAnalysisPath)) inputPaths.push(researchAnalysisPath);
+    const researchItems = phaseItems(manifest, 'research');
+    const discussionItems = phaseItems(manifest, 'discussion');
+
+    const completedResearchFiles = researchItems
+      .filter(it => it.status === 'completed')
+      .map(it => path.join(researchDir, `${it.name}.md`))
+      .filter(p => fileExists(p));
+    const completedDiscussionFiles = discussionItems
+      .filter(it => it.status === 'completed')
+      .map(it => path.join(discussionDir, `${it.name}.md`))
+      .filter(p => fileExists(p));
+
+    const inputPaths = [...completedResearchFiles, ...completedDiscussionFiles];
 
     if (!cache || !cache.checksum) {
       return inputPaths.length > 0
@@ -255,7 +269,7 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
     }
 
     if (inputPaths.length === 0) {
-      return { status: 'stale', generated: cache.generated || null, files: Array.isArray(cache.discussion_files) ? cache.discussion_files : [], reason: 'no discussion files to compare' };
+      return { status: 'absent', generated: cache.generated || null, files: Array.isArray(cache.input_files) ? cache.input_files : [], reason: 'no completed research or discussion files' };
     }
 
     const currentChecksum = filesChecksum(inputPaths);
@@ -263,8 +277,8 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
     return {
       status,
       generated: cache.generated || null,
-      files: Array.isArray(cache.discussion_files) ? cache.discussion_files : [],
-      reason: status === 'valid' ? 'checksums match' : 'discussions have changed since gap analysis was generated',
+      files: Array.isArray(cache.input_files) ? cache.input_files : [],
+      reason: status === 'valid' ? 'checksums match' : 'completed research/discussion has changed since gap analysis was generated',
     };
   }
 

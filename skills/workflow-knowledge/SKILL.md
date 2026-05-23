@@ -165,7 +165,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index <path/to/arti
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index
 ```
 
-- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,discussion-gap-analysis}.md`; the phase is `analysis` and the topic is `research-analysis` or `gap-analysis`.
+- **With a file**: re-indexing replaces existing chunks for that file (idempotent). The path must match `.workflows/{work_unit}/{phase}/...` so identity can be derived. For imports, the path is `.workflows/{work_unit}/imports/{filename}.md` and the topic is the filename basename without extension. For analysis caches, the path is `.workflows/{work_unit}/.state/{research-analysis,inception-gap-analysis}.md`; the phase is `analysis` and the topic is `research-analysis` or `gap-analysis`.
 - **Without args**: discovers every completed artifact across all work units and indexes anything missing. Used by setup and manual catch-up.
 - Failures are retried (exponential backoff). Files that still fail are pushed to a pending queue and retried on the next `index` call.
 - Exits non-zero if the file doesn't exist or the path can't be parsed.
@@ -204,7 +204,7 @@ Human-readable report of the store's state: chunk counts by work unit, phase, an
 
 ## `rebuild` and `compact` — maintenance commands
 
-- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` array, and any present analysis caches (`.state/research-analysis.md`, `.state/discussion-gap-analysis.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
+- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` array, and any present analysis caches (`.state/research-analysis.md`, `.state/inception-gap-analysis.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
 - **`compact [--dry-run]`** — removes chunks from work units whose `completed_at` date exceeds the configured `decay_months` TTL. Specifications are exempt. `--dry-run` previews without deleting.
 
 Skills do not call these directly during normal operation. Users run them manually.

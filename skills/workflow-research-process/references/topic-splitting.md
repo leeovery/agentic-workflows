@@ -6,14 +6,15 @@
 
 **Never decide for the user.** Even if the answer seems obvious, flag it and ask.
 
-Threads in the current file could be their own research topics — they have different scopes, stakeholders, or timelines.
+The current research file has been accumulating off-topic content over multiple exchanges — material that doesn't fit under this topic's name. Drift is the trigger here: when the file's scope no longer matches what's being written into it, the off-topic material likely wants its own file.
 
-Offer to extract them:
+Offer to extract:
 
 > *Output the next fenced block as a code block:*
 
 ```
-I've noticed distinct threads emerging that could be their own research topics:
+This session has drifted off-topic over multiple exchanges. The
+following threads have accumulated alongside the original scope:
 
   • {thread_1} — {brief description}
   • {thread_2} — {brief description}

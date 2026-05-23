@@ -504,8 +504,11 @@ Additional commentary on multiple lines.
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'absent');
     });
 
-    it('returns stale for research-analysis when files exist but no cache', () => {
-      createManifest(dir, 'payments', { work_type: 'epic' });
+    it('returns stale for research-analysis when completed items exist but no cache', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { research: { items: { 'topic-a': { status: 'completed' } } } },
+      });
       createFile(dir, '.workflows/payments/research/topic-a.md', 'content');
       const r = discover(dir, 'payments');
       assert.strictEqual(r.analysis_caches.research_analysis.status, 'stale');
@@ -518,15 +521,23 @@ Additional commentary on multiple lines.
       const checksum = crypto.createHash('md5').update(buf).digest('hex');
       createManifest(dir, 'payments', {
         work_type: 'epic',
-        phases: { research: { analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] } } },
+        phases: {
+          research: {
+            items: { 'topic-a': { status: 'completed' } },
+            analysis_cache: { checksum, generated: '2026-05-01', files: ['topic-a.md'] },
+          },
+        },
       });
       const r = discover(dir, 'payments');
       assert.strictEqual(r.analysis_caches.research_analysis.status, 'valid');
       assert.strictEqual(r.analysis_caches.research_analysis.generated, '2026-05-01');
     });
 
-    it('returns stale for gap-analysis when discussions exist but no cache', () => {
-      createManifest(dir, 'payments', { work_type: 'epic' });
+    it('returns stale for gap-analysis when completed discussions exist but no cache', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { discussion: { items: { auth: { status: 'completed' } } } },
+      });
       createFile(dir, '.workflows/payments/discussion/auth.md', 'content');
       const r = discover(dir, 'payments');
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'stale');

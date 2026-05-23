@@ -87,8 +87,8 @@ Analysis caches live on disk at `.workflows/{work_unit}/.state/`, outside the ma
 if [ -f .workflows/{work_unit}/.state/research-analysis.md ]; then
   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/research-analysis.md
 fi
-if [ -f .workflows/{work_unit}/.state/discussion-gap-analysis.md ]; then
-  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/discussion-gap-analysis.md
+if [ -f .workflows/{work_unit}/.state/inception-gap-analysis.md ]; then
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/inception-gap-analysis.md
 fi
 ```
 

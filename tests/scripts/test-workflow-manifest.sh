@@ -1507,6 +1507,19 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: superseded accepted as valid status for research${NC}"
+setup_fixture
+run_cli init supersede-research --work-type epic --description "Supersede research" >/dev/null 2>&1
+run_cli init-phase supersede-research.research.broad-topic >/dev/null 2>&1
+run_cli set supersede-research.research.broad-topic status superseded >/dev/null 2>&1
+output=$(run_cli_stdout get supersede-research.research.broad-topic status)
+
+assert_equals "$output" "superseded" "Research accepts superseded status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: cancelled accepted as valid status for specification${NC}"
 setup_fixture
 run_cli init cancel-spec --work-type epic --description "Cancel spec" >/dev/null 2>&1

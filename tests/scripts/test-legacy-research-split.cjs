@@ -1,0 +1,344 @@
+'use strict';
+
+// The legacy-research-split skill is markdown — it instructs Claude to invoke
+// the manifest CLI with specific sequences for the trigger detection and
+// apply-split steps. These tests exercise the same CLI sequence the skill
+// prescribes, locking in the observable manifest state.
+//
+// Covered:
+//   1. Single-topic file (stays case) — source untouched, no supersede
+//   2. Broad file (no stays) — full supersede + new files created
+//   3. Theme-name-matches-existing (merge case) — content appended, no new file
+//   4. Trigger detection — only migration-seeded + in-progress + research routing
+//   5. Skill is idempotent — running twice yields the same manifest state
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { spawnSync } = require('child_process');
+
+const MANIFEST_CLI = path.resolve(
+  __dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'
+);
+
+let dir;
+
+function setup() {
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'legacy-split-test-'));
+  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+}
+
+function cleanup() {
+  if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  dir = null;
+}
+
+function runCli(...args) {
+  const r = spawnSync('node', [MANIFEST_CLI, ...args], { cwd: dir, encoding: 'utf8' });
+  if (r.status !== 0) {
+    throw new Error(`manifest cli failed: ${args.join(' ')} — ${r.stderr}`);
+  }
+  return r.stdout;
+}
+
+function readManifest(workUnit) {
+  return JSON.parse(fs.readFileSync(
+    path.join(dir, '.workflows', workUnit, 'manifest.json'), 'utf8'
+  ));
+}
+
+function writeManifest(workUnit, data) {
+  const wuDir = path.join(dir, '.workflows', workUnit);
+  fs.mkdirSync(wuDir, { recursive: true });
+  fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(data, null, 2));
+  const projPath = path.join(dir, '.workflows', 'manifest.json');
+  let proj = {};
+  if (fs.existsSync(projPath)) proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
+  if (!proj.work_units) proj.work_units = {};
+  proj.work_units[workUnit] = { work_type: data.work_type || 'epic' };
+  fs.writeFileSync(projPath, JSON.stringify(proj, null, 2));
+}
+
+function writeResearchFile(workUnit, topic, content) {
+  const p = path.join(dir, '.workflows', workUnit, 'research', `${topic}.md`);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, content);
+}
+
+function readResearchFile(workUnit, topic) {
+  return fs.readFileSync(
+    path.join(dir, '.workflows', workUnit, 'research', `${topic}.md`), 'utf8'
+  );
+}
+
+function fileExists(workUnit, relPath) {
+  return fs.existsSync(path.join(dir, '.workflows', workUnit, relPath));
+}
+
+// Seed a legacy migration-seeded epic — one broad research file plus its
+// inception+research items, matching what migration 038 leaves behind.
+function seedLegacyEpic(workUnit, sourceTopic) {
+  writeManifest(workUnit, {
+    name: workUnit,
+    work_type: 'epic',
+    status: 'in-progress',
+    phases: {
+      inception: {
+        items: {
+          [sourceTopic]: {
+            routing: 'research',
+            source: 'migration-seeded',
+          },
+        },
+      },
+      research: {
+        items: {
+          [sourceTopic]: { status: 'in-progress' },
+        },
+      },
+    },
+  });
+  writeResearchFile(workUnit, sourceTopic, '# Broad Research\n\nContent.');
+}
+
+// Detect-trigger logic from the skill's detect-trigger.md.
+function qualifyingSources(workUnit) {
+  const m = readManifest(workUnit);
+  const inception = (m.phases.inception && m.phases.inception.items) || {};
+  const research = (m.phases.research && m.phases.research.items) || {};
+  const out = [];
+  for (const [name, item] of Object.entries(inception)) {
+    const src = (item && item.source) || '';
+    if (!src.includes('migration-seeded')) continue;
+    if (item.routing !== 'research') continue;
+    const r = research[name];
+    if (!r || r.status !== 'in-progress') continue;
+    if (!fileExists(workUnit, `research/${name}.md`)) continue;
+    out.push(name);
+  }
+  return out;
+}
+
+// Apply-split for the "creates" case — re-creates the CLI sequence from apply-split.md.
+function applyCreate(workUnit, current_source, theme) {
+  runCli('init-phase', `${workUnit}.research.${theme.kebab_name}`);
+  runCli('init-phase', `${workUnit}.inception.${theme.kebab_name}`);
+  runCli('set', `${workUnit}.inception.${theme.kebab_name}`, 'routing', theme.routing);
+  runCli('set', `${workUnit}.inception.${theme.kebab_name}`, 'summary', theme.summary);
+  runCli('set', `${workUnit}.inception.${theme.kebab_name}`, 'description', theme.description);
+  runCli('set', `${workUnit}.inception.${theme.kebab_name}`,
+    'source', `legacy-split:${current_source}`);
+  writeResearchFile(workUnit, theme.kebab_name, `# Research: ${theme.kebab_name}\n\n${theme.content}`);
+}
+
+function applySupersede(workUnit, current_source) {
+  runCli('set', `${workUnit}.research.${current_source}`, 'status', 'superseded');
+  runCli('delete', `${workUnit}.inception`, `items.${current_source}`);
+}
+
+function applyMerge(workUnit, target_name, content) {
+  const p = path.join(dir, '.workflows', workUnit, 'research', `${target_name}.md`);
+  fs.appendFileSync(p, `\n---\n${content}\n`);
+}
+
+describe('legacy-research-split: detect-trigger', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  it('identifies a migration-seeded research item with backing file', () => {
+    seedLegacyEpic('alpha', 'exploration');
+    assert.deepStrictEqual(qualifyingSources('alpha'), ['exploration']);
+  });
+
+  it('skips items without migration-seeded source', () => {
+    writeManifest('beta', {
+      name: 'beta',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: { items: { foo: { routing: 'research', source: 'inception' } } },
+        research: { items: { foo: { status: 'in-progress' } } },
+      },
+    });
+    writeResearchFile('beta', 'foo', 'content');
+    assert.deepStrictEqual(qualifyingSources('beta'), []);
+  });
+
+  it('skips items with discussion routing', () => {
+    writeManifest('gamma', {
+      name: 'gamma',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: { items: { foo: { routing: 'discussion', source: 'migration-seeded' } } },
+        research: { items: { foo: { status: 'in-progress' } } },
+      },
+    });
+    writeResearchFile('gamma', 'foo', 'content');
+    assert.deepStrictEqual(qualifyingSources('gamma'), []);
+  });
+
+  it('skips items whose research file is missing on disk', () => {
+    writeManifest('delta', {
+      name: 'delta',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: { items: { foo: { routing: 'research', source: 'migration-seeded' } } },
+        research: { items: { foo: { status: 'in-progress' } } },
+      },
+    });
+    assert.deepStrictEqual(qualifyingSources('delta'), []);
+  });
+
+  it('skips items whose research item is completed (not in-progress)', () => {
+    writeManifest('epsilon', {
+      name: 'epsilon',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: { items: { foo: { routing: 'research', source: 'migration-seeded' } } },
+        research: { items: { foo: { status: 'completed' } } },
+      },
+    });
+    writeResearchFile('epsilon', 'foo', 'content');
+    assert.deepStrictEqual(qualifyingSources('epsilon'), []);
+  });
+});
+
+describe('legacy-research-split: stays case', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  it('source file untouched when one theme keeps the source name', () => {
+    seedLegacyEpic('alpha', 'authentication');
+    const before = readResearchFile('alpha', 'authentication');
+
+    // The user's approved plan: one stays (authentication) plus one creates.
+    applyCreate('alpha', 'authentication', {
+      kebab_name: 'caching',
+      routing: 'research',
+      summary: 'Cache layer design.',
+      description: 'Detailed cache design notes.',
+      content: 'Cache content extracted from broad file.',
+    });
+
+    // No supersede — at least one theme kept the source name.
+    const after = readResearchFile('alpha', 'authentication');
+    assert.strictEqual(after, before);
+
+    const m = readManifest('alpha');
+    assert.ok(m.phases.inception.items.authentication, 'authentication inception preserved');
+    assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress');
+    assert.ok(m.phases.inception.items.caching, 'new caching inception item created');
+    assert.strictEqual(m.phases.inception.items.caching.routing, 'research');
+    assert.strictEqual(m.phases.inception.items.caching.source, 'legacy-split:authentication');
+  });
+});
+
+describe('legacy-research-split: full supersede case', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  it('source becomes superseded and inception item is removed when no theme stays', () => {
+    seedLegacyEpic('alpha', 'exploration');
+
+    applyCreate('alpha', 'exploration', {
+      kebab_name: 'auth',
+      routing: 'discussion',
+      summary: 'Auth scope.',
+      description: 'Auth desc.',
+      content: 'auth content',
+    });
+    applyCreate('alpha', 'exploration', {
+      kebab_name: 'caching',
+      routing: 'research',
+      summary: 'Cache scope.',
+      description: 'Cache desc.',
+      content: 'cache content',
+    });
+    applySupersede('alpha', 'exploration');
+
+    const m = readManifest('alpha');
+    assert.strictEqual(m.phases.research.items.exploration.status, 'superseded');
+    assert.ok(!m.phases.inception.items.exploration, 'inception item removed');
+    assert.ok(m.phases.inception.items.auth);
+    assert.ok(m.phases.inception.items.caching);
+
+    // Source file stays on disk untouched.
+    assert.ok(fileExists('alpha', 'research/exploration.md'),
+      'source file remains on disk as historical record');
+  });
+});
+
+describe('legacy-research-split: merge case', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  it('content appends to existing research file when theme matches existing item', () => {
+    // Two existing items: the legacy source, and a separate "auth" topic
+    // that already exists. The user identifies content in the legacy file
+    // that belongs under "auth".
+    writeManifest('alpha', {
+      name: 'alpha',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            exploration: { routing: 'research', source: 'migration-seeded' },
+            auth: { routing: 'discussion', source: 'inception' },
+          },
+        },
+        research: {
+          items: {
+            exploration: { status: 'in-progress' },
+            auth: { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    writeResearchFile('alpha', 'exploration', '# Broad\n\nContent including auth and caching.');
+    writeResearchFile('alpha', 'auth', '# Auth\n\nOriginal auth content.');
+
+    applyMerge('alpha', 'auth', 'Auth content merged from exploration.');
+
+    const merged = readResearchFile('alpha', 'auth');
+    assert.ok(merged.includes('Original auth content.'),
+      'original auth content preserved');
+    assert.ok(merged.includes('Auth content merged from exploration.'),
+      'merged content appended');
+    assert.ok(merged.includes('---'),
+      'separator inserted between original and appended');
+
+    // No new inception item for auth — it already existed.
+    const m = readManifest('alpha');
+    assert.strictEqual(m.phases.inception.items.auth.source, 'inception',
+      'existing auth item source unchanged by merge');
+  });
+});
+
+describe('legacy-research-split: idempotency', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  it('detect-trigger returns empty after split applied', () => {
+    seedLegacyEpic('alpha', 'exploration');
+    assert.deepStrictEqual(qualifyingSources('alpha'), ['exploration']);
+
+    applyCreate('alpha', 'exploration', {
+      kebab_name: 'auth',
+      routing: 'discussion',
+      summary: 'a',
+      description: 'b',
+      content: 'c',
+    });
+    applySupersede('alpha', 'exploration');
+
+    // After supersede, exploration is no longer in inception items —
+    // detect-trigger returns empty list.
+    assert.deepStrictEqual(qualifyingSources('alpha'), []);
+  });
+});
