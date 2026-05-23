@@ -35,13 +35,13 @@ Read existing `external_dependencies` from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} external_dependencies
 ```
 
-**If output is empty (no existing entries):**
+#### If output is empty (no existing entries)
 
 No existing entries to preserve.
 
 → Proceed to **B. Write Spec Dependencies**.
 
-**Otherwise:**
+#### Otherwise
 
 Note which topics have `state: satisfied_externally` — these must be preserved.
 
@@ -134,11 +134,11 @@ For each other topic with a planning phase in the same work unit, read their ext
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{other_topic} external_dependencies
 ```
 
-**If output is empty (no external dependencies for this topic):**
+#### If output is empty (no external dependencies for this topic)
 
 Continue to the next topic.
 
-**Otherwise:**
+#### Otherwise
 
 For each dependency in the other topic's `external_dependencies`, route on state:
 

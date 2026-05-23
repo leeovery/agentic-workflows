@@ -12,7 +12,15 @@ Inception is curatorial — the only context the session needs upfront is the wo
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
 ```
 
-Store the output as `description`. If the field is empty or the command exits non-zero with code `2` (path not found), set `description` = `(none)`.
+#### If output is empty (no description)
+
+Set `description` = `(none)`.
+
+→ Proceed to **B. Read Imports**.
+
+#### Otherwise
+
+Store the output as `description`.
 
 → Proceed to **B. Read Imports**.
 

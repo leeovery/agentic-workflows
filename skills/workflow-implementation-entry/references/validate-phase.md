@@ -26,7 +26,7 @@ A completed plan is required for implementation.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan status is not `completed`:
+#### If plan status is not `completed`
 
 > *Output the next fenced block as a code block:*
 
@@ -38,7 +38,7 @@ The plan for "{topic:(titlecase)}" is not yet completed.
 
 **STOP.** Do not proceed — terminal condition.
 
-**If plan status is `completed`:**
+#### If plan status is `completed`
 
 → Proceed to **B. Implementation Check**.
 
@@ -54,7 +54,7 @@ Proceed normally (new entry).
 
 → Return to caller.
 
-#### If status is `completed`:
+#### If status is `completed`
 
 Reset to in-progress:
 
@@ -70,7 +70,7 @@ Reopening implementation: {topic:(titlecase)}
 
 → Return to caller.
 
-**If status is `in-progress`:**
+#### If status is `in-progress`
 
 Proceed normally.
 

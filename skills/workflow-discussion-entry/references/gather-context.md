@@ -38,13 +38,13 @@ Read research item statuses for this work unit:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{work_unit}.research.*' status
 ```
 
-**If output is empty (no research items):**
+#### If output is empty (no research items)
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
 → Return to caller.
 
-**If any research item has status `completed`:**
+#### If any research item has status `completed`
 
 List the research files via `ls .workflows/{work_unit}/research/*.md`.
 
@@ -64,7 +64,7 @@ Set source="topic-provided-with-research".
 
 → Return to caller.
 
-**Otherwise:**
+#### Otherwise
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 
