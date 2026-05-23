@@ -163,9 +163,9 @@ Output is a JSON array of `{topic, value}` objects:
 ]
 ```
 
-For feature/bugfix, returns a single-element array (topic matches work unit name). Errors if the phase has no items.
+For feature/bugfix, returns a single-element array (topic matches work unit name). Empty stdout if the phase has no items.
 
-Errors to stderr with non-zero exit if the path does not exist.
+Missing paths return empty stdout with exit 0 — covers missing work units, missing fields, and wildcard with no matches. Use [`exists`](#exists) when you need to distinguish a missing path from a present-but-empty value.
 
 ### `set`
 

@@ -75,20 +75,14 @@ The implementation for "{topic:(titlecase)}" is not yet completed.
 ## C. Review State
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.review.{topic}
-```
-
-#### If review does not exist
-
-→ Return to caller.
-
-#### If review exists
-
-```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.review.{topic} status
 ```
 
-**If status is `completed`:**
+#### If output is empty (review does not exist)
+
+→ Return to caller.
+
+#### If status is `completed`
 
 Reset to in-progress:
 
@@ -98,6 +92,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.revie
 
 → Return to caller.
 
-**If status is `in-progress`:**
+#### If status is `in-progress`
 
 → Return to caller.

@@ -34,46 +34,40 @@ The discovery map is epic-only. Features, bugfixes, quick-fixes, and cross-cutti
 ## B. Check Existence
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{topic}
 ```
 
-#### If exists (`true`)
+#### If output is non-empty (item exists)
 
 The topic is already on the map. Nothing to do — fall through to the caller's existing flow.
 
 → Return to caller.
 
-#### If not exists (`false`)
+#### If output is empty (item does not exist)
 
 → Proceed to **C. Check Dismissed and Pull**.
 
 ## C. Check Dismissed and Pull
 
-Most epics never dismiss anything, so the dismissed list is usually absent. Probe for its existence first to avoid surfacing a "Path not found" error from a bare `get`:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception dismissed
-```
-
-#### If exists (`true`)
-
-Read the list:
+Most epics never dismiss anything, so the dismissed list is usually absent. Read it directly — empty stdout means the list is absent:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception dismissed
 ```
+
+#### If output is empty (no dismissed list)
+
+Nothing to pull.
+
+→ Proceed to **D. Create Inception Item**.
+
+#### Otherwise
 
 If `{topic}` appears in the returned JSON array, pull it (user-explicit spawns bypass dismissal):
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{topic}"
 ```
-
-→ Proceed to **D. Create Inception Item**.
-
-#### If not exists (`false`)
-
-No dismissed list — nothing to pull.
 
 → Proceed to **D. Create Inception Item**.
 

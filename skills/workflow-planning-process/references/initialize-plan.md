@@ -6,23 +6,17 @@
 
 ## A. Check Format Recommendation
 
-Check if a project-level default `plan_format` exists via manifest CLI:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists project.defaults.plan_format
-```
-
-#### If `false`
-
-→ Proceed to **B. Select Format**.
-
-#### Otherwise
-
 Read the project default `plan_format` via manifest CLI:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get project.defaults.plan_format
 ```
+
+#### If output is empty (no project default)
+
+→ Proceed to **B. Select Format**.
+
+#### Otherwise
 
 > *Output the next fenced block as markdown (not a code block):*
 

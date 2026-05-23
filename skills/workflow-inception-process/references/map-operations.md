@@ -351,33 +351,21 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.incep
 
 Use the returned values as `{routing}` and `{source}` in the write commands below.
 
-`summary` and `description` are both optional — migration-seeded, direct-start, and absorption-registered items can land with either or both unset. Probe each with `exists` first so a bare `get` doesn't error:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} summary
-```
-
-If the probe returns `true`, read the value:
+`summary` and `description` are both optional — migration-seeded, direct-start, and absorption-registered items can land with either or both unset. Read each directly; empty stdout means the subkey is absent:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} summary
 ```
 
-Use the returned value as `{summary}` in the optional write below.
+If the output is non-empty, use the returned value as `{summary}` in the optional write below.
 
-Repeat the probe-then-read for `description`:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} description
-```
-
-If the probe returns `true`, read the value:
+Repeat for `description`:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} description
 ```
 
-Use the returned value as `{description}` in the optional write below.
+If the output is non-empty, use the returned value as `{description}` in the optional write below.
 
 Delete the old key, create the new key, write the always-present fields back under the new key:
 

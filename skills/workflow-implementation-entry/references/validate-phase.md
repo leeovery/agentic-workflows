@@ -9,10 +9,10 @@ Check if plan exists and is ready.
 ## A. Plan Check
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} status
 ```
 
-#### If plan doesn't exist (`false`)
+#### If output is empty (plan doesn't exist)
 
 > *Output the next fenced block as a code block:*
 
@@ -26,15 +26,7 @@ A completed plan is required for implementation.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists (`true`)
-
-Check status:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} status
-```
-
-**If plan status is not `completed`:**
+#### If plan status is not `completed`:
 
 > *Output the next fenced block as a code block:*
 
@@ -53,24 +45,16 @@ The plan for "{topic:(titlecase)}" is not yet completed.
 ## B. Implementation Check
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.implementation.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} status
 ```
 
-#### If implementation does not exist
+#### If output is empty (implementation does not exist)
 
 Proceed normally (new entry).
 
 → Return to caller.
 
-#### If implementation exists
-
-Check status:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} status
-```
-
-**If status is `completed`:**
+#### If status is `completed`:
 
 Reset to in-progress:
 

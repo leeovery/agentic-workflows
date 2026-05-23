@@ -115,39 +115,27 @@ If the result is a non-empty JSON array, set `has_in_progress_epics` = true and 
 
 ## C. Implementation Check
 
-Check whether the implementation phase exists:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.implementation
-```
-
-#### If the implementation phase does not exist
-
-→ Proceed to **E. Action Menu**.
-
-#### If the implementation phase exists
-
-→ Proceed to **D. Completion Check**.
-
-## D. Completion Check
+Read all topic statuses in the implementation phase:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.implementation.*' status
 ```
 
-This returns all topic statuses in the implementation phase.
+#### If output is empty (no implementation phase)
+
+→ Proceed to **D. Action Menu**.
 
 #### If any result has `"value": "completed"`
 
 Set `implementation_completed` = true.
 
-→ Proceed to **E. Action Menu**.
+→ Proceed to **D. Action Menu**.
 
 #### Otherwise
 
-→ Proceed to **E. Action Menu**.
+→ Proceed to **D. Action Menu**.
 
-## E. Action Menu
+## D. Action Menu
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -240,7 +228,7 @@ Invoke the `/continue-epic` skill.
 
 → Load **[view-plan.md](view-plan.md)** and follow its instructions as written.
 
-→ Return to **E. Action Menu**.
+→ Return to **D. Action Menu**.
 
 #### If user chose `c`/`cancel`
 
@@ -282,4 +270,4 @@ Commit: `workflow({selected.name}): mark as cancelled`
 
 Answer the question.
 
-→ Return to **E. Action Menu**.
+→ Return to **D. Action Menu**.

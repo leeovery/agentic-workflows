@@ -107,23 +107,23 @@ Set `topic` to the user's input.
 
 ## D. Research Check
 
-Check if the feature has research:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.research
-```
-
-#### If `true`
-
-Set `has_research` = true.
-
-Read the research items to get topic names and statuses:
+Read the feature's research items with their statuses:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.research.*' status
 ```
 
-Store as `research_items` (list of topic name + status pairs).
+#### If output is empty (no research)
+
+Set `has_research` = false.
+
+→ Proceed to **E. Imports Check**.
+
+#### Otherwise
+
+Set `has_research` = true.
+
+Store the result as `research_items` (list of topic name + status pairs).
 
 For each research item, check for collision in the target epic:
 
@@ -135,33 +135,27 @@ Collisions are resolved by appending `-{selected.name}` (e.g. `exploration` beco
 
 → Proceed to **E. Imports Check**.
 
-#### Otherwise
-
-Set `has_research` = false.
-
-→ Proceed to **E. Imports Check**.
-
 ---
 
 ## E. Imports Check
 
-Check if the feature has imports:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name} imports
-```
-
-#### If `true`
-
-Set `has_imports` = true.
-
-Read the imports list:
+Read the feature's imports list:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} imports
 ```
 
-Store as `imports_entries` (list of `{path, imported_at}` objects). Set `imports_count` to its length.
+#### If output is empty (no imports)
+
+Set `has_imports` = false. Set `imports_count` = 0.
+
+→ Proceed to **F. Confirm**.
+
+#### Otherwise
+
+Set `has_imports` = true.
+
+Store the result as `imports_entries` (list of `{path, imported_at}` objects). Set `imports_count` to its length.
 
 For each entry, derive the basename from `path` (the filename under `imports/`). Check for collision in the target epic's `imports/` directory:
 
@@ -170,12 +164,6 @@ test -e .workflows/{target_epic}/imports/<basename>
 ```
 
 Collisions are resolved by suffixing the stem with `-{selected.name}` before the `.md` extension (e.g. `seed-conversation.md` becomes `seed-conversation-{selected.name}.md`). Store the mapping of original filename → target filename as `imports_moves`, preserving each entry's original `imported_at` timestamp.
-
-→ Proceed to **F. Confirm**.
-
-#### Otherwise
-
-Set `has_imports` = false. Set `imports_count` = 0.
 
 → Proceed to **F. Confirm**.
 
