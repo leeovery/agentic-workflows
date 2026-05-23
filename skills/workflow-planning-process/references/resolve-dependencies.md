@@ -53,7 +53,7 @@ Note which topics have `state: satisfied_externally` — these must be preserved
 
 Read the specification's Dependencies section. For each dependency, derive the manifest key from the dependency name as `{dep_topic:(kebabcase)}` and use the "Why Blocked" column as `{description}`. Write each to the manifest.
 
-**If an existing entry for this topic has `state: satisfied_externally`:**
+#### If an existing entry for this topic has `state: satisfied_externally`
 
 Preserve the existing state — only update the description:
 
@@ -63,7 +63,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 
 → Proceed to **C. Remove Stale Entries**.
 
-**Otherwise:**
+#### Otherwise
 
 Set as unresolved:
 
