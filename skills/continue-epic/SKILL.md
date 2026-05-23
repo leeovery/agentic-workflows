@@ -281,6 +281,8 @@ Load **[summary-backfill.md](references/summary-backfill.md)** with work_unit = 
 > any new themes directly to the discovery map.
 ```
 
+Initialise `new_arrivals = {}` — Step 8 reads it; self-healing may populate it below.
+
 Read `analysis_caches` from the most recent discovery `detail`:
 
 - `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
@@ -296,7 +298,7 @@ No analyses to run.
 
 Load **[self-healing.md](../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
 
-On return, store the orchestrator's `new_arrivals` tracker in conversation memory — Step 8 reads it to render the callout above the discovery map.
+On return, self-healing has populated `new_arrivals` with any items added by the analyses.
 
 Re-run discovery so Step 8 sees fresh state including any auto-added items:
 
@@ -322,7 +324,7 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 > Showing the full phase-by-phase breakdown and available actions.
 ```
 
-Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when Step 7 did not load the orchestrator).
+Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
 
 → Proceed to **Step 9**.
 

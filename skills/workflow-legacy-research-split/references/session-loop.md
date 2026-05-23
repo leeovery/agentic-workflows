@@ -34,7 +34,7 @@ Re-run discovery so the map reflects items written by any prior iteration in thi
 node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 ```
 
-From the discovery output, set `existing_names = [item.name for item in discovery_map]`. Also read `dismissed` — names previously removed via refinement.
+From the discovery output, set `existing_names = [item.name for item in discovery_map]`. Dismissed-list collisions are handled downstream by topic-name-validation.
 
 → Proceed to **C. Identify Themes**.
 
@@ -46,14 +46,17 @@ From the discovery output, set `existing_names = [item.name for item in discover
 ·· Identify Themes ······························
 ```
 
-Read the source file in full and extract every distinct theme, concern, decision point, constraint, risk, or open question. Be exhaustive — content not captured here is lost. Group sub-themes into coherent domains (anti-pattern: one theme per system component; a coherent domain becomes one topic).
+Read the source file in full and extract every distinct theme. Group sub-themes into coherent domains (anti-pattern: one theme per system component; a coherent domain becomes one topic). Prefer fewer, coarser topics — see **[research-analysis.md](../../workflow-shared/references/research-analysis.md)** Section B for the independence test and anti-patterns.
+
+**Content allocation is mandatory.** Walk every paragraph of the source file and assign it to exactly one theme. Every paragraph must land somewhere — losing content is a failure mode. Duplication is also wrong (a paragraph belongs in one place). The result is a partition of the source's prose.
 
 For each theme, propose:
 
 - `kebab_name`
 - `summary` — one line
-- `description` — a paragraph or two from the source
+- `description` — a paragraph or two synthesised from the source
 - `routing` — `discussion` (well-explored, ready for discussion) or `research` (under-explored, needs more research)
+- `content` — the verbatim source paragraphs assigned to this theme (no summarisation, no rewording — these paragraphs will become the body of the new or merged research file)
 
 Classify against `existing_names` and `current_source`:
 
@@ -69,13 +72,15 @@ Classify against `existing_names` and `current_source`:
 
 #### If user abandoned
 
+Increment `abandoned_count`.
+
 > *Output the next fenced block as a code block:*
 
 ```
 Skipping {current_source}. Source file and manifest unchanged.
 ```
 
-→ Proceed to **F. Loop or Exit**.
+→ Return to **A. Iterate**.
 
 #### Otherwise
 
@@ -85,8 +90,6 @@ Skipping {current_source}. Source file and manifest unchanged.
 
 → Load **[apply-split.md](apply-split.md)** and follow its instructions as written.
 
-→ Proceed to **F. Loop or Exit**.
-
-## F. Loop or Exit
+Increment `applied_count`.
 
 → Return to **A. Iterate**.

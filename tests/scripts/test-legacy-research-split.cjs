@@ -143,6 +143,16 @@ function applyMerge(workUnit, target_name, content) {
   fs.appendFileSync(p, `\n---\n${content}\n`);
 }
 
+// Merge-with-init: target has inception item but no research item or file.
+// apply-split.md B initialises the research item and creates the file before
+// appending. Lock in that CLI sequence.
+function applyMergeWithInit(workUnit, target_name, content) {
+  runCli('init-phase', `${workUnit}.research.${target_name}`);
+  const p = path.join(dir, '.workflows', workUnit, 'research', `${target_name}.md`);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, `# Research: ${target_name}\n\nMaterial extracted from legacy.\n\n---\n${content}\n`);
+}
+
 describe('legacy-research-split: detect-trigger', () => {
   beforeEach(setup);
   afterEach(cleanup);
@@ -208,15 +218,24 @@ describe('legacy-research-split: detect-trigger', () => {
   });
 });
 
+// Rewrite the source file when stays + other themes — apply-split.md D
+// Otherwise branch. Content from non-stays themes moved out, so the source
+// must shrink to only the stays content (otherwise paragraphs duplicate
+// between source and new files).
+function applyStaysRewrite(workUnit, current_source, staysContent) {
+  const p = path.join(dir, '.workflows', workUnit, 'research', `${current_source}.md`);
+  fs.writeFileSync(p, `# Research: ${current_source}\n\nMaterial extracted from legacy.\n\n---\n${staysContent}\n`);
+}
+
 describe('legacy-research-split: stays case', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
-  it('source file untouched when one theme keeps the source name', () => {
+  it('source file rewritten to stays content when other themes extract material', () => {
     seedLegacyEpic('alpha', 'authentication');
-    const before = readResearchFile('alpha', 'authentication');
 
-    // The user's approved plan: one stays (authentication) plus one creates.
+    // Approved plan: stays(authentication) keeps the auth paragraphs;
+    // creates(caching) carries the caching paragraphs.
     applyCreate('alpha', 'authentication', {
       kebab_name: 'caching',
       routing: 'research',
@@ -224,10 +243,13 @@ describe('legacy-research-split: stays case', () => {
       description: 'Detailed cache design notes.',
       content: 'Cache content extracted from broad file.',
     });
+    applyStaysRewrite('alpha', 'authentication', 'Authentication-only content (kept).');
 
-    // No supersede — at least one theme kept the source name.
     const after = readResearchFile('alpha', 'authentication');
-    assert.strictEqual(after, before);
+    assert.ok(after.includes('Authentication-only content (kept).'),
+      'stays content present in rewritten source');
+    assert.ok(!after.includes('Cache content extracted from broad file.'),
+      'caching content NOT duplicated into rewritten source');
 
     const m = readManifest('alpha');
     assert.ok(m.phases.inception.items.authentication, 'authentication inception preserved');
@@ -350,6 +372,42 @@ describe('legacy-research-split: merge case', () => {
     const m = readManifest('alpha');
     assert.strictEqual(m.phases.inception.items.auth.source, 'inception',
       'existing auth item source unchanged by merge');
+  });
+
+  // Merge target exists on inception map but has no research item yet.
+  // apply-split.md B initialises the research item and renders the file
+  // from template before appending — content lands somewhere visible.
+  it('initialises research item and creates file when merge target has neither', () => {
+    writeManifest('beta', {
+      name: 'beta',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            exploration: { routing: 'research', source: 'migration-seeded' },
+            'data-model': { routing: 'discussion', source: 'inception' },
+          },
+        },
+        research: {
+          items: { exploration: { status: 'in-progress' } },
+        },
+      },
+    });
+    writeResearchFile('beta', 'exploration', 'Broad content including data-model.');
+    // data-model has inception but NO research item or file.
+
+    applyMergeWithInit('beta', 'data-model', 'Data model content from exploration.');
+
+    const m = readManifest('beta');
+    assert.ok(m.phases.research && m.phases.research.items['data-model'],
+      'research item initialised for merge target');
+    assert.strictEqual(m.phases.research.items['data-model'].status, 'in-progress');
+    assert.ok(fileExists('beta', 'research/data-model.md'),
+      'research file created for merge target');
+    const content = readResearchFile('beta', 'data-model');
+    assert.ok(content.includes('Data model content from exploration.'),
+      'merged content present');
   });
 });
 

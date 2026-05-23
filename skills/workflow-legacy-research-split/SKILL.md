@@ -34,21 +34,15 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ---
 
-## Step 1: Detect Trigger
+## Step 1: List Qualifying Sources
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Detect Trigger ───────────────────────────────
+── List Qualifying Sources ──────────────────────
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Scanning the manifest for migration-seeded research files that
-> qualify for decomposition. Skips when nothing qualifies — caller
-> resumes normally.
-```
+Initialise `applied_count = 0` and `abandoned_count = 0` — Step 3 reads these for an honest closing message.
 
 Load **[detect-trigger.md](references/detect-trigger.md)** and follow its instructions as written.
 
@@ -85,12 +79,51 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 ── Legacy Split Complete ────────────────────────
 ```
 
+Render the signpost based on `applied_count` and `abandoned_count`:
+
+#### If `applied_count == 0` and `abandoned_count == 0`
+
+Defensive branch — continue-epic Step 5 gates this path, so reaching here means the caller invoked the skill without gating.
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Legacy broad research files have been decomposed. The discovery
-> map now reflects topic-scoped items; analyses will operate on
-> completed material as topics finish.
+> No legacy source files needed decomposition.
+```
+
+→ Return to caller.
+
+#### If `applied_count > 0` and `abandoned_count == 0`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Legacy broad research files decomposed. The discovery map now
+> reflects topic-scoped items.
+```
+
+→ Return to caller.
+
+#### If `applied_count > 0` and `abandoned_count > 0`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> {applied_count} source file(s) decomposed; {abandoned_count}
+> skipped. Skipped files remain on the map and can be revisited
+> on the next /continue-epic.
+```
+
+→ Return to caller.
+
+#### If `applied_count == 0` and `abandoned_count > 0`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> No source files decomposed — every qualifying file was skipped.
+> They remain on the map and can be revisited on the next
+> /continue-epic.
 ```
 
 → Return to caller.

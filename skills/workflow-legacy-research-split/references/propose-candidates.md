@@ -22,6 +22,8 @@ Present themes to the user and accept edits. Every theme must land somewhere —
 > into an existing topic, or moved into a new file.
 ```
 
+For each theme, count the paragraphs in `theme.content` and render a one-line content preview (first ~60 chars of the first paragraph, single-line) so the user can see how the source was allocated.
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -29,8 +31,9 @@ Present themes to the user and accept edits. Every theme must land somewhere —
 {N}. {kebab_name}  [{classification}]
    └─ Summary: {summary}
    └─ Routing: {routing}
-   @if(classification == 'merges') └─ Merges into existing item @endif
-   @if(classification == 'stays') └─ Keeps source name; source file untouched @endif
+   └─ Content: {paragraph_count} para(s) — "{content_preview}..."
+   @if(classification == 'merges') └─ Merges into existing {kebab_name} @endif
+   @if(classification == 'stays') └─ Keeps source name @endif
 
 @endforeach
 ```
@@ -98,8 +101,14 @@ If `approved_stays.length > 1` (two themes share `current_source` as their name 
 Final plan for {current_source}.md:
 
 @if(approved_stays.length > 0)
-Stays in source file:
+Stays under source name ({current_source}):
   • {kebab_name}
+  @if(approved_creates.length + approved_merges.length > 0)
+  (source file will be rewritten with this theme's content only —
+   the rest moves to new/merge targets)
+  @else
+  (source file untouched — no other themes to move out)
+  @endif
 @endif
 
 @if(approved_merges.length > 0)
