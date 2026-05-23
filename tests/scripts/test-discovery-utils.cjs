@@ -761,6 +761,21 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.status, 'absent');
     });
 
+    it('gap-analysis: returns absent when cache exists but no completed items remain', () => {
+      // Symmetry with research-analysis: cache.files preserved on the absent
+      // return so observability isn't lost, even though the precondition gate
+      // means no analysis will fire.
+      createManifest(dir, 'alpha', {
+        phases: {
+          inception: { gap_analysis_cache: { checksum: 'old', generated: '2026-05-02', input_files: ['gone.md'] } },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'absent');
+      assert.deepStrictEqual(r.files, ['gone.md']);
+    });
+
     it('gap-analysis: returns absent when discussion file exists but no completed item', () => {
       createManifest(dir, 'alpha', {
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
@@ -898,6 +913,16 @@ describe('discovery-utils', () => {
       const m = loadWithPhases('auth', { discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
       assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+    });
+
+    it('renders ready_for_discussion when research is superseded and no discussion exists', () => {
+      // Defensive branch: legacy-research-split deletes the inception item
+      // on supersede, so this isn't reached via that flow. But if a user
+      // re-adds the topic to inception items manually, the discussion path
+      // remains open and the lifecycle should reflect that.
+      const m = loadWithPhases('auth', { research: 'superseded' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' });
     });
 
     it('discussion status wins over research status — decided overrides ready_for_discussion', () => {

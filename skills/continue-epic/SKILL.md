@@ -249,7 +249,7 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 ## Step 6: Summary Backfill
 
-Read `discovery_map` from the selected epic's `detail`. Filter for items where either `summary` or `description` is null or missing — regardless of `source`. Migration-seeded items land without either field; absorption-registered items land without either field; pre-Phase-14 items backfilled only `summary` and re-enter this flow once for `description`. The filter is source-agnostic so any write path that lands an item with missing fields surfaces for review.
+Read `discovery_map` from the most recent discovery `detail` (Step 5 may have re-run discovery). Filter for items where either `summary` or `description` is null or missing — regardless of `source`. Migration-seeded items land without either field; absorption-registered items land without either field; pre-Phase-14 items backfilled only `summary` and re-enter this flow once for `description`. The filter is source-agnostic so any write path that lands an item with missing fields surfaces for review.
 
 #### If no items match
 

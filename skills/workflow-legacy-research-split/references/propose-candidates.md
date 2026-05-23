@@ -59,7 +59,9 @@ Present themes to the user and accept edits. Every theme must land somewhere —
 
 Handle edits iteratively. After each edit, re-classify the affected theme(s) (`stays` if name equals `current_source`; `merges` if name matches another `existing_names` entry; `creates` otherwise), re-render the list (format from **A**), and re-prompt.
 
-When the user signals done: → Proceed to **C. Validate Names**.
+When the user signals done editing:
+
+→ Proceed to **C. Validate Names**.
 
 #### If `abandon`
 
@@ -87,6 +89,8 @@ Build:
 - `approved_creates` — `creates` themes with `kebab_name`, `summary`, `description`, `routing`, `content`, optional `pull_dismissed`
 - `approved_merges` — `merges` themes with `target_name`, `content`
 - `approved_stays` — `stays` themes with `kebab_name`, `content` (at most one)
+
+If `approved_stays.length > 1` (two themes share `current_source` as their name — invalid: the source file can only represent one theme), re-render and route back to **B. Offer Edits** with a note asking the user to rename or merge the duplicates.
 
 > *Output the next fenced block as a code block:*
 

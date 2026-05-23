@@ -75,7 +75,13 @@ One theme kept the source name. Source file, research item, and inception item a
 
 ## E. Commit
 
-If `approved_creates` AND `approved_merges` are both empty (only `stays`, source unchanged), nothing was written — skip the commit.
+#### If `approved_creates` and `approved_merges` are both empty
+
+Only `stays` was approved — source is untouched and nothing was written. No commit.
+
+→ Return to caller.
+
+#### Otherwise
 
 ```bash
 git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/research/

@@ -169,10 +169,69 @@ JSON
   teardown
 }
 
+# --- Test 5: Legacy on-disk cache file is removed ---
+test_legacy_disk_file_removed() {
+  setup
+
+  local wu_dir="$TEST_DIR/.workflows/epic-d"
+  mkdir -p "$wu_dir/.state"
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "epic-d",
+  "work_type": "epic",
+  "status": "in-progress",
+  "phases": {
+    "discussion": {
+      "gap_analysis_cache": {"checksum": "abc"}
+    }
+  }
+}
+JSON
+  echo "# legacy cache" > "$wu_dir/.state/discussion-gap-analysis.md"
+
+  source "$MIGRATION"
+
+  local disk_exists="true"
+  [ -f "$wu_dir/.state/discussion-gap-analysis.md" ] || disk_exists="false"
+  assert_eq "legacy disk cache file removed" "false" "$disk_exists"
+
+  teardown
+}
+
+# --- Test 6: Missing on-disk file is no-op (no error) ---
+test_no_disk_file_noop() {
+  setup
+
+  local wu_dir="$TEST_DIR/.workflows/epic-e"
+  mkdir -p "$wu_dir"
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "epic-e",
+  "work_type": "epic",
+  "status": "in-progress",
+  "phases": {
+    "discussion": {"gap_analysis_cache": {"checksum": "abc"}}
+  }
+}
+JSON
+
+  source "$MIGRATION"
+
+  local field_gone=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
+    console.log(!!(m.phases.discussion && m.phases.discussion.gap_analysis_cache));
+  ")
+  assert_eq "no on-disk file: migration still succeeds" "false" "$field_gone"
+
+  teardown
+}
+
 test_legacy_cache_removed
 test_no_legacy_cache_noop
 test_idempotent
 test_non_epic_untouched
+test_legacy_disk_file_removed
+test_no_disk_file_noop
 
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

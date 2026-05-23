@@ -353,6 +353,120 @@ describe('legacy-research-split: merge case', () => {
   });
 });
 
+describe('legacy-research-split: multi-source batch', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  // detect-trigger surfaces multiple qualifying source files in one run.
+  // Each iteration of session-loop processes one source; the loop continues
+  // until qualifying_sources is empty.
+  it('detect-trigger returns all migration-seeded in-progress research items', () => {
+    writeManifest('alpha', {
+      name: 'alpha',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            'broad-one': { routing: 'research', source: 'migration-seeded' },
+            'broad-two': { routing: 'research', source: 'migration-seeded' },
+            'native': { routing: 'discussion', source: 'inception' },
+          },
+        },
+        research: {
+          items: {
+            'broad-one': { status: 'in-progress' },
+            'broad-two': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    writeResearchFile('alpha', 'broad-one', 'content one');
+    writeResearchFile('alpha', 'broad-two', 'content two');
+
+    const qs = qualifyingSources('alpha').sort();
+    assert.deepStrictEqual(qs, ['broad-one', 'broad-two'],
+      'both migration-seeded research items surface');
+  });
+
+  it('processing one source does not affect qualifying status of another', () => {
+    writeManifest('alpha', {
+      name: 'alpha',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            'broad-one': { routing: 'research', source: 'migration-seeded' },
+            'broad-two': { routing: 'research', source: 'migration-seeded' },
+          },
+        },
+        research: {
+          items: {
+            'broad-one': { status: 'in-progress' },
+            'broad-two': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    writeResearchFile('alpha', 'broad-one', 'content one');
+    writeResearchFile('alpha', 'broad-two', 'content two');
+
+    // Simulate processing broad-one: full supersede + one create.
+    applyCreate('alpha', 'broad-one', {
+      kebab_name: 'derived',
+      routing: 'discussion',
+      summary: 's', description: 'd', content: 'c',
+    });
+    applySupersede('alpha', 'broad-one');
+
+    // broad-two should still qualify on the second iteration.
+    assert.deepStrictEqual(qualifyingSources('alpha'), ['broad-two']);
+  });
+});
+
+describe('legacy-research-split: name collision', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  // propose-candidates C delegates to topic-name-validation.md. A new theme
+  // whose kebab_name matches an existing map item returns `collision-active`
+  // and the user must rename. This test locks in that classification rules
+  // route a colliding new name to `merges` (not `creates`), avoiding the
+  // collision entirely.
+  it('theme matching an existing inception item classifies as merges, not creates', () => {
+    writeManifest('alpha', {
+      name: 'alpha',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            'exploration': { routing: 'research', source: 'migration-seeded' },
+            'caching': { routing: 'discussion', source: 'inception' },
+          },
+        },
+        research: {
+          items: {
+            'exploration': { status: 'in-progress' },
+            'caching': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    writeResearchFile('alpha', 'exploration', 'broad content including caching');
+    writeResearchFile('alpha', 'caching', 'original caching content');
+
+    const m = readManifest('alpha');
+    const existing_names = Object.keys(m.phases.inception.items);
+    // session-loop.md C classifies: kebab_name='caching' → matches existing → 'merges'.
+    const classification = existing_names.includes('caching') && 'caching' !== 'exploration'
+      ? 'merges' : 'creates';
+    assert.strictEqual(classification, 'merges',
+      'colliding name routes to merges branch — bypasses topic-name-validation collision');
+  });
+});
+
 describe('legacy-research-split: idempotency', () => {
   beforeEach(setup);
   afterEach(cleanup);

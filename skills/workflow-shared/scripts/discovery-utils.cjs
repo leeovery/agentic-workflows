@@ -312,6 +312,12 @@ function computeTopicLifecycle(manifest, topicName) {
   if (rs === 'cancelled' && ds === 'cancelled') {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null };
   }
+  // Superseded research with no discussion: the topic's research lineage is
+  // closed but a discussion path remains open. Render as ready-for-discussion
+  // — the next available action is to discuss.
+  if (rs === 'superseded' && !ds) {
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' };
+  }
   return { lifecycle: 'fresh', tier: '○', current_phase: null };
 }
 
