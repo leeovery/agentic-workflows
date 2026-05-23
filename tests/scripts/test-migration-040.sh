@@ -310,6 +310,57 @@ JSON
   teardown
 }
 
+# --- Test 9: Completed/cancelled epics untouched ---
+test_completed_and_cancelled_epics_untouched() {
+  setup
+
+  local completed_dir="$TEST_DIR/.workflows/epic-done"
+  mkdir -p "$completed_dir"
+  cat > "$completed_dir/manifest.json" << 'JSON'
+{
+  "name": "epic-done",
+  "work_type": "epic",
+  "status": "completed",
+  "phases": {
+    "inception": {
+      "items": {"orphan": {"routing": "discussion", "source": "research-analysis"}}
+    }
+  }
+}
+JSON
+
+  local cancelled_dir="$TEST_DIR/.workflows/epic-cancel"
+  mkdir -p "$cancelled_dir"
+  cat > "$cancelled_dir/manifest.json" << 'JSON'
+{
+  "name": "epic-cancel",
+  "work_type": "epic",
+  "status": "cancelled",
+  "phases": {
+    "inception": {
+      "items": {"orphan": {"routing": "discussion", "source": "research-analysis"}}
+    }
+  }
+}
+JSON
+
+  source "$MIGRATION"
+
+  local completed_exists=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('$completed_dir/manifest.json', 'utf8'));
+    console.log(!!(m.phases.inception.items.orphan));
+  ")
+  assert_eq "completed epic untouched" "true" "$completed_exists"
+
+  local cancelled_exists=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('$cancelled_dir/manifest.json', 'utf8'));
+    console.log(!!(m.phases.inception.items.orphan));
+  ")
+  assert_eq "cancelled epic untouched" "true" "$cancelled_exists"
+
+  teardown
+}
+
 test_orphan_deleted
 test_sibling_research_preserves
 test_sibling_discussion_preserves
@@ -318,6 +369,7 @@ test_other_source_untouched
 test_comma_joined_source
 test_idempotent
 test_non_epic_untouched
+test_completed_and_cancelled_epics_untouched
 
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

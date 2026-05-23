@@ -238,6 +238,39 @@ describe('legacy-research-split: stays case', () => {
   });
 });
 
+describe('legacy-research-split: stays-only no-op', () => {
+  beforeEach(setup);
+  afterEach(cleanup);
+
+  // apply-split.md E: when approved_creates AND approved_merges are both
+  // empty (only stays), nothing was written and the commit step is skipped.
+  // Lock in the observable state: source file, research item, inception
+  // item all unchanged; no new items appear; no merge target was touched.
+  it('source untouched and no new items when only stays approved', () => {
+    seedLegacyEpic('alpha', 'authentication');
+    const sourceBefore = readResearchFile('alpha', 'authentication');
+    const manifestBefore = JSON.stringify(readManifest('alpha'));
+
+    // approved_creates = [], approved_merges = [], approved_stays = [{kebab_name: 'authentication'}]
+    // → apply-split A loops zero times, B loops zero times, C loops zero times,
+    //   D's "Otherwise" branch fires (stays present), E's commit is skipped.
+    // The skill makes no manifest or filesystem writes.
+
+    const sourceAfter = readResearchFile('alpha', 'authentication');
+    const manifestAfter = JSON.stringify(readManifest('alpha'));
+
+    assert.strictEqual(sourceAfter, sourceBefore, 'source file untouched');
+    assert.strictEqual(manifestAfter, manifestBefore, 'manifest untouched');
+
+    const m = readManifest('alpha');
+    assert.strictEqual(Object.keys(m.phases.inception.items).length, 1,
+      'no new inception items created');
+    assert.ok(m.phases.inception.items.authentication, 'original inception item preserved');
+    assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress',
+      'research item not superseded when stays present');
+  });
+});
+
 describe('legacy-research-split: full supersede case', () => {
   beforeEach(setup);
   afterEach(cleanup);
