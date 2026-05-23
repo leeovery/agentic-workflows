@@ -64,3 +64,4 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 21 | [Cross-Plan Implementation Ordering](cross-plan-implementation-ordering.md) | Planning content-appraisal + format-level enforcement + epic menu collapse to "next available task" |
 | 22 | [Editing Historical Phase Artefacts](editing-historical-phase-artefacts.md) | Planning / implementation / knowledge base — corrigendum + reindex convention |
 | 23 | [Embedding Provider `base_url` Override](embedding-provider-base-url.md) | Knowledge base CLI — `OpenAIProvider` + config |
+| 24 | [Inception Self-Healing on Legacy / Kitchen-Sink Research](inception-self-healing-on-legacy-research.md) | Migration 038 + `research-analysis` input guards + manifest `get` exit-2 + `routing` hardcode |
