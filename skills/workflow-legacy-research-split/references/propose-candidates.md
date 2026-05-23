@@ -60,11 +60,9 @@ For each theme, count the paragraphs in `theme.content` and render a one-line co
 
 #### If edit
 
-Handle edits iteratively. After each edit, re-classify the affected theme(s) (`stays` if name equals `current_source`; `merges` if name matches another `existing_names` entry; `creates` otherwise), re-render the list (format from **A**), and re-prompt.
+Apply the user's edit to the in-memory theme list. After applying, re-classify each affected theme (`stays` if name equals `current_source`; `merges` if name matches another `existing_names` entry; `creates` otherwise). If the user renamed a theme away from a dismissed name, also clear `pull_dismissed` on that theme.
 
-When the user signals done editing:
-
-→ Proceed to **C. Validate Names**.
+→ Return to **A. Display Themes**.
 
 #### If `abandon`
 
@@ -72,17 +70,47 @@ Set `abandoned = true`.
 
 → Return to caller.
 
-## C. Validate Names
+## C. Validate Constraints
 
-For each `creates` theme:
+Count themes by classification. The source file can only represent one theme, so at most one `stays` is allowed.
+
+#### If more than one theme is classified `stays`
+
+> *Output the next fenced block as a code block:*
+
+```
+Two themes share the source name "{current_source}". Rename one
+or merge them — the source file can only represent one theme.
+```
+
+→ Return to **B. Offer Edits**.
+
+#### Otherwise
+
+For each theme with classification `creates`:
 
 → Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{kebab_name}`.
 
-On `collision-active`: re-prompt for an alternative `kebab_name`; re-validate.
-On `matches-dismissed`: set `pull_dismissed = true` on the theme — the apply step will pull from the dismissed list before writing.
-On `ok`: proceed.
+**If result is `collision-active`:**
 
-`stays` and `merges` themes need no validation — the name is already on the map (or equals the source file).
+> *Output the next fenced block as a code block:*
+
+```
+Name "{kebab_name}" collides with an existing map item. Rename
+this theme.
+```
+
+→ Return to **B. Offer Edits**.
+
+**If result is `matches-dismissed`:**
+
+Set `pull_dismissed = true` on the theme. Continue to the next theme.
+
+**If result is `ok`:**
+
+Continue to the next theme.
+
+Once all `creates` themes have validated (`stays` and `merges` need no validation — the name is already on the map or equals the source file):
 
 → Proceed to **D. Final Confirmation**.
 
@@ -91,9 +119,9 @@ On `ok`: proceed.
 Build:
 - `approved_creates` — `creates` themes with `kebab_name`, `summary`, `description`, `routing`, `content`, optional `pull_dismissed`
 - `approved_merges` — `merges` themes with `target_name`, `content`
-- `approved_stays` — `stays` themes with `kebab_name`, `content` (at most one)
+- `approved_stays` — `stays` themes with `kebab_name`, `content` (at most one, validated in **C**)
 
-If `approved_stays.length > 1` (two themes share `current_source` as their name — invalid: the source file can only represent one theme), re-render and route back to **B. Offer Edits** with a note asking the user to rename or merge the duplicates.
+For each entry, render a content preview (paragraph count + first ~60 chars of the first paragraph) so the user can verify the allocation before approving — especially important for stays, where approval triggers a destructive source-file rewrite.
 
 > *Output the next fenced block as a code block:*
 
@@ -102,9 +130,10 @@ Final plan for {current_source}.md:
 
 @if(approved_stays.length > 0)
 Stays under source name ({current_source}):
-  • {kebab_name}
+  • {approved_stays[0].kebab_name} — {approved_stays[0].paragraph_count} para(s)
+    "{approved_stays[0].content_preview}..."
   @if(approved_creates.length + approved_merges.length > 0)
-  (source file will be rewritten with this theme's content only —
+  (source file will be REWRITTEN to contain only the content above —
    the rest moves to new/merge targets)
   @else
   (source file untouched — no other themes to move out)
@@ -114,7 +143,8 @@ Stays under source name ({current_source}):
 @if(approved_merges.length > 0)
 Merges into existing files:
 @foreach(m in approved_merges)
-  • {m.target_name}
+  • {m.target_name} — {m.paragraph_count} para(s)
+    "{m.content_preview}..."
 @endforeach
 @endif
 
@@ -122,6 +152,7 @@ Merges into existing files:
 Creates new files:
 @foreach(c in approved_creates)
   • {c.kebab_name} ({c.routing}) — {c.summary}
+    {c.paragraph_count} para(s) — "{c.content_preview}..."
 @endforeach
 @endif
 

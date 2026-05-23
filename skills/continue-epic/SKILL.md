@@ -235,7 +235,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.resea
 
 #### Otherwise
 
-Invoke the **[workflow-legacy-research-split](../workflow-legacy-research-split/SKILL.md)** skill with work_unit = `{work_unit}`. Follow its instructions as written. If it issues a STOP gate, you must stop.
+Invoke the **[workflow-legacy-research-split](../workflow-legacy-research-split/SKILL.md)** skill with work_unit = `{work_unit}`. Follow its instructions as written.
 
 On return, re-run discovery so Steps 6–8 see the post-split map state:
 

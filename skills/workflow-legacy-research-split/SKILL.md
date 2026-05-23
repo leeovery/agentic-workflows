@@ -39,6 +39,23 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 > *Output the next fenced block as a code block:*
 
 ```
+●───────────────────────────────────────────────●
+  Legacy Research Split
+●───────────────────────────────────────────────●
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> This epic pre-dates the inception phase. Migration-seeded broad
+> research files are decomposed here into topic-scoped themes,
+> user-guided per source.
+```
+
+> *Output the next fenced block as a code block:*
+
+```
 ── List Qualifying Sources ──────────────────────
 ```
 

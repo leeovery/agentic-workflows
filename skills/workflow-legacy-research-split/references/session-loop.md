@@ -23,7 +23,13 @@ Pop the next name. Set `current_source = name`.
 > *Output the next fenced block as a code block:*
 
 ```
-── Processing {current_source} ──────────────────
+── Processing Source ────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Working on {current_source}.md.
 ```
 
 Read `.workflows/{work_unit}/research/{current_source}.md` end-to-end.

@@ -6,6 +6,8 @@
 
 Write the approved split to disk and manifest. Inputs: `approved_creates`, `approved_merges`, `approved_stays`, `current_source`, `work_unit`.
 
+All manifest writes here are designed to be **idempotent**: re-running this reference after a partial-apply interruption must not error or corrupt state. Init-phase calls are gated with `exists` prechecks; `set` calls are inherently idempotent (last write wins). Initialise `written_files = []` to track paths for the commit.
+
 ## A. Create New Research Files
 
 > *Output the next fenced block as a code block:*
@@ -16,11 +18,13 @@ Write the approved split to disk and manifest. Inputs: `approved_creates`, `appr
 
 For each `c` in `approved_creates`:
 
-1. Render a new file at `.workflows/{work_unit}/research/{c.kebab_name}.md` from **[template.md](../../workflow-research-process/references/template.md)**.
+1. Render `.workflows/{work_unit}/research/{c.kebab_name}.md` from **[template.md](../../workflow-research-process/references/template.md)**:
    - `{Title}` — title-case `c.kebab_name`
    - "Brief description" line — replace with `c.summary`
    - "Starting Point" bullets — replace with a single line: `Material extracted from legacy research file {current_source}.md via legacy-research-split.`
    - Below the `---` separator — paste `c.content` verbatim (the paragraphs assigned to this theme in session-loop C). No summarisation, no rewording.
+
+2. Append the path to `written_files`.
 
 → Proceed to **B. Append to Merge Targets**.
 
@@ -28,15 +32,35 @@ For each `c` in `approved_creates`:
 
 For each `m` in `approved_merges`:
 
-1. If `phases.research.items.{m.target_name}` does not exist on the manifest, init it (the target is on the inception map but research hasn't started yet):
+Check whether the research item already exists:
 
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{m.target_name}
-   ```
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.research items.{m.target_name}
+```
 
-2. If `.workflows/{work_unit}/research/{m.target_name}.md` does not exist on disk, render it from **[template.md](../../workflow-research-process/references/template.md)** using the same field substitutions as **A** (with `m.target_name` as the title and a starting-point line noting the legacy-split origin). Otherwise, leave existing content in place.
+**If `false`:**
 
-3. Append `m.content` verbatim to the file, preceded by a `---` separator. No dedup.
+Init the research item so the merge target has a tracked entry:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{m.target_name}
+```
+
+**If `true`:**
+
+Leave the existing item in place.
+
+Then check whether the on-disk file exists. The path is `.workflows/{work_unit}/research/{m.target_name}.md`.
+
+**If the file does not exist:**
+
+Render it from **[template.md](../../workflow-research-process/references/template.md)** with `{Title}` = title-cased `m.target_name`, "Brief description" = `Merge target for legacy-split content from {current_source}.md.`, and the same starting-point line as **A**.
+
+**Otherwise:**
+
+Leave existing content in place.
+
+Then append `m.content` to the file, preceded by a `---` separator. No dedup. Append the path to `written_files`.
 
 → Proceed to **C. Manifest Writes — Creates**.
 
@@ -44,17 +68,49 @@ For each `m` in `approved_merges`:
 
 For each `c` in `approved_creates`:
 
-If `c.pull_dismissed` is true, the name had a dismissed entry that validation pulled — clear it first:
+**If `c.pull_dismissed` is true:**
+
+Clear the dismissed entry first (the pull is a no-op if the name has already been pulled):
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{c.kebab_name}"
 ```
 
-Initialise research + inception items and stamp provenance:
+Check whether the research item already exists:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.research items.{c.kebab_name}
+```
+
+**If `false`:**
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{c.kebab_name}
+```
+
+**If `true`:**
+
+Leave the existing item in place — a partial-apply re-entry has already initialised it.
+
+Then check whether the inception item already exists:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception items.{c.kebab_name}
+```
+
+**If `false`:**
+
+```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{c.kebab_name}
+```
+
+**If `true`:**
+
+Leave the existing item in place.
+
+Stamp the inception item's fields (idempotent — `set` is last-write-wins):
+
+```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{c.kebab_name} routing {c.routing}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{c.kebab_name} summary "{c.summary}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{c.kebab_name} description "{c.description}"
@@ -69,11 +125,31 @@ The new research item lands `in-progress` (init-phase default). The `legacy-spli
 
 #### If `approved_stays` is empty
 
-No theme keeps the source name, so the source's research and inception items are now stale. Supersede the research item, remove the inception entry, and drop the source's chunks from the KB:
+No theme keeps the source name. Set the source's research item to `superseded` (idempotent):
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research.{current_source} status superseded
+```
+
+Then check whether the source's inception entry still exists (it won't on re-entry after a partial apply):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception items.{current_source}
+```
+
+**If `true`:**
+
+```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{current_source}
+```
+
+**If `false`:**
+
+Already removed.
+
+Then drop the source's chunks from the KB (no-op if nothing was indexed):
+
+```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase research --topic {current_source}
 ```
 
@@ -85,24 +161,35 @@ The source file itself stays on disk as historical record.
 
 One theme kept the source name. The source's research and inception items stay as they are, but if any content moved out (via creates or merges), the source file must be rewritten to contain only the stays theme's content — otherwise the moved paragraphs would duplicate between the source and the new files.
 
-**If `approved_creates` and `approved_merges` are both empty:** source file untouched (nothing moved out).
+**If `approved_creates` and `approved_merges` are both empty:**
 
-**Otherwise:** rewrite `.workflows/{work_unit}/research/{current_source}.md` from **[template.md](../../workflow-research-process/references/template.md)** using the same field substitutions as **A** — title-case `current_source` for `{Title}`, `approved_stays[0].summary` for the brief description line, the legacy-split provenance line, and `approved_stays[0].content` verbatim below the separator. This replaces the legacy broad content with only what the user kept under this name.
+Source file untouched — nothing moved out.
+
+→ Proceed to **E. Commit**.
+
+**Otherwise:**
+
+Rewrite `.workflows/{work_unit}/research/{current_source}.md` from **[template.md](../../workflow-research-process/references/template.md)** with `{Title}` = title-cased `current_source`, "Brief description" = `approved_stays[0].summary`, the same starting-point line as **A**, and `approved_stays[0].content` verbatim below the separator. Append the path to `written_files`.
 
 → Proceed to **E. Commit**.
 
 ## E. Commit
 
-#### If `approved_creates` and `approved_merges` are both empty
+#### If `written_files` is empty
 
-Only `stays` was approved — source is untouched and nothing was written. No commit.
+Nothing was written to disk and the manifest is unchanged (stays-only with no creates/merges). No commit.
 
 → Return to caller.
 
 #### Otherwise
 
+Stage only the paths this iteration touched, plus the manifest. Avoid `git add` on the whole research directory — unrelated user edits in sibling files must not be swept into the legacy-split commit.
+
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/research/
+git add -- .workflows/{work_unit}/manifest.json
+@foreach(path in written_files)
+git add -- {path}
+@endforeach
 git commit -m "epic({work_unit}): legacy-split {current_source} into {N} topic(s)"
 ```
 

@@ -37,24 +37,6 @@ Include an inception item `name` in `qualifying_sources` when ALL hold:
 > *Output the next fenced block as a code block:*
 
 ```
-●───────────────────────────────────────────────●
-  Legacy Research Split
-●───────────────────────────────────────────────●
-
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> This epic pre-dates the inception phase. One or more research
-> files were seeded as broad topics by migration. Before the
-> discovery map can route around them, each source file is
-> decomposed into topic-scoped themes — user-guided.
-```
-
-> *Output the next fenced block as a code block:*
-
-```
 Qualifying source files (in-progress, migration-seeded):
 
 @foreach(name in qualifying_sources)
