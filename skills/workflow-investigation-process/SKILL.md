@@ -275,8 +275,8 @@ Document in the investigation file and commit.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Validating the root cause analysis against the codebase
-> to confirm the diagnosis is correct.
+> Reviewing the findings and optionally validating the root
+> cause against the codebase.
 ```
 
 Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its instructions as written.
@@ -296,8 +296,8 @@ Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Presenting the investigation findings and discussing
-> the fix approach with you.
+> Confirming the findings and discussing the fix approach
+> with you.
 ```
 
 Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.

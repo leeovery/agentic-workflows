@@ -6,7 +6,35 @@
 
 An independent synthesis agent validates the root cause hypothesis by tracing code fresh. This step is optional — the user chooses whether to run it.
 
-## A. Offer Validation
+## A. Present Findings
+
+Summarize the investigation findings in a structured display. Pull from the investigation file — do not invent or embellish.
+
+> *Output the next fenced block as a code block:*
+
+```
+Investigation Findings: {work_unit}
+
+Root Cause:
+  {clear, precise root cause statement}
+
+Contributing Factors:
+  {factor 1}
+  {factor 2}
+
+Blast Radius:
+  Directly affected:  {components}
+  Potentially affected: {components sharing code/patterns}
+
+Why It Wasn't Caught:
+  {testing gap, edge case, recent change}
+```
+
+→ Proceed to **B. Offer Validation**.
+
+---
+
+## B. Offer Validation
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -15,7 +43,7 @@ An independent synthesis agent validates the root cause hypothesis by tracing co
 Root cause documented. Run synthesis validation?
 
 An independent agent will trace the code to validate the
-root cause hypothesis before you review findings.
+root cause hypothesis before confirming.
 
 - **`y`/`yes`** — Run synthesis validation
 - **`s`/`skip`** — Skip straight to findings review
@@ -30,11 +58,11 @@ root cause hypothesis before you review findings.
 
 #### If `yes`
 
-→ Proceed to **B. Dispatch**.
+→ Proceed to **C. Dispatch**.
 
 ---
 
-## B. Dispatch
+## C. Dispatch
 
 Ensure the cache directory exists:
 
@@ -82,11 +110,11 @@ GAPS_COUNT: {N}
 SUMMARY: {1 sentence}
 ```
 
-→ Proceed to **C. Process Results**.
+→ Proceed to **D. Process Results**.
 
 ---
 
-## C. Process Results
+## D. Process Results
 
 Read the synthesis output file.
 
@@ -118,7 +146,5 @@ Synthesis: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
 
 Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md
 ```
-
-Carry the synthesis context forward — Step 8 (Findings Review) will incorporate these gaps into the findings presentation.
 
 → Return to caller.
