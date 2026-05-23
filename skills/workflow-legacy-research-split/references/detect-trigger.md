@@ -23,6 +23,7 @@ Include an inception item `name` in `qualifying_sources` when ALL hold:
 - `routing` is `research`
 - `phases.research.items.{name}.status` is `in-progress`
 - `.workflows/{work_unit}/research/{name}.md` exists
+- `legacy_split_state` is not set on the inception item (apply-split sets `in-progress` at start and `applied` on success; either value means the source has already been processed or is mid-process and must not be re-entered)
 
 #### If `qualifying_sources` is empty
 

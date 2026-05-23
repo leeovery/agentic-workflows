@@ -113,6 +113,7 @@ function qualifyingSources(workUnit) {
     const src = (item && item.source) || '';
     if (!src.includes('migration-seeded')) continue;
     if (item.routing !== 'research') continue;
+    if (item.legacy_split_state) continue;  // skill marks this at apply-start / apply-end
     const r = research[name];
     if (!r || r.status !== 'in-progress') continue;
     if (!fileExists(workUnit, `research/${name}.md`)) continue;
@@ -131,6 +132,14 @@ function applyCreate(workUnit, current_source, theme) {
   runCli('set', `${workUnit}.inception.${theme.kebab_name}`,
     'source', `legacy-split:${current_source}`);
   writeResearchFile(workUnit, theme.kebab_name, `# Research: ${theme.kebab_name}\n\n${theme.content}`);
+}
+
+function applyStartMarker(workUnit, current_source) {
+  runCli('set', `${workUnit}.inception.${current_source}`, 'legacy_split_state', 'in-progress');
+}
+
+function applyFinishMarkerStays(workUnit, current_source) {
+  runCli('set', `${workUnit}.inception.${current_source}`, 'legacy_split_state', 'applied');
 }
 
 function applySupersede(workUnit, current_source) {
@@ -216,6 +225,37 @@ describe('legacy-research-split: detect-trigger', () => {
     writeResearchFile('epsilon', 'foo', 'content');
     assert.deepStrictEqual(qualifyingSources('epsilon'), []);
   });
+
+  // apply-split.md A sets legacy_split_state = 'in-progress' before any
+  // writes; E sets 'applied' on success. Either value excludes the item
+  // from re-qualification — preventing content duplication on retry.
+  it('does not qualify items where legacy_split_state is set to in-progress', () => {
+    writeManifest('zeta', {
+      name: 'zeta',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: { items: { src: { routing: 'research', source: 'migration-seeded', legacy_split_state: 'in-progress' } } },
+        research: { items: { src: { status: 'in-progress' } } },
+      },
+    });
+    writeResearchFile('zeta', 'src', 'content');
+    assert.deepStrictEqual(qualifyingSources('zeta'), []);
+  });
+
+  it('does not qualify items where legacy_split_state is set to applied', () => {
+    writeManifest('eta', {
+      name: 'eta',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: { items: { src: { routing: 'research', source: 'migration-seeded', legacy_split_state: 'applied' } } },
+        research: { items: { src: { status: 'in-progress' } } },
+      },
+    });
+    writeResearchFile('eta', 'src', 'content');
+    assert.deepStrictEqual(qualifyingSources('eta'), []);
+  });
 });
 
 // Rewrite the source file when stays + other themes — apply-split.md D
@@ -236,6 +276,7 @@ describe('legacy-research-split: stays case', () => {
 
     // Approved plan: stays(authentication) keeps the auth paragraphs;
     // creates(caching) carries the caching paragraphs.
+    applyStartMarker('alpha', 'authentication');
     applyCreate('alpha', 'authentication', {
       kebab_name: 'caching',
       routing: 'research',
@@ -244,6 +285,7 @@ describe('legacy-research-split: stays case', () => {
       content: 'Cache content extracted from broad file.',
     });
     applyStaysRewrite('alpha', 'authentication', 'Authentication-only content (kept).');
+    applyFinishMarkerStays('alpha', 'authentication');
 
     const after = readResearchFile('alpha', 'authentication');
     assert.ok(after.includes('Authentication-only content (kept).'),
@@ -253,6 +295,10 @@ describe('legacy-research-split: stays case', () => {
 
     const m = readManifest('alpha');
     assert.ok(m.phases.inception.items.authentication, 'authentication inception preserved');
+    assert.strictEqual(m.phases.inception.items.authentication.source, 'migration-seeded',
+      'original source provenance preserved through stays rewrite');
+    assert.strictEqual(m.phases.inception.items.authentication.legacy_split_state, 'applied',
+      'legacy_split_state set to applied on success');
     assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress');
     assert.ok(m.phases.inception.items.caching, 'new caching inception item created');
     assert.strictEqual(m.phases.inception.items.caching.routing, 'research');
@@ -264,30 +310,30 @@ describe('legacy-research-split: stays-only no-op', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
-  // apply-split.md E: when approved_creates AND approved_merges are both
-  // empty (only stays), nothing was written and the commit step is skipped.
-  // Lock in the observable state: source file, research item, inception
-  // item all unchanged; no new items appear; no merge target was touched.
-  it('source untouched and no new items when only stays approved', () => {
+  // apply-split.md flow when approved_creates AND approved_merges are
+  // both empty (only stays): A marks legacy_split_state = in-progress,
+  // B and C loop zero times, D Otherwise -> If both empty does nothing
+  // to the source file, E "If written_files empty" sets legacy_split_state
+  // = applied and skips the git commit.
+  it('source file untouched and only legacy_split_state set when only stays approved', () => {
     seedLegacyEpic('alpha', 'authentication');
     const sourceBefore = readResearchFile('alpha', 'authentication');
-    const manifestBefore = JSON.stringify(readManifest('alpha'));
 
-    // approved_creates = [], approved_merges = [], approved_stays = [{kebab_name: 'authentication'}]
-    // → apply-split A loops zero times, B loops zero times, C loops zero times,
-    //   D's "Otherwise" branch fires (stays present), E's commit is skipped.
-    // The skill makes no manifest or filesystem writes.
+    applyStartMarker('alpha', 'authentication');
+    // No creates, no merges, no file rewrite.
+    applyFinishMarkerStays('alpha', 'authentication');
 
     const sourceAfter = readResearchFile('alpha', 'authentication');
-    const manifestAfter = JSON.stringify(readManifest('alpha'));
-
     assert.strictEqual(sourceAfter, sourceBefore, 'source file untouched');
-    assert.strictEqual(manifestAfter, manifestBefore, 'manifest untouched');
 
     const m = readManifest('alpha');
     assert.strictEqual(Object.keys(m.phases.inception.items).length, 1,
       'no new inception items created');
     assert.ok(m.phases.inception.items.authentication, 'original inception item preserved');
+    assert.strictEqual(m.phases.inception.items.authentication.source, 'migration-seeded',
+      'original source provenance preserved');
+    assert.strictEqual(m.phases.inception.items.authentication.legacy_split_state, 'applied',
+      'legacy_split_state set to applied on success');
     assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress',
       'research item not superseded when stays present');
   });
@@ -545,5 +591,41 @@ describe('legacy-research-split: idempotency', () => {
     // After supersede, exploration is no longer in inception items —
     // detect-trigger returns empty list.
     assert.deepStrictEqual(qualifyingSources('alpha'), []);
+  });
+
+  // Mid-apply kill scenario: apply-split A sets legacy_split_state =
+  // in-progress before any writes; if the session dies before D's
+  // supersede or E's finalise, the source must NOT re-qualify on
+  // restart. Without this, detect-trigger would re-prompt the user
+  // and the re-classification would duplicate already-written content.
+  it('source does not re-qualify after legacy_split_state is set, even before completion', () => {
+    seedLegacyEpic('alpha', 'exploration');
+    assert.deepStrictEqual(qualifyingSources('alpha'), ['exploration']);
+
+    // Simulate apply-split A's first action: mark in-progress.
+    applyStartMarker('alpha', 'exploration');
+
+    // Even though research is still in-progress and source is still
+    // migration-seeded, the in-progress marker excludes it.
+    assert.deepStrictEqual(qualifyingSources('alpha'), []);
+  });
+
+  // Stays-success scenario: stays case completes E without supersede.
+  // The marker transitions to 'applied'. Source stays in-progress
+  // (the stays theme inherits it) but the marker keeps detect-trigger
+  // from re-qualifying.
+  it('stays-success path keeps source out of qualifying list via applied marker', () => {
+    seedLegacyEpic('beta', 'authentication');
+
+    applyStartMarker('beta', 'authentication');
+    // simulate D Otherwise + E success with stays
+    applyFinishMarkerStays('beta', 'authentication');
+
+    // research still in-progress; inception item still migration-seeded;
+    // but applied marker excludes.
+    const m = readManifest('beta');
+    assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress');
+    assert.strictEqual(m.phases.inception.items.authentication.source, 'migration-seeded');
+    assert.deepStrictEqual(qualifyingSources('beta'), []);
   });
 });

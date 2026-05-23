@@ -72,15 +72,30 @@ Set `abandoned = true`.
 
 ## C. Validate Constraints
 
-Count themes by classification. The source file can only represent one theme, so at most one `stays` is allowed.
+Three checks run in order. The first matching check renders a message and routes back to **B**; if none matches, the per-`creates` topic-name validation runs.
 
 #### If more than one theme is classified `stays`
+
+The source file can only represent one theme.
 
 > *Output the next fenced block as a code block:*
 
 ```
 Two themes share the source name "{current_source}". Rename one
 or merge them — the source file can only represent one theme.
+```
+
+→ Return to **B. Offer Edits**.
+
+#### If any theme has empty `content`
+
+A theme with no allocated paragraphs would produce an empty research file.
+
+> *Output the next fenced block as a code block:*
+
+```
+Theme "{theme.kebab_name}" has no paragraphs allocated. Move
+source content into it or remove the theme.
 ```
 
 → Return to **B. Offer Edits**.
@@ -119,7 +134,7 @@ Once all `creates` themes have validated (`stays` and `merges` need no validatio
 Build:
 - `approved_creates` — `creates` themes with `kebab_name`, `summary`, `description`, `routing`, `content`, optional `pull_dismissed`
 - `approved_merges` — `merges` themes with `target_name`, `content`
-- `approved_stays` — `stays` themes with `kebab_name`, `content` (at most one, validated in **C**)
+- `approved_stays` — `stays` themes with `kebab_name`, `summary`, `content` (at most one, validated in **C**; `summary` is required because apply-split D uses it as the source-file "Brief description" when rewriting)
 
 For each entry, render a content preview (paragraph count + first ~60 chars of the first paragraph) so the user can verify the allocation before approving — especially important for stays, where approval triggers a destructive source-file rewrite.
 

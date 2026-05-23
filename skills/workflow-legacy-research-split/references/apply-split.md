@@ -16,6 +16,12 @@ All manifest writes here are designed to be **idempotent**: re-running this refe
 ·· Create Files ·································
 ```
 
+Before any writes, mark the source's inception item as in-flight. detect-trigger reads `legacy_split_state` to exclude the source from re-qualification on retry:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} legacy_split_state in-progress
+```
+
 For each `c` in `approved_creates`:
 
 1. Render `.workflows/{work_unit}/research/{c.kebab_name}.md` from **[template.md](../../workflow-research-process/references/template.md)**:
@@ -177,7 +183,11 @@ Rewrite `.workflows/{work_unit}/research/{current_source}.md` from **[template.m
 
 #### If `written_files` is empty
 
-Nothing was written to disk and the manifest is unchanged (stays-only with no creates/merges). No commit.
+Nothing was written to disk and no creates/merges existed (stays-only). Skip the git commit, but transition `legacy_split_state` from `in-progress` to `applied` so detect-trigger excludes this source on future runs:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} legacy_split_state applied
+```
 
 → Return to caller.
 
@@ -194,5 +204,21 @@ git commit -m "epic({work_unit}): legacy-split {current_source} into {N} topic(s
 ```
 
 `{N}` = `approved_creates.length + approved_merges.length + approved_stays.length`.
+
+After the commit, transition the source's `legacy_split_state` from `in-progress` to `applied`. In the supersede branch (D's `If approved_stays is empty`) the inception item was deleted, so check first:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception items.{current_source}
+```
+
+**If `true`:**
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} legacy_split_state applied
+```
+
+**If `false`:**
+
+No-op — the supersede branch already removed the item.
 
 → Return to caller.
