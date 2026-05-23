@@ -6,7 +6,7 @@
 
 Drives cache-based dispatch of `research-analysis` and `inception-gap-analysis` against an epic's discovery map. The analyses write directly to `phases.inception.items.{topic}` with `source` provenance and respect the per-work-unit `phases.inception.dismissed[]` list.
 
-The analyses self-gate on a precondition: they return without action when no completed research (for research-analysis) or no completed research-or-discussion (for gap-analysis) exists. Cache `stale` does not imply work to do — caller can safely dispatch unconditionally on `stale`.
+Each analysis self-gates on a precondition (research-analysis needs at least one completed research item; gap-analysis needs at least one completed research OR discussion item). When the precondition fails the analysis returns without touching cache or manifest — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
 The caller is responsible for surfacing the result — `continue-epic` shows a callout above the discovery map; `refinement-session.md` records names under **Self-Healing Arrivals** in the active session log.
 

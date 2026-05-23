@@ -4,45 +4,39 @@
 
 ---
 
-Write the user-approved split to disk and manifest. Inputs from **[propose-candidates.md](propose-candidates.md)**: `approved_creates`, `approved_merges`, `approved_stays`, `current_source`, `work_unit`.
+Write the approved split to disk and manifest. Inputs: `approved_creates`, `approved_merges`, `approved_stays`, `current_source`, `work_unit`.
 
 ## A. Create New Research Files
 
 > *Output the next fenced block as a code block:*
 
 ```
-·· Create Files ································
+·· Create Files ·································
 ```
 
-For each entry `c` in `approved_creates`:
+For each `c` in `approved_creates`:
 
-1. Build the new research file path: `.workflows/{work_unit}/research/{c.kebab_name}.md`.
-
-2. Render using **[template.md](../../workflow-research-process/references/template.md)** — fill `{Title}` with title-cased `c.kebab_name`. The body's "Starting Point" section can be brief; below it, paste `c.content` verbatim from the source (no summarisation, no rewording).
-
-3. Write the file.
+1. Render a new file at `.workflows/{work_unit}/research/{c.kebab_name}.md` from **[template.md](../../workflow-research-process/references/template.md)**. Title-case `c.kebab_name` for `{Title}`. Paste `c.content` verbatim below the "Starting Point" section — no summarisation, no rewording.
 
 → Proceed to **B. Append to Merge Targets**.
 
 ## B. Append to Merge Targets
 
-For each entry `m` in `approved_merges`:
-
-1. Append `m.content` verbatim to `.workflows/{work_unit}/research/{m.target_name}.md`. Add a separator (`---`) above the appended block. No dedup — duplication is acceptable.
+For each `m` in `approved_merges`, append `m.content` to `.workflows/{work_unit}/research/{m.target_name}.md` with a `---` separator above it. No dedup.
 
 → Proceed to **C. Manifest Writes — Creates**.
 
 ## C. Manifest Writes — Creates
 
-For each entry `c` in `approved_creates`:
+For each `c` in `approved_creates`:
 
-If `c.pull_dismissed` is true, pull the name from the dismissed list first:
+If `c.pull_dismissed` is true, the name had a dismissed entry that validation pulled — clear it first:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{c.kebab_name}"
 ```
 
-Then init research + inception items:
+Initialise research + inception items and stamp provenance:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{c.kebab_name}
@@ -53,7 +47,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{c.kebab_name} source "legacy-split:{current_source}"
 ```
 
-The new research item lands `in-progress` (init-phase default). The inception item is provenance-tagged so downstream auto-routing can distinguish legacy-derived topics.
+The new research item lands `in-progress` (init-phase default). The `legacy-split:{source}` source distinguishes these from native inception items.
 
 → Proceed to **D. Supersede Source If No `stays`**.
 
@@ -61,27 +55,15 @@ The new research item lands `in-progress` (init-phase default). The inception it
 
 #### If `approved_stays` is empty
 
-The source file represents no theme directly — every theme moved to a new file or merged elsewhere. The source's inception and research items become stale.
+No theme keeps the source name, so the source's research and inception items are now stale. Supersede the research item, remove the inception entry, and drop the source's chunks from the KB:
 
-1. Set source research status to `superseded`:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research.{current_source} status superseded
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{current_source}
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase research --topic {current_source}
+```
 
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research.{current_source} status superseded
-   ```
-
-2. Remove the source's inception item entirely:
-
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{current_source}
-   ```
-
-3. Remove from knowledge base (source file may have been previously indexed):
-
-   ```bash
-   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase research --topic {current_source}
-   ```
-
-The source file itself stays on disk untouched — it is historical record; nothing reads it after the supersede.
+The source file itself stays on disk as historical record.
 
 → Proceed to **E. Commit**.
 
@@ -93,13 +75,13 @@ One theme kept the source name. Source file, research item, and inception item a
 
 ## E. Commit
 
-Single commit covering this source's decomposition:
+If `approved_creates` AND `approved_merges` are both empty (only `stays`, source unchanged), nothing was written — skip the commit.
 
 ```bash
 git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/research/
 git commit -m "epic({work_unit}): legacy-split {current_source} into {N} topic(s)"
 ```
 
-Where `{N}` = `approved_creates.length + approved_merges.length + approved_stays.length`.
+`{N}` = `approved_creates.length + approved_merges.length + approved_stays.length`.
 
 → Return to caller.

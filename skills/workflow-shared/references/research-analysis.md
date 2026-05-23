@@ -13,11 +13,7 @@ The caller provides these via context before loading:
 - `work_unit` — the epic's work unit name.
 - `tracker` — a list (initially empty) for newly-added topic names. The reference appends names as items are written.
 
-## A.0 Precondition Check
-
-Read `phases.research.items` from the manifest. Collect the set of research items where `status == 'completed'`. If empty, return immediately without doing anything — no cache stamp, no manifest writes, no callout. Research analysis only operates on completed material.
-
-→ Proceed to **A. Identify Themes**.
+**Precondition.** Collect research items where `status == 'completed'`. If empty, return — no cache stamp, no manifest writes, no callout.
 
 ## A. Identify Themes
 
@@ -29,9 +25,9 @@ Analyzing research documents...
 
 **CRITICAL**: This analysis is the foundation for every downstream phase. The themes extracted here drive topic definition, which drives discussion, which drives specification, planning, and implementation. Anything missed here is invisible to the rest of the pipeline.
 
-**Input scope:** Read only research files corresponding to completed research items (the set you collected in **A.0**). For each completed item `{name}`, read `.workflows/{work_unit}/research/{name}.md`. Skip files that don't exist. Items with status `in-progress`, `superseded`, or `cancelled` are excluded.
+Read `.workflows/{work_unit}/research/{name}.md` for each completed item from the precondition set. Skip files missing on disk. Items with `in-progress`, `superseded`, or `cancelled` status are not in the input set.
 
-Then cross-reference across files — connections, contradictions, and shared concerns that span multiple documents are often the most important themes. Extract every distinct theme, concern, decision point, constraint, risk, open question, or nuance you find. Technical, business, operational, regulatory, user-facing, or otherwise — if the research mentions it, capture it. Even small details matter: a brief aside about a regulatory deadline, a passing mention of a dependency, a footnote about a limitation. These may not become their own topics, but they inform the grouping and ensure nothing is lost.
+Cross-reference across files — connections, contradictions, and shared concerns that span multiple documents are often the most important themes. Extract every distinct theme, concern, decision point, constraint, risk, open question, or nuance you find. Technical, business, operational, regulatory, user-facing, or otherwise — if the research mentions it, capture it. Even small details matter: a brief aside about a regulatory deadline, a passing mention of a dependency, a footnote about a limitation. These may not become their own topics, but they inform the grouping and ensure nothing is lost.
 
 This analysis is cached and only re-runs when completed-research content changes. Be exhaustive — this is the one opportunity to capture the full picture.
 
@@ -61,11 +57,12 @@ Split when themes have genuinely different stakeholders, concerns, or decision s
 
 For each candidate topic, write a one-line summary that covers the constituent themes — used as the inception item's `summary` field.
 
-**Per-candidate routing.** For each candidate, decide its routing:
-- `routing: discussion` — the theme is well-explored in the source research; ready for direct discussion.
-- `routing: research` — the theme surfaces as under-explored, ambiguous, or requires more feasibility/market/viability work before it can be productively discussed.
+**Per-candidate routing.** Decide each candidate's routing based on source depth:
 
-Routing is your judgment based on the depth of the source material, not a default. A research analysis may emit a mix of both routings.
+- `routing: discussion` — well-explored; ready for direct discussion.
+- `routing: research` — under-explored; needs more feasibility/market/viability work first.
+
+A single analysis may emit a mix of both routings.
 
 → Proceed to **C. Anchor to Existing Discussions**.
 

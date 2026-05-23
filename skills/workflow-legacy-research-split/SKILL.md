@@ -93,4 +93,4 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 > completed material as topics finish.
 ```
 
-This skill ends. Caller resumes (`continue-epic` re-runs discovery and continues with Step 6).
+→ Return to caller.

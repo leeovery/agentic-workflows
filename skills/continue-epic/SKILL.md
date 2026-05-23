@@ -218,12 +218,11 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for pre-inception research files seeded by migration.
-> Broad legacy files are decomposed into topic-scoped files via a
-> user-guided flow so analyses can operate per-topic.
+> Checking for migration-seeded broad research files that need
+> per-topic decomposition before analyses can operate.
 ```
 
-Check the manifest for qualifying source files: inception items where `source` contains `migration-seeded` AND `routing` is `research` AND a matching `phases.research.items.{name}` exists with `status: in-progress` AND the file `.workflows/{work_unit}/research/{name}.md` exists.
+Qualifying inception items: `source` contains `migration-seeded`, `routing` is `research`, matching `phases.research.items.{name}.status` is `in-progress`, and `.workflows/{work_unit}/research/{name}.md` exists.
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception items
@@ -236,9 +235,9 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.resea
 
 #### Otherwise
 
-Invoke the [workflow-legacy-research-split](../workflow-legacy-research-split/SKILL.md) skill with work_unit = `{work_unit}`. Follow its instructions exactly — if it issues a STOP gate, you must stop.
+Invoke the **[workflow-legacy-research-split](../workflow-legacy-research-split/SKILL.md)** skill with work_unit = `{work_unit}`. Follow its instructions as written. If it issues a STOP gate, you must stop.
 
-On return, re-run discovery so subsequent steps see fresh state:
+On return, re-run discovery so Steps 6–8 see the post-split map state:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
@@ -279,12 +278,10 @@ Load **[summary-backfill.md](references/summary-backfill.md)** with work_unit = 
 ```
 > Checking analysis caches for the selected epic. Stale caches
 > trigger inline research-analysis or gap-analysis runs that add
-> any new themes directly to the discovery map. Analyses self-gate
-> on completed material — they no-op when no completed research or
-> discussion exists yet.
+> any new themes directly to the discovery map.
 ```
 
-Read `analysis_caches` from the selected epic's most recent discovery `detail` (Step 1's output, or the re-run output if Step 5 invoked legacy-split):
+Read `analysis_caches` from the most recent discovery `detail`:
 
 - `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
 - `analysis_caches.gap_analysis.status` — same
@@ -297,11 +294,11 @@ No analyses to run.
 
 #### If at least one cache is `stale`
 
-→ Load **[self-healing.md](../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+Load **[self-healing.md](../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
 
 On return, store the orchestrator's `new_arrivals` tracker in conversation memory — Step 8 reads it to render the callout above the discovery map.
 
-Re-run discovery for the work unit so Step 8 (display) has fresh state including auto-added items:
+Re-run discovery so Step 8 sees fresh state including any auto-added items:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}

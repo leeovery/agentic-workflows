@@ -4,36 +4,27 @@
 
 ---
 
-Identify the set of legacy migration-seeded research files that qualify for decomposition. The caller stores the resulting list as `qualifying_sources` for **[session-loop.md](session-loop.md)** to iterate.
+Build `qualifying_sources` — names of migration-seeded research items that need decomposition.
 
 ## A. Read Manifest
-
-Read the work unit's manifest. The `get` command returns the full inception items object and the full research items object:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception items
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.research items
 ```
 
-Treat empty output (work-unit-missing or path-missing — exit code 0 returning no data) as "no items" rather than an error.
-
 → Proceed to **B. Filter Qualifying Items**.
 
 ## B. Filter Qualifying Items
 
-For each inception item `name`, include it in `qualifying_sources` when ALL of these hold:
+Include an inception item `name` in `qualifying_sources` when ALL hold:
 
-- `source` field contains `migration-seeded` (substring match — `source` may be comma-accumulated).
-- `routing` equals `research`.
-- `phases.research.items.{name}` exists.
-- `phases.research.items.{name}.status` equals `in-progress`.
-- `.workflows/{work_unit}/research/{name}.md` exists on disk.
-
-Set `qualifying_sources = [name1, name2, ...]`.
+- `source` contains `migration-seeded`
+- `routing` is `research`
+- `phases.research.items.{name}.status` is `in-progress`
+- `.workflows/{work_unit}/research/{name}.md` exists
 
 #### If `qualifying_sources` is empty
-
-No legacy work to do.
 
 → Return to **[the skill](../SKILL.md)** for **Step 3**.
 

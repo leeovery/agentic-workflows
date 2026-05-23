@@ -13,17 +13,7 @@ The caller provides these via context before loading:
 - `work_unit` — the epic's work unit name.
 - `tracker` — a list (initially empty) for newly-added topic names. The reference appends names as items are written.
 
-## A.0 Precondition Check
-
-Read `phases.research.items` and `phases.discussion.items` from the manifest. If no research item AND no discussion item has `status: completed`, return immediately — no cache stamp, no manifest writes, no callout. Gap analysis only operates on completed material.
-
-Collect:
-- `completed_research = [name for name, v in research.items if v.status == 'completed']`
-- `completed_discussion = [name for name, v in discussion.items if v.status == 'completed']`
-
-If both empty → return.
-
-→ Proceed to **A. Read Artifacts**.
+**Precondition.** Collect `completed_research` and `completed_discussion` (items with `status: completed`). If both empty, return — no cache stamp, no manifest writes, no callout.
 
 ## A. Read Artifacts
 
@@ -33,10 +23,7 @@ If both empty → return.
 Analyzing completed research and discussions for coverage gaps...
 ```
 
-**Input scope:**
-- For each completed research item `{name}` (from A.0), read `.workflows/{work_unit}/research/{name}.md`.
-- For each completed discussion item `{name}` (from A.0), read `.workflows/{work_unit}/discussion/{name}.md`.
-- Skip items whose status is `in-progress`, `superseded`, or `cancelled`. Skip files that don't exist.
+Read `.workflows/{work_unit}/research/{name}.md` for each `completed_research` name and `.workflows/{work_unit}/discussion/{name}.md` for each `completed_discussion` name. Skip files missing on disk. Items with `in-progress`, `superseded`, or `cancelled` status are not in the input set.
 
 For each discussion, note:
 - The Discussion Map state (topics and their statuses: pending, exploring, converging, decided)
@@ -90,11 +77,12 @@ Group the identified gaps into topic-sized chunks using the same coarseness prin
 
 For each topic, write a one-line summary covering the constituent gaps — used as the inception item's `summary` field.
 
-**Per-candidate routing.** For each candidate, decide its routing:
-- `routing: discussion` — the gap is well-scoped enough for direct discussion.
-- `routing: research` — the gap is under-explored and needs feasibility/market/viability work before it can be productively discussed.
+**Per-candidate routing.** Decide each candidate's routing based on the depth available in the source artifacts:
 
-Routing is your judgment based on the depth available in the source artifacts. A gap analysis may emit a mix of both routings.
+- `routing: discussion` — gap is well-scoped enough for direct discussion.
+- `routing: research` — gap is under-explored; needs more research first.
+
+A single analysis may emit a mix of both routings.
 
 → Proceed to **D. Filter and Save**.
 
