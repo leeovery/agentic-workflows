@@ -29,25 +29,21 @@ This topic has no external dependencies. Other topics may still have unresolved 
 
 ## A. Read Existing State
 
-Check for existing `external_dependencies` in the manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{topic} external_dependencies
-```
-
-**If `true`:**
-
-Read the current values and note which topics have `state: satisfied_externally` — these must be preserved.
+Read existing `external_dependencies` from the manifest:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} external_dependencies
 ```
 
-→ Proceed to **B. Write Spec Dependencies**.
-
-**If `false`:**
+#### If output is empty (no existing entries)
 
 No existing entries to preserve.
+
+→ Proceed to **B. Write Spec Dependencies**.
+
+#### Otherwise
+
+Note which topics have `state: satisfied_externally` — these must be preserved.
 
 → Proceed to **B. Write Spec Dependencies**.
 
@@ -57,7 +53,7 @@ No existing entries to preserve.
 
 Read the specification's Dependencies section. For each dependency, derive the manifest key from the dependency name as `{dep_topic:(kebabcase)}` and use the "Why Blocked" column as `{description}`. Write each to the manifest.
 
-**If an existing entry for this topic has `state: satisfied_externally`:**
+#### If an existing entry for this topic has `state: satisfied_externally`
 
 Preserve the existing state — only update the description:
 
@@ -67,7 +63,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 
 → Proceed to **C. Remove Stale Entries**.
 
-**Otherwise:**
+#### Otherwise
 
 Set as unresolved:
 
@@ -132,23 +128,17 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 
 ## E. Reverse Check
 
-For each other topic with a planning phase in the same work unit, check if they have external dependencies:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{other_topic} external_dependencies
-```
-
-**If `false`:**
-
-No external dependencies for this topic. Continue to the next topic.
-
-**If `true`:**
-
-Read them:
+For each other topic with a planning phase in the same work unit, read their external dependencies:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{other_topic} external_dependencies
 ```
+
+#### If output is empty (no external dependencies for this topic)
+
+Continue to the next topic.
+
+#### Otherwise
 
 For each dependency in the other topic's `external_dependencies`, route on state:
 

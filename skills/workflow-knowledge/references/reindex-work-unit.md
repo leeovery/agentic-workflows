@@ -16,19 +16,13 @@ The caller provides these via context before loading:
 
 Process each phase in turn: `research`, `discussion`, `investigation`, `specification`.
 
-For each phase, check whether the work unit has that phase:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.{phase}
-```
-
-If the phase does not exist on this work unit, move on to the next phase in the list.
-
-If the phase exists, read all items in it with their statuses:
+For each phase, read all items with their statuses:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{work_unit}.{phase}.*' status
 ```
+
+If the output is empty (no items in this phase), move on to the next phase in the list.
 
 For each item whose status is `completed`, resolve the artifact path by phase:
 
@@ -59,25 +53,19 @@ Process the remaining items in this phase, then move on to the next phase in the
 
 ## B. Re-Index Imports
 
-Imports live at the work-unit level (not under `phases`) so they need a separate pass. Probe before reading — `get` exits with code 2 when the field is absent, which would otherwise read as a hard failure:
+Imports live at the work-unit level (not under `phases`) so they need a separate pass. Read the imports list:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} imports
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
 ```
 
-#### If not exists (`false`)
+#### If output is empty (no imports field)
 
 No imports to process.
 
 → Proceed to **C. Re-Index Analysis Caches**.
 
-#### If exists (`true`)
-
-Read the imports list:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
-```
+#### Otherwise
 
 The result is a JSON array. Each entry's `path` field is relative to the work-unit directory and must match the shape `imports/{filename}.md` (no subdirectories, no `..`, no leading dot on the filename). Skip any entry that doesn't match — these signal a tampered or malformed manifest entry, not a legitimate import.
 

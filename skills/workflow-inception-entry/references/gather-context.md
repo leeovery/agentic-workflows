@@ -12,28 +12,32 @@ Inception is curatorial — the only context the session needs upfront is the wo
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
 ```
 
-Store the output as `description`. If the field is empty or the command exits non-zero with code `2` (path not found), set `description` = `(none)`.
+#### If output is empty (no description)
+
+Set `description` = `(none)`.
+
+→ Proceed to **B. Read Imports**.
+
+#### Otherwise
+
+Store the output as `description`.
 
 → Proceed to **B. Read Imports**.
 
 ## B. Read Imports
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit} imports
-```
-
-#### If exists (`true`)
-
-```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
 ```
 
-Parse the JSON array. Store the list of `path` values as `imports`. Files were already copied to `imports/` and indexed into the knowledge base when the user provided them at start-epic — this read is just to surface the filenames in the inception handoff.
+#### If output is empty (no imports)
+
+Set `imports` = `[]`.
 
 → Return to caller.
 
-#### If not exists (`false`)
+#### Otherwise
 
-Set `imports` = `[]`.
+Parse the JSON array. Store the list of `path` values as `imports`. Files were already copied to `imports/` and indexed into the knowledge base when the user provided them at start-epic — this read is just to surface the filenames in the inception handoff.
 
 → Return to caller.

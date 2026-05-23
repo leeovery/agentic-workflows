@@ -311,18 +311,53 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: get error on missing path${NC}"
+echo -e "${YELLOW}Test: get returns empty on missing path${NC}"
 setup_fixture
 run_cli init missing-path --work-type feature --description "Missing" >/dev/null 2>&1
-assert_exit_nonzero "Missing path returns error" get missing-path nonexistent.deep.path
+output=$(run_cli_stdout get missing-path nonexistent.deep.path)
+assert_equals "$output" "" "Missing field returns empty stdout"
+run_cli_stdout get missing-path nonexistent.deep.path >/dev/null
+assert_equals "$?" "0" "Missing field exits 0"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: get error on missing work unit${NC}"
+echo -e "${YELLOW}Test: get returns empty on missing work unit${NC}"
 setup_fixture
-assert_exit_nonzero "Missing work unit returns error" get does-not-exist
+output=$(run_cli_stdout get does-not-exist)
+assert_equals "$output" "" "Missing work unit returns empty stdout"
+run_cli_stdout get does-not-exist >/dev/null
+assert_equals "$?" "0" "Missing work unit exits 0"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get wildcard returns empty when no items${NC}"
+setup_fixture
+run_cli init empty-wc --work-type epic --description "Empty wildcard" >/dev/null 2>&1
+output=$(run_cli_stdout get 'empty-wc.discussion.*' status)
+assert_equals "$output" "" "Wildcard with no items returns empty stdout"
+run_cli_stdout get 'empty-wc.discussion.*' status >/dev/null
+assert_equals "$?" "0" "Wildcard with no items exits 0"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: get distinguishes present-null from missing via exists${NC}"
+setup_fixture
+run_cli init null-test --work-type feature --description "Null test" >/dev/null 2>&1
+run_cli set null-test some_field 'null' >/dev/null 2>&1
+present_output=$(run_cli_stdout get null-test some_field)
+missing_output=$(run_cli_stdout get null-test no_such_field)
+assert_equals "$present_output" "null" "Present null prints literal null"
+assert_equals "$missing_output" "" "Missing field prints empty"
+present_exists=$(run_cli_stdout exists null-test some_field)
+missing_exists=$(run_cli_stdout exists null-test no_such_field)
+assert_equals "$present_exists" "true" "exists differentiates present-null"
+assert_equals "$missing_exists" "false" "exists differentiates missing"
 
 echo ""
 
@@ -986,11 +1021,14 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: get with wildcard topic on empty phase fails${NC}"
+echo -e "${YELLOW}Test: get with wildcard topic on empty phase returns empty${NC}"
 setup_fixture
 run_cli init wc-empty --work-type epic --description "Empty" >/dev/null 2>&1
 run_cli set wc-empty phases.implementation '{}' >/dev/null 2>&1
-assert_exit_nonzero "Wildcard on empty phase returns error" get wc-empty.implementation.* status
+output=$(run_cli_stdout get wc-empty.implementation.* status)
+assert_equals "$output" "" "Wildcard on empty phase returns empty stdout"
+run_cli_stdout get wc-empty.implementation.* status >/dev/null
+assert_equals "$?" "0" "Wildcard on empty phase exits 0"
 
 echo ""
 
@@ -1323,12 +1361,14 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: get project.defaults errors when not set${NC}"
+echo -e "${YELLOW}Test: get project.defaults returns empty when not set${NC}"
 setup_fixture
 run_cli init err-proj --work-type feature --description "Error test" >/dev/null 2>&1
 
-output=$(run_cli get project.defaults.plan_format 2>&1 || true)
-assert_contains "$output" "not found" "Get missing project default errors"
+output=$(run_cli_stdout get project.defaults.plan_format)
+assert_equals "$output" "" "Missing project default returns empty stdout"
+run_cli_stdout get project.defaults.plan_format >/dev/null
+assert_equals "$?" "0" "Missing project default exits 0"
 
 echo ""
 
@@ -1953,16 +1993,16 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: exit codes distinguish expected miss (2) from real error (1)${NC}"
+echo -e "${YELLOW}Test: get exit codes — missing is exit 0, real errors are exit 1${NC}"
 setup_fixture
-# Missing work unit → expected miss → exit 2.
+# Missing work unit → empty + exit 0.
 exit_code=$(run_cli_exit_code get nonexistent status)
-assert_equals "$exit_code" "2" "Missing work unit → exit 2"
+assert_equals "$exit_code" "0" "Missing work unit → exit 0"
 
 run_cli init real --work-type feature --description "Real" >/dev/null 2>&1
-# Missing path inside existing manifest → expected miss → exit 2.
+# Missing path inside existing manifest → empty + exit 0.
 exit_code=$(run_cli_exit_code get real nonexistent_field)
-assert_equals "$exit_code" "2" "Missing path in existing manifest → exit 2"
+assert_equals "$exit_code" "0" "Missing path in existing manifest → exit 0"
 
 # Invalid work_type → validation error → exit 1.
 exit_code=$(run_cli_exit_code init bad --work-type bogus --description "x")

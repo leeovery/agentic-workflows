@@ -9,24 +9,16 @@ Check if scoping entry exists and determine entry state.
 ## A. Scoping Check
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.scoping.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.scoping.{topic} status
 ```
 
-#### If scoping doesn't exist (`false`)
+#### If output is empty (scoping doesn't exist)
 
 Proceed normally (new entry).
 
 → Return to caller.
 
-#### If scoping exists (`true`)
-
-Check status:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.scoping.{topic} status
-```
-
-**If status is `completed`:**
+#### If status is `completed`
 
 Reset to in-progress:
 
@@ -42,7 +34,7 @@ Reopening scoping: {topic:(titlecase)}
 
 → Return to caller.
 
-**If status is `in-progress`:**
+#### If status is `in-progress`
 
 Proceed normally.
 

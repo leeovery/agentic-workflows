@@ -668,16 +668,11 @@ function runManifest(args) {
 }
 
 /**
- * Distinguish expected "not found" misses from broken-manifest / corrupt-JSON
- * / bad-path errors. Knowledge-base helpers swallow the former (lookups are
- * best-effort); the latter must be surfaced or bulk operations become silent
- * no-ops (deferred-issue #4).
- *
- * manifest.cjs uses exit code 2 for expected misses, 1 for real errors —
- * stable and unambiguous. execFileSync surfaces the code on err.status.
+ * Surface real manifest CLI failures (corrupt JSON, broken paths, etc.).
+ * Expected misses are no longer thrown — `get` returns empty stdout + exit 0
+ * for missing work units / fields, so callers detect them by checking output.
  */
 function reportUnexpectedManifestError(context, err) {
-  if (err && err.status === 2) return;
   const msg = err && err.stderr ? String(err.stderr).trim() : err.message;
   process.stderr.write(`Warning: manifest CLI failed in ${context}: ${msg}\n`);
 }
@@ -1855,36 +1850,30 @@ async function cmdRemove(_args, options) {
   // chunks for this WU we treat it as an orphan cleanup and proceed; if
   // not, surface the typo error.
   let isOrphanCleanup = false;
-  try {
-    runManifest(['project', 'get', options.workUnit]);
-  } catch (err) {
-    if (err && err.status === 2) {
-      const sp = storePath();
-      let storeMatch = 0;
-      if (fs.existsSync(sp)) {
-        const db = await store.loadStore(sp);
-        const where = { work_unit: { eq: options.workUnit } };
-        if (options.phase) where.phase = { eq: options.phase };
-        if (options.topic) where.topic = { eq: options.topic };
-        storeMatch = await store.countByFilter(db, where);
-      }
-      if (storeMatch === 0) {
-        throw new UserError(
-          `Work unit "${options.workUnit}" not found in project manifest, ` +
-            `and no matching chunks exist in the knowledge base.\n` +
-            `  Check the name with \`knowledge status\`.`
-        );
-      }
-      // Stranded chunks. Proceed with removal as an orphan cleanup.
-      isOrphanCleanup = true;
-      process.stderr.write(
-        `Work unit "${options.workUnit}" is not in the project manifest, but ` +
-          `${storeMatch} chunks remain in the store. Removing as an orphan cleanup.\n`
-      );
-    } else {
-      // Any other manifest error is unexpected — rethrow so the stack shows.
-      throw err;
+  const projectEntry = runManifest(['project', 'get', options.workUnit]).trim();
+  if (projectEntry === '') {
+    const sp = storePath();
+    let storeMatch = 0;
+    if (fs.existsSync(sp)) {
+      const db = await store.loadStore(sp);
+      const where = { work_unit: { eq: options.workUnit } };
+      if (options.phase) where.phase = { eq: options.phase };
+      if (options.topic) where.topic = { eq: options.topic };
+      storeMatch = await store.countByFilter(db, where);
     }
+    if (storeMatch === 0) {
+      throw new UserError(
+        `Work unit "${options.workUnit}" not found in project manifest, ` +
+          `and no matching chunks exist in the knowledge base.\n` +
+          `  Check the name with \`knowledge status\`.`
+      );
+    }
+    // Stranded chunks. Proceed with removal as an orphan cleanup.
+    isOrphanCleanup = true;
+    process.stderr.write(
+      `Work unit "${options.workUnit}" is not in the project manifest, but ` +
+        `${storeMatch} chunks remain in the store. Removing as an orphan cleanup.\n`
+    );
   }
 
   const sp = storePath();
@@ -1944,26 +1933,25 @@ function formatRemoveDesc(options) {
  * Returns { status, completed_at } or null on failure.
  */
 function getWorkUnitMeta(workUnit) {
+  let status;
   try {
-    const status = runManifest(['get', workUnit, 'status']).trim();
-    let completedAt = null;
-    try {
-      completedAt = runManifest(['get', workUnit, 'completed_at']).trim();
-      if (completedAt === '' || completedAt === 'undefined' || completedAt === 'null') {
-        completedAt = null;
-      }
-    } catch (err) {
-      // completed_at may not exist — expected. But surface unexpected errors.
-      reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.completed_at)`, err);
-    }
-    return { status, completed_at: completedAt };
+    status = runManifest(['get', workUnit, 'status']).trim();
   } catch (err) {
-    // Work unit missing or manifest broken. "Not found" is expected for
-    // orphaned work units referenced by stale chunks; anything else is a
-    // real problem the user should see.
     reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.status)`, err);
     return null;
   }
+  // Empty stdout = work unit missing in registry. Expected for orphans
+  // referenced by stale chunks.
+  if (status === '') return null;
+
+  let completedAt = null;
+  try {
+    const raw = runManifest(['get', workUnit, 'completed_at']).trim();
+    if (raw !== '' && raw !== 'null') completedAt = raw;
+  } catch (err) {
+    reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.completed_at)`, err);
+  }
+  return { status, completed_at: completedAt };
 }
 
 async function cmdCompact(_args, options, cfg) {

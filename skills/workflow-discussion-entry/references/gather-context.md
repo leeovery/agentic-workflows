@@ -12,7 +12,7 @@ Route based on the `source` variable set in earlier steps.
 
 New discussion entry: topic was provided by the caller.
 
-→ Proceed to **B. Check Research**.
+→ Proceed to **B. Check Research Status**.
 
 #### If source is `fresh`
 
@@ -30,33 +30,21 @@ The user named the topic in Step 1's no-topic-epic prompt; Step 2 confirmed no e
 
 ---
 
-## B. Check Research
+## B. Check Research Status
 
-Check if any research items exist for this work unit:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists '{work_unit}.research.*'
-```
-
-**If exists (`true`):**
-
-→ Proceed to **C. Check Research Status**.
-
-**If not exists (`false`):**
-
-→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
-
-→ Return to caller.
-
----
-
-## C. Check Research Status
+Read research item statuses for this work unit:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{work_unit}.research.*' status
 ```
 
-**If any research item has status `completed`:**
+#### If output is empty (no research items)
+
+→ Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
+
+→ Return to caller.
+
+#### If any research item has status `completed`
 
 List the research files via `ls .workflows/{work_unit}/research/*.md`.
 
@@ -76,7 +64,7 @@ Set source="topic-provided-with-research".
 
 → Return to caller.
 
-**Otherwise:**
+#### Otherwise
 
 → Load **[gather-context-fresh.md](gather-context-fresh.md)** and follow its instructions as written.
 

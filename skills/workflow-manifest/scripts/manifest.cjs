@@ -547,15 +547,14 @@ function cmdGet(args) {
       return;
     }
     const value = getByPath(manifest, proj.fieldSegments);
-    if (value === undefined) {
-      die(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`, 2);
-    }
+    if (value === undefined) return;
     outputValue(value);
     return;
   }
 
   const { workUnit, phase, topic } = parsePath(args[0]);
-  const manifest = readManifest(workUnit);
+  if (!fs.existsSync(manifestPath(workUnit))) return;
+  const manifest = JSON.parse(fs.readFileSync(manifestPath(workUnit), 'utf8'));
 
   if (!phase) {
     // Work-unit-level: get <wu> [field]
@@ -565,9 +564,7 @@ function cmdGet(args) {
     }
     const segments = args[1].split('.');
     const value = getByPath(manifest, segments);
-    if (value === undefined) {
-      die(`Path "${args[1]}" not found in "${workUnit}"`, 2);
-    }
+    if (value === undefined) return;
     outputValue(value);
     return;
   }
@@ -578,18 +575,14 @@ function cmdGet(args) {
   // Wildcard topic: collect values from all topics
   if (topic === '*') {
     const results = resolveWildcardTopic(manifest, phase, fieldSegments);
-    if (results.length === 0) {
-      die(`No items found in phase "${phase}" of "${workUnit}"`, 2);
-    }
+    if (results.length === 0) return;
     process.stdout.write(JSON.stringify(results, null, 2) + '\n');
     return;
   }
 
   const segments = resolvePhaseSegments(phase, topic, fieldSegments);
   const value = getByPath(manifest, segments);
-  if (value === undefined) {
-    die(`Path "${segments.join('.')}" not found in "${workUnit}"`, 2);
-  }
+  if (value === undefined) return;
   outputValue(value);
 }
 
@@ -928,10 +921,10 @@ function cmdProject(args) {
     const name = args[1];
     if (!name) die('Usage: project get <name>');
     const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
-    if (!fs.existsSync(projPath)) die(`Project manifest not found`, 2);
+    if (!fs.existsSync(projPath)) return;
     const proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
     const entry = (proj.work_units || {})[name];
-    if (!entry) die(`Work unit "${name}" not found in project manifest`, 2);
+    if (!entry) return;
     process.stdout.write(`work_type: ${entry.work_type}\n`);
     return;
   }
