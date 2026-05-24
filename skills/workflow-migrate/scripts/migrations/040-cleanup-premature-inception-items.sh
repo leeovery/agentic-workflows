@@ -8,13 +8,18 @@
 # discussion). This migration removes the orphan items.
 #
 # For each in-progress epic, walk phases.inception.items. For items whose
-# `source` field contains "research-analysis":
+# `source` field is EXACTLY 'research-analysis' (sole source — meaning the
+# buggy analysis created this item, not merely extended an existing one):
 #
 #   SKIP if a sibling phases.research.items.{name} exists.
 #   SKIP if a sibling phases.discussion.items.{name} exists.
 #   SKIP if any downstream phase has an item for this topic
 #         (specification, planning, implementation, review).
 #   Otherwise: delete the inception item.
+#
+# Items with comma-joined source like 'inception,research-analysis' or
+# 'direct-start,research-analysis' are PRESERVED — they were created by
+# another path first and the buggy analysis only stamped on top.
 #
 # Do NOT add to phases.inception.dismissed[] — these topics may legitimately
 # re-surface via the corrected analyses once research/discussion completes.
@@ -58,7 +63,11 @@ for (const entry of entries) {
   let manifestUpdated = false;
   for (const [name, item] of Object.entries(items)) {
     const src = (item && item.source) || '';
-    if (!src.includes('research-analysis')) continue;
+    // Heal-forward target: items the buggy v0.4.0 research-analysis *created*
+    // (sole source = 'research-analysis'). Items where the buggy analysis
+    // merely *extended* an existing source (e.g. 'inception,research-analysis')
+    // were created by another path first and must be preserved.
+    if (src !== 'research-analysis') continue;
 
     if (research[name]) continue;
     if (discussion[name]) continue;

@@ -215,8 +215,11 @@ JSON
   teardown
 }
 
-# --- Test 6: Comma-joined source containing research-analysis is treated ---
-test_comma_joined_source() {
+# --- Test 6: Comma-joined source containing research-analysis is preserved ---
+# An item with source like `inception,research-analysis` was created by
+# `inception` first and only later stamped by the buggy analysis. Heal-forward
+# must NOT delete it — that would lose the user's original direct-entry item.
+test_comma_joined_source_preserved() {
   setup
 
   local wu_dir="$TEST_DIR/.workflows/epic-f"
@@ -242,7 +245,7 @@ JSON
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
     console.log(!!(m.phases.inception.items.mixed));
   ")
-  assert_eq "comma-joined source: orphan still deleted" "false" "$exists"
+  assert_eq "comma-joined source: dual-provenance item preserved" "true" "$exists"
 
   teardown
 }
@@ -366,7 +369,7 @@ test_sibling_research_preserves
 test_sibling_discussion_preserves
 test_downstream_preserves
 test_other_source_untouched
-test_comma_joined_source
+test_comma_joined_source_preserved
 test_idempotent
 test_non_epic_untouched
 test_completed_and_cancelled_epics_untouched

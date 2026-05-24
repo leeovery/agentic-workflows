@@ -222,7 +222,7 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 > per-topic decomposition before analyses can operate.
 ```
 
-Qualifying inception items: `source` contains `migration-seeded`, `routing` is `research`, matching `phases.research.items.{name}.status` is `in-progress`, and `.workflows/{work_unit}/research/{name}.md` exists.
+Qualifying inception items: `source` contains `migration-seeded`, `routing` is `research`, matching `phases.research.items.{name}.status` is `in-progress`, `.workflows/{work_unit}/research/{name}.md` exists, and `legacy_split_state` is not set on the inception item (an apply that completed or is mid-flight has stamped this).
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception items
@@ -248,6 +248,19 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 ---
 
 ## Step 6: Summary Backfill
+
+> *Output the next fenced block as a code block:*
+
+```
+── Summary Backfill ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Filling missing summaries/descriptions on map items so downstream
+> phases open with rich context.
+```
 
 Read `discovery_map` from the most recent discovery `detail` (Step 5 may have re-run discovery). Filter for items where either `summary` or `description` is null or missing — regardless of `source`. Migration-seeded items land without either field; absorption-registered items land without either field; pre-Phase-14 items backfilled only `summary` and re-enter this flow once for `description`. The filter is source-agnostic so any write path that lands an item with missing fields surfaces for review.
 
