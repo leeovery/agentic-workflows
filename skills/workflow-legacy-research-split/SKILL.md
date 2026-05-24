@@ -114,7 +114,14 @@ After clearing the field:
 ── Legacy Split Complete ────────────────────────
 ```
 
-Render the signpost based on `applied_count` and `abandoned_count`:
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Wrapping up. The closing line reflects what actually happened
+> across the session.
+```
+
+Render the per-outcome message below based on `applied_count` and `abandoned_count`:
 
 #### If `applied_count == 0` and `abandoned_count == 0`
 

@@ -332,7 +332,7 @@ describe('legacy-research-split: stays-only no-op', () => {
   // and description to the source's inception item (so Step 6 backfill
   // skips it), but does NOT rewrite the source file because no content
   // moved out. E "If written_files empty" sets legacy_split_state =
-  // applied and skips the git commit.
+  // applied and commits manifest-only (working tree must not be left dirty).
   it('source file untouched, metadata written, sentinel transitioned when only stays approved', () => {
     seedLegacyEpic('alpha', 'authentication');
     const sourceBefore = readResearchFile('alpha', 'authentication');

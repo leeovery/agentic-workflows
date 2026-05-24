@@ -98,6 +98,19 @@ or merge them — the source file can only represent one theme.
 
 → Return to **B. Offer Edits**.
 
+#### If two or more themes share the same `kebab_name`
+
+A duplicate name would cause apply-split to overwrite one theme's file/manifest entry with the other's — silent content loss. Topic-name-validation only checks against the active map, not against other themes in this batch.
+
+> *Output the next fenced block as a code block:*
+
+```
+Two themes share the kebab_name "{duplicate_name}". Rename one
+or merge them.
+```
+
+→ Return to **B. Offer Edits**.
+
 #### If any theme has empty `content`
 
 A theme with no allocated paragraphs would produce an empty research file.
@@ -107,6 +120,19 @@ A theme with no allocated paragraphs would produce an empty research file.
 ```
 Theme "{theme.kebab_name}" has no paragraphs allocated. Move
 source content into it or remove the theme.
+```
+
+→ Return to **B. Offer Edits**.
+
+#### If any theme has empty `summary` or empty `description`
+
+Apply-split writes these directly to the manifest. The Step 6 backfill filter in continue-epic treats null/missing as "needs backfill" but does not treat empty strings the same — so an empty value here would silently slip into the manifest and never get re-prompted.
+
+> *Output the next fenced block as a code block:*
+
+```
+Theme "{theme.kebab_name}" has empty summary or description.
+Provide both before applying.
 ```
 
 → Return to **B. Offer Edits**.

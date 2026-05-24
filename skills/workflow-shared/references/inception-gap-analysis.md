@@ -101,11 +101,28 @@ For each candidate topic from **C** (kebab-case name + summary + routing), evalu
 
 #### If the name is already on the active map (a key in `items`)
 
-Check if the existing item's `source` field already includes `gap-analysis`. If not, the same theme is now surfacing both via the existing source and via gap-analysis — extend the source list to record dual provenance:
+Check if the existing item's `source` field already includes `gap-analysis`. If not, the same theme is now surfacing both via the existing source and via gap-analysis — extend the source list to record dual provenance.
+
+Read the existing source:
 
 ```bash
-existing_source=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{name} source)
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "${existing_source},gap-analysis"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{name} source
+```
+
+**If the existing source is non-empty:**
+
+Set source to `{existing},gap-analysis` (comma-joined):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "{existing},gap-analysis"
+```
+
+**If the existing source is empty:**
+
+Set source to plain `gap-analysis` — joining with a comma on empty would produce a leading-comma corrupt value:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "gap-analysis"
 ```
 
 Do not change the existing item's routing. Do not add to `tracker`. Do not write a new manifest entry.

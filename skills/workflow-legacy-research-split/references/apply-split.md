@@ -190,10 +190,12 @@ Rewrite `.workflows/{work_unit}/research/{current_source}.md` from **[template.m
 
 #### If `written_files` is empty
 
-Nothing was written to disk and no creates/merges existed (stays-only). Skip the git commit, but transition `legacy_split_state` from `in-progress` to `applied` so detect-trigger excludes this source on future runs:
+No files were written, but the manifest WAS changed in D (summary/description on the source's inception item, plus the sentinel set in A). Transition the sentinel from `in-progress` to `applied`, then commit just the manifest so the working tree isn't left dirty:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} legacy_split_state applied
+git add -- .workflows/{work_unit}/manifest.json
+git commit -m "inception({work_unit}): legacy-split {current_source} (stays-only)"
 ```
 
 → Return to caller.
@@ -207,7 +209,7 @@ git add -- .workflows/{work_unit}/manifest.json
 @foreach(path in written_files)
 git add -- {path}
 @endforeach
-git commit -m "epic({work_unit}): legacy-split {current_source} into {N} topic(s)"
+git commit -m "inception({work_unit}): legacy-split {current_source} into {N} topic(s)"
 ```
 
 `{N}` = `approved_creates.length + approved_merges.length + approved_stays.length`.
