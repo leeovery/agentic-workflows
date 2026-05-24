@@ -165,7 +165,14 @@ The source file itself stays on disk as historical record.
 
 #### Otherwise
 
-One theme kept the source name. The source's research and inception items stay as they are, but if any content moved out (via creates or merges), the source file must be rewritten to contain only the stays theme's content — otherwise the moved paragraphs would duplicate between the source and the new files.
+One theme kept the source name. The source's research item and inception entry remain, but the inception item's metadata must be updated to reflect the kept theme's summary/description — otherwise the migration-seeded item retains null summary/description and Step 6 (summary backfill) in continue-epic would re-prompt the user to fill them in for a topic they just curated. Write them now (idempotent — `set` is last-write-wins):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} summary "{approved_stays[0].summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} description "{approved_stays[0].description}"
+```
+
+Then, if any content moved out (via creates or merges), the source file must be rewritten to contain only the stays theme's content — otherwise the moved paragraphs would duplicate between the source and the new files.
 
 **If `approved_creates` and `approved_merges` are both empty:**
 
@@ -216,6 +223,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.in
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} legacy_split_state applied
 ```
+
+→ Return to caller.
 
 **If `false`:**
 

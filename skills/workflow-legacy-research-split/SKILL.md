@@ -88,6 +88,24 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 ---
 
+## Recovery From Interrupted Apply
+
+If apply-split crashes or the session is killed between A (start) and E (finalise), the source's inception item is left with `legacy_split_state = in-progress`. detect-trigger then excludes the source from re-qualification — preventing content duplication on naive retry, but also locking the user out of re-running the split for that source.
+
+Recovery is manual and surfaced via continue-epic's manage menu (if available) or the manifest CLI:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception.{stuck_source} legacy_split_state
+```
+
+After clearing the field:
+
+- Inspect the source's research directory for orphan files (themes that apply-split A wrote but apply-split C never registered in the manifest). The orphans are `.workflows/{work_unit}/research/{name}.md` files with no corresponding `phases.research.items.{name}` entry. Either delete the orphans (cleanest — they will be re-created by the retry) or keep them (the retry will overwrite if the same theme name is proposed).
+- Inspect for partial manifest items (research/inception items that apply-split C wrote but the apply never finished). Delete them via `manifest.cjs delete` if they correspond to themes that should re-derive on retry.
+- Re-run `/continue-epic`. detect-trigger will re-qualify the source. Work through propose-candidates fresh.
+
+---
+
 ## Step 3: Conclude
 
 > *Output the next fenced block as a code block:*

@@ -60,7 +60,16 @@ For each theme, count the paragraphs in `theme.content` and render a one-line co
 
 #### If edit
 
-Apply the user's edit to the in-memory theme list. After applying, re-classify each affected theme (`stays` if name equals `current_source`; `merges` if name matches another `existing_names` entry; `creates` otherwise). If the user renamed a theme away from a dismissed name, also clear `pull_dismissed` on that theme.
+Apply the user's edit. The supported edit operations:
+
+- **Rename** — change `theme.kebab_name`. Re-classify the theme (`stays` if name now equals `current_source`; `merges` if name now matches another `existing_names` entry; `creates` otherwise).
+- **Change routing** — change `theme.routing` between `discussion` and `research`.
+- **Re-allocate paragraphs** — move one or more source paragraphs between themes (e.g., "move the caching-header paragraph from theme A to theme B"). Update each affected theme's `theme.content`. This is the operation that fixes empty-content failures in **C**.
+- **Merge two themes** — combine their content into one. Drop the other theme. Re-classify the survivor.
+- **Split a theme** — create a new theme from a subset of the original's content. The new theme starts with content from the original (which now has the remainder).
+- **Add a theme** — only valid if the user has un-allocated source content to assign to it.
+
+If the user renamed a theme away from a dismissed name, clear `pull_dismissed` on that theme.
 
 → Return to **A. Display Themes**.
 
@@ -72,7 +81,9 @@ Set `abandoned = true`.
 
 ## C. Validate Constraints
 
-Three checks run in order. The first matching check renders a message and routes back to **B**; if none matches, the per-`creates` topic-name validation runs.
+Before evaluating, unconditionally clear `pull_dismissed` on every theme. C re-derives it during per-`creates` validation, so any stale flag from a prior C→B→C cycle (e.g., user edited a theme to a dismissed name, then renamed away in B) starts fresh.
+
+Three checks then run in order. The first matching check renders a message and routes back to **B**; if none matches, the per-`creates` topic-name validation runs.
 
 #### If more than one theme is classified `stays`
 
@@ -96,6 +107,21 @@ A theme with no allocated paragraphs would produce an empty research file.
 ```
 Theme "{theme.kebab_name}" has no paragraphs allocated. Move
 source content into it or remove the theme.
+```
+
+→ Return to **B. Offer Edits**.
+
+#### If `sum(theme.paragraph_count across all themes) != source_paragraph_count`
+
+The themes' content does not partition the source — either paragraphs are missing (dropped from all themes) or duplicated (assigned to two themes). Session-loop C mandates that every paragraph lands in exactly one theme; this check enforces it.
+
+> *Output the next fenced block as a code block:*
+
+```
+Theme content does not match the source. Allocated:
+{total_allocated} paragraph(s) across {N} themes; source has
+{source_paragraph_count}. Re-allocate so every source paragraph
+appears in exactly one theme.
 ```
 
 → Return to **B. Offer Edits**.
@@ -134,7 +160,7 @@ Once all `creates` themes have validated (`stays` and `merges` need no validatio
 Build:
 - `approved_creates` — `creates` themes with `kebab_name`, `summary`, `description`, `routing`, `content`, optional `pull_dismissed`
 - `approved_merges` — `merges` themes with `target_name`, `content`
-- `approved_stays` — `stays` themes with `kebab_name`, `summary`, `content` (at most one, validated in **C**; `summary` is required because apply-split D uses it as the source-file "Brief description" when rewriting)
+- `approved_stays` — `stays` themes with `kebab_name`, `summary`, `description`, `content` (at most one, validated in **C**; `summary` and `description` are required so apply-split D can write them to the source's inception item — without these the migration-seeded item retains null metadata and Step 6 backfill re-prompts the user)
 
 For each entry, render a content preview (paragraph count + first ~60 chars of the first paragraph) so the user can verify the allocation before approving — especially important for stays, where approval triggers a destructive source-file rewrite.
 

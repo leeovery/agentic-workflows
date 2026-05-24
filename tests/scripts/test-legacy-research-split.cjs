@@ -267,6 +267,14 @@ function applyStaysRewrite(workUnit, current_source, staysContent) {
   fs.writeFileSync(p, `# Research: ${current_source}\n\nMaterial extracted from legacy.\n\n---\n${staysContent}\n`);
 }
 
+// apply-split.md D Otherwise also writes the stays theme's summary +
+// description onto the source's inception item so Step 6 summary backfill
+// doesn't re-prompt for a topic the user just curated.
+function applyStaysMetadata(workUnit, current_source, summary, description) {
+  runCli('set', `${workUnit}.inception.${current_source}`, 'summary', summary);
+  runCli('set', `${workUnit}.inception.${current_source}`, 'description', description);
+}
+
 describe('legacy-research-split: stays case', () => {
   beforeEach(setup);
   afterEach(cleanup);
@@ -284,6 +292,8 @@ describe('legacy-research-split: stays case', () => {
       description: 'Detailed cache design notes.',
       content: 'Cache content extracted from broad file.',
     });
+    applyStaysMetadata('alpha', 'authentication',
+      'Authentication flow summary.', 'Auth description.');
     applyStaysRewrite('alpha', 'authentication', 'Authentication-only content (kept).');
     applyFinishMarkerStays('alpha', 'authentication');
 
@@ -297,6 +307,12 @@ describe('legacy-research-split: stays case', () => {
     assert.ok(m.phases.inception.items.authentication, 'authentication inception preserved');
     assert.strictEqual(m.phases.inception.items.authentication.source, 'migration-seeded',
       'original source provenance preserved through stays rewrite');
+    assert.strictEqual(m.phases.inception.items.authentication.summary,
+      'Authentication flow summary.',
+      'stays summary written to source inception item (Step 6 backfill skip)');
+    assert.strictEqual(m.phases.inception.items.authentication.description,
+      'Auth description.',
+      'stays description written to source inception item');
     assert.strictEqual(m.phases.inception.items.authentication.legacy_split_state, 'applied',
       'legacy_split_state set to applied on success');
     assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress');
@@ -312,15 +328,19 @@ describe('legacy-research-split: stays-only no-op', () => {
 
   // apply-split.md flow when approved_creates AND approved_merges are
   // both empty (only stays): A marks legacy_split_state = in-progress,
-  // B and C loop zero times, D Otherwise -> If both empty does nothing
-  // to the source file, E "If written_files empty" sets legacy_split_state
-  // = applied and skips the git commit.
-  it('source file untouched and only legacy_split_state set when only stays approved', () => {
+  // B and C loop zero times, D Otherwise writes the stays theme's summary
+  // and description to the source's inception item (so Step 6 backfill
+  // skips it), but does NOT rewrite the source file because no content
+  // moved out. E "If written_files empty" sets legacy_split_state =
+  // applied and skips the git commit.
+  it('source file untouched, metadata written, sentinel transitioned when only stays approved', () => {
     seedLegacyEpic('alpha', 'authentication');
     const sourceBefore = readResearchFile('alpha', 'authentication');
 
     applyStartMarker('alpha', 'authentication');
     // No creates, no merges, no file rewrite.
+    applyStaysMetadata('alpha', 'authentication',
+      'Authentication scope.', 'Detailed auth notes.');
     applyFinishMarkerStays('alpha', 'authentication');
 
     const sourceAfter = readResearchFile('alpha', 'authentication');
@@ -332,6 +352,12 @@ describe('legacy-research-split: stays-only no-op', () => {
     assert.ok(m.phases.inception.items.authentication, 'original inception item preserved');
     assert.strictEqual(m.phases.inception.items.authentication.source, 'migration-seeded',
       'original source provenance preserved');
+    assert.strictEqual(m.phases.inception.items.authentication.summary,
+      'Authentication scope.',
+      'stays summary written so Step 6 backfill does not re-prompt');
+    assert.strictEqual(m.phases.inception.items.authentication.description,
+      'Detailed auth notes.',
+      'stays description written so Step 6 backfill does not re-prompt');
     assert.strictEqual(m.phases.inception.items.authentication.legacy_split_state, 'applied',
       'legacy_split_state set to applied on success');
     assert.strictEqual(m.phases.research.items.authentication.status, 'in-progress',
@@ -346,6 +372,10 @@ describe('legacy-research-split: full supersede case', () => {
   it('source becomes superseded and inception item is removed when no theme stays', () => {
     seedLegacyEpic('alpha', 'exploration');
 
+    // Mirror the markdown flow: A marks in-progress first, even though
+    // the supersede branch ultimately deletes the inception item (E's
+    // post-commit exists-check then no-ops on the missing item).
+    applyStartMarker('alpha', 'exploration');
     applyCreate('alpha', 'exploration', {
       kebab_name: 'auth',
       routing: 'discussion',
@@ -364,7 +394,8 @@ describe('legacy-research-split: full supersede case', () => {
 
     const m = readManifest('alpha');
     assert.strictEqual(m.phases.research.items.exploration.status, 'superseded');
-    assert.ok(!m.phases.inception.items.exploration, 'inception item removed');
+    assert.ok(!m.phases.inception.items.exploration,
+      'inception item removed (including any in-progress sentinel)');
     assert.ok(m.phases.inception.items.auth);
     assert.ok(m.phases.inception.items.caching);
 

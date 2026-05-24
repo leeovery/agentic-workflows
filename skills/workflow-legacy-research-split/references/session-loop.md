@@ -52,9 +52,9 @@ From the discovery output, set `existing_names = [item.name for item in discover
 ·· Identify Themes ······························
 ```
 
-Read the source file in full and extract every distinct theme. Group sub-themes into coherent domains (anti-pattern: one theme per system component; a coherent domain becomes one topic). Prefer fewer, coarser topics — see **[research-analysis.md](../../workflow-shared/references/research-analysis.md)** Section B for the independence test and anti-patterns.
+Read the source file in full. Count its paragraphs (blank-line-separated blocks) and set `source_paragraph_count` — propose-candidates C uses this to verify the theme partition. Extract every distinct theme. Group sub-themes into coherent domains (anti-pattern: one theme per system component; a coherent domain becomes one topic). Prefer fewer, coarser topics — see **[research-analysis.md](../../workflow-shared/references/research-analysis.md)** Section B for the independence test and anti-patterns.
 
-**Content allocation is mandatory.** Walk every paragraph of the source file and assign it to exactly one theme. Every paragraph must land somewhere — losing content is a failure mode. Duplication is also wrong (a paragraph belongs in one place). The result is a partition of the source's prose.
+**Content allocation is mandatory.** Walk every paragraph of the source file and assign it to exactly one theme. Every paragraph must land somewhere — losing content is a failure mode. Duplication is also wrong (a paragraph belongs in one place). The result is a partition of the source's prose, and `sum(theme.paragraph_count) == source_paragraph_count` by construction.
 
 For each theme, propose:
 
