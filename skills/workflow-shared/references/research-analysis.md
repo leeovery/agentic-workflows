@@ -99,20 +99,20 @@ Read the existing source:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{name} source
 ```
 
-**If the existing source is non-empty:**
+**If the existing source is empty or the literal string `null`:**
+
+The manifest CLI prints `"null"` for fields that exist with a JSON null value (intentional — `exists` is the way to distinguish missing from null). Treat both empty and `"null"` as "no real source" and set the new value alone:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "research-analysis"
+```
+
+**Otherwise:**
 
 Set source to `{existing},research-analysis` (comma-joined):
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "{existing},research-analysis"
-```
-
-**If the existing source is empty:**
-
-Set source to plain `research-analysis` — joining with a comma on empty would produce a leading-comma corrupt value:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "research-analysis"
 ```
 
 Do not change the existing item's routing — the user (or earlier analysis) already set it. Do not add to `tracker`. Do not write a new manifest entry.

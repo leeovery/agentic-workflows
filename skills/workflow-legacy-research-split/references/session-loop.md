@@ -52,7 +52,7 @@ From the discovery output, set `existing_names = [item.name for item in discover
 ·· Identify Themes ······························
 ```
 
-Read the source file in full. Count its paragraphs to set `source_paragraph_count` — propose-candidates C uses this to verify the theme partition. A paragraph is a blank-line-separated block, with two atomic-unit exceptions: a fenced code block (` ``` … ``` `) counts as ONE paragraph regardless of internal blank lines, and a list (consecutive `-`/`*`/`1.` lines, possibly with blank-line gaps between items) counts as ONE paragraph. Theme content allocation must respect these atomic units so paragraph counts are consistent between source and themes.
+Read the source file in full. Count its paragraphs to set `source_paragraph_count` — propose-candidates C uses this to verify the theme partition. A paragraph is a blank-line-separated block, with two atomic-unit exceptions: a fenced code block (` ``` … ``` `) counts as ONE paragraph regardless of internal blank lines, and a list (consecutive `-`/`*`/`1.` lines, possibly with blank-line gaps between items) counts as ONE paragraph. Nested atomic units (e.g., a code block inside a list item) are absorbed into the outer atomic unit — outer wins. Theme content allocation must respect these atomic units so paragraph counts are consistent between source and themes.
 
 Extract every distinct theme. Group sub-themes into coherent domains (anti-pattern: one theme per system component; a coherent domain becomes one topic). Prefer fewer, coarser topics — see **[research-analysis.md](../../workflow-shared/references/research-analysis.md)** Section B for the independence test and anti-patterns.
 

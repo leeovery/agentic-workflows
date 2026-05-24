@@ -124,15 +124,15 @@ source content into it or remove the theme.
 
 → Return to **B. Offer Edits**.
 
-#### If any theme has empty `summary` or empty `description`
+#### If any theme has empty or whitespace-only `summary` or `description`
 
-Apply-split writes these directly to the manifest. The Step 6 backfill filter in continue-epic treats null/missing as "needs backfill" but does not treat empty strings the same — so an empty value here would silently slip into the manifest and never get re-prompted.
+Apply-split writes these directly to the manifest. The Step 6 backfill filter in continue-epic treats null/missing as "needs backfill" but does not treat empty or whitespace-only strings the same — so a `""` or `"   "` value here would silently slip into the manifest and never get re-prompted.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Theme "{theme.kebab_name}" has empty summary or description.
-Provide both before applying.
+Theme "{theme.kebab_name}" has empty or whitespace-only summary
+or description. Provide non-empty text for both.
 ```
 
 → Return to **B. Offer Edits**.
@@ -171,11 +171,11 @@ this theme.
 
 **If result is `matches-dismissed`:**
 
-Set `pull_dismissed = true` on the theme. Continue to the next theme.
+Set `pull_dismissed = true` on the theme. Move on to the next iteration.
 
 **If result is `ok`:**
 
-Continue to the next theme.
+Move on to the next iteration.
 
 Once all `creates` themes have validated (`stays` and `merges` need no validation — the name is already on the map or equals the source file):
 

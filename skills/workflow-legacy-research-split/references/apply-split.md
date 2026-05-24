@@ -159,6 +159,8 @@ Then drop the source's chunks from the KB (no-op if nothing was indexed):
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase research --topic {current_source}
 ```
 
+If the KB remove fails (KB not initialised, schema mismatch, etc.), surface the error to the user but continue to E — the manifest writes above are authoritative, and stale KB chunks can be reconciled later via `knowledge reindex`. Do not abort: leaving the apply mid-flight would strand the source with `legacy_split_state: in-progress`.
+
 The source file itself stays on disk as historical record.
 
 → Proceed to **E. Commit**.
