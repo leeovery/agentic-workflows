@@ -98,6 +98,14 @@ Skipping {current_source}. Source file and manifest unchanged.
 
 → Load **[apply-split.md](apply-split.md)** and follow its instructions as written.
 
+**If apply-split returned successfully** (it reached E. Commit and completed without error):
+
 Increment `applied_count`.
+
+→ Return to **A. Iterate**.
+
+**If apply-split errored mid-flow** (e.g., manifest write failed, git commit hook rejected, KB remove failed and you chose to abort):
+
+Do NOT increment `applied_count` — the source is left in a partial-apply state with `legacy_split_state: in-progress`. Surface the error to the user and point them at the Recovery section in the **[skill SKILL.md](../SKILL.md)**.
 
 → Return to **A. Iterate**.
