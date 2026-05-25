@@ -364,6 +364,78 @@ JSON
   teardown
 }
 
+# --- Test 10: Epics with post-fix analysis cache are skipped ---
+# Guards against the .workflows/.state/migrations-log-lost scenario where
+# re-running 040 against a manifest containing LEGITIMATE source='research-
+# analysis' items (written by the fixed analyses post-v0.4.0) would destroy
+# valid auto-discovered topics.
+test_epics_with_analysis_cache_skipped() {
+  setup
+
+  local wu_dir="$TEST_DIR/.workflows/epic-h"
+  mkdir -p "$wu_dir"
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "epic-h",
+  "work_type": "epic",
+  "status": "in-progress",
+  "phases": {
+    "inception": {
+      "items": {
+        "auth": {"routing": "discussion", "source": "research-analysis"}
+      }
+    },
+    "research": {
+      "analysis_cache": {"checksum": "abc123", "generated": "2026-05-20"}
+    }
+  }
+}
+JSON
+
+  source "$MIGRATION"
+
+  local exists=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
+    console.log(!!(m.phases.inception.items.auth));
+  ")
+  assert_eq "epic with analysis_cache: legitimate item preserved" "true" "$exists"
+
+  teardown
+}
+
+# --- Test 11: Epics with gap-analysis cache are also skipped ---
+test_epics_with_gap_analysis_cache_skipped() {
+  setup
+
+  local wu_dir="$TEST_DIR/.workflows/epic-i"
+  mkdir -p "$wu_dir"
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "epic-i",
+  "work_type": "epic",
+  "status": "in-progress",
+  "phases": {
+    "inception": {
+      "items": {
+        "auth": {"routing": "discussion", "source": "research-analysis"}
+      },
+      "gap_analysis_cache": {"checksum": "xyz789", "generated": "2026-05-20"}
+    }
+  }
+}
+JSON
+
+  source "$MIGRATION"
+
+  local exists=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
+    console.log(!!(m.phases.inception.items.auth));
+  ")
+  assert_eq "epic with gap_analysis_cache: legitimate item preserved" "true" "$exists"
+
+  teardown
+}
+
 test_orphan_deleted
 test_sibling_research_preserves
 test_sibling_discussion_preserves
@@ -373,6 +445,8 @@ test_comma_joined_source_preserved
 test_idempotent
 test_non_epic_untouched
 test_completed_and_cancelled_epics_untouched
+test_epics_with_analysis_cache_skipped
+test_epics_with_gap_analysis_cache_skipped
 
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ] || exit 1

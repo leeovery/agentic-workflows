@@ -57,6 +57,18 @@ for (const entry of entries) {
   const inception = phases.inception || {};
   const items = inception.items || {};
 
+  // Self-disqualification guard: if the post-fix analyses have ever run on
+  // this epic, the analysis_cache checksum will be set. Items with
+  // 'source: research-analysis' from that point on are LEGITIMATE auto-
+  // discovered candidates — not the v0.4.0 buggy orphans this migration
+  // targets. If the .workflows/.state/migrations log is lost (fresh clone
+  // with persisted .workflows, recovery, etc.), re-running this migration
+  // would otherwise destroy legitimate data. Skip the epic if it shows
+  // any sign of post-fix analysis activity.
+  const researchAnalysisCache = ((phases.research || {}).analysis_cache) || {};
+  const gapAnalysisCache = ((phases.inception || {}).gap_analysis_cache) || {};
+  if (researchAnalysisCache.checksum || gapAnalysisCache.checksum) continue;
+
   const research = (phases.research && phases.research.items) || {};
   const discussion = (phases.discussion && phases.discussion.items) || {};
 

@@ -171,11 +171,11 @@ this theme.
 
 **If result is `matches-dismissed`:**
 
-Set `pull_dismissed = true` on the theme. Move on to the next iteration.
+Set `pull_dismissed = true` on the theme. Move on to the next iteration of the for-each loop.
 
 **If result is `ok`:**
 
-Move on to the next iteration.
+Move on to the next iteration of the for-each loop.
 
 Once all `creates` themes have validated (`stays` and `merges` need no validation — the name is already on the map or equals the source file):
 

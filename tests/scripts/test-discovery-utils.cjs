@@ -728,6 +728,55 @@ describe('discovery-utils', () => {
       assert.deepStrictEqual(r.files, ['topic-a.md']);
     });
 
+    it('research-analysis: returns valid regardless of manifest insertion order (write-side sorts; read-side must too)', () => {
+      // Insert items in non-alphabetical order. The analysis writes its
+      // cache checksum over a SORTED file list (research-analysis.md
+      // Section E). The read side in computeAnalysisCacheStatus must
+      // sort identically — otherwise the cache always reports stale on
+      // every continue-epic, firing analyses + KB re-indexes for no
+      // reason.
+      createFile(dir, '.workflows/alpha/research/zebra.md', 'z');
+      createFile(dir, '.workflows/alpha/research/auth.md', 'a');
+      const checksum = filesChecksum([
+        path.join(dir, '.workflows/alpha/research/auth.md'),
+        path.join(dir, '.workflows/alpha/research/zebra.md'),
+      ]);  // sorted order matches analyses' write side
+      createManifest(dir, 'alpha', {
+        phases: {
+          research: {
+            // Non-alphabetical insertion order:
+            items: { zebra: { status: 'completed' }, auth: { status: 'completed' } },
+            analysis_cache: { checksum, generated: '2026-05-01', files: ['auth.md', 'zebra.md'] },
+          },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'research-analysis');
+      assert.strictEqual(r.status, 'valid', 'cache should be valid — read side must sort to match write side');
+    });
+
+    it('gap-analysis: returns valid regardless of manifest insertion order', () => {
+      createFile(dir, '.workflows/alpha/research/zebra.md', 'rz');
+      createFile(dir, '.workflows/alpha/research/auth.md', 'ra');
+      createFile(dir, '.workflows/alpha/discussion/billing.md', 'db');
+      const checksum = filesChecksum([
+        // Sorted across both directories combined — matches inception-gap-analysis.md write side.
+        path.join(dir, '.workflows/alpha/discussion/billing.md'),
+        path.join(dir, '.workflows/alpha/research/auth.md'),
+        path.join(dir, '.workflows/alpha/research/zebra.md'),
+      ]);
+      createManifest(dir, 'alpha', {
+        phases: {
+          research: { items: { zebra: { status: 'completed' }, auth: { status: 'completed' } } },
+          discussion: { items: { billing: { status: 'completed' } } },
+          inception: { gap_analysis_cache: { checksum, generated: '2026-05-02', input_files: ['auth.md', 'billing.md', 'zebra.md'] } },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      assert.strictEqual(r.status, 'valid', 'gap-analysis cache should be valid — read side must sort');
+    });
+
     it('research-analysis: returns stale when files changed', () => {
       createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
       createManifest(dir, 'alpha', {

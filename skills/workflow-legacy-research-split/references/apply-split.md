@@ -159,7 +159,7 @@ Then drop the source's chunks from the KB (no-op if nothing was indexed):
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase research --topic {current_source}
 ```
 
-If the KB remove fails (KB not initialised, schema mismatch, etc.), surface the error to the user but continue to E — the manifest writes above are authoritative, and stale KB chunks can be reconciled later via `knowledge reindex`. Do not abort: leaving the apply mid-flight would strand the source with `legacy_split_state: in-progress`.
+If the KB remove fails (KB not initialised, schema mismatch, etc.), surface the error LOUDLY to the user and recommend running `knowledge rebuild` to reconcile after the apply completes. Do not abort: leaving the apply mid-flight would strand the source with `legacy_split_state: in-progress`. The manifest writes above are authoritative; the apply proceeds to **E** below.
 
 The source file itself stays on disk as historical record.
 
@@ -192,12 +192,12 @@ Rewrite `.workflows/{work_unit}/research/{current_source}.md` from **[template.m
 
 #### If `written_files` is empty
 
-No files were written, but the manifest WAS changed in D (summary/description on the source's inception item, plus the sentinel set in A). Transition the sentinel from `in-progress` to `applied`, then commit just the manifest so the working tree isn't left dirty:
+No files were written, but the manifest WAS changed in D (summary/description on the source's inception item, plus the sentinel set in A). Transition the sentinel from `in-progress` to `applied`, then commit. Use `--allow-empty` defensively: if a prior recovery left the manifest already matching the target state (e.g., user manually cleared the sentinel after a successful apply and is re-running), `git commit` would otherwise fail with "nothing to commit" and the sentinel would be stranded at `in-progress`.
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{current_source} legacy_split_state applied
 git add -- .workflows/{work_unit}/manifest.json
-git commit -m "inception({work_unit}): legacy-split {current_source} (stays-only)"
+git commit --allow-empty -m "inception({work_unit}): legacy-split {current_source} (stays-only)"
 ```
 
 → Return to caller.

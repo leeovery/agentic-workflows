@@ -222,7 +222,8 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
     const completedFiles = researchItems
       .filter(it => it.status === 'completed')
       .map(it => path.join(researchDir, `${it.name}.md`))
-      .filter(p => fileExists(p));
+      .filter(p => fileExists(p))
+      .sort();  // analyses sort before checksumming; cache reads must match
 
     if (!cache || !cache.checksum) {
       return completedFiles.length > 0
@@ -260,7 +261,9 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
       .map(it => path.join(discussionDir, `${it.name}.md`))
       .filter(p => fileExists(p));
 
-    const inputPaths = [...completedResearchFiles, ...completedDiscussionFiles];
+    // Sort so the read-side checksum matches inception-gap-analysis.md's
+    // write-side, which also sorts before hashing.
+    const inputPaths = [...completedResearchFiles, ...completedDiscussionFiles].sort();
 
     if (!cache || !cache.checksum) {
       return inputPaths.length > 0
