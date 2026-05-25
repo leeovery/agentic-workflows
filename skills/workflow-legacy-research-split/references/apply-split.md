@@ -204,14 +204,14 @@ git commit --allow-empty -m "inception({work_unit}): legacy-split {current_sourc
 
 #### Otherwise
 
-Stage only the paths this iteration touched, plus the manifest. Avoid `git add` on the whole research directory — unrelated user edits in sibling files must not be swept into the legacy-split commit.
+Stage only the paths this iteration touched, plus the manifest. Avoid `git add` on the whole research directory — unrelated user edits in sibling files must not be swept into the legacy-split commit. Use `--allow-empty` defensively (symmetric with the stays-only branch above): if a prior recovery left the working tree matching the target state, `git commit` would otherwise fail with "nothing to commit" and the sentinel would be stranded at `in-progress`.
 
 ```bash
 git add -- .workflows/{work_unit}/manifest.json
 @foreach(path in written_files)
 git add -- {path}
 @endforeach
-git commit -m "inception({work_unit}): legacy-split {current_source} into {N} topic(s)"
+git commit --allow-empty -m "inception({work_unit}): legacy-split {current_source} into {N} topic(s)"
 ```
 
 `{N}` = `approved_creates.length + approved_merges.length + approved_stays.length`.

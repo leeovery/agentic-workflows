@@ -98,14 +98,16 @@ Skipping {current_source}. Source file and manifest unchanged.
 
 → Load **[apply-split.md](apply-split.md)** and follow its instructions as written.
 
-**If apply-split returned successfully** (it reached E. Commit and completed without error):
+The boundary between "success" and "errored" is whether the reference reached and completed its **E. Commit** (or its E "If `written_files` is empty" sibling). A non-fatal warning along the way — for example a KB-remove failure in apply-split D, which the spec explicitly tells you to surface but not abort on — counts as success because the commit still ran.
+
+#### If apply-split reached and completed its E. Commit
 
 Increment `applied_count`.
 
 → Return to **A. Iterate**.
 
-**If apply-split errored mid-flow** (e.g., manifest write failed, git commit hook rejected, KB remove failed and you chose to abort):
+#### If apply-split aborted before reaching its E. Commit
 
-Do NOT increment `applied_count` — the source is left in a partial-apply state with `legacy_split_state: in-progress`. Surface the error to the user and point them at the Recovery section in the **[skill SKILL.md](../SKILL.md)**.
+A manifest write failed, the git commit hook rejected, or another step did not complete. Increment `errored_count`. Do NOT increment `applied_count` — the source is left in a partial-apply state with `legacy_split_state: in-progress`. Surface the error to the user and point them at the Recovery From Interrupted Apply section of the parent SKILL.md (`../SKILL.md`).
 
 → Return to **A. Iterate**.

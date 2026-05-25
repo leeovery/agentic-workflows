@@ -59,7 +59,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 ── List Qualifying Sources ──────────────────────
 ```
 
-Initialise `applied_count = 0` and `abandoned_count = 0` — Step 3 reads these for an honest closing message.
+Initialise `applied_count = 0`, `abandoned_count = 0`, and `errored_count = 0` — Step 3 reads these for an honest closing message.
 
 Load **[detect-trigger.md](references/detect-trigger.md)** and follow its instructions as written.
 
@@ -121,7 +121,22 @@ After clearing the field:
 > across the session.
 ```
 
-Render the per-outcome message below based on `applied_count` and `abandoned_count`:
+Render the per-outcome message below based on `applied_count`, `abandoned_count`, and `errored_count`. Evaluate the branches in order — error reporting takes precedence over clean outcomes.
+
+#### If `errored_count > 0`
+
+One or more sources aborted mid-apply. Their `legacy_split_state` is left at `in-progress`; detect-trigger excludes them on subsequent runs until the user clears the sentinel manually.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> {errored_count} source file(s) aborted mid-apply; {applied_count}
+> decomposed; {abandoned_count} skipped. See the Recovery From
+> Interrupted Apply section of this skill's SKILL.md to clear the
+> stuck sentinel(s) before the next /continue-epic.
+```
+
+→ Return to caller.
 
 #### If `applied_count == 0` and `abandoned_count == 0`
 
