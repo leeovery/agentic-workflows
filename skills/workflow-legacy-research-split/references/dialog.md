@@ -40,9 +40,9 @@ Read `.workflows/{work_unit}/research/{current_source}.md` end-to-end. Hold the 
 
 apply.cjs renames the source to `{source}-superseded-{datetime}.md` when the plan is applied. No content survives in the original location. **Every meaningful piece of the source must land in a candidate theme** — there is no "leave it in place" option. Material not transcribed into a theme is lost.
 
-Identify themes from the source's natural structure: its top-level headings, the distinct subjects it discusses, the seams where focus shifts. The source dictates the count — don't anchor to a target number. A long, multi-subject file legitimately produces many themes; a short, single-subject file is one theme.
+Identify themes from the source's natural structure: its top-level headings, the distinct subjects it discusses, the seams where focus shifts. A long, multi-subject file legitimately produces many themes; a short, single-subject file is one theme. Small fragments that don't justify a standalone theme get merged into the most closely related one — never dropped.
 
-When two surfaces are so tightly coupled that working on one requires constantly referencing the other, merge them into a single theme. When they could be picked up independently, keep them separate. Small fragments that don't justify a standalone theme get merged into the most closely related one — never dropped.
+→ Load **[topic-granularity.md](../../workflow-shared/references/topic-granularity.md)**.
 
 Legacy-decomposition specifics:
 
