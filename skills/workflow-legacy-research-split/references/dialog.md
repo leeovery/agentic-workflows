@@ -59,9 +59,6 @@ For each candidate theme, build a tentative entry:
 - `kebab_name` — short, kebab-cased
 - `summary` — one line
 - `description` — paragraph or two synthesised from the source
-- `routing` — assigned per the criteria below
-
-→ Load **[routing-decision.md](../../workflow-shared/references/routing-decision.md)**.
 
 Hold these in working memory. Do NOT write any cache files yet.
 
@@ -79,7 +76,6 @@ Candidate themes for {current_source}.md:
 @foreach(theme in candidates)
 {N}. {theme.kebab_name}
    └─ {theme.summary}
-   └─ Routing: {theme.routing}
 @endforeach
 ```
 
@@ -88,7 +84,7 @@ Candidate themes for {current_source}.md:
 ```
 · · · · · · · · · · · ·
 - **`y`/`yes`** — Proceed to draft cache files
-- **Redirect** — Adjust the theme list (rename, change routing, merge two, split one, add, remove)
+- **Redirect** — Adjust the theme list (rename, merge two, split one, add, remove)
 - **`a`/`abandon`** — Skip this source file
 · · · · · · · · · · · ·
 ```
@@ -104,7 +100,6 @@ Candidate themes for {current_source}.md:
 Apply the user's adjustment in working memory (no files written yet). Supported in-memory operations:
 
 - **Rename** — update `kebab_name` on the named theme
-- **Change routing** — flip `routing` on the named theme
 - **Merge two** — combine two candidate themes into one
 - **Split one** — replace one candidate theme with two
 - **Add** — insert a new candidate
@@ -162,8 +157,7 @@ Schema:
     {
       "kebab_name":  "auth",
       "summary":     "one-line summary",
-      "description": "paragraph or two synthesised from the source",
-      "routing":     "discussion" | "research"
+      "description": "paragraph or two synthesised from the source"
     }
   ]
 }
@@ -193,7 +187,6 @@ Plan for {current_source}.md:
 @foreach(theme in plan.themes)
 {N}. {theme.kebab_name}
    └─ Summary: {theme.summary}
-   └─ Routing: {theme.routing}
    └─ Content: {paragraph_count} para(s) — "{content_preview}..."
    └─ Cache: .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme.kebab_name}.md
 @endforeach
@@ -206,7 +199,7 @@ Source file will be renamed to {current_source}-superseded-{datetime}.md.
 ```
 · · · · · · · · · · · ·
 - **`y`/`yes`** — Apply this plan
-- **Edit** — Modify cache files or plan.json (rename, change routing, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
+- **Edit** — Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
 - **`a`/`abandon`** — Skip this source file
 · · · · · · · · · · · ·
 ```
@@ -232,10 +225,6 @@ Dispatch to the matching operation based on the user's request. Every operation 
 #### If the edit is a rename
 
 → Proceed to **K. Rename a Theme**.
-
-#### If the edit is a routing change
-
-→ Proceed to **L. Change Routing**.
 
 #### If the edit merges two themes
 
@@ -363,15 +352,6 @@ User specifies `old_name` and `new_name`.
 
 → Return to **F. Propose Plan**.
 
-## L. Change Routing
-
-User specifies `theme_name` and new `routing` (`discussion` | `research`).
-
-1. Read `plan.json`. Set the theme's `routing` to the new value.
-2. Write `plan.json`.
-
-→ Return to **F. Propose Plan**.
-
 ## M. Merge Two Themes
 
 User specifies `theme_a`, `theme_b`, and `surviving_name` (often equal to `theme_a` or `theme_b`).
@@ -382,7 +362,7 @@ User specifies `theme_a`, `theme_b`, and `surviving_name` (often equal to `theme
    - If `surviving_name == theme_a`: `rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme_b}.md`
    - If `surviving_name == theme_b`: `rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme_a}.md`
    - Otherwise (new name): `rm` both originals.
-4. Read `plan.json`. Remove both original theme entries. Add a new entry with `kebab_name = surviving_name`, summary/description merged or rewritten as the user directs, routing per the user's instruction.
+4. Read `plan.json`. Remove both original theme entries. Add a new entry with `kebab_name = surviving_name`, summary/description merged or rewritten as the user directs.
 5. Write `plan.json`.
 
 → Return to **F. Propose Plan**.
@@ -401,14 +381,14 @@ User specifies `original_name`, `name_a`, `name_b`, and (in their message) what 
    ```bash
    rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{original_name}.md
    ```
-4. Read `plan.json`. Remove the original theme entry. Add two new entries (`name_a`, `name_b`) with appropriate summary/description/routing. If any field is ambiguous, ask one clarifying question before proceeding — this is conversational flow, not a structured STOP.
+4. Read `plan.json`. Remove the original theme entry. Add two new entries (`name_a`, `name_b`) with appropriate summary/description. If any field is ambiguous, ask one clarifying question before proceeding — this is conversational flow, not a structured STOP.
 5. Write `plan.json`.
 
 → Return to **F. Propose Plan**.
 
 ## O. Add a Theme
 
-User specifies `kebab_name`, summary, description, routing, and the content for the new cache file.
+User specifies `kebab_name`, summary, description, and the content for the new cache file.
 
 1. Read `plan.json`. Add the new theme entry.
 2. Write `plan.json`.

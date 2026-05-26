@@ -16,14 +16,11 @@ const path = require('path');
 //     {
 //       "kebab_name":  "<string, unique within plan>",
 //       "summary":     "<non-empty, non-whitespace string>",
-//       "description": "<non-empty, non-whitespace string>",
-//       "routing":     "discussion" | "research"
+//       "description": "<non-empty, non-whitespace string>"
 //     },
 //     ...
 //   ]
 // }
-
-const VALID_ROUTING = new Set(['discussion', 'research']);
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -98,10 +95,6 @@ function validate(cwd, workUnit, currentSource) {
     const description = typeof theme.description === 'string' ? theme.description.trim() : '';
     if (description === '') {
       errors.push(`theme '${label}' has empty description`);
-    }
-
-    if (!VALID_ROUTING.has(theme.routing)) {
-      errors.push(`theme '${label}' has invalid routing '${theme.routing}' (expected discussion|research)`);
     }
 
     if (typeof kebab === 'string' && kebab.trim() !== '') {

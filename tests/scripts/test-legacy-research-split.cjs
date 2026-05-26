@@ -201,7 +201,6 @@ describe('validate.cjs: cache shape contract', () => {
     kebab_name: 'auth',
     summary: 'Auth flow',
     description: 'Auth description.',
-    routing: 'discussion',
     _content: 'auth content',
   });
 
@@ -217,7 +216,7 @@ describe('validate.cjs: cache shape contract', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
-      themes: [{ kebab_name: 'auth', summary: 's', description: 'd', routing: 'discussion' }],
+      themes: [{ kebab_name: 'auth', summary: 's', description: 'd' }],
     }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -253,13 +252,6 @@ describe('validate.cjs: cache shape contract', () => {
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
     assert.ok(r.json.errors.some(e => e.includes('empty description')));
-  });
-
-  it('rejects invalid routing', () => {
-    writeCachePlan('wu', 'src', [{ ...baseTheme(), routing: 'foo' }]);
-    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
-    assert.strictEqual(r.json.ok, false);
-    assert.ok(r.json.errors.some(e => e.includes('invalid routing')));
   });
 
   it('accepts a valid plan', () => {
@@ -338,7 +330,7 @@ describe('validate.cjs: cache shape contract', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
-      themes: [{ summary: 's', description: 'd', routing: 'discussion' }],
+      themes: [{ summary: 's', description: 'd' }],
     }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -360,7 +352,7 @@ describe('validate.cjs: cache shape contract', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
-      themes: [{ kebab_name: '   ', summary: 's', description: 'd', routing: 'discussion' }],
+      themes: [{ kebab_name: '   ', summary: 's', description: 'd' }],
     }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -378,9 +370,9 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e1', 'exploration');
     writeCachePlan('e1', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', _content: 'auth content' },
+        _content: 'auth content' },
       { kebab_name: 'caching', summary: 'Cache', description: 'cache desc',
-        routing: 'research', _content: 'cache content' },
+        _content: 'cache content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e1', 'exploration');
@@ -404,7 +396,8 @@ describe('apply.cjs: end-to-end', () => {
     assert.strictEqual(m.phases.research.items[supersededName].status, 'superseded');
 
     // New inception + research items with correct metadata.
-    assert.strictEqual(m.phases.inception.items.auth.routing, 'discussion');
+    assert.strictEqual(m.phases.inception.items.auth.routing, 'research');
+    assert.strictEqual(m.phases.inception.items.caching.routing, 'research');
     assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth');
     assert.strictEqual(m.phases.inception.items.auth.description, 'auth desc');
     assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:exploration');
@@ -427,9 +420,9 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e2', 'auth');
     writeCachePlan('e2', 'auth', [
       { kebab_name: 'auth', summary: 'Auth core', description: 'auth desc',
-        routing: 'discussion', _content: 'auth-only content' },
+        _content: 'auth-only content' },
       { kebab_name: 'caching', summary: 'Cache', description: 'cache desc',
-        routing: 'research', _content: 'cache content' },
+        _content: 'cache content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e2', 'auth');
@@ -450,7 +443,7 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e2b', 'auth');
     writeCachePlan('e2b', 'auth', [
       { kebab_name: 'auth', summary: 'Auth flow', description: 'Reflowed auth description.',
-        routing: 'discussion', _content: 'Re-flowed auth content for the new file.' },
+        _content: 'Re-flowed auth content for the new file.' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e2b', 'auth');
@@ -474,7 +467,7 @@ describe('apply.cjs: end-to-end', () => {
     const m = readManifest('e2b');
     assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth flow');
     assert.strictEqual(m.phases.inception.items.auth.description, 'Reflowed auth description.');
-    assert.strictEqual(m.phases.inception.items.auth.routing, 'discussion');
+    assert.strictEqual(m.phases.inception.items.auth.routing, 'research');
     assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:auth');
   });
 
@@ -482,7 +475,7 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e4', 'exploration');
     writeCachePlan('e4', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', _content: 'auth content' },
+        _content: 'auth content' },
     ]);
 
     const hookDir = path.join(dir, '.git', 'hooks');
@@ -512,7 +505,7 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e4b', 'exploration');
     writeCachePlan('e4b', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', _content: 'auth content' },
+        _content: 'auth content' },
     ]);
 
     // Make the source file unreadable by removing it before apply — fs.renameSync will
@@ -548,7 +541,7 @@ describe('apply.cjs: end-to-end', () => {
     fs.renameSync(orig, renamed);
 
     writeCachePlan('e9', 'exploration', [
-      { kebab_name: 'auth', summary: 'Auth', description: 'd', routing: 'discussion',
+      { kebab_name: 'auth', summary: 'Auth', description: 'd',
         _content: 'auth content' },
     ]);
 
@@ -580,7 +573,7 @@ describe('apply.cjs: end-to-end', () => {
 
     writeCachePlan('e10', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', _content: 'auth content' },
+        _content: 'auth content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e10', 'exploration');
@@ -595,10 +588,10 @@ describe('apply.cjs: end-to-end', () => {
 
   it('apply re-validates and reports cache errors at start', () => {
     seedLegacyEpic('e5', 'exploration');
-    // Write a plan with invalid routing — validate will reject.
+    // Write a plan with empty description — validate will reject.
     writeCachePlan('e5', 'exploration', [
-      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'wrong', _content: 'auth content' },
+      { kebab_name: 'auth', summary: 'Auth', description: '',
+        _content: 'auth content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e5', 'exploration');

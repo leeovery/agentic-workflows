@@ -1,6 +1,6 @@
 # Routing Decision
 
-*Shared reference. Loaded by `research-analysis.md`, `inception-gap-analysis.md`, and `workflow-legacy-research-split/references/dialog.md`.*
+*Shared reference. Loaded by `research-analysis.md` and `inception-gap-analysis.md`.*
 
 ---
 
@@ -31,6 +31,6 @@ Route to **`research`** when:
 
 When uncertain, prefer **`research`**. It's the lower-cost-to-reverse direction — research can conclude and route forward to discussion at any time; forcing discussion too early just sends the topic back for more research and burns user time.
 
-This default especially applies to material originating from a research file (legacy-split, research-analysis) — the file's existence implies the material is at research stage, and a candidate extracted from it should usually stay at research stage unless it visibly meets the discussion criteria above.
+This default especially applies to candidates extracted from a completed research file (research-analysis) — the file's existence implies the material is at research stage, and an extracted candidate should usually stay at research stage unless it visibly meets the discussion criteria above.
 
 → Return to caller.
