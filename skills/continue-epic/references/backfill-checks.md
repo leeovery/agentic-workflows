@@ -46,7 +46,7 @@ Load **[summary-backfill.md](summary-backfill.md)** with work_unit = `{work_unit
 
 ## C. Advise Restart
 
-Mutations from A and B are already committed (apply.cjs commits per source; summary-backfill commits its batch). Returning to the caller would continue Step 6 onward inside the same conversation, but the backfill pass — particularly legacy decomposition — is context-heavy by design. Hand the user a fresh window before the rest of `/continue-epic` runs.
+Mutations from A and B are already committed. Returning to the caller would continue Step 6 onward inside the same conversation, but the backfill pass — particularly legacy decomposition — is context-heavy by design. Hand the user a fresh window before the rest of `/continue-epic` runs.
 
 > *Output the next fenced block as a code block:*
 
