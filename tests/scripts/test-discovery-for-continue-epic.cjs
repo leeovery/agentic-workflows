@@ -297,10 +297,11 @@ describe('continue-epic discovery', () => {
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
     });
 
-    it('discovery_map exposes source, summary, and description per item for legacy-recovery filter', () => {
-      // Continue-epic Step 6 (Summary Backfill) filters discovery_map by
-      // (!summary || !description) — source-agnostic. Any write path that
-      // lands an item with missing fields surfaces for review:
+    it('discovery_map exposes source, summary text, and presence booleans per item for legacy-recovery filter', () => {
+      // Continue-epic Step 5 (Backfill) filters discovery_map by
+      // (!summary_present || !description_present) — source-agnostic. Any
+      // write path that lands an item with missing fields surfaces for
+      // review:
       // - migration-seeded items (legacy back-fill)
       // - pre-Phase-14 items with summary but no description
       // - absorption-registered items (no source set, defaults to "inception"
@@ -328,30 +329,38 @@ describe('continue-epic discovery', () => {
 
       assert.strictEqual(byName['pristine'].source, 'inception');
       assert.strictEqual(byName['pristine'].summary, 'Brand-new topic with summary');
-      assert.strictEqual(byName['pristine'].description, 'Already grounded');
+      assert.strictEqual(byName['pristine'].summary_present, true);
+      assert.strictEqual(byName['pristine'].description_present, true);
 
       assert.strictEqual(byName['migrated-no-summary'].source, 'migration-seeded');
       assert.strictEqual(byName['migrated-no-summary'].summary, null);
-      assert.strictEqual(byName['migrated-no-summary'].description, null);
+      assert.strictEqual(byName['migrated-no-summary'].summary_present, false);
+      assert.strictEqual(byName['migrated-no-summary'].description_present, false);
 
       assert.strictEqual(byName['migrated-summary-no-description'].summary, 'Backfilled before Phase 14');
-      assert.strictEqual(byName['migrated-summary-no-description'].description, null);
+      assert.strictEqual(byName['migrated-summary-no-description'].summary_present, true);
+      assert.strictEqual(byName['migrated-summary-no-description'].description_present, false);
 
       assert.strictEqual(byName['migrated-fully-populated'].summary, 'Both populated');
-      assert.strictEqual(byName['migrated-fully-populated'].description, 'Backfilled after Phase 14');
+      assert.strictEqual(byName['migrated-fully-populated'].summary_present, true);
+      assert.strictEqual(byName['migrated-fully-populated'].description_present, true);
 
       assert.strictEqual(byName['migrated-then-resurfaced'].source, 'migration-seeded,research-analysis');
       assert.strictEqual(byName['migrated-then-resurfaced'].summary, null);
-      assert.strictEqual(byName['migrated-then-resurfaced'].description, null);
+      assert.strictEqual(byName['migrated-then-resurfaced'].summary_present, false);
+      assert.strictEqual(byName['migrated-then-resurfaced'].description_present, false);
 
       assert.strictEqual(byName['analysis-only'].source, 'research-analysis');
+      assert.strictEqual(byName['analysis-only'].summary_present, true);
+      assert.strictEqual(byName['analysis-only'].description_present, true);
 
       assert.strictEqual(byName['absorbed-no-fields'].source, 'inception');
       assert.strictEqual(byName['absorbed-no-fields'].summary, null);
-      assert.strictEqual(byName['absorbed-no-fields'].description, null);
+      assert.strictEqual(byName['absorbed-no-fields'].summary_present, false);
+      assert.strictEqual(byName['absorbed-no-fields'].description_present, false);
 
       // Filter contract — any item missing summary OR description, regardless of source.
-      const toRecover = map.filter(t => !t.summary || !t.description);
+      const toRecover = map.filter(t => !t.summary_present || !t.description_present);
       const recoverNames = toRecover.map(t => t.name).sort();
       assert.deepStrictEqual(
         recoverNames,

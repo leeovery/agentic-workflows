@@ -217,7 +217,7 @@ node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit
 
 Parse `qualifying_sources` from the JSON output.
 
-Then read `discovery_map` from the most recent discovery `detail` and filter for items where `summary` or `description` is null or missing — regardless of `source`. Store the filtered list as `items_to_recover`.
+Then read `discovery_map` from the most recent discovery `detail` and filter for items where `summary_present` is false or `description_present` is false — regardless of `source`. Store the filtered list as `items_to_recover`.
 
 #### If `qualifying_sources` is empty and `items_to_recover` is empty
 
