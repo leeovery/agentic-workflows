@@ -126,9 +126,23 @@ For each theme in the candidate list, write its body to:
 .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme.kebab_name}.md
 ```
 
-The body is the substantive prose for this theme (not an empty stub). Drawn from the source, rewritten for flow where helpful.
+The cache file **IS** the new research file body — it becomes the content of `.workflows/{work_unit}/research/{theme.kebab_name}.md` after apply. It is **not** a summary. The substance of the source must transfer.
 
-Each cache file must be non-empty (not just whitespace) and the corresponding `description` field must be at least a paragraph or two — `validate.cjs` enforces both.
+**Extraction discipline:**
+
+- **Verbatim by default.** Move the source's content assigned to this theme into the cache file as the source has it. Don't paraphrase, don't summarise, don't condense. The user's existing prose is the substance — preserve it.
+
+- **Rewrite for flow only where helpful.** Light editing is OK to make the extracted content self-contained when it would otherwise leave the reader stranded: fix dangling references to other themes ("as discussed above" when "above" is now in a different file), tighten a transition that no longer flows, split a long paragraph that mixes themes. Don't rewrite for style. When in doubt, copy verbatim.
+
+- **Don't lose content.** Every meaningful piece of the source should land in at least one theme's cache file. Losing material is a failure mode — the user wrote it for a reason and they're trusting the split to preserve it.
+
+- **Mild duplication is acceptable** where the source itself genuinely overlaps — e.g. a paragraph discussing a trade-off relevant to both `auth` and `caching` themes can appear in both cache files. Don't manufacture duplication; mirror what the source does.
+
+- **Substantive bodies, scaled to the source.** Cache files should be commensurate with the source's depth. A 200-line source decomposed into 3 themes typically yields cache files in the 50–100 line range each. A 1000-line source yields cache files of hundreds of lines. If a cache file ends up as a handful of paragraphs when the source had pages of relevant material, content has been lost — re-read the source for that theme.
+
+- **Long sources need careful walking.** For sources that span thousands of lines or have content interleaved across many sections, work theme-by-theme: pick one theme, scan the source end-to-end for everything that belongs to it, transcribe in source order, then move to the next theme. Don't try to allocate the whole source in one pass; you'll miss interleaved material.
+
+- **No empty cache files.** `validate.cjs` rejects files that are blank or whitespace-only.
 
 Build `plan.json` from the candidate list and write to:
 
@@ -150,6 +164,8 @@ Schema:
   ]
 }
 ```
+
+The `description` field gives the inception map context; the cache file gives the new research file's full body. Both are required.
 
 → Proceed to **F. Propose Plan**.
 
