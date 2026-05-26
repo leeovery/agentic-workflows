@@ -6,11 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-legacy-research-split/scripts/d
 
 # Legacy Research Split
 
-Act as **curator + interviewer**. Walk the user through decomposing migration-seeded broad research files (pre-inception epics) into topic-scoped themes.
-
-## Purpose in the Workflow
-
-Migration 038 seeded discovery-map items from existing research files, but those legacy files often contain multiple themes lumped under one broad name (e.g. `exploration.md` covering auth + caching + api-structure). Without intervention, automated analyses can't fire (they only operate on completed material) and the map stays anchored to a single in-progress broad file. This skill identifies qualifying legacy research files, presents their themes back to the user, and — with user approval — splits each broad file into topic-scoped files plus matching inception items.
+Act as **curator + interviewer**. Walk the user through decomposing broad research files — each holding multiple themes — into topic-scoped files plus matching inception-map items.
 
 ### What This Skill Needs
 
@@ -135,8 +131,6 @@ Evaluate the branches below in order — error reporting takes precedence over c
 
 #### If `applied_count == 0` and `abandoned_count == 0`
 
-Defensive branch — continue-epic Step 5 gates this path, so reaching here means the caller invoked the skill without gating.
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -184,14 +178,9 @@ Defensive branch — continue-epic Step 5 gates this path, so reaching here mean
 
 ## Recovery from Interrupted Apply
 
-apply.cjs sets `legacy_split_state: in-progress` on the source's inception item before any other mutation, then renames the source file and research item, then deletes the source inception item before theme creation. Once the file/research rename completes, detect.cjs naturally excludes the source on retry (the original file no longer exists and the original research item is renamed); the sentinel survival guards the narrower window before those renames complete.
-
-If apply returns `ok: false`, the response's `recovery_hint` describes the manual cleanup the failing stage requires. Common cleanups:
+If `apply.cjs` returns `ok: false`, the response's `recovery_hint` names the manual cleanup the failing stage requires. Common cleanups:
 
 ```bash
-# Clear a stuck sentinel
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception.{stuck_source} legacy_split_state
-
-# Clean a stale cache directory after manual reconciliation
 rm -rf .workflows/.cache/{work_unit}/legacy-split/{stuck_source}
 ```
