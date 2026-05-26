@@ -46,7 +46,11 @@ Legacy-decomposition specifics:
 
 - **Semantic allocation; rewriting for flow allowed.** Each theme's cache file may rewrite source paragraphs for flow, may overlap mildly with siblings where the source itself overlaps, and need not be a strict partition of the source.
 
-- **Name reuse is fine.** A theme can share the source's own name (e.g. an `auth` source decomposed into one `auth` theme, or into `auth` + `caching`). The source is renamed to `{source}-superseded-{datetime}.md` before themes are created, so the original name is always available for reuse.
+- **Name reuse is fine** for the source's own name (e.g. an `auth` source decomposed into one `auth` theme, or into `auth` + `caching`). The source is renamed to `{source}-superseded-{datetime}.md` before themes are created, so the original name is always available for reuse.
+
+- **Avoid collisions with other active topics.** Theme `kebab_name` must not match any *other* existing inception item on the map (besides the source itself). `validate.cjs` enforces this — if a candidate name clashes with an existing topic, pick a different name. The current map is in the discovery output already in context from `continue-epic` Step 1; consult it before naming.
+
+- **Dismissed names are allowed.** If a candidate name matches an entry on the work unit's `dismissed[]` list (topics the user removed via refinement), that's fine — `apply.cjs` pulls the name from `dismissed` before re-adding. User-driven legacy-split bypasses the dismissed gate (which only blocks automatic re-adds).
 
 - **Single-theme split is valid.** Even when the source contains a single coherent theme, the split still runs. The source file is renamed to `-superseded-`, the new file is created with the (possibly re-flowed) content, and the inception item gets full metadata. This normalises legacy items without forcing artificial decomposition.
 
@@ -297,6 +301,19 @@ Increment `applied_count`.
 
 ```
 Applied {current_source}: {applied.themes} new file(s).
+```
+
+If the response includes `kb_warnings`, render them — KB cleanup is best-effort and the user should know the index needs reconciling:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> ⚑ Knowledge-base cleanup reported warnings:
+@foreach(w in kb_warnings)
+> - {w}
+@endforeach
+>
+> Consider running `knowledge rebuild` after the session to reconcile.
 ```
 
 → Return to **A. Iterate**.

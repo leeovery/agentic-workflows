@@ -30,10 +30,27 @@ function die(msg, code = 1) {
   process.exit(code);
 }
 
+function loadInceptionItemNames(cwd, workUnit) {
+  const manifestPath = path.join(cwd, '.workflows', workUnit, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) return null;
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    const items = manifest && manifest.phases && manifest.phases.inception && manifest.phases.inception.items;
+    return items && typeof items === 'object' ? new Set(Object.keys(items)) : new Set();
+  } catch {
+    return null;
+  }
+}
+
 function validate(cwd, workUnit, currentSource) {
   const cacheDir = path.join(cwd, '.workflows', '.cache', workUnit, 'legacy-split', currentSource);
   const planPath = path.join(cacheDir, 'plan.json');
   const errors = [];
+
+  // For collision check: existing inception items the cache must not duplicate.
+  // The source's own inception item is exempt — apply.cjs deletes it before theme
+  // creation, so a theme reusing the source name is the natural rename case.
+  const inceptionNames = loadInceptionItemNames(cwd, workUnit);
 
   if (!fs.existsSync(planPath)) {
     return { ok: false, errors: [`plan.json not found at ${planPath}`] };
@@ -96,6 +113,13 @@ function validate(cwd, workUnit, currentSource) {
         if (content.trim() === '') {
           errors.push(`theme '${kebab}' cache file is empty`);
         }
+      }
+
+      // Collision check: theme cannot share a name with an active inception
+      // item, except the source itself (which apply.cjs deletes before theme
+      // creation — the natural source-rename case).
+      if (inceptionNames && inceptionNames.has(kebab) && kebab !== currentSource) {
+        errors.push(`theme '${kebab}' collides with an existing inception item; rename the theme`);
       }
     }
   }

@@ -268,6 +268,45 @@ describe('validate.cjs: cache shape contract', () => {
     assert.strictEqual(r.json.ok, true);
   });
 
+  it('rejects collision with existing inception item (not the source itself)', () => {
+    writeManifest('wu', {
+      name: 'wu',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            src: { routing: 'research', source: 'migration-seeded' },
+            auth: { routing: 'discussion', source: 'inception' },  // active collision target
+          },
+        },
+      },
+    });
+    writeCachePlan('wu', 'src', [{ ...baseTheme() }]);  // baseTheme is kebab_name='auth'
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("collides with an existing inception item")));
+  });
+
+  it('accepts a theme that reuses the source name (source-rename case)', () => {
+    writeManifest('wu', {
+      name: 'wu',
+      work_type: 'epic',
+      status: 'in-progress',
+      phases: {
+        inception: {
+          items: {
+            auth: { routing: 'research', source: 'migration-seeded' },  // src is named 'auth'
+          },
+        },
+      },
+    });
+    // src is 'auth'; the single theme is also 'auth'. This is the source-rename case.
+    writeCachePlan('wu', 'auth', [{ ...baseTheme() }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'auth');
+    assert.strictEqual(r.json.ok, true);
+  });
+
   it('rejects malformed JSON in plan.json', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
@@ -423,9 +462,13 @@ describe('apply.cjs: end-to-end', () => {
     assert.ok(researchFiles.includes('auth.md'));
     assert.ok(researchFiles.some(f => f.startsWith('auth-superseded-')));
 
-    // New file has the reflowed content.
+    // New file is wrapped in the research template (title, summary, starting point, body).
     const newContent = fs.readFileSync(path.join(dir, '.workflows', 'e2b', 'research', 'auth.md'), 'utf8');
-    assert.strictEqual(newContent, 'Re-flowed auth content for the new file.');
+    assert.ok(newContent.startsWith('# Research: Auth\n'));
+    assert.ok(newContent.includes('Auth flow'));  // summary
+    assert.ok(newContent.includes('## Starting Point'));
+    assert.ok(newContent.includes('Material extracted from legacy research file auth.md'));
+    assert.ok(newContent.endsWith('Re-flowed auth content for the new file.'));
 
     // Inception item now has proper metadata (was null on the migration-seeded source).
     const m = readManifest('e2b');
@@ -521,6 +564,33 @@ describe('apply.cjs: end-to-end', () => {
     );
     const m = readManifest('e9');
     assert.strictEqual(m.phases.inception.items.exploration.legacy_split_state, 'in-progress');
+  });
+
+  it('pulls dismissed name from list before re-adding theme', () => {
+    seedLegacyEpic('e10', 'exploration');
+    // Add 'auth' to the dismissed list — user previously removed it via refinement.
+    const m = readManifest('e10');
+    m.phases.inception.dismissed = ['auth', 'unrelated-name'];
+    fs.writeFileSync(
+      path.join(dir, '.workflows', 'e10', 'manifest.json'),
+      JSON.stringify(m, null, 2)
+    );
+    spawnSync('git', ['add', '.'], { cwd: dir });
+    spawnSync('git', ['commit', '-q', '-m', 'add-dismissed'], { cwd: dir });
+
+    writeCachePlan('e10', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
+        routing: 'discussion', _content: 'auth content' },
+    ]);
+
+    const r = runScriptJson(APPLY_CLI, 'e10', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+
+    const m2 = readManifest('e10');
+    // 'auth' pulled from dismissed; 'unrelated-name' still there.
+    assert.deepStrictEqual(m2.phases.inception.dismissed, ['unrelated-name']);
+    // Theme created normally.
+    assert.strictEqual(m2.phases.inception.items.auth.source, 'legacy-split:exploration');
   });
 
   it('apply re-validates and reports cache errors at start', () => {

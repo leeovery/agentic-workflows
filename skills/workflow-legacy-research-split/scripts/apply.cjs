@@ -8,6 +8,7 @@ const { spawnSync } = require('child_process');
 const { validate } = require('./validate.cjs');
 
 const MANIFEST_CLI = path.resolve(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -38,6 +39,34 @@ function makeDatetimeStamp() {
     d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
     'T' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds())
   );
+}
+
+function titleCase(kebab) {
+  return kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+}
+
+function renderResearchTemplate(theme, currentSource) {
+  // Standard research-file structure used everywhere else in the workflow.
+  // Body comes from the cache file (the theme's substantive content).
+  return (
+    `# Research: ${titleCase(theme.kebab_name)}\n\n` +
+    `${theme.summary}\n\n` +
+    `## Starting Point\n\n` +
+    `- Material extracted from legacy research file ${currentSource}.md via legacy-research-split.\n\n` +
+    `---\n\n` +
+    `${theme.cacheContent}`
+  );
+}
+
+function loadDismissedList(cwd, workUnit) {
+  const manifestPath = path.join(cwd, '.workflows', workUnit, 'manifest.json');
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    const dismissed = manifest && manifest.phases && manifest.phases.inception && manifest.phases.inception.dismissed;
+    return Array.isArray(dismissed) ? dismissed : [];
+  } catch {
+    return [];
+  }
 }
 
 function apply(cwd, workUnit, currentSource) {
@@ -124,14 +153,39 @@ function apply(cwd, workUnit, currentSource) {
     };
   }
 
+  // Stage 4b: drop the source's chunks from the knowledge base. Best-effort —
+  // KB-not-initialised or other failures are surfaced but don't abort the apply.
+  const kbWarnings = [];
+  try {
+    const r = spawnSync('node', [KNOWLEDGE_CLI, 'remove', '--work-unit', workUnit, '--phase', 'research', '--topic', currentSource], { cwd, encoding: 'utf8' });
+    if (r.status !== 0) {
+      kbWarnings.push(`knowledge.cjs remove for source '${currentSource}' returned non-zero: ${(r.stderr || r.stdout || '').trim()}`);
+    }
+  } catch (e) {
+    kbWarnings.push(`knowledge.cjs remove failed: ${e.message}`);
+  }
+
   // Stage 5: apply themes.
+  const dismissed = loadDismissedList(cwd, workUnit);
   const created = [];
   try {
     for (const theme of plan.themes) {
       const newFile = path.join(researchDir, `${theme.kebab_name}.md`);
       const cacheFile = path.join(cacheDir, `${theme.kebab_name}.md`);
-      fs.renameSync(cacheFile, newFile);
+
+      // Read cache content, wrap with the standard research-file template,
+      // write to the research dir, remove the cache file.
+      const cacheContent = fs.readFileSync(cacheFile, 'utf8');
+      const wrapped = renderResearchTemplate({ ...theme, cacheContent }, currentSource);
+      fs.writeFileSync(newFile, wrapped);
+      fs.unlinkSync(cacheFile);
       created.push({ name: theme.kebab_name, path: newFile });
+
+      // If the name was previously dismissed via refinement, pull it from the
+      // dismissed list so the re-add is clean.
+      if (dismissed.includes(theme.kebab_name)) {
+        runCli(cwd, ['pull', `${workUnit}.inception`, 'dismissed', theme.kebab_name]);
+      }
 
       runCli(cwd, ['init-phase', `${workUnit}.research.${theme.kebab_name}`]);
       runCli(cwd, ['init-phase', `${workUnit}.inception.${theme.kebab_name}`]);
@@ -183,10 +237,12 @@ function apply(cwd, workUnit, currentSource) {
     // Non-fatal; cache dir cleanup failure does not corrupt state.
   }
 
-  return {
+  const result = {
     ok: true,
     applied: { themes: created.length },
   };
+  if (kbWarnings.length > 0) result.kb_warnings = kbWarnings;
+  return result;
 }
 
 if (require.main === module) {
