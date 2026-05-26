@@ -1,6 +1,6 @@
 # Inception Gap Analysis
 
-*Shared reference. Loaded by `workflow-shared/references/self-healing.md`.*
+*Shared reference. Loaded by `workflow-shared/references/topic-discovery.md`.*
 
 ---
 
@@ -147,7 +147,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 
 `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up. Quote with single quotes; description may span multiple paragraphs.
 
-Append the name to the caller's `tracker` so the orchestrator can surface it via callout / Self-Healing Arrivals.
+Append the name to the caller's `tracker` so the orchestrator can surface it via callout / Topic Discovery Arrivals.
 
 ---
 

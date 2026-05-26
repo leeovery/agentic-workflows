@@ -207,20 +207,9 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ---
 
-## Step 5: Legacy Bridge
+## Step 5: Backfill
 
-> *Output the next fenced block as a code block:*
-
-```
-── Legacy Bridge ────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking for migration-seeded broad research files that need
-> per-topic decomposition before analyses can operate.
-```
+Silent gate. Detects whether any one-time-per-project recovery work is needed; loads the dispatching reference only when work fires.
 
 ```bash
 node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}
@@ -228,72 +217,36 @@ node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit
 
 Parse `qualifying_sources` from the JSON output.
 
-#### If `qualifying_sources` is empty
+Then read `discovery_map` from the most recent discovery `detail` and filter for items where `summary` or `description` is null or missing — regardless of `source`. Store the filtered list as `items_to_recover`.
+
+#### If `qualifying_sources` is empty and `items_to_recover` is empty
 
 → Proceed to **Step 6**.
 
 #### Otherwise
 
-Invoke the **[workflow-legacy-research-split](../workflow-legacy-research-split/SKILL.md)** skill with work_unit = `{work_unit}`. Follow its instructions as written.
-
-On return, re-run discovery so Steps 6–8 see the post-split map state:
-
-```bash
-node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
-```
+Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Summary Backfill
+## Step 6: Topic Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Summary Backfill ─────────────────────────────
+── Topic Discovery ──────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Filling missing summaries/descriptions on map items so downstream
-> phases open with rich context.
+> Checking whether completed research or discussion has new themes
+> to surface onto the inception map.
 ```
 
-Read `discovery_map` from the most recent discovery `detail` (Step 5 may have re-run discovery). Filter for items where either `summary` or `description` is null or missing — regardless of `source`. Migration-seeded items land without either field; absorption-registered items land without either field; pre-Phase-14 items backfilled only `summary` and re-enter this flow once for `description`. The filter is source-agnostic so any write path that lands an item with missing fields surfaces for review.
-
-#### If no items match
-
-→ Proceed to **Step 7**.
-
-#### If one or more items match
-
-Store the filtered list as `items_to_recover`. Each item carries `name`, `routing`, current `summary` (possibly null), and current `description` (possibly null) — the reference decides which fields to draft.
-
-Load **[summary-backfill.md](references/summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
-
-→ Proceed to **Step 7**.
-
----
-
-## Step 7: Self-Healing
-
-> *Output the next fenced block as a code block:*
-
-```
-── Self-Healing ─────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking analysis caches for the selected epic. Stale caches
-> trigger inline research-analysis or gap-analysis runs that add
-> any new themes directly to the discovery map.
-```
-
-Initialise `new_arrivals = {}` — Step 8 reads it; self-healing may populate it below.
+Initialise `new_arrivals = {}` — Step 7 reads it; topic-discovery may populate it below.
 
 Read `analysis_caches` from the most recent discovery `detail`:
 
@@ -302,27 +255,25 @@ Read `analysis_caches` from the most recent discovery `detail`:
 
 #### If both caches are `valid` or `absent`
 
-No analyses to run.
-
-→ Proceed to **Step 8**.
+→ Proceed to **Step 7**.
 
 #### If at least one cache is `stale`
 
-Load **[self-healing.md](../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+Load **[topic-discovery.md](../workflow-shared/references/topic-discovery.md)** with work_unit = `{work_unit}`.
 
-On return, self-healing has populated `new_arrivals` with any items added by the analyses.
+On return, topic-discovery has populated `new_arrivals` with any items added by the analyses.
 
-Re-run discovery so Step 8 sees fresh state including any auto-added items:
+Re-run discovery so Step 7 sees fresh state including any auto-added items:
 
 ```bash
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 ```
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 8: Display State and Menu
+## Step 7: Display State and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -338,11 +289,11 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
 
-→ Proceed to **Step 9**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 9: Route Selection
+## Step 8: Route Selection
 
 > *Output the next fenced block as a code block:*
 

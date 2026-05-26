@@ -65,13 +65,13 @@ Read `latest_session` and `next_session_number` from the discovery output produc
 
 No refinement is in flight (only the initial session log exists, or no logs at all).
 
-→ Proceed to **D. Self-Healing Check**.
+→ Proceed to **D. Topic Discovery Check**.
 
 #### If `latest_session.is_refinement` is `true` and `latest_session.is_in_progress` is `false`
 
 The prior refinement concluded normally. Treat this as a fresh entry.
 
-→ Proceed to **D. Self-Healing Check**.
+→ Proceed to **D. Topic Discovery Check**.
 
 #### If `latest_session.is_refinement` is `true` and `latest_session.is_in_progress` is `true`
 
@@ -106,9 +106,9 @@ git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): restart refinement session"
 ```
 
-→ Proceed to **D. Self-Healing Check**.
+→ Proceed to **D. Topic Discovery Check**.
 
-## D. Self-Healing Check
+## D. Topic Discovery Check
 
 Read `analysis_caches` from the discovery output produced in **A**. The shape is:
 
@@ -127,19 +127,19 @@ No analyses to run. The map is up to date relative to the source files.
 
 ```
 > Source files have changed since the last analysis. Running
-> self-healing analyses to surface any new themes or gaps before
+> topic-discovery analyses to surface any new themes or gaps before
 > opening refinement.
 ```
 
-→ Load **[self-healing.md](../../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+→ Load **[topic-discovery.md](../../workflow-shared/references/topic-discovery.md)** with work_unit = `{work_unit}`.
 
-On return, read the orchestrator's `new_arrivals` tracker. The session log isn't created until **E**, so hold the arrivals in conversation memory and append them under **Self-Healing Arrivals** in **E** after the template is written.
+On return, read the orchestrator's `new_arrivals` tracker. The session log isn't created until **E**, so hold the arrivals in conversation memory and append them under **Topic Discovery Arrivals** in **E** after the template is written.
 
 → Proceed to **E. Initialise Session Log**.
 
 ## E. Initialise Session Log
 
-Re-run discovery to pick up any state changes from a `restart` in **C** or self-healing arrivals from **D**:
+Re-run discovery to pick up any state changes from a `restart` in **C** or topic-discovery arrivals from **D**:
 
 ```bash
 node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
@@ -151,7 +151,7 @@ Create the file from **[refinement-template.md](refinement-template.md)**. Popul
 
 #### If **D** captured at least one arrival
 
-Replace the `(none)` placeholder under **Self-Healing Arrivals** with one bullet per arrival, in the order they were added by the orchestrator:
+Replace the `(none)` placeholder under **Topic Discovery Arrivals** with one bullet per arrival, in the order they were added by the orchestrator:
 
 ```markdown
 - {topic} (added by research-analysis, source: research-analysis)
@@ -165,7 +165,7 @@ Then commit — single commit covers the new session log plus the analyses' mani
 
 ```bash
 git add -- .workflows/{work_unit}/
-git commit -m "inception({work_unit}): self-healing added {N} topic(s) to map; seed refinement session log"
+git commit -m "inception({work_unit}): topic-discovery added {N} topic(s) to map; seed refinement session log"
 ```
 
 `{N}` is the total arrival count after dedupe.
@@ -174,7 +174,7 @@ git commit -m "inception({work_unit}): self-healing added {N} topic(s) to map; s
 
 #### Otherwise (no arrivals captured, or **D** had no analyses to run)
 
-Leave **Self-Healing Arrivals** as `(none)`. Commit the seeded session log:
+Leave **Topic Discovery Arrivals** as `(none)`. Commit the seeded session log:
 
 ```bash
 git add -- .workflows/{work_unit}/inception/session-{next_session_number}.md

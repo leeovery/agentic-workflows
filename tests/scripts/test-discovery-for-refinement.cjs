@@ -21,7 +21,7 @@ Work unit: ${workUnit}
 
 3 topics — 3 fresh
 
-## Self-Healing Arrivals
+## Topic Discovery Arrivals
 
 (none)
 

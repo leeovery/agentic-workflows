@@ -10,7 +10,7 @@ CLI tool for querying the workflow knowledge base — a retrieval-augmented stor
 
 ## What the knowledge base is
 
-A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time and analysis caches (research-analysis, gap-analysis) indexed when self-healing rewrites them. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, when it was indexed.
+A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time and analysis caches (research-analysis, gap-analysis) indexed when topic-discovery rewrites them. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, when it was indexed.
 
 **Why it exists**: to surface prior context that would otherwise be lost across work units or forgotten within one. A spec written three months ago, a discussion that rejected an approach, an investigation that ruled out a cause — all remain queryable.
 

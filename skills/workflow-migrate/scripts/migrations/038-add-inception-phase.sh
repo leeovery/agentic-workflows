@@ -16,7 +16,7 @@
 #
 # The legacy phases.research.surfaced_topics and phases.discussion.gap_topics
 # arrays are intentionally NOT migrated. Those are just topic names with no
-# context. Phase 7's self-healing analyses re-run on next continue-epic and
+# context. Topic-discovery analyses re-run on next continue-epic and
 # surface fresh themes with proper summaries from current source content.
 # The arrays sit on disk as inert legacy data.
 #

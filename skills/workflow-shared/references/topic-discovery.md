@@ -1,4 +1,4 @@
-# Self-Healing
+# Topic Discovery
 
 *Shared reference. Loaded by `continue-epic` and `workflow-inception-process`.*
 
@@ -8,7 +8,7 @@ Drives cache-based dispatch of `research-analysis` and `inception-gap-analysis` 
 
 Each analysis self-gates on a precondition (research-analysis needs at least one completed research item; gap-analysis needs at least one completed research OR discussion item). When the precondition fails the analysis returns without touching cache or manifest — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
-The caller is responsible for surfacing the result — `continue-epic` shows a callout above the discovery map; `refinement-session.md` records names under **Self-Healing Arrivals** in the active session log.
+The caller is responsible for surfacing the result — `continue-epic` shows a callout above the discovery map; `refinement-session.md` records names under **Topic Discovery Arrivals** in the active session log.
 
 ## Parameters
 
@@ -21,7 +21,7 @@ The caller provides these via context before loading:
 > *Output the next fenced block as a code block:*
 
 ```
-·· Self-Healing Check ···························
+·· Cache Check ··································
 ```
 
 Run discovery for the work unit:
@@ -95,7 +95,7 @@ No dispatch.
 
 When both analyses surface the same kebab-case theme, the second analysis writes the inception item with `source` already comma-joined (`research-analysis,gap-analysis`) — see each analysis's **D. Filter and Save** section.
 
-If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap_analysis`, treat it as a research-analysis arrival only for caller-side display purposes (single callout entry, single Self-Healing Arrivals bullet). The manifest already records the comma-joined source.
+If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap_analysis`, treat it as a research-analysis arrival only for caller-side display purposes (single callout entry, single Topic Discovery Arrivals bullet). The manifest already records the comma-joined source.
 
 → Proceed to **E. Return**.
 
@@ -104,6 +104,6 @@ If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap
 The caller reads `new_arrivals` from conversation memory:
 
 - **`continue-epic`** — passes `new_arrivals` to `epic-display-and-menu.md` for the `⚑ N new topics added to the map from {analysis}` callout above the Discovery Map. Callout is rendered once at this boot-up; subsequent boots without changes don't repeat it.
-- **`workflow-inception-process` refinement** — appends each name to the active session log's **Self-Healing Arrivals** section as `- {topic} (added by {analysis}, source: {provenance})`, replacing the `(none)` placeholder if it's still present.
+- **`workflow-inception-process` refinement** — appends each name to the active session log's **Topic Discovery Arrivals** section as `- {topic} (added by {analysis}, source: {provenance})`, replacing the `(none)` placeholder if it's still present.
 
 → Return to caller.
