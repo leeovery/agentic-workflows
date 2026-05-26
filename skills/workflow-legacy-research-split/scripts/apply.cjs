@@ -189,7 +189,7 @@ function apply(cwd, workUnit, currentSource) {
 
       runCli(cwd, ['init-phase', `${workUnit}.research.${theme.kebab_name}`]);
       runCli(cwd, ['init-phase', `${workUnit}.inception.${theme.kebab_name}`]);
-      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'routing', theme.routing]);
+      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'routing', 'research']);
       runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'summary', theme.summary]);
       runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'description', theme.description]);
       runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'source', `legacy-split:${currentSource}`]);
