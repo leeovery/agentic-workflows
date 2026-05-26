@@ -61,11 +61,11 @@ Mutations from A and B are already committed. Returning to the caller would cont
 > context-heavy — decomposing legacy research files and
 > drafting missing inception summaries from source content.
 >
-> Run `/clear`, then `/continue-epic` again to pick up with a
-> clean window. The backfill gates will be no-ops on the next
-> pass: legacy sources are now renamed and excluded, and
-> populated summaries skip the recovery filter — the normal
-> epic flow takes over immediately.
+> Run `/clear`, then `/workflow-start` to pick up with a clean
+> window. The backfill gates will be no-ops on the next pass:
+> legacy sources are now renamed and excluded, and populated
+> summaries skip the recovery filter — the normal epic flow
+> takes over immediately.
 ```
 
 **STOP.** Terminal — do not return to the caller's Step 6.
