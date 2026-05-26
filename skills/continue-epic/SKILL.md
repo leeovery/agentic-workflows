@@ -227,7 +227,7 @@ Then read `discovery_map` from the most recent discovery `detail` and filter for
 
 Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`.
 
-→ Proceed to **Step 6**.
+backfill-checks is terminal when it fires — it commits the recovery work and stops, advising the user to `/clear` and re-run `/continue-epic`. Do not proceed to Step 6 on this branch.
 
 ---
 

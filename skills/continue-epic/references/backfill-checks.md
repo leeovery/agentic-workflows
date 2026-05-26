@@ -38,8 +38,34 @@ Re-filter `discovery_map` for items where `summary` or `description` is null or 
 
 Load **[summary-backfill.md](summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
 
-→ Return to caller.
+→ Proceed to **C. Advise Restart**.
 
 #### If `items_to_recover` is empty
 
-→ Return to caller.
+→ Proceed to **C. Advise Restart**.
+
+## C. Advise Restart
+
+Mutations from A and B are already committed (apply.cjs commits per source; summary-backfill commits its batch). Returning to the caller would continue Step 6 onward inside the same conversation, but the backfill pass — particularly legacy decomposition — is context-heavy by design. Hand the user a fresh window before the rest of `/continue-epic` runs.
+
+> *Output the next fenced block as a code block:*
+
+```
+── Backfill Complete ────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Backfill work is recorded and committed. This pass was
+> context-heavy — decomposing legacy research files and
+> drafting missing inception summaries from source content.
+>
+> Run `/clear`, then `/continue-epic` again to pick up with a
+> clean window. The backfill gates will be no-ops on the next
+> pass: legacy sources are now renamed and excluded, and
+> populated summaries skip the recovery filter — the normal
+> epic flow takes over immediately.
+```
+
+**STOP.** Terminal — do not return to the caller's Step 6.
