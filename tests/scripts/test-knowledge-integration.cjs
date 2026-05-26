@@ -110,7 +110,7 @@ const FIXTURE_DOCS = [
     phase: 'analysis',
     topic: 'gap-analysis',
     confidence: 'low',
-    source_file: '.workflows/data-model/.state/discussion-gap-analysis.md',
+    source_file: '.workflows/data-model/.state/inception-gap-analysis.md',
     timestamp: 1700000060000,
   },
 ];

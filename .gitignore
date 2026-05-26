@@ -2,6 +2,7 @@
 .idea/
 .vscode/
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 .tick/cache.db
 .tick/lock
 node_modules/

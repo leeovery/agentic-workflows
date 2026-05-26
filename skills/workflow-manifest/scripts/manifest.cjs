@@ -20,7 +20,7 @@ const VALID_PHASES = [
 
 const VALID_PHASE_STATUSES = {
   inception:      ['in-progress'],
-  research:       ['in-progress', 'completed', 'cancelled'],
+  research:       ['in-progress', 'completed', 'superseded', 'cancelled'],
   discussion:     ['in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],

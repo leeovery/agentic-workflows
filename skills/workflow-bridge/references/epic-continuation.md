@@ -18,9 +18,9 @@ node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 
 Parse the output. Use the epic's `detail` object as the discovery data for the display.
 
-→ Proceed to **B. Self-Healing**.
+→ Proceed to **B. Topic Discovery**.
 
-## B. Self-Healing
+## B. Topic Discovery
 
 A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the `detail` object parsed in A:
 
@@ -35,7 +35,7 @@ No analyses to run.
 
 #### If at least one cache is `stale`
 
-→ Load **[self-healing.md](../../workflow-shared/references/self-healing.md)** with work_unit = `{work_unit}`.
+→ Load **[topic-discovery.md](../../workflow-shared/references/topic-discovery.md)** with work_unit = `{work_unit}`.
 
 On return, store the orchestrator's `new_arrivals` tracker in conversation memory — section D reads it to render the callout above the discovery map.
 

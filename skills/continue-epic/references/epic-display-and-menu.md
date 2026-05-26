@@ -7,7 +7,7 @@
 Display the full phase-by-phase breakdown for the selected epic, then present an interactive menu of actionable items. The caller is responsible for providing:
 - Discovery output from `continue-epic/scripts/discovery.cjs` (the `detail` object for the selected epic)
 - `work_unit` — the epic's work unit name
-- `new_arrivals` (optional) — tracker from `self-healing.md` listing topic names added during this boot-up, per analysis. Used to render the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
+- `new_arrivals` (optional) — tracker from `topic-discovery.md` listing topic names added during this boot-up, per analysis. Used to render the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 
 This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.).
 

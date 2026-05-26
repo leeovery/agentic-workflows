@@ -1,10 +1,10 @@
 # Research Analysis
 
-*Shared reference. Loaded by `workflow-shared/references/self-healing.md`.*
+*Shared reference. Loaded by `workflow-shared/references/topic-discovery.md`.*
 
 ---
 
-Identifies discussion-sized topics from completed research files and adds them to the discovery map as fresh inception items with `source: research-analysis` provenance. The orchestrator handles the cache check; this reference is invoked only when the cache is `stale`.
+Identifies follow-up topics from completed per-topic research files and adds them to the discovery map as fresh inception items with `source: research-analysis` provenance. The orchestrator handles the cache check; this reference is invoked only when the cache is `stale`.
 
 ## Parameters
 
@@ -12,6 +12,8 @@ The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name.
 - `tracker` — a list (initially empty) for newly-added topic names. The reference appends names as items are written.
+
+**Precondition.** Collect research items where `status == 'completed'`. If empty, return — no cache stamp, no manifest writes, no callout.
 
 ## A. Identify Themes
 
@@ -23,35 +25,29 @@ Analyzing research documents...
 
 **CRITICAL**: This analysis is the foundation for every downstream phase. The themes extracted here drive topic definition, which drives discussion, which drives specification, planning, and implementation. Anything missed here is invisible to the rest of the pipeline.
 
-Read every research file under `.workflows/{work_unit}/research/` end-to-end. Then cross-reference across files — connections, contradictions, and shared concerns that span multiple documents are often the most important themes. Extract every distinct theme, concern, decision point, constraint, risk, open question, or nuance you find. Technical, business, operational, regulatory, user-facing, or otherwise — if the research mentions it, capture it. Even small details matter: a brief aside about a regulatory deadline, a passing mention of a dependency, a footnote about a limitation. These may not become their own topics, but they inform the grouping and ensure nothing is lost.
+Read `.workflows/{work_unit}/research/{name}.md` for each completed item from the precondition set. Skip files missing on disk. Items with `in-progress`, `superseded`, or `cancelled` status are not in the input set.
 
-This analysis is cached and only re-runs when research files change. Be exhaustive — this is the one opportunity to capture the full picture.
+Cross-reference across files — connections, contradictions, and shared concerns that span multiple documents are often the most important themes. Extract every distinct theme, concern, decision point, constraint, risk, open question, or nuance you find. Technical, business, operational, regulatory, user-facing, or otherwise — if the research mentions it, capture it. Even small details matter: a brief aside about a regulatory deadline, a passing mention of a dependency, a footnote about a limitation. These may not become their own topics, but they inform the grouping and ensure nothing is lost.
 
-For each theme, note the source file(s) that contributed to it.
+This analysis is cached and only re-runs when completed-research content changes. Be exhaustive — this is the one opportunity to capture the full picture.
 
-→ Proceed to **B. Define Discussion Topics**.
+For each theme, note the source file(s) that contributed to it and assess its depth: is it well-explored in the source material, or does it surface as an under-explored area that would benefit from its own research pass?
 
-## B. Define Discussion Topics
+→ Proceed to **B. Define Candidate Topics**.
 
-Group the themes from A into discussion topics. Each topic becomes a separate discussion, so the granularity matters.
+## B. Define Candidate Topics
 
-**Prefer fewer, coarser topics.** The goal is discussion-sized chunks with clear boundaries — not an exhaustive breakdown of every concern. Research that surfaces 10-15 themes should typically yield 3-6 discussion topics. Each topic should be substantial enough for a rich conversation, not so narrow that the discussion is artificially constrained.
+Group the themes from A into candidate topics.
 
-**The independence test:** If discussing topic A requires constantly referencing topic B, they belong together. Merge themes that share the same domain, data model, user journey, or decision space. Narrow topics create overhead — separate discussions, separate artifacts, separate scaffolding — and artificially constrain conversations that naturally want to cross boundaries.
+→ Load **[topic-granularity.md](topic-granularity.md)**.
 
-**Anti-pattern — splitting implementation details of one domain:**
+For each candidate topic, write a one-line summary that covers the constituent themes — used as the inception item's `summary` field.
 
-Research about authentication might surface themes for API authentication, password hashing, session management, OAuth integration, token refresh, and rate limiting. These are NOT six discussion topics. They share the same user, the same security boundary, and the same session lifecycle. You cannot discuss OAuth without discussing tokens, or tokens without sessions. This is one topic: **Authentication**.
+Assign each candidate a `routing` value.
 
-**Anti-pattern — one theme per system component:**
+→ Load **[routing-decision.md](routing-decision.md)**.
 
-Research about a data pipeline might surface themes for ingestion, schema validation, transformation rules, error handling, retry logic, and dead letter queues. Each theme is just a stage in the same pipeline — discussing error handling requires understanding the transformation stage. This is one topic: **Data Pipeline**.
-
-**When to split:**
-
-Split when themes have genuinely different stakeholders, concerns, or decision spaces that can be explored independently. For example, research about a multi-tenant SaaS platform might surface tenant isolation, database strategy, shared infrastructure, billing, onboarding, and admin tooling. These split naturally into two topics: **Tenant Architecture** (isolation, storage, infrastructure — coupled technical decisions) and **Tenant Lifecycle** (onboarding, billing, admin — coupled operational decisions). The architecture discussion doesn't need to reference billing details, and the lifecycle discussion doesn't need to debate isolation strategies.
-
-For each topic, write a one-line summary that covers the constituent themes — used as the inception item's `summary` field.
+A single analysis may emit a mix of routings — apply the criteria per candidate.
 
 → Proceed to **C. Anchor to Existing Discussions**.
 
@@ -76,18 +72,35 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.incep
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed via refinement.
 
-For each candidate topic from **B** (kebab-case name + summary), evaluate the conditions below in order. Each branch is self-contained and concludes by moving on to the next candidate.
+For each candidate topic from **B** (kebab-case name + summary + routing), evaluate the conditions below in order. Each branch is self-contained and concludes by moving on to the next candidate.
 
 #### If the name is already on the active map (a key in `items`)
 
-Check if the existing item's `source` field already includes `research-analysis`. If not, the same theme is now surfacing both via the existing source and via research-analysis — extend the source list to record dual provenance:
+Check if the existing item's `source` field already includes `research-analysis`. If not, the same theme is now surfacing both via the existing source and via research-analysis — extend the source list to record dual provenance.
+
+Read the existing source:
 
 ```bash
-existing_source=$(node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{name} source)
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "${existing_source},research-analysis"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{name} source
 ```
 
-Do not add to `tracker` — the item was already on the map. Do not write a new manifest entry.
+**If the existing source is empty or the literal string `null`:**
+
+The manifest CLI prints `"null"` for fields that exist with a JSON null value (intentional — `exists` is the way to distinguish missing from null). Treat both empty and `"null"` as "no real source" and set the new value alone:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "research-analysis"
+```
+
+**Otherwise:**
+
+Set source to `{existing},research-analysis` (comma-joined):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "{existing},research-analysis"
+```
+
+Do not change the existing item's routing — the user (or earlier analysis) already set it. Do not add to `tracker`. Do not write a new manifest entry.
 
 #### If the name appears in `dismissed`
 
@@ -101,15 +114,15 @@ Initialise the inception item and write its fields:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{name}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{one-line summary}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{paragraphs}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing discussion
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing {routing-from-B}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source research-analysis
 ```
 
-Routing is `discussion` — research-surfaced themes are discussion candidates by definition.
+`routing` is the value decided per-candidate in **B** (`discussion` or `research`).
 
-`description` is a paragraph or two extracted from the analysis output for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up for discussion. Quote with single quotes; description may span multiple paragraphs.
+`description` is a paragraph or two extracted from the analysis output for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up. Quote with single quotes; description may span multiple paragraphs.
 
-Append the name to the caller's `tracker` so the orchestrator can surface it via callout / Self-Healing Arrivals.
+Append the name to the caller's `tracker` so the orchestrator can surface it via callout / Topic Discovery Arrivals.
 
 ---
 
@@ -125,7 +138,7 @@ Update the existing cache file at `.workflows/{work_unit}/.state/research-analys
 mkdir -p .workflows/{work_unit}/.state
 ```
 
-Overwrite with the topic list (gap-analysis reads this file as its second input):
+Overwrite with the topic list:
 
 ```markdown
 # Research Analysis Cache
@@ -134,24 +147,32 @@ Overwrite with the topic list (gap-analysis reads this file as its second input)
 
 ### {Topic Name}
 - **Summary**: {one-line summary}
+- **Routing**: {discussion|research}
 - **Sources**: {filename1}.md, {filename2}.md
 
 ### {Another Topic}
 - **Summary**: {one-line summary}
+- **Routing**: {discussion|research}
 - **Sources**: {filename1}.md, {filename2}.md
 ```
 
-List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. Gap-analysis cross-references this list against existing discussions.
+List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff.
 
-Compute the input checksum from the research files:
+Compute the input checksum from the completed research files only:
 
 ```bash
 node -e "
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
+const manifest = JSON.parse(fs.readFileSync('.workflows/{work_unit}/manifest.json', 'utf8'));
+const items = ((manifest.phases || {}).research || {}).items || {};
 const dir = '.workflows/{work_unit}/research';
-const files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort();
+const files = Object.entries(items)
+  .filter(([_, v]) => v && v.status === 'completed')
+  .map(([k]) => k + '.md')
+  .filter(f => fs.existsSync(path.join(dir, f)))
+  .sort();
 const hash = crypto.createHash('md5');
 for (const f of files) hash.update(fs.readFileSync(path.join(dir, f)));
 console.log(hash.digest('hex'));
@@ -164,7 +185,7 @@ Update the manifest's analysis_cache:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.checksum "{computed-checksum}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.generated "{ISO timestamp}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.files '[]'
-# Push one entry per research file:
+# Push one entry per completed research file:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research analysis_cache.files "{research-file}.md"
 ```
 

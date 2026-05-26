@@ -27,7 +27,7 @@ const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specificatio
 // the KB. Restrict to the two analysis cache files.
 const ANALYSIS_CACHE_FILES = {
   'research-analysis': 'research-analysis',
-  'discussion-gap-analysis': 'gap-analysis',
+  'inception-gap-analysis': 'gap-analysis',
 };
 
 // Resolve manifest CLI path. In the bundled form, __dirname is

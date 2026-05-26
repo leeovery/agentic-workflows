@@ -32,7 +32,9 @@ When working in a specific topic file and content drifts to another topic's scop
 
 When you notice convergence signals (from the research guidelines), flag it and route to the appropriate action:
 
-#### If threads are emerging as distinct topics (different scopes, stakeholders, or timelines)
+#### If sustained off-topic content has accumulated over multiple exchanges in this session
+
+The current file is drifting — multiple exchanges have been adding material that doesn't belong under this topic's name. This is the trigger to split, not a clean thematic separation alone.
 
 → Load **[topic-splitting.md](topic-splitting.md)** and follow its instructions as written.
 
