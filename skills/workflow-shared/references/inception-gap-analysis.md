@@ -75,12 +75,11 @@ Group the identified gaps into topic-sized chunks.
 
 For each topic, write a one-line summary covering the constituent gaps — used as the inception item's `summary` field.
 
-**Per-candidate routing.** Decide each candidate's routing based on the depth available in the source artifacts:
+Assign each candidate a `routing` value.
 
-- `routing: discussion` — gap is well-scoped enough for direct discussion.
-- `routing: research` — gap is under-explored; needs more research first.
+→ Load **[routing-decision.md](routing-decision.md)**.
 
-A single analysis may emit a mix of both routings.
+A single analysis may emit a mix of routings — apply the criteria per candidate.
 
 → Proceed to **D. Filter and Save**.
 

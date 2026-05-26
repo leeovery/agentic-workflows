@@ -43,12 +43,11 @@ Group the themes from A into candidate topics.
 
 For each candidate topic, write a one-line summary that covers the constituent themes — used as the inception item's `summary` field.
 
-**Per-candidate routing.** Decide each candidate's routing based on source depth:
+Assign each candidate a `routing` value.
 
-- `routing: discussion` — well-explored; ready for direct discussion.
-- `routing: research` — under-explored; needs more feasibility/market/viability work first.
+→ Load **[routing-decision.md](routing-decision.md)**.
 
-A single analysis may emit a mix of both routings.
+A single analysis may emit a mix of routings — apply the criteria per candidate.
 
 → Proceed to **C. Anchor to Existing Discussions**.
 

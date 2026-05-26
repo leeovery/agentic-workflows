@@ -55,7 +55,9 @@ For each candidate theme, build a tentative entry:
 - `kebab_name` — short, kebab-cased
 - `summary` — one line
 - `description` — paragraph or two synthesised from the source
-- `routing` — `discussion` (well-explored, ready) or `research` (under-explored)
+- `routing` — assigned per the criteria below
+
+→ Load **[routing-decision.md](../../workflow-shared/references/routing-decision.md)**.
 
 Hold these in working memory. Do NOT write any cache files yet.
 
