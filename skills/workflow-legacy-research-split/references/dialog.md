@@ -4,7 +4,7 @@
 
 ---
 
-Drive the per-source iteration: read source, identify themes, early sanity gate, draft cache, propose, edit, validate, apply. Edit operations live in their own lettered sections (K–S) dispatched from G.
+Drive the per-source iteration: read source, identify themes, early sanity gate, draft cache, propose, edit, validate, apply. Edit operations live in their own lettered sections (K–R) dispatched from G.
 
 ## A. Iterate
 
@@ -32,23 +32,11 @@ Pop the next name from `remaining`. Set `current_source = name`.
 
 ## B. Read Source
 
-> *Output the next fenced block as a code block:*
-
-```
-·· Read Source ··································
-```
-
 Read `.workflows/{work_unit}/research/{current_source}.md` end-to-end. Hold the content in working memory — later sections reference it.
 
 → Proceed to **C. List Candidate Themes**.
 
 ## C. List Candidate Themes
-
-> *Output the next fenced block as a code block:*
-
-```
-·· Candidate Themes ·····························
-```
 
 Identify distinct themes holistically. Theme-identification rules:
 
@@ -122,12 +110,6 @@ Apply the user's adjustment in working memory (no files written yet). Supported 
 
 ## E. Draft Cache Files
 
-> *Output the next fenced block as a code block:*
-
-```
-·· Draft Cache Files ····························
-```
-
 Create the cache directory:
 
 ```bash
@@ -173,12 +155,6 @@ Schema:
 
 ## F. Propose Plan
 
-> *Output the next fenced block as a code block:*
-
-```
-·· Propose Plan ·································
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -213,7 +189,7 @@ Source file will be renamed to {current_source}-superseded-{datetime}.md.
 ```
 · · · · · · · · · · · ·
 - **`y`/`yes`** — Apply this plan
-- **Edit** — Modify cache files or plan.json (rename, change routing, merge, split, rewrite, add, remove)
+- **Edit** — Modify cache files or plan.json (rename, change routing, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
 - **`a`/`abandon`** — Skip this source file
 · · · · · · · · · · · ·
 ```
@@ -233,12 +209,6 @@ Source file will be renamed to {current_source}-superseded-{datetime}.md.
 → Proceed to **J. Abandon Source**.
 
 ## G. Apply Edit
-
-> *Output the next fenced block as a code block:*
-
-```
-·· Apply Edit ···································
-```
 
 Dispatch to the matching operation based on the user's request. Every operation returns to **F. Propose Plan** for re-render.
 
@@ -266,25 +236,15 @@ Dispatch to the matching operation based on the user's request. Every operation 
 
 → Proceed to **P. Split One Theme**.
 
-#### If the edit rewrites a draft
-
-→ Proceed to **Q. Rewrite a Draft**.
-
 #### If the edit adds a theme
 
-→ Proceed to **R. Add a Theme**.
+→ Proceed to **Q. Add a Theme**.
 
 #### If the edit removes a theme
 
-→ Proceed to **S. Remove a Theme**.
+→ Proceed to **R. Remove a Theme**.
 
 ## H. Validate
-
-> *Output the next fenced block as a code block:*
-
-```
-·· Validate ·····································
-```
 
 ```bash
 node .claude/skills/workflow-legacy-research-split/scripts/validate.cjs {work_unit} {current_source}
@@ -317,12 +277,6 @@ Validation failed for {current_source}:
 → Return to **F. Propose Plan**.
 
 ## I. Apply
-
-> *Output the next fenced block as a code block:*
-
-```
-·· Apply ········································
-```
 
 ```bash
 node .claude/skills/workflow-legacy-research-split/scripts/apply.cjs {work_unit} {current_source}
@@ -400,14 +354,27 @@ User specifies `theme_name` and new `routing` (`discussion` | `research`).
 
 User specifies `theme_name` and new `classification` (`creates` | `merges`).
 
-1. Read `plan.json`. Set the theme's `classification`.
-2. If becoming `merges`, ask the user for `target_name`.
+#### If becoming `merges`
 
-   **STOP.** Wait for user response.
+Ask the user for the merge target. If they've already named one in the same turn, skip ahead.
 
-   Set `theme.target_name` to the supplied value.
-3. If becoming `creates`, delete `theme.target_name` (if present).
-4. Write `plan.json`.
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> What's the target topic for "{theme_name}" to merge into?
+```
+
+**STOP.** Wait for user response.
+
+1. Read `plan.json`. Set the theme's `classification` to `merges` and `target_name` to the supplied value.
+2. Write `plan.json`.
+
+→ Return to **F. Propose Plan**.
+
+#### If becoming `creates`
+
+1. Read `plan.json`. Set the theme's `classification` to `creates`. Delete `theme.target_name` if present.
+2. Write `plan.json`.
 
 → Return to **F. Propose Plan**.
 
@@ -449,28 +416,12 @@ User specifies `original_name`, `name_a`, `name_b`, and (in their message) what 
    ```bash
    rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{original_name}.md
    ```
-4. Read `plan.json`. Remove the original theme entry. Add two new entries (`name_a`, `name_b`) with appropriate summary/description/routing/classification. If any field is ambiguous, ask the user.
-
-   **STOP.** Wait for user response (if asking).
+4. Read `plan.json`. Remove the original theme entry. Add two new entries (`name_a`, `name_b`) with appropriate summary/description/routing/classification. If any field is ambiguous, ask one clarifying question before proceeding — this is conversational flow, not a structured STOP.
 5. Write `plan.json`.
 
 → Return to **F. Propose Plan**.
 
-## Q. Rewrite a Draft
-
-User specifies `theme_name` and the new content (either inline or by editing the cache file directly on disk).
-
-#### If the user edited the cache file on disk
-
-Do nothing here — the next render will pick up the changes.
-
-#### Otherwise
-
-Overwrite the cache file with the new content the user supplied.
-
-→ Return to **F. Propose Plan**.
-
-## R. Add a Theme
+## Q. Add a Theme
 
 User specifies `kebab_name`, summary, description, routing, classification, and the content for the new cache file.
 
@@ -480,7 +431,7 @@ User specifies `kebab_name`, summary, description, routing, classification, and 
 
 → Return to **F. Propose Plan**.
 
-## S. Remove a Theme
+## R. Remove a Theme
 
 User specifies `theme_name`. Confirm before destructive removal:
 
