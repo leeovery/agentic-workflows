@@ -38,7 +38,9 @@ Read `.workflows/{work_unit}/research/{current_source}.md` end-to-end. Hold the 
 
 ## C. List Candidate Themes
 
-Identify distinct themes holistically from the source content.
+apply.cjs renames the source to `{source}-superseded-{datetime}.md` when the plan is applied. No content survives in the original location. **Every meaningful piece of the source must land in a candidate theme** — there is no "leave it in place" option. Material not transcribed into a theme is lost.
+
+Identify themes from the source's natural structure: its top-level headings, the distinct subjects it discusses, the seams where focus shifts. A long, multi-subject file legitimately produces many themes; a short, single-subject file is one theme. Small fragments that don't justify a standalone theme get merged into the most closely related one — never dropped.
 
 → Load **[topic-granularity.md](../../workflow-shared/references/topic-granularity.md)**.
 
@@ -133,13 +135,13 @@ The cache file **IS** the new research file body — it becomes the content of `
 
 - **Rewrite for flow only where helpful.** Light editing is OK to make the extracted content self-contained when it would otherwise leave the reader stranded: fix dangling references to other themes ("as discussed above" when "above" is now in a different file), tighten a transition that no longer flows, split a long paragraph that mixes themes. Don't rewrite for style. When in doubt, copy verbatim.
 
-- **Don't lose content.** Every meaningful piece of the source should land in at least one theme's cache file. Losing material is a failure mode — the user wrote it for a reason and they're trusting the split to preserve it.
+- **Don't lose content.** The source file is replaced by apply — anything not transcribed into a theme cache file is gone. Walk the source top to bottom and confirm every paragraph, list, code block, and table is accounted for in at least one theme.
 
 - **Mild duplication is acceptable** where the source itself genuinely overlaps — e.g. a paragraph discussing a trade-off relevant to both `auth` and `caching` themes can appear in both cache files. Don't manufacture duplication; mirror what the source does.
 
-- **Substantive bodies, scaled to the source.** Cache files should be commensurate with the source's depth. A 200-line source decomposed into 3 themes typically yields cache files in the 50–100 line range each. A 1000-line source yields cache files of hundreds of lines. If a cache file ends up as a handful of paragraphs when the source had pages of relevant material, content has been lost — re-read the source for that theme.
+- **Substantive bodies.** Each cache file is the new research file's body. Its size is whatever the source had on that theme. If a cache file is sparse when its theme spans several sections of the source, re-read and finish the extraction.
 
-- **Long sources need careful walking.** For sources that span thousands of lines or have content interleaved across many sections, work theme-by-theme: pick one theme, scan the source end-to-end for everything that belongs to it, transcribe in source order, then move to the next theme. Don't try to allocate the whole source in one pass; you'll miss interleaved material.
+- **Long sources need careful walking.** Work theme-by-theme: pick one theme, scan the source end-to-end for everything that belongs to it, transcribe in source order, then move to the next theme. Don't try to allocate the whole source in one pass — interleaved material is easy to miss.
 
 - **No empty cache files.** `validate.cjs` rejects files that are blank or whitespace-only.
 

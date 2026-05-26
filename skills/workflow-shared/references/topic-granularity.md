@@ -4,11 +4,7 @@
 
 ---
 
-Granularity matters: each topic becomes a separate downstream item with its own artifacts and scaffolding. Narrow topics create overhead and artificially constrain work that naturally wants to cross boundaries.
-
-## Prefer fewer, coarser topics
-
-Two to six topics is typical for most sources. If you find yourself heading higher, pause and re-check using the independence test below — but don't force-merge if more topics are genuinely warranted by the source.
+Granularity matters: each topic becomes a separate downstream item with its own artifacts and scaffolding. Narrow topics create overhead and artificially constrain work that naturally wants to cross boundaries. Let the source's actual structure dictate the count — don't anchor to a target number.
 
 ## The independence test
 
