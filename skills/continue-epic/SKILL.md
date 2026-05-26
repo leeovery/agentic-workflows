@@ -1,6 +1,6 @@
 ---
 name: continue-epic
-allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -222,14 +222,13 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 > per-topic decomposition before analyses can operate.
 ```
 
-Qualifying inception items: `source` contains `migration-seeded`, `routing` is `research`, matching `phases.research.items.{name}.status` is `in-progress`, `.workflows/{work_unit}/research/{name}.md` exists, and `legacy_split_state` is not set on the inception item (an apply that completed or is mid-flight has stamped this).
-
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception items
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.research items
+node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}
 ```
 
-#### If no qualifying items
+Parse `qualifying_sources` from the JSON output.
+
+#### If `qualifying_sources` is empty
 
 → Proceed to **Step 6**.
 
