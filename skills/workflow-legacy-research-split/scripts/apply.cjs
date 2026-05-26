@@ -40,12 +40,6 @@ function makeDatetimeStamp() {
   );
 }
 
-function readSource(cwd, workUnit, name) {
-  const out = runCli(cwd, ['get', `${workUnit}.inception.${name}`, 'source']);
-  // get strips JSON quoting for primitives — value lands as raw text + newline.
-  return out.replace(/\n$/, '');
-}
-
 function apply(cwd, workUnit, currentSource) {
   const wuDir = path.join(cwd, '.workflows', workUnit);
   const researchDir = path.join(wuDir, 'research');
@@ -131,49 +125,20 @@ function apply(cwd, workUnit, currentSource) {
   }
 
   // Stage 5: apply themes.
-  const creates = [];
-  const merges = [];
+  const created = [];
   try {
     for (const theme of plan.themes) {
-      if (theme.classification === 'creates') {
-        const newFile = path.join(researchDir, `${theme.kebab_name}.md`);
-        const cacheFile = path.join(cacheDir, `${theme.kebab_name}.md`);
-        fs.renameSync(cacheFile, newFile);
-        creates.push({ name: theme.kebab_name, path: newFile });
+      const newFile = path.join(researchDir, `${theme.kebab_name}.md`);
+      const cacheFile = path.join(cacheDir, `${theme.kebab_name}.md`);
+      fs.renameSync(cacheFile, newFile);
+      created.push({ name: theme.kebab_name, path: newFile });
 
-        runCli(cwd, ['init-phase', `${workUnit}.research.${theme.kebab_name}`]);
-        runCli(cwd, ['init-phase', `${workUnit}.inception.${theme.kebab_name}`]);
-        runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'routing', theme.routing]);
-        runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'summary', theme.summary]);
-        runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'description', theme.description]);
-        runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'source', `legacy-split:${currentSource}`]);
-      } else if (theme.classification === 'merges') {
-        const targetFile = path.join(researchDir, `${theme.target_name}.md`);
-        const cacheFile = path.join(cacheDir, `${theme.kebab_name}.md`);
-        const cacheContent = fs.readFileSync(cacheFile, 'utf8');
-        if (!fs.existsSync(targetFile)) {
-          throw new Error(`merge target ${theme.target_name}.md does not exist; cannot append`);
-        }
-        const sep = cacheContent.startsWith('\n') ? '---' : '\n---\n';
-        fs.appendFileSync(targetFile, sep + cacheContent);
-        merges.push({ name: theme.target_name, path: targetFile });
-
-        // Extend target inception item's source field (comma-joined, idempotent).
-        const targetSourceTag = `legacy-split:${currentSource}`;
-        const existsOut = runCli(cwd, ['exists', `${workUnit}.inception.${theme.target_name}`]);
-        if (existsOut.trim() === 'true') {
-          let current = '';
-          try { current = readSource(cwd, workUnit, theme.target_name); } catch { current = ''; }
-          const parts = current.split(',').map(s => s.trim()).filter(Boolean);
-          if (!parts.includes(targetSourceTag)) {
-            parts.push(targetSourceTag);
-            runCli(cwd, ['set', `${workUnit}.inception.${theme.target_name}`, 'source', parts.join(',')]);
-          }
-        }
-
-        // Clean up cache file for merge themes — creates were renamed, merges read+left.
-        try { fs.unlinkSync(cacheFile); } catch {}
-      }
+      runCli(cwd, ['init-phase', `${workUnit}.research.${theme.kebab_name}`]);
+      runCli(cwd, ['init-phase', `${workUnit}.inception.${theme.kebab_name}`]);
+      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'routing', theme.routing]);
+      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'summary', theme.summary]);
+      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'description', theme.description]);
+      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'source', `legacy-split:${currentSource}`]);
     }
   } catch (e) {
     return {
@@ -193,8 +158,7 @@ function apply(cwd, workUnit, currentSource) {
     path.relative(cwd, path.join(wuDir, 'manifest.json')),
     path.relative(cwd, sourceFile),
     path.relative(cwd, supersededFile),
-    ...creates.map(c => path.relative(cwd, c.path)),
-    ...merges.map(m => path.relative(cwd, m.path)),
+    ...created.map(c => path.relative(cwd, c.path)),
   ];
 
   try {
@@ -221,10 +185,7 @@ function apply(cwd, workUnit, currentSource) {
 
   return {
     ok: true,
-    applied: {
-      creates: creates.length,
-      merges: merges.length,
-    },
+    applied: { themes: created.length },
   };
 }
 

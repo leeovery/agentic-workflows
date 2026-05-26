@@ -202,7 +202,6 @@ describe('validate.cjs: cache shape contract', () => {
     summary: 'Auth flow',
     description: 'Auth description.',
     routing: 'discussion',
-    classification: 'creates',
     _content: 'auth content',
   });
 
@@ -218,7 +217,7 @@ describe('validate.cjs: cache shape contract', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
-      themes: [{ kebab_name: 'auth', summary: 's', description: 'd', routing: 'discussion', classification: 'creates' }],
+      themes: [{ kebab_name: 'auth', summary: 's', description: 'd', routing: 'discussion' }],
     }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -263,30 +262,8 @@ describe('validate.cjs: cache shape contract', () => {
     assert.ok(r.json.errors.some(e => e.includes('invalid routing')));
   });
 
-  it('rejects invalid classification', () => {
-    writeCachePlan('wu', 'src', [{ ...baseTheme(), classification: 'bogus' }]);
-    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
-    assert.strictEqual(r.json.ok, false);
-    assert.ok(r.json.errors.some(e => e.includes('invalid classification')));
-  });
-
-  it('rejects merges without target_name', () => {
-    writeCachePlan('wu', 'src', [{ ...baseTheme(), classification: 'merges' }]);
-    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
-    assert.strictEqual(r.json.ok, false);
-    assert.ok(r.json.errors.some(e => e.includes('missing target_name')));
-  });
-
-  it('accepts a valid creates plan', () => {
+  it('accepts a valid plan', () => {
     writeCachePlan('wu', 'src', [{ ...baseTheme() }]);
-    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
-    assert.strictEqual(r.json.ok, true);
-  });
-
-  it('accepts a valid merges plan', () => {
-    writeCachePlan('wu', 'src', [
-      { ...baseTheme(), classification: 'merges', target_name: 'existing' },
-    ]);
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, true);
   });
@@ -322,7 +299,7 @@ describe('validate.cjs: cache shape contract', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
-      themes: [{ summary: 's', description: 'd', routing: 'discussion', classification: 'creates' }],
+      themes: [{ summary: 's', description: 'd', routing: 'discussion' }],
     }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -344,7 +321,7 @@ describe('validate.cjs: cache shape contract', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
-      themes: [{ kebab_name: '   ', summary: 's', description: 'd', routing: 'discussion', classification: 'creates' }],
+      themes: [{ kebab_name: '   ', summary: 's', description: 'd', routing: 'discussion' }],
     }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -362,14 +339,14 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e1', 'exploration');
     writeCachePlan('e1', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', classification: 'creates', _content: 'auth content' },
+        routing: 'discussion', _content: 'auth content' },
       { kebab_name: 'caching', summary: 'Cache', description: 'cache desc',
-        routing: 'research', classification: 'creates', _content: 'cache content' },
+        routing: 'research', _content: 'cache content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e1', 'exploration');
     assert.strictEqual(r.json.ok, true);
-    assert.deepStrictEqual(r.json.applied, { creates: 2, merges: 0 });
+    assert.deepStrictEqual(r.json.applied, { themes: 2 });
 
     // Source file renamed (not original path).
     assert.strictEqual(fileExists('e1', 'research/exploration.md'), false);
@@ -407,13 +384,13 @@ describe('apply.cjs: end-to-end', () => {
     );
   });
 
-  it('handles topic-name source: source name reused as creates theme', () => {
+  it('handles topic-name source: source name reused by a theme', () => {
     seedLegacyEpic('e2', 'auth');
     writeCachePlan('e2', 'auth', [
       { kebab_name: 'auth', summary: 'Auth core', description: 'auth desc',
-        routing: 'discussion', classification: 'creates', _content: 'auth-only content' },
+        routing: 'discussion', _content: 'auth-only content' },
       { kebab_name: 'caching', summary: 'Cache', description: 'cache desc',
-        routing: 'research', classification: 'creates', _content: 'cache content' },
+        routing: 'research', _content: 'cache content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e2', 'auth');
@@ -425,50 +402,44 @@ describe('apply.cjs: end-to-end', () => {
     assert.ok(researchFiles.some(f => f.startsWith('auth-superseded-')));
 
     const m = readManifest('e2');
-    // Source inception item gone; new 'auth' is a fresh creates theme.
+    // Source inception item gone; new 'auth' is a fresh theme.
     assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:auth');
     assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth core');
   });
 
-  it('appends to merge target and extends source field', () => {
-    seedLegacyEpic('e3', 'exploration');
-    // Pre-create an existing target topic.
-    spawnSync('node', [MANIFEST_CLI, 'init-phase', 'e3.research.existing'], { cwd: dir });
-    spawnSync('node', [MANIFEST_CLI, 'init-phase', 'e3.inception.existing'], { cwd: dir });
-    spawnSync('node', [MANIFEST_CLI, 'set', 'e3.inception.existing', 'source', 'inception'], { cwd: dir });
-    writeResearchFile('e3', 'existing', '# Existing\n\nExisting content.\n');
-    spawnSync('git', ['add', '.'], { cwd: dir });
-    spawnSync('git', ['commit', '-q', '-m', 'add-existing'], { cwd: dir });
-
-    writeCachePlan('e3', 'exploration', [
-      { kebab_name: 'merge-into-existing', summary: 'Append', description: 'append desc',
-        routing: 'discussion', classification: 'merges', target_name: 'existing',
-        _content: 'merged-in content' },
+  it('single-theme split: source renamed, new file created at same name, full metadata', () => {
+    seedLegacyEpic('e2b', 'auth');
+    writeCachePlan('e2b', 'auth', [
+      { kebab_name: 'auth', summary: 'Auth flow', description: 'Reflowed auth description.',
+        routing: 'discussion', _content: 'Re-flowed auth content for the new file.' },
     ]);
 
-    const r = runScriptJson(APPLY_CLI, 'e3', 'exploration');
+    const r = runScriptJson(APPLY_CLI, 'e2b', 'auth');
     assert.strictEqual(r.json.ok, true);
-    assert.deepStrictEqual(r.json.applied, { creates: 0, merges: 1 });
+    assert.deepStrictEqual(r.json.applied, { themes: 1 });
 
-    const existing = fs.readFileSync(path.join(dir, '.workflows', 'e3', 'research', 'existing.md'), 'utf8');
-    assert.ok(existing.includes('Existing content.'));
-    assert.ok(existing.includes('merged-in content'));
-    assert.ok(existing.includes('\n---\n'));
+    // Original file renamed, new file in its place.
+    const researchFiles = fs.readdirSync(path.join(dir, '.workflows', 'e2b', 'research')).sort();
+    assert.ok(researchFiles.includes('auth.md'));
+    assert.ok(researchFiles.some(f => f.startsWith('auth-superseded-')));
 
-    const m = readManifest('e3');
-    assert.strictEqual(m.phases.inception.items.existing.source, 'inception,legacy-split:exploration');
-    // Idempotent: re-running won't be possible (source deleted), but the source-field append must not duplicate the tag.
-    assert.strictEqual(
-      m.phases.inception.items.existing.source.split('legacy-split:exploration').length - 1,
-      1
-    );
+    // New file has the reflowed content.
+    const newContent = fs.readFileSync(path.join(dir, '.workflows', 'e2b', 'research', 'auth.md'), 'utf8');
+    assert.strictEqual(newContent, 'Re-flowed auth content for the new file.');
+
+    // Inception item now has proper metadata (was null on the migration-seeded source).
+    const m = readManifest('e2b');
+    assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth flow');
+    assert.strictEqual(m.phases.inception.items.auth.description, 'Reflowed auth description.');
+    assert.strictEqual(m.phases.inception.items.auth.routing, 'discussion');
+    assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:auth');
   });
 
   it('on commit failure leaves mutations applied; detect skips via file/research rename', () => {
     seedLegacyEpic('e4', 'exploration');
     writeCachePlan('e4', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', classification: 'creates', _content: 'auth content' },
+        routing: 'discussion', _content: 'auth content' },
     ]);
 
     const hookDir = path.join(dir, '.git', 'hooks');
@@ -498,7 +469,7 @@ describe('apply.cjs: end-to-end', () => {
     seedLegacyEpic('e4b', 'exploration');
     writeCachePlan('e4b', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'discussion', classification: 'creates', _content: 'auth content' },
+        routing: 'discussion', _content: 'auth content' },
     ]);
 
     // Make the source file unreadable by removing it before apply — fs.renameSync will
@@ -518,76 +489,6 @@ describe('apply.cjs: end-to-end', () => {
     assert.deepStrictEqual(d.json.qualifying_sources, []);
   });
 
-  it('rejects merge into nonexistent target file', () => {
-    seedLegacyEpic('e6', 'exploration');
-    writeCachePlan('e6', 'exploration', [
-      { kebab_name: 'merge-into-missing', summary: 's', description: 'd',
-        routing: 'discussion', classification: 'merges', target_name: 'no-such-target',
-        _content: 'orphan content' },
-    ]);
-
-    const r = runScriptJson(APPLY_CLI, 'e6', 'exploration');
-    assert.strictEqual(r.json.ok, false);
-    assert.strictEqual(r.json.stage, 'apply_themes');
-    assert.ok(r.json.error.includes('does not exist'));
-  });
-
-  it('multiple merges into same target append cleanly; source field stays idempotent', () => {
-    seedLegacyEpic('e7', 'exploration');
-    spawnSync('node', [MANIFEST_CLI, 'init-phase', 'e7.research.shared'], { cwd: dir });
-    spawnSync('node', [MANIFEST_CLI, 'init-phase', 'e7.inception.shared'], { cwd: dir });
-    spawnSync('node', [MANIFEST_CLI, 'set', 'e7.inception.shared', 'source', 'inception'], { cwd: dir });
-    writeResearchFile('e7', 'shared', '# Shared\n\nBase.\n');
-    spawnSync('git', ['add', '.'], { cwd: dir });
-    spawnSync('git', ['commit', '-q', '-m', 'add-shared'], { cwd: dir });
-
-    writeCachePlan('e7', 'exploration', [
-      { kebab_name: 'piece-one', summary: 's', description: 'd', routing: 'discussion',
-        classification: 'merges', target_name: 'shared', _content: 'piece-one body' },
-      { kebab_name: 'piece-two', summary: 's', description: 'd', routing: 'discussion',
-        classification: 'merges', target_name: 'shared', _content: 'piece-two body' },
-    ]);
-
-    const r = runScriptJson(APPLY_CLI, 'e7', 'exploration');
-    assert.strictEqual(r.json.ok, true);
-    assert.deepStrictEqual(r.json.applied, { creates: 0, merges: 2 });
-
-    const merged = fs.readFileSync(path.join(dir, '.workflows', 'e7', 'research', 'shared.md'), 'utf8');
-    assert.ok(merged.includes('Base.'));
-    assert.ok(merged.includes('piece-one body'));
-    assert.ok(merged.includes('piece-two body'));
-
-    // Source-field tag must appear exactly once, despite two merges.
-    const m = readManifest('e7');
-    const occurrences = m.phases.inception.items.shared.source.split('legacy-split:exploration').length - 1;
-    assert.strictEqual(occurrences, 1);
-  });
-
-  it('mixed creates and merges in one plan', () => {
-    seedLegacyEpic('e8', 'exploration');
-    spawnSync('node', [MANIFEST_CLI, 'init-phase', 'e8.research.existing'], { cwd: dir });
-    spawnSync('node', [MANIFEST_CLI, 'init-phase', 'e8.inception.existing'], { cwd: dir });
-    spawnSync('node', [MANIFEST_CLI, 'set', 'e8.inception.existing', 'source', 'inception'], { cwd: dir });
-    writeResearchFile('e8', 'existing', '# Existing\n\nBase.\n');
-    spawnSync('git', ['add', '.'], { cwd: dir });
-    spawnSync('git', ['commit', '-q', '-m', 'add-existing'], { cwd: dir });
-
-    writeCachePlan('e8', 'exploration', [
-      { kebab_name: 'new-topic', summary: 'New', description: 'new desc', routing: 'research',
-        classification: 'creates', _content: 'new content' },
-      { kebab_name: 'append-bit', summary: 'A', description: 'a', routing: 'discussion',
-        classification: 'merges', target_name: 'existing', _content: 'append-content' },
-    ]);
-
-    const r = runScriptJson(APPLY_CLI, 'e8', 'exploration');
-    assert.strictEqual(r.json.ok, true);
-    assert.deepStrictEqual(r.json.applied, { creates: 1, merges: 1 });
-
-    const m = readManifest('e8');
-    assert.strictEqual(m.phases.inception.items['new-topic'].source, 'legacy-split:exploration');
-    assert.ok(m.phases.inception.items.existing.source.includes('legacy-split:exploration'));
-  });
-
   it('fails fast on nonexistent work-unit', () => {
     setup();  // reset to a clean dir without any work unit
     const r = runScriptJson(APPLY_CLI, 'no-such-wu', 'no-such-source');
@@ -605,7 +506,7 @@ describe('apply.cjs: end-to-end', () => {
 
     writeCachePlan('e9', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'd', routing: 'discussion',
-        classification: 'creates', _content: 'auth content' },
+        _content: 'auth content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e9', 'exploration');
@@ -627,7 +528,7 @@ describe('apply.cjs: end-to-end', () => {
     // Write a plan with invalid routing — validate will reject.
     writeCachePlan('e5', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',
-        routing: 'wrong', classification: 'creates', _content: 'auth content' },
+        routing: 'wrong', _content: 'auth content' },
     ]);
 
     const r = runScriptJson(APPLY_CLI, 'e5', 'exploration');

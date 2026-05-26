@@ -14,19 +14,16 @@ const path = require('path');
 // {
 //   "themes": [
 //     {
-//       "kebab_name":    "<string, unique within plan>",
-//       "summary":       "<non-empty, non-whitespace string>",
-//       "description":   "<non-empty, non-whitespace string>",
-//       "routing":       "discussion" | "research",
-//       "classification": "creates" | "merges",
-//       "target_name":   "<string>"   // only when classification === "merges"
+//       "kebab_name":  "<string, unique within plan>",
+//       "summary":     "<non-empty, non-whitespace string>",
+//       "description": "<non-empty, non-whitespace string>",
+//       "routing":     "discussion" | "research"
 //     },
 //     ...
 //   ]
 // }
 
 const VALID_ROUTING = new Set(['discussion', 'research']);
-const VALID_CLASSIFICATION = new Set(['creates', 'merges']);
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -88,17 +85,6 @@ function validate(cwd, workUnit, currentSource) {
 
     if (!VALID_ROUTING.has(theme.routing)) {
       errors.push(`theme '${label}' has invalid routing '${theme.routing}' (expected discussion|research)`);
-    }
-
-    if (!VALID_CLASSIFICATION.has(theme.classification)) {
-      errors.push(`theme '${label}' has invalid classification '${theme.classification}' (expected creates|merges)`);
-    }
-
-    if (theme.classification === 'merges') {
-      const target = theme.target_name;
-      if (typeof target !== 'string' || target.trim() === '') {
-        errors.push(`theme '${label}' (merges) has empty or missing target_name`);
-      }
     }
 
     if (typeof kebab === 'string' && kebab.trim() !== '') {

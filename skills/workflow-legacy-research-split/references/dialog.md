@@ -4,7 +4,7 @@
 
 ---
 
-Drive the per-source iteration: read source, identify themes, early sanity gate, draft cache, propose, edit, validate, apply. Edit operations live in their own lettered sections (K–R) dispatched from G.
+Drive the per-source iteration: read source, identify themes, early sanity gate, draft cache, propose, edit, validate, apply. Edit operations live in their own lettered sections (K–P) dispatched from G.
 
 ## A. Iterate
 
@@ -46,14 +46,15 @@ Legacy-decomposition specifics:
 
 - **Semantic allocation; rewriting for flow allowed.** Each theme's cache file may rewrite source paragraphs for flow, may overlap mildly with siblings where the source itself overlaps, and need not be a strict partition of the source.
 
-- **Name reuse is fine.** If a theme naturally reuses the source's own name (e.g. `auth` decomposed into `auth` + `caching`), that's just a normal `creates` theme — the source rename frees the name.
+- **Name reuse is fine.** A theme can share the source's own name (e.g. an `auth` source decomposed into one `auth` theme, or into `auth` + `caching`). The source is renamed to `{source}-superseded-{datetime}.md` before themes are created, so the original name is always available for reuse.
+
+- **Single-theme split is valid.** Even when the source contains a single coherent theme, the split still runs. The source file is renamed to `-superseded-`, the new file is created with the (possibly re-flowed) content, and the inception item gets full metadata. This normalises legacy items without forcing artificial decomposition.
 
 For each candidate theme, build a tentative entry:
 
 - `kebab_name` — short, kebab-cased
 - `summary` — one line
-- `classification` — `creates` if standalone topic; `merges` if the content belongs in an existing topic
-- `target_name` — required when `classification == merges`; names the existing topic
+- `description` — paragraph or two synthesised from the source
 - `routing` — `discussion` (well-explored, ready) or `research` (under-explored)
 
 Hold these in working memory. Do NOT write any cache files yet.
@@ -70,7 +71,7 @@ Display the candidate theme list. This is an early sanity gate — catch obvious
 Candidate themes for {current_source}.md:
 
 @foreach(theme in candidates)
-{N}. {theme.kebab_name}  [{theme.classification}@if(theme.classification == 'merges') → {theme.target_name}@endif]
+{N}. {theme.kebab_name}
    └─ {theme.summary}
    └─ Routing: {theme.routing}
 @endforeach
@@ -81,7 +82,7 @@ Candidate themes for {current_source}.md:
 ```
 · · · · · · · · · · · ·
 - **`y`/`yes`** — Proceed to draft cache files
-- **Redirect** — Adjust the theme list (rename, merge two, split one, add, remove, change classification/routing)
+- **Redirect** — Adjust the theme list (rename, change routing, merge two, split one, add, remove)
 - **`a`/`abandon`** — Skip this source file
 · · · · · · · · · · · ·
 ```
@@ -98,8 +99,6 @@ Apply the user's adjustment in working memory (no files written yet). Supported 
 
 - **Rename** — update `kebab_name` on the named theme
 - **Change routing** — flip `routing` on the named theme
-- **Change classification** — flip `creates` ↔ `merges` (when becoming `merges`, ask user for `target_name`)
-- **Change target** — update `target_name` on a `merges` theme
 - **Merge two** — combine two candidate themes into one
 - **Split one** — replace one candidate theme with two
 - **Add** — insert a new candidate
@@ -125,9 +124,9 @@ For each theme in the candidate list, write its body to:
 .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme.kebab_name}.md
 ```
 
-The body is the substantive prose for this theme (not an empty stub). Drawn from the source, rewritten for flow where helpful. For a `merges` theme, this is what will be appended to the existing target file. For a `creates` theme, this is the new file body.
+The body is the substantive prose for this theme (not an empty stub). Drawn from the source, rewritten for flow where helpful.
 
-Each cache file must be non-empty (not just whitespace) and the corresponding `description` field (added in F) must be at least a paragraph or two — `validate.cjs` enforces both.
+Each cache file must be non-empty (not just whitespace) and the corresponding `description` field must be at least a paragraph or two — `validate.cjs` enforces both.
 
 Build `plan.json` from the candidate list and write to:
 
@@ -141,18 +140,14 @@ Schema:
 {
   "themes": [
     {
-      "kebab_name":     "auth",
-      "summary":        "one-line summary",
-      "description":    "paragraph or two synthesised from the source",
-      "routing":        "discussion" | "research",
-      "classification": "creates" | "merges",
-      "target_name":    "existing-topic"
+      "kebab_name":  "auth",
+      "summary":     "one-line summary",
+      "description": "paragraph or two synthesised from the source",
+      "routing":     "discussion" | "research"
     }
   ]
 }
 ```
-
-`target_name` only when `classification == "merges"`.
 
 → Proceed to **F. Propose Plan**.
 
@@ -174,12 +169,9 @@ For each theme in `plan.json`, read the cache file, count paragraphs (blank-line
 Plan for {current_source}.md:
 
 @foreach(theme in plan.themes)
-{N}. {theme.kebab_name}  [{theme.classification}]
+{N}. {theme.kebab_name}
    └─ Summary: {theme.summary}
    └─ Routing: {theme.routing}
-   @if(theme.classification == 'merges')
-   └─ Merges into: {theme.target_name}
-   @endif
    └─ Content: {paragraph_count} para(s) — "{content_preview}..."
    └─ Cache: .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme.kebab_name}.md
 @endforeach
@@ -223,29 +215,21 @@ Dispatch to the matching operation based on the user's request. Every operation 
 
 → Proceed to **L. Change Routing**.
 
-#### If the edit is a classification change
-
-→ Proceed to **M. Change Classification**.
-
-#### If the edit is a merge-target change
-
-→ Proceed to **N. Change Merge Target**.
-
 #### If the edit merges two themes
 
-→ Proceed to **O. Merge Two Themes**.
+→ Proceed to **M. Merge Two Themes**.
 
 #### If the edit splits one theme
 
-→ Proceed to **P. Split One Theme**.
+→ Proceed to **N. Split One Theme**.
 
 #### If the edit adds a theme
 
-→ Proceed to **Q. Add a Theme**.
+→ Proceed to **O. Add a Theme**.
 
 #### If the edit removes a theme
 
-→ Proceed to **R. Remove a Theme**.
+→ Proceed to **P. Remove a Theme**.
 
 ## H. Validate
 
@@ -294,7 +278,7 @@ Increment `applied_count`.
 > *Output the next fenced block as a code block:*
 
 ```
-Applied {current_source}: {applied.creates} new file(s), {applied.merges} merge(s).
+Applied {current_source}: {applied.themes} new file(s).
 ```
 
 → Return to **A. Iterate**.
@@ -353,44 +337,7 @@ User specifies `theme_name` and new `routing` (`discussion` | `research`).
 
 → Return to **F. Propose Plan**.
 
-## M. Change Classification
-
-User specifies `theme_name` and new `classification` (`creates` | `merges`).
-
-#### If becoming `merges`
-
-Ask the user for the merge target. If they've already named one in the same turn, skip ahead.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> What's the target topic for "{theme_name}" to merge into?
-```
-
-**STOP.** Wait for user response.
-
-1. Read `plan.json`. Set the theme's `classification` to `merges` and `target_name` to the supplied value.
-2. Write `plan.json`.
-
-→ Return to **F. Propose Plan**.
-
-#### If becoming `creates`
-
-1. Read `plan.json`. Set the theme's `classification` to `creates`. Delete `theme.target_name` if present.
-2. Write `plan.json`.
-
-→ Return to **F. Propose Plan**.
-
-## N. Change Merge Target
-
-User specifies `theme_name` and new `target_name`.
-
-1. Read `plan.json`. Set `theme.target_name` to the new value.
-2. Write `plan.json`.
-
-→ Return to **F. Propose Plan**.
-
-## O. Merge Two Themes
+## M. Merge Two Themes
 
 User specifies `theme_a`, `theme_b`, and `surviving_name` (often equal to `theme_a` or `theme_b`).
 
@@ -400,12 +347,12 @@ User specifies `theme_a`, `theme_b`, and `surviving_name` (often equal to `theme
    - If `surviving_name == theme_a`: `rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme_b}.md`
    - If `surviving_name == theme_b`: `rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme_a}.md`
    - Otherwise (new name): `rm` both originals.
-4. Read `plan.json`. Remove both original theme entries. Add a new entry with `kebab_name = surviving_name`, summary/description merged or rewritten as the user directs, routing/classification per the user's instruction.
+4. Read `plan.json`. Remove both original theme entries. Add a new entry with `kebab_name = surviving_name`, summary/description merged or rewritten as the user directs, routing per the user's instruction.
 5. Write `plan.json`.
 
 → Return to **F. Propose Plan**.
 
-## P. Split One Theme
+## N. Split One Theme
 
 User specifies `original_name`, `name_a`, `name_b`, and (in their message) what content goes where.
 
@@ -419,14 +366,14 @@ User specifies `original_name`, `name_a`, `name_b`, and (in their message) what 
    ```bash
    rm .workflows/.cache/{work_unit}/legacy-split/{current_source}/{original_name}.md
    ```
-4. Read `plan.json`. Remove the original theme entry. Add two new entries (`name_a`, `name_b`) with appropriate summary/description/routing/classification. If any field is ambiguous, ask one clarifying question before proceeding — this is conversational flow, not a structured STOP.
+4. Read `plan.json`. Remove the original theme entry. Add two new entries (`name_a`, `name_b`) with appropriate summary/description/routing. If any field is ambiguous, ask one clarifying question before proceeding — this is conversational flow, not a structured STOP.
 5. Write `plan.json`.
 
 → Return to **F. Propose Plan**.
 
-## Q. Add a Theme
+## O. Add a Theme
 
-User specifies `kebab_name`, summary, description, routing, classification, and the content for the new cache file.
+User specifies `kebab_name`, summary, description, routing, and the content for the new cache file.
 
 1. Read `plan.json`. Add the new theme entry.
 2. Write `plan.json`.
@@ -434,7 +381,7 @@ User specifies `kebab_name`, summary, description, routing, classification, and 
 
 → Return to **F. Propose Plan**.
 
-## R. Remove a Theme
+## P. Remove a Theme
 
 User specifies `theme_name`. Confirm before destructive removal:
 
