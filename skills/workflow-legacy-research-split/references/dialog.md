@@ -41,8 +41,19 @@ Read `.workflows/{work_unit}/research/{current_source}.md` end-to-end. Hold the 
 Identify distinct themes holistically. Theme-identification rules:
 
 - **Coherent domains, not one-theme-per-component.** A theme is a topic that could stand alone as a discussion or research target. If two candidate themes always come up together in the source, they're one theme.
-- **Single-digit counts are typical.** Two to six themes for most sources. Don't over-split.
+
+- **Prefer fewer, coarser themes.** Two to six themes is typical for most sources. If you find yourself heading higher, pause and re-check using the independence test below — but if more themes are genuinely warranted by the source, that's fine; don't force-merge unrelated material.
+
+- **Independence test.** If working on theme A would constantly require referencing theme B, they belong together. Themes sharing the same domain, data model, user journey, or decision space should merge.
+
+- **Anti-pattern — one theme per implementation concern within one domain.** A broad `auth` source surfacing API authentication, password hashing, session management, OAuth, token refresh, and rate limiting is NOT six themes. Same user, same security boundary, same session lifecycle — one theme: `auth`.
+
+- **Anti-pattern — one theme per system component.** A broad `pipeline` source surfacing ingestion, schema validation, transformation rules, error handling, retry logic, and dead-letter queues is NOT six themes. Each is a stage in the same pipeline — one theme: `data-pipeline`.
+
+- **When to split.** Themes have genuinely different stakeholders, concerns, or decision spaces that can be explored independently.
+
 - **Semantic allocation; rewriting for flow allowed.** Each theme's cache file may rewrite source paragraphs for flow, may overlap mildly with siblings where the source itself overlaps, and need not be a strict partition of the source.
+
 - **Name reuse is fine.** If a theme naturally reuses the source's own name (e.g. `auth` decomposed into `auth` + `caching`), that's just a normal `creates` theme — the source rename frees the name.
 
 For each candidate theme, build a tentative entry:
