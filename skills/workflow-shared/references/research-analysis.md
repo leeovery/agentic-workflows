@@ -37,23 +37,9 @@ For each theme, note the source file(s) that contributed to it and assess its de
 
 ## B. Define Candidate Topics
 
-Group the themes from A into candidate topics. Each topic becomes a separate downstream item, so the granularity matters.
+Group the themes from A into candidate topics.
 
-**Prefer fewer, coarser topics.** The goal is topic-sized chunks with clear boundaries — not an exhaustive breakdown of every concern. Research that surfaces 10-15 themes should typically yield 3-6 topics. Each topic should be substantial enough for a rich downstream pass, not so narrow that the work is artificially constrained.
-
-**The independence test:** If working on topic A requires constantly referencing topic B, they belong together. Merge themes that share the same domain, data model, user journey, or decision space. Narrow topics create overhead — separate artifacts, separate scaffolding — and artificially constrain work that naturally wants to cross boundaries.
-
-**Anti-pattern — splitting implementation details of one domain:**
-
-Research about authentication might surface themes for API authentication, password hashing, session management, OAuth integration, token refresh, and rate limiting. These are NOT six topics. They share the same user, the same security boundary, and the same session lifecycle. This is one topic: **Authentication**.
-
-**Anti-pattern — one theme per system component:**
-
-Research about a data pipeline might surface themes for ingestion, schema validation, transformation rules, error handling, retry logic, and dead letter queues. Each theme is just a stage in the same pipeline. This is one topic: **Data Pipeline**.
-
-**When to split:**
-
-Split when themes have genuinely different stakeholders, concerns, or decision spaces that can be explored independently.
+→ Load **[topic-granularity.md](topic-granularity.md)**.
 
 For each candidate topic, write a one-line summary that covers the constituent themes — used as the inception item's `summary` field.
 

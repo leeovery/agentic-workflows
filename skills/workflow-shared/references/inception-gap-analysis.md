@@ -62,13 +62,11 @@ For each gap, note:
 
 ## C. Define Gap Topics
 
-Group the identified gaps into topic-sized chunks using the same coarseness principles as research analysis.
+Group the identified gaps into topic-sized chunks.
 
-**Prefer fewer, coarser topics.** Gaps that share the same domain, decision space, or stakeholder concerns should be merged into a single topic.
+→ Load **[topic-granularity.md](topic-granularity.md)**.
 
-**The independence test:** If working on gap A requires constantly referencing gap B, they belong together. Merge gaps that share the same integration boundary, data model, or user journey.
-
-**Anti-patterns:**
+**Gap-specific anti-patterns** (in addition to the shared ones above):
 - Creating a topic for each individual elevated marker when they relate to the same area
 - Splitting integration gaps into per-discussion-pair topics when they share the same integration boundary
 - Creating topics so narrow they'd be resolved in a few exchanges
