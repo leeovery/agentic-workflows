@@ -80,9 +80,15 @@ Nothing to finalise.
 
 → Return to caller.
 
-## C. Single commit
+## C. Clear Active Marker and Commit
 
-Check `git status`. If the working tree is dirty (manifest writes from **A** and/or session-log finalisation from **B**), commit. Adjust the staged paths and message to what's actually dirty:
+Clear the active-session marker so resume detection on the next entry sees a closed session. Skip if the log file does not exist (browse-only session — the marker was never set):
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception active_session
+```
+
+Check `git status`. If the working tree is dirty (manifest writes from **A**, the marker delete above, and/or session-log finalisation from **B**), commit. Adjust the staged paths and message to what's actually dirty:
 
 - New topics + log finalisation: `inception({work_unit}): seed {N_new} new topic(s) to map`
 - Log finalisation only (edits-only session): `inception({work_unit}): finalise session log`
@@ -92,6 +98,6 @@ git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/se
 git commit -m "{message}"
 ```
 
-If `git status` reports nothing to commit (browse-only session with no log file), skip the commit entirely.
+If `git status` reports nothing to commit, skip the commit entirely.
 
 → Return to caller.

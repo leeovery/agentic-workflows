@@ -60,35 +60,31 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an interrupted prior session before opening a new one.
+> Checking the manifest for an in-progress prior session.
 ```
 
-List session log files: `ls .workflows/{work_unit}/inception/session-*.md 2>/dev/null | sort`. Parse the highest-numbered filename as `latest`.
+Read the active-session marker:
 
-#### If no files match
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception active_session
+```
 
-No prior session work. Set `session_number` = `001`.
+The marker is set when a session writes its log for the first time (lazy creation) and deleted when the session concludes. Its presence is the authoritative in-progress signal.
 
-→ Proceed to **Step 1**.
+#### If output is empty or the literal string `null`
 
-#### If `latest` exists
-
-Read the file. Find the **Conclusion** section and read its first non-empty line.
-
-**If the Conclusion is anything other than `(none)`:**
-
-The most recent session concluded normally. Set `session_number` to the next zero-padded number after `latest`.
+No prior session is in progress. `session_number` will be set at Step 1 from discovery's `next_session_number`.
 
 → Proceed to **Step 1**.
 
-**If the Conclusion is `(none)`:**
+#### Otherwise
 
-The prior session was interrupted before finalisation.
+The output is the in-progress session number string (e.g. `002`). The prior session was interrupted before finalisation.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Found an in-progress inception session log for **{work_unit:(titlecase)}**: `{latest.filename}`.
+Found an in-progress inception session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
 
 · · · · · · · · · · · ·
 - **`c`/`continue`** — Pick up where you left off
@@ -100,21 +96,22 @@ Found an in-progress inception session log for **{work_unit:(titlecase)}**: `{la
 
 #### If `continue`
 
-Set `session_number` to the number parsed from `latest.filename`. The existing file's contents become the working state for the session loop.
+Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/inception/session-{session_number}.md` is the working state for the session loop.
 
 → Proceed to **Step 1**.
 
 #### If `restart`
 
-Delete the in-progress log and commit:
+Delete the in-progress log and clear the marker:
 
 ```bash
-rm {latest.path}
+rm .workflows/{work_unit}/inception/session-{active_session}.md
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception active_session
 git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): restart interrupted session"
 ```
 
-Set `session_number` to the number parsed from `latest.filename` (the number is reused since the file was just deleted).
+`session_number` will be set at Step 1 from discovery's `next_session_number`.
 
 → Proceed to **Step 1**.
 
@@ -146,7 +143,10 @@ Hold the output in conversation context as **the most recent discovery output**.
 - `discovery_map` — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`
 - `map_summary` — counts string used for the opener render
 - `dismissed` — names previously removed from the map
-- `latest_session` and `next_session_number` — reconciled with `session_number` set at Step 0
+- `active_session` — in-progress session number set by lazy log creation, cleared at conclude. Authoritative resume signal (read at Step 0).
+- `next_session_number` — used to set `session_number` for fresh entries
+
+If `session_number` was not set at Step 0 (no resume), set it now: `session_number` = `next_session_number`.
 
 `map-operations.md` and `show-dismissed.md` re-invoke discovery on entry because they validate against post-mutation state.
 

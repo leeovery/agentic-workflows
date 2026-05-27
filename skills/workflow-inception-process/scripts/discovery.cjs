@@ -48,33 +48,12 @@ function findLatestSessionLog(cwd, workUnit) {
   }
   if (files.length === 0) return null;
   const filename = files[files.length - 1];
-  const fullPath = path.join(dir, filename);
-  let content;
-  try {
-    content = fs.readFileSync(fullPath, 'utf8');
-  } catch {
-    return null;
-  }
   const m = filename.match(/^session-(\d+)\.md$/);
   const number = parseInt(m[1], 10);
-
-  // Detect Conclusion section status (placeholder = "(none)" on the first
-  // non-empty line after the heading). An in-progress log is the resume
-  // signal used by resume-detection.md.
-  let conclusionText = '';
-  const conclusionMatch = content.match(/##\s+Conclusion\s*\n([\s\S]*?)(?:\n##\s|$)/);
-  if (conclusionMatch) {
-    const body = conclusionMatch[1].trim();
-    conclusionText = body.split('\n')[0].trim();
-  }
-  const isInProgress = conclusionText === '(none)';
-
   return {
     filename,
     relative_path: path.posix.join('.workflows', workUnit, 'inception', filename),
     number,
-    is_in_progress: isInProgress,
-    conclusion_text: conclusionText,
   };
 }
 
@@ -85,6 +64,9 @@ function discover(cwd, workUnit) {
   }
   const inceptionPhase = (manifest.phases || {}).inception || {};
   const dismissed = Array.isArray(inceptionPhase.dismissed) ? inceptionPhase.dismissed.slice() : [];
+  const activeSession = (typeof inceptionPhase.active_session === 'string' && inceptionPhase.active_session !== '')
+    ? inceptionPhase.active_session
+    : null;
   const { map, summary } = buildDiscoveryMap(manifest);
   const latestSession = findLatestSessionLog(cwd, workUnit);
   const nextSessionNumber = latestSession ? latestSession.number + 1 : 1;
@@ -98,6 +80,7 @@ function discover(cwd, workUnit) {
     discovery_map: map,
     map_summary: summary,
     dismissed,
+    active_session: activeSession,
     analysis_caches: analysisCaches,
     latest_session: latestSession,
     next_session_number: nextSessionNumber,
@@ -140,6 +123,9 @@ function format(result) {
   }
   lines.push('');
 
+  lines.push(`active_session: ${result.active_session || '(none)'}`);
+  lines.push('');
+
   lines.push('analysis_caches:');
   const caches = result.analysis_caches || {};
   for (const kind of ['research_analysis', 'gap_analysis']) {
@@ -159,8 +145,6 @@ function format(result) {
     lines.push(`  filename: ${ls.filename}`);
     lines.push(`  relative_path: ${ls.relative_path}`);
     lines.push(`  number: ${ls.number}`);
-    lines.push(`  is_in_progress: ${ls.is_in_progress}`);
-    lines.push(`  conclusion: ${ls.conclusion_text || '(empty)'}`);
   }
   lines.push('');
 

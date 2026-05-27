@@ -404,66 +404,6 @@ describe('workflow-inception-process discovery', () => {
     const r = discover(dir, 'payments');
     assert.strictEqual(r.latest_session.filename, 'session-001.md');
     assert.strictEqual(r.latest_session.number, 1);
-    assert.strictEqual(r.latest_session.is_in_progress, false);
-  });
-
-  it('flags is_in_progress=true when Conclusion is "(none)"', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 1, '3 topics seeded.');
-    writeSessionLog(dir, 'payments', 2, '(none)');
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.number, 2);
-    assert.strictEqual(r.latest_session.is_in_progress, true);
-    assert.strictEqual(r.latest_session.conclusion_text, '(none)');
-  });
-
-  it('flags is_in_progress=false when Conclusion is concluded text', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 1, '3 topics seeded.');
-    writeSessionLog(dir, 'payments', 2, '2 changes applied. Map now has 5 topics.');
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.is_in_progress, false);
-    assert.strictEqual(r.latest_session.conclusion_text, '2 changes applied. Map now has 5 topics.');
-  });
-
-  it('reads only the first line of Conclusion as conclusion_text', () => {
-    // Multi-line conclusion still picks first non-empty line.
-    const padded = '003';
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 1, 'one');
-    writeSessionLog(dir, 'payments', 2, 'two');
-    const fullPath = path.join(dir, '.workflows', 'payments', 'inception', `session-${padded}.md`);
-    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    fs.writeFileSync(fullPath, `# Inception Session ${padded} — Refinement
-
-## Conclusion
-
-5 changes applied. Map now has 12 topics.
-
-Additional commentary on multiple lines.
-`);
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.number, 3);
-    assert.strictEqual(r.latest_session.conclusion_text, '5 changes applied. Map now has 12 topics.');
-    assert.strictEqual(r.latest_session.is_in_progress, false);
-  });
-
-  it('terminates Conclusion read at the next ## heading', () => {
-    // Defensive: hand-edited logs may add sections after Conclusion.
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 1, 'concluded', { trailingSection: 'Postscript' });
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.conclusion_text, 'concluded');
-  });
-
-  it('treats missing Conclusion section as empty conclusion_text', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    const fullPath = path.join(dir, '.workflows', 'payments', 'inception', 'session-001.md');
-    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    fs.writeFileSync(fullPath, `# Inception Session 001 — Initial Framing\n\n## Map State at Start\n\n3 topics — 3 fresh\n`);
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.conclusion_text, '');
-    assert.strictEqual(r.latest_session.is_in_progress, false);
   });
 
   it('latest_session picks the highest-numbered file regardless of alphabetic order', () => {
@@ -717,17 +657,49 @@ describe('workflow-inception-process format', () => {
     assert.match(out, /filename: session-002\.md/);
     assert.match(out, /relative_path: \.workflows\/payments\/inception\/session-002\.md/);
     assert.match(out, /number: 2/);
-    assert.match(out, /is_in_progress: true/);
-    assert.match(out, /conclusion: \(none\)/);
   });
 
-  it('renders conclusion as "(empty)" when conclusion_text is empty', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    const fullPath = path.join(dir, '.workflows', 'payments', 'inception', 'session-001.md');
-    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-    fs.writeFileSync(fullPath, `# Inception Session 001 — Initial Framing\n\n## Map State at Start\n\n3 topics\n`);
-    const out = format(discover(dir, 'payments'));
-    assert.match(out, /conclusion: \(empty\)/);
+  // --- active_session ---
+
+  describe('active_session', () => {
+    it('is null when phases.inception.active_session is unset', () => {
+      createManifest(dir, 'payments', { work_type: 'epic' });
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.active_session, null);
+    });
+
+    it('is null when the field is an empty string', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { inception: { active_session: '' } },
+      });
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.active_session, null);
+    });
+
+    it('returns the stored value when set to a session number string', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { inception: { active_session: '002' } },
+      });
+      const r = discover(dir, 'payments');
+      assert.strictEqual(r.active_session, '002');
+    });
+
+    it('format() renders active_session value when set', () => {
+      createManifest(dir, 'payments', {
+        work_type: 'epic',
+        phases: { inception: { active_session: '003' } },
+      });
+      const out = format(discover(dir, 'payments'));
+      assert.match(out, /active_session: 003/);
+    });
+
+    it('format() renders "(none)" when active_session is unset', () => {
+      createManifest(dir, 'payments', { work_type: 'epic' });
+      const out = format(discover(dir, 'payments'));
+      assert.match(out, /active_session: \(none\)/);
+    });
   });
 
   // --- next_session_number line ---
@@ -762,6 +734,7 @@ describe('workflow-inception-process format', () => {
       out.indexOf('map_summary:'),
       out.indexOf('discovery_map ('),
       out.indexOf('dismissed ('),
+      out.indexOf('active_session:'),
       out.indexOf('analysis_caches:'),
       out.indexOf('latest_session:'),
       out.indexOf('next_session_number:'),

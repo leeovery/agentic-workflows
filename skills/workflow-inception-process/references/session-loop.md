@@ -147,14 +147,15 @@ No fixed cadence — follow the conversation, not a checklist. The loop runs unt
 
 Do not push for completeness. The user signals convergence when they've got enough.
 
-**New-topic moves:** When a new topic surfaces, confirm inline (*"hearing {topic} — sounds like research, yes?"*). After confirmation, the topic enters the in-conversation working list. At a natural pause (topic settled, conversation about to branch, context-compaction risk), write the working list to the draft session log. This may create the file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, commit:
+**New-topic moves:** When a new topic surfaces, confirm inline (*"hearing {topic} — sounds like research, yes?"*). After confirmation, the topic enters the in-conversation working list. At a natural pause (topic settled, conversation about to branch, context-compaction risk), write the working list to the draft session log. This may create the file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, set the active-session marker (idempotent) and commit:
 
 ```bash
-git add -- .workflows/{work_unit}/inception/
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception active_session "{session_number:03d}"
+git add -- .workflows/{work_unit}/
 git commit -m "inception({work_unit}): draft session-{session_number:03d} — surfaced topics"
 ```
 
-Manifest writes for new items are **deferred to Step 5 confirm-and-persist** — do not write inception items to the manifest mid-loop.
+Manifest writes for new items are **deferred to Step 6 confirm-and-persist** — do not write inception items to the manifest mid-loop. The `active_session` marker is the only manifest write that happens here.
 
 **Map-operation moves:** When the user names an edit to an existing map item, delegate to [map-operations.md](map-operations.md) for that operation. Map-operations handles validation, per-item confirmation, manifest write, session-log append (under **Changes**), and commit. It may create the session log file on its first invocation in a session. When it returns, continue the conversation.
 

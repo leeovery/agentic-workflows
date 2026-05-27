@@ -22,6 +22,12 @@ node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 
 Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.
 
+Set the active-session marker (idempotent — no-op if already set). The first per-op commit below will pick it up via `git add manifest.json`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception active_session "{session_number:03d}"
+```
+
 Then read the user's most recent message. Extract one or more operations. Recognised intents:
 
 | User phrasing                                              | Operation         | Required values        |
