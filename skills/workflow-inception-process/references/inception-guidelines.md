@@ -53,8 +53,6 @@ The user can signal endpoint explicitly (*"that covers it"*, *"let's wrap"*, *"d
 
 When you observe these signals, **propose** endpoint to the user. Don't declare it. Use optional pushback if there's a genuinely unexplored angle worth surfacing first — but don't fabricate angles. If nothing comes to mind, just ask whether to proceed.
 
-The handoff to synthesis happens in [session-loop.md](session-loop.md) C.
-
 ## D. Hard Rules
 
 - **No inline topic decomposition.** Do not surface "hearing X, Y, Z as distinct shapes" moves during the loop. Topics are synthesised at endpoint.
@@ -74,20 +72,23 @@ Reference dialogues showing how each curatorial move plays out. Read these as co
 User: "I want to build a restaurant ordering platform. Menus, orders,
        kitchen printers, some analytics."
 
-Claude: "Before we get into shapes — who's the user on the operator
-        side? Single-location restaurants or chains? And when you say
-        'analytics', are you picturing it for the venue owner watching
-        their own place, or for the platform operator watching all
-        venues across the network?"
+Claude: "Who's the operator side — a single restaurant, or a chain
+        operator running multiple venues?"
 
 User: [answers]
 
-Claude: "Got it. What about the diner — do they interact with the
-        system directly (scan a QR at the table, that kind of thing)
-        or is it mostly the waiter punching the order in?"
+Claude: "Got it. When you say 'analytics', is that for the venue
+        owner watching their own place, or for the platform operator
+        looking across all venues?"
+
+User: [answers]
+
+Claude: "And the diner — do they interact with the system directly,
+        like scanning a QR at the table, or is it the waiter
+        punching the order in?"
 ```
 
-Several turns of this before endpoint is proposed. The questions don't push into *how* the printer works or *why* you'd pick one approach — they're feeling for where the surfaces are and where they connect. No topics surfaced inline.
+Several turns of this before endpoint is proposed. One question per turn — wait for the answer, let it shape the next question. The questions don't push into *how* the printer works or *why* you'd pick one approach — they're feeling for where the surfaces are and where they connect.
 
 **Tentative grouping** (during exploration, surface-level)
 
