@@ -153,13 +153,7 @@ No fixed cadence — follow the conversation, not a checklist. The loop runs unt
 
 Do not push for completeness. The user signals convergence when they've got enough.
 
-### New-topic moves
-
-When a new topic surfaces, confirm inline:
-
-> *"Hearing {topic} — sounds like research, yes?"*
-
-After confirmation, the topic enters the in-conversation working list. At a natural pause (topic settled, conversation about to branch, context-compaction risk), write the working list to the draft session log. **This may create the file if it doesn't exist yet** — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, commit:
+**New-topic moves:** When a new topic surfaces, confirm inline (*"hearing {topic} — sounds like research, yes?"*). After confirmation, the topic enters the in-conversation working list. At a natural pause (topic settled, conversation about to branch, context-compaction risk), write the working list to the draft session log. This may create the file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, commit:
 
 ```bash
 git add -- .workflows/{work_unit}/inception/
@@ -168,15 +162,9 @@ git commit -m "inception({work_unit}): draft session-{session_number:03d} — su
 
 Manifest writes for new items are **deferred to Step 5 confirm-and-persist** — do not write inception items to the manifest mid-loop.
 
-### Map-operation moves
+**Map-operation moves:** When the user names an edit to an existing map item, delegate to [map-operations.md](map-operations.md) for that operation. Map-operations handles validation, per-item confirmation, manifest write, session-log append (under **Changes**), and commit. It may create the session log file on its first invocation in a session. When it returns, continue the conversation.
 
-When the user names an edit to an existing map item, delegate to **[map-operations.md](map-operations.md)** for that operation. Map-operations handles validation, per-item confirmation, manifest write, session-log append (under **Changes**), and commit. When it returns, continue the conversation.
-
-Map-operations may create the session log file on its first invocation in a session.
-
-### Discarding a raised candidate
-
-If a topic is raised and then dropped during the loop (the user merges it, decides it's not its own thing, or vetoes the surface), append it to the draft session log under **Considered and Discarded** with a one-line reason at the next natural pause. Same lazy-creation rule applies.
+**Discarding a raised candidate:** If a topic is raised and then dropped during the loop (the user merges it, decides it's not its own thing, or vetoes the surface), append it to the draft session log under **Considered and Discarded** with a one-line reason at the next natural pause. Same lazy-creation rule applies.
 
 → Proceed to **C. Convergence Signal**.
 
