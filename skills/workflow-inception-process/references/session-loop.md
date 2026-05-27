@@ -40,13 +40,7 @@ Where do you want to take it from here?
 
 #### If `discovery_map` is non-empty (map already populated)
 
-This is a continuing inception session — the map exists, so editing existing items is on the table alongside surfacing new ones. Render the map as an anchor, then open the conversation:
-
-Run discovery if not already current:
-
-```bash
-node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
-```
+This is a continuing inception session — the map exists, so editing existing items is on the table alongside surfacing new ones. Render the map as an anchor using the discovery output from Step 1, then open the conversation:
 
 > *Output the next fenced block as a code block:*
 

@@ -60,16 +60,101 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking whether a prior session was interrupted before continuing.
+> Checking for an interrupted prior session before opening a new one.
 ```
 
-Load **[resume-detection.md](references/resume-detection.md)** and follow its instructions as written.
+List session log files: `ls .workflows/{work_unit}/inception/session-*.md 2>/dev/null | sort`. Parse the highest-numbered filename as `latest`.
+
+#### If no files match
+
+No prior session work. Set `session_number` = `001`.
+
+→ Proceed to **Step 1**.
+
+#### If `latest` exists
+
+Read the file. Find the **Conclusion** section and read its first non-empty line.
+
+**If the Conclusion is anything other than `(none)`:**
+
+The most recent session concluded normally. Set `session_number` to the next zero-padded number after `latest`.
+
+→ Proceed to **Step 1**.
+
+**If the Conclusion is `(none)`:**
+
+The prior session was interrupted before finalisation.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found an in-progress inception session log for **{work_unit:(titlecase)}**: `{latest.filename}`.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Pick up where you left off
+- **`r`/`restart`** — Delete the draft and start a new session
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `continue`
+
+Set `session_number` to the number parsed from `latest.filename`. The existing file's contents become the working state for the session loop.
+
+→ Proceed to **Step 1**.
+
+#### If `restart`
+
+Delete the in-progress log and commit:
+
+```bash
+rm {latest.path}
+git add -- .workflows/{work_unit}/
+git commit -m "inception({work_unit}): restart interrupted session"
+```
+
+Set `session_number` to the number parsed from `latest.filename` (the number is reused since the file was just deleted).
 
 → Proceed to **Step 1**.
 
 ---
 
-## Step 1: Initialize Inception
+## Step 1: Run Discovery
+
+> *Output the next fenced block as a code block:*
+
+```
+── Run Discovery ────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the discovery map, dismissed list, and analysis cache
+> state for the rest of the session.
+```
+
+Run discovery for the work unit:
+
+```bash
+node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+```
+
+Hold the output in conversation context as **the most recent discovery output**. Downstream steps and references read from it:
+
+- `discovery_map` — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`
+- `map_summary` — counts string used for the opener render
+- `dismissed` — names previously removed from the map
+- `latest_session` and `next_session_number` — reconciled with `session_number` set at Step 0
+
+`map-operations.md` and `show-dismissed.md` re-invoke discovery on entry because they validate against post-mutation state.
+
+→ Proceed to **Step 2**.
+
+---
+
+## Step 2: Initialize Inception
 
 > *Output the next fenced block as a code block:*
 
@@ -87,11 +172,11 @@ Load **[resume-detection.md](references/resume-detection.md)** and follow its in
 
 Load **[initialize-inception.md](references/initialize-inception.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ Proceed to **Step 3**.
 
 ---
 
-## Step 2: Load Inception Guidelines
+## Step 3: Load Inception Guidelines
 
 > *Output the next fenced block as a code block:*
 
@@ -108,11 +193,11 @@ Load **[initialize-inception.md](references/initialize-inception.md)** and follo
 
 Load **[inception-guidelines.md](references/inception-guidelines.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 3: Session Loop
+## Step 4: Session Loop
 
 > *Output the next fenced block as a code block:*
 
@@ -131,11 +216,11 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 ---
 
-## Step 4: Document Review
+## Step 5: Document Review
 
 > *Output the next fenced block as a code block:*
 
@@ -153,11 +238,11 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 5: Confirm and Persist
+## Step 6: Confirm and Persist
 
 > *Output the next fenced block as a code block:*
 
@@ -174,11 +259,11 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Compliance Self-Check
+## Step 7: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -195,11 +280,11 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Conclude Inception
+## Step 8: Conclude Inception
 
 > *Output the next fenced block as a code block:*
 
