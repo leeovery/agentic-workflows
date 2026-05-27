@@ -66,6 +66,8 @@ The handoff to synthesis happens in [session-loop.md](session-loop.md) C.
 
 ## E. Worked Examples
 
+Reference dialogues showing how each curatorial move plays out. Read these as context for your own moves — they are **not** output templates to render verbatim to the user.
+
 **Open exploration**
 
 ```

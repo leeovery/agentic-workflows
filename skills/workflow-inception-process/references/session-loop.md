@@ -189,7 +189,7 @@ Then prompt the user:
 Ready to synthesise topics?
 
 - **`y`/`yes`** — Synthesise topics now
-- **Pull on more** — Continue exploring
+- **Keep going** — Continue exploring
 · · · · · · · · · · · ·
 ```
 
@@ -203,6 +203,6 @@ When `topic-synthesis.md` returns:
 
 → Return to caller.
 
-#### If pull on more
+#### If keep going
 
 → Return to **B. Session Loop**.

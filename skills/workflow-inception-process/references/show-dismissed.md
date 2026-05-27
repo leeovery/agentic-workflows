@@ -63,7 +63,7 @@ Re-add any of these to the map?
 
 → Return to caller.
 
-#### If the user names one or more dismissed items to re-add
+#### If name them
 
 Bring those names back into the exploration. Pick up the conversation around them — what was the shape, what's changed since they were dropped. They become exploration surfaces like any other; if they hold up through synthesis, they end up in the proposed topic set.
 
