@@ -6,7 +6,7 @@
 
 Persists the topic set produced by [topic-synthesis.md](topic-synthesis.md) to the manifest, writes the **Topics Identified** section of the session log, clears the active-session marker, and finalises the **Conclusion** placeholder.
 
-Edits to existing items already committed via [map-operations.md](map-operations.md) during the session loop — they do not pass through the manifest-writes step here. But the active-session marker delete and the Conclusion finalisation still need to run for those sessions.
+Edits to existing items committed via [map-operations.md](map-operations.md) during the session loop. For edits-only sessions, the manifest-writes step is empty but the marker delete and Conclusion finalisation still run.
 
 ## A. Persist New Topics
 

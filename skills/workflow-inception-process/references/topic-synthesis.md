@@ -6,8 +6,6 @@
 
 The endpoint ceremony. Analyse the session's exploration as a whole, produce a topic set, and confirm it with the user. Loaded by [session-loop.md](session-loop.md) C when the user confirms ready to synthesise.
 
-This is the **only** place inception names topics. The exploration loop in **B** does not surface candidates inline — topics emerge from the picture as a whole, not from per-turn decomposition.
-
 ## A. Gather Source Material
 
 You have three sources of truth:
@@ -26,7 +24,7 @@ Read out the **distinct surfaces** the exploration named — the parts of the pr
 
 A surface is something like *menu-management*, *kitchen-printers*, *operator-analytics*. It has a clear name, a clear edge, and would warrant its own future research or discussion.
 
-If the exploration touched on a surface only in passing and didn't develop it, note it but don't force it into a topic. Premature inclusion is worse than letting it surface in a later session.
+If the exploration touched on a surface only in passing and didn't develop it, note it but don't force it into a topic. Let it surface in a later session if it grows.
 
 → Proceed to **C. Apply Granularity Rules**.
 

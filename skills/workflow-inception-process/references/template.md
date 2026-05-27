@@ -13,7 +13,7 @@ The session has two distinct flavours of content recorded in two distinct sectio
 - **Exploration** is **narrative** — strong-summary prose, written at natural pauses during the conversation. It's Claude's durable record of what got discussed for end-of-session topic synthesis (and for surviving context refresh).
 - **Edits** is **structured** — a deterministic record of map-operations applied to existing items during the session. Only meaningful for continuing sessions where the map is non-empty.
 
-**Topics Identified** is filled **once at endpoint synthesis** — not inline during the conversation. Topics emerge from analysing the exploration as a whole, not from per-turn decomposition.
+**Topics Identified** is filled at endpoint synthesis, from analysing the exploration as a whole.
 
 ## Template
 
@@ -99,6 +99,6 @@ At finalisation, replace the `(none)` Conclusion with one of:
 - **No transcript-style content in Exploration.** It's strong summary, not verbatim dialogue.
 - **No decisions, option weighing, or feasibility analysis.** Those belong in discussion and research. Capture what was framed, not what was uncovered.
 - **No investigation.** The log records the shape that was explored, not the answers to research questions.
-- **Don't write to Topics Identified during the loop.** Topics emerge from synthesis at endpoint — premature writes break that model.
+- **Don't write to Topics Identified during the loop.** It's filled by synthesis at endpoint.
 
 → Return to caller.

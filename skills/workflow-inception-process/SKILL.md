@@ -208,11 +208,10 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Opening the inception conversation. The session is pure
-> exploration — pulling on the idea, sketching shape, surfacing
-> surfaces. Topics are synthesised at endpoint from the whole
-> picture, not inline. When the map is already populated,
-> edits to existing items are also available alongside.
+> Opening the inception conversation. The session explores the
+> product shape and synthesises topics at endpoint. When the map
+> is already populated, edits to existing items happen in the loop
+> alongside exploration.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.

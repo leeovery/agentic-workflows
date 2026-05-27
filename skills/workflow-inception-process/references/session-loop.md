@@ -6,7 +6,7 @@
 
 Follow the curatorial moves and hard rules from **[inception-guidelines.md](inception-guidelines.md)** throughout. No background agents, no review cycles, no perspective dispatches.
 
-The loop is the same in every session — first or Nth. State-driven branches in **A. Open** pick the opening shape; **B. Session Loop** runs pure exploration; **C. Endpoint and Synthesis** detects the endpoint and produces the topic set. When the map already has items, edits to existing items are also available during the loop — they don't change the exploration→synthesis arc, they just record edits to the existing map alongside.
+State-driven branches in **A. Open** pick the opening shape; **B. Session Loop** runs pure exploration; **C. Endpoint and Synthesis** detects the endpoint and produces the topic set. When the map already has items, edits to existing items happen in the loop alongside exploration.
 
 ## A. Open
 
@@ -39,7 +39,7 @@ Where do you want to take it from here?
 
 #### If `discovery_map` is non-empty (map already populated)
 
-This is a continuing inception session — the map exists, so editing existing items is on the table alongside exploring new areas. Render the map as an anchor using the discovery output from Step 1, then open the conversation:
+The map exists; editing existing items is available alongside new exploration. Render the map as an anchor using the discovery output from Step 1, then open the conversation:
 
 > *Output the next fenced block as a code block:*
 
@@ -125,7 +125,7 @@ synthesise topics.
 
 ## B. Session Loop
 
-No fixed cadence — follow the conversation, not a checklist. **The loop is pure exploration.** Topics are not surfaced during the loop; they are synthesised at endpoint in **C**.
+No fixed cadence — follow the conversation, not a checklist. **The loop is pure exploration.** Topics are synthesised at endpoint in **C**.
 
 1. **Listen.** Take in what the user just said.
 2. **Recognise intent.** The user's message may contain:
@@ -136,7 +136,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is pur
    - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
    - **An endpoint signal** — *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Endpoint and Synthesis**.
 
-3. **Continue the exploration.** Ask one question at a time. Follow the conversation. Stay in *open exploration* mode — don't decompose into topics inline. See *Mirroring, not challenging* in the guidelines.
+3. **Continue the exploration.** Ask one question at a time. Follow the conversation. See *Mirroring, not challenging* in the guidelines.
 
 4. **Watch for natural endpoint patterns** — Claude-side observations that the picture has been adequately mapped:
    - The conversation circles back to surfaces already covered

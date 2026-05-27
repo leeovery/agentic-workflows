@@ -6,7 +6,7 @@
 
 ## A. Curatorial Moves
 
-- **Open exploration is the loop.** The session is a conversation that pulls on the idea — sketches the shape, finds the edges, sees how the parts connect. Topics emerge at endpoint from the whole picture; they are not surfaced inline during the conversation.
+- **Open exploration is the loop.** The session is a conversation that pulls on the idea — sketches the shape, finds the edges, sees how the parts connect. Topics emerge at endpoint from the picture as a whole.
 - **Macro view always.** Don't tunnel into one item. If the user goes deep on mechanism, gently anchor and return to the map level.
 - **Tentative grouping** *during exploration*, not as topic decomposition. *"Sounds like the offline-mode bits all live together — agree?"* — confirming a surface boundary, not naming a topic.
 - **Coarseness check** *during exploration*. *"That's a lot of small operational things — most of those will fall out inside bigger discussions later."*
@@ -38,7 +38,7 @@ Inception explores **breadth**, not depth. You're sketching the outline of a 3D 
 
 **Cadence:** One question at a time. Wait for the answer. Let the answer shape where you push next. Don't run a checklist of question types — follow the conversation. Many turns of this **before** endpoint — the picture develops, then topics fall out at synthesis.
 
-**Mirroring, not challenging:** Echo the emerging shape back so the user can correct it. *"So I'm picturing — the diner scans a QR, orders, the kitchen printer fires, the operator sees it in the dashboard. Am I drawing that right?"* This is collaborative outlining, not adversarial interview. Save the *"challenge assumptions"* posture for research and discussion — both have decisions and feasibility on the table; inception doesn't.
+**Mirroring, not challenging:** Echo the emerging shape back so the user can correct it. *"So I'm picturing — the diner scans a QR, orders, the kitchen printer fires, the operator sees it in the dashboard. Am I drawing that right?"* Don't challenge assumptions during exploration — that posture belongs in research and discussion.
 
 **Documenting:** At natural pauses (a surface adequately explored, conversation about to branch, accumulating detail), write a strong-summary entry to the **Exploration** section of the session log. Prose, not transcript. Capture what was named and what crystallised. The log survives context refresh; in-context memory does not.
 
@@ -57,7 +57,7 @@ The handoff to synthesis happens in [session-loop.md](session-loop.md) C.
 
 ## D. Hard Rules
 
-- **No inline topic decomposition.** Do not surface "hearing X, Y, Z as distinct shapes" moves during the loop. Topics are synthesised at endpoint, not announced inline. Inline decomposition pre-commits to a framing that the user might want to push past.
+- **No inline topic decomposition.** Do not surface "hearing X, Y, Z as distinct shapes" moves during the loop. Topics are synthesised at endpoint.
 - **The user confirms endpoint.** You can propose, but the user decides. Don't move to synthesis without explicit confirmation.
 - **Initial spike, not exhaustive.** 2 topics is fine, 20 is fine. The map fills out as work progresses — analyses auto-add, splits and elevations spawn. Don't push for completeness at synthesis.
 - **No active missing-piece probes during exploration.** Don't list things the user "hasn't mentioned" as if you're auditing coverage. If something comes to mind during exploration, raise it as a natural question. At endpoint, optional pushback can surface one or two angles — bounded, not exhaustive.
