@@ -71,8 +71,6 @@ Then frame the opener:
 > *Output the next fenced block as a code block:*
 
 ```
-What's on your mind for this map?
-
 You can open a fresh thread — a new area of the work you want
 to sketch out — and we'll explore it the same way we did first
 time, then synthesise topics at the end. Or you can name changes
@@ -80,6 +78,8 @@ to existing items: add, remove, rename, re-route, edit summary,
 edit description. Both in one go is fine.
 
 Say "show map" anytime to pull the map back up.
+
+What's on your mind for this map?
 ```
 
 **STOP.** Wait for user response.
