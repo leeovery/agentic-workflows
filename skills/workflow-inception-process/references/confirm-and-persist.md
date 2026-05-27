@@ -29,7 +29,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source inception
 ```
 
-The `pull` is a no-op if the name isn't in the dismissed list — harmless. It exists to support re-adds of previously dismissed names without needing a separate code path.
+The `pull` is a no-op if the name isn't in the dismissed list.
 
 Derive `summary` and `description` from the same session conversation in the same turn — no separate prompt. The compact `• {topic} — {summary}` form in the working list stays unchanged; description is generated only at persist time.
 

@@ -6,8 +6,6 @@
 
 This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
 
-The processing skill detects its own resume / first-session / continuing state from disk and manifest at Step 0 — no source field is passed here.
-
 ---
 
 ## Handoff
