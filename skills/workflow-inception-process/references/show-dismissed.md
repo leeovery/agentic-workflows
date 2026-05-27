@@ -65,8 +65,8 @@ Re-add any of these to the map?
 
 #### If the user names one or more dismissed items to re-add
 
-Treat each as a new-topic surface in the session conversation. Reflect each back with proposed routing (using framing cues if the user gave any, otherwise the previously-dismissed item's history if known), confirm inline, and add to the in-conversation working list — same flow as any other new-topic surface from session-loop's *New-topic moves*.
+Bring those names back into the exploration. Pick up the conversation around them — what was the shape, what's changed since they were dropped. They become exploration surfaces like any other; if they hold up through synthesis, they end up in the proposed topic set.
 
-The dismissed-list `pull` happens at Step 5 confirm-and-persist (the per-topic write loop runs `pull` before `init-phase`, which is a no-op if the name isn't dismissed and harmless if it is).
+The dismissed-list `pull` happens at Step 6 confirm-and-persist (the per-topic write loop runs `pull` before `init-phase`, which is a no-op if the name isn't dismissed and harmless if it is).
 
 → Return to caller.

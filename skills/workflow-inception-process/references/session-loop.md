@@ -6,7 +6,7 @@
 
 Follow the curatorial moves and hard rules from **[inception-guidelines.md](inception-guidelines.md)** throughout. No background agents, no review cycles, no perspective dispatches.
 
-The loop is the same in every session — first or Nth. State-driven branches in **A. Open** pick the opening shape; the conversational loop in **B** runs the same way regardless. When the map already has items, edits to existing items are also available moves — see **B. Session Loop** → *Map-operation moves*.
+The loop is the same in every session — first or Nth. State-driven branches in **A. Open** pick the opening shape; **B. Session Loop** runs pure exploration; **C. Endpoint and Synthesis** detects the endpoint and produces the topic set. When the map already has items, edits to existing items are also available during the loop — they don't change the exploration→synthesis arc, they just record edits to the existing map alongside.
 
 ## A. Open
 
@@ -14,20 +14,19 @@ Read `discovery_map`, `dismissed`, and `imports` from the most recent discovery 
 
 #### If a resume was selected at Step 0
 
-The user chose `continue` at resume detection — the active session log on disk is the working state. Read `.workflows/{work_unit}/inception/session-{session_number}.md` to load **Topics Identified** and **Changes** into context.
+The user chose `continue` at resume detection — the active session log on disk is the working state. Read `.workflows/{work_unit}/inception/session-{session_number}.md` to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
 
 Brief the user with the working state and ask where to pick up:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Picking up where we left off. Working state:
+Picking up where we left off.
 
-  Topics surfaced this session:
-  • {topic-1} — {summary}    [routing: {research|discussion}]
-  • ...
+  Exploration so far:
+  {one-line summary of the Exploration narrative — or "no exploration yet" if empty}
 
-  Changes applied this session:
+  Edits applied:
   • {operation} {target}
   • ...
 
@@ -40,7 +39,7 @@ Where do you want to take it from here?
 
 #### If `discovery_map` is non-empty (map already populated)
 
-This is a continuing inception session — the map exists, so editing existing items is on the table alongside surfacing new ones. Render the map as an anchor using the discovery output from Step 1, then open the conversation:
+This is a continuing inception session — the map exists, so editing existing items is on the table alongside exploring new areas. Render the map as an anchor using the discovery output from Step 1, then open the conversation:
 
 > *Output the next fenced block as a code block:*
 
@@ -75,10 +74,10 @@ Then frame the opener:
 What's on your mind for this map?
 
 You can open a fresh thread — a new area of the work you want
-to sketch out — and we'll surface topics for it the same way
-we did first time. Or you can name changes to existing items:
-add, remove, rename, re-route, edit summary, edit description.
-Both in one go is fine.
+to sketch out — and we'll explore it the same way we did first
+time, then synthesise topics at the end. Or you can name changes
+to existing items: add, remove, rename, re-route, edit summary,
+edit description. Both in one go is fine.
 
 Say "show map" anytime to pull the map back up.
 ```
@@ -89,19 +88,17 @@ Say "show map" anytime to pull the map back up.
 
 #### If `discovery_map` is empty and imports exist
 
-Fresh first-session with seed material. Read each file listed under `imports[]` (paths are relative to `.workflows/{work_unit}/`). Use the import content as the conversation launchpad: reflect what's actually in the seed material, propose tentative topic shapes drawn from it, and ask which to develop first. Don't dump the imports back at the user verbatim — synthesise.
+Fresh first-session with seed material. Read each file listed under `imports[]` (paths are relative to `.workflows/{work_unit}/`). Use the import content as the conversation launchpad: reflect what's actually in the seed material, ask exploratory questions about what's there. Don't dump the imports back at the user verbatim — synthesise.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Read your import(s). Here's what I'm picking up so far:
+Read your import(s). Here's the shape I'm picking up:
 
-  • {tentative-topic-1} — {one-line shape inferred from seed}
-  • {tentative-topic-2} — {one-line shape inferred from seed}
+  {one-line summary of what the imports describe}
 
-These are openers, not commitments. Which would you like
-to develop first, or is there something else in there I
-should be reading differently?
+Before we name topics, let's pull on a few things — {one or two
+exploratory questions drawn from the seed material}.
 ```
 
 **STOP.** Wait for user response.
@@ -119,7 +116,7 @@ Tell me about what you want to build. Don't worry about
 structure — describe it the way it sits in your head right now.
 
 I'll ask some open questions to pull on the idea before we
-start naming topics.
+synthesise topics.
 ```
 
 **STOP.** Wait for user response.
@@ -128,90 +125,76 @@ start naming topics.
 
 ## B. Session Loop
 
-No fixed cadence — follow the conversation, not a checklist. The loop runs until the user signals convergence.
+No fixed cadence — follow the conversation, not a checklist. **The loop is pure exploration.** Topics are not surfaced during the loop; they are synthesised at endpoint in **C**.
 
 1. **Listen.** Take in what the user just said.
 2. **Recognise intent.** The user's message may contain:
-   - **New topic shapes** — surface as candidates with tentative routing inferred from framing (see *New-topic moves* below).
-   - **Map-operation moves** — edit summary, edit description, remove, rename, change routing on existing items (see *Map-operation moves* below). Only relevant when the map is non-empty.
-   - **A request to see the map** — *"show map"*, *"what's on the map"*, *"pull up the map"*. Re-render using the opener's render rules. No STOP gate; just render and continue the loop.
+   - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect. Continue the conversation: ask the next exploratory question, follow the thread the user opened. See [inception-guidelines.md](inception-guidelines.md) → *Open Exploration — How* for what to ask and where to push.
+   - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
+   - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-render using the opener's render rules. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
-   - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units (e.g. *"didn't we already discuss something like this?"*), invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern). Not a pre-loaded primer — a tool to reach for when it would help.
-   - **A signal to converge** — *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*.
+   - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
+   - **An endpoint signal** — *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Endpoint and Synthesis**.
 
-3. **Surface and confirm inline.** Each candidate (new topic or proposed edit) reflects back with the routing or operation inferred from framing. The user agrees, flips, merges, drops, or renames. Treat their response as authoritative; don't re-litigate.
+3. **Continue the exploration.** Ask one question at a time. Follow the conversation. Stay in *open exploration* mode — don't decompose into topics inline. See *Mirroring, not challenging* in the guidelines.
 
-4. **Anchor and return** if the conversation tunnels into one item's mechanism. Re-pose the question at the map level: *"want to come back to the rest first?"*
+4. **Watch for natural endpoint patterns** — Claude-side observations that the picture has been adequately mapped:
+   - The conversation circles back to surfaces already covered
+   - Several turns produce only confirmation of existing surfaces, no new ground
+   - The shape feels mapped to you and to the user
 
-5. **Update the working state.** New topics: add to the in-conversation working list and append to the draft session log under **Topics Identified** at natural pauses. Edits to existing items: delegated to map-operations (see below) which handles its own persistence and logging.
+   When you observe these patterns, route to **C. Endpoint and Synthesis** — *propose* endpoint, don't *declare* it. The user confirms or extends.
 
-6. **Continue.** Stay open. Surface more topics, follow tangents that produce new topics, anchor when the conversation drifts.
+5. **Document at natural pauses.** Write a strong-summary entry to the **Exploration** section of the session log at:
+   - A surface has been adequately explored — capture what was covered
+   - Conversation is about to branch to a new area — close out the current thread
+   - Context-compaction risk feels real (long conversation, lots of detail accumulating)
 
-Do not push for completeness. The user signals convergence when they've got enough.
+   The Exploration entry is **prose, not transcript** — capture what was named, what crystallised, what was decided not to pursue. The log survives context refresh; in-context memory does not.
 
-**New-topic moves:** When a new topic surfaces, confirm inline (*"hearing {topic} — sounds like research, yes?"*). After confirmation, the topic enters the in-conversation working list. At a natural pause (topic settled, conversation about to branch, context-compaction risk), write the working list to the draft session log. This may create the file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, set the active-session marker (idempotent) and commit:
+   The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, set the active-session marker (idempotent) and commit:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception active_session "{session_number:03d}"
-git add -- .workflows/{work_unit}/
-git commit -m "inception({work_unit}): draft session-{session_number:03d} — surfaced topics"
-```
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception active_session "{session_number:03d}"
+   git add -- .workflows/{work_unit}/
+   git commit -m "inception({work_unit}): exploration notes — session-{session_number:03d}"
+   ```
 
-Manifest writes for new items are **deferred to Step 6 confirm-and-persist** — do not write inception items to the manifest mid-loop. The `active_session` marker is the only manifest write that happens here.
+→ Proceed to **C. Endpoint and Synthesis** when either an endpoint signal is recognised in step 2 or a natural endpoint pattern is observed in step 4. Otherwise loop within **B**.
 
-**Map-operation moves:** When the user names an edit to an existing map item, delegate to [map-operations.md](map-operations.md) for that operation. Map-operations handles validation, per-item confirmation, manifest write, session-log append (under **Changes**), and commit. It may create the session log file on its first invocation in a session. When it returns, continue the conversation.
+## C. Endpoint and Synthesis
 
-**Discarding a raised candidate:** If a topic is raised and then dropped during the loop (the user merges it, decides it's not its own thing, or vetoes the surface), append it to the draft session log under **Considered and Discarded** with a one-line reason at the next natural pause. Same lazy-creation rule applies.
+Reached from B when an endpoint signal arrives from the user or Claude observes natural endpoint patterns.
 
-→ Proceed to **C. Convergence Signal**.
-
-## C. Convergence Signal
-
-**The user decides convergence.** Watch for ONE signal: the user's latest message explicitly tells you they're done. Examples: *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*.
-
-**Do not infer convergence** from silence, from having already named topics, or from the user re-framing existing items. Those are not convergence signals — they're the conversation working as designed.
-
-**Anti-rush guard:** do not offer convergence in the early turns of the session regardless of how the conversation feels. The session is supposed to feel exploratory before it feels converged — see [inception-guidelines.md](inception-guidelines.md) → *Open exploration first*. Let the picture develop.
-
-#### If the user has not signalled convergence
-
-→ Return to **B. Session Loop**.
-
-#### If the user has signalled convergence
-
-Render the proposed map and offer to conclude.
+**Propose endpoint with optional pushback.** Render:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Proposed Discovery Map — {work_unit:(titlecase)}
+Feels like we've sketched the shape — {one-line read of what got
+covered}.
 
-  • {topic-1} — {one-line summary}    [routing: {research|discussion}]
-  • {topic-2} — {one-line summary}    [routing: {research|discussion}]
-  • {topic-3} — {one-line summary}    [routing: {research|discussion}]
+{Optional pushback — one or two angles not yet pulled on if any
+come to mind. Examples:}
+- "We didn't talk about how X handles Y — worth a moment?"
+- "Did you want to map Z, or is that scope for later?"
 
-{N} topic(s).
+Anything you want to pull on before I synthesise topics, or
+shall I go?
 ```
 
-Include new items from this session's working list **and** existing map items. New items are marked with `(new this session)`.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Ready to seed this map and conclude?
-
-- **`y`/`yes`** — Persist any new items and conclude inception
-- **Keep going** — Tell me what to adjust (add, drop, rename, re-route, edit summary)
-· · · · · · · · · · · ·
-```
+Pushback is **optional and bounded**. If nothing genuinely unexplored comes to mind, just ask whether to proceed. Don't fabricate angles to look thorough.
 
 **STOP.** Wait for user response.
 
-#### If `yes`
-
-→ Return to caller.
-
-#### If keep going
+#### If the user wants to extend with more exploration
 
 → Return to **B. Session Loop**.
+
+#### If the user confirms ready to synthesise
+
+Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written.
+
+When `topic-synthesis.md` returns:
+
+→ Return to caller.

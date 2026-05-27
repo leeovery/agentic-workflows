@@ -4,21 +4,23 @@
 
 ---
 
-Persists **new topics** from the working list to the manifest and finalises the session log (replaces the `(none)` Conclusion placeholder so resume detection sees a closed session next time).
+Persists the topic set produced by [topic-synthesis.md](topic-synthesis.md) to the manifest, writes the **Topics Identified** section of the session log, clears the active-session marker, and finalises the **Conclusion** placeholder.
 
-Edits to existing items have already committed via [map-operations.md](map-operations.md) during the session loop — they do not pass through the manifest-writes step here, but they may have created the session log file, which still needs Conclusion finalisation.
+Edits to existing items already committed via [map-operations.md](map-operations.md) during the session loop — they do not pass through the manifest-writes step here. But the active-session marker delete and the Conclusion finalisation still need to run for those sessions.
 
 ## A. Persist New Topics
 
+The topic set was confirmed at the end of [topic-synthesis.md](topic-synthesis.md) and is held in conversation memory as the working list.
+
 #### If the working list is empty
 
-No new topics surfaced this session.
+No new topics — this is an edits-only or browse-only session.
 
-→ Proceed to **B. Finalise the session log**.
+→ Proceed to **B. Write Topics Identified**.
 
 #### Otherwise
 
-For each topic on the working list, in the order the user surfaced them:
+For each topic on the working list, in synthesised order:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{topic}"
@@ -31,7 +33,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 
 The `pull` is a no-op if the name isn't in the dismissed list.
 
-Derive `summary` and `description` from the same session conversation in the same turn — no separate prompt. The compact `• {topic} — {summary}` form in the working list stays unchanged; description is generated only at persist time.
+Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Quote shell values with single quotes if they contain `[]`, `{}`, `~`, or backticks. Description may span paragraphs.
 
 If any command fails, surface the error and stop before the commit so the user can recover.
 
@@ -39,48 +41,35 @@ Notes:
 
 - `init-phase` creates the item with `status: in-progress` automatically. Inception items have no other valid status — do not pass `status` explicitly.
 - The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
-- `summary` is the one-line description from the working list. Quote the value in shell — single quotes if it contains `[]`, `{}`, `~`, or backticks.
-- `description` is a paragraph or two of richer context, derived from the same conversation that produced the summary. Entry skills load it as opening context when the user later picks the topic up for research or discussion. Length is not enforced — a paragraph or two is the target, but more or less is fine. Map renders never show it. Quote the value the same way as summary; multi-paragraph content can include embedded newlines.
-- `routing` is the value the user agreed to during the session.
+- `routing` is the value confirmed by the user at the synthesis gate.
 - `source: inception` distinguishes user-surfaced topics from later auto-additions (`research-analysis`, `gap-analysis`, `split`, `elevation`, `direct-start`, `migration-seeded`).
 
-→ Proceed to **B. Finalise the session log**.
+→ Proceed to **B. Write Topics Identified**.
 
-## B. Finalise the session log
-
-The session log path is `.workflows/{work_unit}/inception/session-{session_number:03d}.md`.
+## B. Write Topics Identified
 
 #### If the working list was non-empty (topics persisted in A)
 
-The log file may or may not exist depending on whether a natural-pause write happened during the loop. **Ensure it exists** — if missing, create it from [template.md](template.md) using the session metadata held since Step 1. Populate **Topics Identified** with the new topics in the order they surfaced.
+The log file may or may not exist depending on whether an Exploration write or Edits write happened during the loop. **Ensure it exists** — if missing, create it from [template.md](template.md) using the session metadata held since Step 2.
 
-Replace the **Conclusion** `(none)` placeholder with:
+Populate **Topics Identified** with one section per topic, in synthesised order:
 
-```
-{N_new} topic(s) added{ and M change(s) applied | (empty if no changes)}. Map now has {T} topics.
-```
+```markdown
+### {topic-name}
 
-Compute `{T}` by re-running discovery after the manifest writes in A.
-
-→ Proceed to **C. Single commit**.
-
-#### If the working list was empty but the log file exists (edits-only session)
-
-Replace the **Conclusion** `(none)` placeholder with:
-
-```
-{M} change(s) applied. Map has {T} topics.
+- Routing: {research|discussion}
+- Why: {one-line rationale from synthesis}
 ```
 
-→ Proceed to **C. Single commit**.
+→ Proceed to **C. Clear Marker and Finalise**.
 
-#### If the log file does not exist (browse-only session, no edits, no new topics)
+#### If the working list was empty
 
-Nothing to finalise.
+Leave **Topics Identified** as `(none)`.
 
-→ Return to caller.
+→ Proceed to **C. Clear Marker and Finalise**.
 
-## C. Clear Active Marker and Commit
+## C. Clear Marker and Finalise
 
 Clear the active-session marker so resume detection on the next entry sees a closed session. Skip if the log file does not exist (browse-only session — the marker was never set):
 
@@ -88,10 +77,16 @@ Clear the active-session marker so resume detection on the next entry sees a clo
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception active_session
 ```
 
-Check `git status`. If the working tree is dirty (manifest writes from **A**, the marker delete above, and/or session-log finalisation from **B**), commit. Adjust the staged paths and message to what's actually dirty:
+Replace the **Conclusion** `(none)` placeholder. Skip if no log file exists.
 
-- New topics + log finalisation: `inception({work_unit}): seed {N_new} new topic(s) to map`
-- Log finalisation only (edits-only session): `inception({work_unit}): finalise session log`
+- New topics + (optional) edits: `{N_new} topic(s) added{ and M edit(s) applied | }. Map now has {T} topics.` (Re-run discovery to compute `{T}`.)
+- Edits only, no new topics: `{M} edit(s) applied. Map has {T} topics.`
+- Browse only (no log file): no Conclusion to replace.
+
+Check `git status`. If the working tree is dirty (manifest writes from **A**, the marker delete, the Topics Identified write, the Conclusion replacement, or any combination), commit. Stage the dirty paths and pick the appropriate message:
+
+- New topics: `inception({work_unit}): synthesise {N_new} new topic(s)`
+- Edits only: `inception({work_unit}): finalise session log`
 
 ```bash
 git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
