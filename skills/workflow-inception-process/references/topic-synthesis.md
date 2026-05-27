@@ -70,8 +70,8 @@ For continuing sessions, mark new items with `(new this session)` and include ex
 Confirm to commit, or tell me what to adjust.
 
 - **`y`/`yes`** — Commit these topics and conclude
-- **Adjust** — Tell me what to change (split, merge, rename, re-route, edit summary)
 - **`e`/`explore`** — Go back to exploration; not ready to commit yet
+- **Adjust** — Tell me what to change (split, merge, rename, re-route, edit summary)
 · · · · · · · · · · · ·
 ```
 

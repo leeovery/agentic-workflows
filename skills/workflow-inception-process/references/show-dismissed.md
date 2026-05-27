@@ -52,8 +52,8 @@ Dismissed Topics
 · · · · · · · · · · · ·
 Re-add any of these to the map?
 
-- **Name them** — Tell me which to re-add (and routing if known)
 - **`b`/`back`** — Return to the session
+- **Name them** — Tell me which to re-add (and routing if known)
 · · · · · · · · · · · ·
 ```
 

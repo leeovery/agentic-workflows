@@ -265,6 +265,8 @@ Rendered as markdown (not code blocks). Framed with `· · · · · · · · · 
 
 Both types use `— description` to explain what the option does (unless self-evident, as with yes/no).
 
+**Ordering — command options first, prompt option last.** Mixed menus list all command options before the (single) prompt option. The command set reads as a discrete vocabulary first; the prompt option then sits at the end as the "or respond naturally" tail.
+
 **Prompt option descriptions direct the user's response, not Claude's action.** For a command option, the option *is* the user's input — describing what Claude will do reads naturally (`**`y`/`yes`** — Conclude investigation`). For a prompt option, the user's *natural response* is the trigger — the description should tell them what to say. The format is `**{prompt label}** — {user-directive description}`.
 
 - ✗ `**Keep going** — Continue exploring` — describes Claude's action; ambiguous (should the user type "keep going" or respond naturally?)
