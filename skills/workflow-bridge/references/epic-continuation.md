@@ -22,28 +22,9 @@ Parse the output. Use the epic's `detail` object as the discovery data for the d
 
 ## B. Topic Discovery
 
-A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the `detail` object parsed in A:
+A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the `detail` object parsed in A, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-- `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
-- `analysis_caches.gap_analysis.status` — same
-
-#### If both caches are `valid` or `absent`
-
-No analyses to run.
-
-→ Proceed to **C. Check All-Done**.
-
-#### If at least one cache is `stale`
-
-→ Load **[topic-discovery.md](../../workflow-shared/references/topic-discovery.md)** with work_unit = `{work_unit}`.
-
-On return, store the orchestrator's `new_arrivals` tracker in conversation memory — section D reads it to render the callout above the discovery map.
-
-Re-run discovery for fresh state including auto-added items:
-
-```bash
-node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
-```
+On return, `new_arrivals` is populated — section D reads it to render the callout above the discovery map.
 
 → Proceed to **C. Check All-Done**.
 
