@@ -61,61 +61,7 @@ Store `work_unit` for the handoff.
 
 ---
 
-## Step 2: Check Phase Entry
-
-> *Output the next fenced block as a code block:*
-
-```
-── Check Phase Entry ────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking whether inception items already exist for this
-> work unit (refinement) or this is the first session.
-```
-
-Check if any inception items exist in the discovery map:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists '{work_unit}.inception.*'
-```
-
-#### If exists (`true`)
-
-→ Proceed to **Step 3**.
-
-#### If not exists (`false`)
-
-Set `source` = `first-session`.
-
-→ Proceed to **Step 4**.
-
----
-
-## Step 3: Validate Phase
-
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Phase ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Inception items already exist — this is a refinement
-> session.
-```
-
-Set `source` = `refinement` for the handoff.
-
-→ Proceed to **Step 4**.
-
----
-
-## Step 4: Gather Context
+## Step 2: Gather Context
 
 > *Output the next fenced block as a code block:*
 
@@ -132,11 +78,11 @@ Set `source` = `refinement` for the handoff.
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 3**.
 
 ---
 
-## Step 5: Invoke the Skill
+## Step 3: Invoke the Skill
 
 > *Output the next fenced block as a code block:*
 

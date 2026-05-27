@@ -4,14 +4,15 @@
 
 ---
 
-1. Ensure the inception directory exists: `.workflows/{work_unit}/inception/`.
-2. Load **[template.md](template.md)** and use it to create `.workflows/{work_unit}/inception/session-001.md`. Populate:
-   - The header (date, work unit name).
-   - The **Description (as of session)** section from the handoff `description`.
-   - The **Imports** section from the handoff `imports` list. If the list is empty, write `(none)` under the heading rather than removing the section.
-   - Leave **Topics Identified**, **Considered and Discarded**, and **Conclusion** as placeholders — they fill in during the session.
-3. Commit: `inception({work_unit}): seed initial session log`.
+1. Ensure the inception directory exists: `mkdir -p .workflows/{work_unit}/inception/` (safe to re-run).
+2. Hold the following in conversation memory — they parameterise the session log when it is eventually written:
+   - `session_number` — the next zero-padded session number, taken from `discovery.cjs` output (`next_session_number`).
+   - `description` — the work-unit description from the entry skill's handoff.
+   - `imports` — the handoff `imports` list (may be empty).
+   - `map_state_at_start` — the `map_summary` line from `discovery.cjs` output. Write `(empty — first session)` when no map exists yet.
 
-The draft session log is the recovery surface for context refresh — keep it current at natural pauses during the session loop.
+**Do not create the session log file here.** The file is conjured lazily — see [template.md](template.md) → *Lazy creation and finalisation*. The first state change in [session-loop.md](session-loop.md) writes the file using the metadata held above, populating the header sections and the relevant content section in one write.
+
+No commit at this step — there is nothing on disk yet.
 
 → Return to caller.

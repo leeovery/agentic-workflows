@@ -10,7 +10,7 @@ Act as **curator**. Your job is naming and shaping the topics that will populate
 
 ## Purpose in the Workflow
 
-Opens the epic pipeline. Surfaces an initial set of topics from the user's description, classifies each as `research` or `discussion`, and persists them as inception items on the manifest. Output is the seed of the discovery map; refinement, splits, elevations, and analyses fill it out as work progresses.
+Opens and continues the discovery map for an epic. Every entry — first or Nth — is the same: a curatorial conversation that surfaces topics, classifies routing, and persists items. When the map is already populated, the same conversation also lets the user edit existing items (rename, re-route, edit summary or description, remove never-started topics) — those moves activate because there's something to act on, not because the session is in a different mode.
 
 ### What This Skill Needs
 
@@ -41,43 +41,31 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the most recent session log** — find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md`. For initial sessions this is `session-001.md` and the **Topics Identified** section is your primary progress indicator. For refinement sessions (`session-NNN.md`, NNN > 1) the **Changes** section shows what has already been applied; an unfinalised log has `(none)` under **Conclusion** and should be resumed via **C. Resume Check** in `references/refinement-session.md`.
+2. **Check disk for the active session log.** Run `node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}` and read `latest_session`. If it exists and `is_in_progress` is true, that file is the working state — the **Topics Identified** and **Changes** sections show what has already been applied. If `latest_session` is null, no file was conjured yet — lazy creation means nothing on disk equals nothing committed beyond manifest writes.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages reveal what has been completed.
-4. **Announce your position** to the user before continuing: render the current working list (initial) or the changes applied so far (refinement), state what step you believe you're at, and what comes next. Wait for confirmation.
+4. **Announce your position** to the user before continuing: render the working state, state what step you believe you're at, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
 ---
 
-## Step 0: Source-Aware Detection
+## Step 0: Resume Detection
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Source-Aware Detection ───────────────────────
+── Resume Detection ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the handoff source. Refinement re-entry routes
-> straight to the refinement flow; first-session entry checks
-> for an interrupted draft session log on disk.
+> Checking whether a prior session was interrupted before continuing.
 ```
 
-Read the `Source:` field from the handoff in the prior message.
+Load **[resume-detection.md](references/resume-detection.md)** and follow its instructions as written.
 
-#### If `source` is `refinement`
-
-Inception items already exist for this work unit. Open the refinement session.
-
-Load **[refinement-session.md](references/refinement-session.md)** and follow its instructions as written.
-
-#### If `source` is `first-session`
-
-The entry skill has verified there are no inception items in the manifest. Check the inception directory for an interrupted draft before starting fresh.
-
-Load **[first-session-resume.md](references/first-session-resume.md)** and follow its instructions as written.
+→ Proceed to **Step 1**.
 
 ---
 
@@ -92,9 +80,9 @@ Load **[first-session-resume.md](references/first-session-resume.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Creating the inception directory and seeding the draft session
-> log. No manifest writes happen yet — topics are persisted at
-> the confirm-and-persist gate.
+> Ensuring the inception directory exists and capturing session
+> metadata. The session log file is created lazily on first state
+> change — see references/template.md.
 ```
 
 Load **[initialize-inception.md](references/initialize-inception.md)** and follow its instructions as written.
@@ -135,10 +123,10 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Inception session opening. I'll listen for distinct shapes,
-> reflect tentative groupings, and infer routing from your
-> framing. The map is the output — when you've got enough to
-> start, signal and we'll persist.
+> Opening the inception conversation. I'll listen for distinct
+> shapes, reflect tentative groupings, and infer routing from
+> framing. When the map already has items, edits to existing
+> ones are also available moves.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
@@ -180,8 +168,8 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Persisting the approved map. Manifest writes batch into one
-> commit alongside the finalised session log.
+> Persisting any new items in the working list. Edits to
+> existing items have already committed via map-operations.
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.

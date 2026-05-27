@@ -6,12 +6,7 @@
 
 This skill's purpose is now fulfilled. Construct the handoff and invoke the processing skill.
 
-The `Source:` line in the handoff carries the value of `source` set earlier in the entry flow:
-
-- `first-session` — set in **Step 2** when no inception items exist for this work unit.
-- `refinement` — set in **Step 3** when inception items already exist.
-
-The processing skill reads this field at Step 0 to decide whether to run the initial-session flow or open a refinement session.
+The processing skill detects its own resume / first-session / continuing state from disk and manifest at Step 0 — no source field is passed here.
 
 ---
 
@@ -20,7 +15,6 @@ The processing skill reads this field at Step 0 to decide whether to run the ini
 ```
 Inception session for: {work_unit}
 
-Source: {source:[first-session|refinement]}
 Output: .workflows/{work_unit}/inception/
 
 Description (from manifest):

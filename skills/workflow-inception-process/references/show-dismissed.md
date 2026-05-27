@@ -4,7 +4,7 @@
 
 ---
 
-Recovery flow for the refinement session. Surfaces topic names previously removed from the map and offers re-add. Loaded by **[refinement-session.md](refinement-session.md)** when the user asks to see dismissed items.
+Surfaces topic names previously removed from the map and offers re-add. Loaded by [session-loop.md](session-loop.md) when the user asks to see dismissed items.
 
 State comes from `skills/workflow-inception-process/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
@@ -53,7 +53,7 @@ Dismissed Topics
 Re-add any of these to the map?
 
 - **Name them** — Tell me which to re-add (and routing if known)
-- **`b`/`back`** — Return to the refinement session
+- **`b`/`back`** — Return to the session
 · · · · · · · · · · · ·
 ```
 
@@ -65,12 +65,8 @@ Re-add any of these to the map?
 
 #### If the user names one or more dismissed items to re-add
 
-Treat the response as an Add intent and dispatch to the Add flow:
+Treat each as a new-topic surface in the session conversation. Reflect each back with proposed routing (using framing cues if the user gave any, otherwise the previously-dismissed item's history if known), confirm inline, and add to the in-conversation working list — same flow as any other new-topic surface from session-loop's *New-topic moves*.
 
-→ Load **[map-operations.md](map-operations.md)** and follow its instructions as written.
-
-`map-operations.md` re-runs discovery, validates each name (collision check is satisfied — dismissed-list match is allowed for Add and triggers a `pull` from the dismissed list before `init-phase`), STOP-gates on the batch, applies the writes, appends a Changes entry to the session log, and commits.
-
-When `map-operations.md` returns:
+The dismissed-list `pull` happens at Step 5 confirm-and-persist (the per-topic write loop runs `pull` before `init-phase`, which is a no-op if the name isn't dismissed and harmless if it is).
 
 → Return to caller.
