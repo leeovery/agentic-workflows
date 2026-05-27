@@ -48,18 +48,19 @@ The map exists; editing existing items is available alongside new exploration. R
   Inception — {work_unit:(titlecase)}
 ●───────────────────────────────────────────────●
 
-  Discovery Map ({map_summary})
+  Discovery Map ({total} topics{tier_breakdown})
 
 @foreach(topic in discovery_map)
-  @if(not last_topic) ├─ @else └─ @endif {topic.tier}  {topic.name:(titlecase)}  {lifecycle_label}
+  {branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]
 @endforeach
 ```
 
 Render rules:
 
-- `map_summary` — `{total} topics — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled`. Omit zero-count categories from the dot-separated tail. Always include `{total} topics`.
+- `tier_breakdown` — append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled` (omitting zero-count categories) only when more than one tier bucket is non-zero. When only one bucket is non-zero, omit the breakdown and render just `Discovery Map ({total} topics)`.
+- `{branch}` — `┌─` for the first row, `└─` for the last, `├─` for the rest. With a single row, use `└─` (no upward stroke).
 - Tier ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊘`, alphabetical within tier). Render in the order given.
-- `lifecycle_label` by tier:
+- `lifecycle_label` by tier (wrapped in square brackets per the row template):
   - `→` — `research complete · ready for discussion`
   - `◐` — `researching` or `discussing` (use `topic.current_phase`)
   - `✓` — `decided`
