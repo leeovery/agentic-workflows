@@ -61,6 +61,9 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 
 @foreach(topic in discovery_map)
   @if(not last_topic) ├─ @else └─ @endif {topic.tier}  {topic.name:(titlecase)}  {lifecycle_label}
+@if(topic.summary)
+       {topic.summary}
+@endif
 @if(topic.source_provenance)
        {topic.source_provenance}
 @endif
@@ -104,6 +107,7 @@ Render the discovery map block at the top, then the build-phase tree (specificat
   - `✓` (decided) — `decided`
   - `○` (fresh) — `fresh · routed to {topic.routing}` (omit the ` · routed to ...` segment if `topic.routing` is null)
   - `⊘` (cancelled) — `cancelled`
+- **Summary sub-line**: render only when `topic.summary` is non-null. Indent at 7 spaces (under the title text, past the tree branch). Example: `       AI generation pipeline for recipe content with editorial review.` Sits directly under the title row, above the provenance sub-line when both are present.
 - **Source provenance sub-line**: render only when `topic.source_provenance` is non-null. Indent at 7 spaces (under the title text, past the tree branch). Example: `       from kitchen-hardware`. Source `inception` has no provenance line.
 - **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Skip `research`, `discussion`, and `inception` — they are represented in the map above. Tree grammar (`├─` non-final, `└─` final), planning format suffix (`· {format}`), specification source rows, and implementation progress lines render the same way as the otherwise branch below. Skip phases with no items. Blank line between sections.
 - **No trailing recommendation callout** in this code block. Build-phase recommendations attach to menu entries (see **C. Menu**), not the state display.

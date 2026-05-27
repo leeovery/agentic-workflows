@@ -67,3 +67,4 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 24 | [Inception Self-Healing on Legacy / Kitchen-Sink Research](inception-self-healing-on-legacy-research.md) | Migration 038 + `research-analysis` input guards + manifest `get` exit-2 + `routing` hardcode |
 | 25 | [Analysis Cycle Counter Resets on Resume Collide with File Naming](analysis-cycle-counter-reset-collision.md) | `workflow-implementation-process` Step 0 + `analysis-loop.md` + `invoke-analysis.md` |
 | 26 | [Review Not Re-Offered After Loopback from Review Remediation](review-not-re-offered-after-loopback.md) | `workflow-implementation-entry/validate-phase.md` + `workflow-bridge/discovery.cjs` |
+| 27 | [Continue-Epic Step 5 Asks the Agent to Filter Data the Discovery Script Doesn't Expose](continue-epic-items-to-recover-unobservable.md) | `continue-epic/SKILL.md` Step 5 + `continue-epic/scripts/discovery.cjs` text formatter |

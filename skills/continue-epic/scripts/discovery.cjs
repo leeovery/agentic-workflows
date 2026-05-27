@@ -179,10 +179,13 @@ function buildEpicDetail(cwd, manifest) {
       const { lifecycle, tier, current_phase } = computeTopicLifecycle(manifest, item.name);
       const next_action = computeNextAction(item.routing, lifecycle);
       const source_provenance = computeSourceProvenance(item.source);
+      const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
+      const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
       return {
         name: item.name,
-        summary: item.summary || null,
-        description: item.description || null,
+        summary_present: summaryText !== null,
+        summary: summaryText,
+        description_present: descriptionText !== null,
         routing: item.routing || null,
         source: item.source || 'inception',
         source_provenance,
@@ -322,8 +325,12 @@ function format(result) {
       for (const t of d.discovery_map) {
         let line = `      - ${t.tier} ${t.name} [${t.lifecycle}]`;
         if (t.next_action) line += ` -> ${t.next_action}`;
+        line += ` [summary: ${t.summary_present ? 'present' : 'absent'}, description: ${t.description_present ? 'present' : 'absent'}]`;
         if (t.source_provenance) line += ` (${t.source_provenance})`;
         lines.push(line);
+        if (t.summary) {
+          lines.push(`             summary: ${t.summary}`);
+        }
       }
     }
     if (d.in_progress.length > 0) {
