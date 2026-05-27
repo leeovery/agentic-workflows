@@ -92,7 +92,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.incep
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception dismissed
 ```
 
-`items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed via refinement.
+`items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed from the map by the user.
 
 For each candidate topic from **C** (kebab-case name + summary + routing), evaluate the conditions below in order. Each branch is self-contained and concludes by moving on to the next candidate.
 
@@ -126,7 +126,7 @@ Do not change the existing item's routing. Do not add to `tracker`. Do not write
 
 #### If the name appears in `dismissed`
 
-Skip silently. The user removed this topic via refinement; the dismissed semantic is "don't auto-re-propose."
+Skip silently. The user removed this topic from the map; the dismissed semantic is "don't auto-re-propose."
 
 #### Otherwise (new candidate)
 

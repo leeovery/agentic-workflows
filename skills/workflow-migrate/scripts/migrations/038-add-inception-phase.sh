@@ -20,8 +20,8 @@
 # surface fresh themes with proper summaries from current source content.
 # The arrays sit on disk as inert legacy data.
 #
-# Also back-fills a placeholder session-001.md so refinement-session's
-# numbering logic ("Initial Framing" assumption at session-001) holds.
+# Also back-fills a placeholder session-001.md so the inception session
+# numbering picks up at session-002 on next entry (rather than re-using 001).
 #
 # Non-destructive: no file moves, no content rewrites. Skips non-epic and
 # non-in-progress work units.
@@ -97,8 +97,8 @@ for (const entry of entries) {
     fs.writeFileSync(mPath, JSON.stringify(m, null, 2) + '\n');
   }
 
-  // Back-fill session-001.md if missing — refinement-session's numbering
-  // assumes session-001 exists as the 'Initial Framing' anchor.
+  // Back-fill session-001.md if missing — gives the migrated epic a
+  // concluded-style session-001 so the next inception entry opens session-002.
   const incDir = path.join(wfDir, entry.name, 'inception');
   const sessionPath = path.join(incDir, 'session-001.md');
   if (!fs.existsSync(sessionPath)) {

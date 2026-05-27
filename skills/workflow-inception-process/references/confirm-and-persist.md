@@ -62,6 +62,8 @@ Replace the **Conclusion** `(none)` placeholder with:
 
 Compute `{T}` by re-running discovery after the manifest writes in A.
 
+→ Proceed to **C. Single commit**.
+
 #### If the working list was empty but the log file exists (edits-only session)
 
 Replace the **Conclusion** `(none)` placeholder with:
@@ -70,13 +72,13 @@ Replace the **Conclusion** `(none)` placeholder with:
 {M} change(s) applied. Map has {T} topics.
 ```
 
+→ Proceed to **C. Single commit**.
+
 #### If the log file does not exist (browse-only session, no edits, no new topics)
 
 Nothing to finalise.
 
 → Return to caller.
-
-→ Proceed to **C. Single commit**.
 
 ## C. Single commit
 

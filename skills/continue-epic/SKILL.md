@@ -306,7 +306,7 @@ Invoke the appropriate skill based on the user's menu selection. Match by **pref
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
-| Refine map | `/workflow-inception-entry epic {work_unit}` |
+| Continue inception | `/workflow-inception-entry epic {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
 

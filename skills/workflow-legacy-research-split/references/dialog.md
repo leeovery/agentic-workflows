@@ -52,7 +52,7 @@ Legacy-decomposition specifics:
 
 - **Avoid collisions with other active topics.** Theme `kebab_name` must not match any *other* existing inception item on the map (besides the source itself). `validate.cjs` enforces this — if a candidate name clashes with an existing topic, pick a different name. The current map is in the discovery output already in context from `continue-epic` Step 1; consult it before naming.
 
-- **Dismissed names are allowed.** If a candidate name matches an entry on the work unit's `dismissed[]` list (topics the user removed via refinement), that's fine — `apply.cjs` pulls the name from `dismissed` before re-adding. User-driven legacy-split bypasses the dismissed gate (which only blocks automatic re-adds).
+- **Dismissed names are allowed.** If a candidate name matches an entry on the work unit's `dismissed[]` list (topics the user previously removed from the map), that's fine — `apply.cjs` pulls the name from `dismissed` before re-adding. User-driven legacy-split bypasses the dismissed gate (which only blocks automatic re-adds).
 
 - **Single-theme split is valid.** Even when the source contains a single coherent theme, the split still runs. The source file is renamed to `-superseded-`, the new file is created with the (possibly re-flowed) content, and the inception item gets full metadata. This normalises legacy items without forcing artificial decomposition.
 

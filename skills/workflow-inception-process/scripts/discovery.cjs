@@ -59,8 +59,8 @@ function findLatestSessionLog(cwd, workUnit) {
   const number = parseInt(m[1], 10);
 
   // Detect Conclusion section status (placeholder = "(none)" on the first
-  // non-empty line after the heading). An in-progress refinement log is the
-  // resume signal used by refinement-session.md C. Resume Check.
+  // non-empty line after the heading). An in-progress log is the resume
+  // signal used by resume-detection.md.
   let conclusionText = '';
   const conclusionMatch = content.match(/##\s+Conclusion\s*\n([\s\S]*?)(?:\n##\s|$)/);
   if (conclusionMatch) {

@@ -8,7 +8,7 @@ Drives cache-based dispatch of `research-analysis` and `inception-gap-analysis` 
 
 Each analysis self-gates on a precondition (research-analysis needs at least one completed research item; gap-analysis needs at least one completed research OR discussion item). When the precondition fails the analysis returns without touching cache or manifest — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
-The caller is responsible for surfacing the result — `continue-epic` shows a callout above the discovery map; `refinement-session.md` records names under **Topic Discovery Arrivals** in the active session log.
+The caller is responsible for surfacing the result — `continue-epic` shows a callout above the discovery map; `workflow-bridge` does the same on its epic-continuation display.
 
 ## Parameters
 
@@ -104,6 +104,6 @@ If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap
 The caller reads `new_arrivals` from conversation memory:
 
 - **`continue-epic`** — passes `new_arrivals` to `epic-display-and-menu.md` for the `⚑ N new topics added to the map from {analysis}` callout above the Discovery Map. Callout is rendered once at this boot-up; subsequent boots without changes don't repeat it.
-- **`workflow-inception-process` refinement** — appends each name to the active session log's **Topic Discovery Arrivals** section as `- {topic} (added by {analysis}, source: {provenance})`, replacing the `(none)` placeholder if it's still present.
+- **`workflow-bridge`** — same callout pattern on its epic-continuation menu, populated by the same `new_arrivals` tracker.
 
 → Return to caller.
