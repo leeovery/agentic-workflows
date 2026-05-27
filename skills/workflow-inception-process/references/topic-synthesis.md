@@ -91,7 +91,7 @@ The topic set is confirmed. Hold it in conversation memory as the **working list
 
 The session-loop reopens at **B** for continued exploration. The endpoint detection will fire again when ready.
 
-#### If the user names adjustments
+#### If adjust
 
 Apply the named adjustments to the working set:
 

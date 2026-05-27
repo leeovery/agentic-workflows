@@ -166,35 +166,43 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is pur
 
 Reached from B when an endpoint signal arrives from the user or Claude observes natural endpoint patterns.
 
-**Propose endpoint with optional pushback.** Render:
+**Propose endpoint with optional pushback.** First, a one-line read of what got covered, plus zero, one, or two pushback angles if any genuinely unexplored ground comes to mind:
 
 > *Output the next fenced block as a code block:*
 
 ```
-Feels like we've sketched the shape — {one-line read of what got
-covered}.
+Feels like we've sketched the shape — {one-line read of what got covered}.
 
-{Optional pushback — one or two angles not yet pulled on if any
-come to mind. Examples:}
-- "We didn't talk about how X handles Y — worth a moment?"
-- "Did you want to map Z, or is that scope for later?"
-
-Anything you want to pull on before I synthesise topics, or
-shall I go?
+{Optional pushback — one or two angles not yet pulled on. Examples:}
+- We didn't talk about how X handles Y — worth a moment?
+- Did you want to map Z, or is that scope for later?
 ```
 
-Pushback is **optional and bounded**. If nothing genuinely unexplored comes to mind, just ask whether to proceed. Don't fabricate angles to look thorough.
+Pushback is **optional and bounded**. If nothing genuinely unexplored comes to mind, skip the pushback lines entirely. Don't fabricate angles to look thorough.
+
+Then prompt the user:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Ready to synthesise topics?
+
+- **`y`/`yes`** — Synthesise topics now
+- **Pull on more** — Continue exploring
+· · · · · · · · · · · ·
+```
 
 **STOP.** Wait for user response.
 
-#### If the user wants to extend with more exploration
-
-→ Return to **B. Session Loop**.
-
-#### If the user confirms ready to synthesise
+#### If `yes`
 
 Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written.
 
 When `topic-synthesis.md` returns:
 
 → Return to caller.
+
+#### If pull on more
+
+→ Return to **B. Session Loop**.
