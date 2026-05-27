@@ -67,7 +67,7 @@ function seedEpic(workUnit, items = {}) {
   fs.writeFileSync(projPath, JSON.stringify(proj, null, 2));
 }
 
-describe('refinement: hard-delete on remove', () => {
+describe('inception map operations: hard-delete on remove', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);
 
@@ -97,7 +97,7 @@ describe('refinement: hard-delete on remove', () => {
   });
 });
 
-describe('refinement: dismissed list', () => {
+describe('inception map operations: dismissed list', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);
 
@@ -159,7 +159,7 @@ describe('refinement: dismissed list', () => {
   });
 });
 
-describe('refinement: rename mechanical sequence', () => {
+describe('inception map operations: rename mechanical sequence', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);
 
@@ -296,7 +296,7 @@ describe('refinement: rename mechanical sequence', () => {
   });
 });
 
-describe('refinement: edit description', () => {
+describe('inception map operations: edit description', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);
 
@@ -371,12 +371,13 @@ describe('refinement: edit description', () => {
   });
 });
 
-describe('refinement: add operation persists description', () => {
+describe('inception persistence: new topic write', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);
 
-  // Section D. Add now writes description after summary when an Add proposal
-  // carries it (the same Claude turn that proposes routing derives both).
+  // confirm-and-persist runs init-phase + set summary/description/routing/source
+  // for each new topic on the working list. Description is derived in the same
+  // session turn that proposes routing.
   it('writes description on a newly-added topic', () => {
     seedEpic('payments', {});
 
@@ -394,7 +395,7 @@ describe('refinement: add operation persists description', () => {
   });
 });
 
-describe('refinement: lifecycle gate via computeTopicLifecycle', () => {
+describe('inception map operations: lifecycle gate via computeTopicLifecycle', () => {
   beforeEach(setupFixture);
   afterEach(cleanupFixture);
 

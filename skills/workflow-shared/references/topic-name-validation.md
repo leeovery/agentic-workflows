@@ -48,7 +48,7 @@ node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
 Read:
 
 - `discovery_map` — list of active topic items. The `name` field of each entry is the case-sensitive map name.
-- `dismissed` — array of names previously removed via refinement.
+- `dismissed` — array of names previously removed from the map by the user.
 
 → Proceed to **C. Compare Against Active Map**.
 
@@ -77,7 +77,7 @@ or use edit-summary / change-routing on the existing item.
 
 Check whether `proposed_name` matches any entry in `dismissed` (case-sensitive).
 
-A dismissed-list match is **not** a rejection. User-explicit spawns (split, elevation, refinement add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The caller pulls the name from `dismissed` before writing the new item.
+A dismissed-list match is **not** a rejection. User-explicit spawns (split, elevation, inception session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The caller pulls the name from `dismissed` before writing the new item.
 
 #### If a match exists
 

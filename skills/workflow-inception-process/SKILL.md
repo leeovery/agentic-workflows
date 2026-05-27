@@ -10,7 +10,7 @@ Act as **curator**. Your job is naming and shaping the topics that will populate
 
 ## Purpose in the Workflow
 
-Opens the epic pipeline. Surfaces an initial set of topics from the user's description, classifies each as `research` or `discussion`, and persists them as inception items on the manifest. Output is the seed of the discovery map; refinement, splits, elevations, and analyses fill it out as work progresses.
+Opens and continues the discovery map for an epic. Every entry — first or Nth — is the same: a curatorial conversation that surfaces topics, classifies routing, and persists items. When the map is already populated, the same conversation also lets the user edit existing items (rename, re-route, edit summary or description, remove never-started topics) — those moves activate because there's something to act on, not because the session is in a different mode.
 
 ### What This Skill Needs
 
@@ -41,47 +41,120 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the most recent session log** — find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md`. For initial sessions this is `session-001.md` and the **Topics Identified** section is your primary progress indicator. For refinement sessions (`session-NNN.md`, NNN > 1) the **Changes** section shows what has already been applied; an unfinalised log has `(none)` under **Conclusion** and should be resumed via **C. Resume Check** in `references/refinement-session.md`.
+2. **Read the active session log.** Find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md` and read it. **Topics Identified** and **Changes** show what was applied; a **Conclusion** of `(none)` means in-progress, anything else means concluded. If no file exists, no state changes have happened yet (lazy creation — see `references/template.md`).
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages reveal what has been completed.
-4. **Announce your position** to the user before continuing: render the current working list (initial) or the changes applied so far (refinement), state what step you believe you're at, and what comes next. Wait for confirmation.
+4. **Announce your position** to the user before continuing: render the working state, state what step you believe you're at, and what comes next. Wait for confirmation.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
 ---
 
-## Step 0: Source-Aware Detection
+## Step 0: Resume Detection
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Source-Aware Detection ───────────────────────
+── Resume Detection ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the handoff source. Refinement re-entry routes
-> straight to the refinement flow; first-session entry checks
-> for an interrupted draft session log on disk.
+> Checking the manifest for an in-progress prior session.
 ```
 
-Read the `Source:` field from the handoff in the prior message.
+Read the active-session marker:
 
-#### If `source` is `refinement`
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception active_session
+```
 
-Inception items already exist for this work unit. Open the refinement session.
+The marker is set when a session writes its log for the first time (lazy creation) and deleted when the session concludes. Its presence is the authoritative in-progress signal.
 
-Load **[refinement-session.md](references/refinement-session.md)** and follow its instructions as written.
+#### If output is empty or the literal string `null`
 
-#### If `source` is `first-session`
+No prior session is in progress. `session_number` will be set at Step 1 from discovery's `next_session_number`.
 
-The entry skill has verified there are no inception items in the manifest. Check the inception directory for an interrupted draft before starting fresh.
+→ Proceed to **Step 1**.
 
-Load **[first-session-resume.md](references/first-session-resume.md)** and follow its instructions as written.
+#### Otherwise
+
+The output is the in-progress session number string (e.g. `002`). The prior session was interrupted before finalisation.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found an in-progress inception session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Pick up where you left off
+- **`r`/`restart`** — Delete the draft and start a new session
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `continue`
+
+Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/inception/session-{session_number}.md` is the working state for the session loop.
+
+→ Proceed to **Step 1**.
+
+#### If `restart`
+
+Delete the in-progress log and clear the marker:
+
+```bash
+rm .workflows/{work_unit}/inception/session-{active_session}.md
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception active_session
+git add -- .workflows/{work_unit}/
+git commit -m "inception({work_unit}): restart interrupted session"
+```
+
+`session_number` will be set at Step 1 from discovery's `next_session_number`.
+
+→ Proceed to **Step 1**.
 
 ---
 
-## Step 1: Initialize Inception
+## Step 1: Run Discovery
+
+> *Output the next fenced block as a code block:*
+
+```
+── Run Discovery ────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Loading the discovery map, dismissed list, and analysis cache
+> state for the rest of the session.
+```
+
+Run discovery for the work unit:
+
+```bash
+node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+```
+
+Hold the output in conversation context as **the most recent discovery output**. Downstream steps and references read from it:
+
+- `discovery_map` — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`
+- `map_summary` — counts string used for the opener render
+- `dismissed` — names previously removed from the map
+- `active_session` — in-progress session number set by lazy log creation, cleared at conclude. Authoritative resume signal (read at Step 0).
+- `next_session_number` — used to set `session_number` for fresh entries
+
+If `session_number` was not set at Step 0 (no resume), set it now: `session_number` = `next_session_number`.
+
+`map-operations.md` and `show-dismissed.md` re-invoke discovery on entry because they validate against post-mutation state.
+
+→ Proceed to **Step 2**.
+
+---
+
+## Step 2: Initialize Inception
 
 > *Output the next fenced block as a code block:*
 
@@ -92,18 +165,18 @@ Load **[first-session-resume.md](references/first-session-resume.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Creating the inception directory and seeding the draft session
-> log. No manifest writes happen yet — topics are persisted at
-> the confirm-and-persist gate.
+> Ensuring the inception directory exists and capturing session
+> metadata. The session log file is created lazily on first state
+> change — see references/template.md.
 ```
 
 Load **[initialize-inception.md](references/initialize-inception.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ Proceed to **Step 3**.
 
 ---
 
-## Step 2: Load Inception Guidelines
+## Step 3: Load Inception Guidelines
 
 > *Output the next fenced block as a code block:*
 
@@ -120,11 +193,11 @@ Load **[initialize-inception.md](references/initialize-inception.md)** and follo
 
 Load **[inception-guidelines.md](references/inception-guidelines.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 3: Session Loop
+## Step 4: Session Loop
 
 > *Output the next fenced block as a code block:*
 
@@ -135,19 +208,19 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Inception session opening. I'll listen for distinct shapes,
-> reflect tentative groupings, and infer routing from your
-> framing. The map is the output — when you've got enough to
-> start, signal and we'll persist.
+> Opening the inception conversation. I'll listen for distinct
+> shapes, reflect tentative groupings, and infer routing from
+> framing. When the map already has items, edits to existing
+> ones are also available moves.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 ---
 
-## Step 4: Document Review
+## Step 5: Document Review
 
 > *Output the next fenced block as a code block:*
 
@@ -165,11 +238,11 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 5: Confirm and Persist
+## Step 6: Confirm and Persist
 
 > *Output the next fenced block as a code block:*
 
@@ -180,17 +253,17 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Persisting the approved map. Manifest writes batch into one
-> commit alongside the finalised session log.
+> Persisting any new items in the working list. Edits to
+> existing items have already committed via map-operations.
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Compliance Self-Check
+## Step 7: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -207,11 +280,11 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Conclude Inception
+## Step 8: Conclude Inception
 
 > *Output the next fenced block as a code block:*
 

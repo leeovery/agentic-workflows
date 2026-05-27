@@ -1,6 +1,6 @@
 ---
 name: continue-epic
-allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs)
+allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-inception-process/scripts/discovery.cjs)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -246,28 +246,9 @@ backfill-checks is terminal when it fires — it commits the recovery work and s
 > to surface onto the inception map.
 ```
 
-Initialise `new_arrivals = {}` — Step 7 reads it; topic-discovery may populate it below.
+Read `analysis_caches` from the most recent discovery `detail`. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-Read `analysis_caches` from the most recent discovery `detail`:
-
-- `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
-- `analysis_caches.gap_analysis.status` — same
-
-#### If both caches are `valid` or `absent`
-
-→ Proceed to **Step 7**.
-
-#### If at least one cache is `stale`
-
-Load **[topic-discovery.md](../workflow-shared/references/topic-discovery.md)** with work_unit = `{work_unit}`.
-
-On return, topic-discovery has populated `new_arrivals` with any items added by the analyses.
-
-Re-run discovery so Step 7 sees fresh state including any auto-added items:
-
-```bash
-node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
-```
+On return, `new_arrivals` is populated for Step 7 to render the callout.
 
 → Proceed to **Step 7**.
 
@@ -325,7 +306,7 @@ Invoke the appropriate skill based on the user's menu selection. Match by **pref
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
-| Refine map | `/workflow-inception-entry epic {work_unit}` |
+| Continue inception | `/workflow-inception-entry epic {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
 

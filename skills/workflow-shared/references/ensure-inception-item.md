@@ -6,7 +6,7 @@
 
 Idempotently ensures a `phases.inception.items.{topic}` entry exists for the given topic on the given work unit. If the work unit is not an epic, returns immediately — only epics have a discovery map. Otherwise: if the item already exists, this reference is a no-op; if not, it pulls the topic from `dismissed[]` (when present) and creates the item with `source: direct-start` and the caller-supplied `routing`.
 
-The reference assumes `topic` is already kebab-case — callers normalise before invoking. Callers may pass `summary` and `description` when they have material to derive from (e.g. the user's opening response to "what topic"); when omitted, the item is created with routing + source only and the user can backfill via refinement later.
+The reference assumes `topic` is already kebab-case — callers normalise before invoking. Callers may pass `summary` and `description` when they have material to derive from (e.g. the user's opening response to "what topic"); when omitted, the item is created with routing + source only and the user can backfill via a later inception session.
 
 ## Parameters
 

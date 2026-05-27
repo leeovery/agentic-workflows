@@ -27,8 +27,8 @@ If the working tree is already clean, skip the commit.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Inception complete. The discovery map is seeded — return to
-> the epic menu to start, continue, or refine any topic.
+> Inception session complete. Returning to the epic menu so you
+> can pick the next move from the discovery map.
 ```
 
 ```

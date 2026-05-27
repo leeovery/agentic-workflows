@@ -370,7 +370,7 @@ If the index command fails, display the error but do not block — the file is a
 
 ## J. Register Inception Item
 
-The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.inception.items` — without an inception entry, the topic is invisible to refinement, the continue-epic display, map-summary counts, and the dismissed-list flow.
+The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.inception.items` — without an inception entry, the topic is invisible to the continue-epic display, subsequent inception sessions, map-summary counts, and the dismissed-list flow.
 
 Routing reflects the work already done on the feature. `summary` and `description` are left unset — `source` defaults to `inception` at render time, and the next `/continue-epic` entry will detect the missing fields and route to `summary-backfill.md` so the user can review derived values.
 
