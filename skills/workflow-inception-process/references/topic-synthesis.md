@@ -85,9 +85,7 @@ The topic set is confirmed. Hold it in conversation memory as the **working list
 
 #### If `explore`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 4**.
-
-The session-loop reopens at **B** for continued exploration. The endpoint detection will fire again when ready.
+→ Return to caller for **B. Session Loop**.
 
 #### If adjust
 
