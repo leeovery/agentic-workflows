@@ -41,7 +41,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Check disk for the active session log.** Run `node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}` and read `latest_session`. If it exists and `is_in_progress` is true, that file is the working state — the **Topics Identified** and **Changes** sections show what has already been applied. If `latest_session` is null, no file was conjured yet — lazy creation means nothing on disk equals nothing committed beyond manifest writes.
+2. **Read the active session log.** Find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md` and read it. **Topics Identified** and **Changes** show what was applied; a **Conclusion** of `(none)` means in-progress, anything else means concluded. If no file exists, no state changes have happened yet (lazy creation — see `references/template.md`).
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages reveal what has been completed.
 4. **Announce your position** to the user before continuing: render the working state, state what step you believe you're at, and what comes next. Wait for confirmation.
 
