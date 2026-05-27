@@ -189,7 +189,7 @@ Then prompt the user:
 Ready to synthesise topics?
 
 - **`y`/`yes`** — Synthesise topics now
-- **Keep going** — Tell me what else to pull on
+- **Keep going** — Tell me what else to explore
 · · · · · · · · · · · ·
 ```
 

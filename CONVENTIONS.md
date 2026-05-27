@@ -265,6 +265,13 @@ Rendered as markdown (not code blocks). Framed with `· · · · · · · · · 
 
 Both types use `— description` to explain what the option does (unless self-evident, as with yes/no).
 
+**Prompt option descriptions direct the user's response, not Claude's action.** For a command option, the option *is* the user's input — describing what Claude will do reads naturally (`**`y`/`yes`** — Conclude investigation`). For a prompt option, the user's *natural response* is the trigger — the description should tell them what to say. The format is `**{prompt label}** — {user-directive description}`.
+
+- ✗ `**Keep going** — Continue exploring` — describes Claude's action; ambiguous (should the user type "keep going" or respond naturally?)
+- ✓ `**Keep going** — Tell me what else to explore` — directs the user's response
+
+Sister patterns: `**Name them** — Tell me which to re-add`; `**Adjust** — Tell me what to change`. When the description starts with "Tell me…" or names the user's expected response, it lands correctly. When it starts with a verb describing Claude's action, it lands wrong.
+
 **Mixed prompt** — command and prompt options together:
 
 ```
