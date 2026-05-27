@@ -4,9 +4,9 @@
 
 ---
 
-Per-operation handling for **edits to existing map items**. Loaded by [session-loop.md](session-loop.md) when the user names one or more map operations in a conversational turn. Owns parsing, validation, manifest writes, session-log entries, and commits for these moves.
+Per-operation handling for **edits to existing map items**. Loaded by [session-loop.md](session-loop.md) when the user names one or more map operations in a conversational turn. Owns parsing, validation, manifest writes, session-log entries (under **Edits**), and commits for these moves.
 
-New topic additions route through session-loop's *New-topic moves* and persist at Step 5 confirm-and-persist — not here.
+New topics are not added here — they are synthesised at endpoint from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
 
 State for validation comes from `skills/workflow-inception-process/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
@@ -164,7 +164,7 @@ For each:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{new summary}"
 ```
 
-Append a single batch entry to the session log under **Changes**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 1. If **Changes** currently reads `(none)`, replace it with the bullets:
+Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 1. If **Edits** currently reads `(none)`, replace it with the bullets:
 
 ```markdown
 - Edited summary: {name_1} — {short note}
@@ -222,7 +222,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.in
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.inception dismissed "{name}"
 ```
 
-Append a Changes entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Changes** currently reads `(none)`, replace it with the bullet:
+Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
 
 ```markdown
 - Removed: {name} — {short reason}
@@ -325,7 +325,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 
 If any command fails, surface the error and stop before the commit so the user can recover — a partial rename leaves the manifest in an inconsistent state otherwise.
 
-Append a Changes entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Changes** currently reads `(none)`, replace it with the bullet:
+Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
 
 ```markdown
 - Renamed: {old} → {new} — {short reason}
@@ -378,7 +378,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing {research|discussion}
 ```
 
-Append a Changes entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Changes** currently reads `(none)`, replace it with the bullet:
+Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
 
 ```markdown
 - Changed routing: {name} → {new routing} — {short reason}
@@ -434,7 +434,7 @@ For each, write the full description verbatim (not the truncated preview):
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{new description}"
 ```
 
-Append a single batch entry to the session log under **Changes**. If the log doesn't exist yet, create it first from [template.md](template.md). If **Changes** currently reads `(none)`, replace it with the bullets:
+Append a single batch entry to the session log under **Edits**. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullets:
 
 ```markdown
 - Edited description: {name_1} — {short note}

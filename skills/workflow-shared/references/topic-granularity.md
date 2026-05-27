@@ -1,6 +1,6 @@
 # Topic Granularity
 
-*Shared reference. Loaded by `research-analysis.md`, `inception-gap-analysis.md`, and `workflow-legacy-research-split/references/dialog.md`.*
+*Shared reference. Loaded by `workflow-inception-process/references/inception-guidelines.md`, `workflow-shared/references/research-analysis.md`, `workflow-shared/references/inception-gap-analysis.md`, and `workflow-legacy-research-split/references/dialog.md`.*
 
 ---
 

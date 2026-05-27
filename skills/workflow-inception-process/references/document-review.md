@@ -13,13 +13,15 @@
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the session conversation against the inception
-> session log. The audit covers the rationale layer — log, not map.
+> Reconciling the session log against the conversation before
+> persisting. The audit covers the durable record — Exploration
+> narrative, Edits structured entries, and the synthesised topic
+> set held in conversation memory.
 ```
 
 ## A. Check for an Active Log
 
-The session log is created lazily — if no state change occurred during the session (browse only), no file exists and there is nothing to reconcile.
+The session log is created lazily — if no Exploration write, edit, or topic synthesis produced content, no file exists and there is nothing to reconcile.
 
 Check whether the active log exists at `.workflows/{work_unit}/inception/session-{session_number:03d}.md`.
 
@@ -47,13 +49,17 @@ Read `.workflows/{work_unit}/inception/session-{session_number:03d}.md` in full.
 
 ## C. Reconcile
 
-Walk the conversation against the draft log. Four checks:
+Walk the conversation against the log. Five checks:
 
-1. **Every new topic on the working list appears** under **Topics Identified** with the routing the user agreed to and a one-line "Why" that matches the cue actually used in conversation. Missing entries or wrong routing are gaps.
-2. **No phantom topics in the log.** If a topic was added during the session but later dropped from the working list, remove it from **Topics Identified**. The log should reflect the current working list, not the history of drafts.
-3. **Dropped items appear** under **Considered and Discarded** with the reason given at the time. If something was raised and dropped but isn't recorded, add it. If nothing was dropped, write `(none)` under the heading rather than removing the section.
-4. **Every map-operation applied** appears under **Changes** with the operation kind, target, and one-line note. Map-operations writes these as it goes — gaps here are rare but worth catching.
-5. **No drift in the "Why" lines.** The rationale should be one short clause naming the cue (*"clear shape and standard pattern"*, *"open feasibility question"*, *"user wasn't sure how protocol options compared"*). Reject embellishments that didn't come up in conversation.
+1. **Exploration narrative reflects the conversation.** The Exploration section should describe what was actually discussed — surfaces named, questions asked, what crystallised. If the conversation covered ground that isn't in the Exploration summary (and would be useful for the next session's resume or for synthesis), add a short entry. If the Exploration summary describes something that didn't actually come up, remove it. Strong summary, not verbatim — don't bloat with detail that wasn't substantive.
+
+2. **Edits section matches applied operations.** Each entry under **Edits** should correspond to a manifest operation that actually committed. Each committed operation should have a matching entry. Map-operations writes these as it goes — gaps here are rare but worth catching, especially if a commit happened without a session-log update.
+
+3. **No phantom content.** If the log mentions a surface that was discussed and then dropped, that's fine — it stays as part of the exploration record. But if the log mentions a *topic synthesis decision* (Topics Identified or working-list content) that the user actually rejected at synthesis time, remove it. The Topics Identified section reflects the **confirmed** set, not the proposed-then-revised set.
+
+4. **Conclusion is still `(none)`** at this point. The Conclusion gets finalised in Step 6 confirm-and-persist, not here.
+
+5. **No prose where structure is expected.** Edits is structured (bulleted operation entries); Topics Identified is structured (per-topic subsections). If freeform prose has leaked into either, move it to Exploration.
 
 Apply corrections directly to the file. Stage and commit the fixes:
 

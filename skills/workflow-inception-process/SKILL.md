@@ -208,10 +208,10 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Opening the inception conversation. I'll listen for distinct
-> shapes, reflect tentative groupings, and infer routing from
-> framing. When the map already has items, edits to existing
-> ones are also available moves.
+> Opening the inception conversation. The session explores the
+> product shape and synthesises topics at endpoint. When the map
+> is already populated, edits to existing items happen in the loop
+> alongside exploration.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
@@ -253,8 +253,9 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Persisting any new items in the working list. Edits to
-> existing items have already committed via map-operations.
+> Persisting the synthesised topic set, writing Topics Identified
+> to the log, clearing the active-session marker, and finalising
+> the Conclusion placeholder.
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
