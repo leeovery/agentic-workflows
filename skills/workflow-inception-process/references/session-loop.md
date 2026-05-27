@@ -116,8 +116,10 @@ Fresh first-session, no map, no imports. The work-unit description has been read
 
 ```
 Tell me about what you want to build. Don't worry about
-structure — describe it the way you would to a colleague
-who needs to understand the rough shape.
+structure — describe it the way it sits in your head right now.
+
+I'll ask some open questions to pull on the idea before we
+start naming topics.
 ```
 
 **STOP.** Wait for user response.
@@ -165,13 +167,13 @@ Manifest writes for new items are **deferred to Step 6 confirm-and-persist** —
 
 ## C. Convergence Signal
 
-Watch for these convergence signals:
+**The user decides convergence.** Watch for ONE signal: the user explicitly tells you they're done. Examples: *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*.
 
-- The user explicitly says they're done (*"that covers it"*, *"good enough to start"*, *"let's wrap"*).
-- The conversation has stalled — no new shapes are surfacing and the user has gone quiet on prompts.
-- The user keeps re-framing items already on the map rather than naming new ones.
+**Do not infer convergence** from silence, from having already named topics, or from the user re-framing existing items. Those are not convergence signals — they're the conversation working as designed.
 
-When you see one, render the proposed map and offer to conclude.
+**Anti-rush guard:** do not offer convergence in the early turns of the session regardless of how the conversation feels. The session is supposed to feel exploratory before it feels converged — see [inception-guidelines.md](inception-guidelines.md) → *Open exploration first*. Let the picture develop.
+
+When the user does signal they're done, render the proposed map and offer to conclude.
 
 > *Output the next fenced block as a code block:*
 
