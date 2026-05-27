@@ -73,7 +73,6 @@ function findLatestSessionLog(cwd, workUnit) {
     filename,
     relative_path: path.posix.join('.workflows', workUnit, 'inception', filename),
     number,
-    is_refinement: number > 1,
     is_in_progress: isInProgress,
     conclusion_text: conclusionText,
   };
@@ -160,7 +159,6 @@ function format(result) {
     lines.push(`  filename: ${ls.filename}`);
     lines.push(`  relative_path: ${ls.relative_path}`);
     lines.push(`  number: ${ls.number}`);
-    lines.push(`  is_refinement: ${ls.is_refinement}`);
     lines.push(`  is_in_progress: ${ls.is_in_progress}`);
     lines.push(`  conclusion: ${ls.conclusion_text || '(empty)'}`);
   }

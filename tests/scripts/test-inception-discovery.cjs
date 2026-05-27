@@ -398,13 +398,12 @@ describe('workflow-inception-process discovery', () => {
     assert.strictEqual(r.latest_session, null);
   });
 
-  it('detects session-001.md as initial (is_refinement=false)', () => {
+  it('reports session-001.md as latest when only one log exists', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, '3 topics seeded.');
     const r = discover(dir, 'payments');
     assert.strictEqual(r.latest_session.filename, 'session-001.md');
     assert.strictEqual(r.latest_session.number, 1);
-    assert.strictEqual(r.latest_session.is_refinement, false);
     assert.strictEqual(r.latest_session.is_in_progress, false);
   });
 
@@ -414,7 +413,6 @@ describe('workflow-inception-process discovery', () => {
     writeSessionLog(dir, 'payments', 2, '(none)');
     const r = discover(dir, 'payments');
     assert.strictEqual(r.latest_session.number, 2);
-    assert.strictEqual(r.latest_session.is_refinement, true);
     assert.strictEqual(r.latest_session.is_in_progress, true);
     assert.strictEqual(r.latest_session.conclusion_text, '(none)');
   });
@@ -719,7 +717,6 @@ describe('workflow-inception-process format', () => {
     assert.match(out, /filename: session-002\.md/);
     assert.match(out, /relative_path: \.workflows\/payments\/inception\/session-002\.md/);
     assert.match(out, /number: 2/);
-    assert.match(out, /is_refinement: true/);
     assert.match(out, /is_in_progress: true/);
     assert.match(out, /conclusion: \(none\)/);
   });
