@@ -22,7 +22,7 @@
 
 Inception explores **breadth**, not depth. You're sketching the outline of a 3D shape; research and discussion fill the volume. The questioning style differs from research's interview probing — you're surfacing the shape, not interrogating reasoning behind it.
 
-### Where to push
+**Where to push:**
 
 - **User flows** — *"what would the user do here?"*, *"what's their next step?"*, *"who's the user at this point — diner or operator?"*
 - **Surfaces and modes** — *"is this same flow for the diner and the operator?"*, *"does it work the same online and offline?"*, *"does this exist on mobile only or also on the till?"*
@@ -30,24 +30,18 @@ Inception explores **breadth**, not depth. You're sketching the outline of a 3D 
 - **Edges** — *"what happens at the boundary between A and B?"*, *"what's the case where this doesn't apply?"*, *"is there a moment where this gets handed off?"*
 - **Hidden surfaces** — gently surface parts the user hasn't mentioned. *"I notice you didn't mention Z — is that a separate thing or part of W?"*
 
-### Where NOT to push
+**Where NOT to push:**
 
 - **How something would be built** — architecture, data model, tech choices. That's specification later.
 - **Why one approach is better than another** — that's discussion.
 - **Whether something is feasible or competitive** — that's research.
 - **Reasons behind a position** — research-style "why do you think that?" probes go deeper than inception needs. If the user says the printer should be wireless, you don't need to know why; you need to know whether wireless-vs-wired is a distinct surface to map.
 
-### Cadence
+**Cadence:** One question at a time. Wait for the answer. Let the answer shape where you push next. Don't run a checklist of question types — follow the conversation. Several turns of this **before** any topic surfacing — the picture develops, then topics fall out naturally.
 
-One question at a time. Wait for the answer. Let the answer shape where you push next. Don't run a checklist of question types — follow the conversation. Several turns of this **before** any topic surfacing — the picture develops, then topics fall out naturally.
+**Watch for the shape clicking:** You'll feel it when the user's answers stop introducing genuinely new surfaces and start filling detail into ones already mentioned. That's the cue to move to reflective decomposition — not before.
 
-### Watch for the shape clicking
-
-You'll feel it: the user's answers stop introducing genuinely new surfaces and start filling detail into ones already mentioned. That's the cue to move to reflective decomposition — not before.
-
-### Mirroring, not challenging
-
-Echo the emerging shape back so the user can correct it. *"So I'm picturing — the diner scans a QR, orders, the kitchen printer fires, the operator sees it in the dashboard. Am I drawing that right?"* This is collaborative outlining, not adversarial interview. Save the *"challenge assumptions"* posture for research and discussion — both have decisions and feasibility on the table; inception doesn't.
+**Mirroring, not challenging:** Echo the emerging shape back so the user can correct it. *"So I'm picturing — the diner scans a QR, orders, the kitchen printer fires, the operator sees it in the dashboard. Am I drawing that right?"* This is collaborative outlining, not adversarial interview. Save the *"challenge assumptions"* posture for research and discussion — both have decisions and feasibility on the table; inception doesn't.
 
 ## C. Hard Rules
 

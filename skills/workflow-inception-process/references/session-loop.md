@@ -167,13 +167,19 @@ Manifest writes for new items are **deferred to Step 6 confirm-and-persist** —
 
 ## C. Convergence Signal
 
-**The user decides convergence.** Watch for ONE signal: the user explicitly tells you they're done. Examples: *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*.
+**The user decides convergence.** Watch for ONE signal: the user's latest message explicitly tells you they're done. Examples: *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*.
 
 **Do not infer convergence** from silence, from having already named topics, or from the user re-framing existing items. Those are not convergence signals — they're the conversation working as designed.
 
 **Anti-rush guard:** do not offer convergence in the early turns of the session regardless of how the conversation feels. The session is supposed to feel exploratory before it feels converged — see [inception-guidelines.md](inception-guidelines.md) → *Open exploration first*. Let the picture develop.
 
-When the user does signal they're done, render the proposed map and offer to conclude.
+#### If the user has not signalled convergence
+
+→ Return to **B. Session Loop**.
+
+#### If the user has signalled convergence
+
+Render the proposed map and offer to conclude.
 
 > *Output the next fenced block as a code block:*
 
