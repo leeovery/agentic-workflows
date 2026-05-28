@@ -1,5 +1,7 @@
 # Phase 17 — Entry UX & Inception Unification (Exploratory Design)
 
+> **Naming note:** This doc was written before the inception → discovery rename. Every mention of "inception" below refers to what is now called the **discovery** phase. The doc is left as-written (historical capture of the design conversation); read with the substitution in mind. Do not edit for terminology.
+
 **Status:** Exploratory — **nothing decided yet**. Design needed before any implementation. · **Depends on:** Phase 16 (this phase sits *after* the current initiative completes — possibly as the seed of a successor initiative, possibly as the closing phase of this one).
 
 ## Heads-up — this phase doc is different

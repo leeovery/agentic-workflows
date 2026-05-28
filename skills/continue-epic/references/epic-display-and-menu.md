@@ -308,10 +308,10 @@ Build a menu with two types of options:
      - Completed implementation with no review: `Start review for "{topic:(titlecase)}" — implementation completed`
 
 **Command options:**
-- **`i`/`discovery`** — Continue discovery (always present when `discovery_map` is non-empty)
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
 - **`d`/`discuss`** — Start a discussion on a new topic (always present)
 - **`r`/`research`** — Start research on a new topic (always present)
+- **`i`/`discovery`** — Continue discovery (always present when `discovery_map` is non-empty)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
 - **`a`/`cancel`** — Cancel a topic (phase work) (only shown when non-cancelled, non-promoted items exist in any phase)
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
@@ -348,10 +348,10 @@ What would you like to do?
 - **`4`** — Start research for "Customer Portal"
 - **`5`** — Start planning for "Roles And Permissions" — spec completed
 
-- **`i`/`discovery`** — Continue discovery
+- **`s`/`spec`** — Start specification — 2 discussion(s) not yet in a spec
 - **`d`/`discuss`** — Start a discussion on a new topic
 - **`r`/`research`** — Start research on a new topic
-- **`s`/`spec`** — Start specification — 2 discussion(s) not yet in a spec
+- **`i`/`discovery`** — Continue discovery
 - **`c`/`completed`** — Resume a completed topic
 - **`a`/`cancel`** — Cancel a topic (phase work)
 - **`e`/`reactivate`** — Reactivate a cancelled topic
