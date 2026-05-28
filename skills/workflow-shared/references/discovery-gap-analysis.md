@@ -27,7 +27,7 @@ Read `.workflows/{work_unit}/research/{name}.md` for each `completed_research` n
 
 For each discussion, note:
 - The Discussion Map state (topics and their statuses: pending, exploring, converging, decided)
-- Any `→ Elevated: {topic}` markers
+- Any `⤴ Elevated: {topic}` markers
 - Key decisions made and their dependencies on other topics
 - Deferred items, open threads, and unresolved questions
 - Integration points with other discussions
@@ -44,7 +44,7 @@ Analyse the artifacts from A to identify gaps across five categories:
 
 1. **Cross-artifact themes** — concepts, concerns, or architectural patterns that appear in multiple artifacts but are not the primary focus of any. These often emerge as recurring assumptions or shared constraints that deserve dedicated exploration.
 
-2. **Elevated but uncreated** — `→ Elevated: {topic}` markers in Discussion Maps where no corresponding discussion file or manifest entry exists. These are topics explicitly flagged during discussion as needing their own conversation.
+2. **Elevated but uncreated** — `⤴ Elevated: {topic}` markers in Discussion Maps where no corresponding discussion file or manifest entry exists. These are topics explicitly flagged during discussion as needing their own conversation.
 
 3. **Research themes uncovered** — themes from completed research files that are not addressed by any completed discussion. Only identify themes that are genuinely unaddressed — a theme partially touched in a discussion does not count as a gap.
 

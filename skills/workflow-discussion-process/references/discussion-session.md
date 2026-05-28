@@ -82,18 +82,62 @@ At natural breaks — after a decision, when transitioning between subtopics, or
 > *Output the next fenced block as a code block:*
 
 ```
-Discussion Map — {topic:(titlecase)}
+  Discussion Map — {topic:(titlecase)} ({total} subtopics{state_breakdown})
 
-  {Subtopic A} [decided]
-  ├─ {Child} [decided]
-  └─ {Child} [decided]
+@foreach(parent in subtopics)
+  {parent_branch} {state_glyph} {parent.name:(titlecase)} [{parent.state}]
+@foreach(child in parent.children)
+  {parent_gutter}{child_branch} {state_glyph} {child.name:(titlecase)} [{child.state}]
+@endforeach
+@endforeach
+```
 
-  {Subtopic B} [converging]
-  └─ {Child} [exploring]
+**Render rules — follow exactly. Do not improvise spacing, glyphs, or branches.**
 
-  {Subtopic C} [pending]
+- **Two-space left indent** on every row (matches the discovery map). Header included.
+- **Header**: `Discussion Map — {topic:(titlecase)} ({total} subtopics{state_breakdown})`. Followed by **one blank line** before the first row.
+  - `{total}` — count of **all subtopics** (parents + children), excluding `⤴ Elevated:` marker rows.
+  - `{state_breakdown}` — append ` — {decided} decided · {converging} converging · {exploring} exploring · {pending} pending`, **omitting zero-count categories**. When only one state bucket is non-zero (e.g. every subtopic still `pending`), the breakdown is redundant with the rows; omit it and render just `({total} subtopics)`.
+  - Examples: `Discussion Map — Portal Observability Layer (12 subtopics)` · `Discussion Map — Portal Observability Layer (12 subtopics — 3 decided · 2 converging · 1 exploring · 6 pending)`.
+- **Parent row**: `{parent_branch} {state_glyph} {name:(titlecase)} [{state}]`. **Single space** between each of the four segments. State label in lowercase, wrapped in square brackets.
+  - `{parent_branch}`: `┌─` for the first parent, `└─` for the last parent, `├─` for the rest. **With a single parent, use `└─`** (no upward stroke).
+- **Child row**: `{parent_gutter}{child_branch} {state_glyph} {name:(titlecase)} [{state}]`. Single space between segments after the gutter+branch.
+  - `{parent_gutter}` governs the continuation tree under the parent:
+    - **Parent is not the last parent**: `│  ` — `│` followed by **2 spaces** (3 chars total). The `│` runs continuously down through every child row of that parent so the trunk never breaks.
+    - **Parent is the last parent**: `   ` — **3 spaces** (no `│`), so the tree doesn't dangle below `└─`.
+  - `{child_branch}`: `├─` for a non-final child, `└─` for the final child. **With a single child, use `└─`**.
+  - Children never have grandchildren — the map is two levels deep maximum.
+- **State glyphs** — exactly one character before the name. **Do not substitute.**
+  - `pending` — `○`
+  - `exploring` — `◐`
+  - `converging` — `→`
+  - `decided` — `✓`
+- **Elevated marker** — when a subtopic was elevated to a sibling discussion, its row is replaced by an elevation marker that **occupies the same slot in the tree**:
+  - Parent slot: `{parent_branch} ⤴ Elevated: {sibling-topic:(titlecase)}`
+  - Child slot: `{parent_gutter}{child_branch} ⤴ Elevated: {sibling-topic:(titlecase)}`
+  - No state glyph, no `[state]` bracket. `⤴` is reserved for this marker and never appears as a state glyph. Elevated rows are **not** counted in `{total}` or the state breakdown.
+- **Row order** within the map matches the order parents and children appear in the file's Discussion Map section. Do not re-sort.
 
-{decided_count} decided · {exploring_count} exploring · {pending_count} pending
+**Single-row case (one parent, no children):**
+
+```
+  Discussion Map — {topic:(titlecase)} (1 subtopic)
+
+  └─ ○ Subsystem Prefix Taxonomy [pending]
+```
+
+**Full example (mixed states, nested children, one elevation):**
+
+```
+  Discussion Map — Portal Observability Layer (12 subtopics — 3 decided · 2 converging · 1 exploring · 5 pending)
+
+  ┌─ ✓ Subsystem Prefix Taxonomy [decided]
+  ├─ → Decision-Point INFO Line Shape [converging]
+  │  ├─ ✓ Field Order [decided]
+  │  └─ ◐ Truncation Rules [exploring]
+  ├─ → Diagnostic Context Preservation At Boundaries [converging]
+  ├─ ⤴ Elevated: Log Aggregation Backend
+  └─ ○ Rollout Sequencing And Scope Bundling [pending]
 ```
 
 Don't render the map after every exchange — do it at meaningful transitions. If the user has just seen a similar state, skip it.
@@ -157,7 +201,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
    `routing: discussion` because elevation fires inside a discussion session. `source: discussion-elevation:{parent_topic}` is historical provenance; no cascade.
 
-5. Update the current Discussion Map — replace the subtopic with `→ Elevated: {new-topic}`.
+5. Update the current Discussion Map — replace the subtopic row with `⤴ Elevated: {new-topic:(titlecase)}` in the same slot (same branch, same gutter if it was a child). See **E. Status Display** for the marker rules.
 
 6. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
 
