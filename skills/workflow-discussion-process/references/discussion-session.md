@@ -96,7 +96,7 @@ At natural breaks — after a decision, when transitioning between subtopics, or
 
 - **Two-space left indent** on every row (matches the discovery map). Header included.
 - **Header**: `Discussion Map — {topic:(titlecase)} ({total} subtopics{state_breakdown})`. Followed by **one blank line** before the first row.
-  - `{total}` — count of **all subtopics** (parents + children), excluding `⤴ Elevated:` marker rows.
+  - `{total}` — count of **all subtopics** (parents + children), excluding `↑ Elevated:` marker rows.
   - `{state_breakdown}` — append ` — {decided} decided · {converging} converging · {exploring} exploring · {pending} pending`, **omitting zero-count categories**. When only one state bucket is non-zero (e.g. every subtopic still `pending`), the breakdown is redundant with the rows; omit it and render just `({total} subtopics)`.
   - Examples: `Discussion Map — Portal Observability Layer (12 subtopics)` · `Discussion Map — Portal Observability Layer (12 subtopics — 3 decided · 2 converging · 1 exploring · 6 pending)`.
 - **Parent row**: `{parent_branch} {state_glyph} {name:(titlecase)} [{state}]`. **Single space** between each of the four segments. State label in lowercase, wrapped in square brackets.
@@ -113,9 +113,9 @@ At natural breaks — after a decision, when transitioning between subtopics, or
   - `converging` — `→`
   - `decided` — `✓`
 - **Elevated marker** — when a subtopic was elevated to a sibling discussion, its row is replaced by an elevation marker that **occupies the same slot in the tree**:
-  - Parent slot: `{parent_branch} ⤴ Elevated: {sibling-topic:(titlecase)}`
-  - Child slot: `{parent_gutter}{child_branch} ⤴ Elevated: {sibling-topic:(titlecase)}`
-  - No state glyph, no `[state]` bracket. `⤴` is reserved for this marker and never appears as a state glyph. Elevated rows are **not** counted in `{total}` or the state breakdown.
+  - Parent slot: `{parent_branch} ↑ Elevated: {sibling-topic:(titlecase)}`
+  - Child slot: `{parent_gutter}{child_branch} ↑ Elevated: {sibling-topic:(titlecase)}`
+  - No state glyph, no `[state]` bracket. `↑` is reserved for this marker and never appears as a state glyph. Elevated rows are **not** counted in `{total}` or the state breakdown.
 - **Row order** within the map matches the order parents and children appear in the file's Discussion Map section. Do not re-sort.
 
 **Single-row case (one parent, no children):**
@@ -136,7 +136,7 @@ At natural breaks — after a decision, when transitioning between subtopics, or
   │  ├─ ✓ Field Order [decided]
   │  └─ ◐ Truncation Rules [exploring]
   ├─ → Diagnostic Context Preservation At Boundaries [converging]
-  ├─ ⤴ Elevated: Log Aggregation Backend
+  ├─ ↑ Elevated: Log Aggregation Backend
   └─ ○ Rollout Sequencing And Scope Bundling [pending]
 ```
 
@@ -201,7 +201,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
    `routing: discussion` because elevation fires inside a discussion session. `source: discussion-elevation:{parent_topic}` is historical provenance; no cascade.
 
-5. Update the current Discussion Map — replace the subtopic row with `⤴ Elevated: {new-topic:(titlecase)}` in the same slot (same branch, same gutter if it was a child). See **E. Status Display** for the marker rules.
+5. Update the current Discussion Map — replace the subtopic row with `↑ Elevated: {new-topic:(titlecase)}` in the same slot (same branch, same gutter if it was a child). See **E. Status Display** for the marker rules.
 
 6. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
 

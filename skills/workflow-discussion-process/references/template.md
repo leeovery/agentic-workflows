@@ -45,7 +45,7 @@ A living index of subtopics tracked during the discussion. This is the structura
   ├─ ◐ {Subtopic B} [exploring]
   │  ├─ ◐ {Child subtopic} [exploring]
   │  └─ ○ {Child subtopic} [pending]
-  ├─ ⤴ Elevated: {Sibling Topic}
+  ├─ ↑ Elevated: {Sibling Topic}
   └─ ○ {Subtopic C} [pending]
 
 ---
@@ -129,7 +129,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Update states as the conversation progresses
 - New child subtopics can be added under parents
 - The map is the user's visibility into discussion shape and your tracking mechanism
-- Elevated topics (siblings that became their own discussion) are noted with `⤴ Elevated:` on the map, occupying the same slot in the tree as the original subtopic
+- Elevated topics (siblings that became their own discussion) are noted with `↑ Elevated:` on the map, occupying the same slot in the tree as the original subtopic
 
 **Flexibility**: Not every subtopic needs all sections. Some have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up — don't force structure onto a simple discussion.
 
