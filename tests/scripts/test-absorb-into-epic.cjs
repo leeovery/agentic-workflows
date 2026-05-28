@@ -65,7 +65,7 @@ function seedEpic(workUnit) {
 }
 
 // Re-creates the CLI sequence in J. Register Discovery Item.
-function registerInceptionItem(targetEpic, topic, routing) {
+function registerDiscoveryItem(targetEpic, topic, routing) {
   assert.strictEqual(
     runCli('init-phase', `${targetEpic}.discovery.${topic}`).status, 0,
   );
@@ -80,7 +80,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
 
   it('creates an discovery item with routing = research when has_research is true', () => {
     seedEpic('payments-overhaul');
-    registerInceptionItem('payments-overhaul', 'auth-flow', 'research');
+    registerDiscoveryItem('payments-overhaul', 'auth-flow', 'research');
 
     const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.strictEqual(item.routing, 'research');
@@ -88,7 +88,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
 
   it('creates an discovery item with routing = discussion when has_research is false', () => {
     seedEpic('payments-overhaul');
-    registerInceptionItem('payments-overhaul', 'auth-flow', 'discussion');
+    registerDiscoveryItem('payments-overhaul', 'auth-flow', 'discussion');
 
     const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.strictEqual(item.routing, 'discussion');
@@ -96,7 +96,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
 
   it('leaves summary and description unset for summary-backfill to catch later', () => {
     seedEpic('payments-overhaul');
-    registerInceptionItem('payments-overhaul', 'auth-flow', 'discussion');
+    registerDiscoveryItem('payments-overhaul', 'auth-flow', 'discussion');
 
     const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.ok(!('summary' in item), 'summary should be absent — left for summary-backfill');
@@ -105,7 +105,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
 
   it('leaves source unset — discovery renders it as discovery by default', () => {
     seedEpic('payments-overhaul');
-    registerInceptionItem('payments-overhaul', 'auth-flow', 'discussion');
+    registerDiscoveryItem('payments-overhaul', 'auth-flow', 'discussion');
 
     const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.ok(!('source' in item), 'source should be absent — discovery defaults to "discovery"');
@@ -113,7 +113,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
 
   it('makes the absorbed topic visible to the discovery discovery script', () => {
     seedEpic('payments-overhaul');
-    registerInceptionItem('payments-overhaul', 'auth-flow', 'research');
+    registerDiscoveryItem('payments-overhaul', 'auth-flow', 'research');
 
     // The discovery script builds the map from phases.discovery.items.
     // Without the J. Register step, this assertion would fail — the topic
@@ -131,7 +131,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
     runCli('set', 'payments-overhaul.discovery.existing-topic', 'routing', 'discussion');
 
     // Absorption registers a new topic.
-    registerInceptionItem('payments-overhaul', 'auth-flow', 'research');
+    registerDiscoveryItem('payments-overhaul', 'auth-flow', 'research');
 
     const items = readManifest('payments-overhaul').phases.discovery.items;
     assert.strictEqual(Object.keys(items).sort().join(','), 'auth-flow,existing-topic');
