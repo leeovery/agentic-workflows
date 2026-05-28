@@ -20,7 +20,7 @@ This is non-negotiable. Do not skip this step or rely on your memory of what the
 With the instructions fresh in context, review the conversation transcript and compare what happened against what the instructions prescribed:
 
 1. **Step compliance** — Were all steps followed in the correct order? Were any skipped or executed out of sequence?
-2. **STOP gate compliance** — Were STOP gates respected? Was user input awaited where required?
+2. **STOP gate compliance** — Were STOP gates respected? Was user input awaited where required? Were any stops introduced that the skill did **not** prescribe (courtesy check-ins, pacing pauses, mid-loop summaries that ended the turn)? See **[no-artificial-stops.md](no-artificial-stops.md)**.
 3. **Output compliance** — Did outputs match the display and rendering conventions specified in the instructions?
 4. **Hard rules** — Were any hard rules (if specified in the skill) violated?
 5. **Artifact correctness** — Are all working artifacts (discussion files, specifications, plans, investigation files, review reports, code) correct and consistent with what the instructions prescribed?
