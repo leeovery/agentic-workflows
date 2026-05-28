@@ -27,12 +27,12 @@ function die(msg, code = 1) {
   process.exit(code);
 }
 
-function loadInceptionItemNames(cwd, workUnit) {
+function loadDiscoveryItemNames(cwd, workUnit) {
   const manifestPath = path.join(cwd, '.workflows', workUnit, 'manifest.json');
   if (!fs.existsSync(manifestPath)) return null;
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    const items = manifest && manifest.phases && manifest.phases.inception && manifest.phases.inception.items;
+    const items = manifest && manifest.phases && manifest.phases.discovery && manifest.phases.discovery.items;
     return items && typeof items === 'object' ? new Set(Object.keys(items)) : new Set();
   } catch {
     return null;
@@ -44,10 +44,10 @@ function validate(cwd, workUnit, currentSource) {
   const planPath = path.join(cacheDir, 'plan.json');
   const errors = [];
 
-  // For collision check: existing inception items the cache must not duplicate.
-  // The source's own inception item is exempt — apply.cjs deletes it before theme
+  // For collision check: existing discovery items the cache must not duplicate.
+  // The source's own discovery item is exempt — apply.cjs deletes it before theme
   // creation, so a theme reusing the source name is the natural rename case.
-  const inceptionNames = loadInceptionItemNames(cwd, workUnit);
+  const discoveryNames = loadDiscoveryItemNames(cwd, workUnit);
 
   if (!fs.existsSync(planPath)) {
     return { ok: false, errors: [`plan.json not found at ${planPath}`] };
@@ -108,11 +108,11 @@ function validate(cwd, workUnit, currentSource) {
         }
       }
 
-      // Collision check: theme cannot share a name with an active inception
+      // Collision check: theme cannot share a name with an active discovery
       // item, except the source itself (which apply.cjs deletes before theme
       // creation — the natural source-rename case).
-      if (inceptionNames && inceptionNames.has(kebab) && kebab !== currentSource) {
-        errors.push(`theme '${kebab}' collides with an existing inception item; rename the theme`);
+      if (discoveryNames && discoveryNames.has(kebab) && kebab !== currentSource) {
+        errors.push(`theme '${kebab}' collides with an existing discovery item; rename the theme`);
       }
     }
   }

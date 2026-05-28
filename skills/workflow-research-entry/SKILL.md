@@ -14,7 +14,7 @@ You are in the **Research** phase — exploring ideas, feasibility, market, and 
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Inception → **Research** → Discussion → Specification → Planning → Implementation → Review |
+| Epic | Discovery → **Research** → Discussion → Specification → Planning → Implementation → Review |
 | Feature | **Research** (optional) → Discussion → Specification → Planning → Implementation → Review |
 | Cross-cutting | **Research** (optional) → Discussion → Specification (terminal) |
 
@@ -87,7 +87,7 @@ What topic would you like to research?
 
 Kebab-case the response, store as `{topic}`. `resolved_filename = {topic}.md`.
 
-Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-inception-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
+Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
 
 → Proceed to **Step 2**.
 
@@ -107,7 +107,7 @@ Silently derive `direct_entry_summary` (one-line) and `direct_entry_description`
 > Checking if research already exists for this topic.
 ```
 
-Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`. On the direct-entry path (no topic supplied as `$2`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. When the topic was provided by the caller, omit both — the caller didn't derive them.
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`. On the direct-entry path (no topic supplied as `$2`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. When the topic was provided by the caller, omit both — the caller didn't derive them.
 
 Check if the research phase entry exists:
 

@@ -14,7 +14,7 @@ You are in the **Review** phase — validating completed work against discussion
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Inception → Research → Discussion → Specification → Planning → Implementation → **Review** |
+| Epic | Discovery → Research → Discussion → Specification → Planning → Implementation → **Review** |
 | Feature | Discussion → Specification → Planning → Implementation → **Review** |
 | Bugfix | Investigation → Specification → Planning → Implementation → **Review** |
 | Quick-fix | Scoping → Implementation → **Review** |

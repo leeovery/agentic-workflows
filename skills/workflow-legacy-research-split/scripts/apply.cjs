@@ -62,7 +62,7 @@ function loadDismissedList(cwd, workUnit) {
   const manifestPath = path.join(cwd, '.workflows', workUnit, 'manifest.json');
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    const dismissed = manifest && manifest.phases && manifest.phases.inception && manifest.phases.inception.dismissed;
+    const dismissed = manifest && manifest.phases && manifest.phases.discovery && manifest.phases.discovery.dismissed;
     return Array.isArray(dismissed) ? dismissed : [];
   } catch {
     return [];
@@ -91,7 +91,7 @@ function apply(cwd, workUnit, currentSource) {
   // Stage 1: mid-flight sentinel. Set before any other mutation so detect-trigger
   // skips this source if we crash partway through.
   try {
-    runCli(cwd, ['set', `${workUnit}.inception.${currentSource}`, 'legacy_split_state', 'in-progress']);
+    runCli(cwd, ['set', `${workUnit}.discovery.${currentSource}`, 'legacy_split_state', 'in-progress']);
   } catch (e) {
     return {
       ok: false,
@@ -114,7 +114,7 @@ function apply(cwd, workUnit, currentSource) {
       stage: 'rename_source_file',
       error: e.message,
       recovery_hint:
-        `source file rename failed. Clear sentinel manually: manifest.cjs delete ${workUnit}.inception.${currentSource} legacy_split_state`,
+        `source file rename failed. Clear sentinel manually: manifest.cjs delete ${workUnit}.discovery.${currentSource} legacy_split_state`,
     };
   }
 
@@ -131,25 +131,25 @@ function apply(cwd, workUnit, currentSource) {
       recovery_hint:
         `manifest mutation failed partway through research-item rename. Source file is at ${supersededFile}; ` +
         `original research item may or may not still exist. Inspect manifest, restore manually, ` +
-        `then clear sentinel: manifest.cjs delete ${workUnit}.inception.${currentSource} legacy_split_state`,
+        `then clear sentinel: manifest.cjs delete ${workUnit}.discovery.${currentSource} legacy_split_state`,
     };
   }
 
-  // Stage 4: delete source inception item (releases the source name for theme reuse).
+  // Stage 4: delete source discovery item (releases the source name for theme reuse).
   // From here on, detect.cjs naturally excludes this source — the original file and
   // research item have been renamed, so the filter's file-exists and research-status
   // checks both fail. Manual recovery for crashes past this point is described in
   // the per-stage recovery_hint strings below.
   try {
-    runCli(cwd, ['delete', `${workUnit}.inception`, `items.${currentSource}`]);
+    runCli(cwd, ['delete', `${workUnit}.discovery`, `items.${currentSource}`]);
   } catch (e) {
     return {
       ok: false,
-      stage: 'delete_source_inception',
+      stage: 'delete_source_discovery',
       error: e.message,
       recovery_hint:
-        `delete source inception item failed. Source file/research renamed; ` +
-        `manually delete: manifest.cjs delete ${workUnit}.inception items.${currentSource}`,
+        `delete source discovery item failed. Source file/research renamed; ` +
+        `manually delete: manifest.cjs delete ${workUnit}.discovery items.${currentSource}`,
     };
   }
 
@@ -184,15 +184,15 @@ function apply(cwd, workUnit, currentSource) {
       // If the name was previously dismissed via refinement, pull it from the
       // dismissed list so the re-add is clean.
       if (dismissed.includes(theme.kebab_name)) {
-        runCli(cwd, ['pull', `${workUnit}.inception`, 'dismissed', theme.kebab_name]);
+        runCli(cwd, ['pull', `${workUnit}.discovery`, 'dismissed', theme.kebab_name]);
       }
 
       runCli(cwd, ['init-phase', `${workUnit}.research.${theme.kebab_name}`]);
-      runCli(cwd, ['init-phase', `${workUnit}.inception.${theme.kebab_name}`]);
-      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'routing', 'research']);
-      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'summary', theme.summary]);
-      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'description', theme.description]);
-      runCli(cwd, ['set', `${workUnit}.inception.${theme.kebab_name}`, 'source', `legacy-split:${currentSource}`]);
+      runCli(cwd, ['init-phase', `${workUnit}.discovery.${theme.kebab_name}`]);
+      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'routing', 'research']);
+      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'summary', theme.summary]);
+      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'description', theme.description]);
+      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'source', `legacy-split:${currentSource}`]);
     }
   } catch (e) {
     return {
@@ -201,7 +201,7 @@ function apply(cwd, workUnit, currentSource) {
       error: e.message,
       recovery_hint:
         `theme application failed mid-flight. Source file renamed to ${supersededFile}; ` +
-        `source inception item already deleted. Some themes may have been partially written. ` +
+        `source discovery item already deleted. Some themes may have been partially written. ` +
         `Inspect ${researchDir} and manifest items, clean up partial themes manually, ` +
         `then re-run /continue-epic.`,
     };
@@ -217,7 +217,7 @@ function apply(cwd, workUnit, currentSource) {
 
   try {
     runGit(cwd, ['add', '-A', '--', ...addPaths]);
-    runGit(cwd, ['commit', '--allow-empty', '-m', `inception(${workUnit}): legacy-split ${currentSource}`]);
+    runGit(cwd, ['commit', '--allow-empty', '-m', `discovery(${workUnit}): legacy-split ${currentSource}`]);
   } catch (e) {
     return {
       ok: false,

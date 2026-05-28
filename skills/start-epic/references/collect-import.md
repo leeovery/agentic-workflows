@@ -4,7 +4,7 @@
 
 ---
 
-Gather the file paths to import, then hand off to the shared import-files reference to copy, register, and index each one. The inception session reads `manifest.imports[]` as the conversation launchpad.
+Gather the file paths to import, then hand off to the shared import-files reference to copy, register, and index each one. The discovery session reads `manifest.imports[]` as the conversation launchpad.
 
 > *Output the next fenced block as a code block:*
 

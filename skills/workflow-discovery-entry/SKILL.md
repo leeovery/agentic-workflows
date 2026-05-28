@@ -1,5 +1,5 @@
 ---
-name: workflow-inception-entry
+name: workflow-discovery-entry
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
 ---
@@ -10,13 +10,13 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-You are in the **Inception** phase of the epic pipeline — the curation surface where moving parts are named, classified as research or discussion, and shaped into the discovery map:
+You are in the **Discovery** phase of the epic pipeline — the curation surface where moving parts are named, classified as research or discussion, and shaped into the discovery map:
 
-**Inception** → Research → Discussion → Specification → Planning → Implementation → Review
+**Discovery** → Research → Discussion → Specification → Planning → Implementation → Review
 
-Inception is epic-only — features, bugfixes, quick-fixes, and cross-cutting work units skip this phase.
+Discovery is epic-only — features, bugfixes, quick-fixes, and cross-cutting work units skip this phase.
 
-**Stay in your lane**: Inception is curatorial — name the moving parts, classify each as research or discussion, build the discovery map. Don't investigate (that's research). Don't decide (that's discussion). Hold the macro view; if the conversation tunnels into one item, anchor and return to mapping.
+**Stay in your lane**: Discovery is curatorial — name the moving parts, classify each as research or discussion, build the discovery map. Don't investigate (that's research). Don't decide (that's discussion). Hold the macro view; if the conversation tunnels into one item, anchor and return to mapping.
 
 ---
 
@@ -50,11 +50,11 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the handoff context. Inception is per-work-unit;
+> Reading the handoff context. Discovery is per-work-unit;
 > topics emerge during the session.
 ```
 
-Arguments: work_type = `$0`, work_unit = `$1`. Inception is epic-only and per-work-unit, so no `$2` topic argument is consumed.
+Arguments: work_type = `$0`, work_unit = `$1`. Discovery is epic-only and per-work-unit, so no `$2` topic argument is consumed.
 
 Store `work_unit` for the handoff.
 
@@ -88,13 +88,13 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 > *Output the next fenced block as a code block:*
 
 ```
-── Invoke Inception ─────────────────────────────
+── Invoke Discovery ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the inception process with all gathered
+> Handing off to the discovery process with all gathered
 > context.
 ```
 

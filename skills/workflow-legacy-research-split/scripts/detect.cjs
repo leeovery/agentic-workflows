@@ -20,12 +20,12 @@ function detect(workUnit) {
   const manifest = loadManifest(cwd, workUnit);
   if (!manifest) die(`Work unit "${workUnit}" not found`, 2);
 
-  const inceptionItems = phaseItems(manifest, 'inception');
+  const discoveryItems = phaseItems(manifest, 'discovery');
   const researchItems = phaseItems(manifest, 'research');
   const researchByName = new Map(researchItems.map(it => [it.name, it]));
 
   const qualifying = [];
-  for (const item of inceptionItems) {
+  for (const item of discoveryItems) {
     const source = item.source || '';
     if (!source.includes('migration-seeded')) continue;
     if (item.routing !== 'research') continue;

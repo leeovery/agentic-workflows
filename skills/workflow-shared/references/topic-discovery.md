@@ -1,10 +1,10 @@
 # Topic Discovery
 
-*Shared reference. Loaded by `continue-epic` and `workflow-inception-process`.*
+*Shared reference. Loaded by `continue-epic` and `workflow-discovery-process`.*
 
 ---
 
-Drives cache-based dispatch of `research-analysis` and `inception-gap-analysis` against an epic's discovery map. The analyses write directly to `phases.inception.items.{topic}` with `source` provenance and respect the per-work-unit `phases.inception.dismissed[]` list.
+Drives cache-based dispatch of `research-analysis` and `discovery-gap-analysis` against an epic's discovery map. The analyses write directly to `phases.discovery.items.{topic}` with `source` provenance and respect the per-work-unit `phases.discovery.dismissed[]` list.
 
 Each analysis self-gates on a precondition (research-analysis needs at least one completed research item; gap-analysis needs at least one completed research OR discussion item). When the precondition fails the analysis returns without touching cache or manifest — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
@@ -27,7 +27,7 @@ The caller provides these via context before loading:
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery-process/scripts/discovery.cjs {work_unit}
 ```
 
 Parse `analysis_caches` from the output:
@@ -59,7 +59,7 @@ Research-analysis runs first because gap-analysis reads its cache file as a seco
 
 → Load **[research-analysis.md](research-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.research_analysis`.
 
-On return, the tracker holds the names of any inception items just added by research-analysis.
+On return, the tracker holds the names of any discovery items just added by research-analysis.
 
 → Proceed to **C. Run Gap Analysis if Stale**.
 
@@ -79,9 +79,9 @@ No dispatch.
 ·· Gap Analysis ·································
 ```
 
-→ Load **[inception-gap-analysis.md](inception-gap-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.gap_analysis`.
+→ Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** with work_unit = `{work_unit}`, tracker = `new_arrivals.gap_analysis`.
 
-On return, the tracker holds the names of any inception items just added by gap-analysis.
+On return, the tracker holds the names of any discovery items just added by gap-analysis.
 
 → Proceed to **D. Dedupe Sources**.
 
@@ -93,7 +93,7 @@ No dispatch.
 
 ## D. Dedupe Sources
 
-When both analyses surface the same kebab-case theme, the second analysis writes the inception item with `source` already comma-joined (`research-analysis,gap-analysis`) — see each analysis's **D. Filter and Save** section.
+When both analyses surface the same kebab-case theme, the second analysis writes the discovery item with `source` already comma-joined (`research-analysis,gap-analysis`) — see each analysis's **D. Filter and Save** section.
 
 If a name appears in both `new_arrivals.research_analysis` and `new_arrivals.gap_analysis`, treat it as a research-analysis arrival only for caller-side display purposes (single callout entry, single Topic Discovery Arrivals bullet). The manifest already records the comma-joined source.
 

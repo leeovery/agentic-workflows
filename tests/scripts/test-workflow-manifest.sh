@@ -1594,28 +1594,28 @@ assert_equals "$prev_exists" "false" "previous_status deleted after reactivation
 echo ""
 
 # ============================================================================
-# INCEPTION PHASE TESTS
+# DISCOVERY PHASE TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: init-phase succeeds for inception${NC}"
+echo -e "${YELLOW}Test: init-phase succeeds for discovery${NC}"
 setup_fixture
-run_cli init incept-init --work-type epic --description "Inception init" >/dev/null 2>&1
-exit_code=$(run_cli_exit_code init-phase incept-init.inception.foo)
-output=$(run_cli_stdout get incept-init.inception.foo status)
+run_cli init incept-init --work-type epic --description "Discovery init" >/dev/null 2>&1
+exit_code=$(run_cli_exit_code init-phase incept-init.discovery.foo)
+output=$(run_cli_stdout get incept-init.discovery.foo status)
 
-assert_equals "$exit_code" "0" "init-phase inception succeeds"
-assert_equals "$output" "in-progress" "Inception item status defaults to in-progress"
+assert_equals "$exit_code" "0" "init-phase discovery succeeds"
+assert_equals "$output" "in-progress" "Discovery item status defaults to in-progress"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: inception accepts in-progress status${NC}"
+echo -e "${YELLOW}Test: discovery accepts in-progress status${NC}"
 setup_fixture
-run_cli init incept-status --work-type epic --description "Inception status" >/dev/null 2>&1
-run_cli init-phase incept-status.inception.foo >/dev/null 2>&1
-run_cli set incept-status.inception.foo status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout get incept-status.inception.foo status)
+run_cli init incept-status --work-type epic --description "Discovery status" >/dev/null 2>&1
+run_cli init-phase incept-status.discovery.foo >/dev/null 2>&1
+run_cli set incept-status.discovery.foo status in-progress >/dev/null 2>&1
+output=$(run_cli_stdout get incept-status.discovery.foo status)
 
 assert_equals "$output" "in-progress" "Set status in-progress accepted"
 
@@ -1623,12 +1623,12 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: inception rejects cancelled status (hard-delete model)${NC}"
+echo -e "${YELLOW}Test: discovery rejects cancelled status (hard-delete model)${NC}"
 setup_fixture
-run_cli init incept-cancel --work-type epic --description "Inception cancel" >/dev/null 2>&1
-run_cli init-phase incept-cancel.inception.foo >/dev/null 2>&1
-exit_code=$(run_cli_exit_code set incept-cancel.inception.foo status cancelled)
-output=$(run_cli set incept-cancel.inception.foo status cancelled 2>&1 || true)
+run_cli init incept-cancel --work-type epic --description "Discovery cancel" >/dev/null 2>&1
+run_cli init-phase incept-cancel.discovery.foo >/dev/null 2>&1
+exit_code=$(run_cli_exit_code set incept-cancel.discovery.foo status cancelled)
+output=$(run_cli set incept-cancel.discovery.foo status cancelled 2>&1 || true)
 
 assert_equals "$exit_code" "1" "Set status cancelled exits non-zero"
 assert_contains "$output" "Invalid status" "Error mentions invalid status"
@@ -1637,11 +1637,11 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: inception rejects completed status (hard-delete model)${NC}"
+echo -e "${YELLOW}Test: discovery rejects completed status (hard-delete model)${NC}"
 setup_fixture
-run_cli init incept-comp --work-type epic --description "Inception completed" >/dev/null 2>&1
-run_cli init-phase incept-comp.inception.foo >/dev/null 2>&1
-exit_code=$(run_cli_exit_code set incept-comp.inception.foo status completed)
+run_cli init incept-comp --work-type epic --description "Discovery completed" >/dev/null 2>&1
+run_cli init-phase incept-comp.discovery.foo >/dev/null 2>&1
+exit_code=$(run_cli_exit_code set incept-comp.discovery.foo status completed)
 
 assert_equals "$exit_code" "1" "Set status completed exits non-zero"
 
@@ -1649,30 +1649,30 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: inception accepts free-form routing field${NC}"
+echo -e "${YELLOW}Test: discovery accepts free-form routing field${NC}"
 setup_fixture
-run_cli init incept-route --work-type epic --description "Inception routing" >/dev/null 2>&1
-run_cli init-phase incept-route.inception.foo >/dev/null 2>&1
-run_cli set incept-route.inception.foo routing research >/dev/null 2>&1
-output=$(run_cli_stdout get incept-route.inception.foo routing)
+run_cli init incept-route --work-type epic --description "Discovery routing" >/dev/null 2>&1
+run_cli init-phase incept-route.discovery.foo >/dev/null 2>&1
+run_cli set incept-route.discovery.foo routing research >/dev/null 2>&1
+output=$(run_cli_stdout get incept-route.discovery.foo routing)
 
 assert_equals "$output" "research" "Routing field stored unchanged"
 
 # Discussion routing also accepted (no validation enforced)
-run_cli set incept-route.inception.foo routing discussion >/dev/null 2>&1
-output=$(run_cli_stdout get incept-route.inception.foo routing)
+run_cli set incept-route.discovery.foo routing discussion >/dev/null 2>&1
+output=$(run_cli_stdout get incept-route.discovery.foo routing)
 assert_equals "$output" "discussion" "Routing can be updated to discussion"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: inception accepts summary field${NC}"
+echo -e "${YELLOW}Test: discovery accepts summary field${NC}"
 setup_fixture
-run_cli init incept-sum --work-type epic --description "Inception summary" >/dev/null 2>&1
-run_cli init-phase incept-sum.inception.foo >/dev/null 2>&1
-run_cli set incept-sum.inception.foo summary "A short summary of the topic" >/dev/null 2>&1
-output=$(run_cli_stdout get incept-sum.inception.foo summary)
+run_cli init incept-sum --work-type epic --description "Discovery summary" >/dev/null 2>&1
+run_cli init-phase incept-sum.discovery.foo >/dev/null 2>&1
+run_cli set incept-sum.discovery.foo summary "A short summary of the topic" >/dev/null 2>&1
+output=$(run_cli_stdout get incept-sum.discovery.foo summary)
 
 assert_equals "$output" "A short summary of the topic" "Summary stored unchanged"
 
@@ -1680,13 +1680,13 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: get returns full inception item${NC}"
+echo -e "${YELLOW}Test: get returns full discovery item${NC}"
 setup_fixture
-run_cli init incept-get --work-type epic --description "Inception get" >/dev/null 2>&1
-run_cli init-phase incept-get.inception.foo >/dev/null 2>&1
-run_cli set incept-get.inception.foo summary "A topic" >/dev/null 2>&1
-run_cli set incept-get.inception.foo routing research >/dev/null 2>&1
-output=$(run_cli_stdout get incept-get.inception.foo)
+run_cli init incept-get --work-type epic --description "Discovery get" >/dev/null 2>&1
+run_cli init-phase incept-get.discovery.foo >/dev/null 2>&1
+run_cli set incept-get.discovery.foo summary "A topic" >/dev/null 2>&1
+run_cli set incept-get.discovery.foo routing research >/dev/null 2>&1
+output=$(run_cli_stdout get incept-get.discovery.foo)
 
 assert_contains "$output" '"status": "in-progress"' "Item JSON includes status"
 assert_contains "$output" '"summary": "A topic"' "Item JSON includes summary"
@@ -1696,27 +1696,27 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: delete hard-removes inception item${NC}"
+echo -e "${YELLOW}Test: delete hard-removes discovery item${NC}"
 setup_fixture
-run_cli init incept-del --work-type epic --description "Inception delete" >/dev/null 2>&1
-run_cli init-phase incept-del.inception.foo >/dev/null 2>&1
-run_cli set incept-del.inception.foo summary "to be deleted" >/dev/null 2>&1
+run_cli init incept-del --work-type epic --description "Discovery delete" >/dev/null 2>&1
+run_cli init-phase incept-del.discovery.foo >/dev/null 2>&1
+run_cli set incept-del.discovery.foo summary "to be deleted" >/dev/null 2>&1
 # Hard-delete the entire item via the items.<topic> field path (existing convention)
-run_cli delete incept-del.inception items.foo >/dev/null 2>&1
-exists_after=$(run_cli_stdout exists incept-del.inception.foo)
+run_cli delete incept-del.discovery items.foo >/dev/null 2>&1
+exists_after=$(run_cli_stdout exists incept-del.discovery.foo)
 
-assert_equals "$exists_after" "false" "Inception item gone after hard-delete"
+assert_equals "$exists_after" "false" "Discovery item gone after hard-delete"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: wildcard get on inception phase${NC}"
+echo -e "${YELLOW}Test: wildcard get on discovery phase${NC}"
 setup_fixture
-run_cli init incept-wild --work-type epic --description "Inception wildcard" >/dev/null 2>&1
-run_cli init-phase incept-wild.inception.alpha >/dev/null 2>&1
-run_cli init-phase incept-wild.inception.beta >/dev/null 2>&1
-output=$(run_cli_stdout get 'incept-wild.inception.*' status)
+run_cli init incept-wild --work-type epic --description "Discovery wildcard" >/dev/null 2>&1
+run_cli init-phase incept-wild.discovery.alpha >/dev/null 2>&1
+run_cli init-phase incept-wild.discovery.beta >/dev/null 2>&1
+output=$(run_cli_stdout get 'incept-wild.discovery.*' status)
 
 assert_contains "$output" '"topic": "alpha"' "Wildcard returns alpha topic"
 assert_contains "$output" '"topic": "beta"' "Wildcard returns beta topic"

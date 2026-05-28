@@ -1,6 +1,6 @@
-# Inception Guidelines
+# Discovery Guidelines
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## B. Open Exploration — How
 
-Inception explores **breadth**, not depth. You're sketching the outline of a 3D shape; research and discussion fill the volume. The questioning style differs from research's interview probing — you're surfacing the shape, not interrogating reasoning behind it.
+Discovery explores **breadth**, not depth. You're sketching the outline of a 3D shape; research and discussion fill the volume. The questioning style differs from research's interview probing — you're surfacing the shape, not interrogating reasoning behind it.
 
 **Where to push:**
 
@@ -34,7 +34,7 @@ Inception explores **breadth**, not depth. You're sketching the outline of a 3D 
 - **How something would be built** — architecture, data model, tech choices. That's specification later.
 - **Why one approach is better than another** — that's discussion.
 - **Whether something is feasible or competitive** — that's research.
-- **Reasons behind a position** — research-style "why do you think that?" probes go deeper than inception needs. If the user says the printer should be wireless, you don't need to know why; you need to know whether wireless-vs-wired is a distinct surface to map.
+- **Reasons behind a position** — research-style "why do you think that?" probes go deeper than discovery needs. If the user says the printer should be wireless, you don't need to know why; you need to know whether wireless-vs-wired is a distinct surface to map.
 
 **Cadence:** One question at a time. Wait for the answer. Let the answer shape where you push next. Don't run a checklist of question types — follow the conversation. Many turns of this **before** endpoint — the picture develops, then topics fall out at synthesis.
 

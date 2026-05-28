@@ -635,8 +635,8 @@ describe('discovery-utils', () => {
       assert.strictEqual(computeSourceProvenance(undefined), null);
     });
 
-    it('returns null for source=inception', () => {
-      assert.strictEqual(computeSourceProvenance('inception'), null);
+    it('returns null for source=discovery', () => {
+      assert.strictEqual(computeSourceProvenance('discovery'), null);
     });
 
     it('returns "from {source}" for plain source', () => {
@@ -760,7 +760,7 @@ describe('discovery-utils', () => {
       createFile(dir, '.workflows/alpha/research/auth.md', 'ra');
       createFile(dir, '.workflows/alpha/discussion/billing.md', 'db');
       const checksum = filesChecksum([
-        // Sorted across both directories combined — matches inception-gap-analysis.md write side.
+        // Sorted across both directories combined — matches discovery-gap-analysis.md write side.
         path.join(dir, '.workflows/alpha/discussion/billing.md'),
         path.join(dir, '.workflows/alpha/research/auth.md'),
         path.join(dir, '.workflows/alpha/research/zebra.md'),
@@ -769,7 +769,7 @@ describe('discovery-utils', () => {
         phases: {
           research: { items: { zebra: { status: 'completed' }, auth: { status: 'completed' } } },
           discussion: { items: { billing: { status: 'completed' } } },
-          inception: { gap_analysis_cache: { checksum, generated: '2026-05-02', input_files: ['auth.md', 'billing.md', 'zebra.md'] } },
+          discovery: { gap_analysis_cache: { checksum, generated: '2026-05-02', input_files: ['auth.md', 'billing.md', 'zebra.md'] } },
         },
       });
       const m = loadManifest(dir, 'alpha');
@@ -816,7 +816,7 @@ describe('discovery-utils', () => {
       // means no analysis will fire.
       createManifest(dir, 'alpha', {
         phases: {
-          inception: { gap_analysis_cache: { checksum: 'old', generated: '2026-05-02', input_files: ['gone.md'] } },
+          discovery: { gap_analysis_cache: { checksum: 'old', generated: '2026-05-02', input_files: ['gone.md'] } },
         },
       });
       const m = loadManifest(dir, 'alpha');
@@ -851,7 +851,7 @@ describe('discovery-utils', () => {
       createManifest(dir, 'alpha', {
         phases: {
           discussion: { items: { auth: { status: 'completed' } } },
-          inception: { gap_analysis_cache: { checksum, generated: '2026-05-02', input_files: ['auth.md'] } },
+          discovery: { gap_analysis_cache: { checksum, generated: '2026-05-02', input_files: ['auth.md'] } },
         },
       });
       const m = loadManifest(dir, 'alpha');
@@ -869,7 +869,7 @@ describe('discovery-utils', () => {
         phases: {
           research: { items: { auth: { status: 'completed' } } },
           discussion: { items: { auth: { status: 'completed' } } },
-          inception: { gap_analysis_cache: { checksum: checksumDOnly, generated: '2026-05-02', input_files: ['auth.md'] } },
+          discovery: { gap_analysis_cache: { checksum: checksumDOnly, generated: '2026-05-02', input_files: ['auth.md'] } },
         },
       });
       const m = loadManifest(dir, 'alpha');
@@ -965,9 +965,9 @@ describe('discovery-utils', () => {
     });
 
     it('renders ready_for_discussion when research is superseded and no discussion exists', () => {
-      // Defensive branch: legacy-research-split deletes the inception item
+      // Defensive branch: legacy-research-split deletes the discovery item
       // on supersede, so this isn't reached via that flow. But if a user
-      // re-adds the topic to inception items manually, the discussion path
+      // re-adds the topic to discovery items manually, the discussion path
       // remains open and the lifecycle should reflect that.
       const m = loadWithPhases('auth', { research: 'superseded' });
       const r = computeTopicLifecycle(m, 'auth');

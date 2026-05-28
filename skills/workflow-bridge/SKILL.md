@@ -1,7 +1,7 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-bridge/scripts/discovery.cjs), Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-inception-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-bridge/scripts/discovery.cjs), Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-discovery-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 Enter plan mode with deterministic continuation instructions.
@@ -46,11 +46,11 @@ The output contains: `work_type`, `phases` (per-phase status), and `next_phase`.
 
 ## Step 2: Route to Continuation Reference
 
-Based on the completed phase and work type, load the appropriate continuation reference. The completed-phase check runs first so an epic concluding inception routes to the deterministic inception continuation; non-inception epic completions fall through to the work-type branches below.
+Based on the completed phase and work type, load the appropriate continuation reference. The completed-phase check runs first so an epic concluding discovery routes to the deterministic discovery continuation; non-discovery epic completions fall through to the work-type branches below.
 
-#### If completed phase is `inception`
+#### If completed phase is `discovery`
 
-Load **[inception-continuation.md](references/inception-continuation.md)** and follow its instructions as written.
+Load **[discovery-continuation.md](references/discovery-continuation.md)** and follow its instructions as written.
 
 #### If work type is `feature`
 

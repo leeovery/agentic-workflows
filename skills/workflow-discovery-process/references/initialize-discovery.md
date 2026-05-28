@@ -1,10 +1,10 @@
-# Initialize Inception
+# Initialize Discovery
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
-1. Ensure the inception directory exists: `mkdir -p .workflows/{work_unit}/inception/` (safe to re-run).
+1. Ensure the discovery directory exists: `mkdir -p .workflows/{work_unit}/discovery/` (safe to re-run).
 2. Hold the following in conversation memory — they parameterise the session log when it is eventually written:
    - `session_number` — set at Step 0.
    - `description` — work-unit description from the entry skill's handoff.

@@ -1,10 +1,10 @@
 ---
-name: workflow-inception-process
+name: workflow-discovery-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-inception-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-discovery-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
-# Inception Process
+# Discovery Process
 
 Act as **curator**. Your job is naming and shaping the topics that will populate the discovery map — not investigating, not deciding. Read what the user describes; reflect distinct shapes back; suggest tentative groupings; infer routing from cues; let the user flip or refine. Hold the macro view; if the conversation tunnels into one item, anchor and return to mapping.
 
@@ -42,7 +42,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the active session log.** Find the highest-numbered file matching `.workflows/{work_unit}/inception/session-*.md` and read it. **Topics Identified** and **Changes** show what was applied; a **Conclusion** of `(none)` means in-progress, anything else means concluded. If no file exists, no state changes have happened yet (lazy creation — see `references/template.md`).
+2. **Read the active session log.** Find the highest-numbered file matching `.workflows/{work_unit}/discovery/session-*.md` and read it. **Topics Identified** and **Changes** show what was applied; a **Conclusion** of `(none)` means in-progress, anything else means concluded. If no file exists, no state changes have happened yet (lazy creation — see `references/template.md`).
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages reveal what has been completed.
 4. **Announce your position** to the user before continuing: render the working state, state what step you believe you're at, and what comes next. Wait for confirmation.
 
@@ -67,7 +67,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 Read the active-session marker:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception active_session
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery active_session
 ```
 
 The marker is set when a session writes its log for the first time (lazy creation) and deleted when the session concludes. Its presence is the authoritative in-progress signal.
@@ -85,7 +85,7 @@ The output is the in-progress session number string (e.g. `002`). The prior sess
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Found an in-progress inception session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
+Found an in-progress discovery session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
 
 · · · · · · · · · · · ·
 - **`c`/`continue`** — Pick up where you left off
@@ -97,7 +97,7 @@ Found an in-progress inception session for **{work_unit:(titlecase)}** at `sessi
 
 #### If `continue`
 
-Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/inception/session-{session_number}.md` is the working state for the session loop.
+Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/session-{session_number}.md` is the working state for the session loop.
 
 → Proceed to **Step 1**.
 
@@ -106,10 +106,10 @@ Set `session_number` = `active_session`. The existing file at `.workflows/{work_
 Delete the in-progress log and clear the marker:
 
 ```bash
-rm .workflows/{work_unit}/inception/session-{active_session}.md
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception active_session
+rm .workflows/{work_unit}/discovery/session-{active_session}.md
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
 git add -- .workflows/{work_unit}/
-git commit -m "inception({work_unit}): restart interrupted session"
+git commit -m "discovery({work_unit}): restart interrupted session"
 ```
 
 `session_number` will be set at Step 1 from discovery's `next_session_number`.
@@ -136,7 +136,7 @@ git commit -m "inception({work_unit}): restart interrupted session"
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery-process/scripts/discovery.cjs {work_unit}
 ```
 
 Hold the output in conversation context as **the most recent discovery output**. Downstream steps and references read from it:
@@ -155,34 +155,34 @@ If `session_number` was not set at Step 0 (no resume), set it now: `session_numb
 
 ---
 
-## Step 2: Initialize Inception
+## Step 2: Initialize Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Initialize Inception ─────────────────────────
+── Initialize Discovery ─────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Ensuring the inception directory exists and capturing session
+> Ensuring the discovery directory exists and capturing session
 > metadata. The session log file is created lazily on first state
 > change — see references/template.md.
 ```
 
-Load **[initialize-inception.md](references/initialize-inception.md)** and follow its instructions as written.
+Load **[initialize-discovery.md](references/initialize-discovery.md)** and follow its instructions as written.
 
 → Proceed to **Step 3**.
 
 ---
 
-## Step 3: Load Inception Guidelines
+## Step 3: Load Discovery Guidelines
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Load Inception Guidelines ────────────────────
+── Load Discovery Guidelines ────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -192,7 +192,7 @@ Load **[initialize-inception.md](references/initialize-inception.md)** and follo
 > session is run.
 ```
 
-Load **[inception-guidelines.md](references/inception-guidelines.md)** and follow its instructions as written.
+Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follow its instructions as written.
 
 → Proceed to **Step 4**.
 
@@ -209,7 +209,7 @@ Load **[inception-guidelines.md](references/inception-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Opening the inception conversation. The session explores the
+> Opening the discovery conversation. The session explores the
 > product shape and synthesises topics at endpoint. When the map
 > is already populated, edits to existing items happen in the loop
 > alongside exploration.
@@ -276,7 +276,7 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Verifying the session followed inception conventions before
+> Verifying the session followed discovery conventions before
 > bridging out.
 ```
 
@@ -286,12 +286,12 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ---
 
-## Step 8: Conclude Inception
+## Step 8: Conclude Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Conclude Inception ───────────────────────────
+── Conclude Discovery ───────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -301,4 +301,4 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > you can pick the next move from the discovery map.
 ```
 
-Load **[conclude-inception.md](references/conclude-inception.md)** and follow its instructions as written.
+Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.

@@ -1,6 +1,6 @@
 ---
 name: continue-epic
-allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-inception-process/scripts/discovery.cjs)
+allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-discovery-process/scripts/discovery.cjs)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -113,7 +113,7 @@ Parse the discovery output to understand:
   - `next_phase_ready` - items ready for the next phase (name + action + label)
   - `unaccounted_discussions` - completed discussions not sourced in any spec
   - `reopened_discussions` - in-progress discussions that are sourced in a spec
-  - `discovery_map` - per-topic lifecycle for the inception/research/discussion span (tier-sorted; empty when no inception items exist)
+  - `discovery_map` - per-topic lifecycle for the discovery/research/discussion span (tier-sorted; empty when no discovery items exist)
   - `convergence_state` - `'in-progress'` | `'settled'` | `null` (when no map)
   - `map_summary` - count totals for the map (`total`, `decided`, `in_flight`, `ready`, `fresh`, `cancelled`)
   - `gating` - boolean flags for phase-forward gating
@@ -244,7 +244,7 @@ backfill-checks is terminal when it fires — it commits the recovery work and s
 
 ```
 > Checking whether completed research or discussion has new themes
-> to surface onto the inception map.
+> to surface onto the discovery map.
 ```
 
 Read `analysis_caches` from the most recent discovery `detail`. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
@@ -307,7 +307,7 @@ Invoke the appropriate skill based on the user's menu selection. Match by **pref
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
-| Continue inception | `/workflow-inception-entry epic {work_unit}` |
+| Continue discovery | `/workflow-discovery-entry epic {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
 

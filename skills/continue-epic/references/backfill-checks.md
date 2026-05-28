@@ -24,7 +24,7 @@ On return, re-run discovery so **B** sees the post-split map state:
 node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
 ```
 
-Re-filter `discovery_map` for items where `summary_present` is false or `description_present` is false. Overwrite `items_to_recover` with this fresh list — legacy-split creates themes with full metadata and removes the source's inception item, so the caller's pre-split filter is stale.
+Re-filter `discovery_map` for items where `summary_present` is false or `description_present` is false. Overwrite `items_to_recover` with this fresh list — legacy-split creates themes with full metadata and removes the source's discovery item, so the caller's pre-split filter is stale.
 
 → Proceed to **B. Summary-Backfill Gate**.
 
@@ -59,7 +59,7 @@ Mutations from A and B are already committed. Returning to the caller would cont
 ```
 > Backfill work is recorded and committed. This pass was
 > context-heavy — decomposing legacy research files and
-> drafting missing inception summaries from source content.
+> drafting missing discovery summaries from source content.
 >
 > Run `/clear`, then `/workflow-start` to pick up with a clean
 > window. The backfill gates will be no-ops on the next pass:

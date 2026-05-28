@@ -4,7 +4,7 @@
 
 ---
 
-Identifies follow-up topics from completed per-topic research files and adds them to the discovery map as fresh inception items with `source: research-analysis` provenance. The orchestrator handles the cache check; this reference is invoked only when the cache is `stale`.
+Identifies follow-up topics from completed per-topic research files and adds them to the discovery map as fresh discovery items with `source: research-analysis` provenance. The orchestrator handles the cache check; this reference is invoked only when the cache is `stale`.
 
 ## Parameters
 
@@ -41,7 +41,7 @@ Group the themes from A into candidate topics.
 
 → Load **[topic-granularity.md](topic-granularity.md)**.
 
-For each candidate topic, write a one-line summary that covers the constituent themes — used as the inception item's `summary` field.
+For each candidate topic, write a one-line summary that covers the constituent themes — used as the discovery item's `summary` field.
 
 Assign each candidate a `routing` value.
 
@@ -66,8 +66,8 @@ When naming topics:
 Read filter inputs from the work unit's manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception items
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception dismissed
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery items
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery dismissed
 ```
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed from the map by the user.
@@ -81,7 +81,7 @@ Check if the existing item's `source` field already includes `research-analysis`
 Read the existing source:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{name} source
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{name} source
 ```
 
 **If the existing source is empty or the literal string `null`:**
@@ -89,7 +89,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.incep
 The manifest CLI prints `"null"` for fields that exist with a JSON null value (intentional — `exists` is the way to distinguish missing from null). Treat both empty and `"null"` as "no real source" and set the new value alone:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "research-analysis"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} source "research-analysis"
 ```
 
 **Otherwise:**
@@ -97,7 +97,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.incep
 Set source to `{existing},research-analysis` (comma-joined):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source "{existing},research-analysis"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} source "{existing},research-analysis"
 ```
 
 Do not change the existing item's routing — the user (or earlier analysis) already set it. Do not add to `tracker`. Do not write a new manifest entry.
@@ -108,14 +108,14 @@ Skip silently. The user removed this topic from the map; the dismissed semantic 
 
 #### Otherwise (new candidate)
 
-Initialise the inception item and write its fields:
+Initialise the discovery item and write its fields:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{name}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{one-line summary}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{paragraphs}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing {routing-from-B}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} source research-analysis
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{name}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} summary "{one-line summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} description "{paragraphs}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} routing {routing-from-B}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} source research-analysis
 ```
 
 `routing` is the value decided per-candidate in **B** (`discussion` or `research`).

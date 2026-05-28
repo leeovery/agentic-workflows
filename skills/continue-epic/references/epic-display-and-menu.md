@@ -107,7 +107,7 @@ Render the discovery map block at the top, then the build-phase tree (specificat
   - `✓` (decided) — `decided`
   - `○` (fresh) — `fresh · routed to {topic.routing}` (omit the ` · routed to ...` segment if `topic.routing` is null)
   - `⊘` (cancelled) — `cancelled`
-- **Summary / provenance sub-lines** — both follow the same `{gutter}` rule. Summary appears first when present; provenance below it. Source `inception` produces no provenance line.
+- **Summary / provenance sub-lines** — both follow the same `{gutter}` rule. Summary appears first when present; provenance below it. Source `discovery` produces no provenance line.
   - **Wrap**: hard-wrap the summary text at 65 characters before emitting. Provenance is short — no wrap needed.
   - **`{gutter}`** governs the indent and continuation tree on every sub-line:
     - **Non-last topic**: `│` followed by 6 spaces (7 chars total). The `│` runs continuously down through every sub-line of every non-last topic, so the tree never breaks.
@@ -128,7 +128,7 @@ Render the discovery map block at the top, then the build-phase tree (specificat
              custom Vue/Nuxt), JustEat import, staff/roles
              from exploration
     ```
-- **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Skip `research`, `discussion`, and `inception` — they are represented in the map above. Tree grammar (`├─` non-final, `└─` final), planning format suffix (`· {format}`), specification source rows, and implementation progress lines render the same way as the otherwise branch below. Skip phases with no items. Blank line between sections.
+- **Build-phase tree below**: render only `specification`, `planning`, `implementation`, `review` from `phases`. Skip `research`, `discussion`, and `discovery` — they are represented in the map above. Tree grammar (`├─` non-final, `└─` final), planning format suffix (`· {format}`), specification source rows, and implementation progress lines render the same way as the otherwise branch below. Skip phases with no items. Blank line between sections.
 - **No trailing recommendation callout** in this code block. Build-phase recommendations attach to menu entries (see **C. Menu**), not the state display.
 
 After the render block, run the **Plans Not Ready Check** below; it applies to both this branch and the otherwise branch.
@@ -308,10 +308,10 @@ Build a menu with two types of options:
      - Completed implementation with no review: `Start review for "{topic:(titlecase)}" — implementation completed`
 
 **Command options:**
-- **`i`/`inception`** — Continue inception (always present when `discovery_map` is non-empty)
 - **`s`/`spec`** — Start specification — {N} discussion(s) not yet in a spec (only shown if `gating.can_start_specification` is true and `unaccounted_discussions` has items)
 - **`d`/`discuss`** — Start a discussion on a new topic (always present)
 - **`r`/`research`** — Start research on a new topic (always present)
+- **`i`/`discovery`** — Continue discovery (always present when `discovery_map` is non-empty)
 - **`c`/`completed`** — Resume a completed topic (only shown when `completed` items exist)
 - **`a`/`cancel`** — Cancel a topic (phase work) (only shown when non-cancelled, non-promoted items exist in any phase)
 - **`e`/`reactivate`** — Reactivate a cancelled topic (only shown when `cancelled` items exist in discovery output)
@@ -348,10 +348,10 @@ What would you like to do?
 - **`4`** — Start research for "Customer Portal"
 - **`5`** — Start planning for "Roles And Permissions" — spec completed
 
-- **`i`/`inception`** — Continue inception
+- **`s`/`spec`** — Start specification — 2 discussion(s) not yet in a spec
 - **`d`/`discuss`** — Start a discussion on a new topic
 - **`r`/`research`** — Start research on a new topic
-- **`s`/`spec`** — Start specification — 2 discussion(s) not yet in a spec
+- **`i`/`discovery`** — Continue discovery
 - **`c`/`completed`** — Resume a completed topic
 - **`a`/`cancel`** — Cancel a topic (phase work)
 - **`e`/`reactivate`** — Reactivate a cancelled topic
@@ -490,9 +490,9 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 
 → Return to **C. Menu**.
 
-#### If user chose `i`/`inception`
+#### If user chose `i`/`discovery`
 
-Set selection to `Continue inception`. The caller routes this to `/workflow-inception-entry` for the work unit (no topic argument).
+Set selection to `Continue discovery`. The caller routes this to `/workflow-discovery-entry` for the work unit (no topic argument).
 
 → Return to caller.
 
@@ -573,7 +573,7 @@ Store the selected action, phase, and topic (if applicable). Match the user's se
 | Start specification | specification | — |
 | Start new discussion | discussion | — |
 | Start new research | research | — |
-| Continue inception | inception | — |
+| Continue discovery | discovery | — |
 
 → Return to caller.
 
