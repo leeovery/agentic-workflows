@@ -76,7 +76,7 @@ Invoke the `/workflow-migrate` skill and follow its instructions exactly — if 
 ```
 > Starting a new epic. I'll ask what you're building, suggest
 > a name, optionally import any seed files, then begin an
-> inception session to map the topics.
+> discovery session to map the topics.
 ```
 
 Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
@@ -153,20 +153,20 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Inception is the next step. If you have existing notes or
+> Discovery is the next step. If you have existing notes or
 > research files for this epic, you can import them now — they
 > will be copied into the work unit, indexed into the knowledge
-> base, and surfaced during inception.
+> base, and surfaced during discovery.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Import existing files before inception?
+Import existing files before discovery?
 
 - **`y`/`yes`** — Import existing files first
-- **`n`/`no`** — Continue straight to inception
+- **`n`/`no`** — Continue straight to discovery
 · · · · · · · · · · · ·
 ```
 
@@ -184,21 +184,21 @@ Load **[collect-import.md](references/collect-import.md)** and follow its instru
 
 ---
 
-## Step 4: Invoke Inception
+## Step 4: Invoke Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Invoke Inception ─────────────────────────────
+── Invoke Discovery ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to inception. The next skill will load and
+> Handing off to discovery. The next skill will load and
 > guide the session.
 ```
 
-Invoke `/workflow-inception-entry epic {work_unit}`.
+Invoke `/workflow-discovery-entry epic {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

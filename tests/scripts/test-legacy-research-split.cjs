@@ -84,7 +84,7 @@ function seedLegacyEpic(workUnit, sourceTopic, opts = {}) {
     work_type: 'epic',
     status: 'in-progress',
     phases: {
-      inception: {
+      discovery: {
         items: {
           [sourceTopic]: {
             routing: opts.routing || 'research',
@@ -133,7 +133,7 @@ describe('detect.cjs: filter conditions', () => {
   });
 
   it('skips items without migration-seeded source', () => {
-    seedLegacyEpic('beta', 'foo', { source: 'inception' });
+    seedLegacyEpic('beta', 'foo', { source: 'discovery' });
     const r = runScriptJson(DETECT_CLI, 'beta');
     assert.deepStrictEqual(r.json.qualifying_sources, []);
   });
@@ -168,7 +168,7 @@ describe('detect.cjs: filter conditions', () => {
       work_type: 'epic',
       status: 'in-progress',
       phases: {
-        inception: { items: {
+        discovery: { items: {
           architecture: { routing: 'research', source: 'migration-seeded' },
           exploration:  { routing: 'research', source: 'migration-seeded' },
         }},
@@ -185,7 +185,7 @@ describe('detect.cjs: filter conditions', () => {
   });
 
   it('multi-source source field with migration-seeded substring qualifies', () => {
-    seedLegacyEpic('substr', 'foo', { source: 'inception,migration-seeded' });
+    seedLegacyEpic('substr', 'foo', { source: 'discovery,migration-seeded' });
     const r = runScriptJson(DETECT_CLI, 'substr');
     assert.deepStrictEqual(r.json.qualifying_sources, ['foo']);
   });
@@ -260,16 +260,16 @@ describe('validate.cjs: cache shape contract', () => {
     assert.strictEqual(r.json.ok, true);
   });
 
-  it('rejects collision with existing inception item (not the source itself)', () => {
+  it('rejects collision with existing discovery item (not the source itself)', () => {
     writeManifest('wu', {
       name: 'wu',
       work_type: 'epic',
       status: 'in-progress',
       phases: {
-        inception: {
+        discovery: {
           items: {
             src: { routing: 'research', source: 'migration-seeded' },
-            auth: { routing: 'discussion', source: 'inception' },  // active collision target
+            auth: { routing: 'discussion', source: 'discovery' },  // active collision target
           },
         },
       },
@@ -277,7 +277,7 @@ describe('validate.cjs: cache shape contract', () => {
     writeCachePlan('wu', 'src', [{ ...baseTheme() }]);  // baseTheme is kebab_name='auth'
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
-    assert.ok(r.json.errors.some(e => e.includes("collides with an existing inception item")));
+    assert.ok(r.json.errors.some(e => e.includes("collides with an existing discovery item")));
   });
 
   it('accepts a theme that reuses the source name (source-rename case)', () => {
@@ -286,7 +286,7 @@ describe('validate.cjs: cache shape contract', () => {
       work_type: 'epic',
       status: 'in-progress',
       phases: {
-        inception: {
+        discovery: {
           items: {
             auth: { routing: 'research', source: 'migration-seeded' },  // src is named 'auth'
           },
@@ -388,19 +388,19 @@ describe('apply.cjs: end-to-end', () => {
     assert.ok(researchFiles.includes('auth.md'));
     assert.ok(researchFiles.includes('caching.md'));
 
-    // Manifest: source inception item deleted, source research item renamed superseded.
+    // Manifest: source discovery item deleted, source research item renamed superseded.
     const m = readManifest('e1');
-    assert.strictEqual(m.phases.inception.items.exploration, undefined);
+    assert.strictEqual(m.phases.discovery.items.exploration, undefined);
     assert.strictEqual(m.phases.research.items.exploration, undefined);
     const supersededName = researchFiles.find(f => f.startsWith('exploration-superseded-')).replace(/\.md$/, '');
     assert.strictEqual(m.phases.research.items[supersededName].status, 'superseded');
 
-    // New inception + research items with correct metadata.
-    assert.strictEqual(m.phases.inception.items.auth.routing, 'research');
-    assert.strictEqual(m.phases.inception.items.caching.routing, 'research');
-    assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth');
-    assert.strictEqual(m.phases.inception.items.auth.description, 'auth desc');
-    assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:exploration');
+    // New discovery + research items with correct metadata.
+    assert.strictEqual(m.phases.discovery.items.auth.routing, 'research');
+    assert.strictEqual(m.phases.discovery.items.caching.routing, 'research');
+    assert.strictEqual(m.phases.discovery.items.auth.summary, 'Auth');
+    assert.strictEqual(m.phases.discovery.items.auth.description, 'auth desc');
+    assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:exploration');
     assert.strictEqual(m.phases.research.items.auth.status, 'in-progress');
 
     // Single git commit.
@@ -434,9 +434,9 @@ describe('apply.cjs: end-to-end', () => {
     assert.ok(researchFiles.some(f => f.startsWith('auth-superseded-')));
 
     const m = readManifest('e2');
-    // Source inception item gone; new 'auth' is a fresh theme.
-    assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:auth');
-    assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth core');
+    // Source discovery item gone; new 'auth' is a fresh theme.
+    assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:auth');
+    assert.strictEqual(m.phases.discovery.items.auth.summary, 'Auth core');
   });
 
   it('single-theme split: source renamed, new file created at same name, full metadata', () => {
@@ -463,12 +463,12 @@ describe('apply.cjs: end-to-end', () => {
     assert.ok(newContent.includes('Material extracted from legacy research file auth.md'));
     assert.ok(newContent.endsWith('Re-flowed auth content for the new file.'));
 
-    // Inception item now has proper metadata (was null on the migration-seeded source).
+    // Discovery item now has proper metadata (was null on the migration-seeded source).
     const m = readManifest('e2b');
-    assert.strictEqual(m.phases.inception.items.auth.summary, 'Auth flow');
-    assert.strictEqual(m.phases.inception.items.auth.description, 'Reflowed auth description.');
-    assert.strictEqual(m.phases.inception.items.auth.routing, 'research');
-    assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:auth');
+    assert.strictEqual(m.phases.discovery.items.auth.summary, 'Auth flow');
+    assert.strictEqual(m.phases.discovery.items.auth.description, 'Reflowed auth description.');
+    assert.strictEqual(m.phases.discovery.items.auth.routing, 'research');
+    assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:auth');
   });
 
   it('on commit failure leaves mutations applied; detect skips via file/research rename', () => {
@@ -488,11 +488,11 @@ describe('apply.cjs: end-to-end', () => {
     assert.strictEqual(r.json.stage, 'git_commit');
     assert.ok(r.json.recovery_hint.length > 0);
 
-    // Source inception item already deleted (happens before theme creation, before commit).
+    // Source discovery item already deleted (happens before theme creation, before commit).
     const m = readManifest('e4');
-    assert.strictEqual(m.phases.inception.items.exploration, undefined);
+    assert.strictEqual(m.phases.discovery.items.exploration, undefined);
     // Theme was created.
-    assert.strictEqual(m.phases.inception.items.auth.source, 'legacy-split:exploration');
+    assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:exploration');
     // Source file/research renamed.
     assert.strictEqual(fileExists('e4', 'research/exploration.md'), false);
 
@@ -516,9 +516,9 @@ describe('apply.cjs: end-to-end', () => {
     assert.strictEqual(r.json.ok, false);
     assert.strictEqual(r.json.stage, 'rename_source_file');
 
-    // Sentinel still set on source inception item.
+    // Sentinel still set on source discovery item.
     const m = readManifest('e4b');
-    assert.strictEqual(m.phases.inception.items.exploration.legacy_split_state, 'in-progress');
+    assert.strictEqual(m.phases.discovery.items.exploration.legacy_split_state, 'in-progress');
 
     // Detect excludes due to sentinel (file also missing — both conditions skip).
     const d = runScriptJson(DETECT_CLI, 'e4b');
@@ -556,14 +556,14 @@ describe('apply.cjs: end-to-end', () => {
       true
     );
     const m = readManifest('e9');
-    assert.strictEqual(m.phases.inception.items.exploration.legacy_split_state, 'in-progress');
+    assert.strictEqual(m.phases.discovery.items.exploration.legacy_split_state, 'in-progress');
   });
 
   it('pulls dismissed name from list before re-adding theme', () => {
     seedLegacyEpic('e10', 'exploration');
     // Add 'auth' to the dismissed list — user previously removed it via refinement.
     const m = readManifest('e10');
-    m.phases.inception.dismissed = ['auth', 'unrelated-name'];
+    m.phases.discovery.dismissed = ['auth', 'unrelated-name'];
     fs.writeFileSync(
       path.join(dir, '.workflows', 'e10', 'manifest.json'),
       JSON.stringify(m, null, 2)
@@ -581,9 +581,9 @@ describe('apply.cjs: end-to-end', () => {
 
     const m2 = readManifest('e10');
     // 'auth' pulled from dismissed; 'unrelated-name' still there.
-    assert.deepStrictEqual(m2.phases.inception.dismissed, ['unrelated-name']);
+    assert.deepStrictEqual(m2.phases.discovery.dismissed, ['unrelated-name']);
     // Theme created normally.
-    assert.strictEqual(m2.phases.inception.items.auth.source, 'legacy-split:exploration');
+    assert.strictEqual(m2.phases.discovery.items.auth.source, 'legacy-split:exploration');
   });
 
   it('apply re-validates and reports cache errors at start', () => {
@@ -601,7 +601,7 @@ describe('apply.cjs: end-to-end', () => {
 
     // No mutations applied — source still in place, no sentinel.
     const m = readManifest('e5');
-    assert.strictEqual(m.phases.inception.items.exploration.legacy_split_state, undefined);
+    assert.strictEqual(m.phases.discovery.items.exploration.legacy_split_state, undefined);
     assert.strictEqual(fileExists('e5', 'research/exploration.md'), true);
   });
 });

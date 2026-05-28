@@ -13,16 +13,16 @@ const {
 } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 function buildDiscoveryMap(manifest) {
-  const inceptionItems = phaseItems(manifest, 'inception');
-  if (inceptionItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 } };
-  const map = inceptionItems.map(item => {
+  const discoveryItems = phaseItems(manifest, 'discovery');
+  if (discoveryItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 } };
+  const map = discoveryItems.map(item => {
     const { lifecycle, tier, current_phase } = computeTopicLifecycle(manifest, item.name);
     return {
       name: item.name,
       summary: item.summary || null,
       description: item.description || null,
       routing: item.routing || null,
-      source: item.source || 'inception',
+      source: item.source || 'discovery',
       source_provenance: computeSourceProvenance(item.source),
       lifecycle,
       tier,
@@ -39,7 +39,7 @@ function buildDiscoveryMap(manifest) {
 }
 
 function findLatestSessionLog(cwd, workUnit) {
-  const dir = path.join(cwd, '.workflows', workUnit, 'inception');
+  const dir = path.join(cwd, '.workflows', workUnit, 'discovery');
   let files;
   try {
     files = fs.readdirSync(dir).filter(f => /^session-\d+\.md$/.test(f)).sort();
@@ -52,7 +52,7 @@ function findLatestSessionLog(cwd, workUnit) {
   const number = parseInt(m[1], 10);
   return {
     filename,
-    relative_path: path.posix.join('.workflows', workUnit, 'inception', filename),
+    relative_path: path.posix.join('.workflows', workUnit, 'discovery', filename),
     number,
   };
 }
@@ -62,10 +62,10 @@ function discover(cwd, workUnit) {
   if (!manifest) {
     return { error: `Work unit "${workUnit}" not found` };
   }
-  const inceptionPhase = (manifest.phases || {}).inception || {};
-  const dismissed = Array.isArray(inceptionPhase.dismissed) ? inceptionPhase.dismissed.slice() : [];
-  const activeSession = (typeof inceptionPhase.active_session === 'string' && inceptionPhase.active_session !== '')
-    ? inceptionPhase.active_session
+  const discoveryPhase = (manifest.phases || {}).discovery || {};
+  const dismissed = Array.isArray(discoveryPhase.dismissed) ? discoveryPhase.dismissed.slice() : [];
+  const activeSession = (typeof discoveryPhase.active_session === 'string' && discoveryPhase.active_session !== '')
+    ? discoveryPhase.active_session
     : null;
   const { map, summary } = buildDiscoveryMap(manifest);
   const latestSession = findLatestSessionLog(cwd, workUnit);
@@ -92,7 +92,7 @@ function format(result) {
     return `error: ${result.error}\n`;
   }
   const lines = [];
-  lines.push(`=== INCEPTION DISCOVERY: ${result.work_unit} ===`);
+  lines.push(`=== DISCOVERY DISCOVERY: ${result.work_unit} ===`);
 
   const s = result.map_summary;
   lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled`);
@@ -105,7 +105,7 @@ function format(result) {
     for (const t of result.discovery_map) {
       let line = `  - ${t.tier} ${t.name} [${t.lifecycle}]`;
       if (t.routing) line += ` routing=${t.routing}`;
-      if (t.source && t.source !== 'inception') line += ` source=${t.source}`;
+      if (t.source && t.source !== 'discovery') line += ` source=${t.source}`;
       if (t.current_phase) line += ` phase=${t.current_phase}`;
       if (t.summary) line += ` — ${t.summary}`;
       lines.push(line);

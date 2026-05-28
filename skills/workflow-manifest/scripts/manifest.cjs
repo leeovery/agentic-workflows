@@ -13,13 +13,13 @@ const WORKFLOWS_DIR = path.resolve(process.cwd(), '.workflows');
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
 
 const VALID_PHASES = [
-  'inception', 'research', 'discussion', 'investigation', 'scoping',
+  'discovery', 'research', 'discussion', 'investigation', 'scoping',
   'specification', 'planning', 'implementation',
   'review'
 ];
 
 const VALID_PHASE_STATUSES = {
-  inception:      ['in-progress'],
+  discovery:      ['in-progress'],
   research:       ['in-progress', 'completed', 'superseded', 'cancelled'],
   discussion:     ['in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],

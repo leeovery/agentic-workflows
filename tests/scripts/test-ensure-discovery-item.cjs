@@ -1,6 +1,6 @@
 'use strict';
 
-// The ensure-inception-item reference is markdown — it instructs Claude to
+// The ensure-discovery-item reference is markdown — it instructs Claude to
 // invoke the manifest CLI with a specific sequence of commands. These tests
 // exercise the same CLI sequence the reference prescribes, so we lock in the
 // observable manifest state and the back-compat shape:
@@ -26,7 +26,7 @@ const MANIFEST_CLI = path.resolve(
 let dir;
 
 function setup() {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ensure-inception-test-'));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ensure-discovery-test-'));
   fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
 }
 
@@ -54,7 +54,7 @@ function seedEpic(workUnit) {
     work_type: 'epic',
     status: 'in-progress',
     description: `Test: ${workUnit}`,
-    phases: { inception: { items: {} } },
+    phases: { discovery: { items: {} } },
   };
   fs.writeFileSync(
     path.join(manifestDir, 'manifest.json'),
@@ -68,32 +68,32 @@ function seedEpic(workUnit) {
   fs.writeFileSync(projPath, JSON.stringify(proj, null, 2));
 }
 
-// Re-creates the CLI sequence in D. Create Inception Item. Summary and
+// Re-creates the CLI sequence in D. Create Discovery Item. Summary and
 // description are only written when supplied + non-empty (back-compat: existing
 // callers pass neither and the item carries routing + source only).
 function ensureCreate(workUnit, topic, routing, { summary, description } = {}) {
   assert.strictEqual(
-    runCli('init-phase', `${workUnit}.inception.${topic}`).status, 0,
+    runCli('init-phase', `${workUnit}.discovery.${topic}`).status, 0,
   );
   assert.strictEqual(
-    runCli('set', `${workUnit}.inception.${topic}`, 'routing', routing).status, 0,
+    runCli('set', `${workUnit}.discovery.${topic}`, 'routing', routing).status, 0,
   );
   assert.strictEqual(
-    runCli('set', `${workUnit}.inception.${topic}`, 'source', 'direct-start').status, 0,
+    runCli('set', `${workUnit}.discovery.${topic}`, 'source', 'direct-start').status, 0,
   );
   if (summary) {
     assert.strictEqual(
-      runCli('set', `${workUnit}.inception.${topic}`, 'summary', summary).status, 0,
+      runCli('set', `${workUnit}.discovery.${topic}`, 'summary', summary).status, 0,
     );
   }
   if (description) {
     assert.strictEqual(
-      runCli('set', `${workUnit}.inception.${topic}`, 'description', description).status, 0,
+      runCli('set', `${workUnit}.discovery.${topic}`, 'description', description).status, 0,
     );
   }
 }
 
-describe('ensure-inception-item: create without summary or description', () => {
+describe('ensure-discovery-item: create without summary or description', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
@@ -101,7 +101,7 @@ describe('ensure-inception-item: create without summary or description', () => {
     seedEpic('payments');
     ensureCreate('payments', 'auth', 'discussion');
 
-    const item = readManifest('payments').phases.inception.items['auth'];
+    const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.routing, 'discussion');
     assert.strictEqual(item.source, 'direct-start');
     assert.ok(!('summary' in item), 'summary unexpectedly written');
@@ -109,7 +109,7 @@ describe('ensure-inception-item: create without summary or description', () => {
   });
 });
 
-describe('ensure-inception-item: create with summary only', () => {
+describe('ensure-discovery-item: create with summary only', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
@@ -117,13 +117,13 @@ describe('ensure-inception-item: create with summary only', () => {
     seedEpic('payments');
     ensureCreate('payments', 'auth', 'research', { summary: 'oauth + sessions' });
 
-    const item = readManifest('payments').phases.inception.items['auth'];
+    const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.summary, 'oauth + sessions');
     assert.ok(!('description' in item), 'description unexpectedly written');
   });
 });
 
-describe('ensure-inception-item: create with summary and description', () => {
+describe('ensure-discovery-item: create with summary and description', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
@@ -135,7 +135,7 @@ describe('ensure-inception-item: create with summary and description', () => {
       description: desc,
     });
 
-    const item = readManifest('payments').phases.inception.items['auth'];
+    const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.summary, 'oauth + sessions');
     assert.strictEqual(item.description, desc);
     assert.strictEqual(item.routing, 'research');
@@ -143,7 +143,7 @@ describe('ensure-inception-item: create with summary and description', () => {
   });
 });
 
-describe('ensure-inception-item: idempotency on existing item', () => {
+describe('ensure-discovery-item: idempotency on existing item', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
@@ -158,12 +158,12 @@ describe('ensure-inception-item: idempotency on existing item', () => {
       description: 'original description',
     });
 
-    const existsResult = runCli('exists', 'payments.inception.auth');
+    const existsResult = runCli('exists', 'payments.discovery.auth');
     assert.strictEqual(existsResult.status, 0);
     assert.strictEqual(existsResult.stdout.trim(), 'true');
 
     // Caller short-circuits — ensureCreate is not invoked again. Manifest stays.
-    const item = readManifest('payments').phases.inception.items['auth'];
+    const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.summary, 'original summary');
     assert.strictEqual(item.description, 'original description');
   });

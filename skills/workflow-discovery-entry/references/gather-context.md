@@ -1,10 +1,10 @@
 # Gather Context
 
-*Reference for **[workflow-inception-entry](../SKILL.md)***
+*Reference for **[workflow-discovery-entry](../SKILL.md)***
 
 ---
 
-Inception is curatorial — the only context the session needs upfront is the work-unit description and any imported seed material. There are no interview questions; the conversation begins with the description as background and an open prompt to the user.
+Discovery is curatorial — the only context the session needs upfront is the work-unit description and any imported seed material. There are no interview questions; the conversation begins with the description as background and an open prompt to the user.
 
 ## A. Read Description
 
@@ -38,6 +38,6 @@ Set `imports` = `[]`.
 
 #### Otherwise
 
-Parse the JSON array. Store the list of `path` values as `imports`. Files were already copied to `imports/` and indexed into the knowledge base when the user provided them at start-epic — this read is just to surface the filenames in the inception handoff.
+Parse the JSON array. Store the list of `path` values as `imports`. Files were already copied to `imports/` and indexed into the knowledge base when the user provided them at start-epic — this read is just to surface the filenames in the discovery handoff.
 
 → Return to caller.

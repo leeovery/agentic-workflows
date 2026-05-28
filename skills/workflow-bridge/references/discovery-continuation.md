@@ -1,10 +1,10 @@
-# Inception Continuation
+# Discovery Continuation
 
 *Reference for **[workflow-bridge](../SKILL.md)***
 
 ---
 
-Route an inception session conclusion back to `/continue-epic`. Inception always returns to the epic menu after concluding — the user picks the next move (start research, start discussion, refine the map, etc.) from the discovery map. There is no `next_phase` computation; the destination is deterministic.
+Route an discovery session conclusion back to `/continue-epic`. Discovery always returns to the epic menu after concluding — the user picks the next move (start research, start discussion, refine the map, etc.) from the discovery map. There is no `next_phase` computation; the destination is deterministic.
 
 ## A. Enter Plan Mode
 
@@ -13,7 +13,7 @@ Call the `EnterPlanMode` tool to enter plan mode. Then write the following conte
 ```
 # Continue Epic: {work_unit}
 
-The inception session has concluded. Return to the epic menu to pick the next move from the discovery map.
+The discovery session has concluded. Return to the epic menu to pick the next move from the discovery map.
 
 ## Next Step
 

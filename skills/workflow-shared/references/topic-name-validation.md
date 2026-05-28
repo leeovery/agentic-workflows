@@ -1,6 +1,6 @@
 # Topic Name Validation
 
-*Shared reference. Loaded by `workflow-inception-process`, `workflow-research-process`, `workflow-discussion-process`, and any flow that proposes a new topic name for the discovery map.*
+*Shared reference. Loaded by `workflow-discovery-process`, `workflow-research-process`, `workflow-discussion-process`, and any flow that proposes a new topic name for the discovery map.*
 
 ---
 
@@ -42,7 +42,7 @@ Re-derive a kebab-case form for `proposed_name` per casing-conventions.md (lower
 Re-run discovery to pick up state changes since the caller's last invocation (writes earlier in the session, prior splits in the same batch):
 
 ```bash
-node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery-process/scripts/discovery.cjs {work_unit}
 ```
 
 Read:
@@ -77,7 +77,7 @@ or use edit-summary / change-routing on the existing item.
 
 Check whether `proposed_name` matches any entry in `dismissed` (case-sensitive).
 
-A dismissed-list match is **not** a rejection. User-explicit spawns (split, elevation, inception session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The caller pulls the name from `dismissed` before writing the new item.
+A dismissed-list match is **not** a rejection. User-explicit spawns (split, elevation, discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The caller pulls the name from `dismissed` before writing the new item.
 
 #### If a match exists
 

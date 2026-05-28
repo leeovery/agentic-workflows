@@ -10,15 +10,15 @@ This skill's purpose is now fulfilled. Construct the handoff and invoke the proc
 
 ---
 
-## Load Inception Description
+## Load Discovery Description
 
-For every source branch except `continue`, attempt to read the inception item's `description` so it can be appended to the handoff. Two preconditions must hold before the read — both must be true, otherwise treat description as null and skip the Description block:
+For every source branch except `continue`, attempt to read the discovery item's `description` so it can be appended to the handoff. Two preconditions must hold before the read — both must be true, otherwise treat description as null and skip the Description block:
 
-1. `work_type` is `epic`. Non-epic work units (feature, bugfix, cross-cutting) have no inception phase — skip.
-2. The `description` subkey is present on the inception item. Read it directly — empty stdout means the subkey is absent:
+1. `work_type` is `epic`. Non-epic work units (feature, bugfix, cross-cutting) have no discovery phase — skip.
+2. The `description` subkey is present on the discovery item. Read it directly — empty stdout means the subkey is absent:
 
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{topic} description
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
    ```
 
 When `description` is loaded and non-empty, append the Description block shown in each source branch below. When either precondition fails, or the read returns empty, omit the Description block entirely — no header, no empty body.

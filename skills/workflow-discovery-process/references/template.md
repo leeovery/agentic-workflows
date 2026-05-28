@@ -1,10 +1,10 @@
-# Inception Session Log Template
+# Discovery Session Log Template
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
-Structure for `.workflows/{work_unit}/inception/session-{NNN}.md` where `NNN` is the next zero-padded sequence number after the existing session logs (first = `001`, second = `002`, etc.).
+Structure for `.workflows/{work_unit}/discovery/session-{NNN}.md` where `NNN` is the next zero-padded sequence number after the existing session logs (first = `001`, second = `002`, etc.).
 
 One template, all sessions. Sections that don't apply this session write `(none)` rather than disappearing — the empty section is a positive signal it was considered, not missed.
 
@@ -18,7 +18,7 @@ The session has two distinct flavours of content recorded in two distinct sectio
 ## Template
 
 ```markdown
-# Inception Session {NNN}
+# Discovery Session {NNN}
 
 Date: {YYYY-MM-DD}
 Work unit: {work_unit}
@@ -86,7 +86,7 @@ Browse-and-bail produces no file.
 
 When the file is first created, populate the header, **Description (as of session)**, **Imports**, and **Map State at Start** at the same write that adds the first content. Other sections start as `(none)`.
 
-The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.inception.active_session` manifest marker (see [resume-detection](../../workflow-inception-process/SKILL.md)). Always replace it at finalisation so the next entry sees a closed state.
+The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](../../workflow-discovery-process/SKILL.md)). Always replace it at finalisation so the next entry sees a closed state.
 
 At finalisation, replace the `(none)` Conclusion with one of:
 

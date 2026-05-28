@@ -1,6 +1,6 @@
 # Routing Decision
 
-*Shared reference. Loaded by `research-analysis.md` and `inception-gap-analysis.md`.*
+*Shared reference. Loaded by `research-analysis.md` and `discovery-gap-analysis.md`.*
 
 ---
 

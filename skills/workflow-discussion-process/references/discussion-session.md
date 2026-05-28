@@ -131,28 +131,28 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
    On `collision-active`, re-prompt for an alternative and re-validate — loop until `ok` or `matches-dismissed`, or the user cancels the elevation. On `matches-dismissed`, proceed (the dismissed entry is pulled in step 4). On `ok`, proceed.
 
-2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation). This becomes the inception item's `summary` field. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by discussion-entry as opening context when the user later picks the elevated topic up.
+2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation). This becomes the discovery item's `summary` field. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by discussion-entry as opening context when the user later picks the elevated topic up.
 
 3. Create the seed discussion file at `.workflows/{work_unit}/discussion/{new-topic}.md` with:
    - Context section capturing what prompted the topic and any initial thinking from the current discussion
    - A Discussion Map with initial subtopics derived from what's been discussed so far
    - No decisions — those happen in the new discussion
 
-4. Write manifest items — discussion first, then inception. If validation returned `matches-dismissed`, pull from the dismissed list first:
+4. Write manifest items — discussion first, then discovery. If validation returned `matches-dismissed`, pull from the dismissed list first:
 
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{new-topic}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{new-topic}"
    ```
 
    Then:
 
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discussion.{new-topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new-topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} routing discussion
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} summary "{one-line summary}"
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} description "{paragraphs}"
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new-topic} source "discussion-elevation:{topic}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{new-topic}
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} routing discussion
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} summary "{one-line summary}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} description "{paragraphs}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} source "discussion-elevation:{topic}"
    ```
 
    `routing: discussion` because elevation fires inside a discussion session. `source: discussion-elevation:{parent_topic}` is historical provenance; no cascade.

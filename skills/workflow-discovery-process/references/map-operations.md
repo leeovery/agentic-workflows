@@ -1,6 +1,6 @@
 # Map Operations
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
@@ -8,7 +8,7 @@ Per-operation handling for **edits to existing map items**. Loaded by [session-l
 
 New topics are not added here — they are synthesised at endpoint from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
 
-State for validation comes from `skills/workflow-inception-process/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
+State for validation comes from `skills/workflow-discovery-process/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
 After all of the user's operations have been processed, return to caller.
 
@@ -17,7 +17,7 @@ After all of the user's operations have been processed, return to caller.
 Re-run discovery to pick up state changes since the last invocation (operations applied earlier in the session, or the parent's initial discovery):
 
 ```bash
-node .claude/skills/workflow-inception-process/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery-process/scripts/discovery.cjs {work_unit}
 ```
 
 Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.
@@ -25,7 +25,7 @@ Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `sour
 Set the active-session marker (idempotent — no-op if already set). The first per-op commit below will pick it up via `git add manifest.json`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception active_session "{session_number:03d}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "{session_number:03d}"
 ```
 
 Then read the user's most recent message. Extract one or more operations. Recognised intents:
@@ -63,7 +63,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
-`cancelled` is also disallowed for Remove because the inception item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
+`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
 
 Render the rejection in a code block:
 
@@ -161,7 +161,7 @@ Skip the batch. No manifest writes, no session-log entry, no commit.
 For each:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} summary "{new summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} summary "{new summary}"
 ```
 
 Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 1. If **Edits** currently reads `(none)`, replace it with the bullets:
@@ -174,8 +174,8 @@ Append a single batch entry to the session log under **Edits**. The session log 
 Single commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
-git commit -m "inception({work_unit}): edit {N} summary(ies)"
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): edit {N} summary(ies)"
 ```
 
 → Return to **C. Apply** for the next group.
@@ -215,11 +215,11 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 
 #### If `yes`
 
-Hard-delete the inception item and add the name to the dismissed list:
+Hard-delete the discovery item and add the name to the dismissed list:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{name}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.inception dismissed "{name}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery items.{name}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.discovery dismissed "{name}"
 ```
 
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
@@ -231,8 +231,8 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
-git commit -m "inception({work_unit}): remove {name} from map"
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): remove {name} from map"
 ```
 
 → Return to **C. Apply** for the next group.
@@ -274,8 +274,8 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 Read the always-present fields:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} routing
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} source
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{old} routing
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{old} source
 ```
 
 Use the returned values as `{routing}` and `{source}` in the write commands below.
@@ -283,13 +283,13 @@ Use the returned values as `{routing}` and `{source}` in the write commands belo
 `summary` and `description` are both optional — migration-seeded, direct-start, and absorption-registered items can land with either or both unset. Probe each before reading:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} summary
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.discovery.{old} summary
 ```
 
 If the output is `true`, read the value:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.inception.{old} summary
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{old} summary
 ```
 
 Use the returned value as `{summary}` in the optional write below.
@@ -297,7 +297,7 @@ Use the returned value as `{summary}` in the optional write below.
 Repeat for `description`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.inception.{old} description
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.discovery.{old} description
 ```
 
 If `true`, read it; use as `{description}` in the optional write below.
@@ -305,22 +305,22 @@ If `true`, read it; use as `{description}` in the optional write below.
 Delete the old key, create the new key, write the always-present fields back under the new key:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception items.{old}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{new}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} routing {routing}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} source {source}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery items.{old}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{new}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new} routing {routing}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new} source {source}
 ```
 
 If a summary was read above, also write it:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} summary "{summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new} summary "{summary}"
 ```
 
 If a description was read above, also write it:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{new} description "{description}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new} description "{description}"
 ```
 
 If any command fails, surface the error and stop before the commit so the user can recover — a partial rename leaves the manifest in an inconsistent state otherwise.
@@ -334,8 +334,8 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
-git commit -m "inception({work_unit}): rename {old} → {new}"
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): rename {old} → {new}"
 ```
 
 → Return to **C. Apply** for the next group.
@@ -375,7 +375,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 #### If `yes`
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} routing {research|discussion}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} routing {research|discussion}
 ```
 
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
@@ -387,8 +387,8 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
-git commit -m "inception({work_unit}): re-route {name} to {new routing}"
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): re-route {name} to {new routing}"
 ```
 
 → Return to **C. Apply** for the next group.
@@ -431,7 +431,7 @@ Skip the batch. No manifest writes, no session-log entry, no commit.
 For each, write the full description verbatim (not the truncated preview):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{name} description "{new description}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} description "{new description}"
 ```
 
 Append a single batch entry to the session log under **Edits**. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullets:
@@ -444,8 +444,8 @@ Append a single batch entry to the session log under **Edits**. If the log doesn
 Single commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
-git commit -m "inception({work_unit}): edit {N} description(s)"
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): edit {N} description(s)"
 ```
 
 → Return to **C. Apply** for the next group.

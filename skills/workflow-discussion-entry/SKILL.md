@@ -14,7 +14,7 @@ You are in the **Discussion** phase — capturing WHAT and WHY through decisions
 
 | Work type | Pipeline |
 |---|---|
-| Epic | Inception → Research → **Discussion** → Specification → Planning → Implementation → Review |
+| Epic | Discovery → Research → **Discussion** → Specification → Planning → Implementation → Review |
 | Feature | Research (optional) → **Discussion** → Specification → Planning → Implementation → Review |
 | Cross-cutting | Research (optional) → **Discussion** → Specification (terminal) |
 
@@ -77,7 +77,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.di
 
 Set `source = "topic-provided"`.
 
-Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
 → Proceed to **Step 3** (Gather Context).
 
@@ -93,7 +93,7 @@ What topic would you like to discuss?
 
 Kebab-case the response, store as `{topic}`. Set `source = "fresh"`.
 
-Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-inception-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
+Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
 
 → Proceed to **Step 2** (Validate Phase).
 
@@ -114,7 +114,7 @@ Silently derive `direct_entry_summary` (one-line) and `direct_entry_description`
 > in progress, or completed.
 ```
 
-Load **[ensure-inception-item.md](../workflow-shared/references/ensure-inception-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`. On the direct-entry path (`source = "fresh"`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. On the topic-resolved path, omit both — the caller didn't derive them.
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`. On the direct-entry path (`source = "fresh"`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. On the topic-resolved path, omit both — the caller didn't derive them.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 

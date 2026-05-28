@@ -1,6 +1,6 @@
 # Confirm and Persist
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
@@ -23,12 +23,12 @@ No new topics — this is an edits-only or browse-only session.
 For each topic on the working list, in synthesised order:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.inception dismissed "{topic}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.inception.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} summary "{one-line summary}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} description "{paragraphs}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} routing {research|discussion}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{topic} source inception
+node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{topic}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} summary "{one-line summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} description "{paragraphs}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} routing {research|discussion}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} source discovery
 ```
 
 The `pull` is a no-op if the name isn't in the dismissed list.
@@ -39,10 +39,10 @@ If any command fails, surface the error and stop before the commit so the user c
 
 Notes:
 
-- `init-phase` creates the item with `status: in-progress` automatically. Inception items have no other valid status — do not pass `status` explicitly.
+- `init-phase` creates the item with `status: in-progress` automatically. Discovery items have no other valid status — do not pass `status` explicitly.
 - The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
 - `routing` is the value confirmed by the user at the synthesis gate.
-- `source: inception` distinguishes user-surfaced topics from later auto-additions (`research-analysis`, `gap-analysis`, `split`, `elevation`, `direct-start`, `migration-seeded`).
+- `source: discovery` distinguishes user-surfaced topics from later auto-additions (`research-analysis`, `gap-analysis`, `split`, `elevation`, `direct-start`, `migration-seeded`).
 
 → Proceed to **B. Write Topics Identified**.
 
@@ -74,7 +74,7 @@ Leave **Topics Identified** as `(none)`.
 Clear the active-session marker so resume detection on the next entry sees a closed session. Skip if the log file does not exist (browse-only session — the marker was never set):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception active_session
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
 ```
 
 Replace the **Conclusion** `(none)` placeholder. Skip if no log file exists.
@@ -85,11 +85,11 @@ Replace the **Conclusion** `(none)` placeholder. Skip if no log file exists.
 
 Check `git status`. If the working tree is dirty (manifest writes from **A**, the marker delete, the Topics Identified write, the Conclusion replacement, or any combination), commit. Stage the dirty paths and pick the appropriate message:
 
-- New topics: `inception({work_unit}): synthesise {N_new} new topic(s)`
-- Edits only: `inception({work_unit}): finalise session log`
+- New topics: `discovery({work_unit}): synthesise {N_new} new topic(s)`
+- Edits only: `discovery({work_unit}): finalise session log`
 
 ```bash
-git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/inception/session-{session_number:03d}.md
+git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
 git commit -m "{message}"
 ```
 

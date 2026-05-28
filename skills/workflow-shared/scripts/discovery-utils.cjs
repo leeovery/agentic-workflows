@@ -246,7 +246,7 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   }
 
   if (kind === 'gap-analysis') {
-    const cache = ((manifest.phases || {}).inception || {}).gap_analysis_cache;
+    const cache = ((manifest.phases || {}).discovery || {}).gap_analysis_cache;
     const researchDir = path.join(wuDir, 'research');
     const discussionDir = path.join(wuDir, 'discussion');
     const researchItems = phaseItems(manifest, 'research');
@@ -261,7 +261,7 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
       .map(it => path.join(discussionDir, `${it.name}.md`))
       .filter(p => fileExists(p));
 
-    // Sort so the read-side checksum matches inception-gap-analysis.md's
+    // Sort so the read-side checksum matches discovery-gap-analysis.md's
     // write-side, which also sorts before hashing.
     const inputPaths = [...completedResearchFiles, ...completedDiscussionFiles].sort();
 
@@ -356,7 +356,7 @@ function computeMapSummary(items) {
 }
 
 function computeSourceProvenance(source) {
-  if (!source || source === 'inception') return null;
+  if (!source || source === 'discovery') return null;
   const parts = source.split(',').map(s => s.trim()).filter(Boolean);
   if (parts.length === 0) return null;
   const labels = parts.map(p => {

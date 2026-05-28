@@ -1,10 +1,10 @@
 # Session Loop
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
-Follow the curatorial moves and hard rules from **[inception-guidelines.md](inception-guidelines.md)** throughout. No background agents, no review cycles, no perspective dispatches.
+Follow the curatorial moves and hard rules from **[discovery-guidelines.md](discovery-guidelines.md)** throughout. No background agents, no review cycles, no perspective dispatches.
 
 State-driven branches in **A. Open** pick the opening shape; **B. Session Loop** runs pure exploration; **C. Endpoint and Synthesis** detects the endpoint and produces the topic set. When the map already has items, edits to existing items happen in the loop alongside exploration.
 
@@ -14,7 +14,7 @@ Read `discovery_map`, `dismissed`, and `imports` from the most recent discovery 
 
 #### If a resume was selected at Step 0
 
-The user chose `continue` at resume detection — the active session log on disk is the working state. Read `.workflows/{work_unit}/inception/session-{session_number}.md` to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
+The user chose `continue` at resume detection — the active session log on disk is the working state. Read `.workflows/{work_unit}/discovery/session-{session_number}.md` to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
 
 Brief the user with the working state and ask where to pick up:
 
@@ -45,7 +45,7 @@ The map exists; editing existing items is available alongside new exploration. R
 
 ```
 ●───────────────────────────────────────────────●
-  Inception — {work_unit:(titlecase)}
+  Discovery — {work_unit:(titlecase)}
 ●───────────────────────────────────────────────●
 
   Discovery Map ({total} topics{tier_breakdown})
@@ -130,7 +130,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is pur
 
 1. **Listen.** Take in what the user just said.
 2. **Recognise intent.** The user's message may contain:
-   - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect. Continue the conversation: ask the next exploratory question, follow the thread the user opened. See [inception-guidelines.md](inception-guidelines.md) → *Open Exploration — How* for what to ask and where to push.
+   - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect. Continue the conversation: ask the next exploratory question, follow the thread the user opened. See [discovery-guidelines.md](discovery-guidelines.md) → *Open Exploration — How* for what to ask and where to push.
    - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
    - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-render using the opener's render rules. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
@@ -156,9 +156,9 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is pur
    The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, set the active-session marker (idempotent) and commit:
 
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception active_session "{session_number:03d}"
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "{session_number:03d}"
    git add -- .workflows/{work_unit}/
-   git commit -m "inception({work_unit}): exploration notes — session-{session_number:03d}"
+   git commit -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"
    ```
 
 → Proceed to **C. Endpoint and Synthesis** when either an endpoint signal is recognised in step 2 or a natural endpoint pattern is observed in step 4. Otherwise loop within **B**.

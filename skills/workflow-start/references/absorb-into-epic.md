@@ -360,27 +360,27 @@ If the index command fails, display the error but do not block — the file is a
   The artifact is saved. Indexing can be retried later.
 ```
 
-→ Proceed to **J. Register Inception Item**.
+→ Proceed to **J. Register Discovery Item**.
 
 #### Otherwise
 
-→ Proceed to **J. Register Inception Item**.
+→ Proceed to **J. Register Discovery Item**.
 
 ---
 
-## J. Register Inception Item
+## J. Register Discovery Item
 
-The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.inception.items` — without an inception entry, the topic is invisible to the continue-epic display, subsequent inception sessions, map-summary counts, and the dismissed-list flow.
+The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.discovery.items` — without an discovery entry, the topic is invisible to the continue-epic display, subsequent discovery sessions, map-summary counts, and the dismissed-list flow.
 
-Routing reflects the work already done on the feature. `summary` and `description` are left unset — `source` defaults to `inception` at render time, and the next `/continue-epic` entry will detect the missing fields and route to `summary-backfill.md` so the user can review derived values.
+Routing reflects the work already done on the feature. `summary` and `description` are left unset — `source` defaults to `discovery` at render time, and the next `/continue-epic` entry will detect the missing fields and route to `summary-backfill.md` so the user can review derived values.
 
 #### If `has_research` is `true`
 
 Set `routing` to `research`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.inception.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.inception.{topic} routing research
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discovery.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} routing research
 ```
 
 → Proceed to **K. Cleanup**.
@@ -390,8 +390,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.inc
 Set `routing` to `discussion`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.inception.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.inception.{topic} routing discussion
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discovery.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} routing discussion
 ```
 
 → Proceed to **K. Cleanup**.

@@ -2,13 +2,13 @@
 
 // The absorb-into-epic reference is markdown — it instructs Claude to invoke
 // the manifest CLI with a specific sequence of commands. These tests exercise
-// the same CLI sequence the reference prescribes for J. Register Inception
+// the same CLI sequence the reference prescribes for J. Register Discovery
 // Item, locking in the observable manifest state:
 //
-// - has_research = true  → inception item with routing = research
-// - has_research = false → inception item with routing = discussion
+// - has_research = true  → discovery item with routing = research
+// - has_research = false → discovery item with routing = discussion
 // - summary/description left unset (summary-backfill catches them later)
-// - source field left unset (defaults to "inception" at render time)
+// - source field left unset (defaults to "discovery" at render time)
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
@@ -53,7 +53,7 @@ function seedEpic(workUnit) {
       name: workUnit,
       work_type: 'epic',
       status: 'in-progress',
-      phases: { inception: { items: {} } },
+      phases: { discovery: { items: {} } },
     }, null, 2),
   );
   const projPath = path.join(dir, '.workflows', 'manifest.json');
@@ -64,33 +64,33 @@ function seedEpic(workUnit) {
   fs.writeFileSync(projPath, JSON.stringify(proj, null, 2));
 }
 
-// Re-creates the CLI sequence in J. Register Inception Item.
+// Re-creates the CLI sequence in J. Register Discovery Item.
 function registerInceptionItem(targetEpic, topic, routing) {
   assert.strictEqual(
-    runCli('init-phase', `${targetEpic}.inception.${topic}`).status, 0,
+    runCli('init-phase', `${targetEpic}.discovery.${topic}`).status, 0,
   );
   assert.strictEqual(
-    runCli('set', `${targetEpic}.inception.${topic}`, 'routing', routing).status, 0,
+    runCli('set', `${targetEpic}.discovery.${topic}`, 'routing', routing).status, 0,
   );
 }
 
-describe('absorb-into-epic: J. Register Inception Item', () => {
+describe('absorb-into-epic: J. Register Discovery Item', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
-  it('creates an inception item with routing = research when has_research is true', () => {
+  it('creates an discovery item with routing = research when has_research is true', () => {
     seedEpic('payments-overhaul');
     registerInceptionItem('payments-overhaul', 'auth-flow', 'research');
 
-    const item = readManifest('payments-overhaul').phases.inception.items['auth-flow'];
+    const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.strictEqual(item.routing, 'research');
   });
 
-  it('creates an inception item with routing = discussion when has_research is false', () => {
+  it('creates an discovery item with routing = discussion when has_research is false', () => {
     seedEpic('payments-overhaul');
     registerInceptionItem('payments-overhaul', 'auth-flow', 'discussion');
 
-    const item = readManifest('payments-overhaul').phases.inception.items['auth-flow'];
+    const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.strictEqual(item.routing, 'discussion');
   });
 
@@ -98,42 +98,42 @@ describe('absorb-into-epic: J. Register Inception Item', () => {
     seedEpic('payments-overhaul');
     registerInceptionItem('payments-overhaul', 'auth-flow', 'discussion');
 
-    const item = readManifest('payments-overhaul').phases.inception.items['auth-flow'];
+    const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
     assert.ok(!('summary' in item), 'summary should be absent — left for summary-backfill');
     assert.ok(!('description' in item), 'description should be absent — left for summary-backfill');
   });
 
-  it('leaves source unset — discovery renders it as inception by default', () => {
+  it('leaves source unset — discovery renders it as discovery by default', () => {
     seedEpic('payments-overhaul');
     registerInceptionItem('payments-overhaul', 'auth-flow', 'discussion');
 
-    const item = readManifest('payments-overhaul').phases.inception.items['auth-flow'];
-    assert.ok(!('source' in item), 'source should be absent — discovery defaults to "inception"');
+    const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
+    assert.ok(!('source' in item), 'source should be absent — discovery defaults to "discovery"');
   });
 
-  it('makes the absorbed topic visible to the inception discovery script', () => {
+  it('makes the absorbed topic visible to the discovery discovery script', () => {
     seedEpic('payments-overhaul');
     registerInceptionItem('payments-overhaul', 'auth-flow', 'research');
 
-    // The discovery script builds the map from phases.inception.items.
+    // The discovery script builds the map from phases.discovery.items.
     // Without the J. Register step, this assertion would fail — the topic
     // would only exist in phases.discussion (or research) and be invisible
     // to the map.
-    const items = readManifest('payments-overhaul').phases.inception.items;
-    assert.ok('auth-flow' in items, 'topic must appear in phases.inception.items');
+    const items = readManifest('payments-overhaul').phases.discovery.items;
+    assert.ok('auth-flow' in items, 'topic must appear in phases.discovery.items');
     assert.strictEqual(Object.keys(items).length, 1);
   });
 
-  it('coexists with other inception items in the target epic', () => {
+  it('coexists with other discovery items in the target epic', () => {
     seedEpic('payments-overhaul');
-    // Pre-existing topic from earlier inception or refinement.
-    runCli('init-phase', 'payments-overhaul.inception.existing-topic');
-    runCli('set', 'payments-overhaul.inception.existing-topic', 'routing', 'discussion');
+    // Pre-existing topic from earlier discovery or refinement.
+    runCli('init-phase', 'payments-overhaul.discovery.existing-topic');
+    runCli('set', 'payments-overhaul.discovery.existing-topic', 'routing', 'discussion');
 
     // Absorption registers a new topic.
     registerInceptionItem('payments-overhaul', 'auth-flow', 'research');
 
-    const items = readManifest('payments-overhaul').phases.inception.items;
+    const items = readManifest('payments-overhaul').phases.discovery.items;
     assert.strictEqual(Object.keys(items).sort().join(','), 'auth-flow,existing-topic');
     assert.strictEqual(items['existing-topic'].routing, 'discussion');
     assert.strictEqual(items['auth-flow'].routing, 'research');

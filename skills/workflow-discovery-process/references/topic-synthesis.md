@@ -1,6 +1,6 @@
 # Topic Synthesis
 
-*Reference for **[workflow-inception-process](../SKILL.md)***
+*Reference for **[workflow-discovery-process](../SKILL.md)***
 
 ---
 
@@ -10,7 +10,7 @@ The endpoint ceremony. Analyse the session's exploration as a whole, produce a t
 
 You have three sources of truth:
 
-1. **The Exploration section** of the active session log at `.workflows/{work_unit}/inception/session-{session_number:03d}.md`. Read it now if you haven't recently — your in-context memory might be stale.
+1. **The Exploration section** of the active session log at `.workflows/{work_unit}/discovery/session-{session_number:03d}.md`. Read it now if you haven't recently — your in-context memory might be stale.
 2. **In-context memory of the conversation.** When not compacted, this carries detail the Exploration summary may have skipped.
 3. **The existing discovery map** from Step 1's discovery output. Continuing sessions add to it; first sessions seed it.
 

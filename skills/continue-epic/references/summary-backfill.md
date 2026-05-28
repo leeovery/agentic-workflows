@@ -7,7 +7,7 @@
 The caller passes:
 
 - `work_unit` — the selected epic
-- `items_to_recover` — list of inception items missing summary, description, or both. Each item has at minimum `name`, `routing`, `summary_present`, `description_present`, plus the current value of `summary` (null when `summary_present` is false)
+- `items_to_recover` — list of discovery items missing summary, description, or both. Each item has at minimum `name`, `routing`, `summary_present`, `description_present`, plus the current value of `summary` (null when `summary_present` is false)
 
 ## A. Read Source Files
 
@@ -20,7 +20,7 @@ The caller passes:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Inception items missing summary or description. Drafting
+> Discovery items missing summary or description. Drafting
 > them from the existing research and discussion files for
 > review.
 ```
@@ -42,7 +42,7 @@ For each readable file:
 
 ## B. Batch Review
 
-Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and entry skills will use whatever the auto-draft produces. The user can edit a description later via a follow-up inception session.
+Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and entry skills will use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
 
 > *Output the next fenced block as a code block:*
 
@@ -122,13 +122,13 @@ For each item, write only the newly-drafted fields:
 - If `item.needs_summary` is true and `item.derived_summary` is non-null:
 
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{item.name} summary "{summary}"
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{item.name} summary "{summary}"
   ```
 
 - If `item.needs_description` is true and `item.derived_description` is non-null:
 
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.inception.{item.name} description "{description}"
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{item.name} description "{description}"
   ```
 
 Skip items where the relevant derived field is null (source file was missing) — they remain unset and will trigger this flow again on the next continue-epic invocation, giving the user another chance.
@@ -137,7 +137,7 @@ Single commit covering all writes:
 
 ```bash
 git add -- .workflows/{work_unit}/manifest.json
-git commit -m "inception({work_unit}): backfill {N} inception provenance field(s) from source files"
+git commit -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files"
 ```
 
 → Return to caller.

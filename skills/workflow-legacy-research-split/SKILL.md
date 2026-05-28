@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-legacy-research-split/scripts/d
 
 # Legacy Research Split
 
-Act as **curator + interviewer**. Walk the user through decomposing broad research files — each holding multiple themes — into topic-scoped files plus matching inception-map items.
+Act as **curator + interviewer**. Walk the user through decomposing broad research files — each holding multiple themes — into topic-scoped files plus matching discovery-map items.
 
 ### What This Skill Needs
 
@@ -45,7 +45,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This epic pre-dates the inception phase. Migration-seeded broad
+> This epic pre-dates the discovery phase. Migration-seeded broad
 > research files are decomposed here into topic-scoped themes,
 > user-guided per source.
 ```
@@ -182,6 +182,6 @@ Evaluate the branches below in order — error reporting takes precedence over c
 If `apply.cjs` returns `ok: false`, the response's `recovery_hint` names the manual cleanup the failing stage requires. Common cleanups:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.inception.{stuck_source} legacy_split_state
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{stuck_source} legacy_split_state
 rm -rf .workflows/.cache/{work_unit}/legacy-split/{stuck_source}
 ```

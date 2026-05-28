@@ -5,14 +5,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-inception-process/scripts/discovery.cjs');
+const { discover, format } = require('../../skills/workflow-discovery-process/scripts/discovery.cjs');
 
 function writeSessionLog(dir, workUnit, number, conclusionBody, opts = {}) {
   const padded = String(number).padStart(3, '0');
   const filename = `session-${padded}.md`;
   const title = number === 1 ? 'Initial Framing' : 'Refinement';
   const trailing = opts.trailingSection ? `\n\n## ${opts.trailingSection}\n\nfoo\n` : '\n';
-  const content = `# Inception Session ${padded} — ${title}
+  const content = `# Discovery Session ${padded} — ${title}
 
 Date: 2026-05-10
 Work unit: ${workUnit}
@@ -32,10 +32,10 @@ Work unit: ${workUnit}
 ## Conclusion
 
 ${conclusionBody}${trailing}`;
-  createFile(dir, `.workflows/${workUnit}/inception/${filename}`, content);
+  createFile(dir, `.workflows/${workUnit}/discovery/${filename}`, content);
 }
 
-describe('workflow-inception-process discovery', () => {
+describe('workflow-discovery-process discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -56,21 +56,21 @@ describe('workflow-inception-process discovery', () => {
     assert.strictEqual(r.work_unit, 'payments');
   });
 
-  it('returns empty discovery_map when no inception phase exists', () => {
+  it('returns empty discovery_map when no discovery phase exists', () => {
     createManifest(dir, 'payments', { work_type: 'epic', phases: {} });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.discovery_map, []);
     assert.strictEqual(r.map_summary.total, 0);
   });
 
-  it('returns empty discovery_map when inception phase has no items', () => {
-    createManifest(dir, 'payments', { work_type: 'epic', phases: { inception: {} } });
+  it('returns empty discovery_map when discovery phase has no items', () => {
+    createManifest(dir, 'payments', { work_type: 'epic', phases: { discovery: {} } });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.discovery_map, []);
   });
 
-  it('returns empty discovery_map when inception items dict is empty', () => {
-    createManifest(dir, 'payments', { work_type: 'epic', phases: { inception: { items: {} } } });
+  it('returns empty discovery_map when discovery items dict is empty', () => {
+    createManifest(dir, 'payments', { work_type: 'epic', phases: { discovery: { items: {} } } });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.discovery_map, []);
   });
@@ -81,9 +81,9 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: {
+        discovery: {
           items: {
-            'auth-flow': { status: 'in-progress', summary: 'oauth + sessions', description: 'two paragraphs of richer context', routing: 'research', source: 'inception' },
+            'auth-flow': { status: 'in-progress', summary: 'oauth + sessions', description: 'two paragraphs of richer context', routing: 'research', source: 'discovery' },
           },
         },
       },
@@ -94,7 +94,7 @@ describe('workflow-inception-process discovery', () => {
     assert.strictEqual(t.summary, 'oauth + sessions');
     assert.strictEqual(t.description, 'two paragraphs of richer context');
     assert.strictEqual(t.routing, 'research');
-    assert.strictEqual(t.source, 'inception');
+    assert.strictEqual(t.source, 'discovery');
     assert.strictEqual(t.lifecycle, 'fresh');
     assert.strictEqual(t.tier, '○');
     assert.strictEqual(t.current_phase, null);
@@ -104,7 +104,7 @@ describe('workflow-inception-process discovery', () => {
   it('defaults description to null when missing — legacy/migration-seeded item back-compat', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'migration-seeded' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'migration-seeded' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].description, null);
@@ -113,7 +113,7 @@ describe('workflow-inception-process discovery', () => {
   it('defaults summary to null when missing', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].summary, null);
@@ -122,19 +122,19 @@ describe('workflow-inception-process discovery', () => {
   it('defaults routing to null when missing', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', source: 'inception' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', source: 'discovery' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].routing, null);
   });
 
-  it('defaults source to "inception" when missing', () => {
+  it('defaults source to "discovery" when missing', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research' } } } },
     });
     const r = discover(dir, 'payments');
-    assert.strictEqual(r.discovery_map[0].source, 'inception');
+    assert.strictEqual(r.discovery_map[0].source, 'discovery');
   });
 
   // --- Lifecycle reflection (one assertion per branch in computeTopicLifecycle) ---
@@ -142,7 +142,7 @@ describe('workflow-inception-process discovery', () => {
   it('reflects fresh lifecycle when no research/discussion items exist', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].lifecycle, 'fresh');
@@ -153,7 +153,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } },
+        discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } },
         research:  { items: { 'a': { status: 'in-progress' } } },
       },
     });
@@ -167,7 +167,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } },
+        discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } },
         research:  { items: { 'a': { status: 'completed' } } },
       },
     });
@@ -181,7 +181,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception:  { items: { 'a': { status: 'in-progress', routing: 'discussion', source: 'inception' } } },
+        discovery:  { items: { 'a': { status: 'in-progress', routing: 'discussion', source: 'discovery' } } },
         discussion: { items: { 'a': { status: 'in-progress' } } },
       },
     });
@@ -195,7 +195,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception:  { items: { 'a': { status: 'in-progress', routing: 'discussion', source: 'inception' } } },
+        discovery:  { items: { 'a': { status: 'in-progress', routing: 'discussion', source: 'discovery' } } },
         discussion: { items: { 'a': { status: 'completed' } } },
       },
     });
@@ -209,7 +209,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception:  { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } },
+        discovery:  { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } },
         research:   { items: { 'a': { status: 'cancelled' } } },
         discussion: { items: { 'a': { status: 'cancelled' } } },
       },
@@ -223,7 +223,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } },
+        discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } },
         research:  { items: { 'a': { status: 'cancelled' } } },
       },
     });
@@ -233,19 +233,19 @@ describe('workflow-inception-process discovery', () => {
 
   // --- source_provenance ---
 
-  it('source_provenance is null for source=inception', () => {
+  it('source_provenance is null for source=discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].source_provenance, null);
   });
 
-  it('source_provenance reads "from {source}" for non-inception sources', () => {
+  it('source_provenance reads "from {source}" for non-discovery sources', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'research-analysis' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'research-analysis' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].source_provenance, 'from research-analysis');
@@ -254,7 +254,7 @@ describe('workflow-inception-process discovery', () => {
   it('source_provenance unwraps colon-prefixed sources to "from {parent}"', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'research-split:kitchen-hardware' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'research-split:kitchen-hardware' } } } },
     });
     const r = discover(dir, 'payments');
     assert.strictEqual(r.discovery_map[0].source_provenance, 'from kitchen-hardware');
@@ -266,12 +266,12 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: {
+        discovery: {
           items: {
-            'fresh-item':    { status: 'in-progress', routing: 'research', source: 'inception' },
-            'inflight-item': { status: 'in-progress', routing: 'research', source: 'inception' },
-            'ready-item':    { status: 'in-progress', routing: 'research', source: 'inception' },
-            'decided-item':  { status: 'in-progress', routing: 'discussion', source: 'inception' },
+            'fresh-item':    { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'inflight-item': { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'ready-item':    { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'decided-item':  { status: 'in-progress', routing: 'discussion', source: 'discovery' },
           },
         },
         research:   { items: { 'inflight-item': { status: 'in-progress' }, 'ready-item': { status: 'completed' } } },
@@ -289,11 +289,11 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: {
+        discovery: {
           items: {
-            'zeta':  { status: 'in-progress', routing: 'research', source: 'inception' },
-            'alpha': { status: 'in-progress', routing: 'research', source: 'inception' },
-            'mu':    { status: 'in-progress', routing: 'research', source: 'inception' },
+            'zeta':  { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'alpha': { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'mu':    { status: 'in-progress', routing: 'research', source: 'discovery' },
           },
         },
       },
@@ -308,14 +308,14 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: {
+        discovery: {
           items: {
-            'fresh-1':    { status: 'in-progress', routing: 'research', source: 'inception' },
-            'fresh-2':    { status: 'in-progress', routing: 'discussion', source: 'inception' },
-            'inflight-1': { status: 'in-progress', routing: 'research', source: 'inception' },
-            'ready-1':    { status: 'in-progress', routing: 'research', source: 'inception' },
-            'decided-1':  { status: 'in-progress', routing: 'discussion', source: 'inception' },
-            'cancelled-1': { status: 'in-progress', routing: 'research', source: 'inception' },
+            'fresh-1':    { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'fresh-2':    { status: 'in-progress', routing: 'discussion', source: 'discovery' },
+            'inflight-1': { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'ready-1':    { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'decided-1':  { status: 'in-progress', routing: 'discussion', source: 'discovery' },
+            'cancelled-1': { status: 'in-progress', routing: 'research', source: 'discovery' },
           },
         },
         research: {
@@ -342,7 +342,7 @@ describe('workflow-inception-process discovery', () => {
     assert.strictEqual(r.map_summary.cancelled, 1);
   });
 
-  it('map_summary returns all-zero shape when no inception items exist', () => {
+  it('map_summary returns all-zero shape when no discovery items exist', () => {
     createManifest(dir, 'payments', { work_type: 'epic', phases: {} });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.map_summary, {
@@ -352,10 +352,10 @@ describe('workflow-inception-process discovery', () => {
 
   // --- dismissed list ---
 
-  it('returns empty array when phases.inception.dismissed is missing', () => {
+  it('returns empty array when phases.discovery.dismissed is missing', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: {} } },
+      phases: { discovery: { items: {} } },
     });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.dismissed, []);
@@ -364,7 +364,7 @@ describe('workflow-inception-process discovery', () => {
   it('returns the dismissed list verbatim and in order', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: {}, dismissed: ['first', 'second', 'third'] } },
+      phases: { discovery: { items: {}, dismissed: ['first', 'second', 'third'] } },
     });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.dismissed, ['first', 'second', 'third']);
@@ -373,7 +373,7 @@ describe('workflow-inception-process discovery', () => {
   it('returns an empty array when dismissed is non-array (defensive)', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: {}, dismissed: 'invalid-shape' } },
+      phases: { discovery: { items: {}, dismissed: 'invalid-shape' } },
     });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.dismissed, []);
@@ -382,7 +382,7 @@ describe('workflow-inception-process discovery', () => {
   it('does not mutate the manifest when reading dismissed', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: {}, dismissed: ['original'] } },
+      phases: { discovery: { items: {}, dismissed: ['original'] } },
     });
     const r = discover(dir, 'payments');
     r.dismissed.push('mutation');
@@ -416,11 +416,11 @@ describe('workflow-inception-process discovery', () => {
     assert.strictEqual(r.latest_session.filename, 'session-010.md');
   });
 
-  it('ignores non-matching filenames in inception directory', () => {
+  it('ignores non-matching filenames in discovery directory', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
-    createFile(dir, '.workflows/payments/inception/session-abc.md', 'should be ignored');
-    createFile(dir, '.workflows/payments/inception/notes.md', 'should be ignored');
+    createFile(dir, '.workflows/payments/discovery/session-abc.md', 'should be ignored');
+    createFile(dir, '.workflows/payments/discovery/notes.md', 'should be ignored');
     const r = discover(dir, 'payments');
     assert.strictEqual(r.latest_session.filename, 'session-001.md');
   });
@@ -429,7 +429,7 @@ describe('workflow-inception-process discovery', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 2, '(none)');
     const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.relative_path, '.workflows/payments/inception/session-002.md');
+    assert.strictEqual(r.latest_session.relative_path, '.workflows/payments/discovery/session-002.md');
   });
 
   // --- analysis_caches ---
@@ -516,7 +516,7 @@ describe('workflow-inception-process discovery', () => {
   });
 });
 
-describe('workflow-inception-process format', () => {
+describe('workflow-discovery-process format', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -533,7 +533,7 @@ describe('workflow-inception-process format', () => {
   it('header line includes the work_unit name', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     const out = format(discover(dir, 'payments'));
-    assert.match(out, /=== INCEPTION DISCOVERY: payments ===/);
+    assert.match(out, /=== DISCOVERY DISCOVERY: payments ===/);
   });
 
   // --- map_summary line ---
@@ -542,10 +542,10 @@ describe('workflow-inception-process format', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: {
+        discovery: {
           items: {
-            'a': { status: 'in-progress', routing: 'research', source: 'inception' },
-            'b': { status: 'in-progress', routing: 'discussion', source: 'inception' },
+            'a': { status: 'in-progress', routing: 'research', source: 'discovery' },
+            'b': { status: 'in-progress', routing: 'discussion', source: 'discovery' },
           },
         },
       },
@@ -572,9 +572,9 @@ describe('workflow-inception-process format', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: {
+        discovery: {
           items: {
-            'auth-flow': { status: 'in-progress', summary: 'oauth', routing: 'research', source: 'inception' },
+            'auth-flow': { status: 'in-progress', summary: 'oauth', routing: 'research', source: 'discovery' },
           },
         },
       },
@@ -583,19 +583,19 @@ describe('workflow-inception-process format', () => {
     assert.match(out, /- ○ auth-flow \[fresh\] routing=research — oauth/);
   });
 
-  it('omits source from map row when source=inception', () => {
+  it('omits source from map row when source=discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } } },
     });
     const out = format(discover(dir, 'payments'));
-    assert.ok(!out.includes('source=inception'));
+    assert.ok(!out.includes('source=discovery'));
   });
 
-  it('includes source=X in map row for non-inception sources', () => {
+  it('includes source=X in map row for non-discovery sources', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'research-analysis' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'research-analysis' } } } },
     });
     const out = format(discover(dir, 'payments'));
     assert.match(out, /source=research-analysis/);
@@ -605,7 +605,7 @@ describe('workflow-inception-process format', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        inception: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'inception' } } },
+        discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } },
         research:  { items: { 'a': { status: 'in-progress' } } },
       },
     });
@@ -616,7 +616,7 @@ describe('workflow-inception-process format', () => {
   it('omits routing= and summary suffix when those fields are null', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: { 'a': { status: 'in-progress' } } } },
+      phases: { discovery: { items: { 'a': { status: 'in-progress' } } } },
     });
     const out = format(discover(dir, 'payments'));
     assert.match(out, /- ○ a \[fresh\]/);
@@ -636,7 +636,7 @@ describe('workflow-inception-process format', () => {
   it('renders dismissed names one per line', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { inception: { items: {}, dismissed: ['old-thing', 'another'] } },
+      phases: { discovery: { items: {}, dismissed: ['old-thing', 'another'] } },
     });
     const out = format(discover(dir, 'payments'));
     assert.match(out, /dismissed \(2\):\n {2}- old-thing\n {2}- another/);
@@ -655,14 +655,14 @@ describe('workflow-inception-process format', () => {
     writeSessionLog(dir, 'payments', 2, '(none)');
     const out = format(discover(dir, 'payments'));
     assert.match(out, /filename: session-002\.md/);
-    assert.match(out, /relative_path: \.workflows\/payments\/inception\/session-002\.md/);
+    assert.match(out, /relative_path: \.workflows\/payments\/discovery\/session-002\.md/);
     assert.match(out, /number: 2/);
   });
 
   // --- active_session ---
 
   describe('active_session', () => {
-    it('is null when phases.inception.active_session is unset', () => {
+    it('is null when phases.discovery.active_session is unset', () => {
       createManifest(dir, 'payments', { work_type: 'epic' });
       const r = discover(dir, 'payments');
       assert.strictEqual(r.active_session, null);
@@ -671,7 +671,7 @@ describe('workflow-inception-process format', () => {
     it('is null when the field is an empty string', () => {
       createManifest(dir, 'payments', {
         work_type: 'epic',
-        phases: { inception: { active_session: '' } },
+        phases: { discovery: { active_session: '' } },
       });
       const r = discover(dir, 'payments');
       assert.strictEqual(r.active_session, null);
@@ -680,7 +680,7 @@ describe('workflow-inception-process format', () => {
     it('returns the stored value when set to a session number string', () => {
       createManifest(dir, 'payments', {
         work_type: 'epic',
-        phases: { inception: { active_session: '002' } },
+        phases: { discovery: { active_session: '002' } },
       });
       const r = discover(dir, 'payments');
       assert.strictEqual(r.active_session, '002');
@@ -689,7 +689,7 @@ describe('workflow-inception-process format', () => {
     it('format() renders active_session value when set', () => {
       createManifest(dir, 'payments', {
         work_type: 'epic',
-        phases: { inception: { active_session: '003' } },
+        phases: { discovery: { active_session: '003' } },
       });
       const out = format(discover(dir, 'payments'));
       assert.match(out, /active_session: 003/);
@@ -730,7 +730,7 @@ describe('workflow-inception-process format', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     const out = format(discover(dir, 'payments'));
     const order = [
-      out.indexOf('=== INCEPTION DISCOVERY:'),
+      out.indexOf('=== DISCOVERY DISCOVERY:'),
       out.indexOf('map_summary:'),
       out.indexOf('discovery_map ('),
       out.indexOf('dismissed ('),
