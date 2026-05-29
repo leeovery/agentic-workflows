@@ -96,7 +96,7 @@ When the agent returns:
 
 ## C. Surface via Final Review Menu
 
-→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with phase_name = `discussion`, next_phase = `specification`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
+→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with phase_name = `discussion`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
 → Proceed to **D. Route Next**.
 

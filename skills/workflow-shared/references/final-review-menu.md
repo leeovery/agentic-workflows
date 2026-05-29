@@ -9,7 +9,6 @@ This reference is loaded at phase conclusion when a final-review agent has produ
 **Parameters** (provided by caller via Load directive):
 
 - `phase_name` — e.g. `research` or `discussion`
-- `next_phase` — e.g. `discussion` or `specification`
 - `cache_dir` — agent's cache directory (work-unit scoped)
 - `cache_glob` — glob pattern for cache files (e.g. `review-*.md`)
 - `findings_key` — frontmatter key containing the finding ID list (typically `findings`)
@@ -76,10 +75,10 @@ The user opted in via the `review` option on a prior iteration. Continue raising
 
 ```
 · · · · · · · · · · · ·
-Final review returned — flagged {N} area(s) before moving to {next_phase}.
+Final review returned — flagged {N} area(s).
 
 - **`r`/`review`** — Walk through them one at a time
-- **`s`/`skip`** — Acknowledge and proceed to {next_phase}
+- **`s`/`skip`** — Acknowledge and conclude the topic
 - **`b`/`back`** — Drop me back into {phase_name}; raise at next natural break
 · · · · · · · · · · · ·
 ```
