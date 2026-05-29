@@ -92,7 +92,7 @@ const SETUP_DESCRIPTOR = {
         null
       );
 
-      tk.out('\nAPI key is optional — press Enter if your local provider does not need one.\n');
+      tk.out('API key is optional — press Enter if your local provider does not need one.\n');
       const keyInput = await tk.askSecret('API key (input hidden, optional): ');
       const key = keyInput === '' ? null : keyInput;
 
