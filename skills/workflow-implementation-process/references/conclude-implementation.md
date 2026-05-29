@@ -26,7 +26,6 @@ Ready to mark implementation as completed?
 Update implementation status via manifest CLI:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_attempts 0
 ```
 
 Commit: `impl({work_unit}): complete implementation`
