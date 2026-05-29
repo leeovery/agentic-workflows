@@ -177,7 +177,13 @@ class OpenAIEmbeddingsEngine {
     try {
       res = await fetch(this._endpoint(), { method: 'POST', headers, body });
     } catch (err) {
-      throw new Error(`${ctx.label} embedding request failed (network error): ${err.message}`);
+      // Node's fetch (undici) reports low-level failures as a generic
+      // "fetch failed" message and stashes the real errno (ECONNREFUSED,
+      // ENOTFOUND, ETIMEDOUT, ...) on err.cause. Surface it so the setup
+      // error-describer can map a refused connection to the right remedy.
+      const cause = err && err.cause ? (err.cause.code || err.cause.message) : '';
+      const detail = cause ? `${err.message} (${cause})` : err.message;
+      throw new Error(`${ctx.label} embedding request failed (network error): ${detail}`);
     }
 
     if (!res.ok) {

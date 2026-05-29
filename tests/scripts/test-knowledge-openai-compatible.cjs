@@ -153,6 +153,19 @@ describe('OpenAICompatibleProvider error context (mocked)', () => {
     await assert.rejects(() => p.embed('x'), /network error.*ECONNREFUSED/i);
   });
 
+  it('surfaces the errno from err.cause (real undici "fetch failed" shape)', async () => {
+    // Node's fetch throws TypeError("fetch failed") with the real errno on
+    // .cause — the mock above put ECONNREFUSED in .message, which is NOT how
+    // the runtime behaves. This reproduces the real shape.
+    globalThis.fetch = async () => {
+      const err = new TypeError('fetch failed');
+      err.cause = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:59999'), { code: 'ECONNREFUSED' });
+      throw err;
+    };
+    const p = new OpenAICompatibleProvider({ baseUrl: 'http://localhost:59999/v1', model: 'm', dimensions: 1 });
+    await assert.rejects(() => p.embed('x'), /network error.*ECONNREFUSED/);
+  });
+
   it('throws on a response-length mismatch (dims ≠ model native output guard)', async () => {
     globalThis.fetch = async () => ({
       ok: true,
