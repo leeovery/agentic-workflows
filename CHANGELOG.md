@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.12] - 2026-05-29
+
+- Add `openai-compatible` embedding provider for local/self-hosted OpenAI-compatible `/v1/embeddings` endpoints (LM Studio, Ollama, vLLM, LiteLLM) — selectable in `knowledge setup` or via `base_url` in system config; API key optional, dimensions validated against the model's native output
+- Extract shared `OpenAIEmbeddingsEngine` (wire logic, batching, error mapping) with thin `OpenAIProvider`/`OpenAICompatibleProvider` drivers over it; `openai` sends the `dimensions` param and requires a key, `openai-compatible` omits it and treats the key as optional; surface undici `err.cause` errno (ECONNREFUSED, etc.) in network errors
+- Refactor setup into per-provider `SETUP_DESCRIPTOR`s driven by an injected toolkit; numbered provider menu, generic `buildSystemConfig`, reusable `askDimensions`, and a shared `describeValidationError` with driver-supplied remedies
+- `resolveProvider` builds `openai-compatible` without a key but throws on missing `base_url` (no silent keyword-only degrade); `base_url` ignored under `openai`
+- Add `CHANGELOG.md` (Keep a Changelog format); release script now auto-prepends each release entry, commits it before tagging, and shares one AI-generated notes body across the changelog and tag message
+- Release notes generation excludes the minified `knowledge.cjs` bundle from the diff and raises the max-diff cap to 60000 lines; reframe the prompt to emit a user-facing markdown bullet list
+- Add tests for the `openai-compatible` provider/config/setup paths and the release changelog helpers; mark ideas #15, #16, #23, #24, #27 done and log idea #28 (hybrid ranking weighting evaluation)
+
 ## [0.4.11] - 2026-05-29
 
 - Split overloaded `analysis_cycle` counter into `analysis_cycle_total` (monotonic, drives findings-file naming) and `analysis_cycle_session` (per-session, drives the escape-hatch threshold), fixing prior cycles' findings being overwritten on resume/re-open
