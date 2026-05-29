@@ -22,10 +22,10 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Increment **both** cycle counters via manifest CLI — for each, get the current value, add 1, and set it back:
+Increment **both** counters via manifest CLI — for each, get the value, add 1, set it back:
 
-- `analysis_cycle_total` — monotonic across sessions. Drives findings-file naming and commit messages. `{N}` (and `{cycle-number}`) throughout this loop refers to this value.
-- `analysis_cycle_session` — reset to 0 on each resume/re-open. Drives the escape-hatch threshold below only.
+- `analysis_cycle_total` — `{N}` and `{cycle-number}` throughout this loop refer to this value.
+- `analysis_cycle_session` — gated against the threshold below.
 
 #### If `analysis_cycle_session` <= 3
 

@@ -103,7 +103,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.imple
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_session 0
 ```
 
-Reset `analysis_cycle_session` only. Leave `analysis_cycle_total` untouched — it indexes findings files (`analysis-*-c{N}.md`) and must stay monotonic across sessions.
+Reset `analysis_cycle_session` only — never reset `analysis_cycle_total`.
 
 → Proceed to **Step 1**.
 
