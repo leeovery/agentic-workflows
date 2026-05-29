@@ -96,7 +96,7 @@ When the agent returns:
 
 ## C. Surface via Final Review Menu
 
-→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with phase_name = `discussion`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
+→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
 → Proceed to **D. Route Next**.
 
@@ -114,6 +114,6 @@ All findings have been raised (or the review came back with zero gaps). The fina
 
 #### If `status: acknowledged`
 
-Either a finding was just raised (user picked `review`) or the user picked `back` to keep talking. Control belongs to the conversation — return the user to the discussion session so they can engage naturally. When the user signals done again, Step 6 re-runs and either continues raising findings or re-renders the menu.
+A finding was just raised. Control belongs to the conversation — return the user to the discussion session so they can engage naturally. When the user signals done again, Step 6 re-runs and either raises the next finding or transitions the cache to `incorporated`.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.

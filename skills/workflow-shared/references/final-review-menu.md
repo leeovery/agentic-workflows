@@ -8,7 +8,6 @@ This reference is loaded at phase conclusion when a final-review agent has produ
 
 **Parameters** (provided by caller via Load directive):
 
-- `phase_name` — e.g. `research` or `discussion`
 - `cache_dir` — agent's cache directory (work-unit scoped)
 - `cache_glob` — glob pattern for cache files (e.g. `review-*.md`)
 - `findings_key` — frontmatter key containing the finding ID list (typically `findings`)
@@ -79,7 +78,6 @@ Final review returned — flagged {N} area(s).
 
 - **`r`/`review`** — Walk through them one at a time
 - **`s`/`skip`** — Acknowledge and conclude the topic
-- **`b`/`back`** — Drop me back into {phase_name}; raise at next natural break
 · · · · · · · · · · · ·
 ```
 
@@ -103,12 +101,6 @@ Apply the raise-one-finding step inline this turn (do not re-prompt):
 #### If `skip`
 
 Transition `status: acknowledged` → `status: incorporated`. The cache file is preserved on disk for the record.
-
-→ Return to caller.
-
-#### If `back`
-
-Leave `surfaced:` empty so the menu re-renders the next time the user signals done.
 
 → Return to caller.
 
