@@ -8,17 +8,22 @@
 # / re-open / conclude broke file naming, causing prior cycles' findings to be
 # overwritten. The counter is now split:
 #
-#   analysis_cycle_total   — monotonic; drives file naming. Seeded from the old
-#                            analysis_cycle value (preserves existing numbering).
+#   analysis_cycle_total   — monotonic; drives file naming.
 #   analysis_cycle_session — resets per session; drives the escape hatch.
-#                            Seeded to 0.
+#
+# Seeding analysis_cycle_total from the stored analysis_cycle value is NOT
+# reliable: conclude-implementation reset analysis_cycle to 0 on completion, so
+# every completed implementation reports 0 even when analysis-*-c{N}.md files
+# exist on disk. The true cycle count is therefore inferred from the findings
+# files themselves (the historical record), taking max(stored, highest c{N} on
+# disk) so a later re-open numbers the next cycle past the existing files.
 #
 # This migration walks every work unit's implementation phase items and:
-# 1. Renames analysis_cycle → analysis_cycle_total (if not already present).
+# 1. Renames analysis_cycle → analysis_cycle_total, seeded from disk-inferred
+#    count (if total not already present).
 # 2. Adds analysis_cycle_session = 0 where missing.
 #
-# Idempotent: safe to re-run. Items with no analysis_cycle and already-present
-# split fields are left untouched.
+# Idempotent: safe to re-run. Items already split are left untouched.
 #
 # Direct node for JSON — never uses manifest CLI.
 #
@@ -32,6 +37,19 @@ const fs = require('fs');
 const path = require('path');
 
 const wfDir = '$WORKFLOWS_DIR';
+
+// Highest N across analysis-*-c{N}.md findings files for a topic, or 0.
+function maxCycleOnDisk(wu, topic) {
+  const dir = path.join(wfDir, wu, 'implementation', topic);
+  let files;
+  try { files = fs.readdirSync(dir); } catch { return 0; }
+  let max = 0;
+  for (const f of files) {
+    const m = f.match(/^analysis-.*-c(\d+)\.md\$/);
+    if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
+  }
+  return max;
+}
 
 const entries = fs.readdirSync(wfDir, { withFileTypes: true });
 for (const entry of entries) {
@@ -56,7 +74,9 @@ for (const entry of entries) {
 
     if (has('analysis_cycle')) {
       if (!has('analysis_cycle_total')) {
-        item.analysis_cycle_total = item.analysis_cycle;
+        const stored = parseInt(item.analysis_cycle, 10) || 0;
+        const diskMax = maxCycleOnDisk(entry.name, name);
+        item.analysis_cycle_total = Math.max(stored, diskMax);
       }
       delete item.analysis_cycle;
       updated = true;

@@ -205,7 +205,76 @@ JSON
   teardown
 }
 
-# --- Test 7: no implementation phase → untouched ---
+# --- Test 7: completed impl (stored 0) infers total from on-disk files ---
+test_infers_total_from_disk() {
+  setup
+  local wu_dir="$TEST_DIR/.workflows/feat-c"
+  local impl_dir="$wu_dir/implementation/feat-c"
+  mkdir -p "$impl_dir"
+  # conclude-implementation reset the old counter to 0, but 5 cycles ran.
+  for n in 1 2 3 4 5; do
+    touch "$impl_dir/analysis-duplication-c$n.md"
+    touch "$impl_dir/analysis-standards-c$n.md"
+    touch "$impl_dir/analysis-architecture-c$n.md"
+  done
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "feat-c",
+  "phases": { "implementation": { "items": { "feat-c": { "status": "completed", "analysis_cycle": 0 } } } }
+}
+JSON
+
+  source "$MIGRATION"
+
+  assert_eq "total inferred from disk max" "5" "$(field "$wu_dir/manifest.json" feat-c analysis_cycle_total)"
+  assert_eq "session seeded to 0" "0" "$(field "$wu_dir/manifest.json" feat-c analysis_cycle_session)"
+
+  teardown
+}
+
+# --- Test 8: disk max beats a lower stored value ---
+test_disk_max_beats_stored() {
+  setup
+  local wu_dir="$TEST_DIR/.workflows/feat-d"
+  local impl_dir="$wu_dir/implementation/feat-d"
+  mkdir -p "$impl_dir"
+  for n in 1 2 3 4; do touch "$impl_dir/analysis-standards-c$n.md"; done
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "feat-d",
+  "phases": { "implementation": { "items": { "feat-d": { "analysis_cycle": 2 } } } }
+}
+JSON
+
+  source "$MIGRATION"
+
+  assert_eq "disk max (4) beats stored (2)" "4" "$(field "$wu_dir/manifest.json" feat-d analysis_cycle_total)"
+
+  teardown
+}
+
+# --- Test 9: stored beats disk when a cycle bumped but never wrote files ---
+test_stored_beats_disk() {
+  setup
+  local wu_dir="$TEST_DIR/.workflows/feat-s"
+  local impl_dir="$wu_dir/implementation/feat-s"
+  mkdir -p "$impl_dir"
+  for n in 1 2 3 4 5; do touch "$impl_dir/analysis-architecture-c$n.md"; done
+  cat > "$wu_dir/manifest.json" << 'JSON'
+{
+  "name": "feat-s",
+  "phases": { "implementation": { "items": { "feat-s": { "analysis_cycle": 6 } } } }
+}
+JSON
+
+  source "$MIGRATION"
+
+  assert_eq "stored (6) beats disk max (5)" "6" "$(field "$wu_dir/manifest.json" feat-s analysis_cycle_total)"
+
+  teardown
+}
+
+# --- Test 10: no implementation phase → untouched ---
 test_no_implementation_phase() {
   setup
   local wu_dir="$TEST_DIR/.workflows/feat-early"
@@ -234,6 +303,9 @@ test_multiple_topics
 test_idempotent
 test_already_migrated
 test_partial_adds_session
+test_infers_total_from_disk
+test_disk_max_beats_stored
+test_stored_beats_disk
 test_no_implementation_phase
 
 echo "Results: $PASS passed, $FAIL failed"
