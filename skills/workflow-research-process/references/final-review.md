@@ -94,13 +94,11 @@ When the agent returns:
 
 ---
 
-## C. Surface via Shared Protocol
+## C. Surface via Final Review Menu
 
-Because this is final review at phase conclusion, the current moment IS a natural break — the shared protocol will render the announce menu (first entry) or raise the next unsurfaced finding (subsequent entries).
+→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
-
-When the protocol returns, proceed to **D. Route Next**.
+→ Proceed to **D. Route Next**.
 
 ---
 
@@ -116,6 +114,6 @@ All findings have been raised (or the review came back with zero gaps). The fina
 
 #### If `status: acknowledged`
 
-Either a finding was just raised, or the announce menu was just shown and the user picked `later`. Control belongs to the conversation — return the user to the research session so they can engage naturally. The session loop's check-for-results will pick up subsequent findings at natural breaks. When the user signals done again, Step 6 re-runs and this flow resumes.
+A finding was just raised. Control belongs to the conversation — return the user to the research session so they can engage naturally. When the user signals done again, this flow re-runs and either raises the next finding or transitions the cache to `incorporated`.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
