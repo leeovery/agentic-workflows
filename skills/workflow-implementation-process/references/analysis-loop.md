@@ -22,10 +22,19 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Increment **both** counters via manifest CLI — for each, get the value, add 1, set it back:
+Read both counters:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} analysis_cycle_total
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} analysis_cycle_session
+```
 
-- `analysis_cycle_total` — `{N}` and `{cycle-number}` throughout this loop refer to this value.
-- `analysis_cycle_session` — gated against the threshold below.
+Write each back incremented by 1 (previous value + 1):
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_total {total+1}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_session {session+1}
+```
+
+`{N}` and `{cycle-number}` throughout this loop refer to the new `analysis_cycle_total`.
 
 #### If `analysis_cycle_session` <= 3
 
