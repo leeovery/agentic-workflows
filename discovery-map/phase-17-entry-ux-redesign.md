@@ -213,3 +213,178 @@ These came up during the conversation but are clearly their own things, not part
 4. **Once the design lands, replace this doc** with a proper "what ships" phase doc (or set of phase docs). The journey-and-open-questions content here is temporary; it captures the path, not the destination.
 
 The phase number (17) is reserved. The slug is TBD. The branch name is TBD. Everything else is up in the air.
+
+---
+
+## Current Design (2026-05-29 onward)
+
+This section captures the design as it crystallises through ongoing discussion. The journey above is historical context for how we got here — read it for the path that led us here, but treat what follows as the live working surface.
+
+We're running this in the spirit of a real discussion process (Discussion Map, lifecycle states, per-subtopic documentation) but without manifest writes or workflow-skill invocation. This project authors the workflow system; we can't dogfood it for design work on the system itself.
+
+**Naming note 2:** Beyond the earlier inception → discovery rename, this section drops the "Inception" label entirely. Discovery absorbs the role that the original Phase 17 sketches imagined for a separate Inception phase. The word "inception" stays unused in the workflow phase taxonomy from this section forward.
+
+### Discussion Map
+
+```
+Discovery as universal entry              [decided]
+├─ Macro/micro routing structure          [decided]
+├─ Cross-worktype symmetry                [decided]
+└─ Shape vs content guardrail             [decided]
+
+Discovery loop mechanics                  [exploring]
+├─ Opener shapes across worktypes         [exploring]
+├─ Shape-detection heuristics             [exploring]
+├─ Routing-confirmation mechanism         [exploring]
+└─ AskUserTool integration                [pending]
+
+Pivot mechanics                           [exploring]
+├─ Macro pivot triggers                   [pending]
+├─ Scope-down + inbox surface             [converging]
+└─ Reasoning surfacing                    [pending]
+
+Imports & inbox handling                  [decided]
+
+Entry surface design                      [converging]
+├─ /workflow-start menu                   [decided]
+├─ start-* future                         [exploring]
+└─ continue-* mirror question             [exploring]
+
+Migration & cutover                       [pending]
+```
+
+State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
+
+---
+
+### Discovery as universal entry [decided]
+
+**Context.** The original Phase 17 sketches treated "inception" (now discovery) as a specialised epic-only phase we'd extend. After the inception → discovery rename, the word "inception" was free again, and we considered reintroducing it as a separate classifier phase between workflow-start and start-*. The question was whether to introduce that separate phase or to make Discovery itself the universal entry.
+
+**Journey.** We considered three handoff models for connecting a separate Inception classifier to Discovery:
+- **A.** Inception writes a draft Discovery session log; Discovery's existing resume mechanism picks it up.
+- **B.** Inception writes a structured seed to manifest; Discovery reads it on first invocation and skips its own opener.
+- **C.** Re-merge them into one continuous flow.
+
+(A) had appeal because it reused the existing resume mechanism — no new wiring. But on reflection it was solving a problem created by the artificial split. (B) was cleaner data-modelling but worse continuity. (C) was conceptually clean but felt like undoing the rename's separation.
+
+Then the framing changed: "Discovery just IS the universal first step regardless, and handles macro routing before micro routing." That collapsed the question — no separate Inception skill, no handoff seam, no continuity problem. The classifier conversation IS the opening of the Discovery conversation; they're not two things glued together.
+
+**Decision.** Discovery is the universal first step for all brand-new work. The word "inception" stays unused in the workflow phase taxonomy. Discovery's role expands beyond epic-only topic curation to include shape detection for all work types.
+
+---
+
+### Macro/micro routing structure [decided]
+
+**Context.** Discovery now handles two distinct routing levels: *what kind of work is this* (epic / feature / bugfix / quickfix / cc), and for work types with per-topic routing decisions, *how to handle each topic* (research vs discussion).
+
+**Decision.** Two routing levels stack inside one continuous Discovery conversation:
+
+- **Macro routing** — shape detection. *"What kind of work is this?"* Applies to all work types. Pre-seeded by user's menu choice from workflow-start, OR inferred conversationally by Claude when the entry is via `/start`.
+- **Micro routing** — topic-level routing. *"For this topic, research or discussion?"* Applies to epic / feature / cross-cutting (the work types that have a research/discussion split in their pipelines). Does not apply to bugfix or quickfix — those pipelines are constrained-shape and don't carry a research/discussion choice.
+
+The conversation transitions from macro to micro naturally as shape settles. For epic/feature/cc, the conversation continues into topic synthesis with micro routing per topic. For bugfix/quickfix, the conversation produces a brief intent capture and routes out — no micro routing applies.
+
+---
+
+### Cross-worktype symmetry [decided]
+
+**Context.** Should Discovery look meaningfully different across work types, or share most of its structure?
+
+**Journey.** First instinct was to design mode-specific conversation shapes (epic mode does decomposition, feature mode does single-topic confirmation, bugfix mode is brief and routing-focused). On reflection, that introduced unnecessary variance. The exploration loop is the same regardless of work type; only what gets produced at the end differs.
+
+**Decision.** Discovery's conversation pattern is **largely the same across all work types**. Same opener pattern (read seed material if any, ask the user to describe what they want), same exploration discipline (open questions, no premature decisions, listen for shape signals), same shape-watching behaviour.
+
+What differs by work type:
+- **What synthesis produces at endpoint** — multi-row map for epic, single-row map for feature/cc, brief intent capture + routing decision for bugfix/quickfix
+- **What pivot heuristics watch for** — feature mode watches for "this is multi-topic, suggesting epic"; epic mode watches for "this is actually one topic, suggesting feature"; bugfix mode watches for "this is new behaviour, not a bug"; etc.
+
+There's no "epic mode" vs "feature mode" vs "bugfix mode" as distinct conversation shapes. There's one Discovery conversation with shape-detection and shape-appropriate synthesis at endpoint.
+
+The discovery-guidelines reference grows from "epic curatorial moves" to "shared core + per-mode pivot watchpoints" — likely implemented as a shared core reference plus small mode-specific overlays. Implementation detail; comes later.
+
+---
+
+### Shape vs content guardrail [decided]
+
+**Context.** Discovery in the old (epic-only) form was structurally constrained from "doing research" or "making decisions" by its specific role of curating topics. With Discovery becoming universal and running for bugfix/quickfix too, this constraint needs to be explicit — otherwise the conversation could drift into symptom analysis (bugfix mode), architecture talk (feature mode), or thread-pulling (epic mode).
+
+**Decision.** Discovery handles SHAPE; downstream phases FILL the shape. Hard rules:
+
+- Discovery does not do **research** (no investigating market/tech/feasibility — research phase does that)
+- Discovery does not do **investigation** (no symptom analysis, reproduction, root-cause hunting — investigation phase does that)
+- Discovery does not do **decision-making** (no resolving design questions, no choosing between options — discussion phase does that)
+- Discovery does not do **scope work** (no spec content, no plan content)
+
+What Discovery DOES:
+- Name the work unit
+- Figure out shape (macro routing)
+- Curate topics + per-topic routing (micro routing) where applicable
+- Read seed material (imports, inbox content) and use it to shape the conversation, NOT to extract substantive content
+- Capture intent in the journey record
+
+The discipline is recognising the difference between *"this is shaping up as a bugfix"* (Discovery's job) and *"the bug is probably in the session middleware"* (Investigation's job). Discovery makes the routing call; downstream does the work.
+
+This guardrail applies regardless of work type. It's the most important constraint on Discovery's behaviour.
+
+---
+
+### Imports & inbox handling [decided]
+
+**Context.** Today's import flow is per-work-unit, collected at start-* time, copied to `.workflows/{wu}/imports/`. Inbox items live at `.workflows/.inbox/{bugs,quickfixes,ideas}/`. Different mechanisms for similar purposes.
+
+**Decision.** Both are seed material with the same handling pattern in Discovery:
+
+**Imports** are read at Discovery's opener (across all work types). Interpretation is mode-specific:
+
+- Epic-mode: imports drive topic decomposition
+- Feature/cc-mode: imports inform single-topic shape; multi-topic content triggers epic-pivot offer
+- Bugfix-mode: imports are reference material (logs, error reports, prior tickets) — read for context, not analysed for content (would violate the shape vs content guardrail)
+- Quickfix-mode: similar — reference material
+
+**Inbox items** are similar to imports but with an implied classification hint from the source folder:
+
+- `.inbox/bugs/` → pre-seeds macro routing as bugfix (still pivot-able)
+- `.inbox/quickfixes/` → pre-seeds macro routing as quickfix (still pivot-able)
+- `.inbox/ideas/` → no pre-seed, Claude classifies from content
+- Inbox selection routes through Discovery via the `/start` path (or user picks `i`/`inbox` from `/workflow-start` menu, which still ends up in Discovery)
+
+Inbox content drives Discovery's opening exploration the same way imports do — Claude reads the content, sketches what they're picking up, asks targeted questions to confirm shape and uncover detail.
+
+**Mechanism: same as today's epic import flow, just extended across work types.**
+
+---
+
+### /workflow-start menu [decided]
+
+**Context.** `/workflow-start` is the user-facing universal entry. Today's menu has `f`/`feature`, `e`/`epic`, `b`/`bugfix`, `q`/`quickfix`, `c`/`cross-cutting`, `i`/`inbox`, `v`/`view`. Phase 17 needed to decide whether to keep these, add a new option, or collapse them.
+
+**Decision.** Keep the existing menu structure with one addition:
+
+- **`e`/`epic`, `f`/`feature`, `b`/`bugfix`, `q`/`quickfix`, `c`/`cross-cutting`** — fast paths for users who know what they want. Pre-seed Discovery's macro routing. Discovery still runs (for micro routing, topic surfacing, and pivot opportunity).
+- **New: `s`/`start`** — unknown-shape entry. Routes to Discovery with no work_type pre-set. Discovery classifies macro shape during exploration.
+- **`i`/`inbox`** — stays. Routes to Discovery via `/start` (or the inbox-item's pre-classified path) with inbox item as seed material.
+- **`v`/`view`** — stays. Completed/cancelled work units.
+
+Even when user picks a work-type fast path, Claude may suggest a pivot during Discovery (e.g. *"looks more like an epic"*). User controls the final call; Claude proposes and explains reasoning.
+
+---
+
+### Currently exploring / pending — to be filled
+
+These subtopics are open. Captured here for tracking; will get Context / Journey / Decision sections as each lands.
+
+- **Discovery loop mechanics** — what the conversation actually looks like across work types. Openers, exploration questions, shape-detection signals, routing-confirmation. *No arbitrary turn counts* — loop runs as long as needed to form a confident opinion. Currently exploring.
+- **Shape-detection heuristics** — what cues does Claude read to commit to a macro shape? Same for micro routing. Tight guidelines on what's being shaped and why. Exploring.
+- **Routing-confirmation mechanism** — when does Claude surface a routing proposal? Principles agreed: Claude must be confident before proposing, asks more questions if unsure, always explains reasoning so user can agree or push back. Mechanism details pending.
+- **AskUserTool integration** — could be a clean fit for the explicit routing-confirmation moments. Pending exploration.
+- **Macro pivot triggers** — what specific signals raise an epic-pivot offer, feature-pivot offer, etc.? Pending.
+- **Scope-down + inbox surface** — when discussing one work, noticing a separate concern, surface to inbox rather than scope-creep into the current work. Principle agreed; mechanics pending.
+- **Reasoning surfacing** — how does Claude explain why it's proposing a routing decision so the user is informed enough to agree/push back? Principle decided; convention pending.
+- **start-\* future** — collapse to one shared utility or stay as five thin model-only wrappers. Exploring.
+- **continue-\* mirror question** — does the start-* model-only move imply continue-* should also become model-only? Note that continue-* is currently user-invocable and load-bearing for user navigation back to existing work; the case for moving it to model-only is weaker. Exploring.
+- **Migration & cutover** — what happens to existing in-progress work units, what's user-visible on upgrade. Pending.
+
+---
+
+This is the working design surface. Decided subtopics are locked in this pass but can be revisited if further discussion reveals problems. Exploring/pending subtopics get worked through as conversation continues.
