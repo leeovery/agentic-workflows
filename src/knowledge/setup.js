@@ -380,25 +380,33 @@ async function runSystemConfigStep(rl) {
   // Detect stub-to-full upgrade scenario (used after provider choice).
   const previouslyStub = existing.exists && existing.valid && !existing.knowledge.provider;
 
-  // Render the provider menu from the registered driver descriptors, plus a
+  // Build a numbered menu from the registered driver descriptors, plus a
   // static "skip" entry for stub mode. Widest label sets the column width so
   // hints line up.
-  const ids = PROVIDER_SETUPS.map((d) => d.menuLabel).concat('skip');
-  const width = ids.reduce((w, id) => Math.max(w, id.length), 0);
+  const entries = PROVIDER_SETUPS.map((d) => ({ id: d.id, label: d.menuLabel, hint: d.menuHint }));
+  entries.push({ id: 'skip', label: 'skip', hint: 'Stub mode (keyword-only search, no embeddings)' });
+  const width = entries.reduce((w, e) => Math.max(w, e.label.length), 0);
   const pad = (s) => s + ' '.repeat(width - s.length);
 
   process.stdout.write('\nEmbedding provider:\n');
-  for (const d of PROVIDER_SETUPS) {
-    process.stdout.write(`  ${pad(d.menuLabel)} — ${d.menuHint}\n`);
-  }
-  process.stdout.write(`  ${pad('skip')} — Stub mode (keyword-only search, no embeddings)\n\n`);
+  entries.forEach((e, i) => {
+    process.stdout.write(`  ${i + 1}. ${pad(e.label)} — ${e.hint}\n`);
+  });
+  process.stdout.write('\n');
 
-  const choices = PROVIDER_SETUPS.map((d) => d.id).concat('skip');
   let providerChoice;
   while (true) {
-    providerChoice = (await ask(rl, `Provider (${choices.join(' / ')})`, PROVIDER_SETUPS[0].id)).toLowerCase();
-    if (choices.includes(providerChoice)) break;
-    process.stdout.write(`Unknown choice "${providerChoice}". Enter one of: ${choices.join(', ')}.\n`);
+    // Accept the menu number; also accept the provider id/label for convenience.
+    const answer = (await ask(rl, `Select provider (1-${entries.length})`, '1')).toLowerCase();
+    let picked = null;
+    if (/^\d+$/.test(answer)) {
+      const idx = parseInt(answer, 10) - 1;
+      if (idx >= 0 && idx < entries.length) picked = entries[idx];
+    } else {
+      picked = entries.find((e) => e.id === answer || e.label === answer) || null;
+    }
+    if (picked) { providerChoice = picked.id; break; }
+    process.stdout.write(`Invalid choice "${answer}". Enter a number from 1 to ${entries.length}.\n`);
   }
 
   if (providerChoice === 'skip') {
