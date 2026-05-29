@@ -48,7 +48,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic}
    ```
-   Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle` — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state.
+   Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `fix_attempts`, and `analysis_cycle_total` — if gates are `auto`, the user previously opted out. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle_total` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 5. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
@@ -100,8 +100,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.imple
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_gate_mode gated
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_gate_mode gated
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_attempts 0
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle 0
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_session 0
 ```
+
+Reset `analysis_cycle_session` only — never reset `analysis_cycle_total`.
 
 → Proceed to **Step 1**.
 

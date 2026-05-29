@@ -61,7 +61,12 @@ Robust to manifest/disk drift but adds I/O on every cycle and assumes the file n
 
 ### Recommendation
 
-**Option B**. It's the smallest change, preserves the manifest as the source of truth, and the "session-local count" delta is cheap to compute. A single sentence in `analysis-loop.md` A documents the intent.
+**Option A.** Two counters:
+
+- `analysis_cycle_total` — monotonic; drives file naming. Reset to 0 only at fresh implementation start.
+- `analysis_cycle_session` — reset to 0 on every resume / review re-open / conclude; drives the `> 3` escape-hatch threshold.
+
+Both increment together at `analysis-loop.md` A.
 
 ## Out of Scope
 
@@ -70,10 +75,15 @@ Robust to manifest/disk drift but adds I/O on every cycle and assumes the file n
 
 ## Scope
 
-- `workflow-implementation-process/SKILL.md` — Step 0 resume protocol
-- `workflow-implementation-process/references/analysis-loop.md` — Cycle Gate
-- `workflow-implementation-process/references/invoke-analysis.md` — agent dispatch
-- Manifest schema (if Option A)
+`session` resets at exactly one chokepoint — Step 0 re-entry, which every path back into implementation passes through. `total` resets only at fresh init.
+
+- `workflow-implementation-process/SKILL.md` — Step 0 resume reset (session only) + resume-detection field reference
+- `workflow-implementation-process/references/initialize-tracking.md` — fresh-start init seeds both counters to 0
+- `workflow-implementation-process/references/analysis-loop.md` — Cycle Gate: increment both; name on total, gate on session
+- `workflow-implementation-process/references/invoke-analysis.md` — Cycle number from `analysis_cycle_total`
+- `workflow-implementation-process/references/conclude-implementation.md` — drop redundant session reset
+- `workflow-review-process/references/review-actions-loop.md` — drop redundant session reset
+- `skills/workflow-migrate/scripts/migrations/041-split-analysis-cycle-counter.sh` + `tests/scripts/test-migration-041.sh`
 
 ## Severity
 

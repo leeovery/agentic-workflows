@@ -22,7 +22,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.im
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_attempts 0
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle 0
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_total 0
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_session 0
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} linters '[]'
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} project_skills '[]'
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} current_phase 1
