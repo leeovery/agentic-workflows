@@ -15,6 +15,7 @@ const os = require('os');
 
 const { StubProvider } = require('./embeddings');
 const { OpenAIProvider } = require('./providers/openai');
+const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
 
 // Default values for all config fields.
 const DEFAULTS = {
@@ -23,10 +24,12 @@ const DEFAULTS = {
 };
 
 // Known providers that have implementations in this codebase.
-const AVAILABLE_PROVIDERS = ['stub', 'openai'];
+const AVAILABLE_PROVIDERS = ['stub', 'openai', 'openai-compatible'];
 
 // Hardcoded env var per provider. The env var wins over credentials.json —
 // power users and CI can override the stored key without editing files.
+// No env var for openai-compatible: its key (if any) lives only in stored
+// credentials and is optional, so there is nothing to override.
 const PROVIDER_ENV_VARS = {
   openai: 'OPENAI_API_KEY',
 };
@@ -327,15 +330,31 @@ function resolveProvider(config) {
     );
   }
 
-  // Provider is known but the API key is missing — keyword-only mode.
-  if (!config._api_key) {
-    return null;
-  }
-
-  // OpenAI provider.
+  // OpenAI cloud provider — requires a key. Missing key → keyword-only mode.
   if (providerName === 'openai') {
+    if (!config._api_key) {
+      return null;
+    }
     return new OpenAIProvider({
       apiKey: config._api_key,
+      model: config.model || undefined,
+      dimensions: config.dimensions || undefined,
+    });
+  }
+
+  // OpenAI-compatible provider — key is OPTIONAL (local servers usually need
+  // none), but base_url is REQUIRED. A missing base_url is a misconfiguration,
+  // not a reason to silently degrade to keyword-only — throw a clear error.
+  if (providerName === 'openai-compatible') {
+    if (!config.base_url) {
+      throw new Error(
+        'Provider "openai-compatible" requires a "base_url" (e.g. http://localhost:1234/v1). ' +
+        'Add it to your config or re-run `knowledge setup`.'
+      );
+    }
+    return new OpenAICompatibleProvider({
+      baseUrl: config.base_url,
+      apiKey: config._api_key || null,
       model: config.model || undefined,
       dimensions: config.dimensions || undefined,
     });

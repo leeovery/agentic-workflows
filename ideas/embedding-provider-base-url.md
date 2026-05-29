@@ -1,5 +1,7 @@
 # Embedding Provider `base_url` Override
 
+> **✅ Done.** Shipped as a new selectable `openai-compatible` provider rather than an in-place `base_url` flag on `OpenAIProvider`. During discussion the scope grew from "add a flag" to a thin-driver split over a shared `OpenAIEmbeddingsEngine`, because three behaviours genuinely fork (dimensions param, optional auth, error remedies) and an in-place flag opened a correctness hole. `base_url` is consumed only by `openai-compatible` (ignored under `openai`); the key is optional (stored credentials only, no env var); zero migrations (existing `provider: openai` setups are byte-identical). See `src/knowledge/providers/openai-engine.js`, `openai-compatible.js`, and `tests/scripts/test-knowledge-openai-compatible.cjs`.
+
 ## The Idea
 
 Add a `base_url` config option to `OpenAIProvider` so the knowledge base can talk to any OpenAI-compatible embeddings endpoint — LM Studio, Ollama (via its OpenAI-compat shim), vLLM, LiteLLM, Azure OpenAI, etc. — without a new provider class.
