@@ -342,7 +342,7 @@ For each plan that received new tasks:
 1. Update the manifest via CLI:
    - `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} status in-progress`
    - `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} updated {today's date}`
-   - `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle 0`
+   - `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_session 0`
 2. Commit tracking changes:
 
 ```

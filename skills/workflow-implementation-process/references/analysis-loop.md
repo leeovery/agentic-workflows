@@ -7,7 +7,7 @@
 Each cycle follows stages A through H sequentially. Always start at **A. Cycle Gate**.
 
 ```
-A. Cycle gate (check analysis_cycle, warn if over limit)
+A. Cycle gate (check analysis_cycle_session, warn if over limit)
 B. Git checkpoint
 C. Dispatch analysis agents → invoke-analysis.md
 D. Dispatch synthesis agent → invoke-synthesizer.md
@@ -22,13 +22,16 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Increment `analysis_cycle` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle {N}`).
+Increment **both** cycle counters via manifest CLI — for each, get the current value, add 1, and set it back:
 
-#### If `analysis_cycle` <= 3
+- `analysis_cycle_total` — monotonic across sessions. Drives findings-file naming and commit messages. `{N}` (and `{cycle-number}`) throughout this loop refers to this value.
+- `analysis_cycle_session` — reset to 0 on each resume/re-open. Drives the escape-hatch threshold below only.
+
+#### If `analysis_cycle_session` <= 3
 
 → Proceed to **B. Git Checkpoint**.
 
-#### If `analysis_cycle` > 3
+#### If `analysis_cycle_session` > 3
 
 **Do NOT skip analysis autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running analysis until no issues are found. Present the choice and let the user decide.
 

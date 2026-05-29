@@ -61,7 +61,14 @@ Robust to manifest/disk drift but adds I/O on every cycle and assumes the file n
 
 ### Recommendation
 
-**Option B**. It's the smallest change, preserves the manifest as the source of truth, and the "session-local count" delta is cheap to compute. A single sentence in `analysis-loop.md` A documents the intent.
+**Option A (implemented).** Two explicit counters keep the manifest as the unambiguous source of truth — each field has one job and one reset rule, with no derived deltas or disk-globbing to reason about:
+
+- `analysis_cycle_total` — monotonic; drives file naming. Reset to 0 only at fresh implementation start.
+- `analysis_cycle_session` — reset to 0 on every resume / review re-open / conclude; drives the `> 3` escape-hatch threshold.
+
+Both increment together at `analysis-loop.md` A. Option B (a `*_at_resume` delta marker) was rejected as adding a second cache that can itself drift; deriving from disk was rejected as fighting the manifest-is-truth architecture.
+
+**Consistency note:** planning/spec review loops use a single monotonic `review_cycle` with a *total-based* escape hatch. Implementation analysis keeps a session-local escape hatch because it is uniquely re-triggered with fresh code by the Review → Implementation loopback, where a per-session budget is the correct behaviour. This makes implementation the lone session-local gate of the three — an intentional divergence.
 
 ## Out of Scope
 
@@ -70,10 +77,15 @@ Robust to manifest/disk drift but adds I/O on every cycle and assumes the file n
 
 ## Scope
 
-- `workflow-implementation-process/SKILL.md` — Step 0 resume protocol
-- `workflow-implementation-process/references/analysis-loop.md` — Cycle Gate
-- `workflow-implementation-process/references/invoke-analysis.md` — agent dispatch
-- Manifest schema (if Option A)
+All four sites that previously set `analysis_cycle 0` are reset sites for the counter; three of them (resume, re-open, conclude) corrupted file naming and all needed to switch to resetting `analysis_cycle_session` only:
+
+- `workflow-implementation-process/SKILL.md` — Step 0 resume reset + resume-detection guidance text
+- `workflow-implementation-process/references/initialize-tracking.md` — fresh-start init (seeds **both** counters to 0)
+- `workflow-implementation-process/references/analysis-loop.md` — Cycle Gate (increment both; name on total, gate on session)
+- `workflow-implementation-process/references/invoke-analysis.md` — agent dispatch (Cycle number from `analysis_cycle_total`)
+- `workflow-implementation-process/references/conclude-implementation.md` — completion reset (the third file-naming corruptor)
+- `workflow-review-process/references/review-actions-loop.md` — Re-open Implementation reset (**the actual loopback trigger of the original bug**, missed in the first scope pass)
+- `skills/workflow-migrate/scripts/migrations/041-split-analysis-cycle-counter.sh` + `tests/scripts/test-migration-041.sh` — rename existing manifests
 
 ## Severity
 
