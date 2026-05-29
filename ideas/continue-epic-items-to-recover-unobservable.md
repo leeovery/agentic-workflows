@@ -1,5 +1,7 @@
 # Continue-Epic Step 5 Asks the Agent to Filter Data the Discovery Script Doesn't Expose
 
+> **✅ Done.** Implemented in `81f13814` (continue-epic: expose summary/description presence in discovery), with related backfill work in `48122204` and `7d471945`. The discovery script now surfaces the summary/description presence the Step 5 backfill check filters on.
+
 ## The Idea
 
 `continue-epic/SKILL.md` Step 5 (Backfill) tells the agent to read `discovery_map` from the most recent discovery `detail` and filter for items where `summary` or `description` is null or missing. The discovery script collects those fields but does not include them in its text output, so the check cannot be performed against the data the agent actually sees. Either the script should surface the fields the skill instruction relies on, or the check should be delegated to a dedicated detector script (parallel to `workflow-legacy-research-split/scripts/detect.cjs`) so the agent doesn't have to parse anything.

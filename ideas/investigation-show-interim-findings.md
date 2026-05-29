@@ -1,5 +1,7 @@
 # Investigation: Show Interim Findings Before Check Prompt
 
+> **✅ Done.** Investigation now renders and confirms findings before the validation gate via `references/findings-review.md` (A. Confirm Findings, with a re-present feedback loop), landed in `51be34f1`/`bd9b35dd` (PR #282).
+
 ## The Idea
 
 In the bugfix investigation phase, present discovery findings to the user *before* asking whether to run the synthesis/check step. Frame them as interim — "this is what I have so far. Want me to verify these, go deeper to confirm they're right, or is this enough?"
