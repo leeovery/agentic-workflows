@@ -69,11 +69,29 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 ```
 
 The interactive wizard walks through:
-- **Embedding provider**: `openai` (semantic + keyword search) or `skip` (keyword-only).
+- **Embedding provider**: `openai` (cloud), `openai-compatible` (local/self-hosted), or `skip` (keyword-only).
 - **OpenAI API key** (if `openai`): from `$OPENAI_API_KEY` or `~/.config/workflows/credentials.json` (mode 0600). The wizard validates with a test embed before saving.
+- **Base URL + model + dimensions** (if `openai-compatible`): the endpoint, model, and vector size. The API key is optional — press Enter to skip it for servers that don't need one. The wizard validates with a test embed.
 - **Project init**: creates `.workflows/.knowledge/` and runs the initial indexing pass over any existing artifacts.
 
-If you skip the embedding provider, search falls back to BM25 keyword matching. Re-run setup later to switch to OpenAI.
+If you skip the embedding provider, search falls back to BM25 keyword matching. Re-run setup later to switch providers.
+
+#### Local / self-hosted embeddings (`openai-compatible`)
+
+Any server that exposes an OpenAI-compatible `/v1/embeddings` endpoint works — LM Studio, Ollama (OpenAI-compat shim), vLLM, LiteLLM, etc. Pick `openai-compatible` in setup, or write the system config directly at `~/.config/workflows/config.json`:
+
+```json
+{
+  "knowledge": {
+    "provider": "openai-compatible",
+    "base_url": "http://localhost:1234/v1",
+    "model": "nomic-embed-text-v1.5",
+    "dimensions": 768
+  }
+}
+```
+
+Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), vLLM (`http://localhost:8000/v1`). `dimensions` **must match the local model's native output** — the wizard's test embed checks this and fails loudly on a mismatch. The API key is optional; store one via `knowledge setup` only if your server requires it (`base_url` is ignored under the `openai` provider).
 
 ### Your First Workflow
 

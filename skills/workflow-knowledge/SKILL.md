@@ -215,6 +215,8 @@ Skills do not call these directly during normal operation. Users run them manual
 
 One-shot first-time setup. Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts in a single guided flow. **Human-only** — prompts throughout via readline. Non-TTY invocations (including Claude or piped input) abort with `knowledge setup requires an interactive terminal`. If `knowledge check` returns `not-ready`, direct the user to run `knowledge setup` rather than trying to fix it programmatically. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
 
+The provider menu offers `openai` (cloud, requires an API key), `openai-compatible` (any local/self-hosted OpenAI-compatible `/v1/embeddings` endpoint — LM Studio, Ollama, vLLM, LiteLLM), or `skip` (keyword-only). For `openai-compatible`, the wizard collects `base_url` (required), `model`, and `dimensions`; the API key is **optional** (press Enter to omit for open servers) and is stored only in `credentials.json` — there is no env-var override. `base_url` is consumed only under the `openai-compatible` provider and ignored under `openai`. Configured dimensions must match the local model's native output; the validation embed fails loudly on a mismatch.
+
 ---
 
 ## Exit codes

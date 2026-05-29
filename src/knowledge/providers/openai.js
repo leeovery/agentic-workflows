@@ -1,28 +1,30 @@
-// OpenAI embedding provider — production embedding via the /v1/embeddings API.
+// OpenAI embedding provider — public cloud entry for the /v1/embeddings API.
 //
-// Uses Node's built-in fetch (Node 18+). Node 18 emits an
-// ExperimentalWarning to stderr for fetch — cosmetic, not functional.
+// Thin OUTER driver: validates that an API key is present (cloud requires
+// one), builds the cloud policy, and delegates the four-method interface to
+// the shared OpenAIEmbeddingsEngine. The wire logic lives in the engine so
+// it stays single-source across this and the openai-compatible driver.
 //
-// This provider throws on ALL failures. It does NOT retry internally.
-// The operation-level retry wrapper (Task 4-4) is the single source of
-// retry logic. This avoids retry compounding.
+// Re-exports AuthError, DEFAULT_MODEL, DEFAULT_DIMENSIONS, MAX_BATCH_SIZE and
+// OPENAI_EMBEDDINGS_URL so existing importers (config.js, setup.js, tests)
+// keep working unchanged.
 
 'use strict';
 
+const { OpenAIEmbeddingsEngine, AuthError, MAX_BATCH_SIZE } = require('./openai-engine');
+
 const DEFAULT_MODEL = 'text-embedding-3-small';
 const DEFAULT_DIMENSIONS = 1536;
-const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
-const MAX_BATCH_SIZE = 2048;
+const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const OPENAI_EMBEDDINGS_URL = `${OPENAI_BASE_URL}/embeddings`;
 
-// AuthError — marker class for HTTP 401/403 from the embeddings API.
-// Bad/expired keys do not fix themselves between retries, so withRetry
-// short-circuits this class instead of burning the backoff budget.
-class AuthError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
+// Cloud error context — keeps the platform.openai.com remedies and the
+// `knowledge setup` hint that the existing tests assert on.
+const OPENAI_ERROR_CONTEXT = {
+  label: 'OpenAI',
+  authHint: 'The API key is invalid or expired. Run `knowledge setup` to fix.',
+  permissionHint: 'The API key lacks permission for this request. Run `knowledge setup` to fix.',
+};
 
 class OpenAIProvider {
   /**
@@ -32,147 +34,155 @@ class OpenAIProvider {
     if (!options || !options.apiKey) {
       throw new Error('OpenAIProvider: apiKey is required');
     }
-    this._apiKey = options.apiKey;
-    this._model = options.model || DEFAULT_MODEL;
-    this._dimensions = typeof options.dimensions === 'number'
+    const dimensions = typeof options.dimensions === 'number'
       ? options.dimensions
       : DEFAULT_DIMENSIONS;
-  }
-
-  /**
-   * Embed a single text string.
-   * @param {string} text
-   * @returns {Promise<number[]>}
-   */
-  async embed(text) {
-    const body = JSON.stringify({
-      model: this._model,
-      input: typeof text === 'string' ? text : String(text == null ? '' : text),
-      dimensions: this._dimensions,
+    this._engine = new OpenAIEmbeddingsEngine({
+      baseUrl: OPENAI_BASE_URL,
+      apiKey: options.apiKey,
+      model: options.model || DEFAULT_MODEL,
+      dimensions,
+      sendDimensionsParam: true,
+      errorContext: OPENAI_ERROR_CONTEXT,
     });
-
-    const res = await this._fetch(body);
-    if (!res.data || res.data.length === 0) {
-      throw new Error('OpenAI embed returned no data (empty response)');
-    }
-    return res.data[0].embedding;
   }
 
-  /**
-   * Embed a batch of text strings. OpenAI natively accepts arrays.
-   * Chunks into multiple requests if the array exceeds 2048 items.
-   * @param {string[]} texts
-   * @returns {Promise<number[][]>}
-   */
-  async embedBatch(texts) {
-    if (!Array.isArray(texts)) {
-      throw new Error('OpenAIProvider.embedBatch: texts must be an array');
-    }
-    if (texts.length === 0) return [];
+  embed(text) {
+    return this._engine.embed(text);
+  }
 
-    if (texts.length <= MAX_BATCH_SIZE) {
-      const body = JSON.stringify({ model: this._model, input: texts, dimensions: this._dimensions });
-      const res = await this._fetch(body);
-      // Validate response length — a short response silently propagates
-      // undefined embeddings into Orama and degrades chunks to keyword-only
-      // with no warning. Rare (OpenAI usually 400s on empty input) but
-      // cheap to guard.
-      if (!Array.isArray(res.data) || res.data.length !== texts.length) {
-        throw new Error(
-          `OpenAI embedBatch response length mismatch: requested ${texts.length}, received ${res.data ? res.data.length : 0}`
-        );
-      }
-      // OpenAI returns data sorted by index — ensure correct order.
-      const sorted = [...res.data].sort((a, b) => a.index - b.index);
-      return sorted.map((d) => d.embedding);
-    }
-
-    // Chunk into batches of MAX_BATCH_SIZE.
-    const results = new Array(texts.length);
-    for (let offset = 0; offset < texts.length; offset += MAX_BATCH_SIZE) {
-      const slice = texts.slice(offset, offset + MAX_BATCH_SIZE);
-      const body = JSON.stringify({ model: this._model, input: slice, dimensions: this._dimensions });
-      const res = await this._fetch(body);
-      if (!Array.isArray(res.data) || res.data.length !== slice.length) {
-        throw new Error(
-          `OpenAI embedBatch response length mismatch on chunk offset=${offset}: requested ${slice.length}, received ${res.data ? res.data.length : 0}`
-        );
-      }
-      const sorted = [...res.data].sort((a, b) => a.index - b.index);
-      for (let i = 0; i < sorted.length; i++) {
-        results[offset + i] = sorted[i].embedding;
-      }
-    }
-    return results;
+  embedBatch(texts) {
+    return this._engine.embedBatch(texts);
   }
 
   dimensions() {
-    return this._dimensions;
+    return this._engine.dimensions();
   }
 
   model() {
-    return this._model;
-  }
-
-  /**
-   * Internal: POST to the OpenAI embeddings endpoint and parse the response.
-   * Throws on any failure with a descriptive message.
-   * @param {string} body JSON-encoded request body
-   * @returns {Promise<object>} parsed response JSON
-   */
-  async _fetch(body) {
-    let res;
-    try {
-      res = await fetch(OPENAI_EMBEDDINGS_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this._apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body,
-      });
-    } catch (err) {
-      throw new Error(`OpenAI embedding request failed (network error): ${err.message}`);
-    }
-
-    if (!res.ok) {
-      let detail = '';
-      try {
-        detail = await res.text();
-      } catch (_) {
-        // ignore body read failures
-      }
-
-      if (res.status === 401) {
-        throw new AuthError(
-          'OpenAI API key is invalid or expired. Run `knowledge setup` to fix.'
-        );
-      }
-      if (res.status === 403) {
-        throw new AuthError(
-          `OpenAI API key lacks permission for this request (HTTP 403). Run \`knowledge setup\` to fix. ${detail}`
-        );
-      }
-      if (res.status === 429) {
-        throw new Error(
-          `OpenAI rate limit exceeded (HTTP 429). ${detail}`
-        );
-      }
-      throw new Error(
-        `OpenAI embedding request failed (HTTP ${res.status}): ${detail}`
-      );
-    }
-
-    let json;
-    try {
-      json = await res.json();
-    } catch (err) {
-      throw new Error(`OpenAI embedding response parse error: ${err.message}`);
-    }
-
-    return json;
+    return this._engine.model();
   }
 }
+
+// ---------------------------------------------------------------------------
+// Setup descriptor — drives the `knowledge setup` provider menu and the
+// prompt/validate/retry flow for this driver. Readline-free: every IO and
+// config helper is supplied via the injected toolkit (tk), so the driver is
+// unit-testable against a fake prompter. collect() returns either
+// { knowledgeConfig, key } (key=null means "do not persist") or { stub:true }
+// to fall back to keyword-only mode.
+// ---------------------------------------------------------------------------
+
+const OPENAI_REMEDIES = {
+  auth:
+    'Check that the key is active and not revoked. Free-tier keys also need billing enabled ' +
+    'for /v1/embeddings. Create a fresh key at https://platform.openai.com/api-keys and try again.',
+  permission:
+    'If this is a restricted key, check its allowed endpoints in the OpenAI dashboard. ' +
+    'Create a key with Embeddings access enabled.',
+  rateLimit:
+    'Your account may be out of quota, or the default rate limit is saturated. ' +
+    'Wait a moment and retry, or check billing at https://platform.openai.com/account.',
+  network:
+    'Check your internet connection, VPN, or corporate proxy. No key was written — ' +
+    'you can re-run `knowledge setup` once the connection is stable.',
+  server5xx: 'Transient on their side. Retry in a minute.',
+};
+
+const SETUP_DESCRIPTOR = {
+  id: 'openai',
+  menuLabel: 'openai',
+  menuHint: 'OpenAI embeddings API (requires an API key)',
+
+  async collect(tk) {
+    const model = await tk.ask('Embedding model', DEFAULT_MODEL);
+    const dimensions = await tk.askDimensions('Vector dimensions', DEFAULT_DIMENSIONS);
+    const envVar = tk.envVarName('openai');
+
+    const build = () => tk.buildSystemConfig({ provider: 'openai', model, dimensions });
+
+    // 1. Env var wins. Nothing is persisted — env is authoritative.
+    const fromEnv = tk.envKey('openai');
+    if (fromEnv) {
+      tk.out(`\nUsing API key from $${envVar} — validating via a test embed...\n`);
+      try {
+        await tk.validate(new OpenAIProvider({ apiKey: fromEnv, model, dimensions }), dimensions);
+        tk.out('API key works.\n');
+        return { knowledgeConfig: build(), key: null };
+      } catch (err) {
+        const { message, hint } = tk.describeError(err, OPENAI_REMEDIES);
+        tk.fail(
+          `\n${message}\n  ${hint}\n` +
+          `The failing key came from $${envVar}. Fix or unset it in your shell, then re-run \`knowledge setup\`.\n`
+        );
+      }
+    }
+
+    // 2. Existing stored key. Validate; let the user replace it if broken.
+    const fromFile = tk.storedKey('openai');
+    if (fromFile) {
+      tk.out('\nFound an existing API key — validating via a test embed...\n');
+      try {
+        await tk.validate(new OpenAIProvider({ apiKey: fromFile, model, dimensions }), dimensions);
+        tk.out('API key works.\n');
+        return { knowledgeConfig: build(), key: null };
+      } catch (err) {
+        const { message, hint } = tk.describeError(err, OPENAI_REMEDIES);
+        tk.out(`${message}\n  ${hint}\n`);
+        const replace = await tk.askYesNo('Enter a new key to replace it?', true);
+        if (!replace) {
+          tk.fail(
+            '\nKeeping the existing stored key would leave setup in an inconsistent state.\n' +
+            'Re-run `knowledge setup` when you have a new key.\n'
+          );
+        }
+        // Fall through to the prompt path to collect a replacement.
+      }
+    }
+
+    // 3. No valid key anywhere — prompt inline and (via dispatcher) store.
+    tk.out(
+      '\nOpenAI API Key\n' +
+      '--------------\n' +
+      'Semantic search in the knowledge base relies on OpenAI embeddings.\n' +
+      'We recommend creating a dedicated key for this tool so you can rotate\n' +
+      'or revoke it independently from other integrations.\n' +
+      '\n' +
+      '  1. Create a key: https://platform.openai.com/api-keys\n' +
+      '     (Suggested name: "agentic-workflows")\n' +
+      '  2. Paste the full key (starting with "sk-") at the prompt below.\n' +
+      '\n' +
+      `Setting $${envVar} in your shell takes precedence and overrides the\n` +
+      'stored key, so you can swap it without editing the file.\n\n'
+    );
+
+    while (true) {
+      const key = await tk.askSecret('API key (input hidden): ');
+      if (key === '') {
+        tk.out('Empty input — enter the key, or Ctrl-C to abort setup.\n\n');
+        continue;
+      }
+      tk.out('\nValidating via a test embed...\n');
+      try {
+        await tk.validate(new OpenAIProvider({ apiKey: key, model, dimensions }), dimensions);
+      } catch (err) {
+        const { message, hint } = tk.describeError(err, OPENAI_REMEDIES);
+        tk.out(`${message}\n  ${hint}\n\n`);
+        const retry = await tk.askYesNo('Try a different key?', true);
+        if (!retry) {
+          tk.out(
+            'No key stored. Falling back to stub mode — semantic search disabled.\n' +
+            `Set $${envVar} in your shell or re-run \`knowledge setup\` once you have a working key.\n`
+          );
+          return { stub: true };
+        }
+        continue;
+      }
+      tk.out('API key works.\n');
+      return { knowledgeConfig: build(), key };
+    }
+  },
+};
 
 module.exports = {
   OpenAIProvider,
@@ -181,4 +191,5 @@ module.exports = {
   DEFAULT_DIMENSIONS,
   MAX_BATCH_SIZE,
   OPENAI_EMBEDDINGS_URL,
+  SETUP_DESCRIPTOR,
 };

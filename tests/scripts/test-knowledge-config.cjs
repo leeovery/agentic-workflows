@@ -653,13 +653,13 @@ describe('describeValidationError', () => {
 
   it('maps network errors to a connection hint', () => {
     const { message, hint } = describeValidationError(new Error('OpenAI embedding request failed (network error): fetch failed'));
-    assert.match(message, /Could not reach OpenAI/i);
+    assert.match(message, /Could not reach the embeddings endpoint/i);
     assert.match(hint, /connection|VPN|proxy/i);
   });
 
   it('maps 5xx to a transient-server hint', () => {
     const { message, hint } = describeValidationError(new Error('OpenAI embedding request failed (HTTP 503): service unavailable'));
-    assert.match(message, /server error/i);
+    assert.match(message, /returned an error/i);
     assert.match(hint, /retry/i);
   });
 

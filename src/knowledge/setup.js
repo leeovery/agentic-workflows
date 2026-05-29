@@ -22,10 +22,16 @@ const readline = require('readline');
 
 const config = require('./config');
 const store = require('./store');
-const { OpenAIProvider } = require('./providers/openai');
+const { SETUP_DESCRIPTOR: OPENAI_SETUP } = require('./providers/openai');
+const { SETUP_DESCRIPTOR: COMPATIBLE_SETUP } = require('./providers/openai-compatible');
 
 const OPENAI_DEFAULT_MODEL = 'text-embedding-3-small';
 const OPENAI_DEFAULT_DIMENSIONS = 1536;
+
+// Registry of selectable embedding-provider setup descriptors. Adding a new
+// provider = a new driver module exporting a SETUP_DESCRIPTOR + one entry
+// here; runSystemConfigStep stays untouched.
+const PROVIDER_SETUPS = [OPENAI_SETUP, COMPATIBLE_SETUP];
 
 // Used when creating the initial store in stub / keyword-only mode —
 // Orama's schema requires a dimension parameter even when docs omit
@@ -168,20 +174,50 @@ function askSecret(rl, prompt) {
   });
 }
 
+/**
+ * Prompt for a vector-dimension count, re-prompting until the answer is a
+ * clean positive integer. parseInt is lenient ('1536abc' → 1536), so insist
+ * on a digits-only string before parsing. Pass defaultValue=null to make the
+ * answer required (no default).
+ */
+async function askDimensions(rl, prompt, defaultValue) {
+  while (true) {
+    const raw = await ask(rl, prompt, defaultValue != null ? String(defaultValue) : undefined);
+    if (!/^\d+$/.test(raw.trim())) {
+      process.stdout.write(`Invalid dimensions: "${raw}". Must be a positive integer.\n`);
+      continue;
+    }
+    const d = parseInt(raw, 10);
+    if (!Number.isInteger(d) || d <= 0) {
+      process.stdout.write(`Invalid dimensions: "${raw}". Must be a positive integer.\n`);
+      continue;
+    }
+    return d;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Config shape builders — pure, unit-testable
 // ---------------------------------------------------------------------------
 
-function buildSystemConfigOpenAI({ model, dimensions }) {
+// Generic system-config builder. Provider-specific scalar fields ride on top
+// of the shared defaults block. Used by the per-provider wrappers below and
+// by the setup toolkit so driver descriptors stay free of config internals.
+function buildSystemConfig(fields) {
   return {
-    knowledge: {
-      provider: 'openai',
-      model,
-      dimensions,
+    knowledge: Object.assign({}, fields, {
       similarity_threshold: config.DEFAULTS.similarity_threshold,
       decay_months: config.DEFAULTS.decay_months,
-    },
+    }),
   };
+}
+
+function buildSystemConfigOpenAI({ model, dimensions }) {
+  return buildSystemConfig({ provider: 'openai', model, dimensions });
+}
+
+function buildSystemConfigCompatible({ baseUrl, model, dimensions }) {
+  return buildSystemConfig({ provider: 'openai-compatible', base_url: baseUrl, model, dimensions });
 }
 
 function buildSystemConfigStub() {
@@ -240,12 +276,12 @@ function detectProjectInit(projectDir) {
 // Test-embed validation — verify the API key actually works
 // ---------------------------------------------------------------------------
 
-async function validateApiKey({ apiKey, model, dimensions }) {
-  const provider = new OpenAIProvider({ apiKey, model, dimensions });
+async function validateProvider(provider, dimensions) {
   const vec = await provider.embed('knowledge base setup test');
   if (!Array.isArray(vec) || vec.length !== dimensions) {
     throw new Error(
-      `Expected a vector of length ${dimensions}, got ${Array.isArray(vec) ? vec.length : typeof vec}`
+      `Expected a vector of length ${dimensions}, got ${Array.isArray(vec) ? vec.length : typeof vec}. ` +
+      'The configured dimensions must match the model native output.'
     );
   }
   return true;
@@ -253,52 +289,58 @@ async function validateApiKey({ apiKey, model, dimensions }) {
 
 /**
  * Map a validation error to a human-friendly description and hint.
- * Returns { message, hint } — caller renders both.
+ * Shared cases (auth/permission/rate-limit/network/server) live here; each
+ * driver supplies provider-specific remedy text via `remedies` (keyed by
+ * case: auth, permission, rateLimit, network, connRefused, server5xx,
+ * unknown). Returns { message, hint } — caller renders both.
  */
-function describeValidationError(err) {
+function describeValidationError(err, remedies) {
+  remedies = remedies || {};
   const msg = (err && err.message) || String(err);
 
-  if (/401/.test(msg) || /invalid or expired/i.test(msg)) {
+  // ECONNREFUSED first — it also matches the generic /ECONN/ network case
+  // below, but the "server not running" remedy is more specific.
+  if (/ECONNREFUSED/.test(msg)) {
     return {
-      message: 'The API key was rejected (HTTP 401).',
-      hint:
-        'Check that the key is active and not revoked. Free-tier keys also need billing enabled ' +
-        'for /v1/embeddings. Create a fresh key at https://platform.openai.com/api-keys and try again.',
+      message: 'Could not connect to the embeddings endpoint (connection refused).',
+      hint: remedies.connRefused ||
+        'The server may not be running, or the base URL host/port is wrong. Start it and retry.',
+    };
+  }
+  if (/401/.test(msg) || /invalid or expired/i.test(msg) || /rejected \(HTTP 401\)/.test(msg)) {
+    return {
+      message: 'The request was rejected (HTTP 401).',
+      hint: remedies.auth || 'Check that the API key is active and not revoked.',
     };
   }
   if (/403/.test(msg) || /permission/i.test(msg)) {
     return {
-      message: 'The API key does not have permission for embeddings (HTTP 403).',
-      hint:
-        'If this is a restricted key, check its allowed endpoints in the OpenAI dashboard. ' +
-        'Create a key with Embeddings access enabled.',
+      message: 'The request lacks permission (HTTP 403).',
+      hint: remedies.permission || 'Check the API key has embeddings access.',
     };
   }
   if (/429/.test(msg) || /rate limit/i.test(msg)) {
     return {
       message: 'Rate limit hit during validation (HTTP 429).',
-      hint:
-        'Your account may be out of quota, or the default rate limit is saturated. ' +
-        'Wait a moment and retry, or check billing at https://platform.openai.com/account.',
+      hint: remedies.rateLimit || 'Wait a moment and retry.',
     };
   }
   if (/network error/i.test(msg) || /ENOTFOUND/.test(msg) || /ECONN/.test(msg) || /ETIMEDOUT/.test(msg)) {
     return {
-      message: 'Could not reach OpenAI (network error).',
-      hint:
-        'Check your internet connection, VPN, or corporate proxy. No key was written — ' +
-        'you can re-run `knowledge setup` once the connection is stable.',
+      message: 'Could not reach the embeddings endpoint (network error).',
+      hint: remedies.network ||
+        'Check your connection, VPN, or proxy. No key was written — re-run `knowledge setup` once stable.',
     };
   }
   if (/HTTP 5\d\d/.test(msg)) {
     return {
-      message: 'OpenAI returned a server error during validation.',
-      hint: 'Transient on their side. Retry in a minute.',
+      message: 'The server returned an error during validation.',
+      hint: remedies.server5xx || 'Likely transient. Retry in a minute.',
     };
   }
   return {
-    message: 'API key validation failed.',
-    hint: `Error detail: ${msg}`,
+    message: 'Validation failed.',
+    hint: remedies.unknown || `Error detail: ${msg}`,
   };
 }
 
@@ -338,16 +380,25 @@ async function runSystemConfigStep(rl) {
   // Detect stub-to-full upgrade scenario (used after provider choice).
   const previouslyStub = existing.exists && existing.valid && !existing.knowledge.provider;
 
-  // Prompt for provider.
-  process.stdout.write('\nEmbedding provider:\n');
-  process.stdout.write('  openai — OpenAI embeddings API (requires an API key)\n');
-  process.stdout.write('  skip   — Stub mode (keyword-only search, no embeddings)\n\n');
+  // Render the provider menu from the registered driver descriptors, plus a
+  // static "skip" entry for stub mode. Widest label sets the column width so
+  // hints line up.
+  const ids = PROVIDER_SETUPS.map((d) => d.menuLabel).concat('skip');
+  const width = ids.reduce((w, id) => Math.max(w, id.length), 0);
+  const pad = (s) => s + ' '.repeat(width - s.length);
 
+  process.stdout.write('\nEmbedding provider:\n');
+  for (const d of PROVIDER_SETUPS) {
+    process.stdout.write(`  ${pad(d.menuLabel)} — ${d.menuHint}\n`);
+  }
+  process.stdout.write(`  ${pad('skip')} — Stub mode (keyword-only search, no embeddings)\n\n`);
+
+  const choices = PROVIDER_SETUPS.map((d) => d.id).concat('skip');
   let providerChoice;
   while (true) {
-    providerChoice = (await ask(rl, 'Provider (openai / skip)', 'openai')).toLowerCase();
-    if (providerChoice === 'openai' || providerChoice === 'skip') break;
-    process.stdout.write(`Unknown choice "${providerChoice}". Enter "openai" or "skip".\n`);
+    providerChoice = (await ask(rl, `Provider (${choices.join(' / ')})`, PROVIDER_SETUPS[0].id)).toLowerCase();
+    if (choices.includes(providerChoice)) break;
+    process.stdout.write(`Unknown choice "${providerChoice}". Enter one of: ${choices.join(', ')}.\n`);
   }
 
   if (providerChoice === 'skip') {
@@ -360,164 +411,66 @@ async function runSystemConfigStep(rl) {
     return { provider: null, previouslyStub };
   }
 
-  // openai path.
-  const model = await ask(rl, 'Embedding model', OPENAI_DEFAULT_MODEL);
-  const dimsRaw = await ask(rl, 'Vector dimensions', String(OPENAI_DEFAULT_DIMENSIONS));
-  // parseInt is lenient ('1536abc' → 1536); insist on a clean digits-only
-  // string before parsing so partial-numeric input is rejected up front.
-  if (!/^\d+$/.test(dimsRaw.trim())) {
-    process.stderr.write(`Invalid dimensions: "${dimsRaw}". Must be a positive integer.\n`);
-    process.exit(1);
-  }
-  const dimensions = parseInt(dimsRaw, 10);
-  if (!Number.isInteger(dimensions) || dimensions <= 0) {
-    process.stderr.write(`Invalid dimensions: "${dimsRaw}". Must be a positive integer.\n`);
-    process.exit(1);
-  }
+  // Delegate to the chosen driver's collect(). It owns that provider's
+  // prompts + validate/retry loop and returns either a config to write
+  // (with an optional key to persist) or a request to fall back to stub
+  // mode. Validating BEFORE writing keeps a broken provider from landing on
+  // disk, where the next `knowledge index` would misreport a provider change.
+  const descriptor = PROVIDER_SETUPS.find((d) => d.id === providerChoice);
+  const result = await descriptor.collect(createSetupToolkit(rl));
 
-  // Resolve and validate the API key BEFORE writing any system config.
-  // Writing `provider: openai` to disk with no working key leaves the
-  // system in a state where the next `knowledge index` misreports a
-  // provider/model change. ensureOpenAIKey aborts on irrecoverable
-  // failures (bad env var, bad stored key kept) and returns a status
-  // for the recoverable cases.
-  const envVar = config.PROVIDER_ENV_VARS.openai;
-  const keyStatus = await ensureOpenAIKey(rl, { envVar, model, dimensions });
-
-  if (keyStatus === 'opted-out') {
-    // User explicitly chose to skip past the inline prompt without a
-    // working key. Honour the "skip to proceed without" feature by
-    // writing stub-mode system config rather than openai-with-no-key.
+  if (result.stub) {
     config.writeConfigFile(sysPath, buildSystemConfigStub());
     process.stdout.write(`\nWrote stub-mode system config to ${sysPath}\n`);
     process.stdout.write(
       'Stub mode uses keyword-only (BM25) search. Semantic search is disabled. ' +
-      'Re-run `knowledge setup` once you have a working API key.\n'
+      'Re-run `knowledge setup` once the provider is reachable.\n'
     );
     return { provider: null, previouslyStub };
   }
 
-  // keyStatus === 'validated' — safe to commit the openai config.
-  config.writeConfigFile(sysPath, buildSystemConfigOpenAI({ model, dimensions }));
+  // Persist a freshly entered key (key === null means env-sourced or already
+  // stored — leave credentials untouched), then commit the system config.
+  if (result.key) {
+    const credPath = config.credentialsPath();
+    config.writeCredentials(credPath, descriptor.id, result.key);
+    process.stdout.write(`Key stored at ${credPath} (mode 0600).\n`);
+  }
+  config.writeConfigFile(sysPath, result.knowledgeConfig);
   process.stdout.write(`\nWrote system config to ${sysPath}\n`);
-  return { provider: 'openai', previouslyStub };
+  return { provider: descriptor.id, previouslyStub };
 }
 
 /**
- * Ensure an OpenAI API key is available for this run and validate it.
- * Resolution order: process.env → credentials file → inline prompt.
- * Newly entered keys are written to the credentials file at 0600.
- *
- * Returns:
- *   'validated' — a working key is in place (env, file, or freshly stored)
- *   'opted-out' — user explicitly skipped after a failed inline prompt
- *
- * Aborts (process.exit 1) on irrecoverable failures: bad env-var key, or
- * bad stored key that the user opts to keep. Both leave the system in a
- * state where openai-mode setup cannot honestly proceed.
+ * Build the toolkit injected into a driver descriptor's collect(). Bundles
+ * the readline prompts, the shared test-embed validator and error describer,
+ * config helpers (env/stored key lookup, config builder), and a fail() that
+ * aborts setup. Keeping drivers behind this toolkit means they require no
+ * readline or config internals and stay unit-testable against a fake.
  */
-async function ensureOpenAIKey(rl, { envVar, model, dimensions }) {
-  const credPath = config.credentialsPath();
-
-  // 1. Env var wins. Nothing is written to disk — env is authoritative.
-  const fromEnv = process.env[envVar];
-  if (fromEnv && fromEnv.trim() !== '') {
-    process.stdout.write(`\nUsing API key from $${envVar} — validating via a test embed...\n`);
-    try {
-      await validateApiKey({ apiKey: fromEnv.trim(), model, dimensions });
-      process.stdout.write('API key works.\n');
-      return 'validated';
-    } catch (err) {
-      const { message, hint } = describeValidationError(err);
-      process.stderr.write(`\n${message}\n  ${hint}\n`);
-      process.stderr.write(
-        `The failing key came from $${envVar}. Fix or unset it in your shell, ` +
-        'then re-run `knowledge setup`.\n'
-      );
+function createSetupToolkit(rl) {
+  return {
+    ask: (prompt, def) => ask(rl, prompt, def),
+    askYesNo: (prompt, defYes) => askYesNo(rl, prompt, defYes),
+    askSecret: (prompt) => askSecret(rl, prompt),
+    askDimensions: (prompt, def) => askDimensions(rl, prompt, def),
+    out: (s) => process.stdout.write(s),
+    fail: (s) => {
+      process.stderr.write(s);
       process.exit(1);
-    }
-  }
-
-  // 2. Existing credentials file. Validate; let the user replace it if broken.
-  const fromFile = config.resolveApiKey('openai', { credentialsPath: credPath });
-  if (fromFile) {
-    process.stdout.write(`\nFound an existing API key in ${credPath} — validating via a test embed...\n`);
-    try {
-      await validateApiKey({ apiKey: fromFile, model, dimensions });
-      process.stdout.write('API key works.\n');
-      return 'validated';
-    } catch (err) {
-      const { message, hint } = describeValidationError(err);
-      process.stdout.write(`${message}\n  ${hint}\n`);
-      const replace = await askYesNo(rl, 'Enter a new key to replace it?', true);
-      if (!replace) {
-        process.stderr.write(
-          `\nKeeping the existing stored key would leave setup in an inconsistent state.\n` +
-          `Edit ${credPath} or re-run \`knowledge setup\` when you have a new key.\n`
-        );
-        process.exit(1);
-      }
-      // Fall through to prompt path to collect and store a replacement.
-    }
-  }
-
-  // 3. No valid key anywhere — prompt inline and store.
-  return await promptForKeyAndStore(rl, { envVar, model, dimensions, credPath });
-}
-
-/**
- * Print the OpenAI key explainer, prompt for a key, validate it, and
- * write it to the credentials file at 0600. Loops on validation failure
- * so the user can retry with a different key.
- */
-async function promptForKeyAndStore(rl, { envVar, model, dimensions, credPath }) {
-  process.stdout.write(
-    '\nOpenAI API Key\n' +
-    '--------------\n' +
-    'Semantic search in the knowledge base relies on OpenAI embeddings.\n' +
-    'We recommend creating a dedicated key for this tool so you can rotate\n' +
-    'or revoke it independently from other integrations.\n' +
-    '\n' +
-    '  1. Create a key: https://platform.openai.com/api-keys\n' +
-    `     (Suggested name: "agentic-workflows")\n` +
-    '  2. Paste the full key (starting with "sk-") at the prompt below.\n' +
-    '\n' +
-    `Your key will be stored at:\n` +
-    `  ${credPath}  (mode 0600, user-private)\n` +
-    `Setting $${envVar} in your shell takes precedence and overrides the\n` +
-    'stored key, so you can swap it without editing the file.\n\n'
-  );
-
-  while (true) {
-    const key = await askSecret(rl, 'API key (input hidden): ');
-
-    if (key === '') {
-      process.stdout.write('Empty input — enter the key, or Ctrl-C to abort setup.\n\n');
-      continue;
-    }
-
-    process.stdout.write('\nValidating via a test embed...\n');
-    try {
-      await validateApiKey({ apiKey: key, model, dimensions });
-    } catch (err) {
-      const { message, hint } = describeValidationError(err);
-      process.stdout.write(`${message}\n  ${hint}\n\n`);
-      const retry = await askYesNo(rl, 'Try a different key?', true);
-      if (!retry) {
-        process.stdout.write(
-          `No key stored. Falling back to stub mode — semantic search disabled.\n` +
-          `Set $${envVar} in your shell or re-run \`knowledge setup\` once you have a working key.\n`
-        );
-        return 'opted-out';
-      }
-      continue;
-    }
-
-    // Validated — write the credentials file.
-    config.writeCredentials(credPath, 'openai', key);
-    process.stdout.write(`API key works. Stored at ${credPath} (mode 0600).\n`);
-    return 'validated';
-  }
+    },
+    validate: validateProvider,
+    describeError: describeValidationError,
+    buildSystemConfig,
+    envVarName: (id) => config.PROVIDER_ENV_VARS[id],
+    envKey: (id) => {
+      const name = config.PROVIDER_ENV_VARS[id];
+      if (!name) return null;
+      const v = process.env[name];
+      return v && v.trim() !== '' ? v.trim() : null;
+    },
+    storedKey: (id) => config.resolveApiKey(id, { credentialsPath: config.credentialsPath() }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -681,14 +634,17 @@ module.exports = {
   ask,
   askYesNo,
   askSecret,
+  askDimensions,
+  buildSystemConfig,
   buildSystemConfigOpenAI,
+  buildSystemConfigCompatible,
   buildSystemConfigStub,
   buildProjectConfigEmpty,
   detectSystemConfig,
   detectProjectInit,
-  validateApiKey,
+  validateProvider,
   describeValidationError,
-  ensureOpenAIKey,
+  createSetupToolkit,
   runSystemConfigStep,
   runProjectInitStep,
   runInitialIndexStep,
