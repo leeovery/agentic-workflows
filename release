@@ -143,25 +143,33 @@ generate_release_notes() {
         return 1
     fi
 
+    # Exclude the generated knowledge bundle from the diff — it is minified,
+    # huge, and not human-meaningful, so it only wastes the token budget and
+    # pollutes the summary.
+    local bundle_exclude=":(exclude)skills/workflow-knowledge/scripts/knowledge.cjs"
+
     # Get actual code changes for AI analysis
     local files_changed changes_summary code_diff
-    files_changed=$(git diff "$base_ref..$target_ref" --name-status 2>/dev/null || echo "")
-    changes_summary=$(git diff "$base_ref..$target_ref" --stat 2>/dev/null || echo "")
+    files_changed=$(git diff "$base_ref..$target_ref" --name-status -- . "$bundle_exclude" 2>/dev/null || echo "")
+    changes_summary=$(git diff "$base_ref..$target_ref" --stat -- . "$bundle_exclude" 2>/dev/null || echo "")
 
-    # Check if diff is too large (limit to 25000 lines)
-    local max_diff_lines=25000
+    # Check if diff is too large. The generated bundle is already excluded
+    # above, so this guards against genuinely large source changes only —
+    # raised from 25000 since the bundle (the usual culprit for blowing the
+    # token budget on knowledge-base releases) no longer counts.
+    local max_diff_lines=60000
     local diff_line_count
-    diff_line_count=$(git diff "$base_ref..$target_ref" 2>/dev/null | wc -l)
+    diff_line_count=$(git diff "$base_ref..$target_ref" -- . "$bundle_exclude" 2>/dev/null | wc -l)
 
     if [[ "$diff_line_count" -gt "$max_diff_lines" ]]; then
         echo "⚠️  Diff too large for AI analysis ($diff_line_count lines)" >&2
         return 1
     fi
 
-    code_diff=$(git diff "$base_ref..$target_ref" 2>/dev/null || echo "")
+    code_diff=$(git diff "$base_ref..$target_ref" -- . "$bundle_exclude" 2>/dev/null || echo "")
 
     # Build prompt for Claude
-    local prompt="Generate a release commit message for version v${version}.
+    local prompt="Generate release notes for version v${version}.
 
 ## Files Changed:
 ${files_changed}
@@ -172,22 +180,21 @@ ${changes_summary}
 ## Actual Code Diff:
 ${code_diff}
 
-## Commit Format
+## Output Format
 
-First line: \`🔖 Release v${version}\`
-Then blank line, then brief technical summary as bullet points.
+A markdown bullet list summarising the meaningful technical changes. No
+heading, no preamble, no version line — just the bullets. This body is reused
+verbatim for both the git tag message and the CHANGELOG.md entry.
 
 **Rules:**
 
 - Summarize the meaningful technical changes (not every file/function)
-- This is for the developer to remember what this release contains
+- This is for users and developers to understand what this release contains
 - Number of bullet points should match release scope - be terse
 - Be technically accurate but concise
 - Base on ACTUAL CODE CHANGES, ignore 'wip' commit messages
 
 ## Example:
-
-🔖 Release v1.2.3
 
 - Add AI-powered release notes generation
 - Fix config validation edge case
@@ -196,7 +203,7 @@ Then blank line, then brief technical summary as bullet points.
 ## Notes
 
 - NO Claude signature
-- Return ONLY the commit message
+- Return ONLY the bullet list
 - No explanations
 
 Output:"
@@ -217,8 +224,11 @@ Output:"
     fi
 }
 
-# Wrapper for new releases - gets base ref and handles fallback
-generate_release_commit_message() {
+# Wrapper for new releases — resolves the base ref and returns the release
+# notes BODY (markdown bullet list) on stdout, or an empty string if notes
+# can't be generated (no base tag, Claude unavailable, diff too large). The
+# callers wrap this body for the tag message and the changelog entry.
+generate_release_body() {
     local new_version="$1"
     local last_tag="$2"
     local last_tag_no_v="${last_tag#v}"  # Strip v prefix if present
@@ -234,16 +244,66 @@ generate_release_commit_message() {
     # If no matching tag found, skip AI (can't reliably diff with parallel version lines)
     if [[ -z "$base_ref" ]]; then
         echo "⚠️  No tag found for v${last_tag_no_v}, skipping AI generation" >&2
-        echo "🔖 Release v${new_version}"
-        return
+        return 0
     fi
 
-    local message
-    if message=$(generate_release_notes "$new_version" "$base_ref" "HEAD"); then
-        echo "$message"
-    else
-        echo "🔖 Release v${new_version}"
+    local body
+    if body=$(generate_release_notes "$new_version" "$base_ref" "HEAD"); then
+        echo "$body"
     fi
+    return 0
+}
+
+# Compose the annotated-tag / release-commit message from a version and an
+# optional notes body. Format is unchanged from prior releases: a
+# "🔖 Release vX.Y.Z" subject, then the bullet body when present.
+compose_tag_message() {
+    local version="$1" body="$2"
+    if [[ -n "$body" ]]; then
+        printf '🔖 Release v%s\n\n%s\n' "$version" "$body"
+    else
+        printf '🔖 Release v%s\n' "$version"
+    fi
+}
+
+# Prepend a new release section to CHANGELOG.md (Keep a Changelog format),
+# creating the file with a header if it does not yet exist. The entry is
+# inserted above the most recent existing "## [" section.
+update_changelog() {
+    local version="$1" body="$2"
+    local changelog="CHANGELOG.md"
+    local date
+    date=$(date +%Y-%m-%d)
+
+    if [[ ! -f "$changelog" ]]; then
+        {
+            echo "# Changelog"
+            echo
+            echo "All notable changes to this project are documented in this file."
+            echo
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),"
+            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+            echo
+        } > "$changelog"
+    fi
+
+    local entry_body="${body:-- Maintenance release (no notes recorded).}"
+
+    # Build the entry in a temp file so the body (which may contain any
+    # characters) is never reinterpreted by awk -v escaping.
+    local entry_file tmp
+    entry_file=$(mktemp)
+    tmp=$(mktemp)
+    printf '## [%s] - %s\n\n%s\n\n' "$version" "$date" "$entry_body" > "$entry_file"
+
+    awk -v ef="$entry_file" '
+        /^## \[/ && !ins { while ((getline line < ef) > 0) print line; close(ef); ins=1 }
+        { print }
+        END { if (!ins) { while ((getline line < ef) > 0) print line; close(ef) } }
+    ' "$changelog" > "$tmp"
+
+    mv "$tmp" "$changelog"
+    rm -f "$entry_file"
 }
 
 perform_release() {
@@ -284,14 +344,22 @@ perform_release() {
         echo "Knowledge bundle unchanged — no commit needed."
     fi
 
-    # Generate commit message
-    local commit_message
-    if $skip_ai; then
-        commit_message="🔖 Release v${new_version}"
-    else
+    # Generate the release-notes body once — shared by CHANGELOG.md and the tag.
+    local body=""
+    if ! $skip_ai; then
         echo "Generating release notes..."
-        commit_message=$(generate_release_commit_message "$new_version" "v${current_version}")
+        body=$(generate_release_body "$new_version" "v${current_version}")
     fi
+
+    # Prepend the entry to CHANGELOG.md and commit it before tagging.
+    update_changelog "$new_version" "$body"
+    git add CHANGELOG.md
+    if ! git diff --cached --quiet -- CHANGELOG.md; then
+        git commit -m "chore(release): update changelog for v${new_version}"
+    fi
+
+    local commit_message
+    commit_message=$(compose_tag_message "$new_version" "$body")
 
     # Update version file and commit
     update_version_file "$new_version"
@@ -350,23 +418,27 @@ main() {
     if $dry_run; then
         echo -e "\nDRY RUN: No changes will be made."
         if ! $skip_ai; then
-            echo -e "\nGenerating commit message preview..."
-            local preview_message
-            preview_message=$(generate_release_commit_message "$new_version" "v${current_version}")
-            echo -e "\n--- Commit Message Preview ---"
-            echo "$preview_message"
-            echo "--- End Preview ---"
+            echo -e "\nGenerating release notes preview..."
+            local preview_body
+            preview_body=$(generate_release_body "$new_version" "v${current_version}")
+            echo -e "\n--- Tag message preview ---"
+            compose_tag_message "$new_version" "$preview_body"
+            echo "--- CHANGELOG.md entry preview ---"
+            printf '## [%s] - %s\n\n%s\n' "$new_version" "$(date +%Y-%m-%d)" "${preview_body:-- Maintenance release (no notes recorded).}"
+            echo "--- End preview ---"
         fi
     else
         echo -e "\nThis will:"
         if [[ "$VERSION_STRATEGY" != "none" ]]; then
-            echo " 1. Update version in $VERSION_FILE"
-            echo " 2. Create a new commit"
-            echo " 3. Create git tag v${new_version}"
-            echo -e " 4. Push changes\n"
+            echo " 1. Update CHANGELOG.md"
+            echo " 2. Update version in $VERSION_FILE"
+            echo " 3. Create a new commit"
+            echo " 4. Create git tag v${new_version}"
+            echo -e " 5. Push changes\n"
         else
-            echo " 1. Create git tag v${new_version}"
-            echo -e " 2. Push tag\n"
+            echo " 1. Update CHANGELOG.md"
+            echo " 2. Create git tag v${new_version}"
+            echo -e " 3. Push changes\n"
         fi
 
         echo -n "Proceed? [Y/n] "
