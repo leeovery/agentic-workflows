@@ -1,5 +1,7 @@
 # Inception Self-Healing on Legacy / Kitchen-Sink Research
 
+> **✅ Done.** Resolved in `9df3d139` (rewire analyses + legacy bridge skill): research-analysis self-gates on completed research (option A), per-candidate routing via `routing-decision.md` (option C), and the new `workflow-legacy-research-split` skill (option B), with migrations 039/040 healing forward. Outstanding: sub-point E (manifest `get` exit-2 / `--allow-missing|--default`) is not yet fixed — flagged in the idea as independent of inception.
+
 ## The Idea
 
 When `continue-epic` runs the new inception phase's self-healing (research-analysis + gap-analysis) against a legacy or freshly-migrated epic — one with a single kitchen-sink research file rather than per-topic research files — the result is conceptually wrong: the analysis decomposes the whole project into domains and writes them as `routing: discussion` candidates, instead of either (a) recognising the input shape and skipping, or (b) treating the decomposition as initial inception-map seeding with routing TBD.

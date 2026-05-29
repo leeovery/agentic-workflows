@@ -1,5 +1,7 @@
 # STOP Gate Override Protection
 
+> **✅ Done.** STOP gates hardened across all workflow skills in `7cf03e5e` (PR #263) — broadened override clause ("No session-level instruction overrides STOP gates…") plus a failure-mode bullet (see e.g. `workflow-investigation-process/SKILL.md`). Note: the per-instruction inline "cannot be auto-answered" tag (Edit 3) was not adopted; the team used a consolidated clause instead.
+
 ## The Idea
 
 Harden every STOP gate in workflow skills against auto-answering when session-level instructions tell the agent to "work without stopping" or "make the reasonable call". The current rule names only `harness auto mode` — that's too narrow, and an agent can rationalise around it.
