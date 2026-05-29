@@ -75,12 +75,14 @@ Both increment together at `analysis-loop.md` A.
 
 ## Scope
 
+`session` resets at exactly one chokepoint — Step 0 re-entry, which every path back into implementation passes through. `total` resets only at fresh init.
+
 - `workflow-implementation-process/SKILL.md` — Step 0 resume reset (session only) + resume-detection field reference
 - `workflow-implementation-process/references/initialize-tracking.md` — fresh-start init seeds both counters to 0
 - `workflow-implementation-process/references/analysis-loop.md` — Cycle Gate: increment both; name on total, gate on session
 - `workflow-implementation-process/references/invoke-analysis.md` — Cycle number from `analysis_cycle_total`
-- `workflow-implementation-process/references/conclude-implementation.md` — completion reset (session only)
-- `workflow-review-process/references/review-actions-loop.md` — re-open reset (session only)
+- `workflow-implementation-process/references/conclude-implementation.md` — drop redundant session reset
+- `workflow-review-process/references/review-actions-loop.md` — drop redundant session reset
 - `skills/workflow-migrate/scripts/migrations/041-split-analysis-cycle-counter.sh` + `tests/scripts/test-migration-041.sh`
 
 ## Severity
