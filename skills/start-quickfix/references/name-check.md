@@ -44,7 +44,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}
 ```
 A work unit named "{work_unit}" already exists.
 
-Run /continue-quickfix to resume, or choose a different name.
+Run /workflow-start to resume this quick-fix, or choose a different name.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

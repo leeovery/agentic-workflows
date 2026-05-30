@@ -10,7 +10,7 @@ Act as **curator + interviewer**. Walk the user through decomposing broad resear
 
 ### What This Skill Needs
 
-- **Work unit** (required) — the epic to normalise. Passed by `continue-epic` Step 5.
+- **Work unit** (required) — the epic to normalise. Passed by the continue-epic phase at Step 5 (model-only invocation; user reaches it via /workflow-start).
 
 ---
 
@@ -124,8 +124,8 @@ Evaluate the branches below in order — error reporting takes precedence over c
 ```
 > {errored_count} source file(s) aborted mid-apply; {applied_count}
 > decomposed; {abandoned_count} skipped. See "Recovery from
-> Interrupted Apply" below to clear stuck sentinels before the
-> next /continue-epic.
+> Interrupted Apply" below to clear stuck sentinels before
+> resuming via /workflow-start.
 ```
 
 → Return to caller.
@@ -158,7 +158,7 @@ Evaluate the branches below in order — error reporting takes precedence over c
 ```
 > {applied_count} source file(s) decomposed; {abandoned_count}
 > skipped. Skipped files remain on the map and can be revisited
-> on the next /continue-epic.
+> on the next /workflow-start resume.
 ```
 
 → Return to caller.
@@ -169,8 +169,8 @@ Evaluate the branches below in order — error reporting takes precedence over c
 
 ```
 > No source files decomposed — every qualifying file was skipped.
-> They remain on the map and can be revisited on the next
-> /continue-epic.
+> They remain on the map and can be revisited via the next
+> /workflow-start resume.
 ```
 
 → Return to caller.

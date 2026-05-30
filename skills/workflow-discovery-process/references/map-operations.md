@@ -63,7 +63,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
-`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
+`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in the epic menu (via /workflow-start) is the right tool for stopping in-flight work.
 
 Render the rejection in a code block:
 
@@ -71,8 +71,8 @@ Render the rejection in a code block:
 
 ```
 "{topic}" can't be {removed|renamed|re-routed} from the map —
-{lifecycle_phrase}. To stop work on it, use `a`/`cancel` in
-/continue-epic instead.
+{lifecycle_phrase}. To stop work on it, use `a`/`cancel` from
+the epic menu (run /workflow-start) instead.
 ```
 
 `{lifecycle_phrase}` examples:

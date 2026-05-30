@@ -1,5 +1,6 @@
 ---
 name: continue-cross-cutting
+user-invocable: false
 allowed-tools: Bash(node .claude/skills/continue-cross-cutting/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 

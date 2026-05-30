@@ -44,7 +44,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}
 ```
 A work unit named "{work_unit}" already exists.
 
-Run /continue-cross-cutting to resume, or choose a different name.
+Run /workflow-start to resume this cross-cutting concern, or choose a different name.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
