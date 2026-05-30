@@ -238,10 +238,10 @@ Discovery loop mechanics                  [decided]
 ├─ Routing-confirmation mechanism         [decided]
 └─ AskUserTool integration                [decided]
 
-Pivot mechanics                           [exploring]
-├─ Macro pivot triggers                   [pending]
-├─ Scope-down + inbox surface             [converging]
-└─ Reasoning surfacing                    [pending]
+Pivot mechanics                           [decided]
+├─ Macro pivot triggers                   [decided]
+├─ Scope-down + inbox surface             [decided]
+└─ Reasoning surfacing                    [decided]
 
 Imports & inbox handling                  [decided]
 
@@ -539,6 +539,73 @@ The macro and micro commits can land at the same conversational moment (single-t
 - **YES for the committed routing-commit moment.** Structured confirm-or-override locks the call cleanly without ambiguity and matches the formality of a commit. The user sees the proposed routing, the reasoning, and structured options (confirm / override-to-{alternative} / discuss-more). This is the cleanest fit.
 
 The principle: AskUserTool appears at structured decision moments, not during conversational exploration. The tool's clarity is its value at commit; that same clarity is its cost mid-loop.
+
+---
+
+### Macro pivot triggers [decided]
+
+**Context.** When Claude is in Discovery with a pre-seeded or tentatively-converging shape, and signals start pointing at a *different* shape, Claude needs to raise the pivot. The question was: what specifically triggers raising a pivot, and how does it differ from the normal shape-detection flow?
+
+**Decision.** The trigger pattern matches the regular shape-detection threshold (multiple converging signals, consistent framing, etc.) — just applied to the *competing* shape rather than the current one. Same patience discipline applies: don't pivot on a single weak signal; wait until the alternative shape has built actual momentum.
+
+Specifics for each common pivot path (illustrative cues; tune via real use):
+
+| Pivot direction | Cues |
+|---|---|
+| feature → epic | Multiple distinct concerns surface from what was framed as one feature; topic seeds start clustering into independent groups; user describes scope expansion mid-conversation |
+| epic → feature | Synthesis converges on one coherent topic; "multiple shapes" never quite materialises; user keeps pulling back to one core concern |
+| bugfix → feature | Described "broken" behaviour turns out to be missing-by-design rather than malfunction; user struggles to describe a working state before the bug |
+| feature → bugfix | Described "new" behaviour is actually restoring something that should already work; user mentions regression or "it used to work" |
+| quickfix → feature/bugfix | Scope discussion gets substantive; behaviour debate emerges; user starts describing how the change *should* work |
+| any → cross-cutting | Described work turns out to be defining a pattern, principle, or strategy rather than shipping a feature; no customer-facing deliverable surfaces |
+
+The pivot offer surfaces mid-loop as a tentative read (per the shape-detection mid-loop surfacing pattern). Plain language, not workflow jargon: *"This is shaping bigger than one feature — sounds like several connected things. Want to treat as a larger initiative made of multiple features?"* User confirms, declines, or redirects — Claude takes the call.
+
+Pivot offers can fire multiple times in one Discovery session. Each one is a tentative surfacing, easy to push back on.
+
+---
+
+### Scope-down + inbox surface [decided]
+
+**Context.** During Discovery for one work unit, Claude often notices a related-but-separate concern the user mentions in passing. Without a release valve, this would either (a) scope-creep into the current work unit, contaminating its shape, or (b) get lost entirely. We want a third path — surface to inbox for later, keep the current work focused.
+
+**Decision.** When Claude notices a tangential concern that doesn't fit the current shape, it surfaces a brief offer:
+
+> *"You mentioned X — that feels separate from what we're shaping. Surface to inbox for later?"*
+
+If user accepts, the mechanism reuses existing inbox capture infrastructure:
+
+- Inbox capture skill is invoked (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — pick based on the tangential concern's shape; if uncertain, default to idea)
+- File lands in `.workflows/.inbox/{ideas,bugs,quickfixes}/` per existing capture pattern
+- Discovery's session log notes the surfacing as part of the journey record (so it's discoverable in the journey record even if the inbox file gets actioned later)
+- Conversation continues with the original work, now without scope creep
+
+The decision moment is conversational, not structured — soft surfacing, easy redirect. No AskUserTool needed.
+
+If user declines (*"no, that's actually part of this"*), Claude folds the concern into the current work. The surfacing offer is the value-add either way — surfaces the question rather than silently scope-creeping.
+
+---
+
+### Reasoning surfacing [decided]
+
+**Context.** Throughout the loop, Claude shares tentative reads (mid-loop surfacings) and committed routing offers (at the commit moment). Both require the user to be informed enough to agree or push back. The question was: how does Claude express reasoning so the user can engage with it meaningfully?
+
+**Decision.** Two principles guide reasoning surfacing:
+
+**1. Brief and concrete.** Reasoning names the specific signals that drove the read. Not *"based on the conversation"* (vague, unfalsifiable). Not *"because of multiple factors"* (no entry point for pushback). Instead: *"because you described X and Y as separate concerns and each came with substantive weight."*
+
+Brief — one or two sentences. The point is to make the read auditable, not to defend it.
+
+**2. Pull-on-able.** Reasoning surfaces in a way the user can challenge specific cues, not just accept-or-reject the whole conclusion. Saying *"because you described X and Y as separate concerns"* lets the user respond *"actually X and Y are the same thing — Y is just a subset"* — which Claude takes as an update to the read.
+
+This is the difference between *"trust me"* reasoning and *"check my work"* reasoning. Discovery uses the latter.
+
+The principle applies to:
+- Mid-loop tentative surfacings (*"I'm hearing several distinct shapes — your descriptions of X and Y feel orthogonal. Want to pull on that?"*)
+- Committed routing offers (*"This is feature-shaped — one focused thing with clear actors. Routing is discussion since you described the shape but flagged trade-off questions, not unknowns. Confirm or override?"*)
+- Pivot offers (*"Sounds like several connected things rather than one — you've sketched menu-management, kitchen-printers, and operator-analytics as distinct concerns. Want to treat as a larger initiative?"*)
+
+When Claude doesn't have enough signal to give pull-on-able reasoning, that's the trigger to keep exploring rather than surface a read — the read isn't ready yet.
 
 ---
 
