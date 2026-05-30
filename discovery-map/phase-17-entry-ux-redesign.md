@@ -234,7 +234,7 @@ Discovery as universal entry              [decided]
 
 Discovery loop mechanics                  [exploring]
 ├─ Opener shapes across worktypes         [decided]
-├─ Shape-detection heuristics             [exploring]
+├─ Shape-detection heuristics             [decided]
 ├─ Routing-confirmation mechanism         [exploring]
 └─ AskUserTool integration                [pending]
 
@@ -407,6 +407,87 @@ Even when user picks a work-type fast path, Claude may suggest a pivot during Di
 4. **No pre-announce of process discipline** — Claude doesn't preamble *"we're in setup mode, not problem-solving."* Discipline is enforced by behaviour (open exploratory questions, no commitments, redirects on deep dives). The user finds out *what* Discovery does by being in it; they don't need a meta-explanation upfront.
 
 The pattern is universal. The text varies for naturalness. Cross-worktype symmetry is preserved at the structural level — same opener stages, same conversational discipline, same pivot availability.
+
+---
+
+### Shape-detection heuristics [decided]
+
+**Context.** Discovery needs to figure out what kind of work the user is bringing — feature, multi-feature initiative, fix, targeted change, project-wide pattern — and for the work types that have it, the per-topic routing decision (research vs discussion). This is the listening discipline that drives everything else in the loop. Two angles needed nailing: *what signals Claude listens for*, and *how it surfaces tentative reads to the user without dropping into workflow jargon*.
+
+**Journey.** Started by sketching per-shape signal lists (bugfix-shaped vs feature-shaped vs epic-shaped, etc.) — concrete cues Claude would weight. Then hit a more important point: those bucket names (epic / feature / bugfix / quickfix / cc) are workflow internals. They mean nothing to a user who hasn't lived in the system. Saying *"this sounds like an epic"* assumes user vocabulary that often isn't there.
+
+Reframed: we're not detecting *"which bucket does this fall into."* We're detecting **what kind of work the user is actually describing**, in plain terms. The bucket names are how we route internally; the shape language we speak with the user is something else.
+
+The signals stay (substantively). The surfacing language flips.
+
+Also worked through three structural points:
+
+1. **Macro and micro signals co-emerge** — not sequential phases. A user describing *"operators do X, kitchen does Y, customers do Z"* surfaces BOTH multi-shape (macro signal) AND candidate topic seeds (micro signal) simultaneously. The macro/micro structure from the earlier subtopic is about routing OUTPUTS, not about loop sequencing. One loop, both signal flavours accumulating in parallel.
+2. **Mid-loop surfacing** — Claude shares tentative reads as patterns clearly emerge, not silently accumulating to endpoint. User gets to push back while reads are still tentative, before momentum builds.
+3. **The explicit shape question** — when shape questions are exhausted but ambiguity remains, Claude asks an explicit disambiguator (rather than continuing to fish, which would risk dropping into content territory).
+
+**Decision.** Five elements:
+
+**1. Signals are about substance, not bucket names.** Claude listens for plain shape-cues in the user's framing:
+
+| Substance signal (what's being described) | Routes to internally |
+|---|---|
+| New behaviour not present today, single coherent scope, clear actors and flows | feature |
+| Multiple distinct concerns from one description, multi-week / multi-phase shape, broader system-level reshaping, *"project"* / *"initiative"* framing | epic |
+| System-wide concern affecting multiple work units, pattern / principle / strategy definition (*"error response shape"*, *"auth strategy"*, *"logging convention"*), no customer-facing deliverable | cross-cutting |
+| Past-tense or present-broken descriptions, specific failure cases with reproducible conditions, error messages / stack traces in imports | bugfix |
+| Imperative scoped changes (*"bump the timeout"*, *"rename X to Y"*, *"add a flag"*), one-shot adjustments without behaviour debate | quickfix |
+| *"Not sure how"*, *"what's possible"* — could route research-shaped; descriptions that mix broken + new — could be bugfix-with-feature-followup | ambiguous — keep exploring |
+
+These are illustrative first-pass cues; will be tuned via real use. Hardcoding them as a strict checklist risks Claude getting trigger-happy on weak matches.
+
+**2. Surfacing language stays plain until commit.** When Claude shares a tentative read or asks for confirmation, it speaks in user-facing shape-terms:
+
+| Internal (workflow lingo) | User-facing (plain shape) |
+|---|---|
+| *"This sounds like an epic"* | *"This sounds like several distinct things — more than one feature in scope"* |
+| *"This is a feature"* | *"Sounds like a single coherent piece of work"* |
+| *"This is cross-cutting"* | *"Sounds like a pattern or principle that affects the whole project — something to define, not something to ship as a feature"* |
+| *"This is a bugfix"* | *"Sounds like something broken we're fixing rather than something new we're building"* |
+| *"This is a quickfix"* | *"Sounds like a small targeted change — adjustment rather than a whole feature"* |
+
+The bucket names only appear at the routing-commit moment (next subtopic), and even then framed naturally. Up until commit, everything is described in terms of what the user is actually doing.
+
+**3. Confidence heuristics** — Claude is *"confident enough to surface"* when:
+
+- **Multiple converging signals** point at the same shape (not just one weak hint)
+- **User framing has been consistent** across multiple turns (not switching shapes mid-conversation)
+- **Ambiguity has been resolved** — Claude has asked at least one explicit-shape question if needed, and the user's answer resolved it
+- **Pivot signals aren't lit** — Claude isn't sitting on a competing shape's signals at the same time
+
+Below this threshold, keep exploring.
+
+**4. Mid-loop surfacing** — when patterns clearly emerge, Claude shares a tentative read mid-loop rather than holding to endpoint. Examples (illustrative wording):
+
+- After several exchanges hinting at multiple concerns: *"I'm hearing a few distinct things — this might be more than one feature. Want to pull on that or stay focused?"*
+- After enough scope clarity: *"Sounds like a single coherent thing, with the routing tendency I'm reading as discussion-shaped. Anything I'm missing?"*
+- After a tangential concern surfaces: *"You mentioned X — that feels separate from what we're shaping. Surface to inbox for later?"*
+- After topic seeds start clustering: *"I'm seeing menu-management and kitchen-printers as candidate topics. Sound right or wrong shape?"*
+
+Surfacings are conversational — soft, easy for the user to redirect. Not every signal triggers a surfacing; only when there's enough to test against the user usefully.
+
+**5. The explicit shape question** — when shape questions are exhausted but ambiguity remains. Trigger: the next natural question would drop into content territory (research, decision-making, investigation) and we'd be violating the shape-vs-content guardrail. Move: ask the user directly to disambiguate.
+
+Examples (illustrative):
+
+- *"Two readings here — this could be fixing something that's currently broken, or adding something new that doesn't exist yet. Which is closer?"*
+- *"This is shaping bigger than a single feature — does it feel to you like one focused thing, or several connected things?"*
+- *"This sounds like a small targeted change, but if it touches behaviour the user sees, we should treat it as a feature instead. How does it feel from your end?"*
+
+These are the explicit disambiguators that prevent the conversation from looping forever and force a commit so we can progress.
+
+**The hardest discriminations** are the pairs at the boundaries:
+
+- **Single feature vs multi-feature** — *"is this one thing or several things stuck together?"*
+- **Building vs fixing** — *"is the behaviour missing, or is the behaviour broken?"*
+- **Quick targeted change vs feature vs bugfix** — *"is this a small adjustment, a new behaviour, or a fix?"*
+
+These are where mid-loop surfacings and explicit shape questions earn their keep.
 
 ---
 
