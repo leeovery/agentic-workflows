@@ -10,13 +10,16 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-You are in the **Discovery** phase of the epic pipeline — the curation surface where moving parts are named, classified as research or discussion, and shaped into the discovery map:
+You are in the **Discovery** phase — the universal first step for all brand-new work. Discovery shapes the work: macro routing (what kind of work this is — epic, feature, bugfix, quickfix, cross-cutting), and where applicable micro routing (per-topic research vs discussion):
 
-**Discovery** → Research → Discussion → Specification → Planning → Implementation → Review
+**Discovery** → {Research / Discussion / Investigation / Scoping} → ... → Review
 
-Discovery is epic-only — features, bugfixes, quick-fixes, and cross-cutting work units skip this phase.
+Output shape varies by work type, not the conversational pattern:
+- **Epic** — multi-topic map with per-topic routing
+- **Feature / cross-cutting** — single-topic shape with routing
+- **Bugfix / quickfix** — brief intent capture + routing decision (no map)
 
-**Stay in your lane**: Discovery is curatorial — name the moving parts, classify each as research or discussion, build the discovery map. Don't investigate (that's research). Don't decide (that's discussion). Hold the macro view; if the conversation tunnels into one item, anchor and return to mapping.
+**Stay in your lane**: Discovery handles SHAPE; downstream phases FILL the shape. No research (research phase does that), no investigation (investigation phase does that), no decision-making (discussion phase does that), no scope work (specification does that). Read seed material to shape the conversation, not to extract substantive content.
 
 ---
 
@@ -54,9 +57,11 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 > topics emerge during the session.
 ```
 
-Arguments: work_type = `$0`, work_unit = `$1`. Discovery is epic-only and per-work-unit, so no `$2` topic argument is consumed.
+Arguments: work_type = `$0`, work_unit = `$1`. Discovery is per-work-unit across every work type, so no `$2` topic argument is consumed.
 
-Store `work_unit` for the handoff.
+`work_type` may be empty when the caller is the `/start` ambiguous path — Discovery's classifier resolves it during the conversation. When pre-seeded (any of `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`), Discovery still runs the same loop and may still offer a pivot.
+
+Store `work_type` and `work_unit` for the handoff.
 
 → Proceed to **Step 2**.
 

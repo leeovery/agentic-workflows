@@ -24,6 +24,10 @@ If the working tree is already clean, skip the commit.
 
 ## B. Bridge
 
+Bridge varies by `work_type` — epic returns to the discovery map menu so the user can pick the next move; non-epic single-topic work types continue directly into the routed phase (the bootstrap utility wires this in Phase 17d; here the bridge handoff names the destination).
+
+#### If `work_type` is `epic` (or missing — epic is default for back-compat)
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
@@ -36,6 +40,48 @@ Pipeline bridge for: {work_unit}
 Completed phase: discovery
 
 Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `work_type` is `feature` or `cross-cutting`
+
+The single-topic shape was committed in confirm-and-persist with its routing decision. Bridge into the routed phase via the bootstrap utility — bootstrap creates any missing manifest state, copies imports to their final location, and routes to research or discussion based on the per-topic routing.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Discovery session complete. Routing into {research|discussion}
+> via workflow-bootstrap.
+```
+
+```
+Pipeline bridge for: {work_unit}
+Completed phase: discovery
+Next phase: {research|discussion}
+
+Invoke the workflow-bootstrap skill with work_type={work_type}, work_unit={work_unit}, routing={research|discussion}.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `work_type` is `bugfix` or `quick-fix`
+
+The intent paragraph and routing decision were committed in confirm-and-persist. Bridge into the routed phase via the bootstrap utility — bootstrap routes to investigation (bugfix) or scoping (quickfix).
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Discovery session complete. Routing into {investigation|scoping}
+> via workflow-bootstrap.
+```
+
+```
+Pipeline bridge for: {work_unit}
+Completed phase: discovery
+Next phase: {investigation|scoping}
+
+Invoke the workflow-bootstrap skill with work_type={work_type}, work_unit={work_unit}, routing={investigation|scoping}.
 ```
 
 **STOP.** Do not proceed — terminal condition.

@@ -4,7 +4,25 @@
 
 ---
 
-The endpoint ceremony. Analyse the session's exploration as a whole, produce a topic set, and confirm it with the user. Loaded by [session-loop.md](session-loop.md) C when the user confirms ready to synthesise.
+The endpoint ceremony. Analyse the session's exploration, produce a shape-appropriate output, and confirm it with the user. Loaded by [session-loop.md](session-loop.md) C when the user confirms ready to synthesise.
+
+Output shape varies by `work_type` ([discovery-mode-overlays.md](discovery-mode-overlays.md) section A):
+
+- **Epic** — full multi-row topic proposal (sections A–E below)
+- **Feature / cross-cutting** — single-topic shape + routing (section F)
+- **Bugfix / quickfix** — brief intent capture + routing decision, no map (section G)
+
+#### If `work_type` is `epic` (or missing — epic is the default for back-compat)
+
+→ Proceed to **A. Gather Source Material**.
+
+#### If `work_type` is `feature` or `cross-cutting`
+
+→ Proceed to **F. Single-Topic Synthesis**.
+
+#### If `work_type` is `bugfix` or `quick-fix`
+
+→ Proceed to **G. Brief Intent Synthesis**.
 
 ## A. Gather Source Material
 
@@ -101,3 +119,75 @@ Apply the named adjustments to the working set:
 After applying, re-render the proposal (back to the top of **E**) and ask again. Loop until confirmed or `explore` is chosen.
 
 → Return to **E. Render Proposal**.
+
+## F. Single-Topic Synthesis (feature / cross-cutting)
+
+Feature and cross-cutting produce one row, not many. The topic name equals the work-unit name (single-topic work types use the work unit as the topic). Synthesis names the one-line summary, the description, and the routing decision (research vs discussion).
+
+Re-read the **Exploration** section and in-context conversation. Synthesise:
+
+- **One-line summary** — the shape in a sentence
+- **Description** — paragraphs capturing what was explored
+- **Routing** — `research` if the conversation was full of open questions / feasibility unknowns / external dependencies; `discussion` if the shape is clear and the open work is about trade-offs and decisions
+
+Load [routing-inference.md](routing-inference.md) for the cue lists.
+
+Then surface the commit proposal — use the routing-commit discipline:
+
+→ Load **[routing-commit.md](routing-commit.md)** and follow its instructions as written.
+
+When the user confirms (or you've honoured an override), hold the single-row result as the working list for Step 6 confirm-and-persist:
+
+- `topic_name = {work_unit}`
+- `summary`, `description`, `routing` as synthesised
+- `source = discovery`
+
+→ Return to caller.
+
+## G. Brief Intent Synthesis (bugfix / quickfix)
+
+Bugfix and quickfix produce no map. Synthesis is a brief intent capture written to the session log + a routing decision (bugfix → investigation, quickfix → scoping). No items are persisted to `phases.discovery.items`.
+
+Re-read the **Exploration** section. Synthesise a one-paragraph intent capture that names:
+
+- For bugfix: the failure symptom, the reproduction condition (if known), the surface affected
+- For quickfix: the change being made, the surface affected, any constraint the user surfaced
+
+Stay on shape, not investigation / scoping content. The downstream phase fills in the substance.
+
+Routing decision is fixed by macro shape:
+
+- Bugfix → investigation
+- Quickfix → scoping
+
+Surface the commit using the routing-commit discipline (the macro shape was committed earlier in the loop; this is a confirm-and-record beat):
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Ready to commit?
+
+- **`y`/`yes`** — Commit intent and route to {investigation|scoping}
+- **`e`/`explore`** — Go back to exploration; not ready to commit yet
+- **Adjust** — Tell me what to revise in the intent paragraph
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `yes`
+
+Hold the intent paragraph and routing decision as the working state for Step 6 confirm-and-persist. No `phases.discovery.items` writes.
+
+→ Return to caller.
+
+#### If `explore`
+
+→ Return to caller for **B. Session Loop**.
+
+#### If adjust
+
+Apply the named revisions to the intent paragraph and re-surface the gate. Loop until confirmed or `explore` is chosen.
+
+→ Return to **G. Brief Intent Synthesis**.

@@ -4,10 +4,19 @@
 
 ---
 
-## A. Curatorial Moves
+These guidelines are **shared across all work types**. Mode-specific overlays live in [discovery-mode-overlays.md](discovery-mode-overlays.md) — what each work type produces at endpoint, and which pivot signals each mode watches for. The conversational discipline below applies regardless of mode.
 
-- **Open exploration is the loop.** The session is a conversation that pulls on the idea — sketches the shape, finds the edges, sees how the parts connect. Topics emerge at endpoint from the picture as a whole.
-- **Macro view always.** Don't tunnel into one item. If the user goes deep on mechanism, gently anchor and return to the map level.
+For the wider shape-detection and commit discipline, see:
+
+- [opener-pattern.md](opener-pattern.md) — the four-element opener (signpost → seed acknowledgment → opening question → no preamble)
+- [shape-detection.md](shape-detection.md) — substance signals, surfacing language, confidence heuristics
+- [routing-commit.md](routing-commit.md) — the commit moment with AskUserTool
+- [pivot-watchpoints.md](pivot-watchpoints.md) — macro pivots and inbox surfaces
+
+## A. Curatorial Moves (Shared Core)
+
+- **Open exploration is the loop.** The session is a conversation that pulls on the idea — sketches the shape, finds the edges, sees how the parts connect. Output emerges at endpoint from the picture as a whole.
+- **Macro view always.** Don't tunnel into one item. If the user goes deep on mechanism, gently anchor and return to the shape level.
 - **Tentative grouping** *during exploration*, not as topic decomposition. *"Sounds like the offline-mode bits all live together — agree?"* — confirming a surface boundary, not naming a topic.
 - **Coarseness check** *during exploration*. *"That's a lot of small operational things — most of those will fall out inside bigger discussions later."*
 - **Anchor and return.** When the conversation pulls into detail, gently re-anchor. *"We got pulled into payments mechanism — that's discussion territory once we're there. Want to come back to mapping the rest first?"*
@@ -53,14 +62,21 @@ The user can signal endpoint explicitly (*"that covers it"*, *"let's wrap"*, *"d
 
 When you observe these signals, **propose** endpoint to the user. Don't declare it. Use optional pushback if there's a genuinely unexplored angle worth surfacing first — but don't fabricate angles. If nothing comes to mind, just ask whether to proceed.
 
-## D. Hard Rules
+## D. Hard Rules — Shape vs Content Guardrail
 
-- **No inline topic decomposition.** Do not surface "hearing X, Y, Z as distinct shapes" moves during the loop. Topics are synthesised at endpoint.
+The most important constraint on Discovery's behaviour. Discovery handles SHAPE; downstream phases FILL the shape.
+
+- **No research.** No investigating market, tech, or feasibility — research phase does that.
+- **No investigation.** No symptom analysis, reproduction, or root-cause hunting — investigation phase does that.
+- **No decision-making.** No resolving design questions, no choosing between options — discussion phase does that.
+- **No scope work.** No spec content, no plan content.
+- **No inline topic decomposition.** Do not surface "hearing X, Y, Z as distinct shapes" moves during the loop. Topic synthesis happens at endpoint (for work types that have topics).
 - **The user confirms endpoint.** You can propose, but the user decides. Don't move to synthesis without explicit confirmation.
 - **Initial spike, not exhaustive.** 2 topics is fine, 20 is fine. The map fills out as work progresses — analyses auto-add, splits and elevations spawn. Don't push for completeness at synthesis.
 - **No active missing-piece probes during exploration.** Don't list things the user "hasn't mentioned" as if you're auditing coverage. If something comes to mind during exploration, raise it as a natural question. At endpoint, optional pushback can surface one or two angles — bounded, not exhaustive.
-- **No decisions, no investigations.** Defer mechanism questions to discussion; defer feasibility to research. Use what you and the user already know; don't go searching.
 - **No code, no architecture, no implementation talk.** Topics are named at the level a future research or discussion phase would pick up — *kitchen-printers*, *menu-management*, *analytics* — not API shapes or data models.
+
+The discipline is recognising the difference between *"this is shaping up as a bugfix"* (Discovery's job) and *"the bug is probably in the session middleware"* (Investigation's job). Discovery makes the routing call; downstream does the work.
 
 ## E. Worked Examples
 

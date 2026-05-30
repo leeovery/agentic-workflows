@@ -4,9 +4,25 @@
 
 ---
 
-Persists the topic set produced by [topic-synthesis.md](topic-synthesis.md) to the manifest, writes the **Topics Identified** section of the session log, clears the active-session marker, and finalises the **Conclusion** placeholder.
+Persists the synthesised output to the manifest and session log, clears the active-session marker, and finalises the **Conclusion** placeholder.
 
-Edits to existing items committed via [map-operations.md](map-operations.md) during the session loop. For edits-only sessions, the manifest-writes step is empty but the marker delete and Conclusion finalisation still run.
+Behaviour varies by `work_type`:
+
+- **Epic** — persist N topic items at `phases.discovery.items.{topic}`, write multi-section **Topics Identified** to the log. Edits committed via [map-operations.md](map-operations.md) during the loop run alongside; for edits-only sessions, the manifest-writes step is empty but the marker delete and Conclusion finalisation still run.
+- **Feature / cross-cutting** — persist a single item at `phases.discovery.items.{work_unit}` with the routing decision, write a single-section **Topics Identified**.
+- **Bugfix / quickfix** — write the intent paragraph and routing decision to the session log; **no `phases.discovery.items` writes**. Single-topic work types that route to investigation / scoping don't seed a discovery map.
+
+#### If `work_type` is `epic` (or missing — epic is default for back-compat)
+
+→ Proceed to **A. Persist New Topics**.
+
+#### If `work_type` is `feature` or `cross-cutting`
+
+→ Proceed to **D. Persist Single Topic**.
+
+#### If `work_type` is `bugfix` or `quick-fix`
+
+→ Proceed to **E. Persist Intent (No Map)**.
 
 ## A. Persist New Topics
 
@@ -94,5 +110,74 @@ git commit -m "{message}"
 ```
 
 If `git status` reports nothing to commit, skip the commit entirely.
+
+→ Return to caller.
+
+## D. Persist Single Topic (feature / cross-cutting)
+
+The synthesised working state is a single row: `topic_name = {work_unit}`, plus `summary`, `description`, `routing`. Persist as one item at `phases.discovery.items.{work_unit}`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{work_unit}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{work_unit} summary "{one-line summary}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{work_unit} description "{paragraphs}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{work_unit} routing {research|discussion}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{work_unit} source discovery
+```
+
+Ensure the session log exists ([template.md](template.md) lazy-creation rule). Populate **Topics Identified** with one section using the work-unit name as the topic name:
+
+```markdown
+### {work_unit}
+
+- Routing: {research|discussion}
+- Why: {one-line rationale from synthesis}
+```
+
+Clear the active-session marker:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
+```
+
+Replace the **Conclusion** placeholder: `Single-topic shape committed. Routing: {research|discussion}.`
+
+Commit:
+
+```bash
+git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): commit single-topic shape"
+```
+
+→ Return to caller.
+
+## E. Persist Intent (bugfix / quickfix)
+
+The synthesised working state is a one-paragraph intent capture + routing decision (investigation for bugfix, scoping for quickfix). **No `phases.discovery.items` writes** — single-topic constrained-shape work types don't seed a discovery map.
+
+Ensure the session log exists. Replace the placeholder **Topics Identified** section with an **Intent** section:
+
+```markdown
+### Intent
+
+{intent paragraph from synthesis}
+
+- Routing: {investigation|scoping}
+```
+
+Clear the active-session marker:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
+```
+
+Replace the **Conclusion** placeholder: `Intent committed. Routing: {investigation|scoping}.`
+
+Commit:
+
+```bash
+git add .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): commit intent and route to {investigation|scoping}"
+```
 
 → Return to caller.

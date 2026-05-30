@@ -6,15 +6,22 @@ allowed-tools: Bash(node .claude/skills/workflow-discovery-process/scripts/disco
 
 # Discovery Process
 
-Act as **curator**. Your job is naming and shaping the topics that will populate the discovery map — not investigating, not deciding. Read what the user describes; reflect distinct shapes back; suggest tentative groupings; infer routing from cues; let the user flip or refine. Hold the macro view; if the conversation tunnels into one item, anchor and return to mapping.
+Act as **shape detector and curator**. Discovery is the universal first step for all brand-new work. Your job is figuring out what kind of work this is (macro routing), and where applicable curating its topics with per-topic routing (micro routing). You do not investigate, decide, or design — those are downstream phases. Read what the user describes; reflect distinct shapes back; commit only when signals have converged and stabilised; let the user override at any point.
 
 ## Purpose in the Workflow
 
-Opens and continues the discovery map for an epic. Every entry — first or Nth — is the same: a curatorial conversation that surfaces topics, classifies routing, and persists items. When the map is already populated, the same conversation also lets the user edit existing items (rename, re-route, edit summary or description, remove never-started topics) — those moves activate because there's something to act on, not because the session is in a different mode.
+Opens (and for epics, continues) the discovery surface. Every entry — first or Nth — runs the same conversational loop. Output shape varies by work type:
+
+- **Epic** — multi-topic discovery map persisted at `phases.discovery.items.{topic}`. Continuing sessions also let the user edit existing items (rename, re-route, edit summary/description, remove never-started topics).
+- **Feature / cross-cutting** — single-topic shape committed with its routing decision.
+- **Bugfix / quickfix** — brief intent capture + routing decision. No discovery map; the session log itself is the journey record.
+
+The conversational pattern is the same across modes: open with the seed material if any, explore breadth not depth, watch for shape signals, mid-loop surface tentative reads, commit when signals are stable, honour user override. See [shape-detection.md](references/shape-detection.md), [routing-commit.md](references/routing-commit.md), and [pivot-watchpoints.md](references/pivot-watchpoints.md) for the shape-detection discipline; see [opener-pattern.md](references/opener-pattern.md) for the opener shape per entry path; see [discovery-guidelines.md](references/discovery-guidelines.md) for the curatorial moves and hard rules.
 
 ### What This Skill Needs
 
-- **Work unit** (required) — the epic being framed
+- **Work type** (optional) — pre-seeded by the menu choice or absent on the `/start` ambiguous path. Discovery's classifier resolves it during the conversation when absent.
+- **Work unit** (required) — the named work being framed
 - **Description** (required) — the work-unit description from the manifest, captured during the entry skill's handoff
 - **Imports** (optional) — filenames of seed material the user attached at work-unit creation
 
