@@ -232,11 +232,11 @@ Discovery as universal entry              [decided]
 ├─ Cross-worktype symmetry                [decided]
 └─ Shape vs content guardrail             [decided]
 
-Discovery loop mechanics                  [exploring]
+Discovery loop mechanics                  [decided]
 ├─ Opener shapes across worktypes         [decided]
 ├─ Shape-detection heuristics             [decided]
-├─ Routing-confirmation mechanism         [exploring]
-└─ AskUserTool integration                [pending]
+├─ Routing-confirmation mechanism         [decided]
+└─ AskUserTool integration                [decided]
 
 Pivot mechanics                           [exploring]
 ├─ Macro pivot triggers                   [pending]
@@ -488,6 +488,57 @@ These are the explicit disambiguators that prevent the conversation from looping
 - **Quick targeted change vs feature vs bugfix** — *"is this a small adjustment, a new behaviour, or a fix?"*
 
 These are where mid-loop surfacings and explicit shape questions earn their keep.
+
+---
+
+### Routing-confirmation mechanism [decided]
+
+**Context.** Once the loop has accumulated enough signal, Claude needs to move from *"I have an opinion"* to *"we've committed"* — for macro routing (what kind of work) and, for the work types that have it, micro routing (per-topic research vs discussion). This is the commit moment. It needs to be informative (user understands the reasoning), bidirectional (user can override), and patient (we don't rush it).
+
+**Journey.** Worked out the moment-of-commit mechanics, then realised the more important point was *when* the commit should happen at all. Early reads can be revised as conversation continues — an early *"feature"* read can become *"epic"* after more talking, and that's fine if we never committed early. The substance-focus discipline that keeps us in shape rather than content also keeps us patient on the commit: as long as Claude keeps the conversation on *"what are we doing"* rather than racing to *"which bucket,"* shape emergence is organic. Premature bucket-labelling pushes Claude to commit too early. Substance-labelling stays patient.
+
+**Decision.** Five elements:
+
+**1. State the read.** When committing, Claude says what the shape is in plain user-facing terms, with the workflow bucket name folded in naturally — not before. Example: *"This is feature-shaped — one focused thing to build. The routing tendency I'm reading is discussion since the shape is clear and the open questions are about trade-offs not unknowns."*
+
+**2. Explain the reasoning.** Per the earlier principle, the user needs to be informed enough to agree or push back. Reasoning surfaces the signals that drove the read. Should be brief — one or two sentences — but specific enough that the user knows *why*, not just *what*.
+
+**3. Invite confirmation or override.** Soft conversational invitation, or structured tool prompt, depending on confidence and stakes. AskUserTool fits cleanly here (see next subtopic).
+
+**4. Honour user override authoritatively.** If the user pushes back, Claude takes their call as final. No re-litigation. If the user redirects to a different shape, Claude adjusts without needing further justification.
+
+**5. Patience on the commit.** Even when signals have reached the surfacing threshold, hold off committing until:
+
+- Signals have **converged AND been stable** across the last few exchanges (not just hit threshold this turn)
+- Mid-loop tentative surfacings have been **confirmed or adjusted** by the user
+- The natural next move would **drop into content** if we kept exploring — we've truly run the shape conversation as far as it can go without violating the shape-vs-content guardrail
+- The user's framing has been **consistent enough** that we're not about to revert the commit in two turns
+
+This is the same patience discipline as the surfacing threshold, applied one step later in the loop. Substance-focus enables it: stay on what's being built/fixed/changed, not on which bucket it lands in, and the commit lands when it's actually ready.
+
+**Operational commit semantics:**
+
+Once routing is committed:
+- The committed shape is written to Discovery's session log (the journey record)
+- Claude transitions into shape-appropriate output (topic synthesis for epic/feature/cc, brief intent capture for bugfix/quickfix)
+- Pivots after commit are possible but expensive — they reset the synthesis. Claude treats post-commit pivots as deliberate redirects, not casual exploration
+- For epic/feature/cc, the macro commit doesn't necessarily lock micro routing yet — per-topic routing commits happen during/after synthesis
+
+The macro and micro commits can land at the same conversational moment (single-topic feature: *"feature-shaped, routing is discussion"*) or at different moments (epic: macro commit first, then per-topic routing commits during synthesis).
+
+---
+
+### AskUserTool integration [decided]
+
+**Context.** AskUserTool provides structured user input (typed answers, menus, binary confirmations). The question was where it fits in Discovery's loop — given the loop is largely conversational, tool-driven prompts could feel mechanical if misplaced.
+
+**Decision.** AskUserTool is used **where appropriate** — specifically:
+
+- **NOT for mid-loop tentative surfacings.** Those stay conversational and soft (*"I'm hearing X — want to pull on that?"*). Tool prompts in the middle of an exploratory flow break the conversational rhythm without adding clarity.
+- **OK for explicit shape questions** when implicit confidence is borderline. Quick binaries like *"is this fixing something or adding something new?"* can be cleaner as a tool prompt than as prose. Use judiciously — only when the disambiguation is genuinely binary and the user benefits from explicit framing.
+- **YES for the committed routing-commit moment.** Structured confirm-or-override locks the call cleanly without ambiguity and matches the formality of a commit. The user sees the proposed routing, the reasoning, and structured options (confirm / override-to-{alternative} / discuss-more). This is the cleanest fit.
+
+The principle: AskUserTool appears at structured decision moments, not during conversational exploration. The tool's clarity is its value at commit; that same clarity is its cost mid-loop.
 
 ---
 
