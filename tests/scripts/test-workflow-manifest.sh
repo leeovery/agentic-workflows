@@ -2030,6 +2030,61 @@ assert_equals "$exit_code" "1" "Corrupt work-unit JSON → exit 1"
 echo ""
 
 # ============================================================================
+# DISCOVERY PHASE CROSS-WORK-TYPE TESTS
+# ============================================================================
+#
+# Phase 17a (universal Discovery entry) requires that phases.discovery is
+# writable for every work type, not just epic. These tests pin that contract
+# so a future schema tightening can't silently regress it.
+
+echo -e "${YELLOW}Test: phases.discovery accepts writes for every work type${NC}"
+setup_fixture
+for wt in epic feature bugfix quick-fix cross-cutting; do
+    name="${wt//-/_}-disc"
+    run_cli init "$name" --work-type "$wt" --description "Discovery cross-type $wt" >/dev/null 2>&1
+    run_cli set "$name.discovery" active_session 1 >/dev/null 2>&1
+    run_cli set "$name.discovery" session_number 1 >/dev/null 2>&1
+    run_cli set "$name.discovery" next_session_number 2 >/dev/null 2>&1
+
+    active=$(run_cli_stdout get "$name.discovery" active_session)
+    session=$(run_cli_stdout get "$name.discovery" session_number)
+    next=$(run_cli_stdout get "$name.discovery" next_session_number)
+
+    assert_equals "$active" "1" "$wt: active_session writes"
+    assert_equals "$session" "1" "$wt: session_number writes"
+    assert_equals "$next" "2" "$wt: next_session_number writes"
+done
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: init-phase discovery succeeds for every work type${NC}"
+setup_fixture
+for wt in epic feature bugfix quick-fix cross-cutting; do
+    name="${wt//-/_}-disc-item"
+    run_cli init "$name" --work-type "$wt" --description "Discovery item $wt" >/dev/null 2>&1
+    output=$(run_cli init-phase "$name.discovery.topic-one" 2>&1)
+    assert_contains "$output" "Initialized discovery phase" "$wt: init-phase discovery accepted"
+
+    status=$(run_cli_stdout get "$name.discovery.topic-one" status)
+    assert_equals "$status" "in-progress" "$wt: discovery item status defaults to in-progress"
+done
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: discovery item status only accepts in-progress${NC}"
+setup_fixture
+run_cli init guard --work-type feature --description "Guard" >/dev/null 2>&1
+run_cli init-phase guard.discovery.topic-one >/dev/null 2>&1
+assert_exit_nonzero "Invalid discovery item status rejected" \
+    set guard.discovery.topic-one status completed
+
+echo ""
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 
