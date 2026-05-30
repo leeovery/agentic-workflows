@@ -738,3 +738,94 @@ These subtopics are open. Captured here for tracking; will get Context / Journey
 ---
 
 This is the working design surface. Decided subtopics are locked in this pass but can be revisited if further discussion reveals problems. Exploring/pending subtopics get worked through as conversation continues.
+
+---
+
+## Implementation attempt — recorded observations (2026-05-30)
+
+Factual record of the first implementation attempt. PR #306 was opened from `feat/phase-17-discovery-universal-entry` and subsequently closed without merging. All implementation changes were reverted from the branch; only the design-doc lock commits above remain.
+
+### Implementation shape
+
+- Implementation was structured as 7 stacked PRs (17a–17g) per a self-derived implementation plan.
+- Once all 7 were open, they were flattened into a single PR (#306) via `git merge --squash` at user request. The squash bundled the implementation commits AND the 7 design-doc lock commits (the latter had not yet been merged to `main`).
+- Multiple audit-fix rounds followed inside PR #306. Total commits between flatten and close: ~15.
+
+### Regressions identified by audit (vs `main`)
+
+Audit was performed by five parallel sub-agents tracing pre-Phase-17 → post-Phase-17 user paths.
+
+**Epic path (`/workflow-start` → `e`/`epic`)**
+
+- Pre-Phase-17 `start-epic` Step 1 emitted an explicit "What's the product or initiative?" prompt with a STOP gate; the user's reply became `manifest.description`. Post-implementation: `gather-context.md` returned `description = (none)` when `work_unit` was empty; description was synthesized from later conversation in `resolve-identity.md` E.
+- Pre-Phase-17 `name-check.md` collision branch told the user to run `/continue-epic`. Post-implementation: `resolve-identity.md` E re-prompted for a new name with no resume signpost.
+- Pre-Phase-17 `start-epic` Step 0.3 rendered a "New Epic" bullet-bordered banner. Post-implementation: only generic discovery-entry chrome rendered.
+- `import-collection.md` was added unconditionally at Step 0.2 with no "if resumed, skip" branch; it would prompt on every continuing epic Discovery session.
+
+**Feature / cross-cutting paths**
+
+- All five `/start-*` directories were deleted with no shim. Direct invocations of `/start-feature` etc. fail with "skill not found".
+- `README.md` at lines 104–108 and 232 continued to list the deleted `/start-*` slash commands and reference `skills/start-feature/` paths that no longer exist.
+- Pre-Phase-17 supported `/start-feature .workflows/.inbox/ideas/{file}` as a direct CLI invocation. Post-implementation: no positional-arg entry path remained.
+- Pre-Phase-17 `research-gating.md` gave the user a flat `r`/`d`/`i` choice before routing. Post-implementation: routing was inferred from conversational cues by `routing-inference.md` and surfaced as a proposal at the routing-commit gate. The user-up-front-choice was replaced by an override-after-proposal.
+
+**Inbox + s/start paths**
+
+- Pre-Phase-17 each `start-*` Step 1 derived the suggested work-unit name from the inbox filename slug (strip `YYYY-MM-DD--` prefix, strip `.md`). Post-implementation: `resolve-identity.md` E proposed the name purely from conversational framing; the filename slug was not used.
+- Pre-Phase-17 archival fired in `name-check.md` immediately after manifest creation. Post-implementation: archival deferred to `workflow-bootstrap/references/archive-inbox-seed.md` at Discovery's terminal step. Abandoning Discovery between Step 0.1 (manifest commit) and conclude-discovery left both a partial manifest and the inbox file in `.inbox/{folder}/`.
+- Pre-Phase-17 `start-from-inbox.md` for `.inbox/ideas/` asked the user to pick `f`/`e`/`c`. Post-implementation: routed to `/workflow-discovery-entry "" ""` (classifier mode). `opener-pattern.md` inbox row prescribed `{targeted question drawn from the seed material}` with no guarantee that the question elicited a shape signal.
+
+**Bugfix / quick-fix paths**
+
+- Pre-Phase-17 neither `start-bugfix` nor `start-quickfix` had `collect-import.md`. Post-implementation: `import-collection.md` was loaded at Step 0.2 unconditionally for all work types, including bugfix and quick-fix.
+- `opener-pattern.md` had both `b`/`bugfix` (→ "What's broken?") and `inbox` (→ "{targeted question drawn from the seed material}") rows with no precedence rule when an inbox file seeded a bugfix.
+- Pre-Phase-17 bugfix and quick-fix flows were ~3 user interactions (description → name → route). Post-implementation: ~5–6 interactions through Step 0.1 (opener + name confirm), Step 0.2 (import y/n), and topic-synthesis G (brief intent commit gate with explore/adjust loop).
+
+**Continue / bridge paths**
+
+- `continue-*` Step 0 was reduced from Casing + Migrations + Knowledge Check to Casing only.
+- Migration removal was per the design's centralization decision (verified safe within a single conversation rooted at `/workflow-start`).
+- Knowledge-check removal had no replacement in `workflow-bridge` or any `workflow-*-entry` skill. `workflow-bridge/SKILL.md:84` documents a context-clear / plan-mode handoff that lands the user in a fresh session; that fresh session reaches the next phase via `workflow-*-entry`, none of which gate on knowledge-check.
+
+### Implementation errors found during audit
+
+The following were introduced during implementation and corrected during audit-fix rounds:
+
+- `workflow-bootstrap/references/ensure-manifest.md` documented exit codes "0 = present, 2 = absent" for `manifest.cjs exists`. The CLI writes `true`/`false` to stdout; exit code is always 0 (`manifest.cjs:836–858`).
+- `workflow-discussion-entry/SKILL.md:59` accepted `source = $3`; `workflow-bootstrap/references/route-to-phase.md` invoked `/workflow-discussion-entry {work_type} {work_unit}` with no `$3`. The `source = import` branch was unreachable.
+- `workflow-bootstrap/SKILL.md:4` `allowed-tools` omitted `Bash(mv …)` and `Bash(rm …)` although `archive-inbox-seed.md` and the prior `land-imports.md` invoked them.
+- `workflow-bootstrap/references/land-imports.md` referenced an `imports_staging` manifest field; no skill or script wrote that field. The flow was dead code.
+- `workflow-discovery-process/references/{shape-detection,routing-commit,pivot-watchpoints,discovery-mode-overlays,opener-pattern}.md` were listed as "discipline references" in `workflow-discovery-process/SKILL.md` Purpose. `pivot-watchpoints.md` and `discovery-mode-overlays.md` had no `Load **[…]**` directive in any reachable Step.
+- `workflow-discovery-process/SKILL.md` Step 00 emitted an opener and confirmed identity. `session-loop.md` A "Otherwise" branch then re-rendered an opener prompting the user to re-describe the work. (Addressed via an `identity_just_resolved` flag.)
+- `workflow-discovery-process/SKILL.md` Step 00 created the manifest via `manifest.cjs init`. The CLI dies on name collision (`manifest.cjs:510–511`). No collision check preceded the call. (Addressed via an `exists` pre-check.)
+- `workflow-discovery-entry/SKILL.md:55` accepted `inbox_seed = $2` and forwarded it via the handoff text. No Step in `workflow-discovery-process` read `inbox_seed`. The inbox file content was not surfaced. (Addressed in `resolve-identity.md` B.)
+- `workflow-bootstrap/references/route-to-phase.md` had `## A. Dispatch` ending all branches with `Terminal.` and `## B. Failure Mode` with no incoming routing from A. (Addressed by converting B into an `#### Otherwise` branch.)
+- Multiple fenced blocks lacked the convention-required rendering instruction: `conclude-discovery.md:38–43`, `route-to-phase.md:37–43`.
+- `workflow-bootstrap/SKILL.md:9` Zero Output Rule blockquote was truncated relative to the canonical text used in `workflow-discovery-entry/SKILL.md:9`.
+
+### Convention violations (per CONVENTIONS.md)
+
+- `workflow-discovery-process/SKILL.md` introduced `## Step 00` — non-standard per the sequential `## Step 0`, `## Step 1` numbering convention.
+- Step 00 used `#### Classifier mode`, `#### Pre-seeded shape`, `#### Name resolution` as sequential subsection headings. H4 is reserved for conditional routing (`#### If` / `#### Otherwise`).
+- `workflow-discovery-process/SKILL.md:123` `→ Return to **Step 00** name resolution` did not match any defined backward-routing target form.
+
+### Deviations from the locked design introduced during implementation
+
+These were either subsequently reverted or persisted to the close:
+
+- `conclude-discovery.md` routed `work_type = epic` directly to `/workflow-bridge`, bypassing `workflow-bootstrap`. User correction: bootstrap is the universal landing surface for all work types per "start-* future" §Decision; this was reverted.
+- `workflow-bootstrap/references/land-imports.md` and the multi-file import collection path were deleted on the grounds that `imports_staging` was unpopulated. User correction: the import flow was an explicit design decision ("Mechanism: same as today's epic import flow, just extended across work types"); a replacement `import-collection.md` was authored.
+- `import-collection.md` in one revision treated the inbox seed file as the first import (copied to `imports/`, indexed into KB). User correction: inbox and imports are distinct concepts; the inbox-as-import logic was removed.
+- `continue-*` Step 0.2 Migrations was restored with an idempotent guard after the audit flagged a bridge-entry knowledge-check concern. User correction: migrations remain `/workflow-start`-only per the design; the restoration was reverted.
+- Menu picks (`e`/`f`/`b`/`q`/`c`) routed `/workflow-discovery-entry {work_type} ""`, which entered `session-loop.md` B's full exploration loop after Step 0.1 created the manifest. User indicated this was a quick-start regression vs pre-Phase-17 `start-*` behaviour; `session-loop.md` A was modified to dispatch by `work_type` (epic → exploration, others → topic-synthesis directly).
+
+### Conflations recorded
+
+- Inbox seed (a pre-captured idea/bug/quickfix consumed by Discovery's opener and archived by bootstrap) and imports (user-attached persistent reference files copied to `imports/` and indexed into KB) were briefly treated as the same flow in one revision of `import-collection.md`. They were separated after user correction.
+
+### Process facts
+
+- Sub-agents reported 12 BLOCKER items and 14 NEEDS-FIX items across two audit rounds (one pre-flatten convention/design/clarity audit, one post-flatten regression audit). Items overlapped between audits.
+- All 251 manifest CLI tests, the discovery test suite, and migration tests passed at every commit. None of the regressions identified by the audits were detectable by the existing test suite.
+- The `update-config` skill was used to set `workflowKeywordTriggerEnabled: false` in `~/.claude/settings.json` after the harness's "workflow" keyword auto-trigger fired repeatedly on messages that referenced the workflow system being authored.
+- PR #306 was closed without merging. The branch was reset to `main` and the 7 design-doc lock commits cherry-picked back. The branch is preserved.
