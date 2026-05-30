@@ -250,7 +250,7 @@ Entry surface design                      [decided]
 ├─ start-* future                         [decided]
 └─ continue-* mirror question             [decided]
 
-Migration & cutover                       [pending]
+Migration & cutover                       [decided]
 ```
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
@@ -669,6 +669,54 @@ Expected pattern (implementation detail, not a decision now):
 - Continue-* is no longer defensive about migrations or knowledge check — those are guaranteed to have run at `/workflow-start`
 
 Net: real simplification of duplicated Step 0 content. Worked out concretely during implementation.
+
+---
+
+### Migration & cutover [decided]
+
+**Context.** Phase 17 is a substantial shape change — Discovery becomes universal, start-* collapses, continue-* becomes model-only. The question was: what happens to existing in-progress work units, what's user-visible on upgrade, and what data migrations are needed?
+
+**Key insight.** The change is **largely additive in terms of shape.** Existing in-progress work is past Discovery's entry point; their pipelines continue unchanged. Non-epic work types don't get a discovery map even under the new design — Discovery for feature/bugfix/quickfix/cc doesn't produce backfillable manifest state (no items, no per-topic curation manifest entries). The only Discovery artefact for those types is the session log itself, which only applies to *new* work going forward.
+
+The biggest backfill problem (epic discovery maps for legacy epics) was already solved in Phase 11 via migration 038. That ship sailed and is already deployed.
+
+**Decision.**
+
+**1. Existing in-progress work units are untouched.**
+
+They're past Discovery's relevance. They continue running through their pipeline as before. No discovery-related back-fill needed for non-epic existing work because Discovery for those types doesn't produce manifest state to backfill. For existing epics with `phases.discovery` already populated (from Phase 11), nothing changes — the structure is already there.
+
+**2. Schema change is permissive, not destructive.**
+
+The manifest CLI's `phases.discovery` validation currently rejects non-epic work types (epic-only). The change is to *allow* `phases.discovery` for all work types, not to *require* it. Existing non-epic work units don't have `phases.discovery`, and they don't need it added — they're grandfathered. New non-epic work units going forward will write the session log under `discovery/session-NNN.md` but won't populate `phases.discovery.items` (there are no items for single-topic work types).
+
+No new migration script needed. The schema change is purely permissive validation.
+
+**3. No deprecation period for start-\* / continue-\* slash commands.**
+
+Release notes flag the change. Direct invocations of `/start-feature`, `/continue-feature`, etc. fail with the standard "skill not user-invocable" behaviour. Self-healing — users adjust on first encounter.
+
+The decision rests on this codebase having effectively one user. A wider-user codebase might prefer a deprecation pattern (emit a *"moving to /workflow-start"* notice before proceeding), but the cost-benefit doesn't justify it here.
+
+**4. Active user sessions during upgrade.**
+
+Upgrades happen at-install-time (`npx agntc add ...`), not auto-pushed. Users explicitly upgrade between sessions. Mid-conversation upgrades aren't a real concern.
+
+**What's user-visible on upgrade.**
+
+For existing in-progress work:
+- Continue exactly as before — pipeline runs through to the end
+- No new discovery-map artefacts get created retroactively
+- No prompts about Discovery
+- The `/workflow-start` entry surface is still the way back in
+
+For new work after upgrade:
+- `/workflow-start` is now the only entry point (other slash commands fail)
+- Picking any menu option goes through Discovery
+- Discovery handles classification + curation + routing
+- Users feel the new flow on first new-work invocation
+
+**Summary:** the change is large in scope but small in disruption. Existing state is preserved; existing flows continue; new work goes through the new shape. No data backfill, no deprecation period, no breaking of in-progress sessions.
 
 ---
 
