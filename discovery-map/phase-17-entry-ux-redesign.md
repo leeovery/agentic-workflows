@@ -233,7 +233,7 @@ Discovery as universal entry              [decided]
 └─ Shape vs content guardrail             [decided]
 
 Discovery loop mechanics                  [exploring]
-├─ Opener shapes across worktypes         [exploring]
+├─ Opener shapes across worktypes         [decided]
 ├─ Shape-detection heuristics             [exploring]
 ├─ Routing-confirmation mechanism         [exploring]
 └─ AskUserTool integration                [pending]
@@ -367,6 +367,46 @@ Inbox content drives Discovery's opening exploration the same way imports do —
 - **`v`/`view`** — stays. Completed/cancelled work units.
 
 Even when user picks a work-type fast path, Claude may suggest a pivot during Discovery (e.g. *"looks more like an epic"*). User controls the final call; Claude proposes and explains reasoning.
+
+---
+
+### Opener shapes across worktypes [decided]
+
+**Context.** Discovery's first turn shapes the entire conversation. With Discovery becoming universal across work types, we needed to decide whether the opener is one universal sentence or varies by entry path. First instinct was a single universal opener for cross-worktype symmetry, but that produces awkward phrasing (asking *"what's on your mind"* to someone who picked `/bugfix` from the menu is bizarre — they already told us a thing is broken).
+
+**Journey.** Landed on a model that holds the symmetry rule at the *pattern* level while letting the *specific text* phrase itself appropriately. Worked through three judgement calls along the way:
+
+1. Should the opener pre-announce that Discovery is "shape-figuring, not problem-solving"? **No** — discipline shows through behaviour. Pre-announcing the process is annoying for repeat users. Claude redirects deep dives when they happen (*"hold that thread — we'll cover it in [research / discussion / investigation]"*) rather than caveating upfront.
+2. Should workflow-start announce the handoff to Discovery? **Yes** — the workflow already has signpost conventions for phase boundaries (step markers + signpost blockquotes). Discovery's entry uses the same pattern. The signpost gives the user a clear *"we're moving into Discovery now"* moment.
+3. For `/start` entry (no pre-seed), should the opener acknowledge that explicitly? **Yes, lightly** — naturally folded into the question itself (*"we'll figure out the shape together"*). No need for a separate caveat.
+
+**Decision.** Discovery's opener has four elements, applied in sequence:
+
+1. **Phase signpost** — workflow-start → Discovery boundary marked via the established step-marker + signpost-blockquote convention. One sentence indicating what's about to happen. The signpost text may carry shape-appropriate framing (e.g. for `/start`: *"figuring out what kind of work this is, then the details inside it"*; for `e`/`epic`: *"setting up the epic — we'll pull on shape before naming topics"*). Same convention as the rest of the workflow.
+
+2. **Seed-material acknowledgment** (when imports or inbox content is present) — Claude reads the seed material and surfaces a brief sketch of what was picked up. Sketch first, then the opening question. Pattern matches today's epic-mode opener:
+
+   > Read your import(s). Here's the shape I'm picking up:
+   > 
+   >   {one-line summary}
+   >
+   > {targeted opening question}
+
+3. **Opening question, shape-appropriate** — phrased per work_type pre-seed (or fully open for `/start`). The PATTERN is universal across entry paths and work types; the SPECIFIC TEXT varies for conversational naturalness. Sketch (illustrative, not final wording):
+
+   | Entry path | Opening question |
+   |---|---|
+   | `/start` | *"Tell me what's on your mind. I'll ask open questions and we'll figure out the shape together."* |
+   | `e`/`epic` | *"Tell me about the epic. I'll ask open questions to pull on it before we synthesise topics."* |
+   | `f`/`feature` | *"Tell me about the feature."* |
+   | `b`/`bugfix` | *"What's broken?"* |
+   | `q`/`quickfix` | *"What's the change?"* |
+   | `c`/`cc` | *"Tell me about the cross-cutting concern."* |
+   | inbox | (after reading the inbox item) *"I've read your {bug/idea/quickfix}. Here's the shape I'm picking up: {sketch}. {targeted question}."* |
+
+4. **No pre-announce of process discipline** — Claude doesn't preamble *"we're in setup mode, not problem-solving."* Discipline is enforced by behaviour (open exploratory questions, no commitments, redirects on deep dives). The user finds out *what* Discovery does by being in it; they don't need a meta-explanation upfront.
+
+The pattern is universal. The text varies for naturalness. Cross-worktype symmetry is preserved at the structural level — same opener stages, same conversational discipline, same pivot availability.
 
 ---
 
