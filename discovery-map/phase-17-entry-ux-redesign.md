@@ -245,10 +245,10 @@ Pivot mechanics                           [decided]
 
 Imports & inbox handling                  [decided]
 
-Entry surface design                      [converging]
+Entry surface design                      [decided]
 ├─ /workflow-start menu                   [decided]
-├─ start-* future                         [exploring]
-└─ continue-* mirror question             [exploring]
+├─ start-* future                         [decided]
+└─ continue-* mirror question             [decided]
 
 Migration & cutover                       [pending]
 ```
@@ -606,6 +606,69 @@ The principle applies to:
 - Pivot offers (*"Sounds like several connected things rather than one — you've sketched menu-management, kitchen-printers, and operator-analytics as distinct concerns. Want to treat as a larger initiative?"*)
 
 When Claude doesn't have enough signal to give pull-on-able reasoning, that's the trigger to keep exploring rather than surface a read — the read isn't ready yet.
+
+---
+
+### start-* future [decided]
+
+**Context.** Pre-Phase-17, start-* are five user-invocable skills (one per work type), each handling: gather context, name + collision check, manifest creation, optional import collection, route to first phase. Post-Phase-17, Discovery has absorbed everything work-type-specific (the conversation, the classification, the import handling, the routing decisions). The question: do start-* skills survive as five thin wrappers, collapse into one shared utility, or disappear entirely?
+
+**Decision.** **Collapse to one shared utility.** Post-Phase-17, what's left for start-* to do is identical across all five work types except for *which downstream phase to route to* — that's a parameter, not a separate skill. Five thin wrappers that differ only in routing target = duplication for no benefit.
+
+Working name: `workflow-bootstrap` (or similar — TBD). Single skill, invoked by Discovery's terminal step with the resolved `work_type` and routing decisions. Its job:
+
+1. Create the manifest with the resolved work_type + name
+2. Copy imports to their final location (if not already there)
+3. Route to the first phase based on work_type + micro routing
+
+All three steps are work-type-aware via parameters, not via separate skills.
+
+**Frontmatter:** `user-invocable: false`. The skill is model-only — Discovery invokes it internally; users never reach it directly.
+
+---
+
+### continue-* mirror question [decided]
+
+**Context.** The question that paralleled start-*: does continue-* also collapse, or stay separated per work type? Different from start-* because continue-*'s resume logic varies meaningfully across work types — different displays, different menu options, different state aggregation. Also: Discovery doesn't have an equivalent absorber for continue-* the way it does for start-*.
+
+**Decision.** **Keep five continue-* skills, all become `user-invocable: false`.**
+
+Reasoning:
+
+- **Resume logic genuinely differs by work type.** continue-epic shows the discovery map; continue-feature shows a single-topic phase tree; continue-bugfix shows investigation state and routes accordingly; continue-quickfix shows scoping state; continue-cross-cutting handles the terminal-at-spec case. Collapsing into one skill would mean a big conditional skill with five-way display/menu logic — that's a complexity *increase*, not a decrease.
+- **No equivalent absorber.** Discovery handled all the work-type-specific *entry* logic that justified start-* collapse. There's no analogous *resume* mechanism in Discovery. Keeping continue-* per work type keeps that logic clean.
+- **The user-facing surface isn't the load-bearing part.** Bridge invocations, absorb-into-epic invocations, and manage-work-unit invocations of `/continue-epic` all keep working (model-side invocation). The only thing that goes is the user-typed `/continue-bugfix auth-flow` direct invocation — which user behaviour suggests isn't load-bearing either (users go through `/workflow-start` to navigate to existing work).
+
+**Result:** `/workflow-start` is the only user-invocable entry. For both new work (→ Discovery → bootstrap utility → first phase) AND continuing work (→ continue-* per work type, internally → phase routing), `/workflow-start` is the surface.
+
+**Text migration that follows:**
+
+Making continue-* model-only requires updating user-facing guidance text in a finite set of files:
+
+- `workflow-start/references/active-work.md` — table currently maps actions to `/continue-*` slash commands; rewrite to direct internal invocation (user sees outcome, not command)
+- `start-*/references/name-check.md` files with *"Run /continue-X to resume"* text → rewrite as *"Run /workflow-start to resume {work_unit}"* or equivalent
+- `continue-cross-cutting/references/validate-selection.md` and similar → same treatment
+- Any documentation surfaces that promise the `/continue-*` commands as user-typeable
+
+Mechanical text updates, not architectural restructuring.
+
+**Implementation note: Step 0 centralization opportunity.**
+
+With `/workflow-start` as the only user-invocable entry, Step 0 (casing conventions, migrations, knowledge check, knowledge compact) no longer needs to be defensively repeated in every entry-point skill. The full Step 0 runs once at `/workflow-start`. But continue-* invocations from the bridge happen mid-session, so some Step 0 elements need to remain available at bridge time:
+
+| Step 0 element | Needs to survive a bridge? |
+|---|---|
+| Migrations | No — idempotent and state-tracked. `/workflow-start` only. |
+| Knowledge check | No — gates session at entry; once cleared, stays cleared. `/workflow-start` only. |
+| Casing conventions | **Yes** — content authoring rules. Bridge to research/discussion/spec/etc. needs the conventions to author files correctly. |
+| Knowledge compact | No — TTL-based decay at entry boundaries. `/workflow-start` only. |
+
+Expected pattern (implementation detail, not a decision now):
+- `/workflow-start` runs full Step 0
+- Bridge invocations and continue-*'s own Step 0 are trimmed to the bridge-survival subset (casing + anything else identified later)
+- Continue-* is no longer defensive about migrations or knowledge check — those are guaranteed to have run at `/workflow-start`
+
+Net: real simplification of duplicated Step 0 content. Worked out concretely during implementation.
 
 ---
 
