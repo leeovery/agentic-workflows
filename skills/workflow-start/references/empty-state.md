@@ -31,6 +31,7 @@ No active work found.
 · · · · · · · · · · · ·
 What would you like to start?
 
+- **`s`/`start`** — Not sure yet — Discovery figures out the shape with you
 - **`f`/`feature`** — Single topic: (research →) discussion → spec → plan → implement → review
 - **`e`/`epic`** — Multiple topics, multi-session, same pipeline per topic
 - **`b`/`bugfix`** — Investigation → spec → plan → implement → review
@@ -54,6 +55,12 @@ Select an option:
 → Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.
 
 → Return to caller.
+
+#### If user chose `s`/`start`
+
+Invoke `/workflow-discovery-entry "" ""` — both work_type and work_unit are empty. Discovery's classifier resolves the shape and name during the conversation.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
 #### If user chose `f`/`feature`, `e`/`epic`, `b`/`bugfix`, `q`/`quick-fix`, or `c`/`cross-cutting`
 

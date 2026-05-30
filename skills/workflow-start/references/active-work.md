@@ -109,6 +109,7 @@ What would you like to do?
 - **`4`** — Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
 - **`5`** — Continue "{epic.name:(titlecase)}" — epic
 
+- **`s`/`start`** — Start new work — Discovery figures out the shape with you
 - **`f`/`feature`** — Start new feature
 - **`e`/`epic`** — Start new epic
 - **`b`/`bugfix`** — Start new bugfix
@@ -133,6 +134,12 @@ Select an option:
 Recreate with actual work units from discovery.
 
 **STOP.** Wait for user response.
+
+#### If user chose `s`/`start`
+
+Invoke `/workflow-discovery-entry "" ""` — both work_type and work_unit are empty. Discovery's classifier resolves the shape and name during the conversation.
+
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
 #### If user chose a continue or start-new option
 

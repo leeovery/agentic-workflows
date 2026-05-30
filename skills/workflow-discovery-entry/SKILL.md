@@ -59,9 +59,16 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 
 Arguments: work_type = `$0`, work_unit = `$1`. Discovery is per-work-unit across every work type, so no `$2` topic argument is consumed.
 
-`work_type` may be empty when the caller is the `/start` ambiguous path — Discovery's classifier resolves it during the conversation. When pre-seeded (any of `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`), Discovery still runs the same loop and may still offer a pivot.
+Three entry modes by argument shape:
 
-Store `work_type` and `work_unit` for the handoff.
+| `work_type` | `work_unit` | Mode |
+|---|---|---|
+| set (`epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`) | set | **Pre-seeded** — start-* invoked Discovery after creating the manifest. Discovery runs the loop with both pre-seeds; pivots remain available. |
+| empty | empty | **Classifier** — `/workflow-start`'s `s`/`start` option invoked Discovery without pre-seed. Discovery resolves both shape and name during the conversation. The manifest is created later by workflow-bootstrap once the commit lands. |
+| set | empty | **Reserved** — unused. Surface an error if encountered. |
+| empty | set | **Reserved** — unused. Surface an error if encountered. |
+
+Store `work_type` and `work_unit` for the handoff. Detect classifier mode (`work_type` and `work_unit` both empty) and forward the flag to the processing skill — it routes through Discovery's shape-detection without reading the manifest.
 
 → Proceed to **Step 2**.
 

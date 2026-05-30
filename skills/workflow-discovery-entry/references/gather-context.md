@@ -6,6 +6,12 @@
 
 Discovery is curatorial — the only context the session needs upfront is the work-unit description and any imported seed material. There are no interview questions; the conversation begins with the description as background and an open prompt to the user.
 
+#### If `work_unit` is empty (classifier mode)
+
+No manifest exists yet — Discovery resolves shape and name during the conversation. Set `description = (none)` and `imports = []`. The session's seed material is the user's own framing of the work as it unfolds.
+
+→ Return to caller.
+
 ## A. Read Description
 
 ```bash
