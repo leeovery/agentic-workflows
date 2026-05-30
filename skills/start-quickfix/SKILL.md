@@ -142,22 +142,22 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ---
 
-## Step 3: Invoke Entry-Point Skill
+## Step 3: Invoke Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Invoke Scoping ───────────────────────────────
+── Invoke Discovery ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the scoping phase. This will gather context,
-> build a lightweight spec, and create the implementation plan
-> in a single pass.
+> Handing off to discovery. Discovery captures brief intent and
+> routes to scoping. The change work happens in scoping after
+> the shape is confirmed.
 ```
 
-Invoke `/workflow-scoping-entry quick-fix {work_unit}`.
+Invoke `/workflow-discovery-entry quick-fix {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

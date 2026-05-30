@@ -46,7 +46,7 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 
 #### If `work_type` is `feature` or `cross-cutting`
 
-The single-topic shape was committed in confirm-and-persist with its routing decision. Bridge into the routed phase via the bootstrap utility — bootstrap creates any missing manifest state, copies imports to their final location, and routes to research or discussion based on the per-topic routing.
+The single-topic shape was committed in confirm-and-persist with its routing decision. Bridge into the routed phase via the bootstrap utility — bootstrap reconciles the manifest (no-op when start-* already created it), lands any staged imports, and routes to research or discussion based on the per-topic routing.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -55,13 +55,7 @@ The single-topic shape was committed in confirm-and-persist with its routing dec
 > via workflow-bootstrap.
 ```
 
-```
-Pipeline bridge for: {work_unit}
-Completed phase: discovery
-Next phase: {research|discussion}
-
-Invoke the workflow-bootstrap skill with work_type={work_type}, work_unit={work_unit}, routing={research|discussion}.
-```
+Invoke `/workflow-bootstrap {work_type} {work_unit} {routing}` where `{routing}` is the value committed in confirm-and-persist (`research` or `discussion`).
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -76,12 +70,6 @@ The intent paragraph and routing decision were committed in confirm-and-persist.
 > via workflow-bootstrap.
 ```
 
-```
-Pipeline bridge for: {work_unit}
-Completed phase: discovery
-Next phase: {investigation|scoping}
-
-Invoke the workflow-bootstrap skill with work_type={work_type}, work_unit={work_unit}, routing={investigation|scoping}.
-```
+Invoke `/workflow-bootstrap {work_type} {work_unit} {routing}` where `{routing}` is `investigation` for bugfix and `scoping` for quick-fix.
 
 **STOP.** Do not proceed — terminal condition.

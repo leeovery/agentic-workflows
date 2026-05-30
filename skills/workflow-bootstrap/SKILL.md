@@ -18,17 +18,20 @@ Discovery → **Bootstrap** → {Research / Discussion / Investigation / Scoping
 
 ### What This Skill Needs
 
-The caller (Discovery's `conclude-discovery.md`) provides these via the handoff:
+The caller (Discovery's `conclude-discovery.md`) provides these as positional arguments:
 
-- `work_type` — required. One of `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`. Discovery resolved it.
-- `work_unit` — required. The named work being bootstrapped.
-- `routing` — required.
-  - Epic: per-topic routing is already persisted on the discovery items; `routing` is unused
+- `$0` → `work_type` — required. One of `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`. Discovery resolved it.
+- `$1` → `work_unit` — required. The named work being bootstrapped.
+- `$2` → `routing` — required.
+  - Epic: per-topic routing is already persisted on the discovery items; pass an empty value (`""`) or the literal `epic-menu`
   - Feature / cross-cutting: `research` or `discussion`
   - Bugfix: fixed to `investigation`
   - Quick-fix: fixed to `scoping`
-- `description` — optional. If the manifest already exists, the description on disk wins. Otherwise the provided description seeds the manifest.
-- `imports_staging` — optional. Path to a staging directory holding files Discovery collected. Empty / absent when no imports were collected.
+
+Optional context (read from manifest / disk, not passed positionally):
+
+- `description` — if the manifest already exists, the description on disk wins. Otherwise the provided description seeds the manifest.
+- `imports_staging` — path to a staging directory holding files Discovery collected. Read from `phases.discovery.imports_staging` on the manifest, or absent when no imports were collected.
 
 ---
 
@@ -42,6 +45,28 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 - Do not re-run Step 0 elements that `/workflow-start` already ran (casing, migrations, knowledge check, knowledge compact)
 - After rendering a gate block (if any), the turn MUST end
 - Complete each step fully before moving to the next
+
+---
+
+## Step 0: Parse Arguments
+
+Capture positional arguments:
+
+- `work_type = $0`
+- `work_unit = $1`
+- `routing   = $2`
+
+Validate `work_type` is one of `epic`, `feature`, `bugfix`, `quick-fix`, `cross-cutting`. If not, surface the error and stop:
+
+```
+Bootstrap received an invalid work_type: "{work_type}"
+
+Re-enter Discovery via /workflow-start to repeat the routing commit.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+Otherwise → Proceed to **Step 1**.
 
 ---
 

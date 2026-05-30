@@ -56,10 +56,20 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 > discussion to work with.
 ```
 
-Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
+Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional), source = `$3` (optional — `import` when invoked via workflow-bootstrap after Discovery imported seed material; otherwise unset).
 Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
 Store work_unit for the handoff.
+
+#### If `topic` resolved and `source` is `import`
+
+Discovery routed this discussion via workflow-bootstrap after collecting imports as seed material. The imports were landed in `.workflows/{work_unit}/imports/` and indexed into the knowledge base; the discussion context is the imports plus the Discovery session log.
+
+Set `source = "import"`. The phase item is created here (no prior discussion exists for this topic):
+
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
+
+→ Proceed to **Step 3** (Gather Context).
 
 #### If `topic` resolved
 

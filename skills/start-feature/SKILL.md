@@ -142,40 +142,22 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ---
 
-## Step 3: Route to First Phase
+## Step 3: Invoke Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Choose Starting Phase ────────────────────────
-```
-
-Load **[research-gating.md](references/research-gating.md)** and follow its instructions as written.
-
-→ Proceed to **Step 4**.
-
----
-
-## Step 4: Invoke Entry-Point Skill
-
-> *Output the next fenced block as a code block:*
-
-```
-── Invoke Phase Skill ───────────────────────────
+── Invoke Discovery ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the selected phase. The next skill will load
-> and guide you through the process.
+> Handing off to discovery. Discovery confirms the feature shape
+> and routes to research or discussion — micro routing now happens
+> there, not here.
 ```
 
-Invoke the appropriate entry-point skill based on the selected phase:
-
-| Phase | Invoke |
-|-------|--------|
-| research | `/workflow-research-entry feature {work_unit}` |
-| discussion | `/workflow-discussion-entry feature {work_unit}` |
+Invoke `/workflow-discovery-entry feature {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

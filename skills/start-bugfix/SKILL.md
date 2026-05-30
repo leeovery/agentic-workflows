@@ -141,21 +141,22 @@ Load **[name-check.md](references/name-check.md)** and follow its instructions a
 
 ---
 
-## Step 3: Invoke Entry-Point Skill
+## Step 3: Invoke Discovery
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Invoke Investigation ─────────────────────────
+── Invoke Discovery ─────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the investigation phase. This will gather
-> symptoms and analyse code to find the root cause.
+> Handing off to discovery. Discovery captures brief intent and
+> routes to investigation. The fix work happens in investigation
+> after the shape is confirmed.
 ```
 
-Invoke `/workflow-investigation-entry bugfix {work_unit}`.
+Invoke `/workflow-discovery-entry bugfix {work_unit}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
