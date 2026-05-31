@@ -255,10 +255,11 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
-> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), three same-day refinement passes were appended at the end of this doc — read **all three before implementing**; where they differ from the sections above, they govern:
+> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), four same-day refinement passes were appended at the end of this doc — read **all four before implementing**; where they differ from the sections above, they govern:
 > - **Refinement pass — universal loop & resolution order** refines **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** (loop *length* → depth = f(unknowns); gather-then-resolve-in-order).
 > - **Refinement pass II — funnel entry, deferred persistence & the landing** resolves the entry architecture (workflow-start → discovery directly; start-\* dissolve), deferred persistence (confirm is the single trigger), and the post-confirm landing — revising **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions in **Migration & cutover**.
 > - **Refinement pass III — imports vs inbox & the discovery→first-phase carrier** sharpens **Imports & inbox handling** (same-at-read / distinct-at-persist) and adds the discovery→first-phase seed-carrier contract.
+> - **Refinement pass IV — path inventory (acceptance spec)** — every new-work entry path with expected behaviour, universal invariants, the must-not-regress checklist, and Step-0/bridge survival. The implementation acceptance gate.
 >
 > The universal-entry decision itself is unchanged.
 
@@ -1052,3 +1053,67 @@ So first-phase entry **always** reads the durable carrier; live context is a bon
 - Don't treat inbox and imports as identical at persistence — same at read, distinct at persist.
 - Don't KB-index the discovery session log.
 - Don't rely on live conversation context to carry discovery's output into the first phase — read the durable carrier (session log + `description`).
+
+---
+
+## Refinement pass IV — path inventory (acceptance spec) (2026-05-31)
+
+Fourth pass, same day. The **path inventory** — the acceptance spec for the implementation. Every new-work entry path with its expected post-Phase-17 behaviour, the universal invariants, the must-not-regress checklist distilled from the first attempt, and the Step-0 / bridge survival table. The existing test suite cannot see prose/UX regressions (all 251 tests passed through the first attempt); this is what a walkthrough — human or audit agent — validates against, path by path.
+
+**Current routing it must preserve:** epic → `discovery-entry`; feature/cc → `research-gating` (flat `r`/`d`) → research/discussion-entry; bugfix → `investigation-entry`; quickfix → `scoping-entry`. Imports today exist only for epic + feature — **b/q/cc gain them**, folded into the opener (not a gate).
+
+### Part 1 — Universal invariants (every new-work path)
+
+1. `workflow-start` → discovery directly; no `start-*` intermediary.
+2. Manifest created **only at the confirm trigger**, never before.
+3. Session log written at confirm (backfilled), lazily — not up-front.
+4. Inbox seed archived **at the same confirm trigger** (no deferred-archival window).
+5. Imports offered **in the opener**, not a standalone y/n gate; read at opener, landed at confirm, KB-indexed.
+6. Opener phrased per pre-seed (shape-appropriate); no process pre-announce.
+7. Pre-seeded paths **confirm-and-move** — no full exploration loop; every turn earns its place.
+8. Pivot/reroute passively available on all paths.
+9. First-phase entry reads the **durable carrier** (session log + `description`); never relies on live context.
+10. User's framing captured → `manifest.description`.
+11. Name resolved at confirm; collision → **resume signpost** ("run `/workflow-start` to resume {wu}"), not a silent re-prompt.
+12. Abandon-before-confirm leaves **no trace** (no partial manifest; inbox file stays put).
+
+### Part 2 — Per-path table
+
+| Entry | Pre-seed | Opener | Name suggestion | Micro routing | Handoff |
+|---|---|---|---|---|---|
+| `e`/epic | epic | "Tell me about the epic…" | conversational | per-topic (in discovery) | existing conclude → map routing |
+| `f`/feature | feature | "Tell me about the feature." | conversational | one decision (research/discussion) | research-entry / discussion-entry |
+| `b`/bugfix | bugfix | "What's broken?" | conversational | none | investigation-entry |
+| `q`/quickfix | quickfix | "What's the change?" | conversational | none | scoping-entry |
+| `c`/cc | cross-cutting | "Tell me about the cross-cutting concern." | conversational | one decision | research-entry / discussion-entry |
+| `s`/start | none | "What's on your mind…" | conversational | per resolved type | per resolved type |
+| inbox→bug | bugfix (folder) | read seed → sketch → targeted Q | **filename-slug** | none | investigation-entry |
+| inbox→quickfix | quickfix (folder) | read seed → sketch → targeted Q | **filename-slug** | none | scoping-entry |
+| inbox→idea | none | read seed → sketch → targeted Q | **filename-slug** | per resolved type | per resolved type |
+
+Note: inbox→idea now classifies through discovery, so it can resolve to *any* type (f/e/c/**b/q**) — superseding today's f/e/c-only menu. A strict improvement; overlaps idea #18 (inbox pickup actions).
+
+### Part 3 — Regression watchlist (must-not-regress, from the post-mortem)
+
+| # | Check | Paths |
+|---|---|---|
+| R1 | description captured from the user, not silently synthesised | all (esp. epic) |
+| R2 | name collision → resume signpost, not re-prompt | all |
+| R3 | shape-appropriate entry chrome/signpost retained (the old "New Epic" banner role) | each menu pick |
+| R4 | no forced import y/n gate | b, q, c |
+| R5 | inbox **filename-slug** drives the suggested name | inbox paths |
+| R6 | inbox archival fires at confirm, no partial-state window | inbox paths |
+| R7 | b/q stay ~3 interactions (opener + name + route); no synthesis loop | b, q |
+| R8 | `discussion-entry` import/seed handoff branch is actually reachable | f, c (→ discussion) |
+| R9 | inbox selection still works end-to-end via `workflow-start` (positional `/start-* {path}` CLI entry is intentionally gone) | inbox paths |
+
+### Part 4 — Continue / bridge (Step 0 survival)
+
+| Step 0 element | `workflow-start` | continue-* / bridge |
+|---|---|---|
+| Casing conventions | ✓ | ✓ (needed to author files) |
+| Migrations | ✓ | ✗ (idempotent, state-tracked) |
+| Knowledge **compact** | ✓ | ✗ (maintenance decay) |
+| Knowledge **check** | ✓ | ✗ — guaranteed by `workflow-start`; bridge starts nothing new |
+
+Knowledge-check is a **project-setup gate, not a per-session gate** — once a project's KB is set up it stays set up, and setup is human-only. A bridge only ever runs inside a work unit that was created via `workflow-start`, where the check already passed; re-checking verifies something already guaranteed. The context-clear "fresh session" edge is a new *conversation*, not a new *project*. The pathological case (KB deleted mid-pipeline) degrades gracefully via stub/keyword mode + the pending queue. So: no knowledge-check at bridge.
