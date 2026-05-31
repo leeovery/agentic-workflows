@@ -255,12 +255,13 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
-> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), five same-day refinement passes were appended at the end of this doc — read **all five before implementing**; where they differ from the sections above, they govern:
+> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), six same-day refinement passes were appended at the end of this doc — read **all six before implementing**; where they differ from the sections above, they govern:
 > - **Refinement pass — universal loop & resolution order** refines **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** (loop *length* → depth = f(unknowns); gather-then-resolve-in-order).
 > - **Refinement pass II — funnel entry, deferred persistence & the landing** resolves the entry architecture (workflow-start → discovery directly; start-\* dissolve), deferred persistence (confirm is the single trigger), and the post-confirm landing — revising **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions in **Migration & cutover**.
 > - **Refinement pass III — imports vs inbox & the discovery→first-phase carrier** sharpens **Imports & inbox handling** (same-at-read / distinct-at-persist) and adds the discovery→first-phase seed-carrier contract.
 > - **Refinement pass IV — path inventory (acceptance spec)** — every new-work entry path with expected behaviour, universal invariants, the must-not-regress checklist, and Step-0/bridge survival. The implementation acceptance gate.
 > - **Refinement pass V — PR shape & sequencing** — three stacked PRs (schema → funnel → continue-* lockdown), held until all done, merged bottom-to-top; legible commits, never squashed.
+> - **Refinement pass VI — Discovery as the umbrella entry skill** — the **authoritative architecture**: discovery is *one* umbrella skill (collapses the entry/process pair) with two invocation modes; macro-confirm is the durability boundary; `continue-epic` delegates refinement to discovery; uniform persistence (no epic special-casing); the engine/cutover split is discarded. **Supersedes the entry/process framing in earlier passes and the structural work-items in the PR scope briefs.**
 >
 > The universal-entry decision itself is unchanged. **Plus, at the very end: "PR scope briefs"** — the per-PR work-item references a fresh plan-mode session loads to plan PR1/PR2/PR3, with a status tracker at the top.
 
@@ -1152,9 +1153,114 @@ main
 
 ---
 
+## Refinement pass VI — Discovery as the umbrella entry skill (2026-05-31)
+
+This pass is the **authoritative architecture for discovery's structure**. Where it conflicts with the entry/process framing inherited by earlier passes or the structural work-items in the PR scope briefs below, **this section governs**. It captures the model settled after a plan-mode misstep (next) was discarded.
+
+### The misstep it corrects
+
+A plan-mode session proposed splitting PR2 into an "engine" PR + a "cutover" PR, bridged by an `init-if-absent` + `persistence_live` shim that kept `start-epic` alive during the engine PR and preserved epic's existing mid-loop persistence. It was **discarded** because:
+- The deferred-persistence change is **entangled with the entry change for epic**: `start-epic` (codebase fact) creates the manifest at its Step 2 *before* invoking discovery, which conflicts with a confirm-trigger that creates the manifest. Splitting them forced epic-specific persistence handling (the `persistence_live` flag) — i.e. **special-casing epic**, violating the locked "uniform persistence / epic-not-special" principle.
+- Any clean split collapses into per-work-type slicing, which fractures discovery (rejected earlier).
+
+PR2 is therefore **one uniform feature**, not a split.
+
+### Discovery is an umbrella, not a phase
+
+- **Codebase fact:** discovery is currently two skills — `workflow-discovery-entry` + `workflow-discovery-process` — built like the phase skills (research/discussion each have an `-entry` + a `-process`). This mirrors the phases *because discovery was modelled as the epic's first phase.*
+- **Decision:** discovery is **not** a phase of the epic. It is the **universal umbrella entry** between `workflow-start` and the phase skills. No work type "starts" until discovery concludes and routes out. Discovery shapes the problem space — confirms the work type, sketches the outline — so we know where to begin. It is **step zero of the macro level**: it pencils the shape; the pipeline pens it in.
+
+### One skill, one continuous shaping process
+
+- **Decision:** collapse the `-entry`/`-process` pair into **one discovery skill** (still reference-file-modular). The split was an artefact of the phase framing.
+- Work-type detection and topic surfacing are the **same process** — you cannot tell epic from feature without surfacing whether topics multiply. So macro shaping and topic shaping are *not* separable into two skills; they are one continuous conversation governed by **depth = f(unknowns)**.
+- The **work-type commit** is the only meaningful boundary inside that process, and it is a **durability boundary** (the confirm-trigger fires; the manifest lands) — *not* a skill boundary. The conversation flows straight through it.
+  - Non-epic: little left to resolve once the type is known → shaping ends at/near the commit → route to the first phase.
+  - Epic: more to resolve (topics) → the same shaping continues past the commit into the initial topic sketch.
+- A **pre-seeded work type** (a `workflow-start` menu pick) is a *hint*, not a given — discovery still watches for signals it's something else. Same process as the no-hint (`s`/start) path; just higher starting confidence.
+
+### Discovery's two invocation modes (the backbone)
+
+The discovery skill's backbone dispatches by how it is invoked:
+- **New mode** — invoked with *no* `work_type` (from `workflow-start`). Decide the work type, then: epic → initial topic sketch; feature/cross-cutting → micro-routing decision (research vs discussion) + intent; bugfix/quick-fix → intent capture. The **macro role lives only here — one-shot per work unit.**
+- **Existing-epic shaping mode** — invoked with a *known epic* `work_unit` (from `continue-epic`). Skip macro entirely; re-shape the map. Handles **refinement** (add/edit/remove/rename of a concluded map) *and* **resuming an unfinished initial sketch** (resume-detection offers continue/restart). Edit operations load by progressive disclosure (only when a populated map exists).
+
+### Return contract
+
+On conclude, discovery routes out by context:
+- non-epic (new) → the first-phase entry (`workflow-{research,discussion,investigation,scoping}-entry`).
+- new epic → `continue-epic` (begin navigating the fresh map).
+- refinement (was invoked by `continue-epic`) → back to `continue-epic`.
+
+So an epic **always lands in `continue-epic`** after any discovery session; a non-epic lands in its first phase.
+
+### The three topic-growth activities — do not blur
+
+1. **Initial topic sketch** — discovery, *new mode*, session 001, continuous with the macro decision. Conversational.
+2. **Refinement** — discovery, *existing-epic mode*, invoked from `continue-epic`, sessions 002+. Conversational, user-initiated. Re-shapes the map.
+3. **Bridge enrichment** — *analytical*, automatic. **Codebase fact (CLAUDE.md):** research-analysis and discovery-gap-analysis run from `continue-epic` Step 6 and `workflow-bridge` "not from inside discovery." Not a discovery session.
+
+#2 and #3 both grow the epic's map but by different mechanisms (a conversation vs an analysis pass). Both are epic-owned; **neither re-enters discovery's macro role.**
+
+### `continue-epic` delegates shaping to discovery
+
+- **Decision:** when `continue-epic` offers refinement, it **routes to the discovery skill** (existing-epic mode) rather than implementing shaping itself. Discovery owns *all* conversational shaping; `continue-epic` owns navigation and delegates.
+- This resolves the apparent circularity: discovery is the *shaping* skill, refinement *is* shaping, so a navigator delegating to the shaper is correct layering, not a loop.
+- **Precise re-entry rule:** discovery is re-invoked for **shaping** (refinement / resume), **never** for its **macro role** (one-shot).
+
+### Responsibility map
+
+- **discovery** = all conversational shaping (macro decision + initial sketch + refinement + resume), dispatched by invocation context. Absorbs the `start-*` setup job.
+- **continue-epic** = epic navigation; delegates shaping to discovery; triggers the analytical bridge enrichment.
+- **continue-{feature,bugfix,quickfix,cross-cutting}** = per-type resume/navigation (single-topic).
+- **workflow-start** = sole user entry → discovery (new) or continue-* (resume).
+
+### Uniform persistence; macro-confirm is the durability boundary
+
+- The **confirm-trigger** (at the work-type commit) creates the manifest for **every** work type — no `start-*` pre-creates it anymore. A generic **create-if-absent** guard covers the existing-epic case (refinement/resume — manifest already present); this is plain correctness, **not** the discarded `persistence_live`/epic-special shim.
+- **Before macro-confirm:** pre-confirm shaping is **ephemeral** (conversation only; nothing on disk). Session end → lost → re-start via `workflow-start`. This is a *positive* property — no orphaned manifest / partial state (a first-attempt regression).
+- **At/after macro-confirm:** persisted (manifest + session log; for single-phase types the **routing decision** is recorded too, so the post-confirm handoff is deterministic). Resumable.
+
+| Interrupted | On disk | Resume |
+|---|---|---|
+| before macro-confirm (work_type unknown) | nothing | re-start via `workflow-start` (lost, cheap) |
+| after confirm — epic mid-topic-shaping | manifest + partial session log + marker | `workflow-start` → `continue-epic` → discovery (existing-epic mode) |
+| after confirm — single-phase | manifest + session log (type + routing + intent) | `workflow-start` → continue-* → route to first phase from the carrier |
+
+### `start-*` dissolve; `continue-*` stay (the asymmetry, resolved)
+
+- `start-*` and `continue-*` were never mirrors. **`start-*` set up *new* work** (gather context → name → create manifest → route); the setup is now discovery's job (shaping + confirm-trigger), the route is trivial → `start-*` have nothing left → **deleted**. Pieces redistribute: Step 0 → `workflow-start`; gather → discovery; name + manifest → confirm-trigger; imports → discovery; route → discovery's conclude.
+- **`continue-*` navigate *existing* work** — per-type state/dashboard/resume. Irreducibly per-type; absorbed by nothing → **stay** (five skills, model-only after PR3).
+- A single "continue umbrella" (universal dispatch + per-type navigation overlays) is *viable* now that the overlay pattern exists, but it is a **separate refactor, out of scope** — noted as an optional future symmetrisation.
+
+### Carrier contract (restated; unchanged from pass III) + a correction
+
+Discovery's *persisted* output (session log + manifest `description`; + the recorded routing for single-phase) must bootstrap the first phase **without** the live conversation. First-phase entry skills read the durable carrier; live context is a bonus.
+
+**Correction to the PR2 brief below:** `ensure-discovery-item.md` (`workflow-shared`) **stays epic-only** — single-phase types correctly get **no** `phases.discovery.items`. **Codebase fact:** it already no-ops for non-epic and is called by `workflow-research-entry` and `workflow-discussion-entry`. The reconciliation is *not* "remove its gate" (an error in the PR2 brief, now fixed); it is that the first-phase entry skills must read the durable carrier rather than depend on that no-op call.
+
+### What this means for the PRs
+
+- **PR2 (the whole funnel — one uniform feature):** collapse `workflow-discovery-entry` + `workflow-discovery-process` into one umbrella discovery skill with the two invocation modes; route `workflow-start` (every pick + `s` + inbox) → discovery; uniform confirm-trigger (create-if-absent); delete the five `start-*`; `continue-epic` delegates refinement to discovery; first-phase entry skills read the carrier; `ensure-discovery-item` unchanged (stays epic-only); the manifest cross-type **contract test** (test-only). Acceptance = the full path inventory (pass IV).
+- **PR3 (continue-* lockdown):** unchanged from pass V.
+- The **engine/cutover split is discarded.**
+
+### Codebase facts grounding this pass (verified)
+
+- `manifest.cjs` already accepts `phases.discovery` for all work types: `VALID_PHASES` includes `discovery`; `validatePhase`/`validateSet` validate the phase *name* only, with no work-type cross-check. So the manifest change is test-only.
+- Discovery is currently two skills (`workflow-discovery-entry` + `workflow-discovery-process`); `discovery-process` runs a conversational session (Resume Detection, Session Loop, Confirm-and-Persist, Conclude) and creates its session log lazily.
+- `start-*` route targets (grepped): epic → `/workflow-discovery-entry`; feature/cross-cutting → `research-gating` → `/workflow-research-entry` | `/workflow-discussion-entry`; bugfix → `/workflow-investigation-entry`; quick-fix → `/workflow-scoping-entry`. `collect-import.md` exists for epic + feature only.
+- `ensure-discovery-item.md` is epic-only (no-ops for non-epic); called by `workflow-research-entry` and `workflow-discussion-entry`.
+- CLAUDE.md: self-healing analyses (research-analysis, discovery-gap-analysis) run from `continue-epic` / `workflow-bridge`, **not** from inside discovery.
+- `continue-*` are currently user-invocable (no `user-invocable` flag) and each carry a Step 0 with migrations + knowledge-check.
+
+---
+
 ## PR scope briefs (durable plan-mode references)
 
 > **Purpose.** These are the per-PR work-item references. Each is self-contained enough that a **fresh session with none of the design conversation in context** can load it (plus the relevant refinement passes via the forward-pointer, plus the codebase) and generate that PR's detailed plan-mode plan. The brief is the *scope*; plan-mode produces the *line-level plan* against the actual merged code. Do **not** pre-generate PR2/PR3 detailed plans — they depend on the merged state of the PR below them.
+
+> **Superseded-where-conflicting by Refinement pass VI (immediately above).** Pass VI is authoritative for discovery's *structure* — discovery is **one umbrella skill with two invocation modes**, not the entry/process pair these briefs were first written against. The PR boundaries, the contract-test-folds-into-PR2 decision, the `start-*` deletion list, and the path-inventory acceptance all stand; the discovery-internal work-items in PR2 below are restated by pass VI (and one error — listing `ensure-discovery-item` as a gate to remove — is corrected below).
 
 ### Status tracker
 
@@ -1187,10 +1293,9 @@ This branch (`feat/phase-17-discovery-universal-entry`) carries this design doc 
 **0. Manifest cross-type contract test** (folded from the original PR1)
 - Add a test to `tests/scripts/test-workflow-manifest.sh` pinning that `phases.discovery` is accepted for all five work types — session-level field writes, `init-phase {wu}.discovery.{topic}`, and status validation (discovery items accept only `in-progress`). **Test-only — no `manifest.cjs` change** (the CLI is already permissive). Mirror commit `09e4b531`. Land it as PR2's first commit, before the behaviour that relies on it.
 
-**Skill-layer epic-only gates to remove/rework** — this is *where* discovery is currently restricted to epics:
-- `workflow-shared/references/ensure-discovery-item.md` — the Section A gate that returns early for non-epics.
-- `workflow-discovery-entry/SKILL.md` — the "Discovery is epic-only" declarations + arg parsing.
-- `workflow-research-entry/references/invoke-skill.md` — the "non-epic → no discovery phase, skip" precondition.
+**Skill-layer epic-only assumptions to rework** — where discovery is currently restricted to epics. *(Note: `ensure-discovery-item.md` is **not** here — it correctly **stays** epic-only; see pass VI's correction.)*
+- `workflow-discovery-entry/SKILL.md` — the "Discovery is epic-only" declarations + arg parsing (subsumed when entry/process collapse into one umbrella skill — pass VI).
+- `workflow-research-entry/references/invoke-skill.md` — the "non-epic → no discovery phase, skip" precondition (non-epic now has a discovery session log; rework to the carrier contract).
 
 **`workflow-start`**
 - Add `s`/start menu option (unknown shape).
@@ -1199,20 +1304,18 @@ This branch (`feat/phase-17-discovery-universal-entry`) carries this design doc 
 - `start-from-inbox.md`: route to discovery, not start-*; preserve the **filename-slug → suggested-name**; drop the idea `f/e/c` sub-menu (discovery classifies).
 - `active-work.md` untouched here (continue-* stay user-invocable until PR3).
 
-**`workflow-discovery-entry`**
-- Accept an **optional** `work_type` pre-seed and optional seed material (inbox path / imports). `work_unit` is **not** known yet on the `s`/start path — don't require it.
-
-**`workflow-discovery-process`** (the heart — currently epic-only curatorial; skeleton today is Resume → Run → Init → Guidelines → Session Loop → Doc Review → Confirm&Persist → Conclude)
-- Add the **universal detection core** (loaded for every entry): boundary discriminators, pivot/reroute watch, confidence heuristics, confirm-with-reasons protocol.
-- Add **per-type execution overlays** (lazy, post-commit): epic = existing topic synthesis; feature/cc = one micro-routing decision; bugfix/quickfix = brief intent capture. **Routing is overlay-local** (each overlay invokes its own first-phase entry — no central route table).
-- Implement the **confirm-trigger** as the single persistence hinge: `manifest init --work-type {wt}` (resolved name) → write/backfill session log → land imports → archive inbox seed. **Nothing persists before confirm** — move whatever the current Step 2 "Initialize Discovery" does early onto this trigger.
-- Opener phrased per pre-seed (pass: opener shapes); name resolution incl. filename-slug (inbox) and conversational (`s`).
-- Pre-seeded paths **confirm-and-move** — no full exploration loop; b/q land at ~3 interactions.
+**The discovery skill** (per pass VI — collapse `workflow-discovery-entry` + `workflow-discovery-process` into **one umbrella skill**, two invocation modes)
+- **Backbone dispatch:** *new mode* (no `work_type`, from `workflow-start`) decides the work type then sketches; *existing-epic mode* (known epic `work_unit`, from `continue-epic`) skips macro and re-shapes the map (refinement / resume).
+- **Universal detection core** (loaded every entry): boundary discriminators, pivot/reroute watch, confidence heuristics, confirm-with-reasons. A pre-seed is a hint, still confirmed.
+- **Per-type endpoint:** epic → initial topic sketch (reusing the existing curatorial machinery); feature/cc → micro-routing decision (research vs discussion); bugfix/quickfix → brief intent. Routing is overlay-local — each invokes its own first-phase entry / conclude target; no central route table.
+- **Confirm-trigger** = the single persistence hinge: **create-if-absent** `manifest init --work-type {wt}` (resolved name) → write/backfill session log → land imports → archive inbox seed. **Nothing persists before the work-type commit.** Uniform across all types — no `persistence_live`/epic special-casing.
+- Opener phrased per pre-seed; name resolution incl. filename-slug (inbox) + conversational (`s`). Pre-seeded → confirm-and-move; b/q ~3 interactions.
+- **Return contract:** non-epic → first phase; new epic → `continue-epic`; refinement → back to `continue-epic`.
 
 **Delete the five `start-*`**
 - Redistribute per pass II's table (Step 0 → workflow-start; gather → opener; name+manifest → confirm-trigger; imports → opener+confirm; route → terminal).
 - Fix references that die with them (start-*/`name-check.md` resume text, README lines, `start-from-inbox.md`).
-- **No** `workflow-bootstrap` skill — it folds into discovery-process.
+- **No** `workflow-bootstrap` skill — it folds into the one discovery skill (pass VI).
 
 **First-phase entry wiring** (`workflow-{investigation,scoping,discussion,research}-entry`)
 - When invoked by discovery's terminal route, **read the durable carrier** (session log + manifest `description`) as seed; don't re-gather. The existing `source` machinery + the "caller already gathered context — do not re-ask" pattern is the hook.
