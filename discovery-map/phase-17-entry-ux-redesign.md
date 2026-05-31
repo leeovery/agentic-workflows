@@ -255,7 +255,11 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
-> **2026-05-31 refinement pass.** After the first implementation attempt (see post-mortem at the foot of this doc), the loop-mechanics subtopics below — **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** — were materially refined. Read **"Refinement pass — universal loop & resolution order (2026-05-31)"** at the end of this doc before implementing; where it differs from the loop-*length* framing in the sections immediately following, that section governs. The universal-entry decision itself is unchanged.
+> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), two same-day refinement passes were appended at the end of this doc — read **both before implementing**; where they differ from the sections above, they govern:
+> - **Refinement pass — universal loop & resolution order** refines **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** (loop *length* → depth = f(unknowns); gather-then-resolve-in-order).
+> - **Refinement pass II — funnel entry, deferred persistence & the landing** resolves the entry architecture (workflow-start → discovery directly; start-\* dissolve), deferred persistence (confirm is the single trigger), and the post-confirm landing — revising **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions in **Migration & cutover**.
+>
+> The universal-entry decision itself is unchanged.
 
 ---
 
@@ -897,3 +901,88 @@ Universal across all work types — all benefit from seed material if it exists.
 - Don't rebuild epic topic-discovery — reuse it; add only the macro layer.
 - Don't conflate inbox seed with imports.
 - Don't optimise for fewest turns — optimise for every turn earning its place.
+
+---
+
+## Refinement pass II — funnel entry, deferred persistence & the landing (2026-05-31)
+
+Second pass, same day, continuing from the loop-mechanics pass above. This one resolves the **entry architecture** and the **post-confirmation landing**, and revises two earlier `[decided]` subtopics: **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions threaded through **Migration & cutover**. Same convention — where this differs from earlier text, this section governs.
+
+### Discovery is the funnel — one feature, not a per-type migration
+
+`workflow-start` → discovery **directly**, for every menu pick. `work_type` is an optional *pre-seed*, not a routing fork. `start-*` do **not** sit between `workflow-start` and discovery, and the manifest is created *after* discovery confirms the shape, never before — creating a manifest with a pre-seeded work_type before confirmation fights discovery's reroute job.
+
+Rejected: migrating one work type at a time onto the funnel. The detection core, the confirm-trigger, and routing are inherently universal (the funnel routes to *every* first phase), so a partial migration leaves discovery half-applied across two coexisting entry mechanisms — it fractures the process. Build it as **one coherent feature**.
+
+### start-\* dissolve
+
+There is nothing left for the five `start-*` skills to *be*. Every piece redistributes:
+
+| `start-*` piece | New home |
+|---|---|
+| Step 0 — casing / migrations / knowledge-check | `workflow-start` (sole entry, runs once) |
+| Step 1 — gather context / read inbox seed | discovery opener |
+| Step 2 — name + `manifest.cjs init` | discovery confirm-trigger (deferred — see below) |
+| Step 3 — optional import | discovery opener (read) + confirm-trigger (land) |
+| Step 4 — route to first phase | discovery terminal (per-type overlay) |
+
+Carry-over not to lose: the inbox **filename-slug → suggested-name** derivation (strip `YYYY-MM-DD--`, strip `.md`) lived in `start-*` Step 1 and was *lost* in the first attempt. It must survive into discovery's name resolution.
+
+### Deferred persistence — confirmation is the single trigger
+
+A new work unit cannot be persisted until `work_type` + name are known. For `s`/start, neither is known at entry — so the manifest, the work_unit dir, the session log, and import-landing all have nowhere to live during pre-confirmation discovery.
+
+Resolution, applied **uniformly** (pre-seeded picks included, not just `s`/start):
+
+- **Pre-confirmation discovery is ephemeral** — lives in the conversation only (the dialogue, any imports *read* for shaping, the emerging shape). Nothing on disk yet.
+- **Confirmation is the single persistence trigger.** It fires, in order: init manifest (confirmed `work_type` + resolved name) → write the session log, backfilling the conversation so far → land imports into `imports/`. Discovery then continues with persistence live.
+
+Why uniform, rather than "init upfront when work_type is known":
+
+- **Kills a regression by construction** — the first attempt's "partial manifest + orphaned inbox file on early abandon" cannot happen if nothing persists before confirm.
+- **One code path, not two.** Pre-seeded and `s` differ only in starting confidence; same trigger, same persistence. Path-divergence was a root cause of first-attempt bugs.
+- **Matches the existing "session log written lazily on first state change" convention** — confirmation *is* the first persistable state change for new work.
+- **Imports get the same benefit** — read at the opener for shaping, *landed* at confirm. No premature work_unit dir, no separate import gate.
+
+Consequence accepted: a pre-confirmation `s` session that is interrupted is **not resumable** (nothing persisted). Fine — re-describing un-shaped work is cheap; the expensive work (topics) is all post-confirm, where resume works normally.
+
+### No separate `workflow-bootstrap` skill
+
+The first attempt introduced a standalone `workflow-bootstrap` skill (consolidating `start-*`'s manifest-create + import-land + route-to-phase) under the old "collapse five wrappers into one shared utility" framing. That framing predates the funnel decision.
+
+Under the funnel, **discovery is the only caller** that ever creates a new work unit. A skill with exactly one caller is indirection — and it was where a cluster of first-attempt bugs lived (dead `imports_staging` code, `exists` exit-code confusion, archival-timing partial-state, the unreachable `route-to-phase` failure branch).
+
+Decision: **no bootstrap skill.** Its job folds into `workflow-discovery-process` — the confirm-trigger and a terminal route step, as reference files. This revises "start-\* future → single bootstrap skill".
+
+### The landing splits along the two-layer line
+
+The post-confirmation landing is *both* universal and work-type-specific, cleanly separated along the detection-core / execution-overlay line already locked:
+
+- **Confirm-trigger = universal.** init manifest (`--work-type {wt}` is a *parameter*; the CLI scaffolds the per-type phases from the flag), flush log, land imports. Zero work-type branching at the discovery call site.
+- **Post-confirm = work-type-specific → the polymorphic execution overlay.** Each overlay owns its own post-confirm playbook *and* its own route-out:
+
+| Overlay | Post-confirm work | Routes to |
+|---|---|---|
+| **epic** (heavy) | does **not** route out — *continues* in discovery: topic synthesis + per-topic micro routing, reusing the existing machinery | existing conclude-discovery → map routing |
+| **feature** | one micro-routing decision (research vs discussion) | research-entry / discussion-entry |
+| **cross-cutting** | optional-research micro routing | research-entry / discussion-entry |
+| **bugfix** | brief intent capture | investigation-entry |
+| **quickfix** | brief intent capture | scoping-entry |
+
+**Routing is overlay-local, never a central dispatch table.** The first attempt's central `route-to-phase.md` table is exactly where the unreachable-failure-branch bug lived. Each overlay ends by invoking *its own* first-phase entry — self-contained, nothing to desync.
+
+### Implementation shape (agreed so far)
+
+- Build discovery-as-funnel as **one feature** (not per-type slices).
+- **Legible commits, never squashed** — the first attempt's squash erased slice isolation and bundled the design-lock commits with code.
+- **continue-\* lockdown is carved out** into its own follow-up PR — it's the one cleanly separable piece, and the source of the bridge/Step-0 knowledge-check regressions.
+- Gate on a **path inventory** acceptance spec (still to be defined — tests cannot see the prose/UX regressions that sank the first attempt).
+
+### What not to do (this batch)
+
+- Don't route `workflow-start` → `start-*` → discovery. It's `workflow-start` → discovery directly; `start-*` are gone.
+- Don't create the manifest before `work_type` is confirmed — defer all persistence to the confirm-trigger.
+- Don't resurrect a standalone bootstrap skill — fold it into `workflow-discovery-process`.
+- Don't centralise route-to-phase — keep it overlay-local.
+- Don't lose the inbox filename-slug → suggested-name derivation.
+- Don't migrate work types onto the funnel incrementally — it fractures discovery.
