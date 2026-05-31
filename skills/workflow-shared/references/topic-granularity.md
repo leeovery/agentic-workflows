@@ -1,6 +1,6 @@
 # Topic Granularity
 
-*Shared reference. Loaded by `workflow-discovery-process/references/discovery-guidelines.md`, `workflow-shared/references/research-analysis.md`, `workflow-shared/references/discovery-gap-analysis.md`, and `workflow-legacy-research-split/references/dialog.md`.*
+*Shared reference. Loaded by `workflow-discovery/references/discovery-guidelines.md`, `workflow-shared/references/research-analysis.md`, `workflow-shared/references/discovery-gap-analysis.md`, and `workflow-legacy-research-split/references/dialog.md`.*
 
 ---
 

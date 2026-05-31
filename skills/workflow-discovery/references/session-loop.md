@@ -1,6 +1,6 @@
 # Session Loop
 
-*Reference for **[workflow-discovery-process](../SKILL.md)***
+*Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 
@@ -10,9 +10,27 @@ State-driven branches in **A. Open** pick the opening shape; **B. Session Loop**
 
 ## A. Open
 
-Read `discovery_map`, `dismissed`, and `imports` from the most recent discovery output. Read `session_number` and any active file path from the resume state set at Step 0.
+Read `discovery_map`, `dismissed`, and `imports` from the most recent discovery output. Read `session_number` and any active file path from the resume state set at Step 5.
 
-#### If a resume was selected at Step 0
+#### If `macro_continuation` is set (new epic, just confirmed)
+
+The macro shaping at Step 3 already explored the work enough to confirm it's an epic and surfaced the first topic seeds; the confirm-trigger backfilled that into `session-{session_number}.md`. Don't re-open with a cold prompt — the conversation is already live. Render a brief transition that moves from "what is this" to "what are its topics":
+
+> *Output the next fenced block as a code block:*
+
+```
+That's an epic — work unit created. Now let's map its topics. We can
+keep pulling on the shape, or synthesise the topics we've already
+sketched whenever you're ready.
+
+Anything more to sketch, or shall I synthesise?
+```
+
+**STOP.** Wait for user response.
+
+→ Proceed to **B. Session Loop**.
+
+#### If a resume was selected at Step 5
 
 The user chose `continue` at resume detection — the active session log on disk is the working state. Read `.workflows/{work_unit}/discovery/session-{session_number}.md` to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
 
@@ -39,7 +57,7 @@ Where do you want to take it from here?
 
 #### If `discovery_map` is non-empty (map already populated)
 
-The map exists; editing existing items is available alongside new exploration. Render the map as an anchor using the discovery output from Step 1, then open the conversation:
+The map exists; editing existing items is available alongside new exploration. Render the map as an anchor using the discovery output from Step 6, then open the conversation:
 
 > *Output the next fenced block as a code block:*
 

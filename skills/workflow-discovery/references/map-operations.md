@@ -1,6 +1,6 @@
 # Map Operations
 
-*Reference for **[workflow-discovery-process](../SKILL.md)***
+*Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 
@@ -8,7 +8,7 @@ Per-operation handling for **edits to existing map items**. Loaded by [session-l
 
 New topics are not added here — they are synthesised at endpoint from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
 
-State for validation comes from `skills/workflow-discovery-process/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
+State for validation comes from `skills/workflow-discovery/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
 After all of the user's operations have been processed, return to caller.
 
@@ -17,7 +17,7 @@ After all of the user's operations have been processed, return to caller.
 Re-run discovery to pick up state changes since the last invocation (operations applied earlier in the session, or the parent's initial discovery):
 
 ```bash
-node .claude/skills/workflow-discovery-process/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
 ```
 
 Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.
@@ -164,7 +164,7 @@ For each:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} summary "{new summary}"
 ```
 
-Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 1. If **Edits** currently reads `(none)`, replace it with the bullets:
+Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 7. If **Edits** currently reads `(none)`, replace it with the bullets:
 
 ```markdown
 - Edited summary: {name_1} — {short note}

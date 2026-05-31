@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-discovery-process/scripts/discovery.cjs');
+const { discover, format } = require('../../skills/workflow-discovery/scripts/discovery.cjs');
 
 function writeSessionLog(dir, workUnit, number, conclusionBody, opts = {}) {
   const padded = String(number).padStart(3, '0');
@@ -35,7 +35,7 @@ ${conclusionBody}${trailing}`;
   createFile(dir, `.workflows/${workUnit}/discovery/${filename}`, content);
 }
 
-describe('workflow-discovery-process discovery', () => {
+describe('workflow-discovery discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -516,7 +516,7 @@ describe('workflow-discovery-process discovery', () => {
   });
 });
 
-describe('workflow-discovery-process format', () => {
+describe('workflow-discovery format', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });

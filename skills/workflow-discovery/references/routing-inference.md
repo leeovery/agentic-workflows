@@ -1,6 +1,6 @@
 # Routing Inference
 
-*Reference for **[workflow-discovery-process](../SKILL.md)***
+*Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 

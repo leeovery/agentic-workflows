@@ -215,7 +215,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 
 | Skill | Description |
 |-------|-------------|
-| [workflow-discovery-process](skills/workflow-discovery-process/) | Curatorial discovery-map session for epics — names topics, classifies each as research or discussion, supports refinement re-entry |
+| [workflow-discovery](skills/workflow-discovery/) | Curatorial discovery-map session for epics — names topics, classifies each as research or discussion, supports refinement re-entry |
 | [workflow-research-process](skills/workflow-research-process/) | Free-form exploration across technical, business, and market domains |
 | [workflow-discussion-process](skills/workflow-discussion-process/) | Captures context, decisions, edge cases, competing solutions, and rationale |
 | [workflow-investigation-process](skills/workflow-investigation-process/) | Symptom gathering and code analysis for root cause identification |

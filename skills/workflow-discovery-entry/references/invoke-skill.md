@@ -27,7 +27,7 @@ Imports:
   (none)
 @endif
 
-Invoke the workflow-discovery-process skill.
+Invoke the workflow-discovery skill.
 ```
 
-Invoke the [workflow-discovery-process](../../workflow-discovery-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
+Invoke the [workflow-discovery](../../workflow-discovery/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

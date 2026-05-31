@@ -1,6 +1,6 @@
 # Discovery Session Log Template
 
-*Reference for **[workflow-discovery-process](../SKILL.md)***
+*Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 
@@ -86,7 +86,7 @@ Browse-and-bail produces no file.
 
 When the file is first created, populate the header, **Description (as of session)**, **Imports**, and **Map State at Start** at the same write that adds the first content. Other sections start as `(none)`.
 
-The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](../../workflow-discovery-process/SKILL.md)). Always replace it at finalisation so the next entry sees a closed state.
+The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](../../workflow-discovery/SKILL.md)). Always replace it at finalisation so the next entry sees a closed state.
 
 At finalisation, replace the `(none)` Conclusion with one of:
 
