@@ -255,6 +255,8 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
+> **2026-05-31 refinement pass.** After the first implementation attempt (see post-mortem at the foot of this doc), the loop-mechanics subtopics below — **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** — were materially refined. Read **"Refinement pass — universal loop & resolution order (2026-05-31)"** at the end of this doc before implementing; where it differs from the loop-*length* framing in the sections immediately following, that section governs. The universal-entry decision itself is unchanged.
+
 ---
 
 ### Discovery as universal entry [decided]
@@ -829,3 +831,69 @@ These were either subsequently reverted or persisted to the close:
 - All 251 manifest CLI tests, the discovery test suite, and migration tests passed at every commit. None of the regressions identified by the audits were detectable by the existing test suite.
 - The `update-config` skill was used to set `workflowKeywordTriggerEnabled: false` in `~/.claude/settings.json` after the harness's "workflow" keyword auto-trigger fired repeatedly on messages that referenced the workflow system being authored.
 - PR #306 was closed without merging. The branch was reset to `main` and the 7 design-doc lock commits cherry-picked back. The branch is preserved.
+
+---
+
+## Refinement pass — universal loop & resolution order (2026-05-31)
+
+This pass refines three already-`[decided]` subtopics in light of the first implementation attempt — **Cross-worktype symmetry**, **Shape-detection heuristics** (specifically the co-emergence point), and **Routing-confirmation mechanism**. It does **not** reopen the universal-entry decision; it sharpens *how the loop runs*. Where it differs from earlier text, this section governs. Written for the eventual plan-mode pass — it captures the model *and* what the first attempt got wrong, so the implementation plan can encode "what not to do" as much as "what to do."
+
+### The keystone model
+
+One loop for every entry, with five properties:
+
+**1. Universal entry; depth scales to unknowns.** Every selection routes through Discovery so shape is *verified*, never assumed. But the loop's length is a function of how much shape is still unknown at entry — not of work type, and never a fixed turn count. Pre-seeded menu picks start at high confidence (the loop mostly *confirms*); `s`/start starts flat (the loop *establishes*). The "dispatch by work_type" patch the first attempt reached for is correct in effect, but the honest framing is depth = f(unknowns), not per-work-type branching.
+
+**2. The invariant is discipline + pivot-availability, not loop length.** "Conversation pattern is the same across work types" was right about *discipline* — open questions, no premature decisions, shape-watching, pivot offers, scope-down-to-inbox — and wrong if read as *same length*. Same discipline everywhere; depth differs. **Every turn must earn its place**: it must be verifying or resolving shape. The metric is not "fewest turns" — a shape-confirm turn earns its place (it's the whole reason everything routes through Discovery). Ceremony turns (a standalone import y/n gate, a synthesis loop where there's nothing to synthesise) do not. Cut those; keep shaping turns.
+
+**3. Gather simultaneously; resolve in dependency order.** Listen for all signal flavours at once — work-type cues and topic seeds co-emerge in the same breath; never sequence the *conversation* into "first interrogate type, then topics." But *commitment* is dependency-ordered: you cannot route topics before knowing it's an epic, nor pick research-vs-discussion before knowing it's a feature. The first attempt's confusion came from resolving without an order. **Gather freely; commit in order.** This is the reconciliation of "co-emergence" (gathering) with "you need the work type before topic routing" (resolution) — they were never in conflict; they're different stages.
+
+**4. Two-layer knowledge loading.**
+- **Detection core** — *universal, always loaded.* The boundary discriminators, reroute triggers, confidence heuristics, and the confirm-with-reasons protocol. Must be universal because `s`/start has no overlay to pick from, and reroute needs the *other* shapes' signals even when pre-seeded. Bounded by construction: it carries signals + the confirm protocol, **never execution detail** — so it cannot bloat without limit. Organise it around the hard boundary discriminators (below), not six per-shape signal catalogs; that is leaner, serves reroute directly, and avoids the trigger-happy-on-weak-matches risk.
+- **Execution overlay** — *polymorphic, lazy, loaded on commit.* Epic topic-synthesis, feature/cc micro-routing, b/q intent-capture + handoff. This is where per-work-type reference files live (the original "polymorphic reference files" idea survives — but only **below the commit line**).
+- **Reroute is the detection core pointed at a competing shape** — one body of knowledge, two targets (the current shape: am I confirmed? / competitors: is something else converging?). Not separate machinery.
+
+**5. Confidence is the clock.** The loop runs until confident-enough-to-commit, then confirms with the user: state the read in plain terms, give the specific signals that drove it (so the user can validate or push back on a *cue*, not just accept/reject), invite override, honour override as final. No arbitrary turn counts.
+
+### Terms
+
+- **Macro / work-type level** — one activity in two modes: *shape* it (flat prior, `s`/start) or *confirm* it (pre-seed, looking for disconfirmation). Confirmation is shaping with a prior; the two rattle one from the other. Output: the work type.
+- **Micro / topic level** — two sub-things: *topic-shaping* (how many topics, what they are) and *topic-routing* (per-topic research-vs-discussion).
+
+### The discriminator tree (resolution order)
+
+Resolve in order of cost + terminality:
+
+1. **Broken / tiny-adjustment?** → bugfix / quickfix. Cheap, distinctive, terminal. Confirm → pass seeding through to investigation / scoping → done. Fast exit; no topic work, no micro routing.
+2. **Not b/q** → keep exploring until topic-count settles:
+   - pattern/principle, nothing ship-able → **cross-cutting**
+   - ship-able, one coherent topic → **feature**
+   - ship-able, topics multiply → **epic**
+
+**Key entanglement: topic-count is a macro discriminator, not a post-commit step.** You cannot tell epic from feature without surfacing whether topics multiply — so topic-*existence* detection happens *during* macro resolution, by the detection core. Only topic-*routing* and topic-*refinement* continue after the macro commit. The **absence** of further topics is itself the feature/cc signal ("discovery long enough to recognise it" = explore until no new topics surface).
+
+The elegant consequence: confirming "epic" *required* surfacing the topics, so by the time epic commits you already hold the topic seeds — topic discovery is the **deepening** of the same exploration that detected epic, not a fresh start.
+
+**Completeness asymmetry.** The feature↔epic *boundary* needs *higher* confidence than epic *topic-enumeration*. The boundary has no safety net; topic-enumeration does (gap-analysis runs at every workflow-bridge transition and keeps hydrating the map). So explore the boundary carefully, but don't over-invest in exhaustive topic lists at initial discovery.
+
+### Epic discovery: reuse, don't rebuild
+
+Epic already has a full discovery phase today — the discovery map, the over-split/under-split rules, the curatorial map-operations. **Phase 17 adds the macro layer in front of the existing epic topic-discovery; it does not rebuild it.** All existing epic-discovery rules still apply.
+
+- Initial epic discovery is not about perfection — it's "rooted correctly + enough topic seeds to start." Stopping at "enough" is correct, not lazy.
+- Confirming epic does **not** finish discovery and does **not** lock the surfaced topics. Keep shaping if useful.
+- When topics get pruned ("focus on A, surface B and C to the inbox"), use the existing **scope-down + inbox-surface** mechanism.
+
+### Imports
+
+Universal across all work types — all benefit from seed material if it exists. **Folded into the opener, not a standalone gate.** No-files path costs zero extra turns; got-files path attaches one or more, read at the opener. Imports remain distinct from inbox seed (the first attempt conflated them — see post-mortem); do not treat an inbox seed file as an import.
+
+### What not to do (distilled from the first attempt)
+
+- Don't run the full exploration loop when shape is pre-seeded — confidence starts high; confirm and move.
+- Don't add ceremony turns to b/q — no import y/n gate, no synthesis explore/adjust loop. They have nothing to route or decompose.
+- Don't make detection knowledge polymorphic — it must be universal, or reroute and the `s`/start path break.
+- Don't resolve macro and micro simultaneously — gather simultaneously, *commit* in dependency order.
+- Don't rebuild epic topic-discovery — reuse it; add only the macro layer.
+- Don't conflate inbox seed with imports.
+- Don't optimise for fewest turns — optimise for every turn earning its place.
