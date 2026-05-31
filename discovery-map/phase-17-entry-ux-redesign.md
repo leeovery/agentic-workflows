@@ -255,15 +255,16 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
-> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), six same-day refinement passes were appended at the end of this doc — read **all six before implementing**; where they differ from the sections above, they govern:
+> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), seven same-day refinement passes were appended at the end of this doc — read **all seven before implementing**; where they differ from the sections above, they govern:
 > - **Refinement pass — universal loop & resolution order** refines **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** (loop *length* → depth = f(unknowns); gather-then-resolve-in-order).
 > - **Refinement pass II — funnel entry, deferred persistence & the landing** resolves the entry architecture (workflow-start → discovery directly; start-\* dissolve), deferred persistence (confirm is the single trigger), and the post-confirm landing — revising **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions in **Migration & cutover**.
 > - **Refinement pass III — imports vs inbox & the discovery→first-phase carrier** sharpens **Imports & inbox handling** (same-at-read / distinct-at-persist) and adds the discovery→first-phase seed-carrier contract.
 > - **Refinement pass IV — path inventory (acceptance spec)** — every new-work entry path with expected behaviour, universal invariants, the must-not-regress checklist, and Step-0/bridge survival. The implementation acceptance gate.
 > - **Refinement pass V — PR shape & sequencing** — three stacked PRs (schema → funnel → continue-* lockdown), held until all done, merged bottom-to-top; legible commits, never squashed.
-> - **Refinement pass VI — Discovery as the umbrella entry skill** — the **authoritative architecture**: discovery is *one* umbrella skill (collapses the entry/process pair) with two invocation modes; macro-confirm is the durability boundary; `continue-epic` delegates refinement to discovery; uniform persistence (no epic special-casing); the engine/cutover split is discarded. **Supersedes the entry/process framing in earlier passes and the structural work-items in the PR scope briefs.**
+> - **Refinement pass VI — Discovery as the umbrella entry skill** — the **authoritative architecture**: discovery is *one* umbrella skill (collapses the entry/process pair) with two invocation modes; macro-confirm is the durability boundary; `continue-epic` delegates refinement to discovery; uniform persistence (no epic special-casing); the engine/cutover split is discarded. **Supersedes the entry/process framing in earlier passes.**
+> - **Refinement pass VII — single PR; the complete work plan** — the **authoritative PR shape**: Phase 17 ships as *one* PR (the complete funnel, continue-* lockdown included), built in legible commits, reviewed at the end against the full path inventory (pass IV). Supersedes pass V's stacked PRs and the "PR scope briefs" section (now kept as history).
 >
-> The universal-entry decision itself is unchanged. **Plus, at the very end: "PR scope briefs"** — the per-PR work-item references a fresh plan-mode session loads to plan PR1/PR2/PR3, with a status tracker at the top.
+> The universal-entry decision itself is unchanged.
 
 ---
 
@@ -1124,6 +1125,8 @@ Knowledge-check is a **project-setup gate, not a per-session gate** — once a p
 
 ## Refinement pass V — PR shape & sequencing (2026-05-31)
 
+> **Superseded by Refinement pass VII (single PR).** Kept as history of the PR-shape thinking; the three-stacked-PRs structure below is retired.
+
 Fifth pass, same day. Closes the last open thread. The implementation ships as **three stacked PRs**, held until all are complete, then merged **bottom-to-top** — no partial Phase-17 state ever sits on main (the same stacked-PR strategy as the parent initiative).
 
 ```
@@ -1241,9 +1244,7 @@ Discovery's *persisted* output (session log + manifest `description`; + the reco
 
 ### What this means for the PRs
 
-- **PR2 (the whole funnel — one uniform feature):** collapse `workflow-discovery-entry` + `workflow-discovery-process` into one umbrella discovery skill with the two invocation modes; route `workflow-start` (every pick + `s` + inbox) → discovery; uniform confirm-trigger (create-if-absent); delete the five `start-*`; `continue-epic` delegates refinement to discovery; first-phase entry skills read the carrier; `ensure-discovery-item` unchanged (stays epic-only); the manifest cross-type **contract test** (test-only). Acceptance = the full path inventory (pass IV).
-- **PR3 (continue-* lockdown):** unchanged from pass V.
-- The **engine/cutover split is discarded.**
+**PR shape is settled by pass VII: one single PR** — the complete funnel feature built in legible commits, reviewed at the end against the full path inventory. The earlier per-PR split is retired. The architecture this pass defines is what that one PR implements: collapse `workflow-discovery-entry` + `workflow-discovery-process` into one umbrella skill (two modes); route `workflow-start` (every pick + `s` + inbox) → discovery; uniform confirm-trigger (create-if-absent); delete the five `start-*`; `continue-epic` delegates refinement to discovery; first-phase entry skills read the carrier; `ensure-discovery-item` unchanged (stays epic-only); + the manifest contract test; + continue-* lockdown. See pass VII for the commit sequence.
 
 ### Codebase facts grounding this pass (verified)
 
@@ -1256,7 +1257,34 @@ Discovery's *persisted* output (session log + manifest `description`; + the reco
 
 ---
 
-## PR scope briefs (durable plan-mode references)
+## Refinement pass VII — single PR; the complete work plan (2026-05-31)
+
+**This is the authoritative PR shape and the work plan.** It supersedes pass V's three-stacked-PRs and the multi-PR framing in pass VI's "What this means for the PRs" and in the "PR scope briefs" section below (now kept only as history).
+
+**Decision:** Phase 17 ships as **one single PR** — the complete funnel feature, built on this branch in **legible commits, never squashed**, and reviewed/analysed **at the end against one structured complete plan**: the full path inventory (pass IV).
+
+**Why one PR:** the funnel is one coherent flow; assembling and reviewing the whole result end-to-end against a single complete plan is the strongest defence against the contract-mismatch and prose/UX regressions that sank the first attempt (a split reviews the skill and its wiring separately and assembles them late). The legible commit sequence keeps review tractable without fragmenting the feature. The continue-* lockdown — a clean internal seam — becomes the final commit group, not a separate PR (it's small and only needs `workflow-start` to already be the sole entry).
+
+**Branch.** Built directly on `feat/phase-17-discovery-universal-entry` (already on `main`; carries the design + idea #29 — they land with the feature). Because it's one PR, **restructure in place** — no "build-alongside" trick and no `init-if-absent`/`persistence_live` shim (the whole cutover lands together).
+
+### Commit sequence (legible; the whole feature lands together)
+
+1. **Manifest cross-type contract test** — *test-only*. Pin `phases.discovery` accepted for all five work types in `tests/scripts/test-workflow-manifest.sh` (session-level field writes, `init-phase {wu}.discovery.{topic}`, status `in-progress` only). No `manifest.cjs` change (already permissive). Mirror commit `09e4b531`.
+2. **The umbrella discovery skill** (per pass VI — collapse `workflow-discovery-entry` + `workflow-discovery-process` into one skill): backbone dispatch (*new mode* / *existing-epic mode*); universal detection core (boundary discriminators, pivot/reroute watch, confidence heuristics, confirm-with-reasons — a pre-seed is a hint, still confirmed); per-type endpoint (epic → initial topic sketch reusing the existing curatorial references; feature/cc → micro-routing; b/q → brief intent; routing overlay-local, no central route table); confirm-trigger (create-if-absent `manifest init` → backfill session log → land imports → archive inbox seed; nothing persists before the work-type commit; uniform, no special-casing); opener per pre-seed; name resolution (filename-slug / conversational); return contract (non-epic → first phase; new epic → `continue-epic`; refinement → `continue-epic`).
+3. **`workflow-start` rewire + dissolve `start-*` + retire old discovery skills** — add `s`/start; route every pick + inbox → the discovery skill (pre-seed where known; `start-from-inbox` preserves filename-slug, drops the idea f/e/c sub-menu); full Step 0 stays in `workflow-start`; delete the five `start-*` and the old `workflow-discovery-entry`/`-process` wrappers (their curatorial references survive); fix dying references (`name-check` resume text, `README`, `start-from-inbox`); rework the epic-only assumptions in `workflow-discovery-entry` (subsumed) and `workflow-research-entry/references/invoke-skill.md` (to the carrier contract). No `workflow-bootstrap` skill.
+4. **First-phase entry carrier wiring** (`workflow-{investigation,scoping,discussion,research}-entry`) — read the durable carrier (session log + manifest `description`); don't re-gather (reuse the `source` machinery + "caller already gathered — do not re-ask"). `ensure-discovery-item` **stays epic-only** (single-phase types get no `phases.discovery.items`; seed single-phase work from the session log — the subtlest part). Imports universal, folded into the opener (replaces the epic/feature `collect-import.md` gate).
+5. **`continue-epic` delegates refinement to discovery** — when it offers refinement, route to the discovery skill (existing-epic mode); don't implement shaping in `continue-epic`.
+6. **continue-* lockdown** (final commit group) — `user-invocable: false` on the five `continue-*`; trim their Step 0 (drop migrations + knowledge-check, keep casing — safe now `workflow-start` is the sole entry); text-migrate user-facing `/continue-*` promises (`workflow-start/references/{active-work,manage-work-unit,absorb-into-epic}.md`, `continue-*/references/validate-selection.md`, `README.md`, others via `grep -rl '/continue-'`); leave internal invocations unchanged (workflow-bridge, workflow-legacy-research-split, topic-discovery-dispatch, map-operations, migration 038). Resume logic unchanged.
+
+### Acceptance — the one structured plan, run at the end
+
+Before merging to `main`, walk the **entire path inventory** (pass IV) against the finished branch: Part 1 invariants, Part 2 per-path behaviour (e/f/b/q/c/s + inbox bug/quickfix/idea), Part 3 regression watchlist R1–R9, Part 4 Step-0/bridge survival. Tests can't see the prose/UX regressions that sank the first attempt — this walkthrough is the gate.
+
+---
+
+## PR scope briefs — superseded, kept as history
+
+> **⚠️ Superseded by Refinement pass VII (above)**, the single-PR work plan. The PR1/PR2/PR3 breakdown below (stacked PRs) is **retired**; its work-item substance is folded into pass VII's commit sequence. This section is kept only as history of the earlier multi-PR framing.
 
 > **Purpose.** These are the per-PR work-item references. Each is self-contained enough that a **fresh session with none of the design conversation in context** can load it (plus the relevant refinement passes via the forward-pointer, plus the codebase) and generate that PR's detailed plan-mode plan. The brief is the *scope*; plan-mode produces the *line-level plan* against the actual merged code. Do **not** pre-generate PR2/PR3 detailed plans — they depend on the merged state of the PR below them.
 
