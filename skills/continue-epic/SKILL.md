@@ -307,8 +307,8 @@ Invoke the appropriate skill based on the user's menu selection. Match by **pref
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
-| Continue discovery | `/workflow-discovery-entry epic {work_unit}` |
+| Continue discovery | `/workflow-discovery epic {work_unit}` |
 
-Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
+Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided). "Continue discovery" routes to the umbrella discovery skill, which detects the existing work unit and re-shapes the map (existing-epic mode) — continue-epic navigates; discovery owns the shaping.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

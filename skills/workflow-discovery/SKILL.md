@@ -63,14 +63,14 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ── Dispatch ─────────────────────────────────────
 ```
 
-Read the handoff block rendered by the caller (`workflow-start` for new work, `continue-epic` for existing-epic shaping). It names:
+Read the caller's inputs. New work arrives from `workflow-start` as a **handoff block**; existing-epic shaping arrives from `continue-epic` as **positional arguments** (`$0` = work_type, `$1` = work_unit).
 
-- **Mode** — `new` or `existing-epic`.
+The handoff block names:
+
 - **Work type (pre-seed)** — `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `(none)`. A *hint*, not a given — still confirmed in new mode.
-- **Work unit** — the epic name (existing-epic mode only).
 - **Inbox seed** — path to an inbox file consumed as the opening description, or `(none)`.
 
-Confirm the mode against the manifest: if a `work_unit` is named, check `node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}` — a `true` result means existing-epic mode.
+Determine the mode: if a `work_unit` is named (positional `$1`), confirm it against the manifest — `node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}` returning `true` means **existing-epic mode**. Otherwise (a handoff block with no named work unit) it is **new mode**.
 
 #### If existing-epic mode
 

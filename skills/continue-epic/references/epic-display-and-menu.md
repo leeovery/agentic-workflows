@@ -492,7 +492,7 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 
 #### If user chose `i`/`discovery`
 
-Set selection to `Continue discovery`. The caller routes this to `/workflow-discovery-entry` for the work unit (no topic argument).
+Set selection to `Continue discovery`. The caller routes this to `/workflow-discovery` for the work unit (no topic argument) — the umbrella discovery skill re-shapes the map in existing-epic mode.
 
 → Return to caller.
 
