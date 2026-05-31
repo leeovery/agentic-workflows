@@ -262,7 +262,7 @@ State key: `pending` (not yet discussed), `exploring` (active discussion), `conv
 > - **Refinement pass IV — path inventory (acceptance spec)** — every new-work entry path with expected behaviour, universal invariants, the must-not-regress checklist, and Step-0/bridge survival. The implementation acceptance gate.
 > - **Refinement pass V — PR shape & sequencing** — three stacked PRs (schema → funnel → continue-* lockdown), held until all done, merged bottom-to-top; legible commits, never squashed.
 >
-> The universal-entry decision itself is unchanged.
+> The universal-entry decision itself is unchanged. **Plus, at the very end: "PR scope briefs"** — the per-PR work-item references a fresh plan-mode session loads to plan PR1/PR2/PR3, with a status tracker at the top.
 
 ---
 
@@ -1148,3 +1148,89 @@ main
 **Merge discipline.** Legible commits, **never squashed** (the first attempt's squash erased slice isolation and bundled design-lock commits with code). Each PR reviewed on its own; merge bottom-to-top only once all three are done.
 
 **Logistics deferred to implementation kickoff:** the base of the stack (merge this design branch to main first vs hold it as the stack base) and cleanup of the abandoned first-attempt branches (`feat/phase-17a`…`-17g` on origin).
+
+---
+
+## PR scope briefs (durable plan-mode references)
+
+> **Purpose.** These are the per-PR work-item references. Each is self-contained enough that a **fresh session with none of the design conversation in context** can load it (plus the relevant refinement passes via the forward-pointer, plus the codebase) and generate that PR's detailed plan-mode plan. The brief is the *scope*; plan-mode produces the *line-level plan* against the actual merged code. Do **not** pre-generate PR2/PR3 detailed plans — they depend on the merged state of the PR below them.
+
+### Status tracker
+
+| PR | Scope | Branches off | Status |
+|---|---|---|---|
+| 1 | manifest schema | stack base | Not started |
+| 2 | discovery as universal funnel | PR 1 | Not started |
+| 3 | continue-* lockdown | PR 2 | Not started |
+
+*(Update this table as each PR opens / merges. A resuming session reads it first to know where it is.)*
+
+### PR 1 — manifest schema
+
+**Goal.** Let `phases.discovery` validate for **all** work types (today the manifest CLI accepts it only for epic).
+
+**Work items.**
+- Relax the epic-only guard on `phases.discovery` in `skills/workflow-manifest/scripts/manifest.cjs`.
+- Add/extend a test under `tests/scripts/` pinning `phases.discovery` as accepted for feature / bugfix / quick-fix / cross-cutting.
+
+**In scope:** validation + test only. **Out:** anything that *writes* `phases.discovery` for non-epics (that's PR2).
+
+**Acceptance:** all 251 manifest CLI tests pass; new test asserts cross-work-type acceptance. Zero behavioural change otherwise.
+
+**Preconditions:** none. **Reference:** the abandoned first attempt's `17a` (`feat/phase-17a-manifest-schema-discovery-cross-type`) did exactly this — usable as a model, not a base.
+
+### PR 2 — discovery as universal funnel
+
+**Goal.** `workflow-start` → discovery directly for every entry; discovery shapes/confirms work type, persists at confirm, routes to the first phase. start-* dissolve.
+
+**Preconditions:** PR1 merged.
+
+**Work items, by area:**
+
+**`workflow-start`**
+- Add `s`/start menu option (unknown shape).
+- Route every pick → `workflow-discovery-entry`: `e/f/b/q/c` with a `work_type` pre-seed; `s` with none; inbox selection with the seed file (folder → pre-seed hint).
+- Host the **full Step 0** (casing · migrations · knowledge-check · knowledge-compact) — it is now the funnel entry.
+- `start-from-inbox.md`: route to discovery, not start-*; preserve the **filename-slug → suggested-name**; drop the idea `f/e/c` sub-menu (discovery classifies).
+- `active-work.md` untouched here (continue-* stay user-invocable until PR3).
+
+**`workflow-discovery-entry`**
+- Accept an **optional** `work_type` pre-seed and optional seed material (inbox path / imports). `work_unit` is **not** known yet on the `s`/start path — don't require it.
+
+**`workflow-discovery-process`** (the heart — currently epic-only curatorial; skeleton today is Resume → Run → Init → Guidelines → Session Loop → Doc Review → Confirm&Persist → Conclude)
+- Add the **universal detection core** (loaded for every entry): boundary discriminators, pivot/reroute watch, confidence heuristics, confirm-with-reasons protocol.
+- Add **per-type execution overlays** (lazy, post-commit): epic = existing topic synthesis; feature/cc = one micro-routing decision; bugfix/quickfix = brief intent capture. **Routing is overlay-local** (each overlay invokes its own first-phase entry — no central route table).
+- Implement the **confirm-trigger** as the single persistence hinge: `manifest init --work-type {wt}` (resolved name) → write/backfill session log → land imports → archive inbox seed. **Nothing persists before confirm** — move whatever the current Step 2 "Initialize Discovery" does early onto this trigger.
+- Opener phrased per pre-seed (pass: opener shapes); name resolution incl. filename-slug (inbox) and conversational (`s`).
+- Pre-seeded paths **confirm-and-move** — no full exploration loop; b/q land at ~3 interactions.
+
+**Delete the five `start-*`**
+- Redistribute per pass II's table (Step 0 → workflow-start; gather → opener; name+manifest → confirm-trigger; imports → opener+confirm; route → terminal).
+- Fix references that die with them (start-*/`name-check.md` resume text, README lines, `start-from-inbox.md`).
+- **No** `workflow-bootstrap` skill — it folds into discovery-process.
+
+**First-phase entry wiring** (`workflow-{investigation,scoping,discussion,research}-entry`)
+- When invoked by discovery's terminal route, **read the durable carrier** (session log + manifest `description`) as seed; don't re-gather. The existing `source` machinery + the "caller already gathered context — do not re-ask" pattern is the hook.
+- **Key reconciliation / risk:** `discussion-entry` and `research-entry` currently call `ensure-discovery-item` (a discovery-map item) and derive summary/description. Reconcile with "single-phase types have **no** `phases.discovery.items`" — for single-phase work arriving from the funnel, seed from the session log instead of creating a map item. This is the subtlest part of PR2; plan it explicitly.
+
+**Imports** — universal (all types), folded into the opener (read at opener, landed at confirm); replaces the epic/feature `collect-import.md` gate (b/q/cc gain imports).
+
+**Acceptance:** the **entire path inventory** (pass IV) — Part 1 invariants, Part 2 per-path behaviour, Part 3 regression watchlist R1–R9. Walk every path.
+
+**Out of scope:** continue-* lockdown and continue-* Step 0 trimming (PR3).
+
+### PR 3 — continue-* lockdown
+
+**Goal.** Make `workflow-start` the sole user-facing entry; continue-* become model-only.
+
+**Preconditions:** PR2 merged.
+
+**Work items.**
+- Add `user-invocable: false` to the five `continue-*/SKILL.md`.
+- **Trim Step 0** in continue-* (remove migrations + knowledge-check; keep casing) — safe now, since they're only reachable via `workflow-start`.
+- **Text-migrate user-facing `/continue-*` promises** → "resume via `/workflow-start`": `workflow-start/references/{active-work,manage-work-unit,absorb-into-epic}.md`, `continue-*/references/validate-selection.md` (×5), `README.md`, and any others surfaced by `grep -rl '/continue-'`. **Leave internal invocations unchanged** (workflow-bridge, workflow-legacy-research-split, topic-discovery-dispatch, map-operations, migration 038).
+- `active-work.md` routing becomes model-side invocation (user sees outcome, not a command to type).
+
+**Resume logic unchanged** — five distinct continue-* skills, same displays/menus/state aggregation.
+
+**Acceptance:** path inventory Part 4 (Step-0 survival); `/continue-*` no longer typeable; existing work still reachable via `workflow-start` → active-work; internal invocations still resolve; bridge knowledge-check confirmed a non-issue (pass IV).
