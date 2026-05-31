@@ -255,11 +255,12 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
-> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), four same-day refinement passes were appended at the end of this doc — read **all four before implementing**; where they differ from the sections above, they govern:
+> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), five same-day refinement passes were appended at the end of this doc — read **all five before implementing**; where they differ from the sections above, they govern:
 > - **Refinement pass — universal loop & resolution order** refines **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** (loop *length* → depth = f(unknowns); gather-then-resolve-in-order).
 > - **Refinement pass II — funnel entry, deferred persistence & the landing** resolves the entry architecture (workflow-start → discovery directly; start-\* dissolve), deferred persistence (confirm is the single trigger), and the post-confirm landing — revising **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions in **Migration & cutover**.
 > - **Refinement pass III — imports vs inbox & the discovery→first-phase carrier** sharpens **Imports & inbox handling** (same-at-read / distinct-at-persist) and adds the discovery→first-phase seed-carrier contract.
 > - **Refinement pass IV — path inventory (acceptance spec)** — every new-work entry path with expected behaviour, universal invariants, the must-not-regress checklist, and Step-0/bridge survival. The implementation acceptance gate.
+> - **Refinement pass V — PR shape & sequencing** — three stacked PRs (schema → funnel → continue-* lockdown), held until all done, merged bottom-to-top; legible commits, never squashed.
 >
 > The universal-entry decision itself is unchanged.
 
@@ -1117,3 +1118,33 @@ Note: inbox→idea now classifies through discovery, so it can resolve to *any* 
 | Knowledge **check** | ✓ | ✗ — guaranteed by `workflow-start`; bridge starts nothing new |
 
 Knowledge-check is a **project-setup gate, not a per-session gate** — once a project's KB is set up it stays set up, and setup is human-only. A bridge only ever runs inside a work unit that was created via `workflow-start`, where the check already passed; re-checking verifies something already guaranteed. The context-clear "fresh session" edge is a new *conversation*, not a new *project*. The pathological case (KB deleted mid-pipeline) degrades gracefully via stub/keyword mode + the pending queue. So: no knowledge-check at bridge.
+
+---
+
+## Refinement pass V — PR shape & sequencing (2026-05-31)
+
+Fifth pass, same day. Closes the last open thread. The implementation ships as **three stacked PRs**, held until all are complete, then merged **bottom-to-top** — no partial Phase-17 state ever sits on main (the same stacked-PR strategy as the parent initiative).
+
+```
+main
+└─ design branch (this doc — refinement passes I–V + idea #29)
+   └─ PR 1  manifest schema
+      └─ PR 2  discovery as universal funnel   ← the whole improvement
+         └─ PR 3  continue-* lockdown
+```
+
+**PR 1 — manifest schema.** Allow `phases.discovery` for all work types (today epic-only) + a test pinning it. Zero behavioural change — nothing writes it for non-epics yet; validation just stops rejecting it. May fold into PR 2 (borderline).
+
+**PR 2 — discovery as universal funnel.** The whole improvement, as one feature (not per-work-type slices — that fractures discovery):
+- `workflow-start` rewire — every menu pick + `s`/start + inbox → discovery; full Step 0 lives here.
+- `workflow-discovery-process` — universal detection core + per-type execution overlays + the confirm-trigger (init manifest · flush log · land imports · archive inbox seed) + overlay-local route-to-phase.
+- delete the five `start-*`; redistribute their pieces; fix the resume-text / README references that die with them.
+- first-phase entry skills read the durable carrier (session log + `description`) — new wiring for single-phase types.
+- `continue-*` untouched here — still user-invocable, still own their Step 0, so the resume path keeps working.
+- gated by the path inventory (pass IV).
+
+**PR 3 — continue-\* lockdown.** Flip the five `continue-*` to `user-invocable: false` · trim their Step 0 (now safe — only reachable via `workflow-start`) · text-migrate the *user-facing* `/continue-*` promises (internal invocations unchanged) · resume **logic** unchanged (five skills stay, same displays/menus). Must follow PR 2 — you can't strip continue-*'s Step 0 while it's still directly typeable. Confirmed **in scope** (pass II's "carved out" is now PR 3 of the held stack, not a deferred maybe).
+
+**Merge discipline.** Legible commits, **never squashed** (the first attempt's squash erased slice isolation and bundled design-lock commits with code). Each PR reviewed on its own; merge bottom-to-top only once all three are done.
+
+**Logistics deferred to implementation kickoff:** the base of the stack (merge this design branch to main first vs hold it as the stack base) and cleanup of the abandoned first-attempt branches (`feat/phase-17a`…`-17g` on origin).
