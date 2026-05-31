@@ -142,7 +142,7 @@ Parse the discovery output to understand:
 ```
 No features in progress.
 
-Run /start-feature to begin a new one.
+Run /workflow-start to begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

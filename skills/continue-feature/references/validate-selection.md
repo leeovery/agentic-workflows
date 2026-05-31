@@ -13,7 +13,7 @@ Validate the selected work unit against the discovery output and store its data.
 ```
 No active feature named "{work_unit}" found.
 
-Run /continue-feature to see available features, or /start-feature to begin a new one.
+Run /continue-feature to see available features, or /workflow-start to begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

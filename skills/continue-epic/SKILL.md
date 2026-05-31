@@ -151,7 +151,7 @@ Parse the discovery output to understand:
 ```
 No epics in progress.
 
-Run /start-epic to begin a new one.
+Run /workflow-start to begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

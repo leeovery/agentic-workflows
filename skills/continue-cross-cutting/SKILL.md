@@ -142,7 +142,7 @@ Parse the discovery output to understand:
 ```
 No cross-cutting concerns in progress.
 
-Run /start-cross-cutting to begin a new one.
+Run /workflow-start to begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

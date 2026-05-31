@@ -142,7 +142,7 @@ Parse the discovery output to understand:
 ```
 No quick-fixes in progress.
 
-Run /start-quickfix to begin a new one.
+Run /workflow-start to begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

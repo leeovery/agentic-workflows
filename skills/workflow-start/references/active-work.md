@@ -109,6 +109,7 @@ What would you like to do?
 - **`4`** — Continue "{cross_cutting.name:(titlecase)}" — cross-cutting, {cross_cutting.phase_label}
 - **`5`** — Continue "{epic.name:(titlecase)}" — epic
 
+- **`s`/`start`** — Start something new (not sure what kind yet)
 - **`f`/`feature`** — Start new feature
 - **`e`/`epic`** — Start new epic
 - **`b`/`bugfix`** — Start new bugfix
@@ -128,15 +129,15 @@ Select an option:
 
 **Continue items:** Same visual style as command options — `- **`N`** — description`. Feature/bugfix/cross-cutting shows type + phase label. Epic just shows "epic" (detail is in continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
 
-**Command options:** Start-new, inbox, view, and manage are always command options (not numbered). Always show all three start options.
+**Command options:** Start-new, inbox, view, and manage are always command options (not numbered). Always show all six start options (`s` plus the five typed picks).
 
 Recreate with actual work units from discovery.
 
 **STOP.** Wait for user response.
 
-#### If user chose a continue or start-new option
+#### If user chose a continue option
 
-Invoke the selected skill:
+Invoke the matching skill:
 
 | Selection | Invoke |
 |-----------|--------|
@@ -145,13 +146,14 @@ Invoke the selected skill:
 | Continue quick-fix | `/continue-quickfix {work_unit}` |
 | Continue cross-cutting | `/continue-cross-cutting {work_unit}` |
 | Continue epic | `/continue-epic {work_unit}` |
-| Start new feature | `/start-feature` |
-| Start new epic | `/start-epic` |
-| Start new bugfix | `/start-bugfix` |
-| Start new quick-fix | `/start-quickfix` |
-| Start new cross-cutting | `/start-cross-cutting` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+
+#### If user chose a start-new option (`s`, `f`, `e`, `b`, `q`, or `c`)
+
+Set the work-type pre-seed from the pick — `s` → `(none)`, otherwise the matching type (feature / epic / bugfix / quick-fix / cross-cutting).
+
+→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `(none)`.
 
 #### If user chose `v`/`view`
 

@@ -23,14 +23,13 @@ No active work found.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Each work type follows a different pipeline. Features and
-> epics can start with research or discussion, bugfixes start with
-> investigation, quick-fixes go straight to scoping. If unsure,
-> feature is the most common choice.
+> Pick a type if you know it, or start unsure and we'll figure out
+> the shape together. Each type follows its own pipeline.
 
 · · · · · · · · · · · ·
 What would you like to start?
 
+- **`s`/`start`** — Not sure what kind yet — describe it and we'll shape it
 - **`f`/`feature`** — Single topic: (research →) discussion → spec → plan → implement → review
 - **`e`/`epic`** — Multiple topics, multi-session, same pipeline per topic
 - **`b`/`bugfix`** — Investigation → spec → plan → implement → review
@@ -55,19 +54,11 @@ Select an option:
 
 → Return to caller.
 
-#### If user chose `f`/`feature`, `e`/`epic`, `b`/`bugfix`, `q`/`quick-fix`, or `c`/`cross-cutting`
+#### If user chose a start-new option (`s`, `f`, `e`, `b`, `q`, or `c`)
 
-Invoke the selected skill:
+Set the work-type pre-seed from the pick — `s` → `(none)`, otherwise the matching type (feature / epic / bugfix / quick-fix / cross-cutting).
 
-| Selection | Invoke |
-|-----------|--------|
-| Feature | `/start-feature` |
-| Epic | `/start-epic` |
-| Bugfix | `/start-bugfix` |
-| Quick-fix | `/start-quickfix` |
-| Cross-cutting | `/start-cross-cutting` |
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `(none)`.
 
 #### If user chose `v`/`view`
 
