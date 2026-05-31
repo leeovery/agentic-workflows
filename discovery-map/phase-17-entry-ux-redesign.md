@@ -255,9 +255,10 @@ Migration & cutover                       [decided]
 
 State key: `pending` (not yet discussed), `exploring` (active discussion), `converging` (narrowing toward decision), `decided` (locked in this pass; future refinements may revisit).
 
-> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), two same-day refinement passes were appended at the end of this doc — read **both before implementing**; where they differ from the sections above, they govern:
+> **2026-05-31 refinement passes.** After the first implementation attempt (see post-mortem at the foot of this doc), three same-day refinement passes were appended at the end of this doc — read **all three before implementing**; where they differ from the sections above, they govern:
 > - **Refinement pass — universal loop & resolution order** refines **Cross-worktype symmetry**, **Shape-detection heuristics**, **Routing-confirmation mechanism** (loop *length* → depth = f(unknowns); gather-then-resolve-in-order).
 > - **Refinement pass II — funnel entry, deferred persistence & the landing** resolves the entry architecture (workflow-start → discovery directly; start-\* dissolve), deferred persistence (confirm is the single trigger), and the post-confirm landing — revising **start-\* future** (no separate bootstrap skill) and the manifest-timing assumptions in **Migration & cutover**.
+> - **Refinement pass III — imports vs inbox & the discovery→first-phase carrier** sharpens **Imports & inbox handling** (same-at-read / distinct-at-persist) and adds the discovery→first-phase seed-carrier contract.
 >
 > The universal-entry decision itself is unchanged.
 
@@ -986,3 +987,68 @@ The post-confirmation landing is *both* universal and work-type-specific, cleanl
 - Don't centralise route-to-phase — keep it overlay-local.
 - Don't lose the inbox filename-slug → suggested-name derivation.
 - Don't migrate work types onto the funnel incrementally — it fractures discovery.
+
+---
+
+## Refinement pass III — imports vs inbox & the discovery→first-phase carrier (2026-05-31)
+
+Third pass, same day. Sharpens the locked **Imports & inbox handling** subtopic (which treated the two as "the same handling pattern") and adds a new decided point: the **discovery → first-phase seed-carrier contract**. Same convention — where this differs from earlier text, this section governs.
+
+### Imports vs inbox — converge at the opener, diverge at the confirm trigger
+
+The first attempt conflated these (it briefly copied the inbox seed into `imports/`). The fix is to recognise they share a *read* moment but not a *persistence* moment. Core difference is **role**:
+
+- **Inbox item = the work's *origin*.** A pre-captured thought that *becomes* a work unit. Exactly one per entry. Consumed when the work begins. Carries a classification hint via its folder.
+- **Imports = *reference material* that informs the work.** Zero-to-many. Retained (`imports/`, KB-indexed). No classification role.
+
+| | Inbox seed | Imports |
+|---|---|---|
+| Role at opener | read → shapes conversation; **folder pre-seeds macro** (bugs→bugfix, quickfixes→quickfix, ideas→none) | read → informs shape via *content* (multi-topic content can trigger epic-pivot) |
+| Classification hint | yes (explicit user act — filed in a folder) | no (material to interpret, never a pre-seed) |
+| Cardinality | exactly one (see idea #29 for future multi-seed) | zero-to-many |
+| Pre-confirm persistence | none (already on disk in `.inbox/`) | none (bytes read into context only) |
+| **At confirm trigger** | **archived** → `.inbox/.archived/` | **landed** → copied to `imports/`, KB-indexed, recorded in `imports[]` |
+| Persists into the work unit? | no — consumed | yes — retrievable via KB |
+
+**Unifying insight:** inbox is not a third entry type — it's **a pre-captured opening description + an optional folder-based macro pre-seed**:
+- enter from `.inbox/bugs/X.md` ≡ pick `b`/bugfix + a seed description
+- enter from `.inbox/ideas/X.md` ≡ `s`/start + a seed description
+
+Imports are orthogonal — an optional attachment to *any* entry (typed, `s`, a menu pick, or an inbox-seeded one). You can enter from a bug report (seed) *and* attach a log file (import); both read at the opener, distinct lifecycles at confirm.
+
+**Anti-conflation rule:** an inbox seed is **never** copied into `imports/`. It's archived (not deleted). Its substance isn't lost — it shapes the conversation, which is backfilled into the session log, and flows into downstream artifacts (which *are* KB-indexed).
+
+**Consistency win:** deferred persistence fixes the archival-timing regression for free — manifest-init and inbox-archival both fire at the *same* confirm trigger, so there is no window where a manifest exists but the inbox file is still pending. Abandon pre-confirm → the item simply stays in `.inbox/` for next time.
+
+### The discovery → first-phase seed-carrier contract
+
+Discovery shapes; the first phase fills the shape. Whatever discovery captured — the inbox seed, the shaped intent, the routing decision — must reach the first phase reliably.
+
+**Contract: discovery's *persisted* output must be sufficient to bootstrap the first phase without the live conversation.** That output is the **session log + manifest `description`** (+ the discovery map for epics). The first-phase entry skill reads it as seed material.
+
+- The **"brief intent capture"** (bugfix/quickfix) and the shaped scope + micro-routing (feature/cc) are the *handoff payload* — written to the session log at conclusion, read by investigation-entry / scoping-entry / discussion-entry / research-entry. Not throwaway.
+- For **epics** this is the existing map-driven seeding (Phase 14 two-tier summary + description per map item). For **single-phase types** it is **new wiring** — those entries never read a discovery artifact before, because feature/bugfix/quickfix/cc had no discovery.
+
+**Don't rely on live conversation context.** On first startup, discovery → first phase is one continuous session (workflow-bridge fires only on *subsequent* phase conclusions, **not** first startup), so live context *is* present — but treat it as a bonus, never the contract:
+
+- **Cross-session resume** — conclude discovery, return later via continue-* / continue-epic with no live context; the session log is then the only carrier (the normal multi-session rhythm for epics; the resume case for single-phase types).
+- **Compaction** within a long discovery → first-phase session.
+- **Single source of truth** — correctness must not depend on "still in context," which can't be reliably detected.
+
+So first-phase entry **always** reads the durable carrier; live context is a bonus.
+
+**Two channels, each matched to what the material *is*:**
+
+| Material | Channel to the first phase | Why |
+|---|---|---|
+| **Import** | KB index (+ `imports[]`) → *automatic* retrieval, this phase and every future phase/work-unit | durable reference material |
+| **Idea / inbox seed** | the explicit session-log + `description` handoff (scoped to this work unit) | a seed, not validated content |
+
+**Do not KB-index the discovery session log.** It would violate the shape-vs-content guardrail (discovery is shape-talk, not substance) and pollute the KB with un-validated seed chatter. The seed's substance earns KB indexing *later* — once the first phase turns it into a real artifact (investigation/discussion/etc.), which *is* indexed.
+
+### What not to do (this batch)
+
+- Don't copy an inbox seed into `imports/` — archive it.
+- Don't treat inbox and imports as identical at persistence — same at read, distinct at persist.
+- Don't KB-index the discovery session log.
+- Don't rely on live conversation context to carry discovery's output into the first phase — read the durable carrier (session log + `description`).
