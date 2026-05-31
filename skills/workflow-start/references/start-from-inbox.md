@@ -38,7 +38,7 @@ Select an item (enter number, or **`b`/`back`** to return):
 
 #### If user chose a number
 
-→ Proceed to **B. Load and Route**.
+→ Proceed to **B. Route to Discovery**.
 
 ## B. Route to Discovery
 

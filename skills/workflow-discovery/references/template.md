@@ -37,7 +37,8 @@ session worked from.}
 ## Map State at Start
 
 {One-line summary: total topics and counts by lifecycle. Write
-`(empty — first session)` when no map exists yet.}
+`(empty — first session)` when no map exists yet, or
+`(n/a — single-topic work)` for the single-phase work types.}
 Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
 
 ## Exploration

@@ -25,9 +25,9 @@ The output is the in-progress session number string (e.g. `002`) — the prior s
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+· · · · · · · · · · · ·
 Found an in-progress discovery session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
 
-· · · · · · · · · · · ·
 - **`c`/`continue`** — Pick up where you left off
 - **`r`/`restart`** — Delete the draft and start a new session
 · · · · · · · · · · · ·

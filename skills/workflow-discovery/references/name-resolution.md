@@ -10,19 +10,9 @@ Inputs held from earlier steps: `work_type` (for phrasing), `inbox_seed` filenam
 
 ## A. Suggest a Name
 
-#### If an inbox seed was the origin
+Derive a kebab-case suggestion. If an inbox seed was the origin, use the inbox **filename slug** — strip the `YYYY-MM-DD--` date prefix and the `.md` extension, which keeps the inbox item and the work unit recognisably linked. Otherwise derive it from the shaped `description`.
 
-Derive the suggested name from the inbox **filename slug**: strip the `YYYY-MM-DD--` date prefix and the `.md` extension. This carry-over keeps the inbox item and the work unit recognisably linked.
-
-→ Proceed to **rendering the suggestion** below.
-
-#### Otherwise
-
-Derive a kebab-case suggestion from the shaped `description`.
-
-→ Proceed to **rendering the suggestion** below.
-
-Render the suggestion (for bugfix / feature / quick-fix the name becomes both `{work_unit}` and `{topic}` — they're the same value; for epic / cross-cutting it's the work unit):
+Render the suggestion (for bugfix / feature / quick-fix the name becomes both `{work_unit}` and `{topic}` — the same value; for epic / cross-cutting it's the work unit):
 
 > *Output the next fenced block as a code block:*
 
@@ -37,7 +27,7 @@ Suggested {work-type} name: {work_unit}
 Is this name okay?
 
 - **`y`/`yes`** — Use this name
-- **something else** — Suggest a different name
+- **A different name** — Tell me what to call it instead
 · · · · · · · · · · · ·
 ```
 
@@ -70,7 +60,9 @@ choose a different name to start fresh.
 
 ```
 · · · · · · · · · · · ·
-- **`n`/`new`** — Choose a different name
+Choose a different name, or resume via /workflow-start.
+
+- **A different name** — Tell me what to call it instead
 · · · · · · · · · · · ·
 ```
 
