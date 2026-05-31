@@ -106,7 +106,7 @@ No Completed Discussions
 No completed discussions found for "{work_unit:(titlecase)}".
 
 At least one completed discussion is required before specification can begin.
-Run /continue-epic to continue an in-progress discussion.
+Run /workflow-start to continue an in-progress discussion.
 ```
 
 **STOP.** Do not proceed — terminal condition.

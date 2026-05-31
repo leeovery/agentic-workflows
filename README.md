@@ -224,9 +224,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 <details>
 <summary><strong>Entry-Point Skills</strong> — user-facing commands</summary>
 
-**Entry:** [`/workflow-start`](skills/workflow-start/) — the single entry point for starting new work (via discovery) and continuing existing work.
-
-**Continue:** [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/) | [`/continue-quickfix`](skills/continue-quickfix/) | [`/continue-cross-cutting`](skills/continue-cross-cutting/)
+**Entry:** [`/workflow-start`](skills/workflow-start/) — the single entry point for starting new work (via discovery) and continuing existing work. It routes to the discovery and per-type continue skills internally; those are model-only.
 
 **Capture:** [`/workflow-log-idea`](skills/workflow-log-idea/) | [`/workflow-log-bug`](skills/workflow-log-bug/) | [`/workflow-log-quickfix`](skills/workflow-log-quickfix/)
 
