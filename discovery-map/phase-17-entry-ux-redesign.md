@@ -1127,13 +1127,14 @@ Fifth pass, same day. Closes the last open thread. The implementation ships as *
 
 ```
 main
-└─ design branch (this doc — refinement passes I–V + idea #29)
-   └─ PR 1  manifest schema
-      └─ PR 2  discovery as universal funnel   ← the whole improvement
-         └─ PR 3  continue-* lockdown
+└─ PR 1 = this design branch (refinement passes + briefs + idea #29) — the base
+   └─ PR 2  discovery as universal funnel (incl. the manifest cross-type contract test)
+      └─ PR 3  continue-* lockdown
 ```
 
-**PR 1 — manifest schema.** Allow `phases.discovery` for all work types (today epic-only) + a test pinning it. Zero behavioural change — nothing writes it for non-epics yet; validation just stops rejecting it. May fold into PR 2 (borderline).
+> **Note:** the original "PR1 = manifest schema" collapsed after investigation — the CLI is already permissive, so the manifest work is a test-only contract folded into PR2, and this design branch becomes PR1/the base. See the PR scope briefs' status-tracker note.
+
+**PR 1 — manifest schema.** ~~Allow `phases.discovery` for all work types + a test.~~ **Resolved: folded into PR2.** The CLI is already permissive (no schema change needed); only the contract test remains, now PR2's first commit. PR1 is instead this design branch as the base. See the PR scope briefs.
 
 **PR 2 — discovery as universal funnel.** The whole improvement, as one feature (not per-work-type slices — that fractures discovery):
 - `workflow-start` rewire — every menu pick + `s`/start + inbox → discovery; full Step 0 lives here.
@@ -1157,35 +1158,39 @@ main
 
 ### Status tracker
 
-| PR | Scope | Branches off | Status |
+> **2026-05-31 update — supersedes pass V's "PR1 = manifest schema" framing.** A plan-mode investigation found the manifest CLI is *already* permissive: there is no work-type→phase gate — `VALID_PHASES` includes `discovery` and `validatePhase`/`validateSet` (`manifest.cjs` lines 339–393) check the phase *name* only, never the work type. So there is **no schema change**. The only worthwhile artefact is a cross-type **contract test**, folded into PR2 as its first commit. **PR1 is now this design branch itself** (the base), per the branching decision below.
+
+| PR | Scope | Branch | Status |
 |---|---|---|---|
-| 1 | manifest schema | stack base | Not started |
-| 2 | discovery as universal funnel | PR 1 | Not started |
-| 3 | continue-* lockdown | PR 2 | Not started |
+| 1 | This design doc + idea #29 — the **base** | `feat/phase-17-discovery-universal-entry` (off `main`) | content complete |
+| 2 | Discovery as universal funnel (incl. the manifest cross-type contract test) | branches off PR1 | Not started |
+| 3 | continue-* lockdown | branches off PR2 | Not started |
 
 *(Update this table as each PR opens / merges. A resuming session reads it first to know where it is.)*
 
-### PR 1 — manifest schema
+**Branching decision.** This branch is the stack base — it's already on `main` and carries the design docs, so PR2 branches directly off it and PR3 off PR2 (no orphaned design branch, no premerge dance). Merge bottom-to-top at the end.
 
-**Goal.** Let `phases.discovery` validate for **all** work types (today the manifest CLI accepts it only for epic).
+### PR 1 — design base (this branch)
 
-**Work items.**
-- Relax the epic-only guard on `phases.discovery` in `skills/workflow-manifest/scripts/manifest.cjs`.
-- Add/extend a test under `tests/scripts/` pinning `phases.discovery` as accepted for feature / bugfix / quick-fix / cross-cutting.
+This branch (`feat/phase-17-discovery-universal-entry`) carries this design doc + idea #29 and is the **stack base**. It has no code change of its own. PR2/PR3 branch off it; it merges to `main` bottom-to-top with the rest at the end.
 
-**In scope:** validation + test only. **Out:** anything that *writes* `phases.discovery` for non-epics (that's PR2).
-
-**Acceptance:** all 251 manifest CLI tests pass; new test asserts cross-work-type acceptance. Zero behavioural change otherwise.
-
-**Preconditions:** none. **Reference:** the abandoned first attempt's `17a` (`feat/phase-17a-manifest-schema-discovery-cross-type`) did exactly this — usable as a model, not a base.
+**The manifest change folded away.** Investigation found `manifest.cjs` already accepts `phases.discovery` for every work type (see the status-tracker note above). The epic-only restriction lives **only in the skill layer** — `workflow-shared/references/ensure-discovery-item.md`, `workflow-discovery-entry/SKILL.md`, `workflow-research-entry/references/invoke-skill.md`. So the only artefact kept is a **contract test** pinning cross-type acceptance, folded into PR2 as work item 0 (below). Mirrors the abandoned `17a` commit `09e4b531` (also test-only).
 
 ### PR 2 — discovery as universal funnel
 
 **Goal.** `workflow-start` → discovery directly for every entry; discovery shapes/confirms work type, persists at confirm, routes to the first phase. start-* dissolve.
 
-**Preconditions:** PR1 merged.
+**Preconditions:** branches off PR1 (the design base).
 
 **Work items, by area:**
+
+**0. Manifest cross-type contract test** (folded from the original PR1)
+- Add a test to `tests/scripts/test-workflow-manifest.sh` pinning that `phases.discovery` is accepted for all five work types — session-level field writes, `init-phase {wu}.discovery.{topic}`, and status validation (discovery items accept only `in-progress`). **Test-only — no `manifest.cjs` change** (the CLI is already permissive). Mirror commit `09e4b531`. Land it as PR2's first commit, before the behaviour that relies on it.
+
+**Skill-layer epic-only gates to remove/rework** — this is *where* discovery is currently restricted to epics:
+- `workflow-shared/references/ensure-discovery-item.md` — the Section A gate that returns early for non-epics.
+- `workflow-discovery-entry/SKILL.md` — the "Discovery is epic-only" declarations + arg parsing.
+- `workflow-research-entry/references/invoke-skill.md` — the "non-epic → no discovery phase, skip" precondition.
 
 **`workflow-start`**
 - Add `s`/start menu option (unknown shape).
