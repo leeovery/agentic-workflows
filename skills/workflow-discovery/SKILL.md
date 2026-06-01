@@ -169,23 +169,7 @@ Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its 
 > creating it, and saving any files or notes you shared.
 ```
 
-Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written.
-
-On return, the manifest, session log, imports, and inbox archival are all on disk. Route by the committed `work_type`:
-
-#### If `work_type` is `epic`
-
-The work continues into the initial topic sketch — the same shaping, deepened. Hold `macro_continuation` = true and the `session_number` set by the confirm-trigger.
-
-→ Proceed to **Step 7**.
-
-#### If `work_type` is `feature` or `cross-cutting`
-
-→ Proceed to **Step 15**.
-
-#### If `work_type` is `bugfix` or `quick-fix`
-
-→ Proceed to **Step 16**.
+Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written. It persists the work unit, then routes to the first phase by work type (epic → Step 7; feature / cross-cutting → Step 15; bugfix / quick-fix → Step 16).
 
 ---
 

@@ -108,4 +108,22 @@ git commit -m "discovery({work_unit}): create work unit ({work_type})"
 
 The `.workflows/.inbox/` path is staged so the inbox archival (if any) lands in the same commit.
 
-→ Return to caller.
+→ Proceed to **G. Route to the First Phase**.
+
+## G. Route to the First Phase
+
+The work unit is on disk. Route by the committed `work_type`:
+
+#### If `work_type` is `epic`
+
+The work continues into the initial topic sketch — the same shaping, deepened. Hold `macro_continuation` = true and the `session_number` set in **E**.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 7**.
+
+#### If `work_type` is `feature` or `cross-cutting`
+
+→ Return to **[the skill](../SKILL.md)** for **Step 15**.
+
+#### If `work_type` is `bugfix` or `quick-fix`
+
+→ Return to **[the skill](../SKILL.md)** for **Step 16**.
