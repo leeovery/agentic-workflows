@@ -48,6 +48,6 @@ Set the pre-seed and seed path from the selected item's folder:
 |---|---|---|
 | bug | `bugfix` | `.workflows/.inbox/bugs/{file}` |
 | quick-fix | `quick-fix` | `.workflows/.inbox/quickfixes/{file}` |
-| idea | `(none)` | `.workflows/.inbox/ideas/{file}` |
+| idea | `none` | `.workflows/.inbox/ideas/{file}` |
 
 → Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `{inbox_seed}`.

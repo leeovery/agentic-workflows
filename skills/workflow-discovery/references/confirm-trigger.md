@@ -77,7 +77,7 @@ No inbox seed.
 
 ## E. Write the Session Log
 
-This work unit is brand new, so there are no prior sessions: `session_number` = `001`. Hold it for the epic topic machinery (Step 6 keeps it via `macro_continuation`).
+This work unit is brand new, so there are no prior sessions: `session_number` = `001`. Hold it for the epic topic machinery (Step 7 keeps it via `macro_continuation`).
 
 Ensure the directory exists and create the log from [template.md](template.md):
 

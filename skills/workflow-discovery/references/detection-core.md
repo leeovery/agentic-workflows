@@ -4,7 +4,7 @@
 
 ---
 
-Universal shape-detection knowledge — loaded on every new-mode entry, applied throughout the shaping conversation (Step 3). It carries *signals and the confirm protocol*, never execution detail. Reroute is this same knowledge pointed at a competing shape.
+Universal shape-detection knowledge — loaded on every new-mode entry, applied throughout the shaping conversation (Step 4). It carries *signals and the confirm protocol*, never execution detail. Reroute is this same knowledge pointed at a competing shape.
 
 Hold these rules in context for the rest of the conversation. Do not render any of this to the user verbatim — it governs how you listen, surface, and commit.
 
@@ -101,12 +101,12 @@ If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/
 
 ## H. Confirm with reasons — the commit protocol
 
-This protocol governs the macro commit, rendered at **Step 3** — not here. Hold it in mind.
+This protocol governs the macro commit, rendered at **Step 4** — not here. Hold it in mind.
 
 Commit only when signals have **converged AND been stable** across the last few exchanges, mid-loop surfacings have been confirmed or adjusted, and the next move would drop into substance if you kept exploring. The commit move has three parts:
 
 1. **State the read** in plain user-facing terms (per **D**), with the workflow bucket name folded in naturally — not before.
 2. **Give the specific signals** that drove it — one or two sentences, concrete enough that the user can challenge a *cue*, not just accept/reject the whole.
-3. **Invite confirm or override** via the gate Step 3 renders. On confirm, the work type is committed. On override, take the user's call as authoritative — adjust `work_type` without re-litigating (if they describe rather than name, map via **B**/**C** and reflect back for a quick confirm). On "keep shaping", continue the loop.
+3. **Invite confirm or override** via the gate Step 4 renders. On confirm, the work type is committed. On override, take the user's call as authoritative — adjust `work_type` without re-litigating (if they describe rather than name, map via **B**/**C** and reflect back for a quick confirm). On "keep shaping", continue the loop.
 
 → Return to caller.

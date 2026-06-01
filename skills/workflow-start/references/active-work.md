@@ -151,9 +151,9 @@ This skill ends. The invoked skill will load into context and provide additional
 
 #### If user chose a start-new option (`s`, `f`, `e`, `b`, `q`, or `c`)
 
-Set the work-type pre-seed from the pick — `s` → `(none)`, otherwise the matching type (feature / epic / bugfix / quick-fix / cross-cutting).
+Set the work-type pre-seed from the pick — `s` → `none`, otherwise the matching type (feature / epic / bugfix / quick-fix / cross-cutting).
 
-→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `(none)`.
+→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `none`.
 
 #### If user chose `v`/`view`
 

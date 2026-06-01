@@ -6,7 +6,7 @@
 
 1. Ensure the discovery directory exists: `mkdir -p .workflows/{work_unit}/discovery/` (safe to re-run).
 2. Hold the following in conversation memory — they parameterise the session log when it is eventually written:
-   - `session_number` — set before this step (Step 5 on resume, Step 6 for a fresh session, or the confirm-trigger for a new epic).
+   - `session_number` — set before this step (Step 6 on resume, Step 7 for a fresh session, or the confirm-trigger for a new epic).
    - `description` — the work-unit `description` from the manifest.
    - `imports` — the manifest `imports` list (may be empty).
    - `map_state_at_start` — `map_summary` from the most recent discovery output. Write `(empty — first session)` when the map is empty.

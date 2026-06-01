@@ -164,7 +164,7 @@ For each:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} summary "{new summary}"
 ```
 
-Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 7. If **Edits** currently reads `(none)`, replace it with the bullets:
+Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 8. If **Edits** currently reads `(none)`, replace it with the bullets:
 
 ```markdown
 - Edited summary: {name_1} — {short note}

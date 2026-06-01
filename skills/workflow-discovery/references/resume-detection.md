@@ -14,7 +14,7 @@ The marker is set when a session writes its log (lazy creation) and deleted when
 
 #### If output is empty or the literal string `null`
 
-No prior session is in progress. `session_number` will be set at Step 6 from discovery's `next_session_number`.
+No prior session is in progress. `session_number` will be set at Step 7 from discovery's `next_session_number`.
 
 → Return to caller.
 
@@ -52,6 +52,6 @@ git add -- .workflows/{work_unit}/
 git commit -m "discovery({work_unit}): restart interrupted session"
 ```
 
-`session_number` will be set at Step 6 from discovery's `next_session_number`.
+`session_number` will be set at Step 7 from discovery's `next_session_number`.
 
 → Return to caller.

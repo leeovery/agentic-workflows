@@ -6,7 +6,7 @@
 
 Open the shaping conversation. The PATTERN is universal; the SPECIFIC TEXT phrases itself for whatever the caller already told us (the work-type pre-seed, or an inbox seed, or nothing for `s`/start). No pre-announce of process discipline — discipline shows through behaviour, not preamble.
 
-Inputs held from Step 0: `work_type` pre-seed (or none), `inbox_seed` path (or none).
+Inputs held from Step 1: `work_type` pre-seed (or none), `inbox_seed` path (or none).
 
 ## A. Read seed material
 

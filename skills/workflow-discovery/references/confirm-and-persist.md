@@ -50,7 +50,7 @@ Notes:
 
 #### If the working list was non-empty (topics persisted in A)
 
-The log file may or may not exist depending on whether an Exploration write or Edits write happened during the loop. **Ensure it exists** — if missing, create it from [template.md](template.md) using the session metadata held since Step 7.
+The log file may or may not exist depending on whether an Exploration write or Edits write happened during the loop. **Ensure it exists** — if missing, create it from [template.md](template.md) using the session metadata held since Step 8.
 
 Populate **Topics Identified** with one section per topic, in synthesised order:
 

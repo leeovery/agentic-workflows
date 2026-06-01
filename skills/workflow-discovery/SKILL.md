@@ -61,7 +61,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ---
 
-## Step 0: Dispatch
+## Step 1: Dispatch
 
 > *Output the next fenced block as a code block:*
 
@@ -69,30 +69,29 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ── Dispatch ─────────────────────────────────────
 ```
 
-Read the caller's inputs. New work arrives from `workflow-start` as a **handoff block**; existing-epic shaping arrives from `continue-epic` as **positional arguments** (`$0` = work_type, `$1` = work_unit).
+Read the positional arguments:
 
-The handoff block names:
+- `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s`/start path, no hint). A hint, not a given — still confirmed in new mode.
+- `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `continue-epic`), or `none` (new work, from `workflow-start`).
+- `$2` — **inbox_seed**: path to an inbox file consumed as the opening description, or `none`. Absent `$2` is treated as `none`.
 
-- **Work type (pre-seed)** — `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `(none)`. A *hint*, not a given — still confirmed in new mode.
-- **Inbox seed** — path to an inbox file consumed as the opening description, or `(none)`.
+The mode is determined by `$1`:
 
-Determine the mode: if a `work_unit` is named (positional `$1`), confirm it against the manifest — `node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}` returning `true` means **existing-epic mode**. Otherwise (a handoff block with no named work unit) it is **new mode**.
+#### If `$1` is `none`
 
-#### If existing-epic mode
+New work — nothing is on disk yet; pre-confirmation shaping is ephemeral.
 
-The work type is known (`epic`) and the manifest already exists. Skip macro shaping and re-shape the map.
-
-→ Proceed to **Step 5**.
+→ Proceed to **Step 2**.
 
 #### Otherwise
 
-New work. Nothing is on disk yet — pre-confirmation shaping is ephemeral.
+`$1` names an existing epic. Skip macro shaping and re-shape its map.
 
-→ Proceed to **Step 1**.
+→ Proceed to **Step 6**.
 
 ---
 
-## Step 1: Load Detection Core
+## Step 2: Load Detection Core
 
 > *Output the next fenced block as a code block:*
 
@@ -110,11 +109,11 @@ New work. Nothing is on disk yet — pre-confirmation shaping is ephemeral.
 
 Load **[detection-core.md](references/detection-core.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ Proceed to **Step 3**.
 
 ---
 
-## Step 2: Open
+## Step 3: Open
 
 > *Output the next fenced block as a code block:*
 
@@ -131,11 +130,11 @@ Load **[detection-core.md](references/detection-core.md)** and follow its instru
 
 Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ Proceed to **Step 4**.
 
 ---
 
-## Step 3: Shape and Confirm the Work Type
+## Step 4: Shape and Confirm the Work Type
 
 > *Output the next fenced block as a code block:*
 
@@ -150,7 +149,7 @@ Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instru
 > a pre-seeded pick mostly confirms; an open start establishes.
 ```
 
-Run the shaping conversation per the detection core loaded at Step 1. Gather all signal flavours simultaneously (work-type cues and topic seeds co-emerge); resolve in dependency order. Surface tentative reads mid-loop (soft, easy to redirect). Watch for pivots and offer scope-down-to-inbox for tangential concerns. One question at a time — keep exploring until confident-enough-to-commit per the confidence clock.
+Run the shaping conversation per the detection core loaded at Step 2. Gather all signal flavours simultaneously (work-type cues and topic seeds co-emerge); resolve in dependency order. Surface tentative reads mid-loop (soft, easy to redirect). Watch for pivots and offer scope-down-to-inbox for tangential concerns. One question at a time — keep exploring until confident-enough-to-commit per the confidence clock.
 
 When convergence holds (detection core **H**), make the commit move: state the read in plain terms with the bucket name folded in, give the specific signals that drove it, then render the gate:
 
@@ -173,23 +172,23 @@ thing to build."} {One-or-two-sentence reasoning naming the signals.}
 
 The work type is committed. Set `work_type`; compile a one-line `description` from the user's framing (captured from the conversation, never silently invented). Hold any topic seeds and imports surfaced during shaping.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 #### If `other`
 
 Take the user's call as authoritative — adjust `work_type` without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm). Once a work type is settled, set `work_type` and compile the `description`.
 
-→ Proceed to **Step 4**.
+→ Proceed to **Step 5**.
 
 #### If keep shaping
 
 The read isn't ready. Continue the shaping conversation.
 
-→ Return to **Step 3**.
+→ Return to **Step 4**.
 
 ---
 
-## Step 4: Confirm Trigger — Create the Work Unit
+## Step 5: Confirm Trigger — Create the Work Unit
 
 > *Output the next fenced block as a code block:*
 
@@ -213,19 +212,19 @@ On return, the manifest, session log, imports, and inbox archival are all on dis
 
 The work continues into the initial topic sketch — the same shaping, deepened. Hold `macro_continuation` = true and the `session_number` set by the confirm-trigger.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 #### If `work_type` is `feature` or `cross-cutting`
 
-→ Proceed to **Step 14**.
+→ Proceed to **Step 15**.
 
 #### If `work_type` is `bugfix` or `quick-fix`
 
-→ Proceed to **Step 15**.
+→ Proceed to **Step 16**.
 
 ---
 
-## Step 5: Resume Detection
+## Step 6: Resume Detection
 
 > *Output the next fenced block as a code block:*
 
@@ -242,11 +241,11 @@ The work continues into the initial topic sketch — the same shaping, deepened.
 
 Load **[resume-detection.md](references/resume-detection.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ Proceed to **Step 7**.
 
 ---
 
-## Step 6: Run Discovery
+## Step 7: Run Discovery
 
 > *Output the next fenced block as a code block:*
 
@@ -272,18 +271,18 @@ Hold the output in conversation context as **the most recent discovery output**.
 - `discovery_map` — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`
 - `map_summary` — counts string used for the opener render
 - `dismissed` — names previously removed from the map
-- `active_session` — in-progress session number set by lazy log creation, cleared at conclude. Authoritative resume signal (read at Step 5).
+- `active_session` — in-progress session number set by lazy log creation, cleared at conclude. Authoritative resume signal (read at Step 6).
 - `next_session_number` — used to set `session_number` for fresh entries
 
-If `session_number` was not already set (no resume at Step 5, no `macro_continuation` from Step 4), set it now: `session_number` = `next_session_number`. When `macro_continuation` is set, the confirm-trigger already created `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
+If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5), set it now: `session_number` = `next_session_number`. When `macro_continuation` is set, the confirm-trigger already created `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
 
 `map-operations.md` and `show-dismissed.md` re-invoke discovery on entry because they validate against post-mutation state.
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Initialize Discovery
+## Step 8: Initialize Discovery
 
 > *Output the next fenced block as a code block:*
 
@@ -301,11 +300,11 @@ If `session_number` was not already set (no resume at Step 5, no `macro_continua
 
 Load **[initialize-discovery.md](references/initialize-discovery.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 ---
 
-## Step 8: Load Discovery Guidelines
+## Step 9: Load Discovery Guidelines
 
 > *Output the next fenced block as a code block:*
 
@@ -322,11 +321,11 @@ Load **[initialize-discovery.md](references/initialize-discovery.md)** and follo
 
 Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ Proceed to **Step 10**.
 
 ---
 
-## Step 9: Session Loop
+## Step 10: Session Loop
 
 > *Output the next fenced block as a code block:*
 
@@ -344,11 +343,11 @@ Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follo
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
 
-→ Proceed to **Step 10**.
+→ Proceed to **Step 11**.
 
 ---
 
-## Step 10: Document Review
+## Step 11: Document Review
 
 > *Output the next fenced block as a code block:*
 
@@ -366,11 +365,11 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 11**.
+→ Proceed to **Step 12**.
 
 ---
 
-## Step 11: Confirm and Persist Topics
+## Step 12: Confirm and Persist Topics
 
 > *Output the next fenced block as a code block:*
 
@@ -388,11 +387,11 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
 
-→ Proceed to **Step 12**.
+→ Proceed to **Step 13**.
 
 ---
 
-## Step 12: Compliance Self-Check
+## Step 13: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -409,11 +408,11 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 13**.
+→ Proceed to **Step 14**.
 
 ---
 
-## Step 13: Conclude Discovery
+## Step 14: Conclude Discovery
 
 > *Output the next fenced block as a code block:*
 
@@ -432,12 +431,12 @@ Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow it
 
 ---
 
-## Step 14: Feature / Cross-Cutting Endpoint
+## Step 15: Feature / Cross-Cutting Endpoint
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Route to First Phase ─────────────────────────
+── Feature / Cross-Cutting Routing ──────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -451,12 +450,12 @@ Load **[feature-cc-routing.md](references/feature-cc-routing.md)** and follow it
 
 ---
 
-## Step 15: Bugfix / Quick-Fix Endpoint
+## Step 16: Bugfix / Quick-Fix Endpoint
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Route to First Phase ─────────────────────────
+── Bugfix / Quick-Fix Routing ───────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

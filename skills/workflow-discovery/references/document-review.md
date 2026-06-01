@@ -57,7 +57,7 @@ Walk the conversation against the log. Five checks:
 
 3. **No phantom content.** If the log mentions a surface that was discussed and then dropped, that's fine — it stays as part of the exploration record. But if the log mentions a *topic synthesis decision* (Topics Identified or working-list content) that the user actually rejected at synthesis time, remove it. The Topics Identified section reflects the **confirmed** set, not the proposed-then-revised set.
 
-4. **Conclusion is still `(none)`** at this point. The Conclusion gets finalised in Step 11 confirm-and-persist, not here.
+4. **Conclusion is still `(none)`** at this point. The Conclusion gets finalised in Step 12 confirm-and-persist, not here.
 
 5. **No prose where structure is expected.** Edits is structured (bulleted operation entries); Topics Identified is structured (per-topic subsections). If freeform prose has leaked into either, move it to Exploration.
 

@@ -67,6 +67,6 @@ Re-add any of these to the map?
 
 Bring those names back into the exploration. Pick up the conversation around them — what was the shape, what's changed since they were dropped. They become exploration surfaces like any other; if they hold up through synthesis, they end up in the proposed topic set.
 
-The dismissed-list `pull` happens at Step 11 confirm-and-persist (the per-topic write loop runs `pull` before `init-phase`, which is a no-op if the name isn't dismissed and harmless if it is).
+The dismissed-list `pull` happens at Step 12 confirm-and-persist (the per-topic write loop runs `pull` before `init-phase`, which is a no-op if the name isn't dismissed and harmless if it is).
 
 → Return to caller.
