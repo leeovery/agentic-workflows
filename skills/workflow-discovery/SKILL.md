@@ -148,42 +148,9 @@ Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instru
 > when it's already clear, longer when there's more to tease out.
 ```
 
-Run the shaping conversation per the detection core loaded at Step 2. Gather all signal flavours simultaneously (work-type cues and topic seeds co-emerge); resolve in dependency order. Surface tentative reads mid-loop (soft, easy to redirect). Watch for pivots and offer scope-down-to-inbox for tangential concerns. One question at a time — keep exploring until confident-enough-to-commit per the confidence clock.
-
-When convergence holds (detection core **H**), make the commit move: state the read in plain terms with the bucket name folded in, give the specific signals that drove it, then render the gate:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-{Plain read + bucket name, e.g. "This is feature-shaped — one focused
-thing to build."} {One-or-two-sentence reasoning naming the signals.}
-
-- **`y`/`yes`** — That's right, set it up as a {work-type}
-- **`o`/`other`** — It's something else (tell me what)
-- **Keep shaping** — Tell me what I'm missing
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `yes`
-
-The work type is committed. Set `work_type`; compile a one-line `description` from the user's framing (captured from the conversation, never silently invented). Hold any topic seeds and imports surfaced during shaping.
+Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
-
-#### If `other`
-
-Take the user's call as authoritative — adjust `work_type` without re-litigating (if they describe rather than name a shape, map it via the detection core and reflect back for a quick confirm). Once a work type is settled, set `work_type` and compile the `description`.
-
-→ Proceed to **Step 5**.
-
-#### If keep shaping
-
-The read isn't ready. Continue the shaping conversation.
-
-→ Return to **Step 4**.
 
 ---
 
