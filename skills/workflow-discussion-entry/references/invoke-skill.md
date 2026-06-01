@@ -32,26 +32,6 @@ When the read returns non-empty, append the Description block shown in each sour
 
 ## Handoff
 
-#### If source is `research`
-
-```
-Discussion session for: {topic}
-Work unit: {work_unit}
-Output: {output_path}
-
-Research files:
-- .workflows/{work_unit}/research/{filename1}.md
-- .workflows/{work_unit}/research/{filename2}.md
-Topic context: {summary from analysis cache}
-
-Description:
-{description text — paragraph or two, preserved as-is}
-
-Invoke the workflow-discussion-process skill.
-```
-
-The `Description:` block is omitted when `description` is null or empty. Invoke the [workflow-discussion-process](../../workflow-discussion-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
-
 #### If source is `topic-provided-with-research`
 
 ```
@@ -63,26 +43,6 @@ Research files:
 - .workflows/{work_unit}/research/{filename1}.md
 - .workflows/{work_unit}/research/{filename2}.md
 Topic context: {brief orientation from user context}
-
-Description:
-{description text — paragraph or two, preserved as-is}
-
-Invoke the workflow-discussion-process skill.
-```
-
-The `Description:` block is omitted when `description` is null or empty. Invoke the [workflow-discussion-process](../../workflow-discussion-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
-
-#### If source is `gap-analysis`
-
-```
-Discussion session for: {topic}
-Work unit: {work_unit}
-Output: {output_path}
-
-Source discussions:
-- .workflows/{work_unit}/discussion/{discussion1}.md
-- .workflows/{work_unit}/discussion/{discussion2}.md
-Topic context: {summary from gap analysis cache}
 
 Description:
 {description text — paragraph or two, preserved as-is}
