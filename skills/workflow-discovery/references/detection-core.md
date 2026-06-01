@@ -76,7 +76,7 @@ You are confident-enough-to-**surface** a tentative read when: multiple convergi
 
 Below the threshold, keep exploring. **Every turn must earn its place** — it must be verifying or resolving shape. A shape-confirm turn earns its place; ceremony turns (a standalone import gate, a synthesis loop with nothing to synthesise) do not.
 
-**Pre-seeded vs open start.** A `workflow-start` menu pick pre-seeds the work type — start at high confidence; the loop mostly *confirms* (watch for disconfirmation, then move). `s`/start pre-seeds nothing — the loop *establishes*. Same discipline; depth differs.
+**Pre-seeded vs open start.** A `workflow-start` menu pick pre-seeds the work type — trust it. You start *above* the threshold above, so this is a light confirm, not a re-derivation: head for the commit as soon as the description fits the pick. Reconsider only if a *clear, strong* signal says it's something else (per F) — don't go looking for one. `s`/start pre-seeds nothing — the loop *establishes* the type before it can commit. Same discipline; depth differs.
 
 ## F. Pivot / reroute watch
 
@@ -89,6 +89,7 @@ A pivot is this detection core pointed at a *competing* shape — same threshold
 | bugfix → feature | The "broken" behaviour is missing-by-design, not a malfunction |
 | feature → bugfix | The "new" behaviour is restoring something that should already work; "it used to work" |
 | quick-fix → feature/bugfix | Scope discussion gets substantive; behaviour debate emerges |
+| any → quick-fix | Scope collapses to a small, known, mechanical change — no behaviour debate, nothing to diagnose, no topics |
 | any → cross-cutting | The work is defining a pattern/principle, not shipping a deliverable |
 
 Surface a pivot mid-loop as a tentative read, plain language: *"This is shaping bigger than one feature — sounds like several connected things. Want to treat it as a larger initiative made of multiple features?"* The user confirms, declines, or redirects — take their call. Pivots can fire multiple times; each is easy to push back on. A pre-seed is a hint, never a lock.
