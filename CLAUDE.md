@@ -146,7 +146,7 @@ Contract and scaffolding templates live in `.claude/skills/create-output-format/
 3. Orchestrator handles tracking — once a migration ID appears in the log, the script never runs again
 4. Use helper functions: `report_update`, `report_skip` (display only)
 
-Migration `038-add-discovery-phase.sh` seeds discovery items for existing in-progress epics so legacy work units pick up the discovery map without manual intervention.
+Migration `038-add-inception-phase.sh` seeds the phase for existing in-progress epics (`040-rename-inception-to-discovery.sh` then renames it to `discovery`) so legacy work units pick up the discovery map without manual intervention.
 
 **Critical: Migration scripts must not use the manifest CLI**
 
