@@ -215,11 +215,15 @@ Ready to synthesise topics?
 
 #### If `yes`
 
-Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written.
+Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written. It returns a synthesis outcome:
 
-When `topic-synthesis.md` returns:
+**If the outcome is `confirmed`:**
 
 → Return to caller.
+
+**If the outcome is `explore`:**
+
+→ Return to **B. Session Loop**.
 
 #### If keep going
 

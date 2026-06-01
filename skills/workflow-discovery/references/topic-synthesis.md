@@ -79,13 +79,15 @@ Confirm to commit, or tell me what to adjust.
 
 #### If `yes`
 
-The topic set is confirmed. Hold it in conversation memory as the **working list** for Step 12 confirm-and-persist. Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together.
+The topic set is confirmed. Hold it in conversation memory as the **working list** for Step 12 confirm-and-persist. Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together. Synthesis outcome: `confirmed`.
 
 → Return to caller.
 
 #### If `explore`
 
-→ Return to caller for **B. Session Loop**.
+The user isn't ready to commit — no working list is produced. Synthesis outcome: `explore`.
+
+→ Return to caller.
 
 #### If adjust
 
