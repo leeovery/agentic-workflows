@@ -21,7 +21,7 @@ The caller provides these via context before loading:
 
 ## A. Gate on Work Type
 
-The discovery map is epic-only. Features, bugfixes, quick-fixes, and cross-cutting work units have no discovery phase, and writing one would corrupt their manifests.
+The discovery *map* is epic-only — a multi-topic map only makes sense when there's more than one topic. Single-phase work types (feature, bugfix, quick-fix, cross-cutting) have a single topic that *is* the work unit, so there's no map item to ensure. (They still pass through the discovery phase, and `phases.discovery` is a valid manifest location for every type — there's just no map to populate here.)
 
 #### If `work_type` is `epic`
 
