@@ -135,7 +135,7 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 | Phase | Purpose | Applies to |
 |-------|---------|------------|
-| **Discovery** | Curatorial first phase that names the moving parts of an epic, classifies each as research or discussion, and builds the discovery map that drives every subsequent phase. Refinement re-entry lets you add, dismiss, re-route, split, or elevate topics as the work evolves. | Epic |
+| **Discovery** | The universal first phase — every work type begins here. Shapes the work, confirms its type, and routes it into the pipeline. For epics it's curatorial: names the moving parts, classifies each as research or discussion, and builds the discovery map that drives subsequent phases, with refinement re-entry to add, dismiss, re-route, split, or elevate topics. Single-phase types are shaped and routed in one pass. | All |
 | **Research** | Explore ideas, market fit, technical feasibility. Existing research files can be imported verbatim at phase selection — content is ingested as-is and the session continues normally. Background review agent identifies coverage gaps and shallow areas; before concluding, a final review and a document reconciliation pass catch both topical gaps and substance discussed in-session but never captured in the research file. Deep-dive agents investigate independent threads (competitors, APIs, feasibility) in parallel. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
 | **Discussion** | Organic conversation guided by a live Discussion Map that tracks subtopics through pending → exploring → converging → decided. Background review agent catches topical gaps — with a mandatory final review and a document reconciliation pass that catches substance discussed in-session but never captured in the discussion file before concluding; competing perspective agents argue viable approaches on ambiguous decisions, then a synthesis agent maps the tradeoff landscape. For epics, sibling concerns discovered during discussion are elevated to their own topic automatically. Discussion gap analysis (epics) reads all completed discussions to surface cross-discussion themes, integration gaps, and emergent topics. | Epic, Feature, Cross-cutting |
 | **Investigation** | Symptom gathering + code analysis to identify root cause. Optional synthesis agent validates the hypothesis independently. The bugfix alternative to discussion. | Bugfix |
@@ -210,7 +210,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 
 | Skill | Description |
 |-------|-------------|
-| [workflow-discovery](skills/workflow-discovery/) | Curatorial discovery-map session for epics — names topics, classifies each as research or discussion, supports refinement re-entry |
+| [workflow-discovery](skills/workflow-discovery/) | The universal first phase for every work type — shapes the work, confirms its type, and routes it onward; for epics, curates the discovery map (names topics, classifies research vs discussion, supports refinement re-entry) |
 | [workflow-research-process](skills/workflow-research-process/) | Free-form exploration across technical, business, and market domains |
 | [workflow-discussion-process](skills/workflow-discussion-process/) | Captures context, decisions, edge cases, competing solutions, and rationale |
 | [workflow-investigation-process](skills/workflow-investigation-process/) | Symptom gathering and code analysis for root cause identification |
