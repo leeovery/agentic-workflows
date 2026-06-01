@@ -13,7 +13,7 @@ These rules apply only to the work-type decision during shaping (Step 4) — a o
 Two levels, gathered simultaneously, committed in dependency order:
 
 - **Macro / work type** — *what kind of work is this?* (epic / feature / bugfix / quick-fix / cross-cutting). Resolved first.
-- **Micro / topic** — topic existence (one coherent thing vs many) and, where the type has it, per-topic routing. You cannot route topics before knowing it's an epic, nor pick research-vs-discussion before knowing it's a feature.
+- **Micro / topic** — topic existence (one coherent thing vs many) and, where the type has it, per-topic routing. For example, you cannot route an epic's topics, or choose research-vs-discussion for a feature or cross-cutting concern, until you know which it is.
 
 **Gather freely; commit in order.** Work-type cues and topic seeds co-emerge in the same breath — never sequence the *conversation* into "first interrogate type, then topics." Only *commitment* is ordered.
 
