@@ -102,9 +102,8 @@ New work — nothing is on disk yet; pre-confirmation shaping is ephemeral.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading the universal shape-detection knowledge — boundary
-> discriminators, pivot watch, confidence heuristics, and the
-> confirm-with-reasons protocol.
+> Getting ready to work out what kind of work this is — feature,
+> bugfix, epic, quick-fix, or cross-cutting.
 ```
 
 Load **[detection-core.md](references/detection-core.md)** and follow its instructions as written.
@@ -124,8 +123,8 @@ Load **[detection-core.md](references/detection-core.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading any seed material and opening the shaping conversation,
-> phrased for whatever the caller already told us.
+> Reading anything you've already shared, then opening the
+> conversation about what you want to do.
 ```
 
 Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instructions as written.
@@ -145,8 +144,8 @@ Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Running the shaping conversation. Depth scales to unknowns —
-> a pre-seeded pick mostly confirms; an open start establishes.
+> Talking it through to settle what kind of work this is — brief
+> when it's already clear, longer when there's more to tease out.
 ```
 
 Run the shaping conversation per the detection core loaded at Step 2. Gather all signal flavours simultaneously (work-type cues and topic seeds co-emerge); resolve in dependency order. Surface tentative reads mid-loop (soft, easy to redirect). Watch for pivots and offer scope-down-to-inbox for tangential concerns. One question at a time — keep exploring until confident-enough-to-commit per the confidence clock.
@@ -199,9 +198,8 @@ The read isn't ready. Continue the shaping conversation.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The work type is committed — persisting now. Resolving the name,
-> creating the work unit, landing any imports, archiving the inbox
-> seed, and writing the session log.
+> Now we know what this is — setting it up: giving it a name,
+> creating it, and saving any files or notes you shared.
 ```
 
 Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written.
@@ -235,8 +233,8 @@ The work continues into the initial topic sketch — the same shaping, deepened.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking the manifest for an in-progress prior session before
-> re-shaping the map.
+> Checking whether an earlier session for this epic was left
+> unfinished.
 ```
 
 Load **[resume-detection.md](references/resume-detection.md)** and follow its instructions as written.
@@ -336,9 +334,9 @@ Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Mapping topics. A fresh epic continues the shaping it began at
-> macro level; an existing map adds edits alongside new exploration.
-> Topics synthesise at endpoint.
+> Mapping out the topics this epic breaks into. A new epic carries
+> on from what we've shaped so far; an existing map can be edited
+> here too. We name the topics once the picture feels complete.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
@@ -423,8 +421,8 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up. Final commit and bridge to the epic menu so you can
-> pick the next move from the discovery map.
+> Wrapping up — saving, then back to the epic's menu where you
+> pick the next move from the map.
 ```
 
 Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.
@@ -442,8 +440,8 @@ Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow it
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> One routing decision left — research first, or straight to
-> discussion. Then the shaped work hands off to its first phase.
+> One choice left — start with research to explore, or go straight
+> to discussion — then into the first phase.
 ```
 
 Load **[feature-cc-routing.md](references/feature-cc-routing.md)** and follow its instructions as written.
@@ -461,8 +459,8 @@ Load **[feature-cc-routing.md](references/feature-cc-routing.md)** and follow it
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Nothing left to route — capturing the intent and handing off to
-> investigation (bugfix) or scoping (quick-fix).
+> Nothing more to decide — handing off to investigation for a
+> bugfix, or scoping for a quick-fix.
 ```
 
 Load **[intent-capture.md](references/intent-capture.md)** and follow its instructions as written.
