@@ -22,11 +22,7 @@ node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
 
 Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.
 
-Set the active-session marker (idempotent — no-op if already set). The first per-op commit below will pick it up via `git add manifest.json`:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "{session_number:03d}"
-```
+The active-session marker is **not** set here — it is set lazily when an operation first writes the session log (see [template.md](template.md)), so an all-rejected or browse-only session leaves no marker.
 
 Then read the user's most recent message. Extract one or more operations. Recognised intents:
 

@@ -87,6 +87,14 @@ Browse-and-bail produces no file.
 
 When the file is first created, populate the header, **Description (as of session)**, **Imports**, and **Map State at Start** at the same write that adds the first content. Other sections start as `(none)`.
 
+At that same first-creation write, set the active-session marker so it always pairs with an existing log:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "{session_number:03d}"
+```
+
+The caller's own commit step stages and commits this alongside the log.
+
 The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](../../workflow-discovery/SKILL.md)). Always replace it at finalisation so the next entry sees a closed state.
 
 At finalisation, replace the `(none)` Conclusion with one of:

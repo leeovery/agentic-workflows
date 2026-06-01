@@ -171,10 +171,9 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is pur
 
    The Exploration entry is **prose, not transcript** — capture what was named, what crystallised, what was decided not to pursue. The log survives context refresh; in-context memory does not.
 
-   The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*. After writing, set the active-session marker (idempotent) and commit:
+   The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*, which sets the active-session marker on first creation. After writing, commit:
 
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "{session_number:03d}"
    git add -- .workflows/{work_unit}/
    git commit -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"
    ```
