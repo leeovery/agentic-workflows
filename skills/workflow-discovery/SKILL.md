@@ -254,8 +254,8 @@ Load **[resume-detection.md](references/resume-detection.md)** and follow its in
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading the discovery map, dismissed list, and analysis cache
-> state for the rest of the session.
+> Loading the discovery map for the session — the topics so far
+> and anything previously dismissed.
 ```
 
 Run discovery for the work unit:
@@ -291,9 +291,8 @@ If `session_number` was not already set (no resume at Step 6, no `macro_continua
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Ensuring the discovery directory exists and capturing session
-> metadata. The session log file is created lazily on first state
-> change — see references/template.md.
+> Setting up the discovery session. The session log is written on
+> the first change, not up front.
 ```
 
 Load **[initialize-discovery.md](references/initialize-discovery.md)** and follow its instructions as written.
@@ -313,8 +312,8 @@ Load **[initialize-discovery.md](references/initialize-discovery.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Loading the curatorial moves and hard rules that shape how the
-> topic-mapping conversation is run.
+> Loading the guidelines for shaping topics — how to explore, and
+> what to leave for later phases.
 ```
 
 Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follow its instructions as written.
@@ -356,9 +355,9 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reconciling the draft session log against the conversation
-> before persisting. Catches drift so the manifest is written
-> from a known-good source.
+> Reconciling the session log against the conversation before
+> saving — catching anything that drifted, so what's recorded
+> matches what we discussed.
 ```
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
@@ -378,9 +377,8 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Persisting the synthesised topic set, writing Topics Identified
-> to the log, clearing the active-session marker, and finalising
-> the Conclusion placeholder.
+> Saving the agreed topics to the discovery map and closing out
+> the session log.
 ```
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
@@ -400,8 +398,8 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Verifying the session followed discovery conventions before
-> bridging out.
+> Checking the session followed the discovery conventions before
+> moving on.
 ```
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
