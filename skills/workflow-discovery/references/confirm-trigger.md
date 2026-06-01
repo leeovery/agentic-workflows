@@ -4,7 +4,7 @@
 
 ---
 
-The single persistence hinge. Until the work-type commit, all shaping is ephemeral — nothing is on disk. This reference fires once, at the commit, and persists everything uniformly for **every** work type: resolve the name → create the work unit → land imports → archive the inbox seed → write the session log. No work-type branching here; the only parameter is `--work-type`.
+The single persistence hinge. Until the work-type commit, all shaping is ephemeral — nothing is on disk. This reference fires once, at the commit, and persists the work unit for **every** work type: resolve the name → create it → land imports → archive the inbox seed → write the session log. Persistence is uniform except two epic-specific touches in **E** (the session log's *Map State at Start* wording and the active-session marker); routing by work type is deferred to **G**.
 
 Inputs held from earlier steps: committed `work_type`, shaped one-line `description`, `import_paths` (paths the user shared during shaping, may be empty), `inbox_seed` path (may be none).
 
