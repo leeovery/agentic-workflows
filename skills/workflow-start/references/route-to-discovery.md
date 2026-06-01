@@ -11,6 +11,6 @@ Parameters the caller provides via context before loading:
 - `work_type` — `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none`.
 - `inbox_seed` — path to the chosen inbox file, or `none`.
 
-Invoke `/workflow-discovery {work_type} none {inbox_seed}`. The work_unit argument is the literal `none` — new work has no work unit until discovery's confirm-trigger creates it.
+Invoke `/workflow-discovery {work_type} none "{inbox_seed}"`. The work_unit argument is the literal `none` — new work has no work unit until discovery's confirm-trigger creates it. Quote the `{inbox_seed}` argument so the file path passes intact regardless of its characters.
 
 Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

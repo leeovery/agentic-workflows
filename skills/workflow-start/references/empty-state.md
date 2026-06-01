@@ -36,7 +36,7 @@ What would you like to start?
 - **`q`/`quick-fix`** — Scoping → implement → review (no formal planning)
 - **`c`/`cross-cutting`** — (Research →) discussion → spec (patterns or policies that inform other work)
 @if(has_inbox)
-- **`i`/`inbox`** — Start from an inbox item ({inbox_count} items)
+- **`i`/`inbox`** — View the inbox and start from an item ({inbox_count} items)
 @endif
 @if(completed_count > 0 || cancelled_count > 0)
 - **`v`/`view`** — View completed & cancelled work units

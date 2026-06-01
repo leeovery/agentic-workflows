@@ -62,25 +62,7 @@ Epics:
 
 @if(has_inbox)
 
-Inbox:
-@if(inbox.idea_count > 0)
-  Ideas:
-@foreach(idea in inbox.ideas)
-    • {idea.title} — {idea.date}
-@endforeach
-@endif
-@if(inbox.bug_count > 0)
-  Bugs:
-@foreach(bug in inbox.bugs)
-    • {bug.title} — {bug.date}
-@endforeach
-@endif
-@if(inbox.quickfix_count > 0)
-  Quick Fixes:
-@foreach(qf in inbox.quickfixes)
-    • {qf.title} — {qf.date}
-@endforeach
-@endif
+Inbox: {inbox_hint}
 @endif
 
 @if(completed_count > 0 || cancelled_count > 0)
@@ -89,6 +71,8 @@ Inbox:
 ```
 
 Build from discovery output. Only show sections that have work units. Numbering is continuous across sections. Feature/bugfix shows `phase_label` (titlecased). Epic shows comma-separated `active_phases` (titlecased). Blank line between each numbered item.
+
+`{inbox_hint}` is a one-line count, not the items themselves — comma-separated non-zero categories from `inbox.idea_count` / `inbox.bug_count` / `inbox.quickfix_count`, pluralised (e.g. `10 ideas, 4 bugs, 3 quick-fixes`; `1 idea`). The `i`/`inbox` option opens the full list to pick from — keeping a project with many inbox items from flooding this menu.
 
 ## Menu
 
@@ -116,7 +100,7 @@ What would you like to do?
 - **`q`/`quick-fix`** — Start new quick-fix
 - **`c`/`cross-cutting`** — Start new cross-cutting concern
 @if(has_inbox)
-- **`i`/`inbox`** — Start from an inbox item
+- **`i`/`inbox`** — View the inbox and start from an item
 @endif
 @if(completed_count > 0 || cancelled_count > 0)
 - **`v`/`view`** — View completed & cancelled work units
