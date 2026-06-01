@@ -1,6 +1,6 @@
 # Import Files
 
-*Shared reference. Loaded by `workflow-discovery/references/confirm-trigger.md`.*
+*Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 

@@ -44,7 +44,7 @@ The work unit already exists (defensive — should not occur after a clean name 
 
 The user shared reference files during shaping. Land them now — copied into `imports/`, tracked in `manifest.imports[]`, indexed into the knowledge base so they surface via retrieval in this and every future phase.
 
-→ Load **[import-files.md](../../workflow-shared/references/import-files.md)** with work_unit = `{work_unit}`, import_paths = `{import_paths}`.
+→ Load **[import-files.md](import-files.md)** with work_unit = `{work_unit}`, import_paths = `{import_paths}`.
 
 → Proceed to **D. Archive the Inbox Seed**.
 
