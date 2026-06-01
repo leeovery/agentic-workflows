@@ -4,7 +4,7 @@
 
 ---
 
-Invoke the umbrella discovery skill for new work. Every new-work pick routes here — the work type is a pre-seed (a hint discovery still confirms), or `none` for the unknown-shape `s`/start path.
+Invoke the discovery skill for new work. Every new-work pick routes here — the work type is a pre-seed (a hint discovery still confirms), or `none` for the unknown-shape `s`/start path.
 
 Parameters the caller provides via context before loading:
 

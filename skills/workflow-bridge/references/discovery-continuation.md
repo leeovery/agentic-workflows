@@ -6,7 +6,7 @@
 
 Route a concluded discovery session. An epic returns to its menu (the user picks the next move from the map); every other work type hands off to its first phase. Both use a plan-mode handoff so the next step starts in a clean context, free of discovery's shaping instructions.
 
-The destination is **given, not derived** — the first phase isn't in pipeline state yet, so there's nothing for the discovery script to compute (the bridge skips it for the discovery handoff). An epic's destination is its menu; a single-phase type arrives with `next_phase` already decided and supplied by the discovery endpoint.
+The destination is **given, not derived** — discovery is the first phase, so the next phase isn't in pipeline state yet and there's nothing for the discovery script to compute (the bridge skips it for the discovery handoff). An epic's destination is its menu; a single-phase type arrives with `next_phase` already decided and supplied by the discovery endpoint.
 
 ## A. Branch by Work Type
 

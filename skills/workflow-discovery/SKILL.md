@@ -6,13 +6,13 @@ allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs
 
 # Discovery
 
-The universal umbrella entry. Shape the work the user is bringing — confirm what kind of work it is, sketch its outline — then persist it and route into the pipeline.
+The universal first phase. Shape the work the user is bringing — confirm what kind of work it is, sketch its outline — then persist it and route into the pipeline.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
 ## Workflow Context
 
-Discovery sits **above** every pipeline — it is not a phase. It opens all brand-new work, routes into the right pipeline, and re-shapes an epic's map. The pipeline it feeds differs by work type:
+Discovery is the universal **first phase** — every work type begins here. It shapes brand-new work and settles its type, then the pipeline branches; for an epic it also re-shapes the map on later visits. What follows differs by work type:
 
 | Work type | Pipeline after discovery |
 |---|---|
