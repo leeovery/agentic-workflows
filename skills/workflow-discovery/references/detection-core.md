@@ -6,7 +6,7 @@
 
 Universal shape-detection knowledge — loaded on every new-mode entry, applied throughout the shaping conversation (Step 4). It carries *signals and the confirm protocol*, never execution detail. Reroute is this same knowledge pointed at a competing shape.
 
-Hold these rules in context for the rest of the conversation. Do not render any of this to the user verbatim — it governs how you listen, surface, and commit.
+These rules apply only to the work-type decision during shaping (Step 4) — a one-shot call that does not carry into later phases once the type is committed and the work routes out. Do not render any of this to the user verbatim — it governs how you listen, surface, and commit.
 
 ## A. What you're resolving
 
