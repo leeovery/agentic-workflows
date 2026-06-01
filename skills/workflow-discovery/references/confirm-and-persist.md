@@ -42,7 +42,7 @@ Notes:
 - `init-phase` creates the item with `status: in-progress` automatically. Discovery items have no other valid status — do not pass `status` explicitly.
 - The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
 - `routing` is the value confirmed by the user at the synthesis gate.
-- `source: discovery` distinguishes user-surfaced topics from later auto-additions (`research-analysis`, `gap-analysis`, `split`, `elevation`, `direct-start`, `migration-seeded`).
+- `source: discovery` marks topics the user surfaced during discovery, distinguishing them from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
 
 → Proceed to **B. Write Topics Identified**.
 
