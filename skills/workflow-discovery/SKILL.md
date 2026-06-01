@@ -16,7 +16,7 @@ Discovery sits **above** every pipeline — it is not a phase. It opens all bran
 
 | Work type | Pipeline after discovery |
 |---|---|
-| Epic | Research → Discussion → Specification → Planning → Implementation → Review (per topic) |
+| Epic | Multi-topic; each topic: (Research) → Discussion → Specification → Planning → Implementation → Review |
 | Feature | (Research) → Discussion → Specification → Planning → Implementation → Review |
 | Bugfix | Investigation → Specification → Planning → Implementation → Review |
 | Quick-fix | Scoping → Implementation → Review |
