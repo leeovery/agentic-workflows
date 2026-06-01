@@ -49,11 +49,7 @@ Set `next_phase` = `scoping`.
 
 ## B. Finalise
 
-Finalise the session log carrier: replace its `(none)` **Conclusion** with a one-line note — `Routed to {next_phase}.` Clear the active-session marker:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
-```
+Finalise the session log carrier: replace its `(none)` **Conclusion** with a one-line note — `Routed to {next_phase}.` Single-phase work sets no active-session marker (it has no resumable loop), so there is nothing to clear here.
 
 Leave the commit to the conclude step — `next_phase` is held in context for it to use.
 

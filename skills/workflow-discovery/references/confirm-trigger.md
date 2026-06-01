@@ -89,7 +89,7 @@ Write `.workflows/{work_unit}/discovery/session-001.md` populating the header, *
 
 This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. Do not KB-index it — it is shape-talk, not validated substance.
 
-Set the active-session marker:
+Set the active-session marker — only for epics, the sole work type with a resumable discovery session loop:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "001"
