@@ -12,9 +12,15 @@ The universal umbrella entry. Shape the work the user is bringing — confirm wh
 
 ## Workflow Context
 
-Discovery sits **above** every pipeline — it is not a phase. It is the one step that opens all brand-new work and re-shapes an epic's map:
+Discovery sits **above** every pipeline — it is not a phase. It opens all brand-new work, routes into the right pipeline, and re-shapes an epic's map. The pipeline it feeds differs by work type:
 
-**Discovery** → (Research) → Discussion → Specification → Planning → Implementation → Review
+| Work type | Pipeline after discovery |
+|---|---|
+| Epic | Research → Discussion → Specification → Planning → Implementation → Review (per topic) |
+| Feature | (Research) → Discussion → Specification → Planning → Implementation → Review |
+| Bugfix | Investigation → Specification → Planning → Implementation → Review |
+| Quick-fix | Scoping → Implementation → Review |
+| Cross-cutting | (Research) → Discussion → Specification (terminal) |
 
 It runs in two modes:
 
