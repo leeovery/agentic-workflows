@@ -1,6 +1,6 @@
 # Topic Discovery
 
-*Shared reference. Loaded by `continue-epic` and `workflow-discovery`.*
+*Shared reference. Loaded by [topic-discovery-dispatch.md](topic-discovery-dispatch.md), which `continue-epic` and `workflow-bridge` run.*
 
 ---
 
