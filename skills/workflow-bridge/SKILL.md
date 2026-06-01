@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs),
 
 Enter plan mode with deterministic continuation instructions.
 
-This skill is invoked by processing skills (workflow-discussion-process, workflow-specification-process, etc.) when a pipeline phase concludes. It discovers the next phase and creates a plan mode handoff that survives context compaction.
+This skill is invoked when a pipeline phase concludes — or when discovery concludes — to create a plan-mode handoff that survives context compaction. For a pipeline phase it derives the next phase from state; for the discovery handoff the destination is supplied, because discovery sits above the phases and there's nothing in state to derive from yet.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -14,7 +14,7 @@ This skill is invoked by processing skills (workflow-discussion-process, workflo
 
 This skill receives context from the calling processing skill:
 - **Work unit**: The work unit name (directory under `.workflows/`) = `{work_unit}`
-- **Completed phase**: The phase that just completed = `{completed_phase}`
+- **Completed phase**: The phase that just completed, or `discovery` (which isn't a pipeline phase but concludes through the bridge like one) = `{completed_phase}`
 - **Next phase** (optional): supplied when the caller already knows the destination — discovery handing a single-phase work type to its first phase = `{next_phase}`. Other callers omit it and the continuation computes the next phase from discovery output.
 
 ---
