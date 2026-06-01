@@ -203,7 +203,7 @@ function apply(cwd, workUnit, currentSource) {
         `theme application failed mid-flight. Source file renamed to ${supersededFile}; ` +
         `source discovery item already deleted. Some themes may have been partially written. ` +
         `Inspect ${researchDir} and manifest items, clean up partial themes manually, ` +
-        `then re-run /continue-epic.`,
+        `then reopen the epic via /workflow-start.`,
     };
   }
 

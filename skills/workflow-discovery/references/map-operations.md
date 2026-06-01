@@ -71,8 +71,8 @@ Render the rejection in a code block:
 
 ```
 "{topic}" can't be {removed|renamed|re-routed} from the map —
-{lifecycle_phrase}. To stop work on it, use `a`/`cancel` in
-/continue-epic instead.
+{lifecycle_phrase}. To stop work on it, use `a`/`cancel` from the
+epic menu instead.
 ```
 
 `{lifecycle_phrase}` examples:

@@ -63,19 +63,19 @@ Epics:
 @if(has_inbox)
 
 Inbox:
-@if(idea_count > 0)
+@if(inbox.idea_count > 0)
   Ideas:
 @foreach(idea in inbox.ideas)
     • {idea.title} — {idea.date}
 @endforeach
 @endif
-@if(bug_count > 0)
+@if(inbox.bug_count > 0)
   Bugs:
 @foreach(bug in inbox.bugs)
     • {bug.title} — {bug.date}
 @endforeach
 @endif
-@if(quickfix_count > 0)
+@if(inbox.quickfix_count > 0)
   Quick Fixes:
 @foreach(qf in inbox.quickfixes)
     • {qf.title} — {qf.date}

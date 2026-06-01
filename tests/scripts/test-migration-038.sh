@@ -487,7 +487,7 @@ JSON
   content=$(cat "$wu_dir/inception/session-001.md")
   assert_eq "session: contains migration heading" "true" "$(echo "$content" | grep -qF -- 'Initial Framing — Pre-Inception Migration' && echo true || echo false)"
   assert_eq "session: counts items" "true" "$(echo "$content" | grep -qF -- '2 topic(s) found in existing research/discussion items' && echo true || echo false)"
-  assert_eq "session: mentions continue-epic" "true" "$(echo "$content" | grep -qF -- '/continue-epic' && echo true || echo false)"
+  assert_eq "session: mentions workflow-start" "true" "$(echo "$content" | grep -qF -- '/workflow-start' && echo true || echo false)"
 
   teardown
 }
