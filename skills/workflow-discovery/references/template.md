@@ -95,7 +95,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.disco
 
 The caller's own commit step stages and commits this alongside the log.
 
-The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](../../workflow-discovery/SKILL.md)). Always replace it at finalisation so the next entry sees a closed state.
+The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](resume-detection.md)). Always replace it at finalisation so the next entry sees a closed state.
 
 At finalisation, replace the `(none)` Conclusion with one of:
 
