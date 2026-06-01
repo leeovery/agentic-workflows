@@ -1,6 +1,6 @@
 # Import Files
 
-*Shared reference. Loaded by `start-epic` and `start-feature`.*
+*Shared reference. Loaded by `workflow-discovery/references/confirm-trigger.md`.*
 
 ---
 

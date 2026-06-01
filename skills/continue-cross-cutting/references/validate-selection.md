@@ -13,7 +13,7 @@ Validate the selected work unit against the discovery output and store its data.
 ```
 No active cross-cutting concern named "{work_unit}" found.
 
-Run /continue-cross-cutting to see available concerns, or /start-cross-cutting to begin a new one.
+Run /workflow-start to see available concerns or begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

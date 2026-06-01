@@ -10,18 +10,23 @@ This skill's purpose is now fulfilled. Construct the handoff and invoke the proc
 
 ---
 
-## Load Discovery Description
+## Load the Carrier Description
 
-For every source branch except `continue`, attempt to read the discovery item's `description` so it can be appended to the handoff. Two preconditions must hold before the read — both must be true, otherwise treat description as null and skip the Description block:
+For every source branch except `continue`, read the `description` discovery left as the seed carrier, to append it to the handoff. Where it lives depends on the work type — read the matching source (empty stdout means absent):
 
-1. `work_type` is `epic`. Non-epic work units (feature, bugfix, cross-cutting) have no discovery phase — skip.
-2. The `description` subkey is present on the discovery item. Read it directly — empty stdout means the subkey is absent:
+- **Epic** — the discovery map item carries it:
 
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
-   ```
+  ```bash
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+  ```
 
-When `description` is loaded and non-empty, append the Description block shown in each source branch below. When either precondition fails, or the read returns empty, omit the Description block entirely — no header, no empty body.
+- **Feature / cross-cutting** — the work-unit manifest carries it (single-phase types have no discovery map item):
+
+  ```bash
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+  ```
+
+When the read returns non-empty, append the Description block shown in each source branch below. When it returns empty, omit the Description block entirely — no header, no empty body.
 
 ---
 

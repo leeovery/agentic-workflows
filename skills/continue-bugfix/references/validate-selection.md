@@ -13,7 +13,7 @@ Validate the selected work unit against the discovery output and store its data.
 ```
 No active bugfix named "{work_unit}" found.
 
-Run /continue-bugfix to see available bugfixes, or /start-bugfix to begin a new one.
+Run /workflow-start to see available bugfixes or begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

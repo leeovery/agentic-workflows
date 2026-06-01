@@ -4,7 +4,7 @@
 
 ---
 
-Select an inbox item and route to the appropriate start skill.
+Select an inbox item and route it into discovery. The folder pre-seeds the work type (bugs → bugfix, quickfixes → quick-fix, ideas → none); discovery confirms the shape and classifies ideas. The inbox file path is the seed — discovery reads it at its opener and the filename-slug becomes the suggested name.
 
 ## A. Display Inbox Items
 
@@ -38,62 +38,16 @@ Select an item (enter number, or **`b`/`back`** to return):
 
 #### If user chose a number
 
-→ Proceed to **B. Load and Route**.
+→ Proceed to **B. Route to Discovery**.
 
-## B. Load and Route
+## B. Route to Discovery
 
-Read the full content of the selected inbox file.
+Set the pre-seed and seed path from the selected item's folder:
 
-#### If selected item is a bug
+| Selected item | work_type | inbox_seed |
+|---|---|---|
+| bug | `bugfix` | `.workflows/.inbox/bugs/{file}` |
+| quick-fix | `quick-fix` | `.workflows/.inbox/quickfixes/{file}` |
+| idea | `none` | `.workflows/.inbox/ideas/{file}` |
 
-Invoke `/start-bugfix` with the inbox file path as positional argument:
-
-`/start-bugfix .workflows/.inbox/bugs/{file}`
-
-This skill ends. The invoked skill handles archival. Terminal.
-
-#### If selected item is a quick-fix
-
-Invoke `/start-quickfix` with the inbox file path as positional argument:
-
-`/start-quickfix .workflows/.inbox/quickfixes/{file}`
-
-This skill ends. The invoked skill handles archival. Terminal.
-
-#### If selected item is an idea
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Choose based on scope. Feature for a single focused piece of work,
-> epic if it'll need multiple discussion topics, cross-cutting if it
-> defines patterns that other work will follow.
-
-· · · · · · · · · · · ·
-What type of work unit?
-
-- **`f`/`feature`** — Single-topic, linear pipeline
-- **`e`/`epic`** — Multiple topics, multi-session
-- **`c`/`cross-cutting`** — Patterns or policies that inform other work
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `f`/`feature`:**
-
-Invoke `/start-feature .workflows/.inbox/ideas/{file}`.
-
-This skill ends. The invoked skill handles archival. Terminal.
-
-**If `e`/`epic`:**
-
-Invoke `/start-epic .workflows/.inbox/ideas/{file}`.
-
-This skill ends. The invoked skill handles archival. Terminal.
-
-**If `c`/`cross-cutting`:**
-
-Invoke `/start-cross-cutting .workflows/.inbox/ideas/{file}`.
-
-This skill ends. The invoked skill handles archival. Terminal.
+→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `{inbox_seed}`.

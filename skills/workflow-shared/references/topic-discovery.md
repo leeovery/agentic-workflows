@@ -1,6 +1,6 @@
 # Topic Discovery
 
-*Shared reference. Loaded by `continue-epic` and `workflow-discovery-process`.*
+*Shared reference. Loaded by `continue-epic` and `workflow-discovery`.*
 
 ---
 
@@ -27,7 +27,7 @@ The caller provides these via context before loading:
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-discovery-process/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
 ```
 
 Parse `analysis_caches` from the output:

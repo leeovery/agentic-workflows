@@ -69,3 +69,4 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 26 | [Review Not Re-Offered After Loopback from Review Remediation](review-not-re-offered-after-loopback.md) | `workflow-implementation-entry/validate-phase.md` + `workflow-bridge/discovery.cjs` |
 | 27 | ~~[Continue-Epic Step 5 Asks the Agent to Filter Data the Discovery Script Doesn't Expose](continue-epic-items-to-recover-unobservable.md)~~ | `continue-epic/SKILL.md` Step 5 + `continue-epic/scripts/discovery.cjs` text formatter | ✅ Done |
 | 28 | [Hybrid Search Ranking — Evaluate Text/Vector Weighting & Re-rank on a Real Corpus](hybrid-ranking-weighting-evaluation.md) | Knowledge base — `store.searchHybrid` weights + `index.js` `rerank()` + query pipeline |
+| 29 | [Seed Discovery from Multiple Linked Inbox Items](seed-discovery-multiple-inbox-items.md) | Phase 17 Discovery — inbox pickup multi-select + opener combined-seed handling + confirm-trigger archival |

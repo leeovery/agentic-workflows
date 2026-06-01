@@ -13,7 +13,7 @@ Validate the selected work unit against the discovery output and store its data.
 ```
 No active quick-fix named "{work_unit}" found.
 
-Run /continue-quickfix to see available quick-fixes, or /start-quickfix to begin a new one.
+Run /workflow-start to see available quick-fixes or begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.

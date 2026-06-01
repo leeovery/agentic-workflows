@@ -95,22 +95,17 @@ Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:1143
 
 ### Your First Workflow
 
-Run `/workflow-start` — it shows all active work, lets you continue where you left off, or start something new. When in doubt, this is your entry point.
+Run `/workflow-start` — the single entry point. It shows all active work, lets you continue where you left off, or start something new. When you start new work you pick the type if you know it (feature, epic, bugfix, quick-fix, cross-cutting), or choose **start** if you're not sure — either way you land in **discovery**, which shapes the work, confirms its type, and routes it into the right pipeline.
 
-Or jump straight in:
+To capture something for later without starting a pipeline:
 
 | Command | Use when... |
 |---------|-------------|
-| `/start-feature` | You're adding functionality to an existing product |
-| `/start-epic` | The work spans multiple topics and sessions |
-| `/start-bugfix` | Something is broken and needs fixing |
-| `/start-quickfix` | A trivially scoped mechanical change (find-and-replace, syntax update) |
-| `/start-cross-cutting` | You're defining patterns or policies that inform features |
 | `/workflow-log-idea` | You want to capture an idea for later |
 | `/workflow-log-bug` | You want to log a bug for later |
 | `/workflow-log-quickfix` | You want to log a quick-fix for later |
 
-Each command gathers context through a brief interview, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
+Logged items wait in the inbox and can be picked up anytime from `/workflow-start`. Discovery gathers context through conversation, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
 
 ## The Workflow
 
@@ -215,7 +210,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 
 | Skill | Description |
 |-------|-------------|
-| [workflow-discovery-process](skills/workflow-discovery-process/) | Curatorial discovery-map session for epics — names topics, classifies each as research or discussion, supports refinement re-entry |
+| [workflow-discovery](skills/workflow-discovery/) | Curatorial discovery-map session for epics — names topics, classifies each as research or discussion, supports refinement re-entry |
 | [workflow-research-process](skills/workflow-research-process/) | Free-form exploration across technical, business, and market domains |
 | [workflow-discussion-process](skills/workflow-discussion-process/) | Captures context, decisions, edge cases, competing solutions, and rationale |
 | [workflow-investigation-process](skills/workflow-investigation-process/) | Symptom gathering and code analysis for root cause identification |
@@ -229,9 +224,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 <details>
 <summary><strong>Entry-Point Skills</strong> — user-facing commands</summary>
 
-**Start:** [`/start-feature`](skills/start-feature/) | [`/start-epic`](skills/start-epic/) | [`/start-bugfix`](skills/start-bugfix/) | [`/start-quickfix`](skills/start-quickfix/) | [`/start-cross-cutting`](skills/start-cross-cutting/)
-
-**Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/) | [`/continue-quickfix`](skills/continue-quickfix/) | [`/continue-cross-cutting`](skills/continue-cross-cutting/)
+**Entry:** [`/workflow-start`](skills/workflow-start/) — the single entry point for starting new work (via discovery) and continuing existing work. It routes to the discovery and per-type continue skills internally; those are model-only.
 
 **Capture:** [`/workflow-log-idea`](skills/workflow-log-idea/) | [`/workflow-log-bug`](skills/workflow-log-bug/) | [`/workflow-log-quickfix`](skills/workflow-log-quickfix/)
 
