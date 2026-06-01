@@ -15,6 +15,7 @@ This skill is invoked by processing skills (workflow-discussion-process, workflo
 This skill receives context from the calling processing skill:
 - **Work unit**: The work unit name (directory under `.workflows/`) = `{work_unit}`
 - **Completed phase**: The phase that just completed = `{completed_phase}`
+- **Next phase** (optional): supplied when the caller already knows the destination — discovery handing a single-phase work type to its first phase = `{next_phase}`. Other callers omit it and the continuation computes the next phase from discovery output.
 
 ---
 

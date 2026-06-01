@@ -4,7 +4,7 @@
 
 ---
 
-The endpoint for a feature or cross-cutting work unit: one routing decision, then hand off to the first phase. The work is already shaped and persisted — the manifest `description` and the session log carry the intent.
+The endpoint for a feature or cross-cutting work unit: one routing decision, then conclude through the bridge. The work is already shaped and persisted — the manifest `description` and the session log carry the intent.
 
 ## A. Decide Routing
 
@@ -29,33 +29,18 @@ questions are trade-offs — I'd start with discussion."}
 
 **STOP.** Wait for user response.
 
-Hold the choice as `routing`.
+Hold the choice as `next_phase` (`research` or `discussion`).
 
-→ Proceed to **B. Conclude**.
+→ Proceed to **B. Finalise**.
 
-## B. Conclude
+## B. Finalise
 
-Finalise the session log carrier: replace the `(none)` **Conclusion** with a one-line note recording the routing (`Routed to {routing}.`). Clear the active-session marker and commit:
+Finalise the session log carrier: replace its `(none)` **Conclusion** with a one-line note — `Routed to {next_phase}.` Clear the active-session marker:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
-git add -- .workflows/{work_unit}/
-git commit -m "discovery({work_unit}): conclude — route to {routing}"
 ```
 
-If `git status` reports nothing to commit, skip the commit.
+Leave the commit to the conclude step (it sweeps these changes).
 
-→ Proceed to **C. Route to First Phase**.
-
-## C. Route to First Phase
-
-Invoke the entry skill for the chosen routing:
-
-| Routing | Invoke |
-|---|---|
-| research | `/workflow-research-entry {work_type} {work_unit}` |
-| discussion | `/workflow-discussion-entry {work_type} {work_unit}` |
-
-The entry skill reads the durable carrier (session log + manifest `description`) as its seed.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[conclude-discovery.md](conclude-discovery.md)** and follow its instructions as written. It commits and hands off to `/workflow-{next_phase}-entry {work_type} {work_unit}` through the bridge.
