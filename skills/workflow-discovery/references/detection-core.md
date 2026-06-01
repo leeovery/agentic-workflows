@@ -19,10 +19,12 @@ Two levels, gathered simultaneously, committed in dependency order:
 
 ## B. The discriminator tree (resolution order)
 
-Resolve in order of cost + terminality:
+Resolve in order of cost + terminality — settle the cheap, terminal shapes first, then explore the rest.
 
-1. **Broken, or a tiny mechanical adjustment?** → **bugfix** (something that worked is failing) / **quick-fix** (an imperative scoped change — "bump the timeout", "rename X to Y", "add a flag" — no behaviour debate). Cheap, distinctive, terminal. Confirm → route out → done. No topic work, no micro routing.
-2. **Not broken / not tiny** → keep exploring until topic-count settles:
+1. **A constrained, terminal shape?** These confirm fast and route straight out — no topic work, no micro routing:
+   - **something that worked is now failing** — specific symptoms, a root cause still to find → **bugfix** (→ investigation)
+   - **a small, known, mechanical change** — *"bump the timeout"*, *"rename X to Y"*, *"add a flag"*; no behaviour debate, nothing to diagnose → **quick-fix** (→ scoping)
+2. **Otherwise — something to build or define.** Keep exploring until the topic count settles:
    - pattern / principle / strategy, nothing ship-able (*"error-response shape"*, *"auth strategy"*, *"logging convention"*) → **cross-cutting**
    - ship-able, one coherent topic → **feature**
    - ship-able, topics multiply → **epic**
