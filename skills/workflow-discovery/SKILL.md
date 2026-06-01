@@ -355,30 +355,13 @@ Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow 
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 14**.
+→ Proceed to **Step 15** (the epic topic path skips the single-phase endpoint).
 
 ---
 
-## Step 14: Conclude Discovery
+## Step 14: Single-Phase Endpoint
 
-> *Output the next fenced block as a code block:*
-
-```
-── Conclude Discovery ───────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Wrapping up — saving, then back to the epic's menu where you
-> pick the next move from the map.
-```
-
-Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.
-
----
-
-## Step 15: Single-Phase Endpoint
+Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix — routed here by the confirm-trigger (Step 5). The epic topic path does not pass through here.
 
 > *Output the next fenced block as a code block:*
 
@@ -395,3 +378,26 @@ Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow it
 ```
 
 Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.
+
+→ Proceed to **Step 15**.
+
+---
+
+## Step 15: Conclude Discovery
+
+The single exit for every work type — epic arrives from Step 13, single-phase work from Step 14.
+
+> *Output the next fenced block as a code block:*
+
+```
+── Conclude Discovery ───────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Wrapping up — committing, then handing off through the bridge to
+> the next step in a clean context.
+```
+
+Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.

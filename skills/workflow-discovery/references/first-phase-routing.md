@@ -55,6 +55,6 @@ Finalise the session log carrier: replace its `(none)` **Conclusion** with a one
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
 ```
 
-Leave the commit to the conclude step (it sweeps these changes).
+Leave the commit to the conclude step — `next_phase` is held in context for it to use.
 
-→ Load **[conclude-discovery.md](conclude-discovery.md)** and follow its instructions as written. It commits and hands off to `/workflow-{next_phase}-entry {work_type} {work_unit}` through the bridge.
+→ Return to caller.

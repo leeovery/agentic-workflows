@@ -122,6 +122,6 @@ The work continues into the initial topic sketch — the same shaping, deepened.
 
 #### Otherwise
 
-Single-phase work (feature / cross-cutting / bugfix / quick-fix). The single-phase endpoint determines the first phase and concludes.
+Single-phase work (feature / cross-cutting / bugfix / quick-fix). The single-phase endpoint determines the first phase, then the work concludes.
 
-→ Return to **[the skill](../SKILL.md)** for **Step 15**.
+→ Return to **[the skill](../SKILL.md)** for **Step 14**.
