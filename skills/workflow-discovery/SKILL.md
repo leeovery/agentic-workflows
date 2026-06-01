@@ -169,7 +169,7 @@ Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its 
 > creating it, and saving any files or notes you shared.
 ```
 
-Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written. It persists the work unit, then routes to the first phase by work type (epic → Step 7; feature / cross-cutting → Step 15; bugfix / quick-fix → Step 16).
+Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written.
 
 ---
 
