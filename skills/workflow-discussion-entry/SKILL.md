@@ -136,7 +136,7 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 > Collecting the context needed before starting the discussion.
 ```
 
-#### If `work_type` is not `epic`
+#### If `work_type` is not `epic` and a discovery session log exists for this work unit
 
 Single-phase work shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/session-NNN.md`, highest-numbered) — and seed the discussion from it. Do not re-ask; live conversation context, when present, supplements the carrier.
 
