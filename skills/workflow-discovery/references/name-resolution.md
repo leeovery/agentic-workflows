@@ -68,7 +68,9 @@ Choose a different name, or resume via /workflow-start.
 
 **STOP.** Wait for user response.
 
-→ Return to **A. Suggest a Name**.
+Kebab-case the name the user gives and hold it as `work_unit` — don't re-derive the original suggestion.
+
+→ Return to **B. Conflict Check**.
 
 #### If no conflict
 
