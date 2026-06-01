@@ -1,12 +1,14 @@
-# Feature / Cross-Cutting Routing
+# First-Phase Routing
 
 *Reference for **[workflow-discovery](../SKILL.md)***
 
 ---
 
-The endpoint for a feature or cross-cutting work unit: one routing decision, then conclude through the bridge. The work is already shaped and persisted — the manifest `description` and the session log carry the intent.
+The endpoint for single-phase work — feature, cross-cutting, bugfix, quick-fix. Determine the first phase, then conclude through the bridge. The work is already shaped and persisted; the manifest `description` and the session log carry the intent. Feature and cross-cutting have a research-vs-discussion choice; bugfix and quick-fix go to a fixed first phase.
 
-## A. Decide Routing
+## A. Determine the First Phase
+
+#### If work type is `feature` or `cross-cutting`
 
 Propose research-vs-discussion from the shaping cues, then let the user confirm or flip:
 
@@ -29,7 +31,19 @@ questions are trade-offs — I'd start with discussion."}
 
 **STOP.** Wait for user response.
 
-Hold the choice as `next_phase` (`research` or `discussion`).
+Set `next_phase` to the choice (`research` or `discussion`).
+
+→ Proceed to **B. Finalise**.
+
+#### If work type is `bugfix`
+
+Set `next_phase` = `investigation`.
+
+→ Proceed to **B. Finalise**.
+
+#### If work type is `quick-fix`
+
+Set `next_phase` = `scoping`.
 
 → Proceed to **B. Finalise**.
 

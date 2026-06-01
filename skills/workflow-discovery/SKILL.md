@@ -378,38 +378,20 @@ Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow it
 
 ---
 
-## Step 15: Feature / Cross-Cutting Endpoint
+## Step 15: Single-Phase Endpoint
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Feature / Cross-Cutting Routing ──────────────
+── First-Phase Routing ──────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> One choice left — start with research to explore, or go straight
-> to discussion — then into the first phase.
+> Discovery's done — routing this work to its first phase. Feature
+> and cross-cutting pick research or discussion; bugfix goes to
+> investigation, quick-fix to scoping.
 ```
 
-Load **[feature-cc-routing.md](references/feature-cc-routing.md)** and follow its instructions as written.
-
----
-
-## Step 16: Bugfix / Quick-Fix Endpoint
-
-> *Output the next fenced block as a code block:*
-
-```
-── Bugfix / Quick-Fix Routing ───────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Nothing more to decide — handing off to investigation for a
-> bugfix, or scoping for a quick-fix.
-```
-
-Load **[intent-capture.md](references/intent-capture.md)** and follow its instructions as written.
+Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.

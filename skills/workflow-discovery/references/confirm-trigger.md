@@ -120,10 +120,8 @@ The work continues into the initial topic sketch — the same shaping, deepened.
 
 → Return to **[the skill](../SKILL.md)** for **Step 7**.
 
-#### If `work_type` is `feature` or `cross-cutting`
+#### Otherwise
+
+Single-phase work (feature / cross-cutting / bugfix / quick-fix). The single-phase endpoint determines the first phase and concludes.
 
 → Return to **[the skill](../SKILL.md)** for **Step 15**.
-
-#### If `work_type` is `bugfix` or `quick-fix`
-
-→ Return to **[the skill](../SKILL.md)** for **Step 16**.

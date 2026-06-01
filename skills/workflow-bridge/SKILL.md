@@ -27,6 +27,12 @@ Read work type from the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
 ```
 
+#### If completed phase is `discovery`
+
+The discovery handoff needs no state computation. The first phase isn't in pipeline state yet, so the destination is *given*, not derived — an epic returns to its menu, and single-phase types use the `next_phase` the discovery endpoint decided and supplied. Skip the discovery script.
+
+→ Proceed to **Step 2**.
+
 #### If work type is `epic`
 
 → Proceed to **Step 2** (epic continuation runs its own enriched discovery).
