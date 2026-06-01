@@ -334,32 +334,11 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
 
-→ Proceed to **Step 13**.
+→ Proceed to **Step 14**.
 
 ---
 
-## Step 13: Compliance Self-Check
-
-> *Output the next fenced block as a code block:*
-
-```
-── Compliance Self-Check ────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the session followed the discovery conventions before
-> moving on.
-```
-
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ Proceed to **Step 15** (the epic topic path skips the single-phase endpoint).
-
----
-
-## Step 14: Single-Phase Endpoint
+## Step 13: Single-Phase Endpoint
 
 Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix — routed here by the confirm-trigger (Step 5). The epic topic path does not pass through here.
 
@@ -379,13 +358,36 @@ Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix
 
 Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.
 
+→ Proceed to **Step 14**.
+
+---
+
+## Step 14: Compliance Self-Check
+
+Reached before concluding by both paths — the epic topic path from Step 12, the single-phase endpoint from Step 13.
+
+> *Output the next fenced block as a code block:*
+
+```
+── Compliance Self-Check ────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking the session followed the discovery conventions before
+> moving on.
+```
+
+Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
 → Proceed to **Step 15**.
 
 ---
 
 ## Step 15: Conclude Discovery
 
-The single exit for every work type — epic arrives from Step 13, single-phase work from Step 14.
+The single exit for every work type — both paths arrive from the Step 14 compliance check.
 
 > *Output the next fenced block as a code block:*
 
