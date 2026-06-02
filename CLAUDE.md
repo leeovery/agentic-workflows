@@ -199,7 +199,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 ## Skill Authoring
 
-Skill authoring rules — display/output conventions, structural conventions, skill file structure, navigation patterns, reference file naming — live in [CONVENTIONS.md](CONVENTIONS.md).
+Skill authoring rules — prose economy, display/output conventions, structural conventions, skill file structure, navigation patterns, reference file naming — live in [CONVENTIONS.md](CONVENTIONS.md).
 
 **MANDATORY**: Read [CONVENTIONS.md](CONVENTIONS.md) in full **before** creating or editing any file matching `skills/**/SKILL.md`, `skills/**/references/**/*.md`, or any new skill scaffold. Do not rely on memory or pattern-matching from sibling files — the conventions are dense, exact, and frequently updated. Skipping this step has produced silently non-compliant skills in the past.
 
