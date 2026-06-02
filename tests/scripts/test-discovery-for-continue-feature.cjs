@@ -181,6 +181,41 @@ describe('continue-feature discovery', () => {
       assert.strictEqual(r.features[0].imports_count, 2);
     });
   });
+
+  describe('seeds_count', () => {
+    it('reports zero when no seeds tracked', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.features[0].seeds_count, 0);
+    });
+
+    it('reports the length of manifest.seeds[]', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+        seeds: [
+          { path: 'seeds/2026-03-18-login-timeout.md', source: 'inbox:bug', seeded_at: '2026-05-10T10:00:00Z' },
+        ],
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.features[0].seeds_count, 1);
+    });
+
+    it('format output shows a seeds clause when non-zero', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+        seeds: [
+          { path: 'seeds/2026-03-18-login-timeout.md', source: 'inbox:bug', seeded_at: '2026-05-10T10:00:00Z' },
+        ],
+      });
+      const out = format(discover(dir));
+      assert.ok(out.includes('(1 seed)'));
+    });
+  });
 });
 
 describe('continue-feature format', () => {

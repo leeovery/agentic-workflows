@@ -202,8 +202,8 @@ When symptoms are sufficiently understood to begin code analysis:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking the knowledge base for prior investigations or
-> related work that matches the symptoms just gathered.
+> Reading the bug's seed, then checking the knowledge base for prior
+> investigations or related work that matches the symptoms.
 ```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.

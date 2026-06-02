@@ -173,8 +173,8 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking the knowledge base for prior discussions, investigations,
-> or specs that touch the area being changed.
+> Reading the work's seed, then checking the knowledge base for prior
+> discussions, investigations, or specs that touch the area being changed.
 ```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.

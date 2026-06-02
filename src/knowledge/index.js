@@ -19,7 +19,7 @@ const setup = require('./setup');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'analysis'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis'];
 
 // Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
 // on-disk basename to its KB topic identity. The .state/ directory also holds
@@ -293,7 +293,7 @@ function deriveIdentity(filePath) {
   }
 
   // Match .workflows/{work_unit}/{phase}/{rest}
-  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports)\/(.+)$/.exec(norm);
+  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports|seeds)\/(.+)$/.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
@@ -359,6 +359,18 @@ function deriveIdentity(filePath) {
       );
     }
     topic = impMatch[1];
+  } else if (phase === 'seeds') {
+    // .workflows/{wu}/seeds/{filename}.md — flat file. Topic is the
+    // basename without extension. A seed is the work unit's origin (a
+    // promoted inbox item), structurally a flat file like an import.
+    const seedMatch = /^([^/]+)\.md$/.exec(rest);
+    if (!seedMatch) {
+      throw new UserError(
+        `Unexpected seeds path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/seeds/{filename}.md'
+      );
+    }
+    topic = seedMatch[1];
   }
 
   if (topic === '.' || topic === '..' || topic.startsWith('.')) {
@@ -717,9 +729,11 @@ function discoverArtifacts() {
     if (wu.status === 'cancelled') continue;
 
     for (const phase of INDEXED_PHASES) {
-      // Imports live at top-level wu.imports[], not under wu.phases.imports —
-      // they need a separate traversal. Skip in this loop and handle below.
+      // Imports and seeds live at top-level wu.imports[] / wu.seeds[], not
+      // under wu.phases.* — they need separate traversals. Skip in this loop
+      // and handle below.
       if (phase === 'imports') continue;
+      if (phase === 'seeds') continue;
       // Analysis caches are file-based, not manifest-tracked. Handled
       // separately at the end of this work-unit iteration.
       if (phase === 'analysis') continue;
@@ -776,6 +790,30 @@ function discoverArtifacts() {
         const filePath = path.posix.join('.workflows', wuName, rel);
         if (!fs.existsSync(path.resolve(filePath))) continue;
         items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
+      }
+    }
+
+    // Seeds — top-level array on the work unit (the work's origin: promoted
+    // inbox items), no per-item status. Same shape and validation as imports,
+    // but rooted at "seeds/<basename>.md". Kept separate from imports so a
+    // seed stays deterministically distinguishable from reference material.
+    const seenSeedTopics = new Set();
+    if (Array.isArray(wu.seeds)) {
+      for (const entry of wu.seeds) {
+        if (!entry || typeof entry.path !== 'string') continue;
+        const rel = entry.path;
+        // Must be exactly seeds/{filename}.md — no subdirectories, no escapes.
+        const m = /^seeds\/([^/]+\.md)$/.exec(rel);
+        if (!m) continue;
+        const filename = m[1];
+        if (filename.includes('..') || filename.startsWith('.')) continue;
+        const base = filename.slice(0, -3); // strip .md
+        if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
+        if (seenSeedTopics.has(base)) continue;
+        seenSeedTopics.add(base);
+        const filePath = path.posix.join('.workflows', wuName, rel);
+        if (!fs.existsSync(path.resolve(filePath))) continue;
+        items.push({ file: filePath, workUnit: wuName, phase: 'seeds', topic: base });
       }
     }
 

@@ -8,16 +8,19 @@ Offer the user a choice between proceeding to the next phase or revisiting an ea
 
 ## A. Check for Earlier Phases
 
-If `feature.imports_count > 0`, render an imports callout signpost before the rest of this section runs — it must surface on every feature continuation that has imports, regardless of which branch below fires.
+If `feature.seeds_count > 0` or `feature.imports_count > 0`, render a context callout signpost before the rest of this section runs — it must surface on every feature continuation that has a seed or imports, regardless of which branch below fires. A **seed** is the work's origin (the inbox item it was promoted from); **imports** are reference files pulled in.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+@if(feature.seeds_count > 0)
+> · seeded from the inbox
+@endif
 @if(feature.imports_count == 1)
-> · 1 imported seed
+> · 1 import
 @endif
 @if(feature.imports_count > 1)
-> · {feature.imports_count} imported seeds
+> · {feature.imports_count} imports
 @endif
 ```
 

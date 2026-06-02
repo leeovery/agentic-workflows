@@ -11,8 +11,8 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion, research, and imports into
-> the selected epic as a new topic and delete the feature work unit.
+> This will move the feature's discussion, research, seed, and imports
+> into the selected epic as a new topic and delete the feature work unit.
 > Git history serves as provenance.
 
 · · · · · · · · · · · ·
@@ -117,7 +117,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.
 
 Set `has_research` = false.
 
-→ Proceed to **E. Imports Check**.
+→ Proceed to **E. Imports and Seeds Check**.
 
 #### Otherwise
 
@@ -133,37 +133,22 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {target_epic}.
 
 Collisions are resolved by appending `-{selected.name}` (e.g. `exploration` becomes `exploration-{selected.name}`). Store the mapping of original name → target name as `research_moves`.
 
-→ Proceed to **E. Imports Check**.
+→ Proceed to **E. Imports and Seeds Check**.
 
 ---
 
-## E. Imports Check
+## E. Imports and Seeds Check
 
-Read the feature's imports list:
+Read the feature's imports and seeds lists — both travel with the topic into the epic:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} imports
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} seeds
 ```
 
-#### If output is empty (no imports)
+**Imports.** If the imports output is empty, set `has_imports` = false and `imports_count` = 0. Otherwise set `has_imports` = true, store the result as `imports_entries` (list of `{path, imported_at}` objects), and set `imports_count` to its length. For each entry derive the basename from `path` (the filename under `imports/`) and check for a collision in the target epic's `imports/` directory (`test -e .workflows/{target_epic}/imports/<basename>`). Resolve collisions by suffixing the stem with `-{selected.name}` before `.md`. Store the original → target mapping as `imports_moves`, preserving each entry's `imported_at`.
 
-Set `has_imports` = false. Set `imports_count` = 0.
-
-→ Proceed to **F. Confirm**.
-
-#### Otherwise
-
-Set `has_imports` = true.
-
-Store the result as `imports_entries` (list of `{path, imported_at}` objects). Set `imports_count` to its length.
-
-For each entry, derive the basename from `path` (the filename under `imports/`). Check for collision in the target epic's `imports/` directory:
-
-```bash
-test -e .workflows/{target_epic}/imports/<basename>
-```
-
-Collisions are resolved by suffixing the stem with `-{selected.name}` before the `.md` extension (e.g. `seed-conversation.md` becomes `seed-conversation-{selected.name}.md`). Store the mapping of original filename → target filename as `imports_moves`, preserving each entry's original `imported_at` timestamp.
+**Seeds.** If the seeds output is empty, set `has_seeds` = false and `seeds_count` = 0. Otherwise set `has_seeds` = true, store the result as `seeds_entries` (list of `{path, source, seeded_at}` objects), and set `seeds_count` to its length. For each entry derive the basename from `path` (the filename under `seeds/`) and check for a collision in the target epic's `seeds/` directory (`test -e .workflows/{target_epic}/seeds/<basename>`). Resolve collisions the same way (`-{selected.name}` suffix). Store the original → target mapping as `seeds_moves`, preserving each entry's `source` and `seeded_at`. (The seed becomes one of the epic's origins — it carries its `inbox:{type}` source forward.)
 
 → Proceed to **F. Confirm**.
 
@@ -191,6 +176,9 @@ Absorb Summary
 @if(has_research)
   Research:   {research_item_count} file(s)
 @endif
+@if(has_seeds)
+  Seed:       {seeds_count} file(s) (origin)
+@endif
 @if(has_imports)
   Imports:    {imports_count} file(s)
 @endif
@@ -199,6 +187,9 @@ Absorb Summary
   • Move discussion file to epic
 @if(has_research)
   • Move research file(s) to epic
+@endif
+@if(has_seeds)
+  • Move seed file(s) to epic
 @endif
 @if(has_imports)
   • Move import file(s) to epic
@@ -314,19 +305,19 @@ If the index command fails, display the error but do not block — the artifact 
   The artifact is saved. Indexing can be retried later.
 ```
 
-→ Proceed to **I. Move Imports**.
+→ Proceed to **I. Move Imports and Seeds**.
 
 #### Otherwise
 
-→ Proceed to **I. Move Imports**.
+→ Proceed to **I. Move Imports and Seeds**.
 
 ---
 
-## I. Move Imports
+## I. Move Imports and Seeds
 
-#### If `has_imports` is `true`
+Move whichever of the feature's imports and seeds exist, then proceed once both are handled.
 
-Ensure the target imports directory exists:
+**If `has_imports` is `true`** — ensure the target imports directory exists, then move, track, and re-index each file:
 
 ```bash
 mkdir -p .workflows/{target_epic}/imports/
@@ -336,21 +327,25 @@ For each item in `imports_moves` (original_filename → target_filename, with pr
 
 ```bash
 mv .workflows/{selected.name}/imports/<original_filename> .workflows/{target_epic}/imports/<target_filename>
-```
-
-Push the entry into the target epic's `imports[]` manifest array, preserving the original timestamp:
-
-```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {target_epic} imports '{"path":"imports/<target_filename>","imported_at":"<imported_at>"}'
-```
-
-Index the import at its new location in the knowledge base:
-
-```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/imports/<target_filename>
 ```
 
-If the index command fails, display the error but do not block — the file is already saved at its new location and tracked in the target manifest:
+**If `has_seeds` is `true`** — ensure the target seeds directory exists, then move, track, and re-index each file (preserving its `source` and `seeded_at`):
+
+```bash
+mkdir -p .workflows/{target_epic}/seeds/
+```
+
+For each item in `seeds_moves` (original_filename → target_filename):
+
+```bash
+mv .workflows/{selected.name}/seeds/<original_filename> .workflows/{target_epic}/seeds/<target_filename>
+node .claude/skills/workflow-manifest/scripts/manifest.cjs push {target_epic} seeds '{"path":"seeds/<target_filename>","source":"<source>","seeded_at":"<seeded_at>"}'
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/seeds/<target_filename>
+```
+
+If any index command fails, display the error but do not block — the file is already saved at its new location and tracked in the target manifest:
 
 > *Output the next fenced block as a code block:*
 
@@ -359,10 +354,6 @@ If the index command fails, display the error but do not block — the file is a
   {error details}
   The artifact is saved. Indexing can be retried later.
 ```
-
-→ Proceed to **J. Register Discovery Item**.
-
-#### Otherwise
 
 → Proceed to **J. Register Discovery Item**.
 
@@ -446,6 +437,9 @@ Absorbed into Epic
   • Discussion: moved
 @if(has_research)
   • Research: moved
+@endif
+@if(has_seeds)
+  • Seed: moved
 @endif
 @if(has_imports)
   • Imports: moved

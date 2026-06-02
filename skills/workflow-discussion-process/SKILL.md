@@ -175,8 +175,8 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking the knowledge base for prior work that relates
-> to this discussion topic before the session begins.
+> Reading the work's seed, then checking the knowledge base for
+> prior work that relates to this discussion topic.
 ```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
