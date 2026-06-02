@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.13] - 2026-06-02
+
+- Make discovery the universal first phase for all work types — collapse `workflow-discovery-entry` + `workflow-discovery-process` into a single `workflow-discovery` skill with new/existing-epic modes that detects work type, shapes the work, persists at a confirm-trigger, and routes into the pipeline
+- Remove the five `/start-*` skills; `/workflow-start` is now the sole user-invocable entry, with a new `s`/start option for unknown-shape work, and routes every pick (and inbox items) into discovery
+- Make all five `continue-*` skills model-only (`user-invocable: false`) and trim their Step 0 to casing-only — migrations and knowledge-check now run once at `/workflow-start`
+- Defer all persistence to the confirm-trigger — the manifest, session log, imports, and inbox seed all land at the work-type commit; abandoning before confirm leaves no partial state
+- Add first-class **seeds**: a promoted inbox item is moved into `seeds/`, tracked via `manifest.seeds[]` with a `source: inbox:*` tag, and KB-indexed under a new `seeds` phase — distinct from reference imports
+- Index seed artifacts in the knowledge base (`src/knowledge/index.js` — new `seeds` phase, identity derivation, and bulk-discovery traversal)
+- Route single-phase work (feature/bugfix/quick-fix/cross-cutting) to its first phase via a durable carrier (discovery session log + manifest `description`); first-phase entry skills read the carrier instead of re-gathering
+- Extend `workflow-bridge` to handle the discovery handoff with a supplied `next_phase`
+- Promote inbox ideas through discovery so they can resolve to any work type, replacing the old feature/epic/cross-cutting sub-menu
+- Carry seeds through feature absorption and surface them in epic/feature continue displays alongside imports
+- Drop the `can_start_discussion` research gate for epics and remove unused `latest_session` discovery output
+- Add a Prose Economy section to CONVENTIONS.md
+- Add tests for inbox-promotion seed carry-through, knowledge-base seed indexing, and cross-work-type `phases.discovery` writes; update migration 038 and discovery test suites
+
 ## [0.4.12] - 2026-05-29
 
 - Add `openai-compatible` embedding provider for local/self-hosted OpenAI-compatible `/v1/embeddings` endpoints (LM Studio, Ollama, vLLM, LiteLLM) — selectable in `knowledge setup` or via `base_url` in system config; API key optional, dimensions validated against the model's native output
