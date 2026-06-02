@@ -232,7 +232,6 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.can_start_discussion, true);
       assert.strictEqual(g.can_start_specification, true);
       assert.strictEqual(g.can_start_planning, true);
       assert.strictEqual(g.can_start_implementation, true);
@@ -249,7 +248,6 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
     });
@@ -479,7 +477,6 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
       assert.strictEqual(g.can_start_implementation, false);

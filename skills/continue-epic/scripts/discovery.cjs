@@ -113,7 +113,6 @@ function buildEpicDetail(cwd, manifest) {
     phases[phase] = phaseEntries;
   }
 
-  const researchItems = phaseItems(manifest, 'research');
   const discussionItems = phaseItems(manifest, 'discussion');
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
@@ -164,7 +163,6 @@ function buildEpicDetail(cwd, manifest) {
     }
   }
 
-  const hasCompletedResearch = researchItems.some(r => r.status === 'completed');
   const hasCompletedSpec = specItems.some(s => s.status === 'completed');
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
   const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
@@ -222,7 +220,6 @@ function buildEpicDetail(cwd, manifest) {
     imports_count: importsCount,
     analysis_caches: buildAnalysisCaches(cwd, manifest),
     gating: {
-      can_start_discussion: hasCompletedResearch,
       can_start_specification: hasCompletedDiscussion,
       can_start_planning: hasCompletedSpec,
       can_start_implementation: hasCompletedPlan,
