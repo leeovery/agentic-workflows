@@ -95,22 +95,17 @@ Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:1143
 
 ### Your First Workflow
 
-Run `/workflow-start` — it shows all active work, lets you continue where you left off, or start something new. When in doubt, this is your entry point.
+Run `/workflow-start` — the single entry point. It shows all active work, lets you continue where you left off, or start something new. When you start new work you pick the type if you know it (feature, epic, bugfix, quick-fix, cross-cutting), or choose **start** if you're not sure — either way you land in **discovery**, which shapes the work, confirms its type, and routes it into the right pipeline.
 
-Or jump straight in:
+To capture something for later without starting a pipeline:
 
 | Command | Use when... |
 |---------|-------------|
-| `/start-feature` | You're adding functionality to an existing product |
-| `/start-epic` | The work spans multiple topics and sessions |
-| `/start-bugfix` | Something is broken and needs fixing |
-| `/start-quickfix` | A trivially scoped mechanical change (find-and-replace, syntax update) |
-| `/start-cross-cutting` | You're defining patterns or policies that inform features |
 | `/workflow-log-idea` | You want to capture an idea for later |
 | `/workflow-log-bug` | You want to log a bug for later |
 | `/workflow-log-quickfix` | You want to log a quick-fix for later |
 
-Each command gathers context through a brief interview, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
+Logged items wait in the inbox and can be picked up anytime from `/workflow-start`. Discovery gathers context through conversation, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
 
 ## The Workflow
 
@@ -140,7 +135,7 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 | Phase | Purpose | Applies to |
 |-------|---------|------------|
-| **Discovery** | Curatorial first phase that names the moving parts of an epic, classifies each as research or discussion, and builds the discovery map that drives every subsequent phase. Refinement re-entry lets you add, dismiss, re-route, split, or elevate topics as the work evolves. | Epic |
+| **Discovery** | The universal first phase — every work type begins here. Shapes the work, confirms its type, and routes it into the pipeline. For epics it's curatorial: names the moving parts, classifies each as research or discussion, and builds the discovery map that drives subsequent phases, with refinement re-entry to add, dismiss, re-route, split, or elevate topics. Single-phase types are shaped and routed in one pass. | All |
 | **Research** | Explore ideas, market fit, technical feasibility. Existing research files can be imported verbatim at phase selection — content is ingested as-is and the session continues normally. Background review agent identifies coverage gaps and shallow areas; before concluding, a final review and a document reconciliation pass catch both topical gaps and substance discussed in-session but never captured in the research file. Deep-dive agents investigate independent threads (competitors, APIs, feasibility) in parallel. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
 | **Discussion** | Organic conversation guided by a live Discussion Map that tracks subtopics through pending → exploring → converging → decided. Background review agent catches topical gaps — with a mandatory final review and a document reconciliation pass that catches substance discussed in-session but never captured in the discussion file before concluding; competing perspective agents argue viable approaches on ambiguous decisions, then a synthesis agent maps the tradeoff landscape. For epics, sibling concerns discovered during discussion are elevated to their own topic automatically. Discussion gap analysis (epics) reads all completed discussions to surface cross-discussion themes, integration gaps, and emergent topics. | Epic, Feature, Cross-cutting |
 | **Investigation** | Symptom gathering + code analysis to identify root cause. Optional synthesis agent validates the hypothesis independently. The bugfix alternative to discussion. | Bugfix |
@@ -202,7 +197,7 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 
 ### Inbox Capture
 
-Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview.
+Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview. A promoted item becomes the work unit's **seed**: its verbatim content (exact repro, stack trace, fully-worked idea) travels with the work — read directly to seed single-phase work and surfaced through the knowledge base for each topic of an epic — so nothing you captured is lost downstream.
 
 ### Workflow Dashboard
 
@@ -215,7 +210,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 
 | Skill | Description |
 |-------|-------------|
-| [workflow-discovery-process](skills/workflow-discovery-process/) | Curatorial discovery-map session for epics — names topics, classifies each as research or discussion, supports refinement re-entry |
+| [workflow-discovery](skills/workflow-discovery/) | The universal first phase for every work type — shapes the work, confirms its type, and routes it onward; for epics, curates the discovery map (names topics, classifies research vs discussion, supports refinement re-entry) |
 | [workflow-research-process](skills/workflow-research-process/) | Free-form exploration across technical, business, and market domains |
 | [workflow-discussion-process](skills/workflow-discussion-process/) | Captures context, decisions, edge cases, competing solutions, and rationale |
 | [workflow-investigation-process](skills/workflow-investigation-process/) | Symptom gathering and code analysis for root cause identification |
@@ -229,9 +224,7 @@ Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch.
 <details>
 <summary><strong>Entry-Point Skills</strong> — user-facing commands</summary>
 
-**Start:** [`/start-feature`](skills/start-feature/) | [`/start-epic`](skills/start-epic/) | [`/start-bugfix`](skills/start-bugfix/) | [`/start-quickfix`](skills/start-quickfix/) | [`/start-cross-cutting`](skills/start-cross-cutting/)
-
-**Continue:** [`/workflow-start`](skills/workflow-start/) | [`/continue-feature`](skills/continue-feature/) | [`/continue-epic`](skills/continue-epic/) | [`/continue-bugfix`](skills/continue-bugfix/) | [`/continue-quickfix`](skills/continue-quickfix/) | [`/continue-cross-cutting`](skills/continue-cross-cutting/)
+**Entry:** [`/workflow-start`](skills/workflow-start/) — the single entry point for starting new work (via discovery) and continuing existing work. It routes to the discovery and per-type continue skills internally; those are model-only.
 
 **Capture:** [`/workflow-log-idea`](skills/workflow-log-idea/) | [`/workflow-log-bug`](skills/workflow-log-bug/) | [`/workflow-log-quickfix`](skills/workflow-log-quickfix/)
 

@@ -232,7 +232,6 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.can_start_discussion, true);
       assert.strictEqual(g.can_start_specification, true);
       assert.strictEqual(g.can_start_planning, true);
       assert.strictEqual(g.can_start_implementation, true);
@@ -249,7 +248,6 @@ describe('continue-epic discovery', () => {
       });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
     });
@@ -479,7 +477,6 @@ describe('continue-epic discovery', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
       const r = discover(dir);
       const g = r.epics[0].detail.gating;
-      assert.strictEqual(g.can_start_discussion, false);
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
       assert.strictEqual(g.can_start_implementation, false);
@@ -1220,6 +1217,40 @@ describe('continue-epic format', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
       const out = format(discover(dir));
       assert.ok(!out.includes('imports_count:'));
+    });
+  });
+
+  describe('seeds_count', () => {
+    it('reports zero when no seeds tracked', () => {
+      createManifest(dir, 'v1', { work_type: 'epic' });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.seeds_count, 0);
+    });
+
+    it('reports the length of manifest.seeds[]', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        seeds: [
+          { path: 'seeds/2026-04-02-billing-overhaul.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' },
+        ],
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.seeds_count, 1);
+    });
+
+    it('format output shows seeds_count when non-zero', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        seeds: [{ path: 'seeds/2026-04-02-billing-overhaul.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' }],
+      });
+      const out = format(discover(dir));
+      assert.ok(out.includes('    seeds_count: 1'));
+    });
+
+    it('format output omits seeds_count when zero', () => {
+      createManifest(dir, 'v1', { work_type: 'epic' });
+      const out = format(discover(dir));
+      assert.ok(!out.includes('seeds_count:'));
     });
   });
 });

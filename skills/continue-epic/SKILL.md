@@ -1,6 +1,7 @@
 ---
 name: continue-epic
-allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-discovery-process/scripts/discovery.cjs)
+user-invocable: false
+allowed-tools: Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -41,37 +42,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 ── Initialisation ───────────────────────────────
 ```
 
-### Step 0.1: Casing Conventions
-
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
-
-→ Proceed to **Step 0.2**.
-
-### Step 0.2: Migrations
-
-#### If the `/workflow-migrate` skill has already been invoked in this conversation
-
-→ Proceed to **Step 0.3**.
-
-#### Otherwise
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Running migrations to keep workflow files in sync.
-```
-
-**Run migrations — this is mandatory. You must complete it before proceeding.**
-
-Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
-
-**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to **Step 0.3**. Do not stop after migration completes.
-
-→ Proceed to **Step 0.3**.
-
-### Step 0.3: Knowledge Check
-
-Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
 
 → Proceed to **Step 1**.
 
@@ -151,7 +122,7 @@ Parse the discovery output to understand:
 ```
 No epics in progress.
 
-Run /start-epic to begin a new one.
+Run /workflow-start to begin a new one.
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -307,8 +278,8 @@ Invoke the appropriate skill based on the user's menu selection. Match by **pref
 | Start specification | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
-| Continue discovery | `/workflow-discovery-entry epic {work_unit}` |
+| Continue discovery | `/workflow-discovery epic {work_unit}` |
 
-Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided).
+Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided). "Continue discovery" routes to the discovery skill, which detects the existing work unit and re-shapes the map (existing-epic mode) — continue-epic navigates; discovery owns the shaping.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

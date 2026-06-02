@@ -41,8 +41,11 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 ●───────────────────────────────────────────────●
 
   Discovery Map ({total} topics{tier_breakdown})
+@if(seeds_count > 0)
+  · seeded from the inbox
+@endif
 @if(show_imports_callout)
-  · {imports_count} imported {seed|seeds}
+  · {imports_count} {import|imports}
 @endif
 @if(convergence_state == 'in-progress')
   ⚑ Discovery in progress — {N} topics not yet decided.
@@ -94,8 +97,9 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 - **Tier breakdown** (`{tier_breakdown}`): when more than one tier bucket has a non-zero count, append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled` to the topic count (omitting zero-count categories). When only one bucket is non-zero — e.g. every topic in flight — the breakdown is redundant with the rows; omit it and render just `Discovery Map ({total} topics)`. Read counts from `map_summary`.
   - Example (mixed): `Discovery Map (8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh)`
   - Example (single bucket): `Discovery Map (9 topics)`
-- **Imports callout** (`{show_imports_callout}`): true only when `imports_count > 0` **and** `imports_count != discovery_map.length`. When every topic is itself an import, per-row provenance already says so on every line and the callout is redundant. Format when shown: `· {imports_count} imported seed` for 1, `· {imports_count} imported seeds` for 2+.
-- **Convergence callout**: rendered after the optional imports callout, before the topic rows. Always present. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
+- **Seed callout** (`seeds_count > 0`): `· seeded from the inbox`.
+- **Imports callout** (`{show_imports_callout}`): true only when `imports_count > 0` **and** `imports_count != discovery_map.length`. When every topic is itself an import, per-row provenance already says so on every line and the callout is redundant. Format when shown: `· {imports_count} import` for 1, `· {imports_count} imports` for 2+.
+- **Convergence callout**: rendered after the optional seed and imports callouts, before the topic rows. Always present. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
 - **New-arrivals callout** (optional): when the caller passes a non-empty `new_arrivals.research_analysis` or `new_arrivals.gap_analysis` list, render `⚑ {N} new topic(s) added to the map from {analysis}.` lines beneath the convergence callout, one per analysis with arrivals. Shown once per boot-up that added items — subsequent invocations without changes don't repeat it (the items are now part of the map). Sub-line provenance on the topic rows is the persistent surface afterwards.
 - **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
 - **Topic row**: `{branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]`. Single space between each segment. Lifecycle label wrapped in square brackets.
@@ -492,7 +496,7 @@ Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions 
 
 #### If user chose `i`/`discovery`
 
-Set selection to `Continue discovery`. The caller routes this to `/workflow-discovery-entry` for the work unit (no topic argument).
+Set selection to `Continue discovery`. The caller routes this to `/workflow-discovery` for the work unit (no topic argument) — the discovery skill re-shapes the map in existing-epic mode.
 
 → Return to caller.
 

@@ -6,7 +6,7 @@ Guidance for Claude Code working in this repo.
 
 Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
 
-**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/start-*`, `/continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
+**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/workflow-start`, `/continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
 ## Git Workflow
 
@@ -14,8 +14,8 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 ## Workflow Phases
 
-1. **Discovery** (`workflow-discovery-process`): CURATE — epic-only. Name topics, classify each as research or discussion, build the discovery map. **One conversational session loop** for every session (first or Nth). When the map is empty, the loop surfaces topics; when it's populated, the same loop also lets the user edit existing items (add, remove, rename, re-route, edit summary/description) via `map-operations.md`. Session log is created **lazily** — written on first state change, never up-front. Resume detection (`resume-detection.md`) at Step 0 handles any interrupted prior session. Self-healing analyses (research-analysis, discovery-gap-analysis) are run by `continue-epic` Step 6 and `workflow-bridge` section B via shared `topic-discovery-dispatch.md` — **not** from inside discovery. Continue-epic ordering: Legacy Bridge (`/workflow-legacy-research-split` for pre-discovery epics with migration-seeded broad research files) → Summary Backfill → Self-Healing → Display. Direct-entry items land here with `source: direct-start`.
-2. **Research** (`workflow-research-process`): EXPLORE — feasibility, market, viability, early ideas. Scoped per-topic, one file per topic at `.workflows/{work_unit}/research/{topic}.md`. Existing research files can be imported at phase entry (a Step-3 yes/no in start-epic; an option in start-feature's `research-gating.md`) — imports land in `imports/` and surface via the knowledge base. Background review agent for topical gaps; document review reconciles session against research file to catch undocumented substance (both mandatory before conclusion); deep-dive agents for independent thread investigation.
+1. **Discovery** (`workflow-discovery`): the universal **first phase** — every work type begins here. Confirm the work type, shape the outline, persist at the work-type commit, route into the pipeline. Two invocation modes dispatched at Step 0: **new** (from `workflow-start`, no work unit yet — decide the type via the universal detection core, then epic → initial topic sketch, feature/cross-cutting → research-vs-discussion routing, bugfix/quick-fix → brief intent capture) and **existing-epic** (from `continue-epic` — skip the macro decision, re-shape the map). The **work-type commit is the durability boundary**: the confirm-trigger creates the manifest, writes the session log, lands imports, lands any promoted inbox item as the work unit's **seed** — uniformly for every type; nothing persists before it. For epics the same conversation continues into topic curation — name topics, classify each as research or discussion, build the discovery map; a populated-map session also edits existing items (add, remove, rename, re-route, edit summary/description) via `map-operations.md`. Session log is created **lazily** for existing-epic edits, written by the confirm-trigger for new work. Resume detection (`resume-detection.md`) handles an interrupted prior epic session. Self-healing analyses (research-analysis, discovery-gap-analysis) are run by `continue-epic` Step 6 and `workflow-bridge` section B via shared `topic-discovery-dispatch.md` — **not** from inside discovery. Continue-epic ordering: Legacy Bridge (`/workflow-legacy-research-split` for pre-discovery epics with migration-seeded broad research files) → Summary Backfill → Self-Healing → Display. Direct-entry items land here with `source: direct-start`.
+2. **Research** (`workflow-research-process`): EXPLORE — feasibility, market, viability, early ideas. Scoped per-topic, one file per topic at `.workflows/{work_unit}/research/{topic}.md`. Existing files can be attached as imports during discovery's opener (universal across work types) — imports land in `imports/` and surface via the knowledge base. Background review agent for topical gaps; document review reconciles session against research file to catch undocumented substance (both mandatory before conclusion); deep-dive agents for independent thread investigation.
 3. **Discussion** (`workflow-discussion-process`): Organic conversation guided by a live Discussion Map (`pending` → `exploring` → `converging` → `decided`). Background review agent for topical gaps; document review reconciles session against discussion file to catch undocumented substance (both mandatory before conclusion). Topic elevation seeds sibling discussions (epics only). Discovery-gap analysis (epics only, formerly discussion-gap-analysis) reads completed research AND completed discussions holistically to surface cross-artifact themes, elevated-but-uncreated topics, emergent topics, integration gaps — cached and manifest-tracked under `phases.discovery.gap_analysis_cache`.
 4. **Investigation** (`workflow-investigation-process`): Bugfix-specific — symptom gathering + code analysis → root cause.
 5. **Scoping** (`workflow-scoping-process`): Quick-fix-specific — context, spec, plan in one pass.
@@ -26,13 +26,17 @@ Always create a feature branch **before** the first commit. Never commit to main
 
 ## Skill Architecture
 
-Skills organised in two tiers:
+Skills organised in tiers:
 
-**Entry-point skills** (`/start-*`, `/continue-*`, `/workflow-migrate`, etc.): user-invocable. Gather context from files, prompts, or inline input, then invoke a processing skill. Utility entry-points (`/workflow-start`) have `disable-model-invocation: true`. `/workflow-migrate` is model-invoked only (Step 0 of every entry-point skill).
+**Entry skill** (`workflow-start`): the sole user-invocable entry. Shows all work; routes new work into discovery and existing work into the per-type `continue-*` skills. Hosts the full Step 0 (casing · migrations · knowledge-check · knowledge-compact), run once. `/workflow-migrate` is model-invoked only (Step 0 of `workflow-start`).
 
-**Phase entry skills** (`workflow-*-entry`): internal (`user-invocable: false`). Invoked by start/continue/bridge skills with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, processing skill invocation. Includes `workflow-discovery-entry` as the epic-only entry — the processing skill detects its own state (first / continuing / resume) at Step 0; no source distinction in the handoff.
+**Discovery** (`workflow-discovery`): model-only (`user-invocable: false`). The universal first phase (see Workflow Phases #1) — new work is shaped and its type settled here before the pipeline branches into the type-specific phases. Two modes — new (decide the work type, persist at the commit, route out) and existing-epic (re-shape the map, delegated from `continue-epic`).
 
-**Processing skills** (`workflow-*-process`): model-invocable. Assume pipeline context — work_type set, prior phases complete, artifacts in expected locations. Includes `workflow-discovery-process` for the curatorial discovery-map session that opens every epic.
+**Navigation skills** (`continue-{epic,feature,bugfix,quickfix,cross-cutting}`): model-only (`user-invocable: false`). Per-type resume/dashboard — show state and route to the right phase. `continue-epic` also delegates map refinement to discovery and triggers the analytical bridge enrichment. Step 0 is casing-only (migrations + knowledge-check are guaranteed by `workflow-start`).
+
+**Phase entry skills** (`workflow-*-entry`): internal (`user-invocable: false`). Invoked by discovery, `continue-*`, and the bridge with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, processing skill invocation. New single-phase work seeds from the durable carrier (session log + manifest `description`).
+
+**Processing skills** (`workflow-*-process`): model-invocable. Assume pipeline context — work_type set, prior phases complete, artifacts in expected locations.
 
 **Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`): model-invocable, lightweight, outside the pipeline. Capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural-language instructions with capture-only constraints.
 
@@ -78,8 +82,9 @@ Work-unit-first directory structure with uniform `{topic}` in all paths (`{topic
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase)
-- Imports: `.workflows/{work_unit}/imports/` (tracked via the `imports[]` manifest field; KB-indexed at copy time)
-- Inbox: `.workflows/.inbox/{ideas,bugs,quickfixes}/` (pre-pipeline capture; archived to `.archived/` subfolder when entering pipeline)
+- Imports: `.workflows/{work_unit}/imports/` (user-shared reference files copied in during discovery's opener; tracked via the `imports[]` manifest field; KB-indexed at copy time)
+- Seeds: `.workflows/{work_unit}/seeds/` (the work unit's **origin** — a promoted inbox item *moved* here at the work-type commit; tracked via the `seeds[]` manifest field with a `source: inbox:{idea|bug|quickfix}` tag; KB-indexed under the `seeds` phase. Distinct from imports: the trigger the work was spawned from, not reference material it pulled in)
+- Inbox: `.workflows/.inbox/{ideas,bugs,quickfixes}/` (pre-pipeline capture; on promotion the item is moved into the work unit's `seeds/`. The `.archived/` subfolder is reserved for *declined* items, not promoted ones)
 
 **Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking lifecycle state:
 - `in-progress` — actively being worked on (default on creation)
@@ -142,7 +147,7 @@ Contract and scaffolding templates live in `.claude/skills/create-output-format/
 3. Orchestrator handles tracking — once a migration ID appears in the log, the script never runs again
 4. Use helper functions: `report_update`, `report_skip` (display only)
 
-Migration `038-add-discovery-phase.sh` seeds discovery items for existing in-progress epics so legacy work units pick up the discovery map without manual intervention.
+Migration `038-add-inception-phase.sh` seeds the phase for existing in-progress epics (`040-rename-inception-to-discovery.sh` then renames it to `discovery`) so legacy work units pick up the discovery map without manual intervention.
 
 **Critical: Migration scripts must not use the manifest CLI**
 
@@ -174,7 +179,7 @@ Manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the single so
 
 ## Knowledge Base Subsystem
 
-Retrieval-augmented store of completed workflow artifacts (research, discussion, investigation, specification — never planning/implementation/review). Every entry-point skill gates on knowledge base initialisation before any phase runs.
+Retrieval-augmented store of completed workflow artifacts (research, discussion, investigation, specification — never planning/implementation/review), plus seed material indexed for early-phase context: user-shared `imports` and the inbox-promoted `seeds` (the work unit's origin). Every entry-point skill gates on knowledge base initialisation before any phase runs.
 
 **Source vs bundle**: Source lives in `src/knowledge/` (multi-file Node.js — `index.js`, `store.js`, `chunker.js`, `embeddings.js`, `config.js`, `setup.js`, `providers/openai.js`). Committed CLI at `skills/workflow-knowledge/scripts/knowledge.cjs` is a single-file esbuild bundle. AGNTC installs from git tags with no build step, so the bundle must be present and current at tag time.
 
@@ -194,7 +199,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 ## Skill Authoring
 
-Skill authoring rules — display/output conventions, structural conventions, skill file structure, navigation patterns, reference file naming — live in [CONVENTIONS.md](CONVENTIONS.md).
+Skill authoring rules — prose economy, display/output conventions, structural conventions, skill file structure, navigation patterns, reference file naming — live in [CONVENTIONS.md](CONVENTIONS.md).
 
 **MANDATORY**: Read [CONVENTIONS.md](CONVENTIONS.md) in full **before** creating or editing any file matching `skills/**/SKILL.md`, `skills/**/references/**/*.md`, or any new skill scaffold. Do not rely on memory or pattern-matching from sibling files — the conventions are dense, exact, and frequently updated. Skipping this step has produced silently non-compliant skills in the past.
 

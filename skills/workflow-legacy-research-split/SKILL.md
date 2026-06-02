@@ -124,8 +124,8 @@ Evaluate the branches below in order — error reporting takes precedence over c
 ```
 > {errored_count} source file(s) aborted mid-apply; {applied_count}
 > decomposed; {abandoned_count} skipped. See "Recovery from
-> Interrupted Apply" below to clear stuck sentinels before the
-> next /continue-epic.
+> Interrupted Apply" below to clear stuck sentinels before you
+> reopen the epic via /workflow-start.
 ```
 
 → Return to caller.
@@ -158,7 +158,7 @@ Evaluate the branches below in order — error reporting takes precedence over c
 ```
 > {applied_count} source file(s) decomposed; {abandoned_count}
 > skipped. Skipped files remain on the map and can be revisited
-> on the next /continue-epic.
+> next time you open the epic via /workflow-start.
 ```
 
 → Return to caller.
@@ -169,8 +169,8 @@ Evaluate the branches below in order — error reporting takes precedence over c
 
 ```
 > No source files decomposed — every qualifying file was skipped.
-> They remain on the map and can be revisited on the next
-> /continue-epic.
+> They remain on the map and can be revisited next time you open
+> the epic via /workflow-start.
 ```
 
 → Return to caller.

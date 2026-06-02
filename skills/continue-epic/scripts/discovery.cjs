@@ -113,7 +113,6 @@ function buildEpicDetail(cwd, manifest) {
     phases[phase] = phaseEntries;
   }
 
-  const researchItems = phaseItems(manifest, 'research');
   const discussionItems = phaseItems(manifest, 'discussion');
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
@@ -164,7 +163,6 @@ function buildEpicDetail(cwd, manifest) {
     }
   }
 
-  const hasCompletedResearch = researchItems.some(r => r.status === 'completed');
   const hasCompletedSpec = specItems.some(s => s.status === 'completed');
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
   const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
@@ -207,6 +205,7 @@ function buildEpicDetail(cwd, manifest) {
   }
 
   const importsCount = Array.isArray(manifest.imports) ? manifest.imports.length : 0;
+  const seedsCount = Array.isArray(manifest.seeds) ? manifest.seeds.length : 0;
 
   return {
     phases,
@@ -220,9 +219,9 @@ function buildEpicDetail(cwd, manifest) {
     convergence_state: convergenceState,
     map_summary: mapSummary,
     imports_count: importsCount,
+    seeds_count: seedsCount,
     analysis_caches: buildAnalysisCaches(cwd, manifest),
     gating: {
-      can_start_discussion: hasCompletedResearch,
       can_start_specification: hasCompletedDiscussion,
       can_start_planning: hasCompletedSpec,
       can_start_implementation: hasCompletedPlan,
@@ -315,6 +314,9 @@ function format(result) {
         }
         lines.push(line);
       }
+    }
+    if (d.seeds_count && d.seeds_count > 0) {
+      lines.push(`    seeds_count: ${d.seeds_count}`);
     }
     if (d.imports_count && d.imports_count > 0) {
       lines.push(`    imports_count: ${d.imports_count}`);

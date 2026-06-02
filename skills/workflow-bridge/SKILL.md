@@ -1,12 +1,12 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-bridge/scripts/discovery.cjs), Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-discovery-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-bridge/scripts/discovery.cjs), Bash(node .claude/skills/continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 Enter plan mode with deterministic continuation instructions.
 
-This skill is invoked by processing skills (workflow-discussion-process, workflow-specification-process, etc.) when a pipeline phase concludes. It discovers the next phase and creates a plan mode handoff that survives context compaction.
+This skill is invoked when a phase concludes — to create a plan-mode handoff that survives context compaction. For most phases it derives the next phase from state; for the discovery handoff the destination is supplied, because discovery is the first phase and the next phase isn't in state yet, so there's nothing to derive.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -14,7 +14,8 @@ This skill is invoked by processing skills (workflow-discussion-process, workflo
 
 This skill receives context from the calling processing skill:
 - **Work unit**: The work unit name (directory under `.workflows/`) = `{work_unit}`
-- **Completed phase**: The phase that just completed = `{completed_phase}`
+- **Completed phase**: The phase that just completed — `discovery` or any later phase = `{completed_phase}`
+- **Next phase** (optional): supplied when the caller already knows the destination — discovery handing a single-phase work type to its first phase = `{next_phase}`. Other callers omit it and the continuation computes the next phase from discovery output.
 
 ---
 
@@ -25,6 +26,12 @@ Read work type from the manifest:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
 ```
+
+#### If completed phase is `discovery`
+
+The discovery handoff needs no state computation. Discovery is the first phase, so the next phase isn't in pipeline state yet — the destination is *given*, not derived: an epic returns to its menu, and single-phase types use the `next_phase` the discovery endpoint decided and supplied. Skip the discovery script.
+
+→ Proceed to **Step 2**.
 
 #### If work type is `epic`
 

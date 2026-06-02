@@ -63,12 +63,6 @@ Store work_unit for the handoff.
 
 Resolve filename:
 
-#### If source is `import`
-
-`resolved_filename = {topic}.md`
-
-→ Proceed to **Step 5**.
-
 #### If `topic` resolved
 
 `resolved_filename = {topic}.md`
@@ -159,6 +153,12 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 ```
 > Collecting initial context to seed the research session.
 ```
+
+#### If `work_type` is not `epic` and a discovery session log exists for this work unit
+
+Single-phase work shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/session-NNN.md`, highest-numbered) — and seed the research session from it. Do not re-ask; live conversation context, when present, supplements the carrier.
+
+→ Proceed to **Step 5**.
 
 #### If research context is already available in conversation
 

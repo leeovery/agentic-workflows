@@ -4,6 +4,8 @@
 
 ---
 
+→ Load **[../../workflow-shared/references/seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`.
 3. Populate Context section and seed the Discussion Map:
@@ -14,7 +16,7 @@
 
    **Otherwise:**
 
-   Populate from handoff context and user input. Derive initial subtopics from whatever context is available — the user's description, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map will grow during discussion.
+   Populate from the seed, handoff context, and user input. Derive initial subtopics from whatever context is available — the seed, the user's description, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map will grow during discussion.
 
 4. Register discussion in manifest:
    ```bash

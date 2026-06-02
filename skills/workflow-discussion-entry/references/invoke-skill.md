@@ -10,42 +10,27 @@ This skill's purpose is now fulfilled. Construct the handoff and invoke the proc
 
 ---
 
-## Load Discovery Description
+## Load the Carrier Description
 
-For every source branch except `continue`, attempt to read the discovery item's `description` so it can be appended to the handoff. Two preconditions must hold before the read — both must be true, otherwise treat description as null and skip the Description block:
+For every source branch except `continue`, read the `description` discovery left as the seed carrier, to append it to the handoff. Where it lives depends on the work type — read the matching source (empty stdout means absent):
 
-1. `work_type` is `epic`. Non-epic work units (feature, bugfix, cross-cutting) have no discovery phase — skip.
-2. The `description` subkey is present on the discovery item. Read it directly — empty stdout means the subkey is absent:
+- **Epic** — the discovery map item carries it:
 
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
-   ```
+  ```bash
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+  ```
 
-When `description` is loaded and non-empty, append the Description block shown in each source branch below. When either precondition fails, or the read returns empty, omit the Description block entirely — no header, no empty body.
+- **Feature / cross-cutting** — the work-unit manifest carries it (single-phase types have no discovery map item):
+
+  ```bash
+  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+  ```
+
+When the read returns non-empty, append the Description block shown in each source branch below. When it returns empty, omit the Description block entirely — no header, no empty body.
 
 ---
 
 ## Handoff
-
-#### If source is `research`
-
-```
-Discussion session for: {topic}
-Work unit: {work_unit}
-Output: {output_path}
-
-Research files:
-- .workflows/{work_unit}/research/{filename1}.md
-- .workflows/{work_unit}/research/{filename2}.md
-Topic context: {summary from analysis cache}
-
-Description:
-{description text — paragraph or two, preserved as-is}
-
-Invoke the workflow-discussion-process skill.
-```
-
-The `Description:` block is omitted when `description` is null or empty. Invoke the [workflow-discussion-process](../../workflow-discussion-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
 
 #### If source is `topic-provided-with-research`
 
@@ -58,26 +43,6 @@ Research files:
 - .workflows/{work_unit}/research/{filename1}.md
 - .workflows/{work_unit}/research/{filename2}.md
 Topic context: {brief orientation from user context}
-
-Description:
-{description text — paragraph or two, preserved as-is}
-
-Invoke the workflow-discussion-process skill.
-```
-
-The `Description:` block is omitted when `description` is null or empty. Invoke the [workflow-discussion-process](../../workflow-discussion-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
-
-#### If source is `gap-analysis`
-
-```
-Discussion session for: {topic}
-Work unit: {work_unit}
-Output: {output_path}
-
-Source discussions:
-- .workflows/{work_unit}/discussion/{discussion1}.md
-- .workflows/{work_unit}/discussion/{discussion2}.md
-Topic context: {summary from gap analysis cache}
 
 Description:
 {description text — paragraph or two, preserved as-is}

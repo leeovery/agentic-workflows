@@ -153,6 +153,25 @@ records without downtime.
 MD
 }
 
+# Create a seed artifact file (the work unit's origin — a promoted inbox item).
+create_seed_file() {
+  local wu="$1" filename="$2"
+  mkdir -p "$TEST_ROOT/.workflows/$wu/seeds"
+  cat > "$TEST_ROOT/.workflows/$wu/seeds/$filename.md" <<'MD'
+# Login times out intermittently
+
+## Symptom
+
+The auth callback throws a RequestTimeoutError after 30s when the
+refresh token has expired on a throttled connection.
+
+## Repro
+
+Log in with an expired refresh token over a slow link, then watch the
+session handshake stall. Stack trace points at refreshSession.
+MD
+}
+
 # Create an analysis cache file under .state/.
 # Filename arg must be one of: research-analysis | gap-analysis.
 create_analysis_cache() {
@@ -2244,6 +2263,60 @@ run_kb remove --work-unit auth-flow >/dev/null 2>&1
 post_query=$(run_kb query "OAuth" --limit 10 2>&1)
 assert_eq "target has imports chunks post-move" "true" "$(echo "$post_query" | grep -q 'payments-overhaul' && echo true || echo false)"
 assert_eq "source chunks gone post-cleanup" "false" "$(echo "$post_query" | grep -q 'auth-flow' && echo true || echo false)"
+teardown_project
+
+# --- Test 87: Index a seed file with seeds/ phase ---
+echo "Test 87: Index a seed file"
+setup_project
+create_work_unit "login-timeout" "bugfix" "Login timeout"
+write_stub_config
+create_seed_file "login-timeout" "2026-05-30-login-timeout"
+output=$(run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md 2>&1)
+assert_eq "indexes seed file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+teardown_project
+
+# --- Test 88: Query an indexed seed shows seeds provenance and low tier ---
+echo "Test 88: Query a seed file shows [seeds | wu/topic | low]"
+setup_project
+create_work_unit "login-timeout" "bugfix" "Login timeout"
+write_stub_config
+create_seed_file "login-timeout" "2026-05-30-login-timeout"
+run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
+output=$(run_kb query "auth callback request timeout" 2>&1)
+assert_eq "has seeds provenance line" "true" \
+  "$(echo "$output" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout' && echo true || echo false)"
+assert_eq "seeds tier is low" "true" \
+  "$(echo "$output" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout | low' && echo true || echo false)"
+teardown_project
+
+# --- Test 89: Bulk index discovers seeds via manifest.seeds[] ---
+echo "Test 89: Bulk index picks up manifest.seeds[]"
+setup_project
+create_work_unit "login-timeout" "bugfix" "Login timeout"
+write_stub_config
+create_seed_file "login-timeout" "2026-05-30-login-timeout"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" push login-timeout seeds \
+  '{"path":"seeds/2026-05-30-login-timeout.md","source":"inbox:bug","seeded_at":"2026-06-02T00:00:00Z"}' >/dev/null 2>&1
+output=$(run_kb index 2>&1)
+assert_eq "bulk index reports the seed indexed" "true" \
+  "$(echo "$output" | grep -qE 'Indexed [1-9][0-9]* files' && echo true || echo false)"
+query_after=$(run_kb query "auth callback request timeout" --boost:work-unit login-timeout 2>&1)
+assert_eq "seed surfaces after bulk index" "true" \
+  "$(echo "$query_after" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout' && echo true || echo false)"
+teardown_project
+
+# --- Test 90: Remove seed chunks by phase ---
+echo "Test 90: Remove seed chunks via --phase seeds --topic"
+setup_project
+create_work_unit "login-timeout" "bugfix" "Login timeout"
+write_stub_config
+create_seed_file "login-timeout" "2026-05-30-login-timeout"
+run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
+output=$(run_kb remove --work-unit login-timeout --phase seeds --topic 2026-05-30-login-timeout 2>&1)
+assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
+query_after=$(run_kb query "auth callback request timeout" 2>&1)
+assert_eq "query post-remove returns no seed chunks" "true" \
+  "$(echo "$query_after" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout' && echo false || echo true)"
 teardown_project
 
 # --- Summary ---
