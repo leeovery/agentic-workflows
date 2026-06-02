@@ -135,13 +135,11 @@ Found existing investigation for **{topic:(titlecase)}**.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the bug's seed, then creating the investigation file
-> and recording the initial bug context.
+> Creating the investigation file and recording the initial
+> bug context.
 ```
 
-First, read the work's seed — for a promoted bug it is the origin report this investigation builds on: Load **[seed-context.md](../workflow-shared/references/seed-context.md)** and follow its instructions as written.
-
-Then create the investigation file: Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
+Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 

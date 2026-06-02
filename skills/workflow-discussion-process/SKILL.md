@@ -112,13 +112,11 @@ Found existing discussion for **{topic:(titlecase)}**.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the work's seed, then creating the discussion file and
-> seeding the Discussion Map with initial subtopics from your context.
+> Creating the discussion file and seeding the Discussion Map
+> with initial subtopics from your context.
 ```
 
-First, read the work's seed — for single-topic work it is the origin this phase builds on: Load **[seed-context.md](../workflow-shared/references/seed-context.md)** and follow its instructions as written.
-
-Then create the discussion file: Load **[initialize-discussion.md](references/initialize-discussion.md)** and follow its instructions as written.
+Load **[initialize-discussion.md](references/initialize-discussion.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 

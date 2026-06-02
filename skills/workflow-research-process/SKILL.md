@@ -114,13 +114,11 @@ Found existing research for **{topic:(titlecase)}**.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the work's seed, then creating the research file and
-> seeding it with initial context from the handoff.
+> Creating the research file and seeding it with initial
+> context from the handoff.
 ```
 
-First, read the work's seed — for single-topic work it is the origin this phase builds on: Load **[seed-context.md](../workflow-shared/references/seed-context.md)** and follow its instructions as written.
-
-Then create the research file: Load **[initialize-research.md](references/initialize-research.md)** and follow its instructions as written.
+Load **[initialize-research.md](references/initialize-research.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
