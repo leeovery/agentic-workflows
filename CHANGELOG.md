@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.14] - 2026-06-02
+
+- Namespace the five `continue-*` navigation skills under `workflow-continue-*` (epic, feature, bugfix, quickfix, cross-cutting), renaming their directories, scripts, references, and test files
+- Update all cross-references to the renamed skills across the bridge, discovery, start, legacy-research-split, and shared topic-discovery references
+
 ## [0.4.13] - 2026-06-02
 
 - Make discovery the universal first phase for all work types — collapse `workflow-discovery-entry` + `workflow-discovery-process` into a single `workflow-discovery` skill with new/existing-epic modes that detects work type, shapes the work, persists at a confirm-trigger, and routes into the pipeline
