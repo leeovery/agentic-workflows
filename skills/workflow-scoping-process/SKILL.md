@@ -150,11 +150,13 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Understanding what needs changing — reading code, asking
-> clarifying questions, and building a picture of the change.
+> Reading the work's seed, then understanding what needs changing —
+> reading code, asking clarifying questions, building a picture.
 ```
 
-Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
+First, read the work's seed — for single-topic work it is the origin this change builds on: Load **[seed-context.md](../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+
+Then gather context: Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 *Knowledge-base nudge — if the change touches an area with prior discussions, investigations, or specs, query the knowledge base while gathering context. A "mechanical change" often has a history. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
 
@@ -173,8 +175,8 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the work's seed, then checking the knowledge base for prior
-> discussions, investigations, or specs that touch the area being changed.
+> Checking the knowledge base for prior discussions, investigations,
+> or specs that touch the area being changed.
 ```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.

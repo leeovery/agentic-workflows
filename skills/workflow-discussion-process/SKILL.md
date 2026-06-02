@@ -112,11 +112,13 @@ Found existing discussion for **{topic:(titlecase)}**.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Creating the discussion file and seeding the Discussion Map
-> with initial subtopics from your context.
+> Reading the work's seed, then creating the discussion file and
+> seeding the Discussion Map with initial subtopics from your context.
 ```
 
-Load **[initialize-discussion.md](references/initialize-discussion.md)** and follow its instructions as written.
+First, read the work's seed — for single-topic work it is the origin this phase builds on: Load **[seed-context.md](../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+
+Then create the discussion file: Load **[initialize-discussion.md](references/initialize-discussion.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -175,8 +177,8 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the work's seed, then checking the knowledge base for
-> prior work that relates to this discussion topic.
+> Checking the knowledge base for prior work that relates
+> to this discussion topic before the session begins.
 ```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.

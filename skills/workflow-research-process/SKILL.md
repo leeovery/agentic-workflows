@@ -114,11 +114,13 @@ Found existing research for **{topic:(titlecase)}**.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Creating the research file and seeding it with initial
-> context from the handoff.
+> Reading the work's seed, then creating the research file and
+> seeding it with initial context from the handoff.
 ```
 
-Load **[initialize-research.md](references/initialize-research.md)** and follow its instructions as written.
+First, read the work's seed — for single-topic work it is the origin this phase builds on: Load **[seed-context.md](../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+
+Then create the research file: Load **[initialize-research.md](references/initialize-research.md)** and follow its instructions as written.
 
 → Proceed to **Step 2**.
 
@@ -198,8 +200,8 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reading the work's seed, then checking the knowledge base for
-> prior work that relates to this research topic.
+> Checking the knowledge base for prior work that relates
+> to this research topic before the session begins.
 ```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.

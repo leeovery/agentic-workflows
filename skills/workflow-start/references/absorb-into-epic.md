@@ -123,7 +123,7 @@ Set `has_research` = false.
 
 Set `has_research` = true.
 
-Store the result as `research_items` (list of topic name + status pairs).
+Store the result as `research_items` (list of topic name + status pairs), and set `research_item_count` to its length.
 
 For each research item, check for collision in the target epic:
 
@@ -146,9 +146,23 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} i
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} seeds
 ```
 
-**Imports.** If the imports output is empty, set `has_imports` = false and `imports_count` = 0. Otherwise set `has_imports` = true, store the result as `imports_entries` (list of `{path, imported_at}` objects), and set `imports_count` to its length. For each entry derive the basename from `path` (the filename under `imports/`) and check for a collision in the target epic's `imports/` directory (`test -e .workflows/{target_epic}/imports/<basename>`). Resolve collisions by suffixing the stem with `-{selected.name}` before `.md`. Store the original → target mapping as `imports_moves`, preserving each entry's `imported_at`.
+#### If the feature has imports or seeds
 
-**Seeds.** If the seeds output is empty, set `has_seeds` = false and `seeds_count` = 0. Otherwise set `has_seeds` = true, store the result as `seeds_entries` (list of `{path, source, seeded_at}` objects), and set `seeds_count` to its length. For each entry derive the basename from `path` (the filename under `seeds/`) and check for a collision in the target epic's `seeds/` directory (`test -e .workflows/{target_epic}/seeds/<basename>`). Resolve collisions the same way (`-{selected.name}` suffix). Store the original → target mapping as `seeds_moves`, preserving each entry's `source` and `seeded_at`. (The seed becomes one of the epic's origins — it carries its `inbox:{type}` source forward.)
+Default both to absent — `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false` / `seeds_count` = 0 — then override for each non-empty list:
+
+**If the imports list is non-empty:**
+
+Set `has_imports` = `true`, store the result as `imports_entries` (list of `{path, imported_at}` objects), and set `imports_count` to its length. For each entry, derive the basename from `path` (the filename under `imports/`), check for a collision in the target epic's `imports/` directory (`test -e .workflows/{target_epic}/imports/<basename>`), and resolve collisions by suffixing the stem with `-{selected.name}` before `.md`. Store the original → target mapping as `imports_moves`, preserving each entry's `imported_at`.
+
+**If the seeds list is non-empty:**
+
+Set `has_seeds` = `true`, store the result as `seeds_entries` (list of `{path, source, seeded_at}` objects), and set `seeds_count` to its length. Compute `seeds_moves` the same way (collision-resolved against the target epic's `seeds/`, `-{selected.name}` suffix), preserving each entry's `source` and `seeded_at`. The seed becomes one of the epic's origins, carrying its `inbox:{type}` source forward.
+
+→ Proceed to **F. Confirm**.
+
+#### Otherwise
+
+The feature has neither imports nor seeds — both flags stay `false` and both counts `0`.
 
 → Proceed to **F. Confirm**.
 
@@ -315,15 +329,19 @@ If the index command fails, display the error but do not block — the artifact 
 
 ## I. Move Imports and Seeds
 
-Move whichever of the feature's imports and seeds exist, then proceed once both are handled.
+#### If the feature has imports or seeds to move
 
-**If `has_imports` is `true`** — ensure the target imports directory exists, then move, track, and re-index each file:
+Move whichever exist:
+
+**If `has_imports` is `true`:**
+
+Ensure the target imports directory exists:
 
 ```bash
 mkdir -p .workflows/{target_epic}/imports/
 ```
 
-For each item in `imports_moves` (original_filename → target_filename, with preserved `imported_at`):
+For each item in `imports_moves` (original_filename → target_filename, with preserved `imported_at`), move, track, and re-index it:
 
 ```bash
 mv .workflows/{selected.name}/imports/<original_filename> .workflows/{target_epic}/imports/<target_filename>
@@ -331,13 +349,15 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs push {target_epic} im
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/imports/<target_filename>
 ```
 
-**If `has_seeds` is `true`** — ensure the target seeds directory exists, then move, track, and re-index each file (preserving its `source` and `seeded_at`):
+**If `has_seeds` is `true`:**
+
+Ensure the target seeds directory exists:
 
 ```bash
 mkdir -p .workflows/{target_epic}/seeds/
 ```
 
-For each item in `seeds_moves` (original_filename → target_filename):
+For each item in `seeds_moves` (original_filename → target_filename, preserving `source` and `seeded_at`), move, track, and re-index it:
 
 ```bash
 mv .workflows/{selected.name}/seeds/<original_filename> .workflows/{target_epic}/seeds/<target_filename>
@@ -354,6 +374,12 @@ If any index command fails, display the error but do not block — the file is a
   {error details}
   The artifact is saved. Indexing can be retried later.
 ```
+
+→ Proceed to **J. Register Discovery Item**.
+
+#### Otherwise
+
+The feature has nothing to move.
 
 → Proceed to **J. Register Discovery Item**.
 
