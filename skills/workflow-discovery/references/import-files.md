@@ -4,7 +4,7 @@
 
 ---
 
-Validate user-supplied import paths, normalise filenames, copy each file into `.workflows/{work_unit}/imports/`, push a manifest entry per file, and index each file into the knowledge base. Imports are seed material — they remain on disk for the work unit's life and surface in future sessions via knowledge-base retrieval.
+Validate import paths, normalise filenames, land each file into `.workflows/{work_unit}/imports/`, push a manifest entry per file, and index each file into the knowledge base. Imports are seed material — they remain on disk for the work unit's life and surface in future sessions via knowledge-base retrieval.
 
 ## Parameters
 
@@ -12,6 +12,7 @@ The caller provides these via context before loading:
 
 - `work_unit` — the work unit's name. Always present.
 - `import_paths` — list of file paths the user provided in the prior prompt. The list may be space- or newline-separated; the caller passes the parsed values.
+- `mode` — `copy` (default) or `move`. `copy` is for user-shared reference files, which stay where they are. `move` is for a promoted inbox seed: the source is the same item travelling into the work unit, so it is moved (the inbox copy is removed) rather than duplicated. When omitted, treat as `copy`.
 
 ## A. Validate Paths
 
@@ -53,13 +54,13 @@ For each validated path, derive a destination filename from its basename:
 4. Ensure the name ends with `.md`. If the original extension is missing or differs, append `.md`.
 5. Reject names that resolve to `.`, `..`, or begin with `.` (dotfile). Report the rejected source path and skip that file.
 
-If the normalised name collides with a file already under `.workflows/{work_unit}/imports/` **or** with a destination filename chosen earlier in this same batch, suffix the stem with `-2`, `-3`, … until the name is unique. The batch check matters when the user provides the same source path twice in one prompt — without it, the second entry would silently overwrite the first. (Re-importing the same source path across separate runs is also permitted — see **C. Copy and Track**.)
+If the normalised name collides with a file already under `.workflows/{work_unit}/imports/` **or** with a destination filename chosen earlier in this same batch, suffix the stem with `-2`, `-3`, … until the name is unique. The batch check matters when the user provides the same source path twice in one prompt — without it, the second entry would silently overwrite the first. (Re-importing the same source path across separate runs is also permitted — see **C. Land and Track**.)
 
 Hold the resulting `(source_path, destination_filename)` pairs for the next section.
 
-→ Proceed to **C. Copy and Track**.
+→ Proceed to **C. Land and Track**.
 
-## C. Copy and Track
+## C. Land and Track
 
 Ensure the imports directory exists:
 
@@ -67,22 +68,35 @@ Ensure the imports directory exists:
 mkdir -p .workflows/{work_unit}/imports/
 ```
 
-For each `(source_path, destination_filename)` pair, copy the file and push a manifest entry. Generate a fresh ISO 8601 UTC timestamp per file at copy time:
+For each `(source_path, destination_filename)` pair, land the file and push a manifest entry. Generate a fresh ISO 8601 UTC timestamp per file at land time.
+
+#### If `mode` is `move`
+
+The source is the promoted inbox seed — move it so the inbox copy is removed:
+
+```bash
+mv <source_path> .workflows/{work_unit}/imports/<destination_filename>
+node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit} imports '{"path":"imports/<destination_filename>","imported_at":"<iso>"}'
+```
+
+#### Otherwise (`mode` is `copy`)
+
+The source is a user-shared reference file — copy it so the original stays put:
 
 ```bash
 cp <source_path> .workflows/{work_unit}/imports/<destination_filename>
 node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit} imports '{"path":"imports/<destination_filename>","imported_at":"<iso>"}'
 ```
 
-Where `<iso>` is `date -u +%Y-%m-%dT%H:%M:%SZ` taken at copy time. One timestamp per file.
+Where `<iso>` is `date -u +%Y-%m-%dT%H:%M:%SZ` taken at land time. One timestamp per file.
 
-Re-importing a file that already exists at the destination path is allowed — the `cp` overwrites and the KB index call in **D** replaces existing chunks for that identity. The manifest gains a second `imports[]` entry; that minor duplication is acceptable.
+Re-importing a file that already exists at the destination path is allowed — the `cp`/`mv` overwrites and the KB index call in **D** replaces existing chunks for that identity. The manifest gains a second `imports[]` entry; that minor duplication is acceptable.
 
 → Proceed to **D. Index into KB**.
 
 ## D. Index into KB
 
-For each copied file, invoke the knowledge CLI:
+For each landed file, invoke the knowledge CLI:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/imports/<destination_filename>

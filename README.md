@@ -197,7 +197,7 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 
 ### Inbox Capture
 
-Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview.
+Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview. The item itself isn't discarded once it's shaped: its verbatim content travels into the work unit as an import, so the exact repro, stack trace, or fully-worked idea you captured stays available to every downstream phase.
 
 ### Workflow Dashboard
 

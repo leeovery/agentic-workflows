@@ -26,7 +26,7 @@ No inbox seed. The opener invites the user to describe the work.
 
 ## B. Render the Opener
 
-Imports are **woven into the opener, never a standalone gate** — if the user has notes, design docs, error reports, or prior research, invite them to share the path(s) now; the no-files path costs zero extra turns. Any paths the user provides are read for shaping and held as `import_paths` for the confirm-trigger to land (imports are reference material, distinct from the inbox seed — never copy the inbox seed into `imports/`).
+Imports are **woven into the opener, never a standalone gate** — if the user has notes, design docs, error reports, or prior research, invite them to share the path(s) now; the no-files path costs zero extra turns. Any paths the user provides are read for shaping and held as `import_paths` for the confirm-trigger to land (these are *copied* — the user's originals stay put). The inbox seed, if any, is also landed as an import at the confirm-trigger, but *moved* rather than copied — see **[confirm-trigger.md](confirm-trigger.md)** section D.
 
 Render the opener matching what the caller told us.
 

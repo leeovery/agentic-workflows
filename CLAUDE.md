@@ -82,8 +82,8 @@ Work-unit-first directory structure with uniform `{topic}` in all paths (`{topic
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
 - Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase)
-- Imports: `.workflows/{work_unit}/imports/` (tracked via the `imports[]` manifest field; KB-indexed at copy time)
-- Inbox: `.workflows/.inbox/{ideas,bugs,quickfixes}/` (pre-pipeline capture; archived to `.archived/` subfolder when entering pipeline)
+- Imports: `.workflows/{work_unit}/imports/` (tracked via the `imports[]` manifest field; KB-indexed when landed — copied for user-shared files, moved for a promoted inbox seed)
+- Inbox: `.workflows/.inbox/{ideas,bugs,quickfixes}/` (pre-pipeline capture; on promotion the item is **moved** into the work unit's `imports/` — verbatim, KB-indexed, tracked in `imports[]` — so it travels through the pipeline like any import. The `.archived/` subfolder is reserved for *declined* items, not promoted ones)
 
 **Work unit lifecycle**: Each work unit has a `status` field in its manifest tracking lifecycle state:
 - `in-progress` — actively being worked on (default on creation)
