@@ -29,7 +29,7 @@ The discovery session has concluded. Return to the epic menu to pick the next mo
 
 ## Next Step
 
-Invoke `/continue-epic {work_unit}`
+Invoke `/workflow-continue-epic {work_unit}`
 
 The epic menu will render the discovery map and let you start, continue, or refine any topic.
 

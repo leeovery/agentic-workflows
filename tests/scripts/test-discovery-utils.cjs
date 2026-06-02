@@ -733,7 +733,7 @@ describe('discovery-utils', () => {
       // cache checksum over a SORTED file list (research-analysis.md
       // Section E). The read side in computeAnalysisCacheStatus must
       // sort identically — otherwise the cache always reports stale on
-      // every continue-epic, firing analyses + KB re-indexes for no
+      // every workflow-continue-epic, firing analyses + KB re-indexes for no
       // reason.
       createFile(dir, '.workflows/alpha/research/zebra.md', 'z');
       createFile(dir, '.workflows/alpha/research/auth.md', 'a');

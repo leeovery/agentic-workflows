@@ -50,7 +50,7 @@ Legacy-decomposition specifics:
 
 - **Name reuse is fine** for the source's own name (e.g. an `auth` source decomposed into one `auth` theme, or into `auth` + `caching`). The source is renamed to `{source}-superseded-{datetime}.md` before themes are created, so the original name is always available for reuse.
 
-- **Avoid collisions with other active topics.** Theme `kebab_name` must not match any *other* existing discovery item on the map (besides the source itself). `validate.cjs` enforces this — if a candidate name clashes with an existing topic, pick a different name. The current map is in the discovery output already in context from `continue-epic` Step 1; consult it before naming.
+- **Avoid collisions with other active topics.** Theme `kebab_name` must not match any *other* existing discovery item on the map (besides the source itself). `validate.cjs` enforces this — if a candidate name clashes with an existing topic, pick a different name. The current map is in the discovery output already in context from `workflow-continue-epic` Step 1; consult it before naming.
 
 - **Dismissed names are allowed.** If a candidate name matches an entry on the work unit's `dismissed[]` list (topics the user previously removed from the map), that's fine — `apply.cjs` pulls the name from `dismissed` before re-adding. User-driven legacy-split bypasses the dismissed gate (which only blocks automatic re-adds).
 

@@ -10,7 +10,7 @@ Act as **curator + interviewer**. Walk the user through decomposing broad resear
 
 ### What This Skill Needs
 
-- **Work unit** (required) — the epic to normalise. Passed by `continue-epic` Step 5.
+- **Work unit** (required) — the epic to normalise. Passed by `workflow-continue-epic` Step 5.
 
 ---
 

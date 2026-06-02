@@ -111,7 +111,7 @@ Select an option:
 · · · · · · · · · · · ·
 ```
 
-**Continue items:** Same visual style as command options — `- **`N`** — description`. Feature/bugfix/cross-cutting shows type + phase label. Epic just shows "epic" (detail is in continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
+**Continue items:** Same visual style as command options — `- **`N`** — description`. Feature/bugfix/cross-cutting shows type + phase label. Epic just shows "epic" (detail is in workflow-continue-epic). No auto-select — always show the full menu. No "(recommended)" labels.
 
 **Command options:** Start-new, inbox, view, and manage are always command options (not numbered). Always show all six start options (`s` plus the five typed picks).
 
@@ -125,11 +125,11 @@ Invoke the matching skill:
 
 | Selection | Invoke |
 |-----------|--------|
-| Continue feature | `/continue-feature {work_unit}` |
-| Continue bugfix | `/continue-bugfix {work_unit}` |
-| Continue quick-fix | `/continue-quickfix {work_unit}` |
-| Continue cross-cutting | `/continue-cross-cutting {work_unit}` |
-| Continue epic | `/continue-epic {work_unit}` |
+| Continue feature | `/workflow-continue-feature {work_unit}` |
+| Continue bugfix | `/workflow-continue-bugfix {work_unit}` |
+| Continue quick-fix | `/workflow-continue-quickfix {work_unit}` |
+| Continue cross-cutting | `/workflow-continue-cross-cutting {work_unit}` |
+| Continue epic | `/workflow-continue-epic {work_unit}` |
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 

@@ -25,7 +25,7 @@ Discovery is the universal **first phase** — every work type begins here. It s
 It runs in two modes:
 
 - **New mode** — from `workflow-start`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase.
-- **Existing-epic mode** — from `continue-epic`. The work type is already known; re-shape the epic's discovery map (refinement or resuming an interrupted sketch).
+- **Existing-epic mode** — from `workflow-continue-epic`. The work type is already known; re-shape the epic's discovery map (refinement or resuming an interrupted sketch).
 
 **Stay in your lane**: Discovery handles SHAPE; downstream phases FILL the shape. Do not research (no feasibility/market/tech investigation), do not investigate (no symptom analysis or root-cause hunting), do not decide (no resolving design questions), do not scope (no spec or plan content). Name the work, figure out its shape, route it. If the conversation tunnels into substance, anchor and return — *"hold that thread, we'll cover it in research / discussion / investigation."*
 
@@ -72,7 +72,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 Read the positional arguments:
 
 - `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s`/start path, no hint). A hint, not a given — still confirmed in new mode.
-- `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `continue-epic`), or `none` (new work, from `workflow-start`).
+- `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `workflow-continue-epic`), or `none` (new work, from `workflow-start`).
 - `$2` — **inbox_seed**: path to an inbox file consumed as the opening description, or `none`. Absent `$2` is treated as `none`.
 
 The mode is determined by `$1`:

@@ -59,7 +59,7 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
-`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/continue-epic` is the right tool for stopping in-flight work.
+`cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/workflow-continue-epic` is the right tool for stopping in-flight work.
 
 Render the rejection in a code block:
 
