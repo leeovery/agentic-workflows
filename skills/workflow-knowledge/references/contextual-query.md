@@ -55,6 +55,8 @@ No prior context found. Proceed to the next step silently — no delay, no user 
 
 Read each chunk and weigh it against the current topic. For a chunk that looks load-bearing, read its source file (the `Source:` line) for full detail. Most results are context — one or two may be directly relevant.
 
+An **import** chunk (provenance `[imports | …]`) is different: it is raw seed the user captured for the work itself, not incidental prior context. When its `Source:` sits under *this* work unit's `imports/` and the work is single-topic (not an epic), the import is the work's own origin — **always read its full source file**, never leave it to a load-bearing judgement, and use it to seed this phase. For an epic, a broad work-unit import surfaces as the relevant slice per topic — read the full file only if the chunk points to more you need, so a wide seed doesn't swamp a narrow topic.
+
 Briefly acknowledge surfaced context to the user before the main session starts:
 
 > *Output the next fenced block as markdown (not a code block):*

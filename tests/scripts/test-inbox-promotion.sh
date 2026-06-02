@@ -12,9 +12,11 @@
 # manifest.cjs and knowledge.cjs CLIs and asserts the end state for every
 # inbox type (idea / bug / quick-fix) and a representative spread of resulting
 # work types (feature / epic / bugfix / quick-fix). It also runs the
-# downstream-surfacing path check — the same `knowledge query --work-unit`
-# that research/discussion/investigation/scoping perform — to confirm the
-# landed import is retrievable.
+# downstream-surfacing path check — a paraphrased, work-unit-boosted query
+# exactly like the contextual-query step every consuming phase
+# (research/discussion/investigation/scoping) runs — and confirms the result
+# carries a readable Source: path, so two-step retrieval can read the verbatim
+# import in full.
 
 set -eo pipefail
 
@@ -75,10 +77,10 @@ normalise_filename() {
 # Perform the documented promotion (confirm-trigger D + import-files move mode)
 # for a single inbox item, then assert the full end state.
 #
-# Args: label folder work_type work_unit inbox_basename content query_term
+# Args: label folder work_type work_unit inbox_basename content query_phrase
 promote_and_assert() {
   local label="$1" folder="$2" work_type="$3" work_unit="$4"
-  local basename="$5" content="$6" query_term="$7"
+  local basename="$5" content="$6" query_phrase="$7"
 
   setup_project
   cd "$TEST_ROOT"
@@ -118,14 +120,19 @@ promote_and_assert() {
   assert_eq "$label: manifest.imports[] has the entry" "true" \
     "$(printf '%s' "$imports_json" | grep -qF "imports/$dest" && echo true || echo false)"
 
-  # Assert: KB-indexed and surfaces via a work-unit-scoped query — the
-  # downstream contextual-query path every consuming phase runs.
+  # Assert: KB-indexed and surfaces via the SAME query the consuming phase
+  # runs — a paraphrased natural-language phrase (not lifted verbatim) with a
+  # work-unit BOOST (not a hard filter), exactly as contextual-query.md does.
   local query_out
-  query_out=$(node "$BUNDLE" query "$query_term" --work-unit "$work_unit" 2>&1)
-  assert_eq "$label: import surfaces via knowledge query" "false" \
+  query_out=$(node "$BUNDLE" query "$query_phrase" --boost:work-unit "$work_unit" 2>&1)
+  assert_eq "$label: import surfaces via contextual-style query" "false" \
     "$(printf '%s' "$query_out" | grep -q '\[0 results\]' && echo true || echo false)"
   assert_eq "$label: query result carries imports provenance" "true" \
     "$(printf '%s' "$query_out" | grep -q "imports | $work_unit/" && echo true || echo false)"
+  # Assert: the Source: line points at the import file, so two-step retrieval
+  # (read the source for full verbatim detail) can fire.
+  assert_eq "$label: result carries readable Source path for two-step read" "true" \
+    "$(printf '%s' "$query_out" | grep -q "Source: .workflows/$work_unit/imports/$dest" && echo true || echo false)"
 
   teardown_project
 }
@@ -140,7 +147,7 @@ promote_and_assert "bug→bugfix" "bugs" "bugfix" "login-timeout" \
 The auth callback throws RequestTimeoutError after 30s. Stack trace:
   at refreshSession (auth/session.js:42)
 Repro: log in with an expired refresh token on a throttled connection." \
-  "RequestTimeoutError"
+  "auth callback timeout when refreshing an expired session token"
 
 # --- quick-fix → quick-fix → scoping ---
 echo "Test: quick-fix promoted to a quick-fix"
@@ -149,7 +156,7 @@ promote_and_assert "quickfix→quick-fix" "quickfixes" "quick-fix" "replace-inte
   "# Replace deprecated interface
 Global rename of LegacyClient to PlatformClient across the gateway module.
 Mechanical find-and-replace, no logic change." \
-  "PlatformClient"
+  "rename the deprecated client interface in the gateway module"
 
 # --- idea → feature → research/discussion ---
 echo "Test: idea promoted to a feature"
@@ -158,7 +165,7 @@ promote_and_assert "idea→feature" "ideas" "feature" "smart-retry" \
   "# Smart retry backoff
 Idea: replace fixed retry delays with decorrelated jitter. Cap at 20s.
 Open question: how to surface retry budget exhaustion to the caller." \
-  "decorrelated"
+  "improve retry backoff delays with jitter"
 
 # --- idea → epic → topic curation then per-topic phases ---
 echo "Test: idea promoted to an epic"
@@ -167,7 +174,7 @@ promote_and_assert "idea→epic" "ideas" "epic" "billing-overhaul" \
   "# Billing overhaul
 Rework metering, invoicing, and dunning into one pipeline.
 Migrate legacy proration records without downtime." \
-  "dunning"
+  "rework the billing metering and invoicing pipeline"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
