@@ -105,16 +105,17 @@ What's on your mind for this map?
 
 → Proceed to **B. Session Loop**.
 
-#### If `discovery_map` is empty and imports exist
+#### If `discovery_map` is empty and seeds or imports exist
 
-Fresh first-session with seed material. Read each file listed under `imports[]` (paths are relative to `.workflows/{work_unit}/`). Use the import content as the conversation launchpad: reflect what's actually in the seed material, ask exploratory questions about what's there. Don't dump the imports back at the user verbatim — synthesise.
+Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`) — the seed is the primary launchpad, imports are supporting. Use this content to launch the conversation: reflect what's there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Read your import(s). Here's the shape I'm picking up:
+Read your {seed | import(s) | seed and import(s)}. Here's the shape
+I'm picking up:
 
-  {one-line summary of what the imports describe}
+  {one-line summary of what the seed/import material describes}
 
 Before we name topics, let's pull on a few things — {one or two
 exploratory questions drawn from the seed material}.

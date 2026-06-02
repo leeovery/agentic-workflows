@@ -29,6 +29,13 @@ Work unit: {work_unit}
 description can evolve, and we want to know what framing the
 session worked from.}
 
+## Seed
+
+{The seed (promoted inbox item) the work unit originated from, or
+`(none)`.}
+
+- seeds/{filename}.md ({source})
+
 ## Imports
 
 - imports/{filename}.md
@@ -85,7 +92,7 @@ The log file is **not created at session start**. It is conjured on the **first 
 
 Browse-and-bail produces no file.
 
-When the file is first created, populate the header, **Description (as of session)**, **Imports**, and **Map State at Start** at the same write that adds the first content. Other sections start as `(none)`.
+When the file is first created, populate the header, **Description (as of session)**, **Seed**, **Imports**, and **Map State at Start** at the same write that adds the first content. Other sections start as `(none)`.
 
 At that same first-creation write, set the active-session marker so it always pairs with an existing log:
 

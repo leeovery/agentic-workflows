@@ -1,6 +1,14 @@
 # Skill Authoring Conventions
 
-This file defines the mandatory display, structural, and file-layout conventions for all skill files in this project (entry-point and processing). Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
+This file defines the mandatory display, structural, prose, and file-layout conventions for all skill files in this project (entry-point and processing). Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
+
+## Prose Economy (MANDATORY)
+
+Skill and reference files are agent instructions loaded into the runtime context. Write the **exact amount of words to describe the task perfectly** — not the most, not the least. The bar is "can Claude execute this flawlessly?", never "is it short?".
+
+- **Write as if authored fresh, right now.** Each file is a clean set of instructions, not a record of how it was built. Cut historical references ("formerly", "used to", "now changed to"), previous-implementation notes, and migration backstory. When adding a feature to an existing file, leave it reading as though the feature was always there — no "(new)" markers, no justification bolted onto the old shape, no dangling references to what it replaced. No cruft.
+- **Cut the WHY when the WHAT suffices.** "Load X and do Y" needs no explanation of why X exists or what it's for. Keep rationale only when it changes what the agent does.
+- **This is not minimalism.** Keep every instruction, value, path, and distinction the agent needs to act correctly. Cutting a needed instruction is as wrong as over-explaining.
 
 ## Display & Output Conventions (MANDATORY)
 
