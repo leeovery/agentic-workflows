@@ -50,11 +50,7 @@ function findLatestSessionLog(cwd, workUnit) {
   const filename = files[files.length - 1];
   const m = filename.match(/^session-(\d+)\.md$/);
   const number = parseInt(m[1], 10);
-  return {
-    filename,
-    relative_path: path.posix.join('.workflows', workUnit, 'discovery', filename),
-    number,
-  };
+  return { number };
 }
 
 function discover(cwd, workUnit) {
@@ -82,7 +78,6 @@ function discover(cwd, workUnit) {
     dismissed,
     active_session: activeSession,
     analysis_caches: analysisCaches,
-    latest_session: latestSession,
     next_session_number: nextSessionNumber,
   };
 }
@@ -134,17 +129,6 @@ function format(result) {
     if (c.generated) line += ` (generated ${c.generated})`;
     if (c.reason) line += ` — ${c.reason}`;
     lines.push(line);
-  }
-  lines.push('');
-
-  lines.push('latest_session:');
-  if (!result.latest_session) {
-    lines.push('  (no session logs on disk)');
-  } else {
-    const ls = result.latest_session;
-    lines.push(`  filename: ${ls.filename}`);
-    lines.push(`  relative_path: ${ls.relative_path}`);
-    lines.push(`  number: ${ls.number}`);
   }
   lines.push('');
 

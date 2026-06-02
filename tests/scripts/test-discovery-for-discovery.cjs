@@ -390,46 +390,15 @@ describe('workflow-discovery discovery', () => {
     assert.deepStrictEqual(r2.dismissed, ['original']);
   });
 
-  // --- latest_session detection ---
+  // --- session-log scan (drives next_session_number) ---
 
-  it('latest_session is null when no session logs exist', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session, null);
-  });
-
-  it('reports session-001.md as latest when only one log exists', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 1, '3 topics seeded.');
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.filename, 'session-001.md');
-    assert.strictEqual(r.latest_session.number, 1);
-  });
-
-  it('latest_session picks the highest-numbered file regardless of alphabetic order', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 1, 'concluded');
-    writeSessionLog(dir, 'payments', 10, 'concluded');
-    writeSessionLog(dir, 'payments', 2, 'concluded');
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.number, 10);
-    assert.strictEqual(r.latest_session.filename, 'session-010.md');
-  });
-
-  it('ignores non-matching filenames in discovery directory', () => {
+  it('next_session_number ignores non-matching filenames in the discovery directory', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
     createFile(dir, '.workflows/payments/discovery/session-abc.md', 'should be ignored');
     createFile(dir, '.workflows/payments/discovery/notes.md', 'should be ignored');
     const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.filename, 'session-001.md');
-  });
-
-  it('relative_path is project-relative and forward-slashed', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 2, '(none)');
-    const r = discover(dir, 'payments');
-    assert.strictEqual(r.latest_session.relative_path, '.workflows/payments/discovery/session-002.md');
+    assert.strictEqual(r.next_session_number, 2);
   });
 
   // --- analysis_caches ---
@@ -642,23 +611,6 @@ describe('workflow-discovery format', () => {
     assert.match(out, /dismissed \(2\):\n {2}- old-thing\n {2}- another/);
   });
 
-  // --- latest_session block ---
-
-  it('renders "(no session logs on disk)" when latest_session is null', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    const out = format(discover(dir, 'payments'));
-    assert.match(out, /latest_session:\n {2}\(no session logs on disk\)/);
-  });
-
-  it('renders all latest_session subfields when present', () => {
-    createManifest(dir, 'payments', { work_type: 'epic' });
-    writeSessionLog(dir, 'payments', 2, '(none)');
-    const out = format(discover(dir, 'payments'));
-    assert.match(out, /filename: session-002\.md/);
-    assert.match(out, /relative_path: \.workflows\/payments\/discovery\/session-002\.md/);
-    assert.match(out, /number: 2/);
-  });
-
   // --- active_session ---
 
   describe('active_session', () => {
@@ -736,7 +688,6 @@ describe('workflow-discovery format', () => {
       out.indexOf('dismissed ('),
       out.indexOf('active_session:'),
       out.indexOf('analysis_caches:'),
-      out.indexOf('latest_session:'),
       out.indexOf('next_session_number:'),
     ];
     for (let i = 1; i < order.length; i++) {
