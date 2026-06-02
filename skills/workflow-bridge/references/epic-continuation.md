@@ -10,10 +10,10 @@ Epic is phase-centric — all artifacts in a phase complete before moving to the
 
 ## A. Run Epic Discovery
 
-The bridge's own discovery provides minimal epic data. Run the continue-epic discovery scoped to this work unit for enriched state (dependencies, implementation progress, format):
+The bridge's own discovery provides minimal epic data. Run the workflow-continue-epic discovery scoped to this work unit for enriched state (dependencies, implementation progress, format):
 
 ```bash
-node .claude/skills/continue-epic/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
 ```
 
 Parse the output. Use the epic's `detail` object as the discovery data for the display.
@@ -85,7 +85,7 @@ Epic Completed
 {completed_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
 ```
 
-→ Load **[epic-display-and-menu.md](../../continue-epic/references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when section B did not load the orchestrator).
+→ Load **[epic-display-and-menu.md](../../workflow-continue-epic/references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when section B did not load the orchestrator).
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
