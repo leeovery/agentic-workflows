@@ -139,7 +139,7 @@ Collisions are resolved by appending `-{selected.name}` (e.g. `exploration` beco
 
 ## E. Imports and Seeds Check
 
-Read the feature's imports and seeds lists — both travel with the topic into the epic:
+Read the feature's imports and seeds lists:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} imports
@@ -156,7 +156,7 @@ Set `has_imports` = `true`, store the result as `imports_entries` (list of `{pat
 
 **If the seeds list is non-empty:**
 
-Set `has_seeds` = `true`, store the result as `seeds_entries` (list of `{path, source, seeded_at}` objects), and set `seeds_count` to its length. Compute `seeds_moves` the same way (collision-resolved against the target epic's `seeds/`, `-{selected.name}` suffix), preserving each entry's `source` and `seeded_at`. The seed becomes one of the epic's origins, carrying its `inbox:{type}` source forward.
+Set `has_seeds` = `true`, store the result as `seeds_entries` (list of `{path, source, seeded_at}` objects), and set `seeds_count` to its length. Compute `seeds_moves` the same way (collision-resolved against the target epic's `seeds/`, `-{selected.name}` suffix), preserving each entry's `source` and `seeded_at`.
 
 → Proceed to **F. Confirm**.
 

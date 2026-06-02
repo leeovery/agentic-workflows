@@ -4,7 +4,7 @@
 
 ---
 
-Land a promoted inbox item as the work unit's **seed** — its origin. Normalise the filename, **move** the file out of `.inbox/` into `.workflows/{work_unit}/seeds/`, push a `manifest.seeds[]` entry tagged with its source, and index it into the knowledge base. A seed is the trigger the work was spawned from — distinct from an import (reference material the work pulls in). It is *moved*, not copied: the single captured item travels into the work unit, leaving nothing behind in the inbox.
+Land a promoted inbox item as the work unit's **seed**: normalise the filename, move the file out of `.inbox/` into `.workflows/{work_unit}/seeds/`, push a `manifest.seeds[]` entry, and index it into the knowledge base.
 
 ## Parameters
 
@@ -12,7 +12,7 @@ The caller provides these via context before loading:
 
 - `work_unit` — the work unit's name. Always present.
 - `seed_path` — path to the inbox file being promoted (`.workflows/.inbox/{folder}/{file}`). Always present and known to exist.
-- `source` — the seed's provenance: `inbox:idea`, `inbox:bug`, or `inbox:quickfix`. Recorded verbatim on the manifest entry so the origin stays deterministically distinguishable from reference imports.
+- `source` — the seed's provenance: `inbox:idea`, `inbox:bug`, or `inbox:quickfix`. Recorded verbatim on the manifest entry.
 
 ## A. Normalise the Filename
 

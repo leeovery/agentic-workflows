@@ -58,11 +58,9 @@ No imports.
 
 #### If an inbox seed was the origin
 
-The inbox item is the work unit's **origin** — the trigger it was spawned from, read first and used to shape the opener, not a reference attachment pulled in afterwards. It is a deliberately-captured artifact whose verbatim content (exact repro, stack trace, fully-worked idea) must persist for every downstream phase, so it becomes a first-class **seed** of the work unit. The opener already read it for shaping (and its substance is backfilled into the session log in **E**); now land the verbatim file as a seed so it travels through the pipeline. Derive the seed's type from its inbox folder (`bugs` → `bug`, `quickfixes` → `quickfix`, `ideas` → `idea`):
+Land the inbox seed as the work unit's seed. Derive the seed's type from its inbox folder (`bugs` → `bug`, `quickfixes` → `quickfix`, `ideas` → `idea`):
 
 → Load **[land-seed.md](land-seed.md)** with work_unit = `{work_unit}`, seed_path = `{inbox_seed}`, source = `inbox:{type}`.
-
-Seeds are distinct from imports end to end — they live in `seeds/` and `manifest.seeds[]`, never `imports/`. (`.workflows/.inbox/.archived/` is reserved for inbox items the user *declines*, not promoted ones.)
 
 → Proceed to **E. Write the Session Log**.
 

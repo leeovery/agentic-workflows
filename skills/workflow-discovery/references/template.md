@@ -31,8 +31,8 @@ session worked from.}
 
 ## Seed
 
-{The work unit's origin when promoted from the inbox — the item it
-was spawned from. `(none)` for work that wasn't promoted.}
+{The seed (promoted inbox item) the work unit originated from, or
+`(none)`.}
 
 - seeds/{filename}.md ({source})
 

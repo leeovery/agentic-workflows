@@ -107,7 +107,7 @@ What's on your mind for this map?
 
 #### If `discovery_map` is empty and seeds or imports exist
 
-Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`). The **seed** is the epic's origin — the inbox item it was spawned from — so it's the primary launchpad; imports are supporting reference material. Use this content to launch the conversation: reflect what's actually there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
+Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`) — the seed is the primary launchpad, imports are supporting. Use this content to launch the conversation: reflect what's there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
 
 > *Output the next fenced block as a code block:*
 
