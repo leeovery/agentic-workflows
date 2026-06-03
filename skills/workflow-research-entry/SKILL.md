@@ -162,19 +162,29 @@ Single-phase work shaped in discovery. Read the durable carrier as the seed — 
 
 #### If `work_type` is `epic`
 
-The topic was shaped on the discovery map; its seed lives on the map item. Read it:
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} source
 ```
 
-**If the `summary` or `description` field holds content:** seed the research session from them. Do not re-ask; live conversation context, when present, supplements them.
+**If `source` is exactly `direct-start`:**
+
+The topic was started fresh, not shaped on the map — there is no curated carrier to seed from.
+
+Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 
-**If both are empty or absent:** the map item has no seed material — gather it.
+**Otherwise:**
 
-Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
+The topic was shaped on the discovery map — its seed lives on the map item. Read the `description` and seed the research session from it:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+```
+
+Do not re-ask; live conversation context, when present, supplements the carrier.
 
 → Proceed to **Step 5**.
 
