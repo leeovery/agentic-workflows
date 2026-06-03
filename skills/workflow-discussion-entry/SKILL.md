@@ -142,12 +142,6 @@ Single-phase work shaped in discovery. Read the durable carrier as the seed — 
 
 → Proceed to **Step 4**.
 
-#### If discussion context is already available in conversation
-
-The caller already gathered context (problem description, motivation, constraints). Do not re-ask.
-
-→ Proceed to **Step 4**.
-
 #### If `work_type` is `epic`
 
 The topic was shaped on the discovery map; its seed lives on the map item. Read it:
