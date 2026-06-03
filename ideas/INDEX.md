@@ -59,8 +59,8 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 16 | ~~[Investigation: Show Interim Findings](investigation-show-interim-findings.md)~~ | Investigation processing skill (bugfix) | ✅ Done |
 | 17 | [Bugfix: Prior Spec Knowledge Check](bugfix-prior-spec-knowledge-check.md) | Investigation or specification phase (bugfix) |
 | 18 | ~~[Inbox Pickup Actions](inbox-pickup-actions.md)~~ | `workflow-start` inbox working set + `.archived` lifecycle | ✅ Done (with #29) |
-| 19 | [Review Classifier Quality](review-classifier-quality.md) | `workflow-review-task-verifier` tagging rules |
-| 20 | [Review Finding Grouping](review-finding-grouping.md) | `workflow-review-process` produce-review clustering |
+| 19 | ~~[Review Classifier Quality](review-classifier-quality.md)~~ | `workflow-review-task-verifier` tagging rules | ✅ Done (with #20 — review-end triage redesign + do-now lane) |
+| 20 | ~~[Review Finding Grouping](review-finding-grouping.md)~~ | `workflow-review-process` produce-review clustering | ✅ Done (with #19) |
 | 21 | [Cross-Plan Implementation Ordering](cross-plan-implementation-ordering.md) | Planning content-appraisal + format-level enforcement + epic menu collapse to "next available task" |
 | 22 | [Editing Historical Phase Artefacts](editing-historical-phase-artefacts.md) | Planning / implementation / knowledge base — corrigendum + reindex convention |
 | 23 | ~~[Embedding Provider `base_url` Override](embedding-provider-base-url.md)~~ | Knowledge base CLI — `openai-compatible` driver + shared engine + config + setup | ✅ Done |

@@ -36,7 +36,7 @@ Plan Task (acceptance criteria)
     ↓
     Check Code Quality (readable, conventions)
     ↓
-    Categorize Non-Blocking Notes (quickfix/idea/bug)
+    Categorize Non-Blocking Notes (do-now/quickfix/idea/bug)
 ```
 
 ### Step 1: Understand the Task
@@ -89,13 +89,16 @@ Review the implementation as a senior architect would:
 
 ### Step 6: Categorize Non-Blocking Notes
 
-Tag each non-blocking note with a category:
+First, apply the floor: a note must propose a concrete change (add X, remove Y, rename Z, document W). Drop pure observations that propose no action ("worth confirming", "relies on env inheritance", "acceptable as-is") — they are not findings. If an observation is genuinely load-bearing, convert it to a concrete action; otherwise discard it.
 
-- **`[quickfix]`** — Mechanical change with no logic impact. Typos, renames, linting, code style, find-and-replace. Achievable in minutes, no design decisions.
-- **`[idea]`** — Requires discussion or design. Architectural suggestions, refactoring, new functionality, deduplication. Not trivially scoped.
-- **`[bug]`** — Something is broken or incorrect but non-blocking. Latent bugs, unhandled edge cases, incorrect error mapping. These are non-blocking — they do not belong in BLOCKING ISSUES.
+Tag each surviving note by the next step required to act on it:
 
-If unsure, default to `[idea]` — it's the safest catch-all for anything that needs human judgment.
+- **`[do-now]`** — Zero risk, no logic impact, applyable on the spot: documentation and comment edits, wording and link fixes, mechanical renames, small test-assertion additions (safe as long as they pass). Small and inline (single file), or trivially mechanical even across files (e.g. a doc-reference sweep). Acting on it needs no decision and touches no executable logic.
+- **`[quickfix]`** — Mechanical but touches code or test logic, or is larger than an inline edit: extract a helper, dedupe, a small refactor, a behavioural test. No design decision, but it carries enough risk to route through the pipeline rather than apply on the spot.
+- **`[idea]`** — Requires genuine decision or design judgment: how or whether to do it, architectural trade-offs, new functionality, scope. If the next step is "decide how" or "decide whether", it is an idea.
+- **`[bug]`** — Something is broken or incorrect but non-blocking. Latent bugs, unhandled edge cases, incorrect error mapping. Do not place these in BLOCKING ISSUES.
+
+Decide by the next step — apply-now-zero-risk → `[do-now]`; concrete mechanical edit that touches logic → `[quickfix]`; decide-how-or-whether → `[idea]`; fix-incorrect-behaviour → `[bug]`. When torn between `[do-now]` and `[quickfix]`, choose `[quickfix]` — only tag `[do-now]` when there is genuinely zero chance of breaking logic. When torn between `[quickfix]` and `[idea]`, choose `[quickfix]` if there is a concrete edit at a known location, `[idea]` otherwise.
 
 ## Output File Format
 
@@ -132,7 +135,7 @@ BLOCKING ISSUES:
 - [List any issues that must be fixed]
 
 NON-BLOCKING NOTES:
-- [{quickfix|idea|bug}] {description}
+- [{do-now|quickfix|idea|bug}] {file:line} — {concrete change}
 ```
 
 ## Your Output
