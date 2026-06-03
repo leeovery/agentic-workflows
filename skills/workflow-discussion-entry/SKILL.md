@@ -136,21 +136,55 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 > Collecting the context needed before starting the discussion.
 ```
 
-#### If `work_type` is not `epic` and a discovery session log exists for this work unit
+#### If `work_type` is not `epic`
 
-Single-phase work shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/session-NNN.md`, highest-numbered) — and seed the discussion from it. Do not re-ask; live conversation context, when present, supplements the carrier.
+Single-phase work (feature, cross-cutting) shaped in discovery. The carrier has two halves — read both. First the manifest `description`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+```
+
+Then the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/session-001.md`. A legacy work unit may have no log, or a placeholder log whose **Exploration** is absent or `(none)`.
+
+**If the log's `Exploration` section has content (not absent or `(none)`):**
+
+Seed the discussion from the `description` and that **Exploration**. Do not re-ask; live conversation context, when present, supplements the carrier.
 
 → Proceed to **Step 4**.
 
-#### If discussion context is already available in conversation
+**Otherwise:**
 
-The caller already gathered context (problem description, motivation, constraints). Do not re-ask.
-
-→ Proceed to **Step 4**.
-
-#### Otherwise
+No usable carrier — the log is missing or has no **Exploration**. Gather context.
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
+
+→ Proceed to **Step 4**.
+
+#### If `work_type` is `epic`
+
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} source
+```
+
+**If `source` is exactly `direct-start`:**
+
+The topic was started fresh, not shaped on the map — there is no curated carrier to seed from.
+
+Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
+
+→ Proceed to **Step 4**.
+
+**Otherwise:**
+
+The topic was shaped on the discovery map — its seed lives on the map item. Read the `description` and seed the discussion from it:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+```
+
+Do not re-ask; live conversation context, when present, supplements the carrier.
 
 → Proceed to **Step 4**.
 
