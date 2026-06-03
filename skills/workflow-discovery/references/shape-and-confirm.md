@@ -14,16 +14,15 @@ Gather all signal flavours simultaneously (work-type cues and topic seeds co-eme
 
 ## B. Commit
 
-Make the commit move: state the read in plain terms with the bucket name folded in, give the specific signals that drove it, then render the gate:
+Make the commit move. State the read as plain prose first — bucket name folded in, plus the signals that drove it — held above the gate, never inside it. Then render the gate (static; the read stays above):
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-{Plain read + bucket name, e.g. "This is feature-shaped — one focused
-thing to build."} {One-or-two-sentence reasoning naming the signals.}
+Have I read this right?
 
-- **`y`/`yes`** — That's right, set it up as a {work-type}
+- **`y`/`yes`** — That's the right shape, set it up
 - **`o`/`other`** — It's something else (tell me what)
 - **Keep shaping** — Tell me what I'm missing
 · · · · · · · · · · · ·
