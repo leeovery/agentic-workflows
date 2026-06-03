@@ -37,7 +37,8 @@ For each item in the set, read its file and synthesise a short summary of what i
 
 ```
 · · · · · · · · · · · ·
-What would you like to do?
+What would you like to do? Type a shortcut, or just tell me in
+your own words — e.g. "add 2 and 4", "drop the bug", "archive these".
 
 @if(set is type-uniform)
 - **`w`/`work`** — Proceed to discovery with this set
@@ -52,6 +53,8 @@ What would you like to do?
 ```
 
 **STOP.** Wait for user response.
+
+The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting.
 
 #### If user chose `w`/`work`
 
@@ -103,6 +106,12 @@ Build a numbered list of inbox items **not already in the working set**, sorted 
 
 → Return to **A. Render the Working Set**.
 
+#### If the triggering message already named the item(s) to add
+
+Match each named item against the list — by title, or by the number if the user referenced one. If any reference is ambiguous or unmatched, → Proceed to **Otherwise**. Otherwise append the matched items to the working set.
+
+→ Return to **A. Render the Working Set**.
+
 #### Otherwise
 
 > *Output the next fenced block as a code block:*
@@ -135,6 +144,20 @@ Resolve each chosen item's inbox path and append it to the working set.
 
 ## C. Drop Items
 
+#### If the triggering message already named the item(s) to drop
+
+Resolve each named item against the working set by title or description. If any reference is ambiguous or unmatched, → Proceed to **Otherwise**. Otherwise remove the resolved items (they stay in the inbox):
+
+**If the set is now empty:**
+
+→ Return to caller.
+
+**If items remain:**
+
+→ Return to **A. Render the Working Set**.
+
+#### Otherwise
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -153,21 +176,13 @@ Drop which? (enter number(s), comma-separated, or **`b`/`back`**)
 
 **STOP.** Wait for user response.
 
-#### If user chose `b`/`back`
+**If user chose `b`/`back`:**
 
 → Return to **A. Render the Working Set**.
 
-#### If user chose one or more numbers
+**If user chose one or more numbers:**
 
-Remove the chosen items from the working set. They stay in the inbox.
-
-**If the set is now empty:**
-
-→ Return to caller.
-
-**If items remain:**
-
-→ Return to **A. Render the Working Set**.
+Remove the chosen items from the working set; they stay in the inbox. If the set is now empty, → Return to caller; otherwise → Return to **A. Render the Working Set**.
 
 ## D. Archive the Set
 
