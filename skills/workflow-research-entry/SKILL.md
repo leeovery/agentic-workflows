@@ -154,9 +154,27 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 > Collecting initial context to seed the research session.
 ```
 
-#### If `work_type` is not `epic` and a discovery session log exists for this work unit
+#### If `work_type` is not `epic`
 
-Single-phase work shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/session-NNN.md`, highest-numbered) — and seed the research session from it. Do not re-ask; live conversation context, when present, supplements the carrier.
+Single-phase work (feature, cross-cutting) shaped in discovery. The carrier has two halves — read both. First the manifest `description`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+```
+
+Then the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/session-001.md` (a not-found result means a legacy work unit with no log).
+
+**If the session log exists:**
+
+Seed the research session from the `description` and the log's **Exploration**. Do not re-ask; live conversation context, when present, supplements the carrier.
+
+→ Proceed to **Step 5**.
+
+**Otherwise:**
+
+Legacy work unit with no discovery session log — gather context.
+
+Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 
@@ -185,12 +203,6 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.disco
 ```
 
 Do not re-ask; live conversation context, when present, supplements the carrier.
-
-→ Proceed to **Step 5**.
-
-#### Otherwise
-
-Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 
