@@ -100,6 +100,31 @@ exit 0
 NPMEOF
   chmod +x "$STUBS/npm"
 
+  # Stub gh: logs every call to $CALLS. `gh auth status` honors
+  # STUB_GH_AUTH_FAIL and `gh release create` honors STUB_GH_CREATE_FAIL.
+  cat > "$STUBS/gh" << 'GHEOF'
+#!/bin/bash
+echo "gh $*" >> "$CALLS"
+case "$1 $2" in
+  "auth status")
+    if [ "${STUB_GH_AUTH_FAIL:-0}" = "1" ]; then
+      echo "stub: gh not authenticated" >&2
+      exit 1
+    fi
+    exit 0
+    ;;
+  "release create")
+    if [ "${STUB_GH_CREATE_FAIL:-0}" = "1" ]; then
+      echo "stub: gh release create failed" >&2
+      exit 1
+    fi
+    exit 0
+    ;;
+esac
+exit 0
+GHEOF
+  chmod +x "$STUBS/gh"
+
   # Strip the main invocation so sourcing defines functions without running.
   grep -v '^main "\$@"$' "$RELEASE_SCRIPT" > "$RELEASE_FUNCS"
 
@@ -111,6 +136,7 @@ teardown() {
   cd "$REPO_DIR"
   rm -rf "$TEST_DIR"
   unset STUB_NPM_CI_FAIL STUB_NPM_BUILD_FAIL STUB_NPM_BUILD_MODIFIES
+  unset STUB_GH_AUTH_FAIL STUB_GH_CREATE_FAIL
 }
 
 # Run perform_release in a subshell with git tag/push stubbed so tests never
@@ -278,6 +304,64 @@ test_build_runs_before_tag() {
   teardown
 }
 
+# --- Test 9: happy path — gh release create runs after git push ---
+test_gh_release_created_after_push() {
+  setup
+  export STUB_NPM_BUILD_MODIFIES=1
+
+  run_release "1.0.0" "0.0.0" "none"
+
+  local calls_content push_line create_line
+  calls_content=$(cat "$CALLS")
+  push_line=$(echo "$calls_content" | awk '/^git push/ {print NR; exit}')
+  create_line=$(echo "$calls_content" | awk '/^gh release create/ {print NR; exit}')
+
+  assert_eq "both push and gh release create recorded" "true" \
+    "$([ -n "$push_line" ] && [ -n "$create_line" ] && echo true || echo false)"
+  assert_eq "gh release create runs after git push" "true" \
+    "$([ -n "$push_line" ] && [ -n "$create_line" ] && [ "$push_line" -lt "$create_line" ] && echo true || echo false)"
+  assert_eq "release created for v1.0.0" "true" "$(file_contains 'gh release create v1.0.0' "$CALLS")"
+
+  teardown
+}
+
+# --- Test 10: preflight gh-auth failure aborts before any mutation ---
+test_gh_auth_failure_aborts_before_tag() {
+  setup
+  export STUB_GH_AUTH_FAIL=1
+
+  local rc=0
+  run_release "1.0.0" "0.0.0" "none" || rc=$?
+
+  assert_eq "perform_release exits non-zero on gh auth failure" "true" \
+    "$([ "$rc" -ne 0 ] && echo true || echo false)"
+  assert_eq "npm ci was NOT invoked after gh auth failure" "false" "$(file_contains 'npm ci' "$CALLS")"
+  assert_eq "tag was NOT called after gh auth failure" "false" "$(file_contains 'git tag' "$CALLS")"
+  assert_eq "gh auth error message emitted" "true" \
+    "$(file_contains 'gh is not authenticated' "$TEST_DIR/out.log")"
+
+  teardown
+}
+
+# --- Test 11: post-push gh release create failure is non-fatal ---
+test_gh_create_failure_is_non_fatal() {
+  setup
+  export STUB_NPM_BUILD_MODIFIES=1
+  export STUB_GH_CREATE_FAIL=1
+
+  local rc=0
+  run_release "1.0.0" "0.0.0" "none" || rc=$?
+
+  assert_eq "perform_release exits 0 despite gh create failure" "0" "$rc"
+  assert_eq "tag was still pushed" "true" "$(file_contains 'git push' "$CALLS")"
+  assert_eq "warning about failed release emitted" "true" \
+    "$(file_contains 'GitHub release creation failed' "$TEST_DIR/out.log")"
+  assert_eq "manual re-run hint emitted" "true" \
+    "$(file_contains 'Re-run manually' "$TEST_DIR/out.log")"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running release-build integration tests..."
 echo ""
@@ -290,6 +374,9 @@ test_build_failure_aborts
 test_ci_failure_aborts
 test_dirty_tree_gate_fires
 test_build_runs_before_tag
+test_gh_release_created_after_push
+test_gh_auth_failure_aborts_before_tag
+test_gh_create_failure_is_non_fatal
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
