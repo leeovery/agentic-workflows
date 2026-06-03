@@ -306,6 +306,69 @@ update_changelog() {
     rm -f "$entry_file"
 }
 
+# How long (seconds) to wait out a contended git lock before treating it as
+# stale and removing it. A real local index/ref mutation finishes well within
+# this window — overridable via the environment for testing.
+: "${GIT_LOCK_WAIT_SECONDS:=30}"
+
+# Run a git command, transparently surviving a contended or stale lock file.
+#
+# Git takes a lock (.git/index.lock for index ops, refs/.../*.lock for ref ops)
+# at the start of a mutation and releases it on completion. A second git caller
+# running concurrently — an editor, an auto-commit, a background agent — or a
+# process killed mid-op leaves us either racing the lock or staring at a stale
+# one. Either way the bare command aborts with "Unable to create '...lock':
+# File exists", which would break a release. This wrapper instead waits the
+# lock out silently, retrying until the holder finishes, and as a last resort
+# removes a lock that is provably stale (still present after the whole wait).
+# The caller never sees the lock error; genuine (non-lock) git failures are
+# surfaced and returned unchanged.
+git_safe() {
+    local deadline=$(( SECONDS + GIT_LOCK_WAIT_SECONDS ))
+    local out status lock_path
+
+    while true; do
+        # Combine streams so we can inspect git's diagnostics. The capture sits
+        # in an `if` condition because `set -e` would otherwise abort the whole
+        # script the moment git exits non-zero — defeating the retry entirely.
+        if out=$(git "$@" 2>&1); then status=0; else status=$?; fi
+
+        if [[ $status -eq 0 ]]; then
+            if [[ -n "$out" ]]; then printf '%s\n' "$out"; fi
+            return 0
+        fi
+
+        # Not a lock collision? Surface the real error and fail as normal.
+        if ! printf '%s' "$out" | grep -qE "Unable to create '.*\.lock'|cannot lock ref|Another git process"; then
+            if [[ -n "$out" ]]; then printf '%s\n' "$out" >&2; fi
+            return "$status"
+        fi
+
+        # Lock collision: stay quiet and wait for the holder to release it.
+        if (( SECONDS < deadline )); then
+            sleep 1
+            continue
+        fi
+
+        # Waited the full window and the lock is still here — treat as stale,
+        # remove it, and make one final attempt.
+        lock_path=$(printf '%s' "$out" | grep -oE "Unable to create '[^']*\.lock'" | head -1 | sed "s/Unable to create '//; s/'\$//")
+        if [[ -n "$lock_path" && -e "$lock_path" ]]; then
+            echo "Clearing stale git lock: $lock_path" >&2
+            rm -f "$lock_path"
+            if out=$(git "$@" 2>&1); then status=0; else status=$?; fi
+            if [[ -n "$out" ]]; then
+                if [[ $status -eq 0 ]]; then printf '%s\n' "$out"; else printf '%s\n' "$out" >&2; fi
+            fi
+            return "$status"
+        fi
+
+        # Couldn't identify a lock file to clear — surface the original error.
+        if [[ -n "$out" ]]; then printf '%s\n' "$out" >&2; fi
+        return "$status"
+    done
+}
+
 # Preflight gate: require the GitHub CLI to be installed and authenticated.
 # Called before any mutation so a missing/unauthenticated gh aborts the release
 # loudly *before* a tag is ever created — recoverable, no stray tags left behind.
@@ -356,8 +419,8 @@ perform_release() {
     local bundle_path="skills/workflow-knowledge/scripts/knowledge.cjs"
     if ! git diff --quiet -- "$bundle_path"; then
         echo "Knowledge bundle changed — committing."
-        git add "$bundle_path"
-        git commit -m "chore(release): rebuild knowledge bundle for v${new_version}"
+        git_safe add "$bundle_path"
+        git_safe commit -m "chore(release): rebuild knowledge bundle for v${new_version}"
     else
         echo "Knowledge bundle unchanged — no commit needed."
     fi
@@ -371,9 +434,9 @@ perform_release() {
 
     # Prepend the entry to CHANGELOG.md and commit it before tagging.
     update_changelog "$new_version" "$body"
-    git add CHANGELOG.md
+    git_safe add CHANGELOG.md
     if ! git diff --cached --quiet -- CHANGELOG.md; then
-        git commit -m "chore(release): update changelog for v${new_version}"
+        git_safe commit -m "chore(release): update changelog for v${new_version}"
     fi
 
     local commit_message
@@ -383,15 +446,15 @@ perform_release() {
     update_version_file "$new_version"
 
     if [[ "$VERSION_STRATEGY" != "none" ]]; then
-        git add "$VERSION_FILE"
-        git commit -m "$commit_message"
+        git_safe add "$VERSION_FILE"
+        git_safe commit -m "$commit_message"
     fi
 
     # Create annotated tag with the same message
-    git tag -a "v${new_version}" -m "$commit_message"
+    git_safe tag -a "v${new_version}" -m "$commit_message"
 
     # Push commit and tag atomically
-    git push --atomic origin HEAD "v${new_version}"
+    git_safe push --atomic origin HEAD "v${new_version}"
 
     # Create the GitHub Release, reusing the already-computed notes body. The
     # tag is already live, so a failure here is non-fatal — but the preflight
