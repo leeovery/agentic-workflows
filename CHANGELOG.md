@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.16] - 2026-06-03
+
+- Add a `[do-now]` triage lane to review: zero-risk, no-logic findings (doc/comment edits, wording fixes, mechanical renames) are tagged for direct application via a new `d`/`do-now` action that edits, lints/tests, commits, and defers any that fail verification to quick-fixes
+- Rework non-blocking note categorization in the task verifier — add a concrete-change "floor" that drops pure observations, and redefine the do-now/quickfix/idea/bug tiers with explicit next-step decision rules and tie-breakers
+- Cluster review recommendations by shared file or theme into single items with sub-bullets and `(Report N-M)` source tags, and surface `file:line` references on every recommendation
+- Add `### Do now` subsection to the review report template and present-review output, ordered ahead of quick-fixes/ideas/bugs
+
 ## [0.4.15] - 2026-06-03
 
 - Inbox pickup is now a working set — select multiple items of a single type to promote together into discovery as combined seed material (multi-select promotion gated to one type)
