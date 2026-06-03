@@ -42,14 +42,13 @@ function parseInboxFile(filename) {
   return { date: match[1], slug: match[2] };
 }
 
-function discoverInbox(cwd) {
-  const inboxDir = path.join(cwd, '.workflows', '.inbox');
+function scanInboxDir(baseDir) {
   const ideas = [];
   const bugs = [];
   const quickfixes = [];
 
   for (const type of ['ideas', 'bugs', 'quickfixes']) {
-    const dir = path.join(inboxDir, type);
+    const dir = path.join(baseDir, type);
     let files;
     try {
       files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort();
@@ -76,6 +75,13 @@ function discoverInbox(cwd) {
     quickfix_count: quickfixes.length,
     total_count: ideas.length + bugs.length + quickfixes.length,
   };
+}
+
+function discoverInbox(cwd) {
+  const inboxDir = path.join(cwd, '.workflows', '.inbox');
+  const inbox = scanInboxDir(inboxDir);
+  inbox.archived = scanInboxDir(path.join(inboxDir, '.archived'));
+  return inbox;
 }
 
 function discover(cwd) {
@@ -153,6 +159,8 @@ function discover(cwd) {
       cross_cutting_count: cross_cutting.length,
       has_inbox: inbox.total_count > 0,
       inbox_count: inbox.total_count,
+      has_archived: inbox.archived.total_count > 0,
+      archived_count: inbox.archived.total_count,
     },
   };
 }
@@ -214,6 +222,24 @@ function format(result) {
     lines.push('');
   }
 
+  if (result.inbox.archived.total_count > 0) {
+    const archived = result.inbox.archived;
+    lines.push('=== ARCHIVED ===');
+    lines.push(`  ideas: ${archived.idea_count}`);
+    lines.push(`  bugs: ${archived.bug_count}`);
+    lines.push(`  quickfixes: ${archived.quickfix_count}`);
+    for (const item of archived.ideas) {
+      lines.push(`  ${item.slug} (idea, ${item.date})`);
+    }
+    for (const item of archived.bugs) {
+      lines.push(`  ${item.slug} (bug, ${item.date})`);
+    }
+    for (const item of archived.quickfixes) {
+      lines.push(`  ${item.slug} (quick-fix, ${item.date})`);
+    }
+    lines.push('');
+  }
+
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
   lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix, ${result.state.quickfix_count} quick-fix, ${result.state.cross_cutting_count} cross-cutting`);
@@ -221,6 +247,8 @@ function format(result) {
   lines.push(`cancelled_count: ${result.cancelled_count}`);
   lines.push(`has_inbox: ${result.state.has_inbox}`);
   lines.push(`inbox_count: ${result.state.inbox_count}`);
+  lines.push(`has_archived: ${result.state.has_archived}`);
+  lines.push(`archived_count: ${result.state.archived_count}`);
 
   return lines.join('\n') + '\n';
 }

@@ -58,7 +58,7 @@ Select an option:
 
 Set the work-type pre-seed from the pick — `s` → `none`, otherwise the matching type (feature / epic / bugfix / quick-fix / cross-cutting).
 
-→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seed = `none`.
+→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seeds = `none`.
 
 #### If user chose `v`/`view`
 

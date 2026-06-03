@@ -73,7 +73,7 @@ Read the positional arguments:
 
 - `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s`/start path, no hint). A hint, not a given — still confirmed in new mode.
 - `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `workflow-continue-epic`), or `none` (new work, from `workflow-start`).
-- `$2` — **inbox_seed**: path to an inbox file consumed as the opening description, or `none`. Absent `$2` is treated as `none`.
+- `$2` — **inbox_seeds**: comma-joined path(s) to inbox file(s) consumed as the opening seed material — one or more, or `none`. Absent `$2` is treated as `none`. Split on commas into a list; a single path yields a one-element list. Held downstream as `inbox_seeds`.
 
 The mode is determined by `$1`:
 

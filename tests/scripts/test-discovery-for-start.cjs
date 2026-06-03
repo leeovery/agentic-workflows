@@ -344,6 +344,40 @@ describe('workflow-start discovery', () => {
     const r = discover(dir);
     assert.strictEqual(r.inbox.ideas[0].title, 'no-title');
   });
+
+  it('discovers archived items nested under inbox.archived', () => {
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-19--old-idea.md', '# Old Idea\n\nContent.');
+    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-03-18--old-bug.md', '# Old Bug\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.archived.idea_count, 1);
+    assert.strictEqual(r.inbox.archived.bug_count, 1);
+    assert.strictEqual(r.inbox.archived.total_count, 2);
+    assert.strictEqual(r.inbox.archived.ideas[0].slug, 'old-idea');
+    assert.strictEqual(r.inbox.archived.ideas[0].title, 'Old Idea');
+  });
+
+  it('archived items do not count toward live inbox totals', () => {
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-20--live.md', '# Live\n\nContent.');
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-19--archived.md', '# Archived\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.total_count, 1);
+    assert.strictEqual(r.inbox.idea_count, 1);
+    assert.strictEqual(r.inbox.archived.total_count, 1);
+  });
+
+  it('exposes has_archived and archived_count in state', () => {
+    createFile(dir, '.workflows/.inbox/.archived/quickfixes/2026-03-28--gone.md', '# Gone\n\nContent.');
+    const r = discover(dir);
+    assert.strictEqual(r.state.has_archived, true);
+    assert.strictEqual(r.state.archived_count, 1);
+  });
+
+  it('returns empty archived when no archived directory exists', () => {
+    const r = discover(dir);
+    assert.strictEqual(r.inbox.archived.total_count, 0);
+    assert.strictEqual(r.state.has_archived, false);
+    assert.strictEqual(r.state.archived_count, 0);
+  });
 });
 
 describe('workflow-start format', () => {
@@ -462,5 +496,24 @@ describe('workflow-start format', () => {
     const out = format(discover(dir));
     assert.ok(out.includes('has_inbox: false'));
     assert.ok(out.includes('inbox_count: 0'));
+  });
+
+  it('emits archived section with counts and items', () => {
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-19--old-idea.md', '# Old Idea\n\nContent.');
+    const out = format(discover(dir));
+    assert.ok(out.includes('=== ARCHIVED ==='));
+    assert.ok(out.includes('  old-idea (idea, 2026-03-19)'));
+  });
+
+  it('omits archived section when empty', () => {
+    const out = format(discover(dir));
+    assert.ok(!out.includes('=== ARCHIVED ==='));
+  });
+
+  it('includes has_archived and archived_count in state output', () => {
+    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-03-18--gone.md', '# Gone\n\nContent.');
+    const out = format(discover(dir));
+    assert.ok(out.includes('has_archived: true'));
+    assert.ok(out.includes('archived_count: 1'));
   });
 });
