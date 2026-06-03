@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.17] - 2026-06-03
+
+Based on the diff, this is a single-file refinement to the inbox working set UX.
+
+- Add natural-language control to the working set actions — users can describe add/drop/archive in their own words (e.g. "add 2 and 4", "drop the bug") instead of only typing shortcuts, with named-item selections carried straight into the action without re-prompting
+- Render a single-item working set without a tree connector (`•` alone), since a lone `└─` joins nothing
+- Tighten the working-set flag spacing so the `⚑` warning carries one blank line above and below, keeping the title-to-items gap single when no flag shows
+- Indent summary sub-lines two columns past the title so descriptions read as subordinate, and align the tree gutter under the branch character
+
 ## [0.4.16] - 2026-06-03
 
 - Add a `[do-now]` triage lane to review: zero-risk, no-logic findings (doc/comment edits, wording fixes, mechanical renames) are tagged for direct application via a new `d`/`do-now` action that edits, lints/tests, commits, and defers any that fail verification to quick-fixes
