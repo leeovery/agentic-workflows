@@ -36,8 +36,11 @@
 
 ## Recommendations
 
+### Do now
+[Zero-risk, no-logic items to apply immediately — omit section if none]
+
 ### Quick-fixes
-[Mechanical, no-logic-change items — omit section if none]
+[Mechanical, logic-touching items for the pipeline — omit section if none]
 
 ### Ideas
 [Items requiring discussion or design — omit section if none]
