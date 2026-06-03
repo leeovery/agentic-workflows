@@ -306,6 +306,20 @@ update_changelog() {
     rm -f "$entry_file"
 }
 
+# Preflight gate: require the GitHub CLI to be installed and authenticated.
+# Called before any mutation so a missing/unauthenticated gh aborts the release
+# loudly *before* a tag is ever created — recoverable, no stray tags left behind.
+require_github_cli() {
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "Error: gh (GitHub CLI) is not installed. Install it before releasing: https://cli.github.com" >&2
+        exit 1
+    fi
+    if ! gh auth status >/dev/null 2>&1; then
+        echo "Error: gh is not authenticated. Run 'gh auth login' before releasing." >&2
+        exit 1
+    fi
+}
+
 perform_release() {
     local new_version=$1
     local current_version=$2
@@ -316,6 +330,10 @@ perform_release() {
         echo "Please commit or stash your changes and run the script again to release."
         exit 1
     fi
+
+    # Verify gh is ready before mutating anything, so no tag is ever pushed
+    # without the means to create its Release.
+    require_github_cli
 
     # Rebuild the knowledge CLI bundle so every tagged release ships a fresh
     # skills/workflow-knowledge/scripts/knowledge.cjs. AGNTC installs from tags
@@ -374,6 +392,21 @@ perform_release() {
 
     # Push commit and tag atomically
     git push --atomic origin HEAD "v${new_version}"
+
+    # Create the GitHub Release, reusing the already-computed notes body. The
+    # tag is already live, so a failure here is non-fatal — but the preflight
+    # gh gate makes this branch rare.
+    echo "Creating GitHub release..."
+    local notes="${body:-See CHANGELOG.md for details.}"
+    if gh release create "v${new_version}" \
+           --title "v${new_version}" \
+           --notes "$notes" \
+           --verify-tag --latest; then
+        echo "✅ GitHub release v${new_version} created"
+    else
+        echo "⚠️  GitHub release creation failed — the tag is already pushed." >&2
+        echo "    Re-run manually: gh release create v${new_version} --title v${new_version} --notes '...' --verify-tag --latest" >&2
+    fi
 
     echo -e "\n"
     echo "✅ Released v${new_version}"
@@ -434,11 +467,13 @@ main() {
             echo " 2. Update version in $VERSION_FILE"
             echo " 3. Create a new commit"
             echo " 4. Create git tag v${new_version}"
-            echo -e " 5. Push changes\n"
+            echo " 5. Push changes"
+            echo -e " 6. Create GitHub release\n"
         else
             echo " 1. Update CHANGELOG.md"
             echo " 2. Create git tag v${new_version}"
-            echo -e " 3. Push changes\n"
+            echo " 3. Push changes"
+            echo -e " 4. Create GitHub release\n"
         fi
 
         echo -n "Proceed? [Y/n] "
