@@ -160,6 +160,12 @@ Single-phase work shaped in discovery. Read the durable carrier as the seed — 
 
 → Proceed to **Step 5**.
 
+#### If `work_type` is `epic` and the discovery-map item carries a `summary` or `description`
+
+The topic was shaped on the discovery map. Read the durable carrier as the seed — the `summary` and `description` on the map item (`{work_unit}.discovery.{topic}`) — and seed the research session from it. Do not re-ask; live conversation context, when present, supplements the carrier.
+
+→ Proceed to **Step 5**.
+
 #### If research context is already available in conversation
 
 The caller already gathered context (idea description, motivation, constraints). Do not re-ask.
