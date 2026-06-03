@@ -160,15 +160,27 @@ Single-phase work shaped in discovery. Read the durable carrier as the seed — 
 
 → Proceed to **Step 5**.
 
-#### If `work_type` is `epic` and the discovery-map item carries a `summary` or `description`
-
-The topic was shaped on the discovery map. Read the durable carrier as the seed — the `summary` and `description` on the map item (`{work_unit}.discovery.{topic}`) — and seed the research session from it. Do not re-ask; live conversation context, when present, supplements the carrier.
-
-→ Proceed to **Step 5**.
-
 #### If research context is already available in conversation
 
 The caller already gathered context (idea description, motivation, constraints). Do not re-ask.
+
+→ Proceed to **Step 5**.
+
+#### If `work_type` is `epic`
+
+The topic was shaped on the discovery map; its seed lives on the map item. Read it:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic}
+```
+
+**If the `summary` or `description` field holds content:** seed the research session from them. Do not re-ask; live conversation context, when present, supplements them.
+
+→ Proceed to **Step 5**.
+
+**If both are empty or absent:** the map item has no seed material — gather it.
+
+Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
 → Proceed to **Step 5**.
 
