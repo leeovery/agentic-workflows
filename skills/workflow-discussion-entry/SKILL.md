@@ -144,17 +144,17 @@ Single-phase work (feature, cross-cutting) shaped in discovery. The carrier has 
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
 ```
 
-Then the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/session-001.md` (a not-found result means a legacy work unit with no log).
+Then the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/session-001.md`. A legacy work unit may have no log, or a placeholder log whose **Exploration** is absent or `(none)`.
 
-**If the session log exists:**
+**If the log's `Exploration` section has content (not absent or `(none)`):**
 
-Seed the discussion from the `description` and the log's **Exploration**. Do not re-ask; live conversation context, when present, supplements the carrier.
+Seed the discussion from the `description` and that **Exploration**. Do not re-ask; live conversation context, when present, supplements the carrier.
 
 → Proceed to **Step 4**.
 
 **Otherwise:**
 
-Legacy work unit with no discovery session log — gather context.
+No usable carrier — the log is missing or has no **Exploration**. Gather context.
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
