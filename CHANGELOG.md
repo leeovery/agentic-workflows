@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.15] - 2026-06-03
+
+- Inbox pickup is now a working set — select multiple items of a single type to promote together into discovery as combined seed material (multi-select promotion gated to one type)
+- Add inbox archive lifecycle — archive any selection out of the inbox, then restore or permanently delete archived items from a dedicated archived view
+- Discovery seeds from multiple linked inbox items: `inbox_seed` → `inbox_seeds` (comma-joined list) threaded through opener, confirm-trigger, and name-resolution; multi-seed work shapes its name from conversation rather than a single filename slug
+- `workflow-start` discovery script scans `.inbox/.archived/`, exposing `has_archived`/`archived_count` state and an `=== ARCHIVED ===` section
+- Add `inbox-working-set.md` and `inbox-archived.md` references; broaden `workflow-start` allowed-tools for inbox file moves, archival, and deletion
+
 ## [0.4.14] - 2026-06-02
 
 - Namespace the five `continue-*` navigation skills under `workflow-continue-*` (epic, feature, bugfix, quickfix, cross-cutting), renaming their directories, scripts, references, and test files
