@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.22] - 2026-06-03
+
+- Add `git_safe` wrapper to the release script that survives contended or stale git lock files — waits out the lock holder, retries silently, and clears a provably stale `.lock` as a last resort while still surfacing genuine git errors
+- Wrap all release git mutations (add, commit, tag, push) in `git_safe` so concurrent git processes no longer abort a release
+- Add `require_github_cli` preflight that aborts before any mutation if `gh` is missing or unauthenticated, preventing stray tags
+- Create a GitHub Release after pushing the tag, reusing the computed notes body; non-fatal if it fails, with a manual re-run hint
+- Add test coverage for `git_safe` lock resilience and the gh release/preflight flow
+
 ## [0.4.21] - 2026-06-03
 
 - Add suggested execution order to the epic discovery map — topics now sort by tier then assigned order (with name as final tiebreaker) instead of alphabetically
