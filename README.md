@@ -197,11 +197,11 @@ Revisit any completed phase before moving forward — refine a discussion, updat
 
 ### Inbox Capture
 
-Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox and lets you promote items into the pipeline — pre-filling context and skipping the gather-context interview. A promoted item becomes the work unit's **seed**: its verbatim content (exact repro, stack trace, fully-worked idea) travels with the work — read directly to seed single-phase work and surfaced through the knowledge base for each topic of an epic — so nothing you captured is lost downstream.
+Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox as a working set: pick one or more items — of the same type — to promote together into the pipeline, pre-filling context and skipping the gather-context interview. (Different types route to different pipelines, so promotion is single-type; archiving isn't.) Items you no longer want can be archived out of the inbox, then restored or permanently deleted from the archived view. Promoted item(s) become the work unit's **seed(s)**: their verbatim content (exact repro, stack trace, fully-worked idea) travels with the work — read directly to seed single-phase work and surfaced through the knowledge base for each topic of an epic — so nothing you captured is lost downstream.
 
 ### Workflow Dashboard
 
-`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, absorb features into existing epics, browse your inbox, and route to the right skill.
+`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, absorb features into existing epics, browse and curate your inbox (promote, archive, restore, delete), and route to the right skill.
 
 ## Skills Reference
 
