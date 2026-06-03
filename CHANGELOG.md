@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.18] - 2026-06-03
+
+Based on the diff:
+
+- Restrict the review task-verifier agent to read-only test assessment — it has no shell access and must judge test adequacy by reading test code, never by executing the suite
+- Add migration 042 to grant workflow sub-agents path-scoped `Write`/`Edit` permission under `.workflows/`, so parallel-dispatched background agents can persist artifacts without hitting auto-denied permission prompts
+
 ## [0.4.17] - 2026-06-03
 
 Based on the diff, this is a single-file refinement to the inbox working set UX.
