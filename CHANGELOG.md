@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.19] - 2026-06-03
+
+- Restructure research and discussion entry seeding to branch on `work_type` first, separating single-phase (feature, cross-cutting) from epic carrier logic
+- Seed single-phase work from the manifest `description` plus the fixed `session-001.md` discovery log, gating on whether the log's **Exploration** section has content; fall back to context-gathering when no usable carrier exists
+- Seed epic topics from the discovery map item's `description`, except `direct-start` topics which gather context fresh since they were never shaped on the map
+
 ## [0.4.18] - 2026-06-03
 
 Based on the diff:
