@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.20] - 2026-06-03
+
+- Reframe the discovery work-type confirmation gate: hold the read as plain prose above the gate rather than embedded in it, and simplify the gate to a static "Have I read this right?" prompt with generic confirm/reject options
+
 ## [0.4.19] - 2026-06-03
 
 - Restructure research and discussion entry seeding to branch on `work_type` first, separating single-phase (feature, cross-cutting) from epic carrier logic
