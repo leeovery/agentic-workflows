@@ -4,9 +4,9 @@
 
 ---
 
-Assign a suggested execution order across the live topics of an epic's discovery map — Claude's read of which topic to tackle first. The order is soft: it sorts the map rows and selects which item is `(recommended)`, but never gates. It is re-derived wholesale whenever a new topic lands without an order, so it is a moving target as the map grows.
+Assign a suggested execution order across the live topics of an epic's discovery map — Claude's read of which topic to tackle first. The order is soft: it sorts the map rows and selects which item is `(recommended)`, but never gates. It is re-derived wholesale — a full renumber of all live topics — whenever a new one lands without an order.
 
-Manifest-driven so it works identically from either caller. The caller fires this only when its discovery output reports `needs_sequencing: true`, then re-runs its discovery script afterward so the render sees the new order.
+Manifest-driven, so it runs identically from either caller. The caller fires it only when its discovery output reports `needs_sequencing: true`, and re-runs discovery afterward so the render picks up the new order.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ A discovery map only exists for epics.
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
 ```
 
-#### If the value is `epic`
+#### If the work type is `epic`
 
 → Proceed to **B. Gather Live Topics**.
 
@@ -32,7 +32,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_
 
 ## B. Gather Live Topics
 
-Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is not `⊘` (cancelled). Cancelled topics are excluded from the ordering entirely.
+Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is not `⊘` (cancelled).
 
 For richer context, read each live topic's `summary` and `description` from the manifest:
 

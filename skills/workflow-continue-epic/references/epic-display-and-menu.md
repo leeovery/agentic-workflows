@@ -712,7 +712,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phas
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status cancelled
 ```
 
-Drop the topic's suggested execution order so a later reactivation has no stale number — the map will renumber it cleanly on the next render:
+Drop the topic's discovery-map order so reactivation renumbers it cleanly:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{topic} order

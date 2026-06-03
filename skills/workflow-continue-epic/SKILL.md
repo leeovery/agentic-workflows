@@ -246,7 +246,7 @@ Read `needs_sequencing` from the most recent discovery `detail`.
 
 Load **[sequence-discovery-map.md](../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
 
-Then re-run discovery so the display sees the new order:
+On return, re-run discovery so the display sees the new order:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}

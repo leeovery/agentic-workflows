@@ -30,13 +30,13 @@ On return, `new_arrivals` is populated — section E reads it to render the call
 
 ## C. Sequence Map
 
-A new topic may have arrived without a suggested execution order — from section B's analyses, or from a prior edit. Read `needs_sequencing` from the `detail` object parsed in A.
+A new topic may have arrived without a suggested execution order — from section B's analyses, or from a prior edit. Read `needs_sequencing` from the most recent discovery `detail` (section B re-runs discovery when its analyses add topics, so it may be newer than A's).
 
 #### If `needs_sequencing` is true
 
-Load **[sequence-discovery-map.md](../../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
+→ Load **[sequence-discovery-map.md](../../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
 
-Then re-run discovery so section E sees the new order:
+On return, re-run discovery so section E sees the new order:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
