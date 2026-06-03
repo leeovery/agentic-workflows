@@ -15,12 +15,13 @@ For each item in the set, read its file and synthesise a short summary of what i
 ```
   Working Set ({count} item{s}) — actions apply to all of them
 @if(set is mixed)
+
   ⚑ Work is unavailable while the set mixes types — drop to a single
     type to enable it.
 @endif
 
 @foreach(item in working_set)
-  {branch} • {item.title} ({item.type})
+  {branch}• {item.title} ({item.type})
 @foreach(line in wrap(item.summary, 65))
   {gutter}{line}
 @endforeach
@@ -29,9 +30,10 @@ For each item in the set, read its file and synthesise a short summary of what i
 
 **Render rules:**
 
-- **Item row**: `{branch} • {item.title} ({item.type})`. `{branch}` is `┌─` for the first item, `└─` for the last, `├─` for the rest; with a single item use `└─`. The `•` is a fixed marker, not a status icon.
-- **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v`/`view` shows the full text). Each line aligns under the title.
-  - **`{gutter}`**: non-last item → `│` then 4 spaces; last item → 7 spaces (no `│`). The `│` runs continuously through every sub-line of non-last items so the tree never breaks.
+- **Item row**: `{branch}• {item.title} ({item.type})`. `{branch}` is `┌─ ` for the first item, `└─ ` for the last, `├─ ` for the rest (trailing space included). **With a single item, `{branch}` is empty** — render `• {item.title}` with no connector; a lone `└─` would join nothing. The `•` is a fixed marker, not a status icon.
+- **Flag spacing**: the `⚑` block carries one blank line above and one below. The blank inside `@if` supplies the upper gap; the blank after `@endif` supplies the lower. When no flag renders, only the lower blank remains — the title-to-items gap stays a single line, never doubled.
+- **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v`/`view` shows the full text). Each line is indented **two columns past the title text** so the description reads as subordinate, not aligned directly under the title.
+  - **`{gutter}`** (the template's 2-space lead precedes it): non-last item → `│` then 6 spaces; last item → 7 spaces (no `│`); single item → 4 spaces. The `│` sits under the branch character and runs continuously through every sub-line of non-last items so the tree never breaks.
 
 > *Output the next fenced block as markdown (not a code block):*
 
