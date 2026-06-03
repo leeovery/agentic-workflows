@@ -290,6 +290,24 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
 
 const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊘': 4 };
 
+// Shared row comparator for the discovery map: tier rank first, then suggested
+// execution order ascending (null orders sort last), then name as final fallback.
+function compareMapRows(a, b) {
+  const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
+  const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;
+  if (ra !== rb) return ra - rb;
+  const oa = a.order == null ? Infinity : a.order;
+  const ob = b.order == null ? Infinity : b.order;
+  if (oa !== ob) return oa - ob;
+  return a.name.localeCompare(b.name);
+}
+
+// True when any live (non-cancelled) map item lacks a suggested execution order.
+// Programmatic detection — the assignment of order values stays with Claude.
+function computeNeedsSequencing(mapItems) {
+  return mapItems.some(it => it.tier !== '⊘' && it.order == null);
+}
+
 function computeTopicLifecycle(manifest, topicName) {
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
   const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
@@ -385,5 +403,7 @@ module.exports = {
   computeNextAction,
   computeMapSummary,
   computeSourceProvenance,
+  compareMapRows,
+  computeNeedsSequencing,
   TIER_RANK,
 };

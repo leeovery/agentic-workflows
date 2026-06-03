@@ -220,13 +220,49 @@ backfill-checks is terminal when it fires — it commits the recovery work and s
 
 Read `analysis_caches` from the most recent discovery `detail`. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-On return, `new_arrivals` is populated for Step 7 to render the callout.
+On return, `new_arrivals` is populated for Step 8 to render the callout.
 
 → Proceed to **Step 7**.
 
 ---
 
-## Step 7: Display State and Menu
+## Step 7: Sequence Map
+
+> *Output the next fenced block as a code block:*
+
+```
+── Sequence Map ─────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Assigning a suggested execution order to the discovery map's topics.
+```
+
+Read `needs_sequencing` from the most recent discovery `detail`.
+
+#### If `needs_sequencing` is true
+
+Load **[sequence-discovery-map.md](../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
+
+Then re-run discovery so the display sees the new order:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+```
+
+→ Proceed to **Step 8**.
+
+#### Otherwise
+
+The map is already sequenced.
+
+→ Proceed to **Step 8**.
+
+---
+
+## Step 8: Display State and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -242,11 +278,11 @@ On return, `new_arrivals` is populated for Step 7 to render the callout.
 
 Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
 
-→ Proceed to **Step 8**.
+→ Proceed to **Step 9**.
 
 ---
 
-## Step 8: Route Selection
+## Step 9: Route Selection
 
 > *Output the next fenced block as a code block:*
 
