@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.21] - 2026-06-03
+
+- Add suggested execution order to the epic discovery map — topics now sort by tier then assigned order (with name as final tiebreaker) instead of alphabetically
+- Add `sequence-discovery-map.md` shared reference that holistically assigns contiguous `1..N` order values across live topics, fired by `workflow-continue-epic` (new Step 7) and `workflow-bridge` (new section C) when discovery reports `needs_sequencing: true`
+- Add `compareMapRows` and `computeNeedsSequencing` helpers to discovery-utils, surfacing `needs_sequencing` and per-topic `order` in both discovery scripts' output
+- Drop a cancelled topic's `order` on cancellation so reactivation renumbers it cleanly
+- Add discovery-utils tests covering `computeNeedsSequencing` and `compareMapRows` ordering, null-order, and tiebreak behaviour
+
 ## [0.4.20] - 2026-06-03
 
 - Reframe the discovery work-type confirmation gate: hold the read as plain prose above the gate rather than embedded in it, and simplify the gate to a static "Have I read this right?" prompt with generic confirm/reject options
