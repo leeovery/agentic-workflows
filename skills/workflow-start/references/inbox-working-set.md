@@ -25,7 +25,7 @@ For each item in the set, read its file and synthesise a short summary of what i
 
 **Render rules:**
 
-- **Item row**: `{branch} • {item.title} ({item.type})`. `{branch}` is `┌─` for the first item, `└─` for the last, `├─` for the rest; with a single item use `└─`. The `•` is a fixed end-cap (not a status) and sets the column the title starts in.
+- **Item row**: `{branch} • {item.title} ({item.type})`. `{branch}` is `┌─` for the first item, `└─` for the last, `├─` for the rest; with a single item use `└─`. The `•` is a fixed marker, not a status icon.
 - **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v`/`view` shows the full text). Each line aligns under the title.
   - **`{gutter}`**: non-last item → `│` then 4 spaces; last item → 7 spaces (no `│`). The `│` runs continuously through every sub-line of non-last items so the tree never breaks.
 
@@ -33,6 +33,8 @@ For each item in the set, read its file and synthesise a short summary of what i
 
 ```
 · · · · · · · · · · · ·
+What would you like to do?
+
 - **`w`/`work`** — Proceed to discovery with this set
 - **`a`/`add`** — Add another inbox item to the set
 - **`d`/`drop`** — Drop item(s) from the set (keeps them in the inbox)

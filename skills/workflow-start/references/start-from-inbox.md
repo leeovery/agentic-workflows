@@ -34,6 +34,8 @@ Build a numbered list combining all ideas, bugs, and quick-fixes, sorted by date
 
 ```
 · · · · · · · · · · · ·
+What would you like to do?
+
 - **`1`–`{N}`** — Select item(s) to work on (comma-separated for several)
 @if(has_archived)
 - **`a`/`archived`** — View archived items (restore or delete)
