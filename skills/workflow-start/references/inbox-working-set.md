@@ -8,12 +8,16 @@ Build and act on a set of inbox items. The caller holds the **working set** — 
 
 ## A. Render the Working Set
 
-For each item in the set, read its file and synthesise a short summary of what it describes (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug).
+For each item in the set, read its file and synthesise a short summary of what it describes (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug). The set is **type-uniform** when every item shares one folder, **mixed** otherwise — this gates the `w`/`work` option below.
 
 > *Output the next fenced block as a code block:*
 
 ```
   Working Set ({count} item{s}) — actions apply to all of them
+@if(set is mixed)
+  ⚑ Work is unavailable while the set mixes types — drop to a single
+    type to enable it.
+@endif
 
 @foreach(item in working_set)
   {branch} • {item.title} ({item.type})
@@ -35,7 +39,9 @@ For each item in the set, read its file and synthesise a short summary of what i
 · · · · · · · · · · · ·
 What would you like to do?
 
+@if(set is type-uniform)
 - **`w`/`work`** — Proceed to discovery with this set
+@endif
 - **`a`/`add`** — Add another inbox item to the set
 - **`d`/`drop`** — Drop item(s) from the set (keeps them in the inbox)
 - **`r`/`archive`** — Archive the whole set out of the inbox
@@ -208,14 +214,13 @@ Read each item in the set and render its full content.
 
 ## F. Work the Set
 
-Derive the work-type pre-seed from the set's folders. When every item shares one folder, the folder maps the hint; any disagreement (mixed folders) means no hint — discovery classifies from content.
+Reached only for a type-uniform set — `w`/`work` is offered solely when every item shares one folder (**A**). Map the work-type pre-seed from that shared folder:
 
 | Set composition | work_type |
 |---|---|
 | All bugs | `bugfix` |
 | All quick-fixes | `quick-fix` |
 | All ideas | `none` |
-| Mixed folders | `none` |
 
 Build `inbox_seeds` — the chosen items' inbox paths, comma-joined.
 
