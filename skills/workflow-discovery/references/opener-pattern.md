@@ -30,32 +30,16 @@ Imports are **woven into the opener, never a standalone gate** — if the user h
 
 Render the opener matching what the caller told us.
 
-#### If a single inbox seed was read
+#### If inbox seeds were read
+
+The seeds share one type (the working set only carries items of one kind). Name that type, pluralised with a count when there are several, and give one combined sketch across them.
 
 > *Output the next fenced block as a code block:*
 
 ```
-I've read your {bug | idea | quick-fix}. Here's the shape I'm picking up:
+I've read your {bug | idea | quick-fix — pluralised with a count when several, e.g. "3 ideas"}. Here's the shape I'm picking up:
 
-  {one-line sketch of what the seed describes}
-
-{Targeted opening question that pulls on the shape.} If you have any
-related files or notes, share the path(s) and I'll read them too.
-```
-
-**STOP.** Wait for user response.
-
-→ Return to caller.
-
-#### If several inbox seeds were read
-
-> *Output the next fenced block as a code block:*
-
-```
-I've read the {N} items you picked. Here's the shape I'm picking up
-across them:
-
-  {one-line sketch of the combined shape}
+  {one-line sketch — a single combined picture across the item(s)}
 
 {Targeted opening question that pulls on the shape.} If you have any
 related files or notes, share the path(s) and I'll read them too.
