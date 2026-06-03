@@ -63,6 +63,8 @@ Search the codebase:
 
 ### Step 4: Verify Tests
 
+You assess tests by **reading** them — you have no shell access and running tests is not your job. Do not attempt to execute the suite.
+
 Evaluate test coverage critically:
 - Is there a test for this task?
 - Does the test actually verify the acceptance criteria?
@@ -155,4 +157,5 @@ SUMMARY: {1 sentence}
 3. **Be specific** — include file paths and line numbers
 4. **Balanced test review** — flag both under-testing AND over-testing
 5. **Report findings** — don't fix anything, just report what you find
+6. **No test execution** — you have no shell. Judge test adequacy by reading the test code; never try to run the suite
 6. **No git writes** — writing the output file is your only file write
