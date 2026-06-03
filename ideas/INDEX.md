@@ -58,7 +58,7 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 15 | ~~[STOP Gate Override Protection](stop-gate-override-protection.md)~~ | All workflow skills with STOP gates | ✅ Done |
 | 16 | ~~[Investigation: Show Interim Findings](investigation-show-interim-findings.md)~~ | Investigation processing skill (bugfix) | ✅ Done |
 | 17 | [Bugfix: Prior Spec Knowledge Check](bugfix-prior-spec-knowledge-check.md) | Investigation or specification phase (bugfix) |
-| 18 | [Inbox Pickup Actions](inbox-pickup-actions.md) | `workflow-start` inbox menu + `start-quickfix` archive path |
+| 18 | ~~[Inbox Pickup Actions](inbox-pickup-actions.md)~~ | `workflow-start` inbox working set + `.archived` lifecycle | ✅ Done (with #29) |
 | 19 | [Review Classifier Quality](review-classifier-quality.md) | `workflow-review-task-verifier` tagging rules |
 | 20 | [Review Finding Grouping](review-finding-grouping.md) | `workflow-review-process` produce-review clustering |
 | 21 | [Cross-Plan Implementation Ordering](cross-plan-implementation-ordering.md) | Planning content-appraisal + format-level enforcement + epic menu collapse to "next available task" |
@@ -69,5 +69,5 @@ Leverage multiple AI models by dispatching work to the best model for each task 
 | 26 | [Review Not Re-Offered After Loopback from Review Remediation](review-not-re-offered-after-loopback.md) | `workflow-implementation-entry/validate-phase.md` + `workflow-bridge/discovery.cjs` |
 | 27 | ~~[Continue-Epic Step 5 Asks the Agent to Filter Data the Discovery Script Doesn't Expose](continue-epic-items-to-recover-unobservable.md)~~ | `continue-epic/SKILL.md` Step 5 + `continue-epic/scripts/discovery.cjs` text formatter | ✅ Done |
 | 28 | [Hybrid Search Ranking — Evaluate Text/Vector Weighting & Re-rank on a Real Corpus](hybrid-ranking-weighting-evaluation.md) | Knowledge base — `store.searchHybrid` weights + `index.js` `rerank()` + query pipeline |
-| 29 | [Seed Discovery from Multiple Linked Inbox Items](seed-discovery-multiple-inbox-items.md) | Phase 17 Discovery — inbox pickup multi-select + opener combined-seed handling + confirm-trigger archival |
+| 29 | ~~[Seed Discovery from Multiple Linked Inbox Items](seed-discovery-multiple-inbox-items.md)~~ | Discovery multi-seed: working-set multi-select + opener/confirm-trigger/name-resolution | ✅ Done (with #18) |
 | 30 | [Knowledge Base Query — Include/Exclude Result Filters](knowledge-query-include-exclude-filters.md) | Knowledge base — `query` flag parser + filter construction feeding `store.searchHybrid` in `src/knowledge/index.js` |

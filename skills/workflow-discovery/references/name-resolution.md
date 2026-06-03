@@ -6,11 +6,11 @@
 
 Resolve the work-unit name and clear any collision before the confirm-trigger creates the manifest. Loaded by [confirm-trigger.md](confirm-trigger.md). On return, `work_unit` is a confirmed, collision-free kebab-case name.
 
-Inputs held from earlier steps: `work_type` (for phrasing), `inbox_seed` filename (if the work came from the inbox), and the shaped one-line `description`.
+Inputs held from earlier steps: `work_type` (for phrasing), `inbox_seeds` (the promoted inbox file path(s), if the work came from the inbox), and the shaped one-line `description`.
 
 ## A. Suggest a Name
 
-Derive a kebab-case suggestion. If an inbox seed was the origin, use the inbox **filename slug** — strip the `YYYY-MM-DD--` date prefix and the `.md` extension, which keeps the inbox item and the work unit recognisably linked. Otherwise derive it from the shaped `description`.
+Derive a kebab-case suggestion. If a **single** inbox seed was the origin, use its **filename slug** — strip the `YYYY-MM-DD--` date prefix and the `.md` extension, which keeps the inbox item and the work unit recognisably linked. For multiple seeds (no single slug to borrow) or no seed at all, derive it from the shaped `description`.
 
 Render the suggestion (for bugfix / feature / quick-fix the name becomes both `{work_unit}` and `{topic}` — the same value; for epic / cross-cutting it's the work unit):
 

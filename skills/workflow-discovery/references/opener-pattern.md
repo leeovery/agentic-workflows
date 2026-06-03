@@ -6,15 +6,15 @@
 
 Open the shaping conversation. The PATTERN is universal; the SPECIFIC TEXT phrases itself for whatever the caller already told us (the work-type pre-seed, or an inbox seed, or nothing for `s`/start). No pre-announce of process discipline — discipline shows through behaviour, not preamble.
 
-Inputs held from Step 1: `work_type` pre-seed (or none), `inbox_seed` path (or none).
+Inputs held from Step 1: `work_type` pre-seed (or none), `inbox_seeds` — a list of inbox file paths (or none).
 
 ## A. Read seed material
 
-#### If an inbox seed is present
+#### If `inbox_seeds` is non-empty
 
-Read the inbox file at `inbox_seed`. It is the work's *origin* — a pre-captured thought that becomes this work unit. Use it to shape the opening: sketch what you picked up, then ask a targeted question that elicits a shape signal. Do not dump it back verbatim — synthesise. The folder already pre-seeded `work_type` (bugs → bugfix, quickfixes → quick-fix, ideas → none); the seed is still confirmed like any other pick.
+Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The folder already pre-seeded `work_type` (bugs → bugfix, quick-fixes → quick-fix, ideas → none); the seeds are still confirmed like any other pick.
 
-Hold the filename for name resolution at the confirm-trigger (the filename-slug becomes the suggested name).
+With a single seed, hold its filename for name resolution at the confirm-trigger (the filename-slug becomes the suggested name). With several, the name is shaped from the conversation instead.
 
 → Proceed to **B. Render the Opener**.
 
@@ -26,18 +26,20 @@ No inbox seed. The opener invites the user to describe the work.
 
 ## B. Render the Opener
 
-Imports are **woven into the opener, never a standalone gate** — if the user has notes, design docs, error reports, or prior research, invite them to share the path(s) now; the no-files path costs zero extra turns. Any paths the user provides are read for shaping and held as `import_paths` for the confirm-trigger to land in `imports/`. (The inbox seed is landed separately, in `seeds/`.)
+Imports are **woven into the opener, never a standalone gate** — if the user has notes, design docs, error reports, or prior research, invite them to share the path(s) now; the no-files path costs zero extra turns. Any paths the user provides are read for shaping and held as `import_paths` for the confirm-trigger to land in `imports/`. (Inbox seeds are landed separately, in `seeds/`.)
 
 Render the opener matching what the caller told us.
 
-#### If an inbox seed was read
+#### If inbox seeds were read
+
+The seeds share one type (the working set only carries items of one kind). Name that type, pluralised with a count when there are several, and give one combined sketch across them.
 
 > *Output the next fenced block as a code block:*
 
 ```
-I've read your {bug | idea | quick-fix}. Here's the shape I'm picking up:
+I've read your {bug | idea | quick-fix — pluralised with a count when several, e.g. "3 ideas"}. Here's the shape I'm picking up:
 
-  {one-line sketch of what the seed describes}
+  {one-line sketch — a single combined picture across the item(s)}
 
 {Targeted opening question that pulls on the shape.} If you have any
 related files or notes, share the path(s) and I'll read them too.
