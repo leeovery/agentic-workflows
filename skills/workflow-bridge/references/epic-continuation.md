@@ -24,11 +24,35 @@ Parse the output. Use the epic's `detail` object as the discovery data for the d
 
 A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the `detail` object parsed in A, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-On return, `new_arrivals` is populated — section D reads it to render the callout above the discovery map.
+On return, `new_arrivals` is populated — section E reads it to render the callout above the discovery map.
 
-→ Proceed to **C. Check All-Done**.
+→ Proceed to **C. Sequence Map**.
 
-## C. Check All-Done
+## C. Sequence Map
+
+A new topic may have arrived without a suggested execution order — from section B's analyses, or from a prior edit. Read `needs_sequencing` from the most recent discovery `detail` (section B re-runs discovery when its analyses add topics, so it may be newer than A's).
+
+#### If `needs_sequencing` is true
+
+→ Load **[sequence-discovery-map.md](../../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
+
+On return, re-run discovery so section E sees the new order:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+```
+
+Use the refreshed `detail` object for the remaining sections.
+
+→ Proceed to **D. Check All-Done**.
+
+#### Otherwise
+
+The map is already sequenced.
+
+→ Proceed to **D. Check All-Done**.
+
+## D. Check All-Done
 
 Using the enriched discovery data from section A, check if ALL topics across ALL phases have review status `completed`. Specifically: check if any review items exist, and if so, whether every one has `status: completed`, and no topics in earlier phases are still `in-progress`.
 
@@ -71,13 +95,13 @@ Epic Completed
 
 **If user chose `n`/`no`:**
 
-→ Proceed to **D. Display and Menu**.
+→ Proceed to **E. Display and Menu**.
 
 #### Otherwise
 
-→ Proceed to **D. Display and Menu**.
+→ Proceed to **E. Display and Menu**.
 
-## D. Display and Menu
+## E. Display and Menu
 
 > *Output the next fenced block as a code block:*
 
@@ -89,11 +113,11 @@ Epic Completed
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
-→ Proceed to **E. Enter Plan Mode**.
+→ Proceed to **F. Enter Plan Mode**.
 
 ---
 
-## E. Enter Plan Mode
+## F. Enter Plan Mode
 
 Map the selection to a skill invocation using this routing table:
 

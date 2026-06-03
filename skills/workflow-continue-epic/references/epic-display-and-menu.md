@@ -101,7 +101,7 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 - **Imports callout** (`{show_imports_callout}`): true only when `imports_count > 0` **and** `imports_count != discovery_map.length`. When every topic is itself an import, per-row provenance already says so on every line and the callout is redundant. Format when shown: `· {imports_count} import` for 1, `· {imports_count} imports` for 2+.
 - **Convergence callout**: rendered after the optional seed and imports callouts, before the topic rows. Always present. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
 - **New-arrivals callout** (optional): when the caller passes a non-empty `new_arrivals.research_analysis` or `new_arrivals.gap_analysis` list, render `⚑ {N} new topic(s) added to the map from {analysis}.` lines beneath the convergence callout, one per analysis with arrivals. Shown once per boot-up that added items — subsequent invocations without changes don't repeat it (the items are now part of the map). Sub-line provenance on the topic rows is the persistent surface afterwards.
-- **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then alphabetical within each tier). Render in the order given.
+- **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then suggested execution order within each tier). Render in the order given.
 - **Topic row**: `{branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]`. Single space between each segment. Lifecycle label wrapped in square brackets.
   - `{branch}`: `┌─` for the first row, `└─` for the last, `├─` for the rest. With a single row, use `└─` (no upward stroke).
 - **Lifecycle label** by tier:
@@ -295,7 +295,7 @@ Build a menu with two types of options:
    | `continue_discussion`             | `Continue "{topic:(titlecase)}" — discussion`                    |
    | `start_discussion_after_research` | `Start discussion for "{topic:(titlecase)}" — research completed`|
 
-   Discovery-topic order matches the `discovery_map` row order: tier `→`, then `◐`, then `○` (alphabetical within each tier).
+   Discovery-topic order matches the `discovery_map` row order: tier `→`, then `◐`, then `○` (suggested execution order within each tier).
 
 2. **Build-phase entries** — from `next_phase_ready` and any in-progress items in `phases.specification`/`planning`/`implementation`/`review`:
    - In-progress in build phases:
@@ -710,6 +710,12 @@ Run two manifest CLI calls to set cancelled status and preserve previous status:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} previous_status {current_status}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status cancelled
+```
+
+Drop the topic's discovery-map order so reactivation renumbers it cleanly:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{topic} order
 ```
 
 Remove the cancelled topic's chunks from the knowledge base:

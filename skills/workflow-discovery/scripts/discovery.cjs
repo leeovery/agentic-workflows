@@ -9,12 +9,13 @@ const {
   computeMapSummary,
   computeSourceProvenance,
   computeAnalysisCacheStatus,
-  TIER_RANK,
+  compareMapRows,
+  computeNeedsSequencing,
 } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');
-  if (discoveryItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 } };
+  if (discoveryItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 }, needs_sequencing: false };
   const map = discoveryItems.map(item => {
     const { lifecycle, tier, current_phase } = computeTopicLifecycle(manifest, item.name);
     return {
@@ -24,18 +25,14 @@ function buildDiscoveryMap(manifest) {
       routing: item.routing || null,
       source: item.source || 'discovery',
       source_provenance: computeSourceProvenance(item.source),
+      order: item.order ?? null,
       lifecycle,
       tier,
       current_phase,
     };
   });
-  map.sort((a, b) => {
-    const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
-    const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;
-    if (ra !== rb) return ra - rb;
-    return a.name.localeCompare(b.name);
-  });
-  return { map, summary: computeMapSummary(map) };
+  map.sort(compareMapRows);
+  return { map, summary: computeMapSummary(map), needs_sequencing: computeNeedsSequencing(map) };
 }
 
 function findLatestSessionLog(cwd, workUnit) {
@@ -63,7 +60,7 @@ function discover(cwd, workUnit) {
   const activeSession = (typeof discoveryPhase.active_session === 'string' && discoveryPhase.active_session !== '')
     ? discoveryPhase.active_session
     : null;
-  const { map, summary } = buildDiscoveryMap(manifest);
+  const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest);
   const latestSession = findLatestSessionLog(cwd, workUnit);
   const nextSessionNumber = latestSession ? latestSession.number + 1 : 1;
   const workflowsDir = path.join(cwd, '.workflows');
@@ -75,6 +72,7 @@ function discover(cwd, workUnit) {
     work_unit: workUnit,
     discovery_map: map,
     map_summary: summary,
+    needs_sequencing,
     dismissed,
     active_session: activeSession,
     analysis_caches: analysisCaches,
@@ -91,6 +89,7 @@ function format(result) {
 
   const s = result.map_summary;
   lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled`);
+  lines.push(`needs_sequencing: ${result.needs_sequencing}`);
   lines.push('');
 
   lines.push(`discovery_map (${result.discovery_map.length}):`);

@@ -13,6 +13,7 @@ const {
   phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
+  compareMapRows, computeNeedsSequencing,
   TIER_RANK,
 } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
 
@@ -1060,6 +1061,90 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.ready, 0);
       assert.strictEqual(r.fresh, 0);
       assert.strictEqual(r.cancelled, 0);
+    });
+  });
+
+  describe('computeNeedsSequencing', () => {
+    it('returns true when a live item is missing order', () => {
+      const items = [
+        { tier: '◐', order: 1 },
+        { tier: '○', order: null },
+      ];
+      assert.strictEqual(computeNeedsSequencing(items), true);
+    });
+
+    it('returns false when all live items are ordered', () => {
+      const items = [
+        { tier: '→', order: 1 },
+        { tier: '◐', order: 2 },
+        { tier: '✓', order: 3 },
+      ];
+      assert.strictEqual(computeNeedsSequencing(items), false);
+    });
+
+    it('returns false when only a cancelled item is missing order', () => {
+      const items = [
+        { tier: '◐', order: 1 },
+        { tier: '⊘', order: null },
+      ];
+      assert.strictEqual(computeNeedsSequencing(items), false);
+    });
+
+    it('treats undefined order the same as null (missing)', () => {
+      const items = [{ tier: '○' }];
+      assert.strictEqual(computeNeedsSequencing(items), true);
+    });
+
+    it('returns false for an empty map', () => {
+      assert.strictEqual(computeNeedsSequencing([]), false);
+    });
+  });
+
+  describe('compareMapRows', () => {
+    function sorted(items) {
+      return items.slice().sort(compareMapRows).map(i => i.name);
+    }
+
+    it('orders by tier rank first', () => {
+      const items = [
+        { name: 'fresh', tier: '○', order: 1 },
+        { name: 'ready', tier: '→', order: 9 },
+        { name: 'inflight', tier: '◐', order: 5 },
+      ];
+      assert.deepStrictEqual(sorted(items), ['ready', 'inflight', 'fresh']);
+    });
+
+    it('orders by order ascending within the same tier', () => {
+      const items = [
+        { name: 'c', tier: '◐', order: 3 },
+        { name: 'a', tier: '◐', order: 1 },
+        { name: 'b', tier: '◐', order: 2 },
+      ];
+      assert.deepStrictEqual(sorted(items), ['a', 'b', 'c']);
+    });
+
+    it('sorts null order last within a tier', () => {
+      const items = [
+        { name: 'unordered', tier: '○', order: null },
+        { name: 'ordered', tier: '○', order: 2 },
+      ];
+      assert.deepStrictEqual(sorted(items), ['ordered', 'unordered']);
+    });
+
+    it('falls back to name on equal order', () => {
+      const items = [
+        { name: 'zebra', tier: '◐', order: 1 },
+        { name: 'apple', tier: '◐', order: 1 },
+      ];
+      assert.deepStrictEqual(sorted(items), ['apple', 'zebra']);
+    });
+
+    it('falls back to name when both orders are null', () => {
+      const items = [
+        { name: 'beta', tier: '○', order: null },
+        { name: 'alpha', tier: '○', order: null },
+      ];
+      assert.deepStrictEqual(sorted(items), ['alpha', 'beta']);
     });
   });
 

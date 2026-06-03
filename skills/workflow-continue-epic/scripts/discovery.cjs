@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, computeAnalysisCacheStatus, TIER_RANK } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, computeAnalysisCacheStatus, compareMapRows, computeNeedsSequencing } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
@@ -187,18 +187,14 @@ function buildEpicDetail(cwd, manifest) {
         routing: item.routing || null,
         source: item.source || 'discovery',
         source_provenance,
+        order: item.order ?? null,
         lifecycle,
         tier,
         current_phase,
         next_action,
       };
     });
-    discoveryMap.sort((a, b) => {
-      const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
-      const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;
-      if (ra !== rb) return ra - rb;
-      return a.name.localeCompare(b.name);
-    });
+    discoveryMap.sort(compareMapRows);
     mapSummary = computeMapSummary(discoveryMap);
     const allSettled = discoveryMap.every(t => t.lifecycle === 'decided' || t.lifecycle === 'cancelled');
     convergenceState = allSettled ? 'settled' : 'in-progress';
@@ -217,6 +213,7 @@ function buildEpicDetail(cwd, manifest) {
     reopened_discussions: reopenedDiscussions,
     discovery_map: discoveryMap,
     convergence_state: convergenceState,
+    needs_sequencing: computeNeedsSequencing(discoveryMap),
     map_summary: mapSummary,
     imports_count: importsCount,
     seeds_count: seedsCount,
@@ -323,7 +320,7 @@ function format(result) {
     }
     if (d.discovery_map && d.discovery_map.length > 0) {
       const s = d.map_summary;
-      lines.push(`    discovery_map (${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled, convergence: ${d.convergence_state}):`);
+      lines.push(`    discovery_map (${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled, convergence: ${d.convergence_state}, needs_sequencing: ${d.needs_sequencing}):`);
       for (const t of d.discovery_map) {
         let line = `      - ${t.tier} ${t.name} [${t.lifecycle}]`;
         if (t.next_action) line += ` -> ${t.next_action}`;

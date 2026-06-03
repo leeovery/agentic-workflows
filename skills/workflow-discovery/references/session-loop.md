@@ -77,7 +77,7 @@ Render rules:
 
 - `tier_breakdown` — append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled` (omitting zero-count categories) only when more than one tier bucket is non-zero. When only one bucket is non-zero, omit the breakdown and render just `Discovery Map ({total} topics)`.
 - `{branch}` — `┌─` for the first row, `└─` for the last, `├─` for the rest. With a single row, use `└─` (no upward stroke).
-- Tier ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊘`, alphabetical within tier). Render in the order given.
+- Tier ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊘`, suggested execution order within tier). Render in the order given.
 - `lifecycle_label` by tier (wrapped in square brackets per the row template):
   - `→` — `research complete · ready for discussion`
   - `◐` — `researching` or `discussing` (use `topic.current_phase`)
