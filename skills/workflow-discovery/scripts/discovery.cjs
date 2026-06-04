@@ -15,7 +15,7 @@ const {
 
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');
-  if (discoveryItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 }, needs_sequencing: false };
+  if (discoveryItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 }, needs_sequencing: false };
   const map = discoveryItems.map(item => {
     const { lifecycle, tier, current_phase } = computeTopicLifecycle(manifest, item.name);
     return {
@@ -88,7 +88,7 @@ function format(result) {
   lines.push(`=== DISCOVERY DISCOVERY: ${result.work_unit} ===`);
 
   const s = result.map_summary;
-  lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled`);
+  lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled`);
   lines.push(`needs_sequencing: ${result.needs_sequencing}`);
   lines.push('');
 

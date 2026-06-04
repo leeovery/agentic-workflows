@@ -893,12 +893,18 @@ describe('discovery-utils', () => {
   });
 
   describe('TIER_RANK', () => {
-    it('orders tiers from ready → in-flight → decided → fresh → cancelled', () => {
+    it('orders tiers from ready → in-flight → decided → fresh → handled → cancelled', () => {
       assert.strictEqual(TIER_RANK['→'], 0);
       assert.strictEqual(TIER_RANK['◐'], 1);
       assert.strictEqual(TIER_RANK['✓'], 2);
       assert.strictEqual(TIER_RANK['○'], 3);
-      assert.strictEqual(TIER_RANK['⊘'], 4);
+      assert.strictEqual(TIER_RANK['⊙'], 4);
+      assert.strictEqual(TIER_RANK['⊘'], 5);
+    });
+
+    it('ranks handled just before cancelled (both non-actionable)', () => {
+      assert.ok(TIER_RANK['⊙'] < TIER_RANK['⊘']);
+      assert.ok(TIER_RANK['○'] < TIER_RANK['⊙']);
     });
   });
 
@@ -986,6 +992,60 @@ describe('discovery-utils', () => {
       const r = computeTopicLifecycle(m, 'auth');
       assert.strictEqual(r.lifecycle, 'discussing');
     });
+
+    // Build a manifest where the discovery item carries the `handled` marker,
+    // alongside whatever research/discussion statuses are supplied.
+    function loadWithHandled(name, handledValue, phaseStatuses) {
+      const phases = { discovery: { items: { [name]: { routing: 'research', handled: handledValue } } } };
+      for (const [phase, status] of Object.entries(phaseStatuses || {})) {
+        phases[phase] = { items: { [name]: { status } } };
+      }
+      createManifest(dir, 'alpha', { phases });
+      return loadManifest(dir, 'alpha');
+    }
+
+    it('handled marker beats ready_for_discussion (research completed, no discussion)', () => {
+      const m = loadWithHandled('umbrella', true, { research: 'completed' });
+      const r = computeTopicLifecycle(m, 'umbrella');
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null });
+    });
+
+    it('handled marker beats decided (same-named discussion completed)', () => {
+      const m = loadWithHandled('umbrella', true, { research: 'completed', discussion: 'completed' });
+      const r = computeTopicLifecycle(m, 'umbrella');
+      assert.strictEqual(r.lifecycle, 'handled');
+      assert.strictEqual(r.tier, '⊙');
+    });
+
+    it('absent marker falls through to name-matching', () => {
+      // No handled field at all → resolves by research/discussion statuses.
+      const m = loadWithPhases('topic', { research: 'completed' });
+      const r = computeTopicLifecycle(m, 'topic');
+      assert.strictEqual(r.lifecycle, 'ready_for_discussion');
+    });
+
+    it('handled !== true (e.g. false) falls through to name-matching', () => {
+      const m = loadWithHandled('topic', false, { research: 'completed' });
+      const r = computeTopicLifecycle(m, 'topic');
+      assert.strictEqual(r.lifecycle, 'ready_for_discussion');
+    });
+
+    it('reads only the item own field — handled on one topic does not affect another', () => {
+      createManifest(dir, 'alpha', {
+        phases: {
+          discovery: {
+            items: {
+              umbrella: { routing: 'research', handled: true },
+              sibling: { routing: 'research' },
+            },
+          },
+          research: { items: { umbrella: { status: 'completed' }, sibling: { status: 'completed' } } },
+        },
+      });
+      const m = loadManifest(dir, 'alpha');
+      assert.strictEqual(computeTopicLifecycle(m, 'umbrella').lifecycle, 'handled');
+      assert.strictEqual(computeTopicLifecycle(m, 'sibling').lifecycle, 'ready_for_discussion');
+    });
   });
 
   describe('computeNextAction', () => {
@@ -1022,6 +1082,11 @@ describe('discovery-utils', () => {
       assert.strictEqual(computeNextAction('discussion', 'cancelled'), null);
     });
 
+    it('handled → null (no next action)', () => {
+      assert.strictEqual(computeNextAction('research', 'handled'), null);
+      assert.strictEqual(computeNextAction('discussion', 'handled'), null);
+    });
+
     it('unknown lifecycle → null', () => {
       assert.strictEqual(computeNextAction('research', 'made-up'), null);
     });
@@ -1031,7 +1096,7 @@ describe('discovery-utils', () => {
     it('returns zero counts for an empty items array', () => {
       assert.deepStrictEqual(
         computeMapSummary([]),
-        { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 },
+        { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 },
       );
     });
 
@@ -1044,12 +1109,20 @@ describe('discovery-utils', () => {
         { tier: '○' },
         { tier: '○' },
         { tier: '○' },
+        { tier: '⊙' },
         { tier: '⊘' },
       ];
       assert.deepStrictEqual(
         computeMapSummary(items),
-        { total: 8, decided: 1, in_flight: 1, ready: 2, fresh: 3, cancelled: 1 },
+        { total: 9, decided: 1, in_flight: 1, ready: 2, fresh: 3, handled: 1, cancelled: 1 },
       );
+    });
+
+    it('counts the handled bucket independently of cancelled', () => {
+      const items = [{ tier: '⊙' }, { tier: '⊙' }, { tier: '⊘' }];
+      const r = computeMapSummary(items);
+      assert.strictEqual(r.handled, 2);
+      assert.strictEqual(r.cancelled, 1);
     });
 
     it('ignores items with unrecognised tier glyphs but still counts total', () => {
@@ -1088,6 +1161,22 @@ describe('discovery-utils', () => {
         { tier: '⊘', order: null },
       ];
       assert.strictEqual(computeNeedsSequencing(items), false);
+    });
+
+    it('returns false when only a handled item is missing order (excluded like cancelled)', () => {
+      const items = [
+        { tier: '◐', order: 1 },
+        { tier: '⊙', order: null },
+      ];
+      assert.strictEqual(computeNeedsSequencing(items), false);
+    });
+
+    it('returns true when a live item is missing order even alongside a handled item', () => {
+      const items = [
+        { tier: '⊙', order: null },
+        { tier: '○', order: null },
+      ];
+      assert.strictEqual(computeNeedsSequencing(items), true);
     });
 
     it('treats undefined order the same as null (missing)', () => {

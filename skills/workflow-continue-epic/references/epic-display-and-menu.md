@@ -94,14 +94,14 @@ Render the discovery map block at the top, then the build-phase tree (specificat
 
 **Discovery map display rules:**
 
-- **Tier breakdown** (`{tier_breakdown}`): when more than one tier bucket has a non-zero count, append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled` to the topic count (omitting zero-count categories). When only one bucket is non-zero — e.g. every topic in flight — the breakdown is redundant with the rows; omit it and render just `Discovery Map ({total} topics)`. Read counts from `map_summary`.
+- **Tier breakdown** (`{tier_breakdown}`): when more than one tier bucket has a non-zero count, append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {handled} handled · {cancelled} cancelled` to the topic count (omitting zero-count categories). When only one bucket is non-zero — e.g. every topic in flight — the breakdown is redundant with the rows; omit it and render just `Discovery Map ({total} topics)`. Read counts from `map_summary`.
   - Example (mixed): `Discovery Map (8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh)`
   - Example (single bucket): `Discovery Map (9 topics)`
 - **Seed callout** (`seeds_count > 0`): `· seeded from the inbox`.
 - **Imports callout** (`{show_imports_callout}`): true only when `imports_count > 0` **and** `imports_count != discovery_map.length`. When every topic is itself an import, per-row provenance already says so on every line and the callout is redundant. Format when shown: `· {imports_count} import` for 1, `· {imports_count} imports` for 2+.
-- **Convergence callout**: rendered after the optional seed and imports callouts, before the topic rows. Always present. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
+- **Convergence callout**: rendered after the optional seed and imports callouts, before the topic rows. Always present. `⚑ Discovery in progress — {N} topics not yet decided.` when `convergence_state == 'in-progress'` (where N excludes cancelled and handled). `✓ Discovery settled — ready for specification.` when `convergence_state == 'settled'`.
 - **New-arrivals callout** (optional): when the caller passes a non-empty `new_arrivals.research_analysis` or `new_arrivals.gap_analysis` list, render `⚑ {N} new topic(s) added to the map from {analysis}.` lines beneath the convergence callout, one per analysis with arrivals. Shown once per boot-up that added items — subsequent invocations without changes don't repeat it (the items are now part of the map). Sub-line provenance on the topic rows is the persistent surface afterwards.
-- **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊘`, then suggested execution order within each tier). Render in the order given.
+- **Tier ordering and sort**: rows are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊙ ⊘`, then suggested execution order within each tier). Render in the order given.
 - **Topic row**: `{branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]`. Single space between each segment. Lifecycle label wrapped in square brackets.
   - `{branch}`: `┌─` for the first row, `└─` for the last, `├─` for the rest. With a single row, use `└─` (no upward stroke).
 - **Lifecycle label** by tier:
@@ -110,6 +110,7 @@ Render the discovery map block at the top, then the build-phase tree (specificat
   - `◐` (discussing) — `discussing`
   - `✓` (decided) — `decided`
   - `○` (fresh) — `fresh · routed to {topic.routing}` (omit the ` · routed to ...` segment if `topic.routing` is null)
+  - `⊙` (handled) — `handled · research fanned out`
   - `⊘` (cancelled) — `cancelled`
 - **Summary / provenance sub-lines** — both follow the same `{gutter}` rule. Summary appears first when present; provenance below it. Source `discovery` produces no provenance line.
   - **Wrap**: hard-wrap the summary text at 65 characters before emitting. Provenance is short — no wrap needed.
@@ -237,7 +238,7 @@ Show only statuses and categories that appear in the current display. No `---` s
     Discovery tier:
       →  ready for next phase   ◐  in flight
       ✓  decided                ○  fresh
-      ⊘  cancelled
+      ⊙  handled                ⊘  cancelled
 
     Status:
       in-progress — work is ongoing
@@ -285,7 +286,7 @@ Build a menu with two types of options:
 
 **Numbered items, in order:**
 
-1. **Discovery topics** — one entry per `discovery_map` row whose `next_action` is non-null. Skip rows with tier `✓` (decided) and `⊘` (cancelled) — those have no menu entry. Label by `next_action`:
+1. **Discovery topics** — one entry per `discovery_map` row whose `next_action` is non-null. Skip rows with tier `✓` (decided), `⊙` (handled), and `⊘` (cancelled) — those have no menu entry. Label by `next_action`:
 
    | next_action                       | Label                                                            |
    |-----------------------------------|------------------------------------------------------------------|
@@ -331,7 +332,7 @@ Build a menu with two types of options:
 
 | Convergence state | Recommendation source                                               |
 |-------------------|---------------------------------------------------------------------|
-| `in-progress`     | Top of `discovery_map` — first row with non-null `next_action` (tier order: `→` first, then `◐`, then `○`). Never `✓` or `⊘`. |
+| `in-progress`     | Top of `discovery_map` — first row with non-null `next_action` (tier order: `→` first, then `◐`, then `○`). Never `✓`, `⊙`, or `⊘`. |
 | `settled`         | First build-phase `next_phase_ready` item in pipeline order (planning before implementation before review). If none, `s`/`spec` when applicable. Otherwise no recommendation. |
 
 The recommended item always appears first. Mark it `(recommended)`. After the recommended item, list remaining numbered items in their natural order (discovery topics, then build-phase items), then command options.

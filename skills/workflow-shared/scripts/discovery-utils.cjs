@@ -288,7 +288,7 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   return { status: 'absent', generated: null, files: [] };
 }
 
-const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊘': 4 };
+const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊙': 4, '⊘': 5 };
 
 // Shared row comparator for the discovery map: tier rank first, then suggested
 // execution order ascending (null orders sort last), then name as final fallback.
@@ -302,13 +302,23 @@ function compareMapRows(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-// True when any live (non-cancelled) map item lacks a suggested execution order.
-// Programmatic detection — the assignment of order values stays with Claude.
+// True when any live (non-cancelled, non-handled) map item lacks a suggested
+// execution order. Handled topics are non-actionable — they get no order, the
+// same as cancelled. Programmatic detection — the assignment of order values
+// stays with Claude.
 function computeNeedsSequencing(mapItems) {
-  return mapItems.some(it => it.tier !== '⊘' && it.order == null);
+  return mapItems.some(it => it.tier !== '⊘' && it.tier !== '⊙' && it.order == null);
 }
 
 function computeTopicLifecycle(manifest, topicName) {
+  const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
+  // Stored marker wins over name-matching: a research topic that fanned out
+  // into differently-named discussions is terminal, with no next action. Read
+  // only the item's own field — never inspect siblings or provenance.
+  if (discovery && discovery.handled === true) {
+    return { lifecycle: 'handled', tier: '⊙', current_phase: null };
+  }
+
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
   const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
 
@@ -354,19 +364,21 @@ function computeNextAction(routing, lifecycle) {
       return 'continue_discussion';
     case 'decided':
     case 'cancelled':
+    case 'handled':
     default:
       return null;
   }
 }
 
 function computeMapSummary(items) {
-  const counts = { total: items.length, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0 };
+  const counts = { total: items.length, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 };
   for (const it of items) {
     switch (it.tier) {
       case '✓': counts.decided++; break;
       case '◐': counts.in_flight++; break;
       case '→': counts.ready++; break;
       case '○': counts.fresh++; break;
+      case '⊙': counts.handled++; break;
       case '⊘': counts.cancelled++; break;
     }
   }
