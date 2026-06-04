@@ -1193,6 +1193,83 @@ function formatDate(ts) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// ---------------------------------------------------------------------------
+// Progress clock (watermark) — idea #33
+//
+// A logical clock that advances on completed WORK, not wall-clock time. For a
+// given work unit, `progressElapsed` is how many work units completed strictly
+// after it. A dormant gap produces no completions, so the clock doesn't move —
+// the whole point: decay should track how far the project has moved past a
+// unit, not how many calendar months have passed. Consumers (rerank down-rank,
+// compact pruning) turn progressElapsed into a retrievability
+// R = 0.9^(progressElapsed / S). Derived entirely from manifest completed_at —
+// no stored state, no migration.
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a work unit's completed_at into epoch ms. Accepts an epoch number, an
+ * ISO timestamp, or a "YYYY-MM-DD" date (via parseLocalDate). Returns null for
+ * missing/blank/unparseable values — such units can't be placed on the clock.
+ */
+function parseCompletionTime(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const str = String(value).trim();
+  if (str === '' || str === 'null') return null;
+  const d = parseLocalDate(str);
+  return d && !isNaN(d.getTime()) ? d.getTime() : null;
+}
+
+/**
+ * Build the progress clock from a set of completed work units.
+ *
+ * @param {Array<{name: string, completed_at?: string|number}>} units
+ * @returns {Map<string, number>}  workUnitName → progressElapsed (count of
+ *   units that completed strictly later, ordered by completed_at). Units with
+ *   no usable completed_at are omitted; consumers treat an absent unit as
+ *   progressElapsed 0 (frontier / not-yet-decaying). Ties (equal completed_at)
+ *   do not count one another.
+ */
+function buildProgressClock(units) {
+  const dated = [];
+  for (const u of Array.isArray(units) ? units : []) {
+    if (!u || !u.name) continue;
+    const t = parseCompletionTime(u.completed_at);
+    if (t === null) continue;
+    dated.push({ name: u.name, t });
+  }
+  const clock = new Map();
+  for (const a of dated) {
+    let after = 0;
+    for (const b of dated) {
+      if (b.t > a.t) after++;
+    }
+    clock.set(a.name, after);
+  }
+  return clock;
+}
+
+/**
+ * Gather completed work units from the manifest and build the progress clock.
+ * Thin IO glue around buildProgressClock; degrades to an empty Map (→ no decay)
+ * on any failure. `list` returns full manifests, so name/status/completed_at
+ * all come from a single call.
+ */
+function getProgressClock() {
+  let units;
+  try {
+    units = JSON.parse(runManifest(['list']));
+  } catch (err) {
+    reportUnexpectedManifestError('getProgressClock:list', err);
+    return new Map();
+  }
+  if (!Array.isArray(units)) return new Map();
+  const completed = units
+    .filter((u) => u && u.name && u.status === 'completed')
+    .map((u) => ({ name: u.name, completed_at: u.completed_at }));
+  return buildProgressClock(completed);
+}
+
 // CLI boost field → store schema field. Kebab-case on the CLI surface,
 // snake_case in the schema. Keeps the CLI consistent with --work-unit /
 // --work-type while matching the indexed field names internally.
@@ -2184,6 +2261,8 @@ module.exports = {
   lockFilePath,
   INDEXED_PHASES,
   KEYWORD_ONLY_DIMENSIONS,
+  buildProgressClock,
+  getProgressClock,
 };
 
 if (require.main === module) {
