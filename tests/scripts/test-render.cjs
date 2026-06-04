@@ -10,7 +10,27 @@ const {
   wrapWithPrefix,
   signpost,
   box,
+  renderTree,
 } = require('../../skills/workflow-render/scripts/render.cjs');
+
+// A realistic discovery-map fixture: three topics, mixed tiers, wrapped bodies.
+const MAP = [
+  {
+    glyph: '◐', label: 'Ai Content Engine', tag: 'researching',
+    body: [
+      'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
+      'from exploration',
+    ],
+  },
+  {
+    glyph: '→', label: 'Legal And Regulatory', tag: 'research complete · ready for discussion',
+    body: ['Data residency, GDPR, age-gating for the competition flows', 'from research-analysis'],
+  },
+  {
+    glyph: '◐', label: 'Menu And Admin', tag: 'researching',
+    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', 'from exploration'],
+  },
+];
 
 describe('render core: fillTo', () => {
   it('pads a head out to the target width', () => {
@@ -126,5 +146,70 @@ describe('render shape: box (phase title)', () => {
 
   it('rejects an empty title', () => {
     assert.throws(() => box(''));
+  });
+});
+
+describe('render shape: renderTree (discovery map)', () => {
+  it('reproduces the documented row lines byte-for-byte', () => {
+    const lines = renderTree(MAP, { width: 65 }).split('\n');
+    assert.strictEqual(lines[0], '  ├─ ◐ Ai Content Engine [researching]');
+    assert.strictEqual(
+      lines.find((l) => l.includes('Legal And Regulatory')),
+      '  ├─ → Legal And Regulatory [research complete · ready for discussion]'
+    );
+    assert.strictEqual(
+      lines.find((l) => l.includes('Menu And Admin')),
+      '  └─ ◐ Menu And Admin [researching]'
+    );
+  });
+
+  it('hangs off the header — first row ├─, last └─, never ┌─', () => {
+    const out = renderTree(MAP, { width: 65 });
+    assert.ok(out.startsWith('  ├─ '));
+    assert.ok(!out.includes('┌─'));
+    const rows = out.split('\n').filter((l) => /^ {2}[├└]─ /.test(l));
+    assert.strictEqual(rows.length, 3);
+    assert.ok(rows[rows.length - 1].startsWith('  └─ '));
+  });
+
+  it('keeps every BODY line within the width (gutter-orphan bug is impossible)', () => {
+    // Header rows (`├─ glyph Name [tag]`) are single-line and data-determined —
+    // they can't wrap without breaking glyph alignment, so they're exempt (the
+    // hand-drawn version overruns identically). Only the wrappable body lines
+    // are guaranteed to fit — that's where the bug was.
+    for (const width of [49, 58, 65]) {
+      for (const l of renderTree(MAP, { width }).split('\n')) {
+        if (/^ {2}[├└]─ /.test(l) || l === '') continue; // header row / trailing
+        assert.ok(l.length <= width, `width ${width}: body "${l}" (${l.length}) overruns`);
+      }
+    }
+  });
+
+  it('runs the │ unbroken under non-last topics, drops it under the last', () => {
+    const lines = renderTree(MAP, { width: 65 }).split('\n').filter(Boolean);
+    let currentIsLast = false;
+    for (const l of lines) {
+      const m = l.match(/^ {2}([├└])─ /);
+      if (m) { currentIsLast = m[1] === '└'; continue; }
+      // body sub-line
+      if (currentIsLast) {
+        assert.ok(/^ {9}\S/.test(l), `last-topic sub-line should be 9 spaces then text: "${l}"`);
+        assert.ok(!l.includes('│'), `last topic must not carry the bar: "${l}"`);
+      } else {
+        assert.strictEqual(l[2], '│', `non-last sub-line must carry the bar at col 2: "${l}"`);
+        assert.ok(l.startsWith('  │      '), `non-last gutter must be 2sp │ 6sp: "${l}"`);
+      }
+    }
+  });
+
+  it('single node uses a sole └─', () => {
+    const out = renderTree([{ glyph: '○', label: 'Only One', tag: 'fresh' }], { width: 49 });
+    assert.ok(out.startsWith('  └─ ○ Only One [fresh]'));
+    assert.ok(!out.includes('├─') && !out.includes('┌─'));
+  });
+
+  it('rejects an empty node list and a label-less node', () => {
+    assert.throws(() => renderTree([]));
+    assert.throws(() => renderTree([{ glyph: '○' }]));
   });
 });

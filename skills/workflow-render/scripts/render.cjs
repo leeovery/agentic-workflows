@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const fs = require('fs');
+
 // ---------------------------------------------------------------------------
 // Deterministic renderer for fixed-shape workflow output.
 //
@@ -108,10 +110,55 @@ function box(title, { width = WIDTH } = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Shapes: tree (continuous-gutter)
+// ---------------------------------------------------------------------------
+
+// Render a flat list of nodes as a continuous-gutter tree — the discovery-map
+// shape. Each row hangs off its header via `├─` (or sole `└─`); never `┌─`.
+// Node body lines (summary, provenance) wrap beneath the row, every line
+// carrying the gutter so the `│` runs unbroken down the whole tree.
+//
+//   ├─ ◐ Ai Content Engine [researching]
+//   │      summary text wrapped to the budget…
+//   │      …continuation, gutter intact
+//   │      from exploration
+//   └─ ◐ Menu And Admin [researching]
+//          summary, last row drops the │
+//
+// node: { glyph?, label, tag?, body?: string[] }
+// The wrap budget is `width − 9` (the 9-char gutter), so a body line can never
+// overflow `width` — the gutter-orphan bug is structurally impossible.
+function renderTree(nodes, { width = 65 } = {}) {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    throw new Error('renderTree: nodes must be a non-empty array');
+  }
+  const lines = [];
+  nodes.forEach((node, i) => {
+    if (!node || !node.label) throw new Error(`renderTree: node ${i} needs a label`);
+    const isLast = i === nodes.length - 1;
+    let head = `  ${isLast ? '└─' : '├─'} `;
+    if (node.glyph) head += `${node.glyph} `;
+    head += node.label;
+    if (node.tag) head += ` [${node.tag}]`;
+    lines.push(head);
+    // Gutter: 2-space indent aligns under the row; non-last keeps the │, the
+    // last row drops it (9 spaces) so nothing dangles below └─. Both 9 wide,
+    // so the body text lands at the same column either way.
+    const gutter = isLast ? ' '.repeat(9) : '  │' + ' '.repeat(6);
+    for (const body of node.body || []) {
+      for (const wl of wrapWithPrefix(body, { width, prefix: gutter })) {
+        lines.push(wl);
+      }
+    }
+  });
+  return lines.join('\n') + '\n';
+}
+
+// ---------------------------------------------------------------------------
 // Exports (library use)
 // ---------------------------------------------------------------------------
 
-module.exports = { WIDTH, fillTo, wrap, wrapWithPrefix, signpost, box };
+module.exports = { WIDTH, fillTo, wrap, wrapWithPrefix, signpost, box, renderTree };
 
 // ---------------------------------------------------------------------------
 // CLI (Claude / shell use) — guarded so `require()` never runs it.
@@ -157,8 +204,15 @@ function runCli(argv) {
       process.stdout.write(lines.join('\n') + '\n');
       break;
     }
+    case 'tree': {
+      // Reads a JSON node array from stdin (the data-owner builds it).
+      const input = fs.readFileSync(0, 'utf8');
+      const treeWidth = opts.width !== undefined ? width : undefined;
+      process.stdout.write(renderTree(JSON.parse(input), treeWidth ? { width: treeWidth } : {}));
+      break;
+    }
     default:
-      die(`Unknown command "${command || ''}"\nCommands: signpost, box, wrap`);
+      die(`Unknown command "${command || ''}"\nCommands: signpost, box, wrap, tree`);
   }
 }
 

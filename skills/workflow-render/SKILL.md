@@ -54,6 +54,17 @@ render box "Planning Overview"
 
 Word-wrap `text` so that `prefix + line` stays within `width`; every line carries the prefix (the gutter/indent). The wrap budget is `width − prefix.length` — this is the primitive trees and wrapped lists build on. Utility/inspection command; in code, call `wrapWithPrefix` directly.
 
+### `tree [--width N]` (reads a JSON node array on stdin)
+
+A continuous-gutter tree — the discovery-map shape. The data-owner (e.g. `discovery.cjs`) builds the node array and pipes it in; Claude does not assemble it.
+
+```bash
+echo '[{"glyph":"◐","label":"Ai Content Engine","tag":"researching","body":["summary…","from exploration"]}]' \
+  | render tree --width 65
+```
+
+Each node is `{ glyph?, label, tag?, body?: string[] }`. Rows hang off the header via `├─` (or sole `└─`) — never `┌─`. Body lines wrap beneath each row under a continuous `│` gutter (dropped on the last row); the wrap budget already subtracts the gutter, so a body line can never orphan. Header rows (`├─ glyph Label [tag]`) are single-line and data-determined — a long label+tag is not wrapped (wrapping would break glyph alignment).
+
 ## Library API
 
 ```js
@@ -62,6 +73,7 @@ const { signpost, box, wrap, wrapWithPrefix, fillTo, WIDTH } =
 
 signpost(label, { style, width })          // → string (one line)
 box(title, { width })                       // → string (block, trailing blank)
+renderTree(nodes, { width })                // → string (discovery-map tree)
 wrapWithPrefix(text, { width, prefix })     // → string[] (each line prefixed)
 wrap(text, budget)                          // → string[] (segments ≤ budget)
 fillTo(head, fillChar, width)               // → string (head padded to width)
