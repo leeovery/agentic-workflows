@@ -96,6 +96,24 @@ function buildNodes(items, phase) {
   });
 }
 
+// Stage-meta callout lines shown between the DISCOVERY divider and the header:
+// seed / imports provenance (from the manifest) and new-arrival notices (passed
+// in by the caller for the current boot-up).
+function stageMetaCallouts(detail, newArrivals) {
+  const lines = [];
+  if (detail.seeds_count > 0) lines.push('· seeded from the inbox');
+  const imp = detail.imports_count || 0;
+  const mapLen = (detail.discovery_map || []).length;
+  if (imp > 0 && imp !== mapLen) lines.push(`· ${imp} ${imp === 1 ? 'import' : 'imports'}`);
+  const na = newArrivals || {};
+  for (const [key, label] of [['research_analysis', 'research-analysis'], ['gap_analysis', 'gap-analysis']]) {
+    if (Array.isArray(na[key]) && na[key].length) {
+      lines.push(`⚑ ${na[key].length} new topic(s) added to the map from ${label}.`);
+    }
+  }
+  return lines;
+}
+
 // --- assembly ----------------------------------------------------------------
 
 // Append a stage's sub-header + tree blocks for each phase that has items.
@@ -110,14 +128,20 @@ function pushStage(out, detail, divider, phases, width) {
   });
 }
 
-// `epic` is a `discover()` epic entry: { name, detail }.
-function renderEpicDashboard(epic, { width = 72 } = {}) {
+// `epic` is a `discover()` epic entry: { name, detail }. Requires a non-empty
+// discovery_map (the brand-new and no-map cases are handled by the caller).
+function renderEpicDashboard(epic, { width = 72, newArrivals = {} } = {}) {
   const detail = epic.detail;
   const out = [];
   out.push(box(titlecase(epic.name)).replace(/\n+$/, ''));
 
   // DISCOVERY — always present here (the map is non-empty).
   out.push('', signpost('DISCOVERY'), '');
+  const callouts = stageMetaCallouts(detail, newArrivals);
+  if (callouts.length) {
+    for (const c of callouts) out.push('  ' + c);
+    out.push('');
+  }
   out.push(`  RESEARCH & DISCUSSION (${detail.map_summary.total} topics${statusSuffix(detail)})`);
   out.push(renderTree(discoveryNodes(detail.discovery_map), { width }).replace(/\n$/, ''));
 
@@ -130,5 +154,5 @@ function renderEpicDashboard(epic, { width = 72 } = {}) {
 module.exports = {
   renderEpicDashboard,
   lifecycleLabel, statusSuffix, countSummary, sourceRow, implProgress,
-  discoveryNodes, buildNodes,
+  stageMetaCallouts, discoveryNodes, buildNodes,
 };

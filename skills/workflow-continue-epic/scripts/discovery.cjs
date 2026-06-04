@@ -368,8 +368,29 @@ function format(result) {
 }
 
 if (require.main === module) {
-  const workUnit = process.argv[2] || undefined;
-  process.stdout.write(format(discover(process.cwd(), workUnit)));
+  const args = process.argv.slice(2);
+
+  // `render <work_unit> [new_arrivals_json]` — emit the finished dashboard block
+  // for one epic (the display surface). Default output stays the data dump (the
+  // reasoning surface), untouched, for every other consumer.
+  if (args[0] === 'render') {
+    const { renderEpicDashboard } = require('./epic-dashboard.cjs');
+    const workUnit = args[1];
+    const newArrivals = args[2] ? JSON.parse(args[2]) : {};
+    const epic = discover(process.cwd(), workUnit).epics.find(e => e.name === workUnit);
+    if (!epic) {
+      process.stderr.write(`render: no active epic "${workUnit}"\n`);
+      process.exit(1);
+    }
+    if (!epic.detail.discovery_map || epic.detail.discovery_map.length === 0) {
+      process.stderr.write(`render: "${workUnit}" has no discovery map (caller handles that case)\n`);
+      process.exit(1);
+    }
+    process.stdout.write(renderEpicDashboard(epic, { newArrivals }));
+  } else {
+    const workUnit = args[0] || undefined;
+    process.stdout.write(format(discover(process.cwd(), workUnit)));
+  }
 }
 
 module.exports = { discover, format };

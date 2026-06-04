@@ -10,6 +10,7 @@ const {
   countSummary,
   sourceRow,
   implProgress,
+  stageMetaCallouts,
 } = require('../../skills/workflow-continue-epic/scripts/epic-dashboard.cjs');
 
 // A realistic discover() epic entry (the shape buildEpicDetail produces).
@@ -101,5 +102,37 @@ describe('epic-dashboard: full render', () => {
 
   it('never emits ┌─', () => {
     assert.ok(!out.includes('┌─'));
+  });
+});
+
+describe('epic-dashboard: stage-meta callouts', () => {
+  it('emits seed + import callouts from manifest counts', () => {
+    assert.deepStrictEqual(
+      stageMetaCallouts({ seeds_count: 1, imports_count: 2, discovery_map: [{}, {}, {}] }, {}),
+      ['· seeded from the inbox', '· 2 imports']
+    );
+  });
+
+  it('omits the import callout when every topic is itself an import', () => {
+    assert.deepStrictEqual(
+      stageMetaCallouts({ seeds_count: 0, imports_count: 3, discovery_map: [{}, {}, {}] }, {}),
+      []
+    );
+  });
+
+  it('emits a new-arrival notice per analysis with items', () => {
+    assert.deepStrictEqual(
+      stageMetaCallouts({ discovery_map: [] }, { research_analysis: ['a', 'b'], gap_analysis: [] }),
+      ['⚑ 2 new topic(s) added to the map from research-analysis.']
+    );
+  });
+
+  it('renders callouts between the DISCOVERY divider and the header', () => {
+    const epic = { name: 'x', detail: { ...EPIC.detail, seeds_count: 1 } };
+    const lines = renderEpicDashboard(epic, { width: 72 }).split('\n');
+    const di = lines.findIndex((l) => l.startsWith('── DISCOVERY'));
+    const hi = lines.findIndex((l) => l.includes('RESEARCH & DISCUSSION'));
+    assert.ok(di >= 0 && hi > di);
+    assert.ok(lines.slice(di, hi).includes('  · seeded from the inbox'));
   });
 });
