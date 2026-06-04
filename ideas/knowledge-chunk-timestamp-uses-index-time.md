@@ -111,13 +111,13 @@ R = 0.9 ^ (progressElapsed / S)
 
 One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure progress; `S` constant.
 
-**PR1 — Honest timestamp (A).** `indexSingleFile`: derive `timestamp` from `absSource` mtime, not `Date.now()`. `last_indexed` stays wall-clock (separable). Document the header date as *document-date*. Note the one-shot reindex backfill. No schema change.
+**PR1 — Honest timestamp (A).** `indexSingleFile`: derive `timestamp` from `absSource` mtime, not `Date.now()`. `last_indexed` stays wall-clock (separable). Document the header date as *document-date*. Note the one-shot reindex backfill. No schema change. *(Shipped: [#345](https://github.com/leeovery/agentic-workflows/pull/345).)*
 
-**PR2 — Progress clock (B).** Pure, unit-testable helper: completed units via `runManifest(['list'])` → `completed_at` ordering → `progressElapsed(workUnit)`. No behaviour change yet.
+**PR2 — Progress clock (B).** Pure, unit-testable helper: completed units via `runManifest(['list'])` → `completed_at` ordering → `progressElapsed(workUnit)`. No behaviour change yet. *(Shipped: [#349](https://github.com/leeovery/agentic-workflows/pull/349).)*
 
 **PR3 — Soft down-rank (D — the headline).** The `R` decay function + multiplicative down-rank in `rerank()` (`finalScore = baseScore × R + confidence + userBoosts`), replacing the recency term. Specs `R = 1`. The progress map is computed in `query()` and passed into the still-pure `rerank()`. Introduces config **`decay_base_stability`** (`S0`, default `3`) — `rerank` needs it, so it lands here, not in PR4. Coordinates with **#28** (same surface). *(Shipped: [#350](https://github.com/leeovery/agentic-workflows/pull/350).)*
 
-**PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt. New config: `decay_prune_below` (default `0.05`); keep the `false` disable. (`decay_base_stability` already landed in PR3.)
+**PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt; in-progress/frontier units (`R = 1`) never pruned. New config: `decay_prune_below` (default `0.05`); keep the `false` disable. (`decay_base_stability` already landed in PR3.) Also retires `decay_months` entirely — replaced by `decay_prune_below` across config + setup — and removes the now-orphaned `getWorkUnitMeta`. **Default is deliberately conservative:** with `S0=3` + floor `0.05`, pruning only fires once a unit has ~85 completed successors; on normal projects the backstop rarely triggers (calibrate against a real corpus with #28). *(Shipped: [#352](https://github.com/leeovery/agentic-workflows/pull/352).)*
 
 **Out of scope — Reinforcement (was Phase E).** Not a temporal-decay knob at all — it's *query-conditioned relevance feedback* (wrong layer; see Part 3, point 2). Spun out as its own idea: [query-conditioned-relevance-feedback](query-conditioned-relevance-feedback.md). The `S` seam is left open should that work ever produce a global, cross-query usefulness signal.
 
@@ -126,7 +126,7 @@ One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure prog
 ## Scope / files
 
 - `src/knowledge/index.js` — `indexSingleFile` timestamp (PR1), progress-clock helper (PR2), `rerank()` decay (PR3), `compact` prune (PR4).
-- `src/knowledge/config.js` — `decay_base_stability` (PR3), `decay_prune_below` (PR4).
+- `src/knowledge/config.js` + `src/knowledge/setup.js` — `decay_base_stability` (PR3); `decay_months` → `decay_prune_below` (PR4).
 - **No schema change** (reinforcement excluded) — `store.js` untouched.
 - Rebuild the bundle (`npm run build`) and extend `tests/scripts/test-knowledge-*` per PR.
 - Cross-refs: **#28** (rerank surface — PR3), **#22** (reindex backfill — PR1).
