@@ -115,9 +115,9 @@ One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure prog
 
 **PR2 — Progress clock (B).** Pure, unit-testable helper: completed units via `runManifest(['list'])` → `completed_at` ordering → `progressElapsed(workUnit)`. No behaviour change yet.
 
-**PR3 — Soft down-rank (D — the headline).** The `R` decay function + multiplicative down-rank in `rerank()` (`finalScore = baseScore × R + confidence + userBoosts`), replacing the recency term. Specs `R = 1`. The progress map is computed in `query()` and passed into the still-pure `rerank()`. Coordinates with **#28** (same surface).
+**PR3 — Soft down-rank (D — the headline).** The `R` decay function + multiplicative down-rank in `rerank()` (`finalScore = baseScore × R + confidence + userBoosts`), replacing the recency term. Specs `R = 1`. The progress map is computed in `query()` and passed into the still-pure `rerank()`. Introduces config **`decay_base_stability`** (`S0`, default `3`) — `rerank` needs it, so it lands here, not in PR4. Coordinates with **#28** (same surface). *(Shipped: [#350](https://github.com/leeovery/agentic-workflows/pull/350).)*
 
-**PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt. New config: `decay_base_stability` (`S0`, default `3`), `decay_prune_below` (default `0.05`); keep the `false` disable.
+**PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt. New config: `decay_prune_below` (default `0.05`); keep the `false` disable. (`decay_base_stability` already landed in PR3.)
 
 **Out of scope — Reinforcement (was Phase E).** Not a temporal-decay knob at all — it's *query-conditioned relevance feedback* (wrong layer; see Part 3, point 2). Spun out as its own idea: [query-conditioned-relevance-feedback](query-conditioned-relevance-feedback.md). The `S` seam is left open should that work ever produce a global, cross-query usefulness signal.
 
@@ -126,7 +126,7 @@ One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure prog
 ## Scope / files
 
 - `src/knowledge/index.js` — `indexSingleFile` timestamp (PR1), progress-clock helper (PR2), `rerank()` decay (PR3), `compact` prune (PR4).
-- `src/knowledge/config.js` — `decay_base_stability`, `decay_prune_below` (PR4).
+- `src/knowledge/config.js` — `decay_base_stability` (PR3), `decay_prune_below` (PR4).
 - **No schema change** (reinforcement excluded) — `store.js` untouched.
 - Rebuild the bundle (`npm run build`) and extend `tests/scripts/test-knowledge-*` per PR.
 - Cross-refs: **#28** (rerank surface — PR3), **#22** (reindex backfill — PR1).
