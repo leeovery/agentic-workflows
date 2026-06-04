@@ -231,6 +231,33 @@ describe('workflow-discovery discovery', () => {
     assert.strictEqual(r.discovery_map[0].lifecycle, 'fresh');
   });
 
+  it('reflects handled lifecycle when the discovery item carries the handled marker', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { umbrella: { status: 'in-progress', routing: 'research', source: 'discovery', handled: true } } },
+        research:  { items: { umbrella: { status: 'completed' } } },
+      },
+    });
+    const r = discover(dir, 'payments');
+    assert.strictEqual(r.discovery_map[0].lifecycle, 'handled');
+    assert.strictEqual(r.discovery_map[0].tier, '⊙');
+    assert.strictEqual(r.discovery_map[0].current_phase, null);
+  });
+
+  it('handled item counts in the handled bucket and is excluded from sequencing', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { umbrella: { status: 'in-progress', routing: 'research', source: 'discovery', handled: true, order: null } } },
+        research:  { items: { umbrella: { status: 'completed' } } },
+      },
+    });
+    const r = discover(dir, 'payments');
+    assert.strictEqual(r.map_summary.handled, 1);
+    assert.strictEqual(r.needs_sequencing, false);
+  });
+
   // --- source_provenance ---
 
   it('source_provenance is null for source=discovery', () => {
@@ -346,7 +373,7 @@ describe('workflow-discovery discovery', () => {
     createManifest(dir, 'payments', { work_type: 'epic', phases: {} });
     const r = discover(dir, 'payments');
     assert.deepStrictEqual(r.map_summary, {
-      total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, cancelled: 0,
+      total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0,
     });
   });
 
@@ -520,7 +547,7 @@ describe('workflow-discovery format', () => {
       },
     });
     const out = format(discover(dir, 'payments'));
-    assert.match(out, /map_summary: 2 topics — 0 decided, 0 in-flight, 0 ready, 2 fresh, 0 cancelled/);
+    assert.match(out, /map_summary: 2 topics — 0 decided, 0 in-flight, 0 ready, 2 fresh, 0 handled, 0 cancelled/);
   });
 
   it('map_summary line for empty map reads "0 topics — ..."', () => {

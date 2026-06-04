@@ -836,6 +836,58 @@ describe('workflow-continue-epic discovery', () => {
       assert.strictEqual(d.convergence_state, 'in-progress');
     });
 
+    it('handled row renders ⊙ with no next_action', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discovery: { items: { umbrella: { routing: 'research', source: 'discovery', handled: true } } },
+          research: { items: { umbrella: { status: 'completed' } } },
+        },
+      });
+      const t = discover(dir).epics[0].detail.discovery_map[0];
+      assert.strictEqual(t.tier, '⊙');
+      assert.strictEqual(t.lifecycle, 'handled');
+      assert.strictEqual(t.next_action, null);
+    });
+
+    it('convergence: handled topic counts as terminal — settled when only handled + decided remain', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discovery: {
+            items: {
+              umbrella: { routing: 'research', source: 'discovery', handled: true },
+              decided: { routing: 'discussion', source: 'discovery' },
+            },
+          },
+          research: { items: { umbrella: { status: 'completed' } } },
+          discussion: { items: { decided: { status: 'completed' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      assert.strictEqual(d.convergence_state, 'settled');
+      assert.strictEqual(d.map_summary.handled, 1);
+    });
+
+    it('handled topic is excluded from needs_sequencing like cancelled', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discovery: {
+            items: {
+              umbrella: { routing: 'research', source: 'discovery', handled: true, order: null },
+              live: { routing: 'discussion', source: 'discovery', order: 1 },
+            },
+          },
+          research: { items: { umbrella: { status: 'completed' } } },
+          discussion: { items: { live: { status: 'in-progress' } } },
+        },
+      });
+      const d = discover(dir).epics[0].detail;
+      // Only the handled topic lacks an order; it's excluded, so no sequencing needed.
+      assert.strictEqual(d.needs_sequencing, false);
+    });
+
     it('source provenance: discovery → null', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',

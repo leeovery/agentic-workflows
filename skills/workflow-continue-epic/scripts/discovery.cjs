@@ -196,7 +196,8 @@ function buildEpicDetail(cwd, manifest) {
     });
     discoveryMap.sort(compareMapRows);
     mapSummary = computeMapSummary(discoveryMap);
-    const allSettled = discoveryMap.every(t => t.lifecycle === 'decided' || t.lifecycle === 'cancelled');
+    const allSettled = discoveryMap.every(t =>
+      t.lifecycle === 'decided' || t.lifecycle === 'cancelled' || t.lifecycle === 'handled');
     convergenceState = allSettled ? 'settled' : 'in-progress';
   }
 
@@ -320,7 +321,7 @@ function format(result) {
     }
     if (d.discovery_map && d.discovery_map.length > 0) {
       const s = d.map_summary;
-      lines.push(`    discovery_map (${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.cancelled} cancelled, convergence: ${d.convergence_state}, needs_sequencing: ${d.needs_sequencing}):`);
+      lines.push(`    discovery_map (${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, convergence: ${d.convergence_state}, needs_sequencing: ${d.needs_sequencing}):`);
       for (const t of d.discovery_map) {
         let line = `      - ${t.tier} ${t.name} [${t.lifecycle}]`;
         if (t.next_action) line += ` -> ${t.next_action}`;

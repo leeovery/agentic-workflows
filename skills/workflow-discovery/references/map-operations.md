@@ -33,6 +33,8 @@ Then read the user's most recent message. Extract one or more operations. Recogn
 | *"remove X"*, *"drop X"*, *"delete X"*                     | Remove            | name                   |
 | *"rename X to Y"*                                          | Rename            | old name, new name     |
 | *"change routing of X to discussion"*                      | Change routing    | name, new routing      |
+| *"mark X handled"*, *"X has fanned out"*                   | Mark handled      | name                   |
+| *"reactivate X"*, *"un-handle X"*                          | Reactivate        | name                   |
 
 If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one clarifying question before proceeding. No STOP gate is needed for clarification — it's part of conversational flow, not a manifest write.
 
@@ -40,6 +42,7 @@ If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one 
 
 - **Additive group** — a contiguous run of Edit summary operations *or* a contiguous run of Edit description operations. Each group batches into one STOP gate, one commit, one session-log entry.
 - **Destructive group** — a single Remove, Rename, or Change routing operation. Each is its own group of one with its own STOP gate and commit.
+- **Marker group** — a single Mark handled or Reactivate operation. Non-destructive (it sets or clears a display/convergence marker only), but still its own group of one with its own STOP gate and commit.
 
 Walk the groups in user order. For mixed batches, each destructive op is its own group; contiguous additive ops in between batch.
 
@@ -49,26 +52,29 @@ Walk the groups in user order. For mixed batches, each destructive op is its own
 
 Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — for destructive operations (Remove, Rename, Change routing), look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
+**Lifecycle gates** — for destructive (Remove, Rename, Change routing) and marker (Mark handled, Reactivate) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
 
 | Operation       | Allowed lifecycles | Disallowed                                                                  |
 | --------------- | ------------------ | --------------------------------------------------------------------------- |
-| Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `cancelled` |
+| Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `handled`, `cancelled` |
 | Rename          | `fresh`            | all others                                                                  |
 | Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
+| Mark handled    | any except `handled`, `cancelled` | `handled`, `cancelled`                                       |
+| Reactivate      | `handled`          | all others                                                                  |
 | Edit summary    | any                | —                                                                           |
 | Edit description| any                | —                                                                           |
 
 `cancelled` is also disallowed for Remove because the discovery item is the historical record of the topic ever having existed. Removal is for never-started topics only; cancel-then-vanish would erase the audit trail. The `a`/`cancel` flow in `/workflow-continue-epic` is the right tool for stopping in-flight work.
 
-Render the rejection in a code block:
+Mark handled is non-destructive — it sets a display/convergence marker, primary use being a research topic that has fanned out into differently-named discussions. It's allowed from any actionable lifecycle; only an already-`handled` or `cancelled` topic is rejected. Reactivate is its inverse — allowed on `handled` only, clearing the marker.
+
+**Destructive-op rejection** — for a Remove, Rename, or Change routing op that fails its gate, render in a code block:
 
 > *Output the next fenced block as a code block:*
 
 ```
 "{topic}" can't be {removed|renamed|re-routed} from the map —
-{lifecycle_phrase}. To stop work on it, use `a`/`cancel` from the
-epic menu instead.
+{lifecycle_phrase}. {recovery_pointer}
 ```
 
 `{lifecycle_phrase}` examples:
@@ -77,7 +83,24 @@ epic menu instead.
 - `discussing` — `discussion is in flight on it`
 - `ready_for_discussion` — `research has completed and discussion is queued`
 - `decided` — `discussion has concluded`
+- `handled` — `it has fanned out into discussions and stays on the map as historical anchor`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
+
+`{recovery_pointer}`: for a `handled` target, `Say "reactivate {topic}" to make it actionable again.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
+
+**Marker-op rejection** — for a Mark handled op on an already-`handled` or `cancelled` topic, or a Reactivate op on a non-`handled` topic, render in a code block:
+
+> *Output the next fenced block as a code block:*
+
+```
+"{topic}" can't be {marked handled|reactivated} — {marker_phrase}.
+```
+
+`{marker_phrase}` examples:
+
+- Mark handled on `handled` — `it's already marked handled`
+- Mark handled on `cancelled` — `it's cancelled; reactivate the phase work from the epic menu first`
+- Reactivate on a non-`handled` lifecycle — `it isn't marked handled, so there's nothing to reactivate`
 
 **Name validation** — for each Rename operation, validate the proposed name via the shared reference:
 
@@ -115,9 +138,17 @@ Walk the validated operation groups in user order. For the next pending group:
 
 → Proceed to **H. Edit Description**.
 
+#### If the group is a Mark handled operation
+
+→ Proceed to **I. Mark Handled**.
+
+#### If the group is a Reactivate operation
+
+→ Proceed to **J. Reactivate**.
+
 #### Otherwise (no groups remain)
 
-→ Proceed to **I. Done**.
+→ Proceed to **K. Done**.
 
 ## D. Edit Summary
 
@@ -446,7 +477,115 @@ git commit -m "discovery({work_unit}): edit {N} description(s)"
 
 → Return to **C. Apply** for the next group.
 
-## I. Done
+## I. Mark Handled
+
+Render the proposal:
+
+> *Output the next fenced block as a code block:*
+
+```
+Mark "{name}" handled.
+
+  It stays on the map as a historical anchor, but stops
+  prompting for a next action and no longer counts against
+  convergence. Use this when its research has fanned out into
+  other discussions. Reversible with "reactivate {name}".
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Confirm mark handled?
+
+- **`y`/`yes`**
+- **`n`/`no`**
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `no`
+
+Skip this operation. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If `yes`
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} handled true
+```
+
+Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
+
+```markdown
+- Marked handled: {name} — {short reason}
+```
+
+Per-item commit:
+
+```bash
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): mark {name} handled"
+```
+
+→ Return to **C. Apply** for the next group.
+
+## J. Reactivate
+
+Render the proposal:
+
+> *Output the next fenced block as a code block:*
+
+```
+Reactivate "{name}".
+
+  Clears the handled marker. The topic returns to its
+  name-matched lifecycle and counts against convergence again.
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Confirm reactivation?
+
+- **`y`/`yes`**
+- **`n`/`no`**
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `no`
+
+Skip this operation. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If `yes`
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{name} handled
+```
+
+Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
+
+```markdown
+- Reactivated: {name} — {short reason}
+```
+
+Per-item commit:
+
+```bash
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git commit -m "discovery({work_unit}): reactivate {name}"
+```
+
+→ Return to **C. Apply** for the next group.
+
+## K. Done
 
 All operation groups have been processed.
 

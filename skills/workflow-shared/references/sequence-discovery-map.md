@@ -32,7 +32,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_
 
 ## B. Gather Live Topics
 
-Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is not `⊘` (cancelled).
+Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is neither `⊘` (cancelled) nor `⊙` (handled). Handled topics are non-actionable — a research umbrella that fanned out — so they get no execution order, the same as cancelled.
 
 For richer context, read each live topic's `summary` and `description` from the manifest:
 

@@ -75,14 +75,15 @@ The map exists; editing existing items is available alongside new exploration. R
 
 Render rules:
 
-- `tier_breakdown` — append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {cancelled} cancelled` (omitting zero-count categories) only when more than one tier bucket is non-zero. When only one bucket is non-zero, omit the breakdown and render just `Discovery Map ({total} topics)`.
+- `tier_breakdown` — append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {handled} handled · {cancelled} cancelled` (omitting zero-count categories) only when more than one tier bucket is non-zero. When only one bucket is non-zero, omit the breakdown and render just `Discovery Map ({total} topics)`.
 - `{branch}` — `┌─` for the first row, `└─` for the last, `├─` for the rest. With a single row, use `└─` (no upward stroke).
-- Tier ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊘`, suggested execution order within tier). Render in the order given.
+- Tier ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊙ ⊘`, suggested execution order within tier). Render in the order given.
 - `lifecycle_label` by tier (wrapped in square brackets per the row template):
   - `→` — `research complete · ready for discussion`
   - `◐` — `researching` or `discussing` (use `topic.current_phase`)
   - `✓` — `decided`
   - `○` — `fresh · routed to {topic.routing}` (omit ` · routed to ...` if `topic.routing` is null)
+  - `⊙` — `handled · research fanned out`
   - `⊘` — `cancelled`
 
 Then frame the opener:
@@ -94,7 +95,7 @@ You can open a fresh thread — a new area of the work you want
 to sketch out — and we'll explore it the same way we did first
 time, then synthesise topics at the end. Or you can name changes
 to existing items: add, remove, rename, re-route, edit summary,
-edit description. Both in one go is fine.
+edit description, mark handled. Both in one go is fine.
 
 Say "show map" anytime to pull the map back up.
 
