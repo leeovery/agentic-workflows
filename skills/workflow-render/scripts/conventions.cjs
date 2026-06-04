@@ -18,6 +18,15 @@ function capitalise(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
+// Title-case a kebab/space name: "ai-content-engine" → "Ai Content Engine".
+function titlecase(s) {
+  return String(s)
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 // `[term]` — the item status / lifecycle suffix.
 function tag(term) {
   return `[${term}]`;
@@ -54,4 +63,4 @@ function discoveryGlyph(tier) {
   return DISCOVERY_GLYPH[tier] || '';
 }
 
-module.exports = { capitalise, tag, derivedFrom, title, discoveryGlyph, DISCOVERY_GLYPH };
+module.exports = { capitalise, titlecase, tag, derivedFrom, title, discoveryGlyph, DISCOVERY_GLYPH };
