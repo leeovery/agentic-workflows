@@ -59,11 +59,11 @@ Word-wrap `text` so that `prefix + line` stays within `width`; every line carrie
 A continuous-gutter tree — the discovery-map shape. The data-owner (e.g. `discovery.cjs`) builds the node array and pipes it in; Claude does not assemble it.
 
 ```bash
-echo '[{"glyph":"◐","label":"Ai Content Engine","tag":"researching","body":["summary…","from exploration"]}]' \
-  | render tree --width 65
+echo '[{"glyph":"◐","label":"Ai Content Engine","tag":"researching","summary":"…","provenance":"from exploration"}]' \
+  | render tree --width 72
 ```
 
-Each node is `{ glyph?, label, tag?, body?: string[] }`. Rows hang off the header via `├─` (or sole `└─`) — never `┌─`. Body lines wrap beneath each row under a continuous `│` gutter (dropped on the last row); the wrap budget already subtracts the gutter, so a body line can never orphan. Header rows (`├─ glyph Label [tag]`) are single-line and data-determined — a long label+tag is not wrapped (wrapping would break glyph alignment).
+Each node is `{ glyph?, label, tag?, summary?, provenance? }`. Rows hang off the header via `├─` (or sole `└─`) — never `┌─`. The `summary` wraps beneath the row under a continuous `│` gutter (dropped on the last row); the budget already subtracts the gutter, so it can never orphan. The `provenance` renders as a distinct `· `-marked line (first letter capitalised) so it reads as metadata, not a continuation of the summary. Default width is 72; pass `--width` / `{ width }` to override. Header rows (`├─ glyph Label [tag]`) are single-line and data-determined — a long label+tag is not wrapped (wrapping would break glyph alignment).
 
 ## Library API
 

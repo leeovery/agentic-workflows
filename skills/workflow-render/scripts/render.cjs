@@ -113,22 +113,29 @@ function box(title, { width = WIDTH } = {}) {
 // Shapes: tree (continuous-gutter)
 // ---------------------------------------------------------------------------
 
+// Upper-case the first character (display polish; the rest is left untouched).
+function capitalise(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 // Render a flat list of nodes as a continuous-gutter tree — the discovery-map
 // shape. Each row hangs off its header via `├─` (or sole `└─`); never `┌─`.
-// Node body lines (summary, provenance) wrap beneath the row, every line
-// carrying the gutter so the `│` runs unbroken down the whole tree.
+// Beneath each row: the wrapped `summary`, then the `provenance` as a distinct
+// `· `-marked line so it reads as metadata, not a continuation of the summary.
+// Every sub-line carries the gutter so the `│` runs unbroken down the tree.
 //
 //   ├─ ◐ Ai Content Engine [researching]
 //   │      summary text wrapped to the budget…
 //   │      …continuation, gutter intact
-//   │      from exploration
+//   │      · From exploration
 //   └─ ◐ Menu And Admin [researching]
 //          summary, last row drops the │
+//          · From exploration
 //
-// node: { glyph?, label, tag?, body?: string[] }
-// The wrap budget is `width − 9` (the 9-char gutter), so a body line can never
-// overflow `width` — the gutter-orphan bug is structurally impossible.
-function renderTree(nodes, { width = 65 } = {}) {
+// node: { glyph?, label, tag?, summary?, provenance? }
+// The summary wrap budget is `width − 9` (the 9-char gutter), so a summary line
+// can never overflow `width` — the gutter-orphan bug is structurally impossible.
+function renderTree(nodes, { width = 72 } = {}) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     throw new Error('renderTree: nodes must be a non-empty array');
   }
@@ -145,10 +152,13 @@ function renderTree(nodes, { width = 65 } = {}) {
     // last row drops it (9 spaces) so nothing dangles below └─. Both 9 wide,
     // so the body text lands at the same column either way.
     const gutter = isLast ? ' '.repeat(9) : '  │' + ' '.repeat(6);
-    for (const body of node.body || []) {
-      for (const wl of wrapWithPrefix(body, { width, prefix: gutter })) {
+    if (node.summary) {
+      for (const wl of wrapWithPrefix(node.summary, { width, prefix: gutter })) {
         lines.push(wl);
       }
+    }
+    if (node.provenance) {
+      lines.push(gutter + '· ' + capitalise(node.provenance));
     }
   });
   return lines.join('\n') + '\n';

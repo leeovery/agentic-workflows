@@ -13,22 +13,22 @@ const {
   renderTree,
 } = require('../../skills/workflow-render/scripts/render.cjs');
 
-// A realistic discovery-map fixture: three topics, mixed tiers, wrapped bodies.
+// A realistic discovery-map fixture: three topics, mixed tiers, wrapped summaries.
 const MAP = [
   {
     glyph: '◐', label: 'Ai Content Engine', tag: 'researching',
-    body: [
-      'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
-      'from exploration',
-    ],
+    summary: 'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
+    provenance: 'from exploration',
   },
   {
     glyph: '→', label: 'Legal And Regulatory', tag: 'research complete · ready for discussion',
-    body: ['Data residency, GDPR, age-gating for the competition flows', 'from research-analysis'],
+    summary: 'Data residency, GDPR, age-gating for the competition flows',
+    provenance: 'from research-analysis',
   },
   {
     glyph: '◐', label: 'Menu And Admin', tag: 'researching',
-    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', 'from exploration'],
+    summary: 'Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles',
+    provenance: 'from exploration',
   },
 ];
 
@@ -177,12 +177,20 @@ describe('render shape: renderTree (discovery map)', () => {
     // they can't wrap without breaking glyph alignment, so they're exempt (the
     // hand-drawn version overruns identically). Only the wrappable body lines
     // are guaranteed to fit — that's where the bug was.
-    for (const width of [49, 58, 65]) {
+    for (const width of [49, 58, 72]) {
       for (const l of renderTree(MAP, { width }).split('\n')) {
         if (/^ {2}[├└]─ /.test(l) || l === '') continue; // header row / trailing
         assert.ok(l.length <= width, `width ${width}: body "${l}" (${l.length}) overruns`);
       }
     }
+  });
+
+  it('renders provenance as a distinct · -marked, capitalised line', () => {
+    const out = renderTree(MAP, { width: 72 });
+    assert.ok(out.includes('  │      · From exploration'), 'non-last provenance: gutter + marker + capitalised');
+    assert.ok(out.includes('         · From exploration'), 'last provenance: 9-space gutter + marker + capitalised');
+    assert.ok(out.includes('· From research-analysis'), 'capitalises whatever the provenance is');
+    assert.ok(!out.includes('from exploration'), 'no lowercase provenance leaks through');
   });
 
   it('runs the │ unbroken under non-last topics, drops it under the last', () => {
