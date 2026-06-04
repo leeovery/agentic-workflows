@@ -31,109 +31,13 @@ No work started yet.
 
 #### If `discovery_map` is non-empty
 
-Group every phase under three stage dividers: **DISCOVERY** (the research & discussion map), **DEFINITION** (specification, planning), and **DELIVERY** (implementation, review).
+Run the discovery render command and emit its output to the user **verbatim, inside a code block** — it is the complete, deterministically-rendered state display (the bullet-bordered title, the three `── DISCOVERY / DEFINITION / DELIVERY ──` stage dividers, the research-and-discussion map, and the build-phase trees, with all gutters and wrapping already correct). Do not redraw, reflow, re-wrap, or annotate it.
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  {work_unit:(titlecase)}
-●───────────────────────────────────────────────●
-
-── DISCOVERY ────────────────────────────────────
-
-  RESEARCH & DISCUSSION ({total} topics{status_suffix})
-@foreach(topic in discovery_map)
-  {branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]
-@if(topic.summary)
-@foreach(line in wrap(topic.summary, 65))
-  {gutter}{line}
-@endforeach
-@endif
-@if(topic.source_provenance)
-  {gutter}{topic.source_provenance}
-@endif
-@endforeach
-
-@if(specification.items or planning.items)
-── DEFINITION ───────────────────────────────────
-
-@foreach(phase in [specification, planning])
-@if(phase.items)
-  {phase:(uppercase)} ({phase.count_summary})
-@foreach(item in phase.items)
-  {item_branch} {item.name:(titlecase)} [{item.status}]@if(phase == planning and item.format) · {item.format}@endif
-@if(phase == specification and item.sources)
-@foreach(source in item.sources)
-  {child_gutter}{child_branch} {source.topic:(titlecase)} [{source.status}]
-@endforeach
-@endif
-@endforeach
-
-@endif
-@endforeach
-@endif
-@if(implementation.items or review.items)
-── DELIVERY ─────────────────────────────────────
-
-@foreach(phase in [implementation, review])
-@if(phase.items)
-  {phase:(uppercase)} ({phase.count_summary})
-@foreach(item in phase.items)
-  {item_branch} {item.name:(titlecase)} [{item.status}]
-@if(phase == implementation and item.current_phase)
-  {child_gutter}└─ Phase {item.current_phase}, {item.completed_tasks.length} task(s) completed
-@else
-@if(phase == implementation and item.completed_tasks)
-  {child_gutter}└─ {item.completed_tasks.length} task(s) completed
-@endif
-@endif
-@endforeach
-
-@endif
-@endforeach
-@endif
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs render {work_unit}
 ```
 
-**Stage and tree display rules:**
-
-The display groups every phase under three stage dividers — **DISCOVERY** (research & discussion, the map), **DEFINITION** (specification, planning), **DELIVERY** (implementation, review). Each divider is flush to the code block's left edge and padded to 49 characters, matching step-marker width (`── DISCOVERY ───…`). A blank line follows each divider before its content; a blank line separates stages.
-
-- **Stage presence**: the DISCOVERY divider always renders here (the map is non-empty). Render the DEFINITION divider only when `specification` or `planning` has items; the DELIVERY divider only when `implementation` or `review` has items.
-- **Stage-meta callouts**: when present, render between the DISCOVERY divider's blank line and the `RESEARCH & DISCUSSION` header, each on its own 2-space-indented line, followed by a blank line. Omit the trailing blank line (and all callouts) when none apply.
-  - Seed (`seeds_count > 0`): `· seeded from the inbox`
-  - Imports (`show_imports_callout`): `· {imports_count} import` for 1, `· {imports_count} imports` for 2+. True only when `imports_count > 0` **and** `imports_count != discovery_map.length` (when every topic is itself an import, per-row provenance already says so).
-  - New arrivals: `⚑ {N} new topic(s) added to the map from research-analysis.` and/or `⚑ {N} new topic(s) added to the map from gap-analysis.`, one per analysis in `new_arrivals` with a non-empty list. Shown once per boot-up that added items; the topic rows' provenance sub-lines are the persistent surface afterwards.
-- **Discovery header**: `RESEARCH & DISCUSSION ({total} topics{status_suffix})`. The topic tree branches directly off this line — no blank between.
-  - `{status_suffix}`: ` · all decided` when `convergence_state == 'settled'`. Otherwise ` · {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {handled} handled · {cancelled} cancelled`, omitting zero-count categories. Read counts from `map_summary`.
-- **Topic rows** are pre-sorted by the discovery script (tier rank `→ ◐ ✓ ○ ⊙ ⊘`, then suggested execution order). Render in order. Row: `{branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]`, single space between segments.
-  - `{branch}`: `├─` for every row except the last; `└─` for the last (or only) row. Never `┌─` — the leading `├─` (or sole `└─`) ticks upward into the header so the list hangs off it.
-  - **Lifecycle label** by tier: `→` (ready_for_discussion) `research complete · ready for discussion`; `◐` (researching) `researching` or (discussing) `discussing`; `✓` (decided) `decided`; `○` (fresh) `fresh · routed to {topic.routing}` (omit ` · routed to …` if `topic.routing` is null); `⊙` (handled) `handled · research fanned out`; `⊘` (cancelled) `cancelled`.
-  - **Summary / provenance sub-lines** via `{gutter}`. Summary first (hard-wrapped at 65 chars), provenance below it. Source `discovery` produces no provenance line.
-    - `{gutter}` — **non-last topic**: 2 spaces, `│`, 6 spaces; **last topic**: 9 spaces. Both land sub-line text at the same column, two columns right of the topic name. The `│` runs continuously through every sub-line of every non-last topic so the tree never breaks; the last topic drops it so nothing dangles below `└─`.
-    - **Example** (non-last topic, summary wraps onto three lines, provenance below):
-      ```
-        ├─ ◐ Ai Content Engine [researching]
-        │      AI imagery (enhancement-only v1), description
-        │      generation, per-tenant tone / base-knowledge
-        │      primitive, allowance + overage cost shape
-        │      from exploration
-      ```
-    - **Example** (last topic — same shape, no `│`):
-      ```
-        └─ ◐ Menu And Admin [researching]
-               Business-side menu modelling, admin shell (Filament vs
-               custom Vue/Nuxt), JustEat import, staff/roles
-               from exploration
-      ```
-- **Build-phase sub-headers**: `{phase:(uppercase)} ({phase.count_summary})` — the phase name uppercased (`SPECIFICATION`, `PLANNING`, `IMPLEMENTATION`, `REVIEW`) with a parenthetical count summary combining the statuses present (e.g. `(2 completed)`, `(3 completed, 1 cancelled)`; omit zero counts). The item tree branches directly off the sub-header. Blank line between sub-headers within a stage.
-- **Item rows** (`{item_branch}`): `├─` for non-final items, `└─` for the final item in the phase. Planning items append ` · {format}` after the status.
-- **Item sub-rows** — specification sources, implementation progress — branch beneath their item via `{child_gutter}` + `{child_branch}`:
-  - `{child_gutter}` — under a **non-last item**: 2 spaces, `│`, 2 spaces; under the **last item**: 5 spaces. Both land the child branch at the same column, under the item name.
-  - `{child_branch}`: `├─` for non-final children, `└─` for the final (or only) child.
-  - Specification source status: `[incorporated]` or `[pending]` from the manifest. Implementation shows `Phase {N}, {M} task(s) completed` when in-progress with `current_phase`, else `{M} task(s) completed` (always a single `└─` child).
-- **Promoted items** render with `[promoted]` in the display but not the menu. **Cancelled items** show `[cancelled]`. Phases with no items don't appear.
-- **No trailing recommendation callout** in this code block — build-phase recommendations attach to menu entries (see **C. Menu**).
+If `new_arrivals` has items for this boot-up, pass it as a JSON second argument so the "new topics added" callouts render — `… render {work_unit} '{"research_analysis":["topic-name"],"gap_analysis":[]}'`. Omit the argument entirely when there are none.
 
 After the render block, run the **Plans Not Ready Check** below; it applies to both this branch and the otherwise branch.
 
@@ -180,7 +84,9 @@ Group the phases under the same three stage dividers. This branch has no map —
 
 **Display rules:**
 
-- Stage dividers, uppercase sub-headers, count summaries, and tree grammar (`{item_branch}`, `{child_gutter}`, `{child_branch}`) follow the **Stage and tree display rules** above. Render a stage divider only when at least one of its mapped phases has items; blank line after each divider, between sub-headers, and between stages.
+- **Stage dividers** are `── {STAGE} ──` padded to 49 characters; render one only when a mapped phase has items, with a blank line after each divider and between stages. **Sub-headers** are the phase name uppercased + `({count_summary})` (statuses present, zeros omitted); blank line between sub-headers within a stage.
+- **Item rows** (`{item_branch}`): `├─` for non-final items, `└─` for the final item. Planning items append ` · {format}` after the status. Never `┌─`.
+- **Item sub-rows** branch beneath their item via `{child_gutter}` (2 spaces + `│` + 2 spaces under a non-last item; 5 spaces under the last) + `{child_branch}` (`├─` non-final, `└─` final): specification sources as `← {source.topic:(titlecase)} [{source.status}]`; implementation as `Phase {N}, {M} task(s) completed` when in-progress with `current_phase`, else `{M} task(s) completed`.
 - Pending discussion topics from research count as siblings when determining the final item in the discussion phase.
 - Phases with no items don't appear. No trailing blank line after the last stage (the code block ends after the last item, or the recommendation if present).
 
