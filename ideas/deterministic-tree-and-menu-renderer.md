@@ -116,6 +116,22 @@ The survey below has been updated to reflect this state.
 
 ---
 
+# Design Decisions (locked 2026-06-04)
+
+The model, agreed in discussion. Implementation flows from these.
+
+1. **One render library + CLI, in-repo under `skills/`.** A single shared renderer (e.g. `skills/workflow-render/scripts/render.cjs`) exposing per-shape functions (`renderSignpost`, `renderBox`, `renderMenu`, `renderList`, `renderTree`, `renderLegend`) over **one shared wrap/width/gutter core** — the single home of the budget math, so the wrap bug can exist in only one place. It is **both a library and a CLI**: scripts `require()` it in-process; Claude invokes the CLI via Bash for trivial shapes. Ships via AGNTC, no build step.
+2. **Caller owns the data.** Whoever holds the data calls the renderer. Claude calls the CLI directly for trivial-input shapes (signpost, box, simple menu). Data-backed shapes (the trees) are rendered by the data script (`discovery.cjs`), which already collates the manifest — it `require()`s the renderer and calls `renderTree()` **in-process**. Claude never assembles tree JSON.
+3. **One run, one source, two outputs — no double invocation.** `discovery.cjs` runs once: reads manifest → builds one structured object → from that object emits BOTH (a) the finished **display block** (by calling the render lib in-process) and (b) the thinned **reasoning data**. One process, one `stdout`, two clearly-demarcated sections. Drawing moves out of the prompt into the renderer; `format()` no longer asks Claude to draw — it concatenates a finished block + the data.
+4. **Two surfaces, one source of truth.** *Display surface* (the pretty tree — for the user, emitted verbatim) and *reasoning surface* (labeled data — for Claude's decisions) are two projections of the one structured object, so they can't drift. Fields that exist **only to draw the tree** (summary text, provenance, exact glyph) leave the reasoning surface once code draws the tree; what stays is only what the skill branches on (lifecycle/gating, routing, counts, next-action, blocked/deps). The dump thins; for some items it may vanish.
+5. **The tree is write-only-to-the-user (hard rule).** Claude must never read the rendered tree back to extract a decision — that re-introduces the fragile ASCII-parsing this exists to kill. Decision data always comes from the reasoning surface. `stdout` is demarcated so Claude knows which block to display vs reason about.
+6. **Display contract** — Claude re-emits the rendered block verbatim in its reply. Output tokens ~unchanged; the win is reasoning cost + correctness + one source of truth.
+7. **First slice → spike.** Build the **core + `signpost`** end-to-end first (prove the run→emit-verbatim loop, simplest shape). Then a **throwaway discovery-map spike**: render the map from `discovery.cjs` state and diff byte-for-byte against the hand-drawn block. The spike is the **go/no-go decider** for the whole effort, and doubles as the empirical test of which fields the reasoning surface keeps (= what continue-epic actually branches on).
+
+**Still open** (don't block the start): the exact reasoning-surface field set per skill (settled by the spike); the menu `description` sub-line (5th form vs row option); whether the reasoning surface stays labeled text or becomes JSON (tied to the broader code-based-orchestration push — out of scope here).
+
+---
+
 # Render-Shape Survey
 
 The section above is the *why*. This is the **survey**: every structured-ASCII shape Claude is currently instructed to hand-draw across the skills, grouped into families, with the distinct variants, observed drift, and candidate canonical forms. These canonical forms are *candidates for discussion*, not decisions. Schema design stays out of scope (per the note above) — this is what a schema would have to absorb.
@@ -360,13 +376,13 @@ Several near-identical `Key:` blocks (spec-entry display-*.md, epic display) lis
    - Highest value + where the bug lives + most variation: **the 4 real trees** (3B). Feed from the data scripts that already hold the rows.
    - Skip: doc filesystem trees (3C), maybe the bare `⚑` callout (1E).
 
-## Open questions (for decision, not yet decided)
+## Open questions
 
-- **Tree input source** — data-script emits the renderer IR directly (kills reasoning) vs Claude adapts script output per render (relocates it). Leaning: data-script emits IR.
+Most of the original open questions are now resolved — see **Design Decisions (locked 2026-06-04)** above (packaging, location, tree input, caller model, display contract). What remains:
+
+- **Reasoning-surface field set** per consuming skill — which fields stay vs leave once code draws the tree. Settled empirically by the first-slice spike (= what continue-epic actually branches on).
 - **Recommended-description menus** — 5th menu form, or a `description` option on the numbered form?
-- **One CLI, subcommands** (`signpost`/`box`/`menu`/`list`/`tree`/`legend`) over a shared wrap+width core — vs separate tools. Leaning: one CLI, shared core.
-- **Where it lives** — new shared script home under `skills/` (alongside `manifest.cjs`/`knowledge.cjs` conventions) vs the `bash-toolkit/lib` shared dir.
-- **Display contract** — Claude re-emits the block verbatim in its reply (output tokens unchanged, reasoning saved). Confirmed acceptable.
+- **Reasoning surface format** — stays labeled text vs becomes JSON. Tied to the broader code-based-orchestration push; out of scope for the renderer itself.
 
 ## Relevant files (call-site index)
 
