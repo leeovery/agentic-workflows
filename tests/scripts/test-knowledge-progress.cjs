@@ -98,7 +98,7 @@ describe('buildProgressClock', () => {
 });
 
 describe('buildProgressClock — significance weighting', () => {
-  const W = { 'quick-fix': 0.25, 'bugfix': 0.5, 'feature': 1.0, 'cross-cutting': 1.0, 'epic': 1.0 };
+  const W = { 'quick-fix': 0.25, 'bugfix': 0.5, 'feature': 1.0, 'cross-cutting': 0, 'epic': 1.0 };
   const epic = (name, date, topics) => ({
     name,
     completed_at: date,
@@ -143,6 +143,17 @@ describe('buildProgressClock — significance weighting', () => {
       epic('e', '2024-03-01', 3),                                        // 3 topics
     ];
     assert.strictEqual(buildProgressClock(units).get('target'), 4); // 1 + 3
+  });
+
+  it('excludes cross-cutting work (weight 0 — terminal, never implemented)', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      { name: 'cc1', completed_at: '2024-02-01', work_type: 'cross-cutting' },
+      { name: 'cc2', completed_at: '2024-03-01', work_type: 'cross-cutting' },
+      { name: 'f', completed_at: '2024-04-01', work_type: 'feature' },
+    ];
+    // Only the feature counts; the two cross-cutting units add nothing.
+    assert.strictEqual(buildProgressClock(units, W).get('target'), 1.0);
   });
 
   it('treats an unknown work type as factor 1.0', () => {

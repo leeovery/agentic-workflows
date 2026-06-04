@@ -20,10 +20,12 @@ const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
 // Default values for all config fields.
 const DEFAULTS = {
   similarity_threshold: 0.8,
-  // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S).
-  // S0 = "work units completed after a chunk's unit before it drops to 90%
-  // relevance"; half-life ≈ 6.6 × S0 units. Higher = slower decay.
-  decay_base_stability: 3,
+  // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S),
+  // in "feature-equivalents" (see decay_weights). Higher = slower decay;
+  // half-life ≈ 6.6 × S0. Set to 5 (not 3) because weighting inflates
+  // progressElapsed for epic-heavy work, so a larger S0 keeps the curve gentle:
+  // one 4-topic epic ≈ 0.92, three ≈ 0.78.
+  decay_base_stability: 5,
   // Storage backstop: `compact` prunes a unit's non-spec chunks once their
   // retrievability R falls below this floor (i.e. already unreachable in
   // ranking). false/null disables pruning. Replaces the old wall-clock
@@ -33,12 +35,14 @@ const DEFAULTS = {
   // topics(V) × weight[work_type(V)] over later units, so a quick-fix advances
   // the clock less than a feature and an epic (multi-topic) advances it more.
   // S0/prune are thus measured in "feature-equivalents". Tunable; missing keys
-  // fall back to 1.0.
+  // fall back to 1.0. cross-cutting = 0: it's terminal (stops at spec, never
+  // implemented), so it doesn't move the codebase forward and shouldn't age
+  // anything.
   decay_weights: {
     'quick-fix': 0.25,
     'bugfix': 0.5,
     'feature': 1.0,
-    'cross-cutting': 1.0,
+    'cross-cutting': 0,
     'epic': 1.0,
   },
 };
