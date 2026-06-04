@@ -131,6 +131,16 @@ These aren't just different shapes — every phase adapts its behaviour to the w
 
 **Cross-cutting** concerns define patterns, policies, or architectural decisions that inform how features are built (caching strategies, error handling conventions, API versioning). They terminate after specification — there's nothing to build. During planning for any work type, completed cross-cutting specs are surfaced as context.
 
+### Three Stages — the three D's
+
+The phases group into three stages that describe the arc of any work:
+
+- **Discovery** — explore the problem and decide what to build. Covers Discovery, Research, Discussion, and (for bugfixes) Investigation.
+- **Definition** — pin down what to build and how. Covers Specification and Planning, and (for quick-fixes) Scoping.
+- **Delivery** — build it and verify it holds. Covers Implementation and Review.
+
+The epic dashboard groups its phase breakdown under these three headings, so the stage a piece of work has reached is clear at a glance.
+
 ### The Phases
 
 | Phase | Purpose | Applies to |
