@@ -149,10 +149,12 @@ function renderSiblings(nodes, prefix, width, out) {
     if (!node || !node.title) throw new Error(`renderTree: node ${i} needs a title`);
     const isLast = i === nodes.length - 1;
     out.push(prefix + (isLast ? '└─ ' : '├─ ') + node.title);
-    // Continuation gutters. The last sibling drops the │ (blank) so nothing
-    // dangles below └─. Body hangs under the row; children branch one step in.
-    const bodyPrefix = prefix + (isLast ? ' ' : '│') + '      ';
+    // Sub-content lives one level in. The last sibling drops the │ (blank) so
+    // nothing dangles below └─. Children branch at `childPrefix`; body has no
+    // branch, so it indents by the branch width (3) to land at the same content
+    // column — body text and child rows align.
     const childPrefix = prefix + (isLast ? '   ' : '│  ');
+    const bodyPrefix = childPrefix + '   ';
     for (const para of node.body || []) {
       for (const wl of wrapWithPrefix(para, { width, prefix: bodyPrefix })) out.push(wl);
     }

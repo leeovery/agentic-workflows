@@ -209,8 +209,8 @@ describe('render shape: renderTree (discovery map)', () => {
 
   it('renders provenance as a distinct ↳ -marked, capitalised line', () => {
     const out = renderTree(MAP, { width: 72 });
-    assert.ok(out.includes('  │      ↳ From exploration'), 'non-last provenance: gutter + arrow + capitalised');
-    assert.ok(out.includes('         ↳ From exploration'), 'last provenance: 9-space gutter + arrow + capitalised');
+    assert.ok(out.includes('  │     ↳ From exploration'), 'non-last provenance: gutter + arrow + capitalised');
+    assert.ok(out.includes('        ↳ From exploration'), 'last provenance: 8-space gutter + arrow + capitalised');
     assert.ok(out.includes('↳ From research-analysis'), 'capitalises whatever the provenance is');
     assert.ok(!out.includes('from exploration'), 'no lowercase provenance leaks through');
   });
@@ -221,13 +221,13 @@ describe('render shape: renderTree (discovery map)', () => {
     for (const l of lines) {
       const m = l.match(/^ {2}([├└])─ /);
       if (m) { currentIsLast = m[1] === '└'; continue; }
-      // body sub-line
+      // body sub-line — aligns one level in (8-wide gutter)
       if (currentIsLast) {
-        assert.ok(/^ {9}\S/.test(l), `last-topic sub-line should be 9 spaces then text: "${l}"`);
+        assert.ok(/^ {8}\S/.test(l), `last-topic sub-line should be 8 spaces then text: "${l}"`);
         assert.ok(!l.includes('│'), `last topic must not carry the bar: "${l}"`);
       } else {
         assert.strictEqual(l[2], '│', `non-last sub-line must carry the bar at col 2: "${l}"`);
-        assert.ok(l.startsWith('  │      '), `non-last gutter must be 2sp │ 6sp: "${l}"`);
+        assert.ok(l.startsWith('  │     '), `non-last gutter must be 2sp │ 5sp: "${l}"`);
       }
     }
   });
