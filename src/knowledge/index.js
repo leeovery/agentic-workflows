@@ -1270,6 +1270,22 @@ function getProgressClock() {
   return buildProgressClock(completed);
 }
 
+const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% down)
+const DEFAULT_BASE_STABILITY = 3; // S0 fallback when config is absent
+
+/**
+ * Retrievability R = DECAY_BASE^(progressElapsed / stability), in (0, 1].
+ * progressElapsed 0 → R = 1 (frontier, undateable unit, or spec). More work
+ * completed past a chunk's unit → smaller R. This is the multiplier the soft
+ * down-rank applies to a chunk's base relevance.
+ */
+function retrievability(progressElapsed, stability) {
+  const p = progressElapsed > 0 ? progressElapsed : 0;
+  if (p === 0) return 1;
+  const s = stability > 0 ? stability : DEFAULT_BASE_STABILITY;
+  return Math.pow(DECAY_BASE, p / s);
+}
+
 // CLI boost field → store schema field. Kebab-case on the CLI surface,
 // snake_case in the schema. Keeps the CLI consistent with --work-unit /
 // --work-type while matching the indexed field names internally.
@@ -1283,27 +1299,34 @@ const BOOST_FIELD_MAP = {
 const BOOST_AMOUNT = 0.1;
 
 /**
- * Application-level re-ranking per design doc lines 566-574.
- * Adjusts Orama scores based on user-specified boosts (+0.1 per match,
- * additive across boosts), plus always-on confidence tier and recency
- * signals. Returns the array sorted by adjusted score (descending).
+ * Application-level re-ranking. Applies progress-driven soft down-rank, then
+ * user-specified boosts (+0.1 per match) and an always-on confidence tier
+ * boost. Returns the array sorted by adjusted score (descending).
  *
- * @param {Array} results  raw result rows
- * @param {Array<{field: string, value: string}>} boosts  normalised boost
- *        list — field is already mapped to the store schema name
+ * Soft down-rank: the base relevance is multiplied by retrievability
+ * R = 0.9^(progressElapsed / stability), which decays as the project completes
+ * work past a chunk's work unit (see the progress clock). A decayed chunk sinks
+ * but is never removed. Specs never decay. R attenuates only the similarity
+ * score — intentional boosts are added on top, undimmed. (Replaces the former
+ * timestamp-relative recency boost, which was both weak and — pre-#33 — fed by
+ * a broken index-time timestamp.)
+ *
+ * @param {Array} results  raw result rows; each may carry `progressElapsed`
+ *        (attached by the query pipeline; absent → 0 → no decay)
+ * @param {Array<{field: string, value: string}>} boosts  normalised boost list
+ * @param {number} stability  S0 for the decay curve
  */
-function rerank(results, boosts) {
+function rerank(results, boosts, stability = DEFAULT_BASE_STABILITY) {
   if (results.length === 0) return results;
-
-  const maxTs = Math.max(...results.map((r) => r.timestamp || 0));
-  const minTs = Math.min(...results.map((r) => r.timestamp || 0));
-  const tsRange = maxTs - minTs || 1;
 
   return results
     .map((r) => {
-      let adjustedScore = r.score || 0;
+      // Specs never decay; everything else decays by progressElapsed.
+      const progressElapsed = r.phase === 'specification' ? 0 : (r.progressElapsed || 0);
+      const R = retrievability(progressElapsed, stability);
+      let adjustedScore = (r.score || 0) * R;
 
-      // User-specified boosts — +0.1 per match, additive.
+      // User-specified boosts — +0.1 per match, additive (undimmed by decay).
       if (Array.isArray(boosts)) {
         for (const b of boosts) {
           if (r[b.field] === b.value) {
@@ -1312,13 +1335,9 @@ function rerank(results, boosts) {
         }
       }
 
-      // Always-on confidence tier boost (0 to 0.04).
+      // Always-on confidence tier boost (0 to 0.04), additive.
       const confRank = CONFIDENCE_RANK[r.confidence] || 0;
       adjustedScore += confRank * 0.01;
-
-      // Always-on recency boost (0 to 0.05).
-      const recency = ((r.timestamp || 0) - minTs) / tsRange;
-      adjustedScore += recency * 0.05;
 
       return Object.assign({}, r, { score: adjustedScore });
     })
@@ -1502,9 +1521,20 @@ async function cmdQuery(args, options, cfg, provider) {
     }
   }
 
-  // Re-rank merged results using --boost:<field> directives.
+  // Attach the progress-clock distance to each result, then re-rank: soft
+  // down-rank by retrievability + user --boost directives. The clock is derived
+  // once from the manifest; on failure it's empty → progressElapsed 0 → no decay.
+  const progressClock = getProgressClock();
+  const stability =
+    cfg && Number.isFinite(cfg.decay_base_stability)
+      ? cfg.decay_base_stability
+      : config.DEFAULTS.decay_base_stability;
+  const merged = Array.from(allResults.values()).map((r) =>
+    Object.assign({}, r, { progressElapsed: progressClock.get(r.work_unit) || 0 })
+  );
+
   const normalisedBoosts = normaliseBoosts(options.boosts);
-  let results = rerank(Array.from(allResults.values()), normalisedBoosts);
+  let results = rerank(merged, normalisedBoosts, stability);
 
   if (results.length > limit) {
     results = results.slice(0, limit);
@@ -2263,6 +2293,8 @@ module.exports = {
   KEYWORD_ONLY_DIMENSIONS,
   buildProgressClock,
   getProgressClock,
+  retrievability,
+  rerank,
 };
 
 if (require.main === module) {
