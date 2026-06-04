@@ -574,8 +574,12 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
     embeddings = await effectiveProvider.embedBatch(texts);
   }
 
-  // Build chunk documents.
-  const now = Date.now();
+  // Build chunk documents. Stamp each chunk with the source document's date
+  // (its mtime), not index time — otherwise bulk/fresh indexing (install,
+  // reindex, migration) marks every legacy doc as "today", corrupting the
+  // provenance shown in query headers and the recency signal. `last_indexed`
+  // (set below) stays wall-clock; that one genuinely means "store last built".
+  const docTimestamp = fs.statSync(absSource).mtimeMs;
   const confidence = chunkConfig.confidence || 'medium';
   const docs = chunks.map((chunk, idx) => {
     const seq = String(idx + 1).padStart(3, '0');
@@ -588,7 +592,7 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
       topic: identity.topic,
       confidence,
       source_file: sourceFile,
-      timestamp: now,
+      timestamp: docTimestamp,
     };
     if (embeddings) {
       doc.embedding = embeddings[idx];
@@ -1436,6 +1440,8 @@ async function cmdQuery(args, options, cfg, provider) {
 
   for (const r of results) {
     out.push('');
+    // Header date is the source document's date (its mtime at index time) —
+    // i.e. when the work was authored, not when the store was indexed.
     const date = formatDate(r.timestamp);
     out.push(`[${r.phase} | ${r.work_unit}/${r.topic} | ${r.confidence} | ${date}]`);
     out.push(r.content);

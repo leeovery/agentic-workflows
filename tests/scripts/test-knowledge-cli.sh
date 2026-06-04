@@ -300,6 +300,23 @@ count2=$(echo "$output2" | grep -oE 'Indexed [0-9]+' | grep -oE '[0-9]+')
 assert_eq "chunk count stays same on re-index" "$count1" "$count2"
 teardown_project
 
+# --- Test 8b: Chunk timestamp is the source document's date, not index time ---
+echo "Test 8b: Chunk timestamp derives from source mtime, not index time"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+# Backdate the source file so its mtime is sharply distinct from "today".
+touch -t 202006150000 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+output=$(run_kb query "topic" 2>&1)
+assert_eq "header shows the document date (mtime)" "true" \
+  "$(echo "$output" | grep -q '2020-06-15' && echo true || echo false)"
+today=$(date +%Y-%m-%d)
+assert_eq "header does NOT show today's index date" "false" \
+  "$(echo "$output" | grep -q "$today" && echo true || echo false)"
+teardown_project
+
 # --- Test 9: Provider mismatch is refused (case 2) ---
 echo "Test 9: Provider mismatch refused"
 setup_project
