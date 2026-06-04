@@ -86,7 +86,7 @@ Mark handled is non-destructive — it sets a display/convergence marker, primar
 - `handled` — `it has fanned out into discussions and stays on the map as historical anchor`
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
-`{recovery_pointer}`: for a `handled` target, `To bring it back, say "reactivate {topic}".` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
+`{recovery_pointer}`: for a `handled` target, `Say "reactivate {topic}" to make it actionable again.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
 
 **Marker-op rejection** — for a Mark handled op on an already-`handled` or `cancelled` topic, or a Reactivate op on a non-`handled` topic, render in a code block:
 
