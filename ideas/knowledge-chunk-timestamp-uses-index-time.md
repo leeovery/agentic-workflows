@@ -83,57 +83,50 @@ A naive fix — measure age relative to the project's *newest* completion instea
 Two established bodies of work map onto the two instincts here ("time *and* progress"):
 
 - **Event-time & watermarks** (stream processing — Flink/Beam). Formalizes "gaps shouldn't count": a *logical clock* that advances only when events arrive, decoupled from wall-clock. "The progress of time depends on the data, not on any wall clock." A dormant pipeline's event-clock doesn't move. → This is our **project progress clock**.
-- **FSRS / DSR memory model** (spaced repetition). Decay curve `R = 0.9^(t/S)` — decay is `t/S`, time over **stability**, and stability *grows each time an item is reinforced*. → This is our **decay shape + reinforcement**.
+- **FSRS / DSR memory model** (spaced repetition). Decay curve `R = 0.9^(t/S)` — decay is `t/S`, time over **stability**. → We adopt the **curve**; `S` stays a constant seam (FSRS grows it on reinforcement, but reinforcement has no valid signal here — see synthesis).
 
 Supporting: **LRFU** cache eviction (blend two signals with one tunable λ); **time-decay recommenders** (use a *half-life* and **down-weight rather than delete**).
 
-### The synthesis
+### The synthesis — one number, `R`
 
-**Decay over a logical project clock (watermark), shaped by reinforcement (FSRS), expressed as a soft down-rank rather than deletion.**
+Everything reduces to a per-chunk **retrievability** `R ∈ (0, 1]`:
 
-1. **Project "progress clock" (watermark) — replaces wall-clock.** Advances on *forward movement*, not calendar time. **Decided: workflow-native** — work units / topics completed, ordered by `completed_at`; each completion is one tick. Dormant gap → clock frozen → no aging. (Git churn was considered as a richer "code moved on" signal but rejected for v1: the KB is project-agnostic and self-contained; reaching into the host repo adds a dependency + noise. Noted as possible future enrichment only.)
+```
+R = 0.9 ^ (progressElapsed / S)
+```
 
-2. **Decay as `progress-elapsed / stability` (FSRS shape).** A unit's exploratory context fades as project-progress accumulates *after* it — and **stability extends each time that context is reinforced** (re-queried, imported into a later unit, cited as a seed). Context the project keeps leaning on stays sharp; context nothing builds on fades. A **calendar floor** is retained as a secondary guard so a *burst* (many units in days) doesn't nuke genuinely recent context — decay requires *both* enough progress *and* a minimum age.
+1. **Progress clock (watermark), not wall-clock.** `progressElapsed` = how many work units completed *after* a chunk's work unit, derived from `runManifest(['list'])` + `completed_at` ordering. Dormant gap → no completions → no aging. Workflow-native, work-unit granularity, **derived at read time — no stored state, no migration.** (Git churn rejected: the KB is project-agnostic; reaching into the host repo adds a dependency + noise.)
 
-3. **Soft down-rank, not delete — decided.** Today decay = physical chunk removal (irreversible without reindex). Shift to: keep the chunk, apply a fading relevance weight in `rerank()`. You **never lose** valid context — it sinks when newer, more-reinforced work outranks it, and resurfaces if nothing better matches. **Hard deletion survives only as a conservative storage-size backstop** (much longer horizon), specs always exempt.
+2. **`S` = stability, constant `S0`.** FSRS grows `S` on reinforcement, but **reinforcement has no valid signal in this system.** Imports/seeds come from the inbox/user files, not from earlier work units — that event never fires. And a query-hit has **no graded outcome**: a search returns noise alongside signal, so it can't distinguish good context from bad (unlike an FSRS "successful recall"). So `S` stays constant. It remains a clean seam: if an explicit *graded usefulness* signal ever exists, it slots in with no formula change. (See Part 4 — reinforcement is **excluded**, not deferred.)
 
-Fused: Part 1 gives an honest document date; the progress clock gives a fair age; FSRS gives the decay shape; reinforcement protects living context; soft down-rank means nothing is ever wrongly destroyed.
+3. **Soft down-rank — `R` multiplies relevance.** In `rerank()`: `finalScore = baseScore × R + confidence + userBoosts`, replacing the broken relative-recency term. A decayed chunk *sinks smoothly* but is **never removed**, and resurfaces if nothing fresher matches. Multiplicative (not an additive penalty) so decay can actually dominate. **Specs never decay** (`R = 1`, matching `compact`'s spec exemption).
+
+4. **Deletion → storage backstop only.** `compact` no longer deletes for relevance — it prunes only chunks whose `R` has fallen below a floor (`decay_prune_below`), i.e. already unreachable in ranking, so deletion is pure storage hygiene. The workflow-start `compact` call (Step 0.3 `knowledge-check.md`) stays but becomes near-no-op. Specs always exempt.
+
+**No wall-clock in decay.** Time survives only as Part 1's honest *display* date (provenance). The earlier calendar-floor burst-guard is dropped — soft down-rank makes mild over-decay a harmless ranking nudge, not destruction. Pure-progress self-scales: a 3-unit dormant project barely decays its oldest (`R ≈ 0.93`); a 200-unit project buries it (`R ≈ 0`). Both correct.
 
 ---
 
-## Part 4 — Phased Implementation
+## Part 4 — Stacked PRs (all shipping in this effort)
 
-Each phase is independently shippable as its own PR (one PR per change).
+One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure progress; `S` constant.
 
-**Phase A — Honest document timestamp** *(Part 1; smallest, immediately valuable)*
-- `indexSingleFile`: derive `timestamp` from `absSource` mtime instead of `Date.now()`.
-- Document the header's date semantics (document-date, not index-date) so consumers know what it means.
-- Note the one-shot reindex backfill.
-- No schema change.
+**PR1 — Honest timestamp (A).** `indexSingleFile`: derive `timestamp` from `absSource` mtime, not `Date.now()`. `last_indexed` stays wall-clock (separable). Document the header date as *document-date*. Note the one-shot reindex backfill. No schema change.
 
-**Phase B — Project progress clock (watermark)** *(foundation for C & D)*
-- Compute a logical progress ordinal from completed work units ordered by `completed_at`. Each completion = one tick. (Topic-level granularity for epics: decide during build.)
-- Expose "progress position at completion" + "current progress" so C/D can compute progress-distance.
+**PR2 — Progress clock (B).** Pure, unit-testable helper: completed units via `runManifest(['list'])` → `completed_at` ordering → `progressElapsed(workUnit)`. No behaviour change yet.
 
-**Phase C — Progress-based decay in `compact`** *(fixes the dormant/gap problem)*
-- Replace `completed_at + decay_months <= now` with: decay when ≥ K units completed *after* this one **and** a minimum calendar age has passed (both must hold — burst guard).
-- Specs remain exempt.
+**PR3 — Soft down-rank (D — the headline).** The `R` decay function + multiplicative down-rank in `rerank()` (`finalScore = baseScore × R + confidence + userBoosts`), replacing the recency term. Specs `R = 1`. The progress map is computed in `query()` and passed into the still-pure `rerank()`. Coordinates with **#28** (same surface).
 
-**Phase D — Soft down-rank + deletion-as-backstop** *(overlaps idea #28 — coordinate)*
-- `rerank()`: replace the flat recency boost with an FSRS-shaped decay weight over *progress-age* (`R = 0.9^(progressElapsed / S)`).
-- Convert `compact` deletion into a conservative storage-size backstop (long horizon), not the relevance mechanism.
-- **Coordinate with idea #28** (hybrid ranking weighting) — same `rerank()` surface.
+**PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt. New config: `decay_base_stability` (`S0`, default `3`), `decay_prune_below` (default `0.05`); keep the `false` disable.
 
-**Phase E — Reinforcement / stability (FSRS `S` grows)** *(richest; fast-follow)*
-- Track reinforcement events: artifact imported into a later unit (`imports`/`seeds`), surfaced, or cited → bump stability → slower decay.
-- Schema change in `store.js` (stability + reinforcement count fields).
+**Excluded — Reinforcement (was Phase E).** No valid signal (Part 3, point 2). Not deferred — architecturally blocked unless explicit *graded usefulness* feedback is ever added. The `S` seam is left open for that day.
 
 ---
 
 ## Scope / files
 
-- `src/knowledge/index.js` — `indexSingleFile` timestamp derivation (A); `compact` decay logic (C); `rerank()` decay weight (D).
-- `src/knowledge/store.js` — schema fields for stability/reinforcement (E only; A–D need none).
-- Progress-clock computation reads work-unit `completed_at` (manifest) — B.
-- Rebuild the bundle (`npm run build`) and add/extend `tests/scripts/test-knowledge-*` for every phase.
-- Cross-refs: **#28** (rerank weighting — shared surface with D), **#22** (corrigendum + reindex — backfill for A).
+- `src/knowledge/index.js` — `indexSingleFile` timestamp (PR1), progress-clock helper (PR2), `rerank()` decay (PR3), `compact` prune (PR4).
+- `src/knowledge/config.js` — `decay_base_stability`, `decay_prune_below` (PR4).
+- **No schema change** (reinforcement excluded) — `store.js` untouched.
+- Rebuild the bundle (`npm run build`) and extend `tests/scripts/test-knowledge-*` per PR.
+- Cross-refs: **#28** (rerank surface — PR3), **#22** (reindex backfill — PR1).
