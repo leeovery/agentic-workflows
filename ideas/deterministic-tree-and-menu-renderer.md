@@ -130,6 +130,13 @@ The model, agreed in discussion. Implementation flows from these.
 
 **Still open** (don't block the start): the exact reasoning-surface field set per skill (settled by the spike); the menu `description` sub-line (5th form vs row option); whether the reasoning surface stays labeled text or becomes JSON (tied to the broader code-based-orchestration push — out of scope here).
 
+## Build log
+
+- **Core + signpost slice** (shipped) — `skills/workflow-render/render.cjs` as library+CLI: shared `fillTo`/`wrap`/`wrapWithPrefix` core (budget = `width − prefix.length`, the single home of the gutter bug) + `signpost` (step/sub-step markers) + `box` (phase title). Proven byte-exact against live hand-drawn markers/borders; surfaced a real 50-vs-49 sub-step drift the renderer normalises.
+- **Tree spike → GO** (shipped) — `renderTree` (discovery-map shape) on the same core. Reproduces the documented hand-drawn rows **byte-for-byte**; the 74-col gutter-orphan bug is now structurally impossible (every body line stays within width at 49/58/65). The spike validated the whole approach, so `renderTree` is kept, not thrown away.
+  - **Finding — header-row overflow is inherent.** A long `label [lifecycle]` header row can't wrap without breaking glyph alignment, so it can exceed the width (the hand-drawn version overruns identically). The renderer guarantees only the wrappable *body* lines fit. Mitigation (truncating long labels) is a separate decision.
+  - **Decision deferred to wiring — tree content width.** 49 (consistent with the 49-wide dividers/markers) vs ~65 (current text density). The renderer is correct at any width; this is a visual-density call made when `discovery.cjs` is wired up.
+
 ---
 
 # Render-Shape Survey
