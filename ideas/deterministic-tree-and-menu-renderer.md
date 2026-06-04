@@ -100,3 +100,250 @@ Survey every tree- and menu-shaped render across the workflow skills, catalogue 
 ## Severity
 
 Low for data integrity (purely cosmetic — nothing corrupts), **medium for UX and recurring cost**. The visible breakage is intermittent and terminal-width-dependent, so it'll keep resurfacing unpredictably and reads as a quality defect each time. The deeper cost is the per-render reasoning/token tax of hand-drawing layout across dozens of skills, every invocation, forever — which is the real reason to make it deterministic.
+
+---
+
+# Render-Shape Survey
+
+The section above is the *why*. This is the **survey**: every structured-ASCII shape Claude is currently instructed to hand-draw across the skills, grouped into families, with the distinct variants, observed drift, and candidate canonical forms. These canonical forms are *candidates for discussion*, not decisions. Schema design stays out of scope (per the note above) — this is what a schema would have to absorb.
+
+## How to read this
+
+Two axes matter for the renderer, not just shape:
+
+1. **Shape family** — signpost, menu, list, tree, legend.
+2. **Where the input comes from** — does a script already hold the data (e.g. `discovery.cjs`), or does Claude compose it contextually? This decides whether the renderer kills the per-render reasoning or just relocates it. Marked **[script-backed]** / **[Claude-composed]** per shape.
+
+Volume note: section headers ≈176 occurrences, dotted gates ≈326 (paired), bullet boxes ≈59, `├─`-using files ≈28. The high-volume, high-consistency families (signposts, gates) are the cheapest wins; the trees are the highest-variation and where the bug lives.
+
+## Family 1 — Signposts, gates & banners  [Claude-composed, fixed-shape]
+
+Near-perfectly consistent already. Pure presentation with trivial input (usually one string). Highest reasoning-tax-per-character to draw by hand (padding/centering/dash-counting), lowest input cost to feed a renderer. Strong, low-risk first targets.
+
+### 1A. Section header — `── Label ──`
+Padded to ~50 cols total. ~176 occurrences across ~54 files. Title Case labels.
+```
+── Resume Detection ─────────────────────────────
+```
+- **Drift:** total width not actually enforced — varies with label length because it's hand-counted. Same class of bug as the tree wrap: a width that's "supposed to be" fixed but is eyeballed.
+- **Candidate canonical:** `signpost --label "Resume Detection" [--width 50]` → dashes computed to fill.
+
+### 1B. Dotted gate — `· · · · · · · · · · · ·`
+12 middle-dots, always paired around an interactive prompt. ~326 occurrences (163 pairs). Extremely consistent.
+```
+· · · · · · · · · · · ·
+{prompt + options}
+· · · · · · · · · · · ·
+```
+- **Candidate canonical:** `gate` emits the rule; the prompt body between the rules is still Claude's. (Or a single `gate --open/--close`.)
+
+### 1C. Bullet box banner — `●───...───●`
+Two widths: short (~50, status/error headers, ~59 occ.) and long (~65, the `workflow-start` ASCII-art welcome).
+```
+●───────────────────────────────────────────────●
+  Knowledge Base Error
+●───────────────────────────────────────────────●
+```
+- **Candidate canonical:** `box --title "Knowledge Base Error" [--width 50]`. Long variant is the same shape at a different width — one form, parameterised.
+
+### 1D. Framed content box — `╭─ Finding N: … ──╮ / ╰──╯`
+Wraps diff blocks in review-findings flows. Two prefixes seen (`Finding {N}:`, `Resurfacing:`).
+```
+╭─ Finding {N}: {Brief Title} ──────────────────────╮
+{diff}
+╰───────────────────────────────────────────────────╯
+```
+- Low volume (6 occ.). Same `box` primitive with rounded corners + a body passthrough.
+
+### 1E. Callout line — `⚑ {label}`
+Single glyph + label, no padding. ~28 occ. Warning/precondition callouts. Trivial; arguably not worth a command — just document the glyph, leave inline.
+
+### 1F. Solid separator — `────…`
+One occurrence. Full-width rule. Folds into the `box`/`signpost` dash logic.
+
+**Family-1 normalisation:** all six reduce to **one dash/width engine** (fill-to-width with optional centred label and optional corner glyphs). Section header, bullet box, framed box, solid rule are the *same primitive* with different end-caps. Cheapest, highest-volume win; has its own latent width-drift bug (1A) worth fixing regardless.
+
+## Family 2 — Selection menus  [mixed]
+
+Four genuinely distinct forms (survey found ~8 variants; six are drift or composition of these four). Input is a list of `{key, label, suffix?}` rows — cheap for Claude to hand over **[Claude-composed]**, except epic/spec menus whose rows mirror manifest state **[script-backed, could be fed from the data script]**.
+
+### 2A. Numbered-items + lettered-commands  (dominant, ~60%)
+Numbered continuations, blank line, then letter commands. `active-work.md`, `empty-state.md`, all `select-*.md`.
+```
+What would you like to do?
+
+- **`1`** — Continue "Auth Flow" — feature, planning
+- **`2`** — Continue "Login Bug" — bugfix, investigation
+
+- **`s`/`start`** — Start something new
+- **`f`/`feature`** — Start new feature
+- **`m`/`manage`** — Manage a work unit
+
+Select an option:
+```
+
+### 2B. Simple numbered select (grouped, `b`/`back`)
+Continuous numbering across category sections; minimal labels. `manage-work-unit.md`, `view-completed.md`.
+```
+Features:
+  1. Auth Flow
+  2. Billing
+Bugfixes:
+  3. Login Bug
+
+Select a work unit (enter number, or **`b`/`back`**):
+```
+
+### 2C. Multi-select numbered (comma-separated)
+Inbox add/drop, `start-from-inbox.md`.
+```
+1. Item A (idea, 2026-06-01)
+2. Item B (bug, 2026-06-02)
+
+Add which? (enter number(s), comma-separated, or **`b`/`back`**)
+```
+
+### 2D. Letter decision menu (y/n/r/b)
+2–4 letter options under a context line; no explicit "Select an option". `revisit-phase.md`, `*-continuation.md`, soft-gates.
+```
+Continuing "Auth Flow" — planning.
+
+- **`y`/`yes`** — Proceed to implementation
+- **`r`/`revisit`** — Revisit an earlier phase
+```
+
+**Drift to normalise:**
+- Phase-selection menu uses a **numbered** "Back" instead of `b`/`back`. → make back always `b`/`back`.
+- `(recommended)` vs `*(recommended)*` (italic) — pick one.
+- Recommended-first menus add backtick-wrapped multi-line descriptions — decide whether that's a 5th form or a row option (`description`) on 2A.
+
+**Family-2 normalisation:** one `menu` command with a row list + a mode flag (`single` | `multi` | `letter`), optional grouping header per row, optional `recommended` and `suffix` per row, and a standard prompt line. Covers ~95%.
+
+## Family 3 — Lists vs Trees  (the important distinction)
+
+Biggest finding: **most "trees" are not trees.** They're flat lists with a single `└─` sub-row. True tree logic (continuous `│` gutter across siblings and wrapped sub-lines, last-sibling math) is needed by only **four** renders. Separating these is the key scoping decision.
+
+### 3A. Flat list + single sub-row  — *NOT a tree*  [script-backed]
+`N. Name` then one `└─ detail` line. No `│`, no sibling continuity. Used by: `select-*.md` (all 5 types), `active-work.md`, `view-completed.md`, planning `define-tasks.md`, legacy-split themes, dependency lists (`resolve-dependencies.md`, `check-dependencies.md`), spec overview (`display-*.md`).
+```
+1. Auth Flow
+   └─ Planning, in-progress
+```
+- **Drift:** indent is 2-space in dependency renders, 3-space elsewhere; multiple sub-rows sometimes all use `└─` where `├─`/`└─` is correct.
+- These don't need the tree renderer. A `list` form (item + optional sub-rows) covers them. Cheap.
+
+### 3B. Genuine trees — continuous gutter  [script-backed]
+Four renders. All share `┌─ ├─ └─` branch grammar, a leading status glyph, and a `│`+indent gutter that must stay continuous. Where the renderer earns its keep.
+
+**3B-i. Discovery map** — `workflow-continue-epic/.../epic-display-and-menu.md`, `workflow-discovery/.../session-loop.md`
+Tier glyph (`→ ◐ ✓ ○ ⊙ ⊘`) + name + `[lifecycle]`, with **wrapped summary + provenance sub-lines** under each row hung off the `│` gutter. **The render with the motivating bug** (summary hard-wrapped at 65 chars + 7-char gutter = 72 cols → terminal soft-wrap orphans the gutter).
+```
+  ├─ ◐ Ai Content Engine [researching]
+  │      AI imagery (enhancement-only v1), description
+  │      generation, per-tenant tone primitive
+  │      from exploration
+  └─ ◐ Menu And Admin [researching]
+         Business-side menu modelling, admin shell
+         from exploration
+```
+
+**3B-ii. Discussion map** — `workflow-discussion-process/.../discussion-session.md`
+State glyph (`○ ◐ → ✓`) + name + `[state]`, **two-level nesting** (parent → children, no grandchildren), `↑ Elevated: …` marker rows. No wrapped bodies.
+```
+  ┌─ ✓ Subsystem Prefix Taxonomy [decided]
+  ├─ → Decision-Point INFO Line Shape [converging]
+  │  ├─ ✓ Field Order [decided]
+  │  └─ ◐ Truncation Rules [exploring]
+  ├─ ↑ Elevated: Log Aggregation Backend
+  └─ ○ Rollout Sequencing [pending]
+```
+
+**3B-iii. Epic dependency / phase detail** — `workflow-continue-epic/.../display-epic-map.md`
+Status glyph + name, sub-rows for sources (`←`) and promotions (`→`), `│` phase continuation.
+```
+  ├─ ✓ User Authentication
+  │  ├─ ← Auth Flows Discussion
+  │  └─ ← Session Management Discussion
+  └─ ○ Admin Panel
+     └─ Phase 2, 4 task(s) completed
+```
+
+**3B-iv. Inbox working set** — `workflow-start/.../inbox-working-set.md`
+Bullet `•` (not a status glyph) + `(type)`, **wrapped summary max 3 lines + ellipsis**, and a **single-item special case** (lone item renders no branch glyph). Same `│`+gutter wrap concern as the discovery map.
+```
+  ┌─ • Item One (idea)
+  │      Summary that wraps to a second line if needed,
+  │      max 3 lines with ellipsis…
+  └─ • Item Three (quickfix)
+         single item gets no connector glyph
+```
+
+**Structural variation the tree renderer must absorb (from 3B):**
+- Glyph source: tier set / state set / bullet / none — pluggable leading symbol.
+- Special first row `┌─` (discovery, discussion, inbox) vs none.
+- Wrapped multi-line bodies (discovery, inbox) vs single-line nodes (discussion, dependency).
+- Nesting: 1 level (discovery, inbox) vs 2 levels (discussion, dependency).
+- Gutter width drift: discovery uses `│`+6 spaces; discussion uses `│`+2. **Normalise.**
+- Single-item / last-sibling / last-line edge cases.
+- Marker rows that aren't nodes (`↑ Elevated`, source `←`, promotion `→`).
+- Body wrap budget **must subtract the gutter** — the bug. Width is intentionally narrow; renderer enforces, never widens or defers to terminal.
+
+### 3C. Documentation trees — `├──` 3-dash filesystem diagrams  [static, OUT OF SCOPE]
+`output-formats/{tick,linear,local-markdown}/about.md`. Static docs illustrating directory/issue layout, not per-session data-driven renders. Different glyph (`├──` 3-dash + 4-space). **Exclude from the renderer** — prose, not output.
+
+## Shared vocabulary (consistent — renderer config, not per-call reasoning)
+
+### Glyph table (one meaning per context; no collisions found)
+```
+Discovery tier:  →ready-next  ◐in-flight  ✓decided  ○fresh  ⊙handled  ⊘cancelled
+Discussion state: ○pending   ◐exploring  →converging ✓decided
+Markers:         ↑elevated   ←source     →promoted
+Alert:           ⚑
+Decoration:      ● (box caps)
+```
+Discovery and discussion share `○ ◐ → ✓` with semantically aligned meanings — safe.
+
+### Suffix grammar (bracket type signals metadata type — consistent)
+```
+[]  status / state           [in-progress] [decided] [extracted, reopened]
+()  metadata                 (recommended) (was: {status}) (3 of 5 sources extracted)
+·   provenance / routing     · {format}   · routed to research   · seeded from the inbox
+—   phase / progress / block — implementation (Phase 2, Task 3)   — blocked by {plan}:{task}
+:   cross-plan task ref      {plan}:{task}
+```
+
+### Legend / Key blocks
+Several near-identical `Key:` blocks (spec-entry display-*.md, epic display) listing the subset of glyphs/statuses in play. **Candidate:** a `legend` command that emits the canonical block for a given vocabulary subset — removes the copy-paste drift between the five spec-entry variants.
+
+## Cross-cutting observations
+
+1. **The system is already remarkably consistent.** Most drift is mechanical (indent width, dash count, `└─` vs `├─`, italic vs plain `(recommended)`) — exactly the class of error a renderer eliminates by construction.
+2. **The latent width bug isn't unique to the tree.** Section headers (1A) and boxes (1C) also rely on hand-counted widths that aren't enforced. Same fix, same primitive.
+3. **The four families collapse toward shared primitives**, not one schema:
+   - a **width/dash engine** (signposts, boxes, rules) — Family 1
+   - a **wrap-with-prefix primitive** (`budget = width − prefixWidth`) — the root of the bug, shared by trees and wrapped lists
+   - a **menu** form — Family 2
+   - a **tree** form (4 real trees) over the wrap primitive — Family 3B
+   - **vocab/legend** as config, not logic
+4. **Scope ladder by payoff/risk:**
+   - Cheapest, safest, highest volume: **signposts/gates/boxes** (Family 1) + the width-drift fix.
+   - High value, contained: **menus** (Family 2, 4 forms).
+   - Highest value + where the bug lives + most variation: **the 4 real trees** (3B). Feed from the data scripts that already hold the rows.
+   - Skip: doc filesystem trees (3C), maybe the bare `⚑` callout (1E).
+
+## Open questions (for decision, not yet decided)
+
+- **Tree input source** — data-script emits the renderer IR directly (kills reasoning) vs Claude adapts script output per render (relocates it). Leaning: data-script emits IR.
+- **Recommended-description menus** — 5th menu form, or a `description` option on the numbered form?
+- **One CLI, subcommands** (`signpost`/`box`/`menu`/`list`/`tree`/`legend`) over a shared wrap+width core — vs separate tools. Leaning: one CLI, shared core.
+- **Where it lives** — new shared script home under `skills/` (alongside `manifest.cjs`/`knowledge.cjs` conventions) vs the `bash-toolkit/lib` shared dir.
+- **Display contract** — Claude re-emits the block verbatim in its reply (output tokens unchanged, reasoning saved). Confirmed acceptable.
+
+## Relevant files (call-site index)
+
+- **Trees (real):** `workflow-continue-epic/references/{epic-display-and-menu,display-epic-map}.md`, `workflow-discussion-process/references/discussion-session.md`, `workflow-discovery/references/session-loop.md`, `workflow-start/references/inbox-working-set.md`
+- **Lists (sub-row, not trees):** `workflow-continue-*/references/select-*.md`, `workflow-start/references/{active-work,view-completed}.md`, `workflow-planning-process/references/{define-tasks,resolve-dependencies}.md`, `workflow-implementation-entry/references/check-dependencies.md`, `workflow-legacy-research-split/references/dialog.md`, `workflow-specification-entry/references/display-*.md`
+- **Menus:** `workflow-start/references/{active-work,empty-state,manage-work-unit,inbox-working-set,start-from-inbox,absorb-into-epic,inbox-archived}.md`, `workflow-continue-*/references/{select-*,revisit-phase}.md`, `workflow-bridge/references/*-continuation.md`, `workflow-specification-entry/references/display-specs-menu.md`
+- **Signposts/gates/boxes:** ~54 SKILL.md + references for `── ──`; ~40 reference files for `· · ·`; `workflow-knowledge/references/knowledge-check.md`, `workflow-start/SKILL.md` (boxes); `*/process-review-findings.md`, `spec-construction.md` (framed)
+- **Legends/vocab:** `workflow-specification-entry/references/display-*.md`, `workflow-continue-epic/references/epic-display-and-menu.md`
+- **Out of scope:** `workflow-planning-process/references/output-formats/{tick,linear,local-markdown}/about.md` (doc filesystem trees)
