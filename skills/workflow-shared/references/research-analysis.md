@@ -172,7 +172,7 @@ Overwrite with the topic list:
 - **Sources**: {filename1}.md, {filename2}.md
 ```
 
-List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff.
+List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **B** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
 
 Compute the input checksum from the completed research files only:
 

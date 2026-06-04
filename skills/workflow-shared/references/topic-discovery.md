@@ -75,7 +75,7 @@ On return, read `gate_outcome`.
 
 Stamp the cache (a decline-all pass still stamps, so the analysis won't re-fire):
 
-→ Load **[research-analysis.md](research-analysis.md)** for **E. Update Cache**.
+→ Load **[research-analysis.md](research-analysis.md)** for **E. Update Cache** and follow its instructions. When it returns:
 
 → Proceed to **C. Run Gap Analysis if Stale**.
 
@@ -115,7 +115,7 @@ On return, read `gate_outcome`.
 
 Stamp the cache (a decline-all pass still stamps, so the analysis won't re-fire):
 
-→ Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** for **E. Update Cache**.
+→ Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** for **E. Update Cache** and follow its instructions. When it returns:
 
 → Proceed to **D. Dedupe Sources**.
 

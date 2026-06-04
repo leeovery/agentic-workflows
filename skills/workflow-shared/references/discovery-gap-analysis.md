@@ -192,6 +192,8 @@ Overwrite with the topic list:
 - **Gap type**: {cross-artifact|elevated|emergent|integration|uncovered}
 ```
 
+List every topic from **C**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **C** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
+
 Compute the input checksum from completed research files plus completed discussion files only:
 
 ```bash
