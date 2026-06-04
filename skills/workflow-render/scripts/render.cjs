@@ -110,58 +110,56 @@ function box(title, { width = WIDTH } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Shapes: tree (continuous-gutter)
+// Shapes: tree (continuous-gutter, recursive)
 // ---------------------------------------------------------------------------
 
-// Upper-case the first character (display polish; the rest is left untouched).
-function capitalise(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-
-// Render a flat list of nodes as a continuous-gutter tree — the discovery-map
-// shape. Each row hangs off its header via `├─` (or sole `└─`); never `┌─`.
-// Beneath each row: the wrapped `summary`, then the `provenance` as a distinct
-// `↳ `-marked line so it reads as "derived from", not a continuation of the
-// summary. Every sub-line carries the gutter so the `│` runs unbroken.
+// Render nodes as a continuous-gutter tree. PURE LAYOUT: branch glyphs (├─/└─,
+// never ┌─ — the list hangs off whatever header precedes it), a continuous │
+// gutter at every depth, body word-wrap with the gutter subtracted from the
+// budget, and recursion for children. It knows nothing about glyphs, tags, or
+// provenance — the caller composes those into the strings (see conventions.cjs).
 //
-//   ├─ ◐ Ai Content Engine [researching]
-//   │      summary text wrapped to the budget…
-//   │      …continuation, gutter intact
-//   │      ↳ From exploration
-//   └─ ◐ Menu And Admin [researching]
-//          summary, last row drops the │
-//          ↳ From exploration
+//   ├─ ◐ Ai Content Engine [researching]      ← title (caller-composed line)
+//   │      summary text wrapped to the budget…  ← body[0]
+//   │      ↳ From exploration                   ← body[1]
+//   ├─ → Decision-Point INFO Line Shape
+//   │  ├─ ✓ Field Order                         ← child
+//   │  └─ ◐ Truncation Rules
+//   └─ ◐ Menu And Admin [researching]           ← last sibling drops the │
 //
-// node: { glyph?, label, tag?, summary?, provenance? }
-// The summary wrap budget is `width − 9` (the 9-char gutter), so a summary line
-// can never overflow `width` — the gutter-orphan bug is structurally impossible.
+// node: { title, body?: string[], children?: node[] }
+//   title    — the one-line header row (glyph + label + tag already baked in)
+//   body     — paragraphs beneath the row; each wraps independently
+//   children — nested nodes, same shape, recursively
+//
+// Every sub-line carries the accumulated gutter, so the │ runs unbroken at any
+// depth; the body wrap budget is width − gutter, so body can never orphan.
 function renderTree(nodes, { width = 72 } = {}) {
   if (!Array.isArray(nodes) || nodes.length === 0) {
     throw new Error('renderTree: nodes must be a non-empty array');
   }
-  const lines = [];
+  const out = [];
+  renderSiblings(nodes, '  ', width, out);
+  return out.join('\n') + '\n';
+}
+
+// `prefix` is the accumulated gutter that precedes this level's branch glyphs.
+function renderSiblings(nodes, prefix, width, out) {
   nodes.forEach((node, i) => {
-    if (!node || !node.label) throw new Error(`renderTree: node ${i} needs a label`);
+    if (!node || !node.title) throw new Error(`renderTree: node ${i} needs a title`);
     const isLast = i === nodes.length - 1;
-    let head = `  ${isLast ? '└─' : '├─'} `;
-    if (node.glyph) head += `${node.glyph} `;
-    head += node.label;
-    if (node.tag) head += ` [${node.tag}]`;
-    lines.push(head);
-    // Gutter: 2-space indent aligns under the row; non-last keeps the │, the
-    // last row drops it (9 spaces) so nothing dangles below └─. Both 9 wide,
-    // so the body text lands at the same column either way.
-    const gutter = isLast ? ' '.repeat(9) : '  │' + ' '.repeat(6);
-    if (node.summary) {
-      for (const wl of wrapWithPrefix(node.summary, { width, prefix: gutter })) {
-        lines.push(wl);
-      }
+    out.push(prefix + (isLast ? '└─ ' : '├─ ') + node.title);
+    // Continuation gutters. The last sibling drops the │ (blank) so nothing
+    // dangles below └─. Body hangs under the row; children branch one step in.
+    const bodyPrefix = prefix + (isLast ? ' ' : '│') + '      ';
+    const childPrefix = prefix + (isLast ? '   ' : '│  ');
+    for (const para of node.body || []) {
+      for (const wl of wrapWithPrefix(para, { width, prefix: bodyPrefix })) out.push(wl);
     }
-    if (node.provenance) {
-      lines.push(gutter + '↳ ' + capitalise(node.provenance));
+    if (node.children && node.children.length) {
+      renderSiblings(node.children, childPrefix, width, out);
     }
   });
-  return lines.join('\n') + '\n';
 }
 
 // ---------------------------------------------------------------------------

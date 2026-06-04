@@ -13,23 +13,45 @@ const {
   renderTree,
 } = require('../../skills/workflow-render/scripts/render.cjs');
 
-// A realistic discovery-map fixture: three topics, mixed tiers, wrapped summaries.
+const {
+  capitalise,
+  tag,
+  derivedFrom,
+  title,
+  discoveryGlyph,
+} = require('../../skills/workflow-render/scripts/conventions.cjs');
+
+// A realistic discovery-map fixture, composed via the conventions layer (proving
+// the split: conventions builds the strings, the renderer lays them out).
 const MAP = [
   {
-    glyph: '◐', label: 'Ai Content Engine', tag: 'researching',
-    summary: 'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
-    provenance: 'from exploration',
+    title: title({ glyph: discoveryGlyph('researching'), label: 'Ai Content Engine', tag: 'researching' }),
+    body: [
+      'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
+      derivedFrom('from exploration'),
+    ],
   },
   {
-    glyph: '→', label: 'Legal And Regulatory', tag: 'research complete · ready for discussion',
-    summary: 'Data residency, GDPR, age-gating for the competition flows',
-    provenance: 'from research-analysis',
+    title: title({ glyph: discoveryGlyph('ready_for_discussion'), label: 'Legal And Regulatory', tag: 'research complete · ready for discussion' }),
+    body: ['Data residency, GDPR, age-gating for the competition flows', derivedFrom('from research-analysis')],
   },
   {
-    glyph: '◐', label: 'Menu And Admin', tag: 'researching',
-    summary: 'Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles',
-    provenance: 'from exploration',
+    title: title({ glyph: discoveryGlyph('researching'), label: 'Menu And Admin', tag: 'researching' }),
+    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', derivedFrom('from exploration')],
   },
+];
+
+// A discussion-map fixture exercising nesting (children).
+const DISCUSSION = [
+  { title: '✓ Subsystem Prefix Taxonomy [decided]' },
+  {
+    title: '→ Decision-Point INFO Line Shape [converging]',
+    children: [
+      { title: '✓ Field Order [decided]' },
+      { title: '◐ Truncation Rules [exploring]' },
+    ],
+  },
+  { title: '○ Rollout Sequencing [pending]' },
 ];
 
 describe('render core: fillTo', () => {
@@ -211,13 +233,51 @@ describe('render shape: renderTree (discovery map)', () => {
   });
 
   it('single node uses a sole └─', () => {
-    const out = renderTree([{ glyph: '○', label: 'Only One', tag: 'fresh' }], { width: 49 });
+    const out = renderTree([{ title: '○ Only One [fresh]' }], { width: 49 });
     assert.ok(out.startsWith('  └─ ○ Only One [fresh]'));
     assert.ok(!out.includes('├─') && !out.includes('┌─'));
   });
 
-  it('rejects an empty node list and a label-less node', () => {
+  it('nests children with an accumulating gutter (discussion-map shape)', () => {
+    const lines = renderTree(DISCUSSION, { width: 72 }).split('\n');
+    // Parent is a non-last sibling, so its children sit under a continued │.
+    assert.ok(lines.includes('  ├─ → Decision-Point INFO Line Shape [converging]'));
+    assert.ok(lines.includes('  │  ├─ ✓ Field Order [decided]'), 'non-last child branches under the parent bar');
+    assert.ok(lines.includes('  │  └─ ◐ Truncation Rules [exploring]'), 'last child uses └─, parent bar still runs');
+    // Last top-level sibling drops its own bar.
+    assert.ok(lines.includes('  └─ ○ Rollout Sequencing [pending]'));
+    assert.ok(!renderTree(DISCUSSION).includes('┌─'));
+  });
+
+  it('rejects an empty node list and a title-less node', () => {
     assert.throws(() => renderTree([]));
-    assert.throws(() => renderTree([{ glyph: '○' }]));
+    assert.throws(() => renderTree([{ body: ['orphan'] }]));
+  });
+});
+
+describe('conventions (domain composition layer)', () => {
+  it('tag wraps in square brackets', () => {
+    assert.strictEqual(tag('decided'), '[decided]');
+  });
+
+  it('capitalise upper-cases only the first character', () => {
+    assert.strictEqual(capitalise('from exploration'), 'From exploration');
+    assert.strictEqual(capitalise(''), '');
+  });
+
+  it('derivedFrom builds a capitalised ↳ line', () => {
+    assert.strictEqual(derivedFrom('from research-analysis'), '↳ From research-analysis');
+  });
+
+  it('title composes glyph + label + [tag], omitting absent parts', () => {
+    assert.strictEqual(title({ glyph: '◐', label: 'Menu And Admin', tag: 'researching' }), '◐ Menu And Admin [researching]');
+    assert.strictEqual(title({ label: 'No Glyph', tag: 'pending' }), 'No Glyph [pending]');
+    assert.strictEqual(title({ label: 'Bare' }), 'Bare');
+  });
+
+  it('discoveryGlyph maps tiers to the canonical symbol set', () => {
+    assert.strictEqual(discoveryGlyph('decided'), '✓');
+    assert.strictEqual(discoveryGlyph('fresh'), '○');
+    assert.strictEqual(discoveryGlyph('unknown-tier'), '');
   });
 });

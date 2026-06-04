@@ -56,24 +56,43 @@ Word-wrap `text` so that `prefix + line` stays within `width`; every line carrie
 
 ### `tree [--width N]` (reads a JSON node array on stdin)
 
-A continuous-gutter tree — the discovery-map shape. The data-owner (e.g. `discovery.cjs`) builds the node array and pipes it in; Claude does not assemble it.
+A continuous-gutter tree. Pure layout — it knows nothing about glyphs, tags, or provenance; the caller composes those into the strings (see **Conventions** below). The data-owner (e.g. `discovery.cjs`) builds the node array and pipes it in; Claude does not assemble it.
 
 ```bash
-echo '[{"glyph":"◐","label":"Ai Content Engine","tag":"researching","summary":"…","provenance":"from exploration"}]' \
-  | render tree --width 72
+echo '[{"title":"◐ Ai Content Engine [researching]","body":["summary…","↳ From exploration"],
+       "children":[{"title":"✓ Field Order [decided]"}]}]' | render tree --width 72
 ```
 
-Each node is `{ glyph?, label, tag?, summary?, provenance? }`. Rows hang off the header via `├─` (or sole `└─`) — never `┌─`. The `summary` wraps beneath the row under a continuous `│` gutter (dropped on the last row); the budget already subtracts the gutter, so it can never orphan. The `provenance` renders as a distinct `↳ `-marked line (first letter capitalised) so it reads as "derived from", not a continuation of the summary. Default width is 72; pass `--width` / `{ width }` to override. Header rows (`├─ glyph Label [tag]`) are single-line and data-determined — a long label+tag is not wrapped (wrapping would break glyph alignment).
+Each node is `{ title, body?: string[], children?: node[] }`:
+- **`title`** — the one-line header row, already composed (`glyph label [tag]`). Rows hang off whatever header precedes them via `├─` (or sole `└─`) — never `┌─`.
+- **`body`** — paragraphs beneath the row; each wraps independently under a continuous `│` gutter (dropped on the last sibling). The budget already subtracts the gutter, so body can never orphan.
+- **`children`** — nested nodes, same shape, recursively; the gutter accumulates at every depth.
 
-## Library API
+Default width is 72 (`--width` / `{ width }` to override). `title` is single-line and data-determined — a long one isn't wrapped (wrapping would break glyph alignment).
+
+## Conventions — `scripts/conventions.cjs`
+
+The domain-aware layer: it knows what workflow content should *look* like (the glyph vocabulary, the `[tag]` format, the `↳` derived-from line) and produces the plain strings the renderer lays out. Keeps format normalised in one place while the renderer stays domain-free. Grown as call sites are wired.
 
 ```js
-const { signpost, box, wrap, wrapWithPrefix, fillTo, WIDTH } =
+const { title, tag, derivedFrom, capitalise, discoveryGlyph } =
+  require('.../skills/workflow-render/scripts/conventions.cjs');
+
+title({ glyph, label, tag })   // → "◐ Menu And Admin [researching]" (a node title)
+tag('decided')                 // → "[decided]"
+derivedFrom('from exploration')// → "↳ From exploration"
+discoveryGlyph('researching')  // → "◐"  (tier → canonical symbol)
+```
+
+## Library API — `scripts/render.cjs`
+
+```js
+const { signpost, box, renderTree, wrap, wrapWithPrefix, fillTo, WIDTH } =
   require('.../skills/workflow-render/scripts/render.cjs');
 
 signpost(label, { style, width })          // → string (one line)
 box(title, { width })                       // → string (block, trailing blank)
-renderTree(nodes, { width })                // → string (discovery-map tree)
+renderTree(nodes, { width })                // → string (recursive tree)
 wrapWithPrefix(text, { width, prefix })     // → string[] (each line prefixed)
 wrap(text, budget)                          // → string[] (segments ≤ budget)
 fillTo(head, fillChar, width)               // → string (head padded to width)
@@ -83,4 +102,4 @@ fillTo(head, fillChar, width)               // → string (head padded to width)
 
 ## Tests
 
-`tests/scripts/test-render.cjs` (run `node --test tests/scripts/test-render.cjs`). Add a test alongside any change to `render.cjs`.
+`tests/scripts/test-render.cjs` (run `node --test tests/scripts/test-render.cjs`). Add a test alongside any change to `render.cjs` or `conventions.cjs`.
