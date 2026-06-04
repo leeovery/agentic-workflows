@@ -29,6 +29,18 @@ const DEFAULTS = {
   // ranking). false/null disables pruning. Replaces the old wall-clock
   // decay_months — decay is progress-based now.
   decay_prune_below: 0.05,
+  // Significance weighting for the progress clock. progressElapsed sums
+  // topics(V) × weight[work_type(V)] over later units, so a quick-fix advances
+  // the clock less than a feature and an epic (multi-topic) advances it more.
+  // S0/prune are thus measured in "feature-equivalents". Tunable; missing keys
+  // fall back to 1.0.
+  decay_weights: {
+    'quick-fix': 0.25,
+    'bugfix': 0.5,
+    'feature': 1.0,
+    'cross-cutting': 1.0,
+    'epic': 1.0,
+  },
 };
 
 // Known providers that have implementations in this codebase.

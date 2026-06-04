@@ -96,6 +96,8 @@ describe('loadConfig', () => {
     });
     assert.strictEqual(cfg.similarity_threshold, DEFAULTS.similarity_threshold);
     assert.strictEqual(cfg.decay_prune_below, DEFAULTS.decay_prune_below);
+    assert.ok(cfg.decay_weights && typeof cfg.decay_weights === 'object');
+    assert.strictEqual(cfg.decay_weights.feature, DEFAULTS.decay_weights.feature);
     assert.strictEqual(cfg.provider, undefined);
     assert.strictEqual(cfg._api_key, null);
   });
