@@ -83,7 +83,7 @@ A naive fix — measure age relative to the project's *newest* completion instea
 Two established bodies of work map onto the two instincts here ("time *and* progress"):
 
 - **Event-time & watermarks** (stream processing — Flink/Beam). Formalizes "gaps shouldn't count": a *logical clock* that advances only when events arrive, decoupled from wall-clock. "The progress of time depends on the data, not on any wall clock." A dormant pipeline's event-clock doesn't move. → This is our **project progress clock**.
-- **FSRS / DSR memory model** (spaced repetition). Decay curve `R = 0.9^(t/S)` — decay is `t/S`, time over **stability**. → We adopt the **curve**; `S` stays a constant seam (FSRS grows it on reinforcement, but reinforcement has no valid signal here — see synthesis).
+- **FSRS / DSR memory model** (spaced repetition). Decay curve `R = 0.9^(t/S)` — decay is `t/S`, time over **stability**. → We adopt the **curve**; `S` stays a constant seam (FSRS grows it on reinforcement, but reinforcement is the wrong layer here — it's query-conditioned, see synthesis).
 
 Supporting: **LRFU** cache eviction (blend two signals with one tunable λ); **time-decay recommenders** (use a *half-life* and **down-weight rather than delete**).
 
@@ -97,7 +97,7 @@ R = 0.9 ^ (progressElapsed / S)
 
 1. **Progress clock (watermark), not wall-clock.** `progressElapsed` = how many work units completed *after* a chunk's work unit, derived from `runManifest(['list'])` + `completed_at` ordering. Dormant gap → no completions → no aging. Workflow-native, work-unit granularity, **derived at read time — no stored state, no migration.** (Git churn rejected: the KB is project-agnostic; reaching into the host repo adds a dependency + noise.)
 
-2. **`S` = stability, constant `S0`.** FSRS grows `S` on reinforcement, but **reinforcement has no valid signal in this system.** Imports/seeds come from the inbox/user files, not from earlier work units — that event never fires. And a query-hit has **no graded outcome**: a search returns noise alongside signal, so it can't distinguish good context from bad (unlike an FSRS "successful recall"). So `S` stays constant. It remains a clean seam: if an explicit *graded usefulness* signal ever exists, it slots in with no formula change. (See Part 4 — reinforcement is **excluded**, not deferred.)
+2. **`S` = stability, constant `S0`.** FSRS grows `S` on reinforcement, but **reinforcement belongs to the wrong layer here.** A graded "was this useful?" signal *is* obtainable (Claude could classify query results good/bad via the script) — but relevance is **per-query**: a chunk irrelevant to query X may be central to query Y, so one query's verdict can't license a *global* penalty on the chunk. `S`/`R` is a **global, query-independent** staleness term; query-relevance is already a separate axis (the base similarity score, computed per query). Folding `(query, chunk)` feedback into the global `S` is a category error — it would punish a chunk across *all* future queries for one query's judgment. So feedback is genuinely a different system (**query-conditioned relevance feedback** — learning-to-rank territory, keyed on `(query, chunk)`, not per-chunk), not a knob on temporal decay. `S` stays constant; the seam stays open. (See Part 4 — reinforcement is **out of scope for #33**, captured separately as [query-conditioned-relevance-feedback](query-conditioned-relevance-feedback.md).)
 
 3. **Soft down-rank — `R` multiplies relevance.** In `rerank()`: `finalScore = baseScore × R + confidence + userBoosts`, replacing the broken relative-recency term. A decayed chunk *sinks smoothly* but is **never removed**, and resurfaces if nothing fresher matches. Multiplicative (not an additive penalty) so decay can actually dominate. **Specs never decay** (`R = 1`, matching `compact`'s spec exemption).
 
@@ -119,7 +119,7 @@ One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure prog
 
 **PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt. New config: `decay_base_stability` (`S0`, default `3`), `decay_prune_below` (default `0.05`); keep the `false` disable.
 
-**Excluded — Reinforcement (was Phase E).** No valid signal (Part 3, point 2). Not deferred — architecturally blocked unless explicit *graded usefulness* feedback is ever added. The `S` seam is left open for that day.
+**Out of scope — Reinforcement (was Phase E).** Not a temporal-decay knob at all — it's *query-conditioned relevance feedback* (wrong layer; see Part 3, point 2). Spun out as its own idea: [query-conditioned-relevance-feedback](query-conditioned-relevance-feedback.md). The `S` seam is left open should that work ever produce a global, cross-query usefulness signal.
 
 ---
 
