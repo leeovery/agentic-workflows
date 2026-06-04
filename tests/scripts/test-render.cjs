@@ -185,11 +185,11 @@ describe('render shape: renderTree (discovery map)', () => {
     }
   });
 
-  it('renders provenance as a distinct · -marked, capitalised line', () => {
+  it('renders provenance as a distinct ↳ -marked, capitalised line', () => {
     const out = renderTree(MAP, { width: 72 });
-    assert.ok(out.includes('  │      · From exploration'), 'non-last provenance: gutter + marker + capitalised');
-    assert.ok(out.includes('         · From exploration'), 'last provenance: 9-space gutter + marker + capitalised');
-    assert.ok(out.includes('· From research-analysis'), 'capitalises whatever the provenance is');
+    assert.ok(out.includes('  │      ↳ From exploration'), 'non-last provenance: gutter + arrow + capitalised');
+    assert.ok(out.includes('         ↳ From exploration'), 'last provenance: 9-space gutter + arrow + capitalised');
+    assert.ok(out.includes('↳ From research-analysis'), 'capitalises whatever the provenance is');
     assert.ok(!out.includes('from exploration'), 'no lowercase provenance leaks through');
   });
 

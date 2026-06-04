@@ -121,16 +121,16 @@ function capitalise(s) {
 // Render a flat list of nodes as a continuous-gutter tree — the discovery-map
 // shape. Each row hangs off its header via `├─` (or sole `└─`); never `┌─`.
 // Beneath each row: the wrapped `summary`, then the `provenance` as a distinct
-// `· `-marked line so it reads as metadata, not a continuation of the summary.
-// Every sub-line carries the gutter so the `│` runs unbroken down the tree.
+// `↳ `-marked line so it reads as "derived from", not a continuation of the
+// summary. Every sub-line carries the gutter so the `│` runs unbroken.
 //
 //   ├─ ◐ Ai Content Engine [researching]
 //   │      summary text wrapped to the budget…
 //   │      …continuation, gutter intact
-//   │      · From exploration
+//   │      ↳ From exploration
 //   └─ ◐ Menu And Admin [researching]
 //          summary, last row drops the │
-//          · From exploration
+//          ↳ From exploration
 //
 // node: { glyph?, label, tag?, summary?, provenance? }
 // The summary wrap budget is `width − 9` (the 9-char gutter), so a summary line
@@ -158,7 +158,7 @@ function renderTree(nodes, { width = 72 } = {}) {
       }
     }
     if (node.provenance) {
-      lines.push(gutter + '· ' + capitalise(node.provenance));
+      lines.push(gutter + '↳ ' + capitalise(node.provenance));
     }
   });
   return lines.join('\n') + '\n';
