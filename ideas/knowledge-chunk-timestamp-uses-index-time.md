@@ -95,7 +95,7 @@ Everything reduces to a per-chunk **retrievability** `R ∈ (0, 1]`:
 R = 0.9 ^ (progressElapsed / S)
 ```
 
-1. **Progress clock (watermark), not wall-clock.** `progressElapsed` = how many work units completed *after* a chunk's work unit, derived from `runManifest(['list'])` + `completed_at` ordering. Dormant gap → no completions → no aging. Workflow-native, work-unit granularity, **derived at read time — no stored state, no migration.** (Git churn rejected: the KB is project-agnostic; reaching into the host repo adds a dependency + noise.)
+1. **Progress clock (watermark), not wall-clock.** `progressElapsed` = the **significance-weighted** amount of work completed *after* a chunk's work unit — `Σ topics(V) × weight[work_type(V)]` over later units (a quick-fix advances the clock less than a feature; a multi-topic epic more). Derived from `runManifest(['list'])` + `completed_at` ordering + `work_type`/topic count. Dormant gap → no completions → no aging. Workflow-native, **derived at read time — no stored state, no migration.** Weights are config-driven (`decay_weights`), so `S0`/`prune` read in "feature-equivalents". (Git churn rejected: the KB is project-agnostic; reaching into the host repo adds a dependency + noise.)
 
 2. **`S` = stability, constant `S0`.** FSRS grows `S` on reinforcement, but **reinforcement belongs to the wrong layer here.** A graded "was this useful?" signal *is* obtainable (Claude could classify query results good/bad via the script) — but relevance is **per-query**: a chunk irrelevant to query X may be central to query Y, so one query's verdict can't license a *global* penalty on the chunk. `S`/`R` is a **global, query-independent** staleness term; query-relevance is already a separate axis (the base similarity score, computed per query). Folding `(query, chunk)` feedback into the global `S` is a category error — it would punish a chunk across *all* future queries for one query's judgment. So feedback is genuinely a different system (**query-conditioned relevance feedback** — learning-to-rank territory, keyed on `(query, chunk)`, not per-chunk), not a knob on temporal decay. `S` stays constant; the seam stays open. (See Part 4 — reinforcement is **out of scope for #33**, captured separately as [query-conditioned-relevance-feedback](query-conditioned-relevance-feedback.md).)
 
@@ -119,6 +119,8 @@ One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure prog
 
 **PR4 — Compaction-as-backstop (C).** `compact` drops the wall-clock `completed_at + decay_months <= now` test; prunes only chunks with `R < decay_prune_below`. Specs exempt; in-progress/frontier units (`R = 1`) never pruned. New config: `decay_prune_below` (default `0.05`); keep the `false` disable. (`decay_base_stability` already landed in PR3.) Also retires `decay_months` entirely — replaced by `decay_prune_below` across config + setup — and removes the now-orphaned `getWorkUnitMeta`. **Default is deliberately conservative:** with `S0=3` + floor `0.05`, pruning only fires once a unit has ~85 completed successors; on normal projects the backstop rarely triggers (calibrate against a real corpus with #28). *(Shipped: [#352](https://github.com/leeovery/agentic-workflows/pull/352).)*
 
+**PR5 — Significance-weighted progress clock.** `progressElapsed` sums `topics(V) × weight[work_type(V)]` instead of counting units — a prototype showed raw count both *over*-ages trivial work (20 quick-fixes ≈ 20 features) and *under*-ages heavy work (3 epics barely registered). Config `decay_weights` (default quick-fix 0.25 / bugfix 0.5 / feature 1.0 / cross-cutting 1.0 / epic 1.0-per-topic); linear (not factorial); still fully derived. `rerank`/`compact` unchanged. Weights provisional — calibrate with #28. *(Shipped: [#353](https://github.com/leeovery/agentic-workflows/pull/353).)*
+
 **Out of scope — Reinforcement (was Phase E).** Not a temporal-decay knob at all — it's *query-conditioned relevance feedback* (wrong layer; see Part 3, point 2). Spun out as its own idea: [query-conditioned-relevance-feedback](query-conditioned-relevance-feedback.md). The `S` seam is left open should that work ever produce a global, cross-query usefulness signal.
 
 ---
@@ -126,7 +128,7 @@ One coherent mechanism (`R`), used two ways — rank + prune. Decay is pure prog
 ## Scope / files
 
 - `src/knowledge/index.js` — `indexSingleFile` timestamp (PR1), progress-clock helper (PR2), `rerank()` decay (PR3), `compact` prune (PR4).
-- `src/knowledge/config.js` + `src/knowledge/setup.js` — `decay_base_stability` (PR3); `decay_months` → `decay_prune_below` (PR4).
+- `src/knowledge/config.js` + `src/knowledge/setup.js` — `decay_base_stability` (PR3); `decay_months` → `decay_prune_below` (PR4); `decay_weights` (PR5).
 - **No schema change** (reinforcement excluded) — `store.js` untouched.
 - Rebuild the bundle (`npm run build`) and extend `tests/scripts/test-knowledge-*` per PR.
 - Cross-refs: **#28** (rerank surface — PR3), **#22** (reindex backfill — PR1).
