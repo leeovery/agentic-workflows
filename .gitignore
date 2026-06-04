@@ -3,6 +3,7 @@
 .vscode/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+.claude/worktrees/
 .tick/cache.db
 .tick/lock
 node_modules/
