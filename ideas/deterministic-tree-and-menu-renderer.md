@@ -103,6 +103,19 @@ Low for data integrity (purely cosmetic — nothing corrupts), **medium for UX a
 
 ---
 
+## Update — PR #344 (epic-dashboard stage grouping)
+
+After this idea was written, PR #344 restructured `epic-display-and-menu.md`. Relevant to this proposal:
+
+- **The motivating bug persists.** The summary is still hard-wrapped at 65 chars; the gutter grew 7 → 9 (the map moved under a stage divider), so overflow is now at **74 cols**, not 72. The restructure did not touch the wrap budget. The immediate sub-fix (subtract gutter from budget) is still outstanding — and now even more clearly worth doing independently of the renderer.
+- **Several flagged drifts were hand-fixed** — dangling `└─` build sub-rows now nest properly; first-row `┌─` dropped for the discovery map (tree hangs off its header via `├─`); sub-headers uppercased. This is the survey's thesis demonstrated: per-file, by hand, correct only when watched.
+- **A composition layer appeared** — three `── DISCOVERY/DEFINITION/DELIVERY ──` stage dividers (Family 1) now wrap the trees (Family 3). The dashboard is now a multi-primitive composite — see **3B-composite** below.
+- **A new genuine tree** — the build-phase render gained a real `{child_gutter}`/`{child_branch}`, so `epic-display-and-menu.md` now holds two continuous-gutter trees sharing one mechanism (see **3B-v**). Best beachhead for the renderer.
+
+The survey below has been updated to reflect this state.
+
+---
+
 # Render-Shape Survey
 
 The section above is the *why*. This is the **survey**: every structured-ASCII shape Claude is currently instructed to hand-draw across the skills, grouped into families, with the distinct variants, observed drift, and candidate canonical forms. These canonical forms are *candidates for discussion*, not decisions. Schema design stays out of scope (per the note above) — this is what a schema would have to absorb.
@@ -121,11 +134,12 @@ Volume note: section headers ≈176 occurrences, dotted gates ≈326 (paired), b
 Near-perfectly consistent already. Pure presentation with trivial input (usually one string). Highest reasoning-tax-per-character to draw by hand (padding/centering/dash-counting), lowest input cost to feed a renderer. Strong, low-risk first targets.
 
 ### 1A. Section header — `── Label ──`
-Padded to ~50 cols total. ~176 occurrences across ~54 files. Title Case labels.
+Padded to ~50 cols total (PR #344's epic-dashboard stage dividers fix this at **49 chars** — `── DISCOVERY ──`, `── DEFINITION ──`, `── DELIVERY ──` — and use it as top-level structural grouping, not just a section break). ~176 occurrences across ~54 files. Title Case labels (the stage dividers are UPPERCASE).
 ```
 ── Resume Detection ─────────────────────────────
+── DISCOVERY ────────────────────────────────────
 ```
-- **Drift:** total width not actually enforced — varies with label length because it's hand-counted. Same class of bug as the tree wrap: a width that's "supposed to be" fixed but is eyeballed.
+- **Drift:** total width not actually enforced — varies with label length because it's hand-counted (the 49 vs ~50 split is itself an instance). Same class of bug as the tree wrap: a width that's "supposed to be" fixed but is eyeballed.
 - **Candidate canonical:** `signpost --label "Resume Detection" [--width 50]` → dashes computed to fill.
 
 ### 1B. Dotted gate — `· · · · · · · · · · · ·`
@@ -221,22 +235,22 @@ Continuing "Auth Flow" — planning.
 
 ## Family 3 — Lists vs Trees  (the important distinction)
 
-Biggest finding: **most "trees" are not trees.** They're flat lists with a single `└─` sub-row. True tree logic (continuous `│` gutter across siblings and wrapped sub-lines, last-sibling math) is needed by only **four** renders. Separating these is the key scoping decision.
+Biggest finding: **most "trees" are not trees.** They're flat lists with a single `└─` sub-row. True tree logic (continuous `│` gutter across siblings and wrapped sub-lines, last-sibling math) is needed by **five** renders (one of which, the epic build-phase tree, graduated out of the flat-list bucket in PR #344 when its sub-rows were given a proper `│/├─/└─` gutter). Separating these is the key scoping decision.
 
 ### 3A. Flat list + single sub-row  — *NOT a tree*  [script-backed]
-`N. Name` then one `└─ detail` line. No `│`, no sibling continuity. Used by: `select-*.md` (all 5 types), `active-work.md`, `view-completed.md`, planning `define-tasks.md`, legacy-split themes, dependency lists (`resolve-dependencies.md`, `check-dependencies.md`), spec overview (`display-*.md`).
+`N. Name` then one `└─ detail` line. No `│`, no sibling continuity. Used by: `select-*.md` (all 5 types), `active-work.md`, `view-completed.md`, planning `define-tasks.md`, legacy-split themes, dependency lists (`resolve-dependencies.md`, `check-dependencies.md`), spec overview (`display-*.md`). (The epic dashboard's build-phase render used to live here too — PR #344 promoted it to a genuine tree, now 3B-v.)
 ```
 1. Auth Flow
    └─ Planning, in-progress
 ```
-- **Drift:** indent is 2-space in dependency renders, 3-space elsewhere; multiple sub-rows sometimes all use `└─` where `├─`/`└─` is correct.
+- **Drift:** indent is 2-space in dependency renders, 3-space elsewhere; multiple sub-rows sometimes all use `└─` where `├─`/`└─` is correct (exactly the dangling-`└─` defect #344 just hand-fixed in the epic dashboard — and which will recur elsewhere until a renderer owns it).
 - These don't need the tree renderer. A `list` form (item + optional sub-rows) covers them. Cheap.
 
 ### 3B. Genuine trees — continuous gutter  [script-backed]
-Four renders. All share `┌─ ├─ └─` branch grammar, a leading status glyph, and a `│`+indent gutter that must stay continuous. Where the renderer earns its keep.
+Five renders. All share `├─ └─` branch grammar (some still use `┌─`; see below), a leading status glyph, and a `│`+indent gutter that must stay continuous. Where the renderer earns its keep.
 
-**3B-i. Discovery map** — `workflow-continue-epic/.../epic-display-and-menu.md`, `workflow-discovery/.../session-loop.md`
-Tier glyph (`→ ◐ ✓ ○ ⊙ ⊘`) + name + `[lifecycle]`, with **wrapped summary + provenance sub-lines** under each row hung off the `│` gutter. **The render with the motivating bug** (summary hard-wrapped at 65 chars + 7-char gutter = 72 cols → terminal soft-wrap orphans the gutter).
+**3B-i. Discovery map** — `workflow-continue-epic/.../epic-display-and-menu.md` (now under the `── DISCOVERY ──` stage, header `RESEARCH & DISCUSSION`), `workflow-discovery/.../session-loop.md`
+Tier glyph (`→ ◐ ✓ ○ ⊙ ⊘`) + name + `[lifecycle]`, with **wrapped summary + provenance sub-lines** under each row hung off the `│` gutter. **The render with the motivating bug, still unfixed as of PR #344** (summary still hard-wrapped at 65 chars; gutter grew from 7 → **9 chars** when the map moved under the stage divider, so 65 + 9 = **74 cols** → terminal soft-wrap still orphans the gutter). First row now `├─` (was `┌─`) so the list hangs off the header.
 ```
   ├─ ◐ Ai Content Engine [researching]
   │      AI imagery (enhancement-only v1), description
@@ -278,15 +292,30 @@ Bullet `•` (not a status glyph) + `(type)`, **wrapped summary max 3 lines + el
          single item gets no connector glyph
 ```
 
+**3B-v. Epic build-phase tree** — `workflow-continue-epic/.../epic-display-and-menu.md` (under the `── DEFINITION ──` and `── DELIVERY ──` stages)
+Uppercase phase sub-header (`SPECIFICATION`, `PLANNING`, `IMPLEMENTATION`, `REVIEW`) + count summary, with items branching off it (`├─`/`└─`), and child sub-rows (spec sources, implementation progress) nested via a formal `{child_gutter}` + `{child_branch}`. Graduated from flat-list (3A) in PR #344. **Shares the exact gutter machinery as 3B-i in the same file** — the strongest single argument for a shared tree renderer.
+```
+  SPECIFICATION (2 completed)
+  ├─ ✓ User Authentication
+  │  ├─ ← Auth Flows [incorporated]
+  │  └─ ← Session Mgmt [pending]
+  └─ ○ Admin Panel
+     └─ Phase 2, 4 task(s) completed
+```
+- `{child_gutter}` — non-last item: `2sp │ 2sp`; last item: `5sp`. `{child_branch}`: `├─` non-final, `└─` final/only. Items hang off the sub-header (no `┌─`).
+
 **Structural variation the tree renderer must absorb (from 3B):**
 - Glyph source: tier set / state set / bullet / none — pluggable leading symbol.
-- Special first row `┌─` (discovery, discussion, inbox) vs none.
-- Wrapped multi-line bodies (discovery, inbox) vs single-line nodes (discussion, dependency).
-- Nesting: 1 level (discovery, inbox) vs 2 levels (discussion, dependency).
-- Gutter width drift: discovery uses `│`+6 spaces; discussion uses `│`+2. **Normalise.**
+- **Hang-off-header vs free-standing first row:** discovery map (3B-i) and build trees (3B-v) now use `├─`/sole `└─` to tick up into a header label — **never `┌─`** (normalised in #344). Discussion map (3B-ii) and inbox (3B-iv) still open with `┌─`. The renderer should make "hang off header" the default; `┌─` the opt-in.
+- Wrapped multi-line bodies (discovery, inbox) vs single-line nodes (discussion, dependency, build).
+- Nesting: 1 level (discovery, inbox) vs 2 levels (discussion, dependency, build).
+- **Gutter width drift (now across three trees):** discovery body gutter `2sp │ 6sp` (9); discussion child `│`+2; build child `2sp │ 2sp`. Same concept, three widths. **Normalise.**
 - Single-item / last-sibling / last-line edge cases.
 - Marker rows that aren't nodes (`↑ Elevated`, source `←`, promotion `→`).
-- Body wrap budget **must subtract the gutter** — the bug. Width is intentionally narrow; renderer enforces, never widens or defers to terminal.
+- Body wrap budget **must subtract the gutter** — the bug, still live after #344 (65 + 9 = 74). Width is intentionally narrow; renderer enforces, never widens or defers to terminal.
+
+### 3B-composite. The epic dashboard is now a multi-primitive render
+PR #344 restructured `epic-display-and-menu.md` so the whole dashboard is **Family 1 signposts wrapping Family 3 trees**: three `── DISCOVERY/DEFINITION/DELIVERY ──` dividers (49-char section headers, see 1A), each followed by a header/sub-header and a tree. One render composes a box cap (`●──●` title), three dividers, two genuine trees, and several sub-headers. This is the clearest real example that the renderer is **composed primitives assembled into a dashboard**, not one schema per shape — and the obvious migration beachhead (one high-value file, two trees + three dividers, already hand-normalised to copy byte-for-byte).
 
 ### 3C. Documentation trees — `├──` 3-dash filesystem diagrams  [static, OUT OF SCOPE]
 `output-formats/{tick,linear,local-markdown}/about.md`. Static docs illustrating directory/issue layout, not per-session data-driven renders. Different glyph (`├──` 3-dash + 4-space). **Exclude from the renderer** — prose, not output.
