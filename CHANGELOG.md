@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.23] - 2026-06-04
+
+- Add a terminal `handled` (`⊙`) discovery-map tier for research umbrellas that have fanned out into differently-named discussions — they stay on the map as a historical anchor but stop prompting a next action and no longer count against convergence
+- Wire `handled` through discovery scripts: lifecycle resolution (stored marker wins over name-matching), tier ranking (`→ ◐ ✓ ○ ⊙ ⊘`), map summary counts, next-action, and sequencing exclusion (treated like `cancelled`)
+- Add "mark handled" / "reactivate" map operations with their own validation gates, STOP-confirm flow, and per-item commits
+- Gate analysis-surfaced topics behind a per-topic approval flow (new `analysis-approval-gate.md`): `research-analysis` and `discovery-gap-analysis` now stage candidates rather than writing the map directly, with review/approve/skip/auto/comment choices and a decline-vs-defer cache-stamp distinction
+- Add a fan-out parent-handled offer in the approval gate so an approved research-analysis candidate can mark its parent umbrella handled
+- Add migration 043: marks legacy migration-seeded completed umbrellas `handled` and re-stamps valid analysis caches for past-discovery epics to stop spurious forced re-runs
+- Capture an idea for a deterministic tree/menu renderer, motivated by the discovery-map gutter-vs-wrap-budget bug
+
 ## [0.4.22] - 2026-06-03
 
 - Add `git_safe` wrapper to the release script that survives contended or stale git lock files — waits out the lock holder, retries silently, and clears a provably stale `.lock` as a last resort while still surfacing genuine git errors
