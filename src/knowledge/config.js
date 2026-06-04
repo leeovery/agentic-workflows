@@ -20,11 +20,15 @@ const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
 // Default values for all config fields.
 const DEFAULTS = {
   similarity_threshold: 0.8,
-  decay_months: 6,
   // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S).
   // S0 = "work units completed after a chunk's unit before it drops to 90%
   // relevance"; half-life ≈ 6.6 × S0 units. Higher = slower decay.
   decay_base_stability: 3,
+  // Storage backstop: `compact` prunes a unit's non-spec chunks once their
+  // retrievability R falls below this floor (i.e. already unreachable in
+  // ranking). false/null disables pruning. Replaces the old wall-clock
+  // decay_months — decay is progress-based now.
+  decay_prune_below: 0.05,
 };
 
 // Known providers that have implementations in this codebase.

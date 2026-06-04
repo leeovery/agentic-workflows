@@ -1216,25 +1216,31 @@ set_completed_with_date() {
   node "$MANIFEST_JS" set "$wu" completed_at "$date" >/dev/null 2>&1
 }
 
-# Helper: write config with custom decay_months.
-write_config_with_decay() {
-  local decay="$1"
+# Helper: write config with a custom prune floor (+ optional stability).
+# Decay is progress-based now: compact prunes a unit once its retrievability
+# R = 0.9^(progressElapsed/S0) drops below decay_prune_below.
+write_config_with_prune() {
+  local prune="$1" stability="${2:-3}"
   mkdir -p "$TEST_ROOT/.workflows/.knowledge"
   cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<CONF
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": $decay } }
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": $prune, "decay_base_stability": $stability } }
 CONF
 }
 
-# --- Test 49: Compact removes expired non-spec chunks ---
-echo "Test 49: Compact removes expired non-spec chunks"
+# --- Test 49: Compact prunes a buried unit's non-spec chunks; specs preserved ---
+# prune_below 0.95 + S0 3 → prune when progressElapsed >= 2 (R(2,3)=0.931 < 0.95).
+echo "Test 49: Compact prunes buried non-spec chunks"
 setup_project
-create_work_unit "old-project" "feature" "Old"
-write_config_with_decay 6
-create_discussion_file "old-project" "old-project"
-create_spec_file "old-project" "old-project"
-run_kb index .workflows/old-project/discussion/old-project.md >/dev/null 2>&1
-run_kb index .workflows/old-project/specification/old-project/specification.md >/dev/null 2>&1
-set_completed_with_date "old-project" "2024-01-01"
+write_config_with_prune 0.95 3
+create_work_unit "buried" "feature" "Buried"
+create_discussion_file "buried" "buried"
+create_spec_file "buried" "buried"
+run_kb index .workflows/buried/discussion/buried.md >/dev/null 2>&1
+run_kb index .workflows/buried/specification/buried/specification.md >/dev/null 2>&1
+set_completed_with_date "buried" "2024-01-01"
+# Two later-completed units advance the progress clock past 'buried' (pe=2).
+create_work_unit "newer1" "feature" "N1"; set_completed_with_date "newer1" "2024-06-01"
+create_work_unit "newer2" "feature" "N2"; set_completed_with_date "newer2" "2024-12-01"
 output=$(run_kb compact 2>&1)
 assert_eq "reports compacted chunks" "true" "$(echo "$output" | grep -q 'Compacted:' && echo true || echo false)"
 assert_eq "mentions discussion phase" "true" "$(echo "$output" | grep -q '• .*discussion' && echo true || echo false)"
@@ -1247,40 +1253,49 @@ assert_eq "discussion chunks removed" "false" "$(echo "$query_output2" | grep -q
 teardown_project
 
 # --- Test 50: Compact preserves in-progress work unit chunks ---
+# In-progress = no completed_at = absent from clock = progressElapsed 0 = R 1.
 echo "Test 50: Compact preserves in-progress chunks"
 setup_project
+write_config_with_prune 0.95 3
 create_work_unit "active" "feature" "Active"
-write_config_with_decay 6
 create_discussion_file "active" "active"
 run_kb index .workflows/active/discussion/active.md >/dev/null 2>&1
-# Work unit is in-progress (default) — compact should not touch it.
+# 'active' stays in-progress; later completed units must not affect it.
+create_work_unit "c1" "feature" "C1"; set_completed_with_date "c1" "2024-06-01"
+create_work_unit "c2" "feature" "C2"; set_completed_with_date "c2" "2024-12-01"
 output=$(run_kb compact 2>&1)
 assert_eq "no output (nothing to compact)" "" "$output"
 query_output=$(run_kb query "topic" --limit 10 2>&1)
 assert_eq "chunks preserved" "true" "$(echo "$query_output" | grep -q 'active' && echo true || echo false)"
 teardown_project
 
-# --- Test 51: Compact preserves recently completed chunks ---
-echo "Test 51: Compact preserves recent chunks"
+# --- Test 51: Compact preserves the frontier (newest completed) unit ---
+# Newest completed unit has no successors → progressElapsed 0 → R 1 → never pruned.
+echo "Test 51: Compact preserves frontier chunks"
 setup_project
-create_work_unit "recent" "feature" "Recent"
-write_config_with_decay 6
-create_discussion_file "recent" "recent"
-run_kb index .workflows/recent/discussion/recent.md >/dev/null 2>&1
-# Completed yesterday — within TTL.
-set_completed_with_date "recent" "$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d '1 day ago' +%Y-%m-%d)"
+write_config_with_prune 0.95 3
+create_work_unit "frontier" "feature" "Frontier"
+create_discussion_file "frontier" "frontier"
+run_kb index .workflows/frontier/discussion/frontier.md >/dev/null 2>&1
+set_completed_with_date "frontier" "2024-12-01"
+# An older completed unit (no chunks) — 'frontier' is still the newest.
+create_work_unit "older1" "feature" "O1"; set_completed_with_date "older1" "2024-01-01"
 output=$(run_kb compact 2>&1)
-assert_eq "no output (within TTL)" "" "$output"
+assert_eq "no output (frontier kept)" "" "$output"
+query_output=$(run_kb query "topic" --limit 10 2>&1)
+assert_eq "frontier chunks preserved" "true" "$(echo "$query_output" | grep -q 'frontier' && echo true || echo false)"
 teardown_project
 
 # --- Test 52: Dry-run shows plan without removing ---
 echo "Test 52: Dry-run shows plan without removing"
 setup_project
+write_config_with_prune 0.95 3
 create_work_unit "old2" "feature" "Old2"
-write_config_with_decay 6
 create_discussion_file "old2" "old2"
 run_kb index .workflows/old2/discussion/old2.md >/dev/null 2>&1
 set_completed_with_date "old2" "2024-01-01"
+create_work_unit "n1" "feature" "n1"; set_completed_with_date "n1" "2024-06-01"
+create_work_unit "n2" "feature" "n2"; set_completed_with_date "n2" "2024-12-01"
 output=$(run_kb compact --dry-run 2>&1)
 assert_eq "shows dry-run prefix" "true" "$(echo "$output" | grep -q '\[dry-run\]' && echo true || echo false)"
 # Chunks should still exist.
@@ -1288,31 +1303,35 @@ query_output=$(run_kb query "topic" --limit 10 2>&1)
 assert_eq "chunks not removed in dry-run" "true" "$(echo "$query_output" | grep -q 'old2' && echo true || echo false)"
 teardown_project
 
-# --- Test 53: decay_months: false disables compaction ---
-echo "Test 53: decay_months false disables compaction"
+# --- Test 53: decay_prune_below: false disables compaction ---
+echo "Test 53: decay_prune_below false disables compaction"
 setup_project
 create_work_unit "disabled" "feature" "Disabled"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": false } }
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": false } }
 CONF
 create_discussion_file "disabled" "disabled"
 run_kb index .workflows/disabled/discussion/disabled.md >/dev/null 2>&1
 set_completed_with_date "disabled" "2020-01-01"
+create_work_unit "z1" "feature" "z1"; set_completed_with_date "z1" "2024-06-01"
+create_work_unit "z2" "feature" "z2"; set_completed_with_date "z2" "2024-12-01"
 output=$(run_kb compact 2>&1)
 assert_eq "shows disabled" "true" "$(echo "$output" | grep -q 'disabled' && echo true || echo false)"
 teardown_project
 
-# --- Test 54: decay_months: 0 expires immediately ---
-echo "Test 54: decay_months 0 expires immediately"
+# --- Test 54: decay_prune_below: 0 never prunes (R is always > 0) ---
+echo "Test 54: decay_prune_below 0 never prunes"
 setup_project
-create_work_unit "immediate" "feature" "Immediate"
-write_config_with_decay 0
-create_discussion_file "immediate" "immediate"
-run_kb index .workflows/immediate/discussion/immediate.md >/dev/null 2>&1
-set_completed_with_date "immediate" "$(date +%Y-%m-%d)"
+write_config_with_prune 0 3
+create_work_unit "kept" "feature" "Kept"
+create_discussion_file "kept" "kept"
+run_kb index .workflows/kept/discussion/kept.md >/dev/null 2>&1
+set_completed_with_date "kept" "2024-01-01"
+create_work_unit "k1" "feature" "k1"; set_completed_with_date "k1" "2024-06-01"
+create_work_unit "k2" "feature" "k2"; set_completed_with_date "k2" "2024-12-01"
 output=$(run_kb compact 2>&1)
-assert_eq "removes with decay 0" "true" "$(echo "$output" | grep -q 'Compacted:' && echo true || echo false)"
+assert_eq "no output (threshold 0 never prunes)" "" "$output"
 teardown_project
 
 # ============================================================================
@@ -1605,52 +1624,52 @@ teardown_project
 echo ""
 echo "=== Third-Pass Review Fix Tests ==="
 
-# --- Test 73: Invalid decay_months rejected ---
-echo "Test 73: Invalid decay_months rejected"
+# --- Test 73: Negative decay_prune_below rejected ---
+echo "Test 73: Negative decay_prune_below rejected"
 setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": -6 } }
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": -0.5 } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb compact 2>&1 || true)
 run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "negative decay exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
-assert_eq "mentions invalid decay" "true" "$(echo "$output" | grep -q 'Invalid decay_months' && echo true || echo false)"
+assert_eq "negative prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "mentions invalid prune" "true" "$(echo "$output" | grep -q 'Invalid decay_prune_below' && echo true || echo false)"
 teardown_project
 
-# --- Test 74: String decay_months rejected ---
-echo "Test 74: String decay_months rejected"
+# --- Test 74: String decay_prune_below rejected ---
+echo "Test 74: String decay_prune_below rejected"
 setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": "6" } }
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": "0.5" } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb compact 2>&1 || true)
 run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "string decay exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "string prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
-# --- Test 75: Non-integer decay_months rejected ---
-echo "Test 75: Non-integer decay_months rejected"
+# --- Test 75: Out-of-range (>1) decay_prune_below rejected ---
+echo "Test 75: Out-of-range decay_prune_below rejected"
 setup_project
 create_work_unit "alpha" "feature" "Alpha"
 mkdir -p "$TEST_ROOT/.workflows/.knowledge"
 cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
-{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_months": 6.5 } }
+{ "knowledge": { "provider": "stub", "dimensions": 128, "decay_prune_below": 1.5 } }
 CONF
 create_discussion_file "alpha" "alpha"
 run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
 exit_code=0
 run_kb compact >/dev/null 2>&1 || exit_code=$?
-assert_eq "non-integer decay exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "out-of-range prune exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
 # --- Test 76: Pending queue preserved across re-index (no lost update) ---

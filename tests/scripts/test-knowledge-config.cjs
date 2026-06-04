@@ -95,7 +95,7 @@ describe('loadConfig', () => {
       projectPath: path.join(tmpDir, 'proj.json'),
     });
     assert.strictEqual(cfg.similarity_threshold, DEFAULTS.similarity_threshold);
-    assert.strictEqual(cfg.decay_months, DEFAULTS.decay_months);
+    assert.strictEqual(cfg.decay_prune_below, DEFAULTS.decay_prune_below);
     assert.strictEqual(cfg.provider, undefined);
     assert.strictEqual(cfg._api_key, null);
   });
@@ -113,24 +113,24 @@ describe('loadConfig', () => {
 
   it('reads project config when system config is absent', () => {
     const projPath = path.join(tmpDir, 'proj.json');
-    writeJSON(projPath, { knowledge: { provider: 'stub', decay_months: 12 } });
+    writeJSON(projPath, { knowledge: { provider: 'stub', decay_prune_below: 0.2 } });
     const cfg = loadConfig({
       systemPath: path.join(tmpDir, 'sys.json'),
       projectPath: projPath,
     });
     assert.strictEqual(cfg.provider, 'stub');
-    assert.strictEqual(cfg.decay_months, 12);
+    assert.strictEqual(cfg.decay_prune_below, 0.2);
   });
 
   it('merges system and project configs with project taking precedence', () => {
     const sysPath = path.join(tmpDir, 'sys.json');
     const projPath = path.join(tmpDir, 'proj.json');
-    writeJSON(sysPath, { knowledge: { provider: 'stub', dimensions: 128, decay_months: 6 } });
+    writeJSON(sysPath, { knowledge: { provider: 'stub', dimensions: 128, decay_prune_below: 0.2 } });
     writeJSON(projPath, { knowledge: { dimensions: 256 } });
     const cfg = loadConfig({ systemPath: sysPath, projectPath: projPath });
     assert.strictEqual(cfg.provider, 'stub');
     assert.strictEqual(cfg.dimensions, 256); // project overrides
-    assert.strictEqual(cfg.decay_months, 6); // system falls through
+    assert.strictEqual(cfg.decay_prune_below, 0.2); // system falls through
   });
 
   it('resolves api key from OPENAI_API_KEY when provider is openai', () => {
@@ -553,7 +553,7 @@ describe('buildSystemConfigOpenAI', () => {
     assert.strictEqual(cfg.knowledge.dimensions, 1536);
     assert.strictEqual(cfg.knowledge.api_key_env, undefined);
     assert.strictEqual(cfg.knowledge.similarity_threshold, DEFAULTS.similarity_threshold);
-    assert.strictEqual(cfg.knowledge.decay_months, DEFAULTS.decay_months);
+    assert.strictEqual(cfg.knowledge.decay_prune_below, DEFAULTS.decay_prune_below);
   });
 });
 
@@ -565,7 +565,7 @@ describe('buildSystemConfigStub', () => {
     assert.strictEqual(cfg.knowledge.dimensions, undefined);
     assert.strictEqual(cfg.knowledge.api_key_env, undefined);
     assert.strictEqual(cfg.knowledge.similarity_threshold, DEFAULTS.similarity_threshold);
-    assert.strictEqual(cfg.knowledge.decay_months, DEFAULTS.decay_months);
+    assert.strictEqual(cfg.knowledge.decay_prune_below, DEFAULTS.decay_prune_below);
   });
 
   it('round-trips through loadConfig as keyword-only (no provider)', () => {

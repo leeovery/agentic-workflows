@@ -207,7 +207,7 @@ function buildSystemConfig(fields) {
   return {
     knowledge: Object.assign({}, fields, {
       similarity_threshold: config.DEFAULTS.similarity_threshold,
-      decay_months: config.DEFAULTS.decay_months,
+      decay_prune_below: config.DEFAULTS.decay_prune_below,
     }),
   };
 }
@@ -224,7 +224,7 @@ function buildSystemConfigStub() {
   return {
     knowledge: {
       similarity_threshold: config.DEFAULTS.similarity_threshold,
-      decay_months: config.DEFAULTS.decay_months,
+      decay_prune_below: config.DEFAULTS.decay_prune_below,
     },
   };
 }

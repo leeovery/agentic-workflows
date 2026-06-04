@@ -2079,32 +2079,6 @@ function formatRemoveDesc(options) {
 // Compact command
 // ---------------------------------------------------------------------------
 
-/**
- * Get work unit status and completed_at via manifest CLI.
- * Returns { status, completed_at } or null on failure.
- */
-function getWorkUnitMeta(workUnit) {
-  let status;
-  try {
-    status = runManifest(['get', workUnit, 'status']).trim();
-  } catch (err) {
-    reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.status)`, err);
-    return null;
-  }
-  // Empty stdout = work unit missing in registry. Expected for orphans
-  // referenced by stale chunks.
-  if (status === '') return null;
-
-  let completedAt = null;
-  try {
-    const raw = runManifest(['get', workUnit, 'completed_at']).trim();
-    if (raw !== '' && raw !== 'null') completedAt = raw;
-  } catch (err) {
-    reportUnexpectedManifestError(`getWorkUnitMeta:get(${workUnit}.completed_at)`, err);
-  }
-  return { status, completed_at: completedAt };
-}
-
 async function cmdCompact(_args, options, cfg) {
   // Drain any previously-failed removals first.
   await processPendingRemovals();
@@ -2112,35 +2086,40 @@ async function cmdCompact(_args, options, cfg) {
   const sp = storePath();
   const lp = lockFilePath();
 
-  // Check decay config. Accept: false or null (both disable), or a
-  // non-negative integer. Reject strings, negatives, NaN, non-integers
-  // — these would silently produce either no-op (NaN cutoff) or mass
-  // deletion (negative cutoff).
-  const rawDecay = cfg && cfg.decay_months !== undefined ? cfg.decay_months : config.DEFAULTS.decay_months;
-  if (rawDecay === false || rawDecay === null) {
+  // Decay is progress-based now (idea #33). `compact` is a pure storage
+  // backstop: it prunes a unit's non-spec chunks only once their retrievability
+  // R has fallen below decay_prune_below — by then they're already unreachable
+  // in ranking, so removal is hygiene, not a relevance call. false/null
+  // disables pruning entirely; relevance still decays live in query ranking.
+  const rawPrune = cfg && cfg.decay_prune_below !== undefined ? cfg.decay_prune_below : config.DEFAULTS.decay_prune_below;
+  if (rawPrune === false || rawPrune === null) {
     process.stdout.write('Compaction disabled\n');
     return;
   }
-  if (!Number.isInteger(rawDecay) || rawDecay < 0) {
+  if (typeof rawPrune !== 'number' || !Number.isFinite(rawPrune) || rawPrune < 0 || rawPrune > 1) {
     process.stderr.write(
-      `Invalid decay_months: ${JSON.stringify(rawDecay)}. Expected false or a non-negative integer.\n`
+      `Invalid decay_prune_below: ${JSON.stringify(rawPrune)}. Expected false or a number in [0, 1].\n`
     );
     process.exit(1);
   }
-  const decayMonths = rawDecay;
+  const pruneBelow = rawPrune;
+  const stability =
+    cfg && Number.isFinite(cfg.decay_base_stability)
+      ? cfg.decay_base_stability
+      : config.DEFAULTS.decay_base_stability;
 
   if (!fs.existsSync(sp)) return;
 
   const db = await store.loadStore(sp);
 
-  // Calculate cutoff date.
-  const now = new Date();
-  const cutoffDate = new Date(now);
-  cutoffDate.setMonth(cutoffDate.getMonth() - decayMonths);
-
   // Discover unique work units in the store by searching for all docs.
   const allResults = await store.searchAllFulltext(db);
   if (allResults.length === 0) return;
+
+  // Progress clock: how far the project has moved past each unit. A unit
+  // absent from the clock (in-progress / undateable) has progressElapsed 0 →
+  // R = 1 → never pruned.
+  const progressClock = getProgressClock();
 
   // Group by work unit.
   const byWorkUnit = {};
@@ -2149,28 +2128,17 @@ async function cmdCompact(_args, options, cfg) {
     byWorkUnit[r.work_unit].push(r);
   }
 
-  // Evaluate each work unit.
+  // Evaluate each work unit against the prune floor.
   const removals = []; // { workUnit, count, phases: Set }
   const toRemoveIds = [];
 
   for (const [wu, chunks] of Object.entries(byWorkUnit)) {
-    const meta = getWorkUnitMeta(wu);
-    if (!meta) continue; // Orphaned — skip.
-    if (meta.status !== 'completed') continue;
-    if (!meta.completed_at) continue;
+    const progressElapsed = progressClock.get(wu) || 0;
+    if (progressElapsed === 0) continue; // frontier / in-progress — keep
+    const R = retrievability(progressElapsed, stability);
+    if (R >= pruneBelow) continue; // still reachable in ranking — keep
 
-    // Parse completed_at as local midnight to match `now` (also local).
-    // Using `new Date("YYYY-MM-DD")` parses as UTC, which can shift the
-    // date by ±1 day in non-UTC timezones.
-    const completedDate = parseLocalDate(meta.completed_at);
-    if (!completedDate || isNaN(completedDate.getTime())) continue;
-
-    // Check if expired: completed_at + decay_months <= now.
-    const expiryDate = new Date(completedDate);
-    expiryDate.setMonth(expiryDate.getMonth() + decayMonths);
-    if (expiryDate > now) continue;
-
-    // Expired — collect non-spec chunks.
+    // Buried below the floor — prune non-spec chunks only (specs never decay).
     const candidates = chunks.filter((c) => c.phase !== 'specification');
     if (candidates.length === 0) continue;
 
@@ -2188,7 +2156,7 @@ async function cmdCompact(_args, options, cfg) {
 
   if (options.dryRun) {
     const out = [];
-    out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (completed > ${decayMonths} months ago)`);
+    out.push(`[dry-run] Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruneBelow})`);
     for (const r of removals) {
       out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
     }
@@ -2213,7 +2181,7 @@ async function cmdCompact(_args, options, cfg) {
   });
 
   const out = [];
-  out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (completed > ${decayMonths} months ago)`);
+  out.push(`Compacted: removed ${totalChunks} chunks from ${removals.length} work units (retrievability < ${pruneBelow})`);
   for (const r of removals) {
     out.push(`  • ${r.workUnit}: ${r.count} chunks (${Array.from(r.phases).join(', ')})`);
   }
