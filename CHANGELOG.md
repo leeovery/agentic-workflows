@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.24] - 2026-06-04
+
+- Group the epic dashboard phase breakdown under three stage dividers — DISCOVERY (research & discussion map), DEFINITION (specification, planning), DELIVERY (implementation, review) — across both the discovery-map and flat-phase render branches, with uppercase sub-headers and revised tree-gutter grammar
+- Document the three stages (the "three D's") in the README and CLAUDE.md
+- Log idea #33: knowledge-base chunks stamp `Date.now()` at index time instead of the source document's date, breaking provenance/recency after bulk reindex
+- Gitignore the `.claude/worktrees/` directory
+
 ## [0.4.23] - 2026-06-04
 
 - Add a terminal `handled` (`⊙`) discovery-map tier for research umbrellas that have fanned out into differently-named discussions — they stay on the map as a historical anchor but stop prompting a next action and no longer count against convergence
