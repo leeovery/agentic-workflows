@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-05
+
+- Replace the knowledge base's wall-clock decay with a progress-based model: chunks now down-rank by retrievability `R = 0.9^(progressElapsed/S)`, where `progressElapsed` is the significance-weighted work completed after a chunk's work unit — so dormant projects keep their context sharp
+- Stamp indexed chunks with the source document's date (mtime) instead of index time, fixing corrupted provenance and recency on bulk/fresh indexing (install, reindex, migration)
+- Add significance weighting to the progress clock by work type (quick-fix 0.25, bugfix 0.5, feature/epic-per-topic 1.0, cross-cutting 0)
+- Rework `rerank()` to multiply base relevance by `R` (specs exempt, never decay) and drop the former index-time recency boost
+- Convert `compact` into a storage backstop that prunes only chunks buried below `decay_prune_below`, replacing the `decay_months` TTL across config and setup
+- Add `decay_base_stability`, `decay_prune_below`, and `decay_weights` config fields; remove `decay_months` and the orphaned `getWorkUnitMeta`
+- Add progress-clock and rerank unit test suites; migrate CLI/config tests to the new progress-based compaction behavior
+
 ## [0.4.24] - 2026-06-04
 
 - Group the epic dashboard phase breakdown under three stage dividers — DISCOVERY (research & discussion map), DEFINITION (specification, planning), DELIVERY (implementation, review) — across both the discovery-map and flat-phase render branches, with uppercase sub-headers and revised tree-gutter grammar
