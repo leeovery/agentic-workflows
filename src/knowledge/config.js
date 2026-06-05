@@ -21,6 +21,10 @@ const { OpenAICompatibleProvider } = require('./providers/openai-compatible');
 const DEFAULTS = {
   similarity_threshold: 0.8,
   decay_months: 6,
+  // Base stability S0 for the progress-decay curve R = 0.9^(progressElapsed/S).
+  // S0 = "work units completed after a chunk's unit before it drops to 90%
+  // relevance"; half-life ≈ 6.6 × S0 units. Higher = slower decay.
+  decay_base_stability: 3,
 };
 
 // Known providers that have implementations in this codebase.
