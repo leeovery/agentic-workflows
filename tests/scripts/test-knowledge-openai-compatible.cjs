@@ -283,7 +283,7 @@ describe('buildSystemConfigCompatible', () => {
     assert.strictEqual(cfg.knowledge.model, 'nomic-embed-text-v1.5');
     assert.strictEqual(cfg.knowledge.dimensions, 768);
     assert.ok(typeof cfg.knowledge.similarity_threshold === 'number');
-    assert.ok(typeof cfg.knowledge.decay_months === 'number');
+    assert.ok(typeof cfg.knowledge.decay_prune_below === 'number');
   });
 });
 
