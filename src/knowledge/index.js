@@ -1197,13 +1197,15 @@ function formatDate(ts) {
 // Progress clock (watermark) — idea #33
 //
 // A logical clock that advances on completed WORK, not wall-clock time. For a
-// given work unit, `progressElapsed` is how many work units completed strictly
-// after it. A dormant gap produces no completions, so the clock doesn't move —
-// the whole point: decay should track how far the project has moved past a
-// unit, not how many calendar months have passed. Consumers (rerank down-rank,
-// compact pruning) turn progressElapsed into a retrievability
-// R = 0.9^(progressElapsed / S). Derived entirely from manifest completed_at —
-// no stored state, no migration.
+// given work unit, `progressElapsed` is the summed significance weight of the
+// work units that completed strictly after it — where weight = topics ×
+// weight[work_type] (a quick-fix advances the clock less than a feature; a
+// multi-topic epic more). A dormant gap produces no completions, so the clock
+// doesn't move — the whole point: decay tracks how far the project has moved
+// past a unit, not how many calendar months have passed. Consumers (rerank
+// down-rank, compact pruning) turn progressElapsed into a retrievability
+// R = 0.9^(progressElapsed / S). Derived entirely from manifest completed_at +
+// work_type/topics — no stored state, no migration.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1221,41 +1223,86 @@ function parseCompletionTime(value) {
 }
 
 /**
+ * Topics a work unit spans. Only epics are multi-topic; every other work type
+ * is single-topic (topic === work unit). Counts distinct topic names across all
+ * of the epic's phase items; falls back to 1.
+ */
+function topicCount(unit) {
+  if (!unit || unit.work_type !== 'epic') return 1;
+  const phases = unit.phases || {};
+  const topics = new Set();
+  for (const phase of Object.keys(phases)) {
+    const items = phases[phase] && phases[phase].items;
+    if (items) for (const t of Object.keys(items)) topics.add(t);
+  }
+  return topics.size > 0 ? topics.size : 1;
+}
+
+/**
+ * Significance weight a completed unit contributes to the clock:
+ * topics × weight[work_type]. An unknown/absent work type (or empty weights
+ * map) falls back to a per-topic factor of 1.0 — so non-epics weigh 1 and an
+ * epic still weighs its topic count.
+ */
+function unitWeight(unit, weights) {
+  const w = weights && weights[unit.work_type];
+  const factor = typeof w === 'number' && w >= 0 ? w : 1.0;
+  return topicCount(unit) * factor;
+}
+
+/**
  * Build the progress clock from a set of completed work units.
  *
- * @param {Array<{name: string, completed_at?: string|number}>} units
- * @returns {Map<string, number>}  workUnitName → progressElapsed (count of
- *   units that completed strictly later, ordered by completed_at). Units with
- *   no usable completed_at are omitted; consumers treat an absent unit as
- *   progressElapsed 0 (frontier / not-yet-decaying). Ties (equal completed_at)
- *   do not count one another.
+ * @param {Array<{name, completed_at?, work_type?, phases?}>} units
+ * @param {Object<string, number>} [weights]  work_type → per-topic weight;
+ *   omitted/empty → per-topic factor 1.0 (non-epics weigh 1, epics weigh topics).
+ * @returns {Map<string, number>}  workUnitName → progressElapsed = summed
+ *   significance weight of units that completed strictly later (by completed_at).
+ *   Units with no usable completed_at are omitted; consumers treat an absent
+ *   unit as 0 (frontier / not-yet-decaying). Ties do not count one another.
  */
-function buildProgressClock(units) {
+function buildProgressClock(units, weights) {
   const dated = [];
   for (const u of Array.isArray(units) ? units : []) {
     if (!u || !u.name) continue;
     const t = parseCompletionTime(u.completed_at);
     if (t === null) continue;
-    dated.push({ name: u.name, t });
+    dated.push({ name: u.name, t, weight: unitWeight(u, weights || {}) });
   }
   const clock = new Map();
   for (const a of dated) {
-    let after = 0;
+    let elapsed = 0;
     for (const b of dated) {
-      if (b.t > a.t) after++;
+      if (b.t > a.t) elapsed += b.weight;
     }
-    clock.set(a.name, after);
+    clock.set(a.name, elapsed);
   }
   return clock;
 }
 
 /**
+ * Merge configured decay_weights over the defaults. The config merge replaces
+ * the whole object on override, so this refills any types the user omitted.
+ */
+function resolveDecayWeights(cfg) {
+  const base = (config.DEFAULTS && config.DEFAULTS.decay_weights) || {};
+  const override = cfg && cfg.decay_weights;
+  if (override && typeof override === 'object' && !Array.isArray(override)) {
+    return Object.assign({}, base, override);
+  }
+  return Object.assign({}, base);
+}
+
+/**
  * Gather completed work units from the manifest and build the progress clock.
  * Thin IO glue around buildProgressClock; degrades to an empty Map (→ no decay)
- * on any failure. `list` returns full manifests, so name/status/completed_at
- * all come from a single call.
+ * on any failure. `list` returns full manifests, so name/status/completed_at/
+ * work_type/phases all come from a single call.
+ *
+ * @param {Object<string, number>} [weights]  significance weights (resolved
+ *   from config by the caller). Omitted → plain unit-count.
  */
-function getProgressClock() {
+function getProgressClock(weights) {
   let units;
   try {
     units = JSON.parse(runManifest(['list']));
@@ -1266,8 +1313,13 @@ function getProgressClock() {
   if (!Array.isArray(units)) return new Map();
   const completed = units
     .filter((u) => u && u.name && u.status === 'completed')
-    .map((u) => ({ name: u.name, completed_at: u.completed_at }));
-  return buildProgressClock(completed);
+    .map((u) => ({
+      name: u.name,
+      completed_at: u.completed_at,
+      work_type: u.work_type,
+      phases: u.phases,
+    }));
+  return buildProgressClock(completed, weights);
 }
 
 const DECAY_BASE = 0.9;           // R when progressElapsed === stability (10% down)
@@ -1524,7 +1576,7 @@ async function cmdQuery(args, options, cfg, provider) {
   // Attach the progress-clock distance to each result, then re-rank: soft
   // down-rank by retrievability + user --boost directives. The clock is derived
   // once from the manifest; on failure it's empty → progressElapsed 0 → no decay.
-  const progressClock = getProgressClock();
+  const progressClock = getProgressClock(resolveDecayWeights(cfg));
   const stability =
     cfg && Number.isFinite(cfg.decay_base_stability)
       ? cfg.decay_base_stability
@@ -2119,7 +2171,7 @@ async function cmdCompact(_args, options, cfg) {
   // Progress clock: how far the project has moved past each unit. A unit
   // absent from the clock (in-progress / undateable) has progressElapsed 0 →
   // R = 1 → never pruned.
-  const progressClock = getProgressClock();
+  const progressClock = getProgressClock(resolveDecayWeights(cfg));
 
   // Group by work unit.
   const byWorkUnit = {};

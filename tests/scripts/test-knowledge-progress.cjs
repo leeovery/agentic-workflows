@@ -96,3 +96,71 @@ describe('buildProgressClock', () => {
     assert.strictEqual(clock.get('epoch'), 0);
   });
 });
+
+describe('buildProgressClock — significance weighting', () => {
+  const W = { 'quick-fix': 0.25, 'bugfix': 0.5, 'feature': 1.0, 'cross-cutting': 0, 'epic': 1.0 };
+  const epic = (name, date, topics) => ({
+    name,
+    completed_at: date,
+    work_type: 'epic',
+    phases: { discussion: { items: Object.fromEntries(Array.from({ length: topics }, (_, i) => ['t' + i, {}])) } },
+  });
+
+  it('weighs later quick-fixes at 0.25 each', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      { name: 'q1', completed_at: '2024-02-01', work_type: 'quick-fix' },
+      { name: 'q2', completed_at: '2024-03-01', work_type: 'quick-fix' },
+      { name: 'q3', completed_at: '2024-04-01', work_type: 'quick-fix' },
+      { name: 'q4', completed_at: '2024-05-01', work_type: 'quick-fix' },
+    ];
+    assert.strictEqual(buildProgressClock(units, W).get('target'), 1.0); // 4 × 0.25
+  });
+
+  it('weighs an epic by its topic count', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      epic('big', '2024-06-01', 4),
+    ];
+    assert.strictEqual(buildProgressClock(units, W).get('target'), 4); // 4 topics × 1.0
+  });
+
+  it('sums a mixed bag by significance', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      { name: 'q', completed_at: '2024-02-01', work_type: 'quick-fix' }, // 0.25
+      { name: 'b', completed_at: '2024-03-01', work_type: 'bugfix' },    // 0.5
+      { name: 'f', completed_at: '2024-04-01', work_type: 'feature' },   // 1.0
+      epic('e', '2024-05-01', 2),                                        // 2.0
+    ];
+    assert.ok(Math.abs(buildProgressClock(units, W).get('target') - 3.75) < 1e-9);
+  });
+
+  it('falls back to per-topic factor 1.0 with no weights — epics still weigh topics', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      { name: 'q', completed_at: '2024-02-01', work_type: 'quick-fix' }, // 1 (no weight)
+      epic('e', '2024-03-01', 3),                                        // 3 topics
+    ];
+    assert.strictEqual(buildProgressClock(units).get('target'), 4); // 1 + 3
+  });
+
+  it('excludes cross-cutting work (weight 0 — terminal, never implemented)', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      { name: 'cc1', completed_at: '2024-02-01', work_type: 'cross-cutting' },
+      { name: 'cc2', completed_at: '2024-03-01', work_type: 'cross-cutting' },
+      { name: 'f', completed_at: '2024-04-01', work_type: 'feature' },
+    ];
+    // Only the feature counts; the two cross-cutting units add nothing.
+    assert.strictEqual(buildProgressClock(units, W).get('target'), 1.0);
+  });
+
+  it('treats an unknown work type as factor 1.0', () => {
+    const units = [
+      { name: 'target', completed_at: '2024-01-01', work_type: 'feature' },
+      { name: 'weird', completed_at: '2024-02-01', work_type: 'made-up' },
+    ];
+    assert.strictEqual(buildProgressClock(units, W).get('target'), 1.0);
+  });
+});

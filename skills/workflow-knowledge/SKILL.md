@@ -205,7 +205,7 @@ Human-readable report of the store's state: chunk counts by work unit, phase, an
 ## `rebuild` and `compact` — maintenance commands
 
 - **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` array, and any present analysis caches (`.state/research-analysis.md`, `.state/discovery-gap-analysis.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
-- **`compact [--dry-run]`** — removes chunks from work units whose `completed_at` date exceeds the configured `decay_months` TTL. Specifications are exempt. `--dry-run` previews without deleting.
+- **`compact [--dry-run]`** — storage backstop. Removes a work unit's non-spec chunks once their retrievability `R` has decayed below `decay_prune_below` — i.e. once enough later work has completed that they're effectively unreachable in query ranking. Decay is progress-based (how much work completed after the unit, weighted by work type), not wall-clock; specifications are exempt; `false`/`null` disables it. `--dry-run` previews without deleting.
 
 Skills do not call these directly during normal operation. Users run them manually.
 
