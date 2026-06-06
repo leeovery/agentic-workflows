@@ -110,8 +110,6 @@ Skip the menu and STOP. The content presented above is logged exactly as shown â
 
 #### If `construction_gate_mode` is `gated`
 
-**Separately from the content above** (clear visual break) â€” content and choices must be visually distinct:
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
