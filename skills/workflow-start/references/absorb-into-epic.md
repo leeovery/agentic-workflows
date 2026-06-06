@@ -389,7 +389,7 @@ The feature has nothing to move.
 
 The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.discovery.items` — without an discovery entry, the topic is invisible to the workflow-continue-epic display, subsequent discovery sessions, map-summary counts, and the dismissed-list flow.
 
-Routing reflects the work already done on the feature. `summary` and `description` are left unset — `source` defaults to `discovery` at render time, and the next `/workflow-continue-epic` entry will detect the missing fields and route to `summary-backfill.md` so the user can review derived values.
+Routing reflects the work already done on the feature. `source` is set to `discovery`; `summary` and `description` are left unset — the next `/workflow-continue-epic` entry detects the missing fields and routes to `summary-backfill.md` so the user can review derived values.
 
 #### If `has_research` is `true`
 
@@ -398,6 +398,7 @@ Set `routing` to `research`:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discovery.{topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} routing research
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} source discovery
 ```
 
 → Proceed to **K. Cleanup**.
@@ -409,6 +410,7 @@ Set `routing` to `discussion`:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discovery.{topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} routing discussion
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} source discovery
 ```
 
 → Proceed to **K. Cleanup**.
