@@ -195,6 +195,22 @@ Re-index all completed artifacts so their chunks carry the new `work_type: epic`
 
 Load **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
 
+Register the feature's topic on the discovery map (topic name = work unit name). Leave `summary` and `description` unset — `summary-backfill.md` fills them on the next `/workflow-continue-epic` entry.
+
+Check whether the feature did research:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.research
+```
+
+Create the map item — `routing` is `research` if it exists, otherwise `discussion`:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {selected.name}.discovery.{selected.name}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name}.discovery.{selected.name} routing {research|discussion}
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name}.discovery.{selected.name} source discovery
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
