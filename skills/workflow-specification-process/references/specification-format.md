@@ -34,6 +34,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 | `date` | Spec creation — today's date; update on each commit |
 | `review_cycle` | Starts at 0; incremented each review cycle. Missing field treated as 0. |
 | `finding_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
+| `construction_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
 | `sources` | Spec creation — all sources as `pending`; updated as extraction completes |
 
 ---

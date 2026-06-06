@@ -25,6 +25,8 @@ When working with multiple sources, search each one — information about a sing
 
 ### Context Resurfacing
 
+This gate stays gated even when `construction_gate_mode` is `auto` — it changes already-approved content, so it always stops for confirmation.
+
 When extraction reveals information that affects **already-logged topics**, resurface them immediately. Even mid-discussion — interrupt, flag what you found, and discuss whether it changes anything.
 
 If it does: summarize what's changing in the chat, then present the changes as a diff view. The summary is for discussion only — the specification just gets the clean replacement.
@@ -86,7 +88,7 @@ Better to resurface and confirm "already covered" than let something slip past.
 
 ## B. Synthesize and Present
 
-Present your understanding to the user **in the format it would appear in the specification**:
+Present your understanding to the user **in the format it would appear in the specification** (shown in both modes):
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -96,7 +98,23 @@ Here's what I understand about [topic] based on the reference material. This is 
 [content as rendered markdown]
 ```
 
-Then, **separately from the content above** (clear visual break):
+Then check `construction_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} construction_gate_mode`).
+
+#### If `construction_gate_mode` is `auto`
+
+**CRITICAL**: Auto removes only the approval STOP — process one topic at a time (extract → present → log → commit → next). Never generate multiple topics, or the whole specification, in a single pass. Commit after each topic.
+
+> *Output the next fenced block as a code block:*
+
+```
+{Topic Name} — added to specification.
+```
+
+→ Proceed to **E. Log and Commit**.
+
+#### If `construction_gate_mode` is `gated`
+
+**Separately from the content above** (clear visual break) — content and choices must be visually distinct:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -105,13 +123,26 @@ Then, **separately from the content above** (clear visual break):
 Record this to the specification verbatim?
 
 - **`y`/`yes`** — Add exactly as shown, no modifications
+- **`a`/`auto`** — Add this and all remaining topics automatically
 - **Tell me what to change** — Revise before recording
 · · · · · · · · · · · ·
 ```
 
-Content and choices must be visually distinct (not run together).
+**STOP.** Wait for user response.
 
-> **CHECKPOINT**: After presenting, you MUST STOP and wait for the user's response. Do NOT proceed to logging. Do NOT present the next topic. WAIT.
+#### If `yes`
+
+→ Proceed to **E. Log and Commit**.
+
+#### If `auto`
+
+Set `construction_gate_mode` to `auto` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} construction_gate_mode auto`).
+
+→ Proceed to **E. Log and Commit**.
+
+#### If the user provides feedback
+
+→ Proceed to **C. Discuss and Refine**.
 
 ---
 
