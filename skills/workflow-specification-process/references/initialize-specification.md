@@ -14,6 +14,7 @@ Create the specification file at `.workflows/{work_unit}/specification/{topic}/s
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.specification.{topic}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} review_cycle 0
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} finding_gate_mode gated
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} construction_gate_mode gated
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
    ```
 3. Add all sources with `status: pending` via manifest CLI:
