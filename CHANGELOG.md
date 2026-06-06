@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-06-06
+
+- Add `auto` gate mode to specification construction loop — `a`/`auto` at the construction approval gate logs the current topic and skips approval for all remaining topics
+- Track `construction_gate_mode` in the manifest (`gated`/`auto`); reset to `gated` on session setup, continue, and reopen handoffs; preserve across context refresh
+- Keep the Context Resurfacing gate always-gated even under auto mode, since it modifies already-approved content
+- Enforce one-topic-at-a-time processing (extract → present → log → commit) under auto to prevent whole-spec generation in a single pass
+
 ## [0.5.1] - 2026-06-06
 
 - Set `source: discovery` explicitly when registering an absorbed feature's topic on the target epic's discovery map, rather than relying on render-time defaulting
