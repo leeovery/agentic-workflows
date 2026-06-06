@@ -102,6 +102,8 @@ Then check `construction_gate_mode` via manifest CLI (`node .claude/skills/workf
 
 #### If `construction_gate_mode` is `auto`
 
+The full content block above is still presented exactly as in gated mode — auto changes **nothing** about what is shown. The only difference is that no approval menu or STOP follows; after presenting the content, append the one-line confirmation below and proceed.
+
 **CRITICAL**: Auto removes only the approval STOP — process one topic at a time (extract → present → log → commit → next). Never generate multiple topics, or the whole specification, in a single pass. Commit after each topic.
 
 > *Output the next fenced block as a code block:*
