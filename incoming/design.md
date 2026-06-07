@@ -95,7 +95,7 @@ subtopic handling, not Incoming.
 Entry shape:
 ```
 ### {concern}
-*From: {origin} · {phase} · session {NNN} · {date}*
+*From: {origin} · {phase} · {date}*
 
 {concern as captured}
 ```
@@ -122,6 +122,36 @@ re-concluding. KB re-index on re-conclude is safe (idempotent).
 - **PR 6** — drain + conclusion gate + reopen guard.
 
 PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–6 introduce new behaviour.
+
+| PR | Branch | Base | GitHub |
+|---|---|---|---|
+| 0 | `idea/incoming-pr-0-design` | `main` | #359 |
+| 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 |
+| 2 | `idea/incoming-pr-2-shared-ref` | PR 1 | #361 |
+| 3 | `idea/incoming-pr-3-discovery-only` | PR 2 | #362 |
+| 4 | `idea/incoming-pr-4-substrate` | PR 3 | #363 |
+| 5 | `idea/incoming-pr-5-landing` | PR 4 | #364 |
+| 6 | `idea/incoming-pr-6-drain-gate` | PR 5 | #365 |
+
+## Decisions taken during implementation
+
+- **Entry From-line dropped `session {NNN}`.** Research and discussion track no session number
+  anywhere, so the line is `origin · phase · date`. Detection keys on the `## Incoming` heading,
+  the `(none)` placeholder, and `### ` subsections — not the From line — so this is safe.
+- **Shared-ref output vars renamed to avoid caller collisions.** `create-topic.md` returns
+  `created_topic` (§F already binds `{topic}` to the parent); `incoming-landing.md` returns
+  `landed_topic`.
+- **Research Incoming lives in `epic-session.md` §C (Topic Awareness)**, the conversational-concern
+  home — kept deliberately distinct from §D's written-drift split. Non-epic research routing
+  (log / pivot / ignore) added to `feature-session.md`.
+- **Drain commits its own changes** (`{phase}({wu}/{topic}): drain incoming`) rather than folding
+  into an initialize/resume commit, and is invoked **once** at the session step (discussion Step 5,
+  research Step 6) — both fresh and resume/reopen funnel through it; a fresh `(none)` artefact no-ops.
+- **Reopen-bridge guard is a `⚑` warning** before re-firing the bridge when downstream phase items
+  exist. The bridge itself is unchanged — the warning is the documented minimum.
+- **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
+  (`status,routing,source,summary,description` from `create-topic` vs the old sequential `set`
+  order). Values identical.
 
 ## Verification
 
