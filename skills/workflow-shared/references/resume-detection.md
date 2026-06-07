@@ -8,7 +8,7 @@ Check if `{file}` exists.
 
 #### If no file exists
 
-→ Return to **[the skill](../SKILL.md)** for **Step 1**.
+→ Return to caller for **Step 1**.
 
 #### If file exists
 
@@ -29,11 +29,11 @@ Found existing {artifact} for **{topic:(titlecase)}**.
 
 #### If `continue`
 
-→ Return to **[the skill](../SKILL.md)** for **{continue_step}**.
+→ Return to caller for **{continue_step}**.
 
 #### If `restart`
 
 1. Delete {restart_targets}
 2. Commit: `{commit}`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 1**.
+→ Return to caller for **Step 1**.
