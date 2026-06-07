@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-06-07
+
+Release notes for v0.5.3:
+
+- Extract shared resume-detection reference for processing skills; refactor research, discussion, investigation, and specification SKILLs to load it instead of duplicating continue/restart prompts
+- Standardize resume prompts to markdown rendering with bold topic titlecase across planning, review, and specification phases
+- Simplify specification entry to auto-resume in-progress specs instead of prompting resume vs start-fresh
+- Drop redundant gate-mode reset from specification continue handoffs
+
 ## [0.5.2] - 2026-06-06
 
 - Add `auto` gate mode to specification construction loop — `a`/`auto` at the construction approval gate logs the current topic and skips approval for all remaining topics
