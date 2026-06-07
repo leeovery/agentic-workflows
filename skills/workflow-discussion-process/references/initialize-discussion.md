@@ -18,6 +18,8 @@
 
    Populate from the seed, handoff context, and user input. Derive initial subtopics from whatever context is available — the seed, the user's description, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map will grow during discussion.
 
+   The `## Incoming` section is created from the template as `(none)` — leave it untouched; off-topic concerns land in it later.
+
 4. Register discussion in manifest:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discussion.{topic}

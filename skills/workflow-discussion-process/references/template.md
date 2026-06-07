@@ -54,6 +54,12 @@ A living index of subtopics tracked during the discussion. This is the structura
 
 ---
 
+## Incoming
+
+(none)
+
+---
+
 ## {Subtopic A}
 
 ### Context
@@ -130,6 +136,8 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - New child subtopics can be added under parents
 - The map is the user's visibility into discussion shape and your tracking mechanism
 - Elevated topics (siblings that became their own discussion) are noted with `↑ Elevated:` on the map, occupying the same slot in the tree as the original subtopic
+
+**Incoming**: The `## Incoming` section holds off-topic concerns routed here from other sessions. It stays `(none)` until something lands. Session start folds any entries into the Discussion Map as `pending` subtopics and clears the section back to `(none)` (see [drain-incoming.md](../../workflow-shared/references/drain-incoming.md)). Keep the `## Incoming` heading and the `(none)` placeholder in place — don't repurpose or remove them.
 
 **Flexibility**: Not every subtopic needs all sections. Some have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up — don't force structure onto a simple discussion.
 

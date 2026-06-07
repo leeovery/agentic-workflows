@@ -22,12 +22,19 @@ What we know so far:
 
 ---
 
+## Incoming
+
+(none)
+
+---
+
 {Content follows - freeform, managed by the skill}
 ```
 
 ## Notes
 
 - The "Starting Point" section captures context from the initial conversation
+- The `## Incoming` section holds off-topic concerns routed here from other sessions; it stays `(none)` until something lands. Session start folds any entries into the body as seed threads and resets the section to `(none)` (see [drain-incoming.md](../../workflow-shared/references/drain-incoming.md)). Keep the `## Incoming` heading and the `(none)` placeholder in place
 - Content after that is intentionally unstructured - let themes emerge naturally
 - The skill handles content organization during sessions
 - Research status is tracked in the work unit manifest, not in the document
