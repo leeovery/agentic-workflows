@@ -35,6 +35,8 @@ The rejection is already rendered by topic-name-validation.md. Offer the choice:
 
 ```
 · · · · · · · · · · · ·
+How would you like to proceed?
+
 - **`c`/`cancel`** — Abandon creating this topic
 - **Pick another** — Tell me a different name
 · · · · · · · · · · · ·
@@ -62,7 +64,7 @@ Set `created_topic` to the validated `proposed_name`.
 
 ## B. Clear Dismissed
 
-Pull the name from the dismissed list — a no-op when it is absent. User-explicit spawns bypass dismissal, so this clears any stale entry before the write:
+Pull the name from the dismissed list — a no-op when it is absent, so it always runs:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{created_topic}"
