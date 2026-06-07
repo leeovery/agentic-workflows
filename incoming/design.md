@@ -107,9 +107,13 @@ subtopics; research → seed threads in the body. Delete each folded subsection;
 **Conclusion gate:** `conclude-{discussion,research}.md` block with a `⚑` callout when `## Incoming` ≠
 `(none)`. `document-review.md` gains an Incoming-consistency check on both sides.
 
-**Reopen-bridge hazard:** re-concluding a reopened *decided* topic re-fires the pipeline bridge. The
-reopen path must detect existing downstream phase work and at minimum surface a `⚑` warning before
-re-concluding. KB re-index on re-conclude is safe (idempotent).
+**Reopen-bridge hazard — verified as already handled, no guard added.** Re-concluding a reopened
+topic re-fires the pipeline bridge. This is epic-only (single-topic never lands an Incoming entry, so
+it never reopens via Incoming). For epics the specification phase already treats a discussion that
+regressed to `in-progress` as a first-class `[extracted, reopened]` source and offers
+re-incorporation (`workflow-specification-entry` `display-groupings.md` / `display-single-grouped.md`)
+— the bridge re-firing into the epic menu is the *designed* path. So no warning is added; `conclude-*`
+just carries a one-line note. KB re-index on re-conclude is safe (idempotent — replaces chunks).
 
 ## PR stack
 
@@ -147,8 +151,10 @@ PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–6 introduce ne
 - **Drain commits its own changes** (`{phase}({wu}/{topic}): drain incoming`) rather than folding
   into an initialize/resume commit, and is invoked **once** at the session step (discussion Step 5,
   research Step 6) — both fresh and resume/reopen funnel through it; a fresh `(none)` artefact no-ops.
-- **Reopen-bridge guard is a `⚑` warning** before re-firing the bridge when downstream phase items
-  exist. The bridge itself is unchanged — the warning is the documented minimum.
+- **No reopen-bridge guard.** Verification showed the epic specification phase already handles a
+  reopened (regressed-to-`in-progress`) source via its `[extracted, reopened]` state and re-analysis
+  offer, and single-topic types never reopen via Incoming. An initial `⚑` warning was added and then
+  removed — it was redundant for epics and a false positive on the shared non-epic conclude path.
 - **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
   (`status,routing,source,summary,description` from `create-topic` vs the old sequential `set`
   order). Values identical.
