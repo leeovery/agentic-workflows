@@ -84,49 +84,11 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for existing work. If a specification is already
-> in progress, you can pick up where you left off or start fresh.
+> Checking for an existing specification. If one exists, you can
+> pick up where you left off or start fresh.
 ```
 
-Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
-
-#### If no file exists
-
-→ Proceed to **Step 1**.
-
-#### If file exists
-
-Read the specification status via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} status`).
-
-> *Output the next fenced block as a code block:*
-
-```
-Found existing specification for {work_unit}.
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Continue or restart?
-
-- **`c`/`continue`** — Walk through the specification from its current state. You can review, amend, or navigate at any point.
-- **`r`/`restart`** — Delete the specification and all review tracking files. Start fresh.
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-→ Proceed to **Step 3**.
-
-#### If `restart`
-
-1. Delete the specification file and all review tracking files (`review-*-tracking-c*.md`) in the specification directory (`.workflows/{work_unit}/specification/{topic}/`)
-2. Commit: `spec({work_unit}): restart specification`
-
-→ Proceed to **Step 1**.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 3`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, commit = `spec({work_unit}): restart specification`.
 
 ---
 

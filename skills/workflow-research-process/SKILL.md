@@ -63,43 +63,11 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for existing research on this topic. If found,
-> you can pick up where you left off or start fresh.
+> Checking for existing research. If it exists, you can
+> pick up where you left off or start fresh.
 ```
 
-Check if the research file exists at the handoff's Output path.
-
-#### If no file exists
-
-→ Proceed to **Step 1**.
-
-#### If file exists
-
-Read the file.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found existing research for **{topic:(titlecase)}**.
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the research file and start fresh
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-→ Proceed to **Step 2**.
-
-#### If `restart`
-
-1. Delete the research file
-2. Commit: `research({work_unit}): restart research`
-
-→ Proceed to **Step 1**.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file`, commit = `research({work_unit}): restart research`.
 
 ---
 

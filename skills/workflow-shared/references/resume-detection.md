@@ -1,0 +1,39 @@
+# Resume Detection
+
+*Shared reference for processing skills.*
+
+---
+
+Check if `{file}` exists.
+
+#### If no file exists
+
+→ Return to **[the skill](../SKILL.md)** for **Step 1**.
+
+#### If file exists
+
+Read the file.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found existing {artifact} for **{topic:(titlecase)}**.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Pick up where you left off
+- **`r`/`restart`** — Delete the {artifact} and start fresh
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+#### If `continue`
+
+→ Return to **[the skill](../SKILL.md)** for **{continue_step}**.
+
+#### If `restart`
+
+1. Delete {restart_targets}
+2. Commit: `{commit}`
+
+→ Return to **[the skill](../SKILL.md)** for **Step 1**.
