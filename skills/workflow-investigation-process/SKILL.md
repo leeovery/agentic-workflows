@@ -84,8 +84,8 @@ The investigation file is your memory. Context compaction is lossy — what's no
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an existing investigation. If one exists,
-> you can pick up where you left off or start fresh.
+> Checking for an existing investigation. If one exists, you can
+> pick up where you left off or start fresh.
 ```
 
 Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
@@ -96,31 +96,7 @@ Check if the investigation file exists at `.workflows/{work_unit}/investigation/
 
 #### If file exists
 
-Read the file.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found existing investigation for **{topic:(titlecase)}**.
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the investigation file and start fresh
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-→ Proceed to **Step 2**.
-
-#### If `restart`
-
-1. Delete the investigation file
-2. Commit: `investigation({work_unit}): restart investigation`
-
-→ Proceed to **Step 1**.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file`, commit = `investigation({work_unit}): restart investigation`.
 
 ---
 

@@ -107,19 +107,13 @@ Compare `completed_tasks` against `reviewed_tasks`. Let {C} = total completed, {
 
 **If `reviewed_tasks` exists and unreviewed tasks remain:**
 
-> *Output the next fenced block as a code block:*
-
-```
-Found existing review for "{topic:(titlecase)}".
-Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-· · · · · · · · · · · ·
-Continue or restart?
+Found existing review for **{topic:(titlecase)}**.
+Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
 
+· · · · · · · · · · · ·
 - **`c`/`continue`** — Review the {U} unreviewed tasks
 - **`r`/`restart`** — Delete review, re-review all {C} tasks
 · · · · · · · · · · · ·
@@ -129,19 +123,13 @@ Continue or restart?
 
 **Otherwise** (all tasks reviewed, or no tracking data):
 
-> *Output the next fenced block as a code block:*
-
-```
-Found existing review for "{topic:(titlecase)}".
-@if(reviewed_tasks exists) All {C} tasks have been reviewed. @endif
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-· · · · · · · · · · · ·
-Continue or restart?
+Found existing review for **{topic:(titlecase)}**.
+@if(reviewed_tasks exists) All {C} tasks have been reviewed. @endif
 
+· · · · · · · · · · · ·
 - **`c`/`continue`** — Continue from current review state
 - **`r`/`restart`** — Delete review, start fresh
 · · · · · · · · · · · ·

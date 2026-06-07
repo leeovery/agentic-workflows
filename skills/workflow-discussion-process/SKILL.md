@@ -61,8 +61,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an existing discussion file. If one exists,
-> you can pick up where you left off or start fresh.
+> Checking for an existing discussion. If one exists, you can
+> pick up where you left off or start fresh.
 ```
 
 Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
@@ -73,31 +73,7 @@ Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic
 
 #### If file exists
 
-Read the file.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found existing discussion for **{topic:(titlecase)}**.
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the discussion file and start fresh
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-→ Proceed to **Step 2**.
-
-#### If `restart`
-
-1. Delete the discussion file
-2. Commit: `discussion({work_unit}): restart discussion`
-
-→ Proceed to **Step 1**.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file`, commit = `discussion({work_unit}): restart discussion`.
 
 ---
 

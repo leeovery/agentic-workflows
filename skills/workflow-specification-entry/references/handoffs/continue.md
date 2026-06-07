@@ -4,13 +4,6 @@
 
 ---
 
-Before invoking the skill, reset `finding_gate_mode` and `construction_gate_mode` to `gated` via manifest CLI:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} finding_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} construction_gate_mode gated
-```
-Commit if changed: `spec({work_unit}): reset gate mode`
-
 This skill's purpose is now fulfilled. Invoke the [workflow-specification-process](../../../workflow-specification-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
 
 ```
