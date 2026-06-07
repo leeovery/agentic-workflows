@@ -24,7 +24,43 @@ Per-topic session with topic awareness and convergence routing.
 
 ## C. Topic Awareness
 
-When working in a specific topic file and content drifts to another topic's scope, flag it and offer to switch to that topic's file or note it for later. Don't silently let content accumulate in the wrong file.
+When a concern surfaces that belongs to a *different* topic — raised in conversation, not yet written into this file — flag it rather than letting it accumulate here. (Sustained *written* drift over multiple exchanges is the separate split signal — see **D. Convergence Routing**.)
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+**{concern}** belongs to a different topic, not this one.
+
+- **`i`/`incoming`** — Note it against that topic for it to pick up later
+- **`k`/`keep`** — Keep exploring here for now
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `incoming`:**
+
+1. Identify the topic the concern belongs to. Read the live map:
+
+   ```bash
+   node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+   ```
+
+   Propose the matching existing topic, or a new kebab-case name when none fits, and confirm the target with the user. If the target is the current topic, it's not Incoming — fold it into this research file as a thread and → Return to **B. Session Loop**.
+
+2. Load **[incoming-landing.md](../../workflow-shared/references/incoming-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, date = `{today}`. If it returns `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Incoming`.
+
+3. Commit:
+
+   ```bash
+   git add -- .workflows/{work_unit}/
+   git commit -m "research({work_unit}/{topic}): route concern to {landed_topic} incoming"
+   ```
+
+→ Return to **B. Session Loop**.
+
+**If `keep`:** keep exploring here. If written material keeps accumulating off-topic over multiple exchanges, the split path in **D. Convergence Routing** moves it out. → Return to **B. Session Loop**.
 
 ---
 
