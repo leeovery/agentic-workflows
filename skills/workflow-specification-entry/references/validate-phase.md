@@ -19,33 +19,10 @@ Set verb = "Creating".
 > *Output the next fenced block as a code block:*
 
 ```
-Specification In Progress
-
-A specification for "{work_unit:(titlecase)}" already exists and is in progress.
+Resuming specification: {work_unit:(titlecase)}
 ```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-- **`r`/`resume`** — Resume the existing specification
-- **`s`/`start-fresh`** — Archive and start fresh
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `resume`
 
 Set verb = "Continuing".
-
-→ Return to caller.
-
-#### If `start-fresh`
-
-Archive the existing spec.
-
-Set verb = "Creating".
 
 → Return to caller.
 
