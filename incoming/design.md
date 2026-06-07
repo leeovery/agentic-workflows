@@ -119,8 +119,7 @@ just carries a one-line note. KB re-index on re-conclude is safe (idempotent —
 
 Scope per PR:
 
-- **PR 0** — this design-log doc.
-- **PR 1** — `create-topic` CLI + tests.
+- **PR 1** — `create-topic` CLI + tests (also carries this design log).
 - **PR 2** — `create-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
 - **PR 3** — migrate discovery-only sites (confirm-and-persist, ensure-discovery-item, analysis-approval-gate).
 - **PR 4** — Incoming substrate (templates, initialize-*, stubs, CLAUDE.md provenance).
@@ -131,14 +130,14 @@ PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–6 introduce ne
 
 **Execution: per-PR redo.** A first pass built the whole stack in one go and violated the authoring
 conventions, so the work is being redone one PR at a time. The first-pass PRs #359 and #361–#365 are
-**closed**; only #360 (PR 1, CLI) is kept. The design log no longer ships as its own PR (#359 closed)
-— it rides on PR 1's branch and flows down the redo stack. From PR 2 onward each PR is re-cut fresh on
-top of its redone parent, on a new branch (old closed branches are left in place).
+**closed** (their branches deleted); only #360 (PR 1, CLI) is kept. There is no standalone design-log
+PR — the original PR 0 (#359) was deleted and this design log now lives on **PR 1's branch**, merging
+to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone parent, on a new branch
+(old closed branches are left in place).
 
 | PR | Branch | Base | GitHub | State |
 |---|---|---|---|---|
-| 0 | (rides on PR 1's branch) | — | #359 | closed — superseded |
-| 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 | open |
+| 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 | open — carries design log |
 | 2 | `idea/incoming-pr-2-shared-create-topic` | PR 1 | #366 | open — redo (old #361 closed) |
 | 3 | _to re-cut_ | PR 2 | — | pending (old #362 closed) |
 | 4 | _to re-cut_ | PR 3 | — | pending (old #363 closed) |
