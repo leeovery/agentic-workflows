@@ -71,6 +71,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > already exist, we can skip ahead.
 ```
 
+**Variant**: Scoping skips ahead when a completed spec and plan already exist — no continue/restart prompt.
+
 Check if a specification already exists:
 
 ```bash

@@ -77,6 +77,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > for this session.
 ```
 
+**Variant**: Implementation auto-resumes — no continue/restart prompt. A prior session's gates and counters are reset for the fresh session.
+
 Check if an implementation entry exists in the manifest:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.implementation.{topic}

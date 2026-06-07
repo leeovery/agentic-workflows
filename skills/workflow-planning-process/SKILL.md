@@ -113,20 +113,14 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.plann
 
 Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the user with an informed choice:
 
-> *Output the next fenced block as a code block:*
-
-```
-Found existing plan for {work_unit} (previously reached phase {N}, task {M}).
-
-{spec change summary from spec-change-detection.md}
-```
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-· · · · · · · · · · · ·
-Continue or restart?
+Found existing plan for **{topic:(titlecase)}** (previously reached phase {N}, task {M}).
 
+{spec change summary from spec-change-detection.md}
+
+· · · · · · · · · · · ·
 - **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.
 - **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.
 · · · · · · · · · · · ·
