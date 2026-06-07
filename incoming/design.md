@@ -117,7 +117,9 @@ just carries a one-line note. KB re-index on re-conclude is safe (idempotent —
 
 ## PR stack
 
-- **PR 0** — this design-log doc (long-lived, merge last).
+Scope per PR:
+
+- **PR 0** — this design-log doc.
 - **PR 1** — `create-topic` CLI + tests.
 - **PR 2** — `create-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
 - **PR 3** — migrate discovery-only sites (confirm-and-persist, ensure-discovery-item, analysis-approval-gate).
@@ -127,15 +129,21 @@ just carries a one-line note. KB re-index on re-conclude is safe (idempotent —
 
 PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–6 introduce new behaviour.
 
-| PR | Branch | Base | GitHub |
-|---|---|---|---|
-| 0 | `idea/incoming-pr-0-design` | `main` | #359 |
-| 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 |
-| 2 | `idea/incoming-pr-2-shared-ref` | PR 1 | #361 |
-| 3 | `idea/incoming-pr-3-discovery-only` | PR 2 | #362 |
-| 4 | `idea/incoming-pr-4-substrate` | PR 3 | #363 |
-| 5 | `idea/incoming-pr-5-landing` | PR 4 | #364 |
-| 6 | `idea/incoming-pr-6-drain-gate` | PR 5 | #365 |
+**Execution: per-PR redo.** A first pass built the whole stack in one go and violated the authoring
+conventions, so the work is being redone one PR at a time. The first-pass PRs #359 and #361–#365 are
+**closed**; only #360 (PR 1, CLI) is kept. The design log no longer ships as its own PR (#359 closed)
+— it rides on PR 1's branch and flows down the redo stack. From PR 2 onward each PR is re-cut fresh on
+top of its redone parent, on a new branch (old closed branches are left in place).
+
+| PR | Branch | Base | GitHub | State |
+|---|---|---|---|---|
+| 0 | (rides on PR 1's branch) | — | #359 | closed — superseded |
+| 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 | open |
+| 2 | `idea/incoming-pr-2-shared-create-topic` | PR 1 | #366 | open — redo (old #361 closed) |
+| 3 | _to re-cut_ | PR 2 | — | pending (old #362 closed) |
+| 4 | _to re-cut_ | PR 3 | — | pending (old #363 closed) |
+| 5 | _to re-cut_ | PR 4 | — | pending (old #364 closed) |
+| 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
 
 ## Decisions taken during implementation
 
