@@ -41,11 +41,14 @@ Walk the conversation against the document and check three dimensions:
 
 3. **Accuracy drift** — positions documented as firmer than they were, tentative leans written as decisions, softened user views, tradeoffs reframed beyond what the conversation supported, or context omitted that changes how a position should read.
 
+4. **Incoming consistency** — the `## Incoming` section should read exactly `(none)` by conclusion: the drain folds any entries into the body as seed threads at session start, and the conclusion gate blocks while it is non-empty. If an entry is still present, it was never drained — fold it into the body and clear it (see [drain-incoming.md](../../workflow-shared/references/drain-incoming.md)). If the `(none)` placeholder is missing or malformed, restore it.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the research file at the appropriate place
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation
+- Incoming → fold any stray entry into the body and reset the section to `(none)`; restore the placeholder if it drifted
 
 Commit the changes with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 

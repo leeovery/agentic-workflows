@@ -200,6 +200,8 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > No decisions needed at this stage.
 ```
 
+Load **[drain-incoming.md](../workflow-shared/references/drain-incoming.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+
 Load **[route-session.md](references/route-session.md)** and follow its instructions as written.
 
 *Knowledge-base nudge — if a thread feels familiar, or you're about to re-tread ground that might have been covered in another work unit, run a quick query before proceeding. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*

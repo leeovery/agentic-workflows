@@ -177,6 +177,8 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > explore edge cases, and capture decisions as we go.
 ```
 
+Load **[drain-incoming.md](../workflow-shared/references/drain-incoming.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
 
 *Knowledge-base nudge — before committing to a direction on a new subtopic, or when a decision might echo one made elsewhere, run a quick query. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
