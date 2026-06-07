@@ -87,6 +87,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs create-topic {work_un
   --description "{description}"
 ```
 
+Single-quote any `--summary`/`--description` value that contains backticks, `$`, `[]`, `{}`, or `~` — they are shell-active inside the double quotes shown above.
+
 The discovery item lands with `status`, `routing`, `source`, and any `summary`/`description`; `--phase` additionally creates that phase's item with status only. The write is atomic — a single locked write, no half-built state.
 
 Set `result = "created"`. The manifest is dirty; the caller's commit covers it.

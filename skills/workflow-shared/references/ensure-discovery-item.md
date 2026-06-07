@@ -45,54 +45,14 @@ The topic is already on the map. Nothing to do — fall through to the caller's 
 
 #### If output is empty (item does not exist)
 
-→ Proceed to **C. Check Dismissed and Pull**.
+→ Proceed to **C. Create Discovery Item**.
 
-## C. Check Dismissed and Pull
+## C. Create Discovery Item
 
-Most epics never dismiss anything, so the dismissed list is usually absent. Read it directly — empty stdout means the list is absent:
+The item does not exist. Create it via the shared topic-creation core, which pulls the name from the dismissed list (a no-op when absent) and writes the discovery item atomically. Pass `summary`/`description` only when the caller supplied non-empty values — omit the parameter otherwise so the key is left absent:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery dismissed
-```
+→ Load **[create-topic.md](create-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{topic}`, routing = `{routing}`, source = `direct-start`, summary = `{summary}`, description = `{description}`.
 
-#### If output is empty (no dismissed list)
-
-Nothing to pull.
-
-→ Proceed to **D. Create Discovery Item**.
-
-#### Otherwise
-
-If `{topic}` appears in the returned JSON array, pull it (user-explicit spawns bypass dismissal):
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{topic}"
-```
-
-→ Proceed to **D. Create Discovery Item**.
-
-## D. Create Discovery Item
-
-Initialise the item and set provenance fields:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} routing {routing}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} source direct-start
-```
-
-If `summary` was supplied and is non-empty, write it:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} summary "{summary}"
-```
-
-If `description` was supplied and is non-empty, write it (multi-paragraph values are fine):
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} description "{description}"
-```
-
-No commit here — the manifest writes are folded into the next commit produced by the calling phase's process.
+No commit here — the manifest write is folded into the next commit produced by the calling phase's process.
 
 → Return to caller.

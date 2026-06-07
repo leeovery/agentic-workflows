@@ -22,29 +22,17 @@ No new topics — this is an edits-only or browse-only session.
 
 For each topic on the working list, in synthesised order:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{topic}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} summary "{one-line summary}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} description "{paragraphs}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} routing {research|discussion}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} source discovery
-```
+→ Load **[create-topic.md](../../workflow-shared/references/create-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{topic}`, routing = `{routing}`, source = `discovery`, summary = `{summary}`, description = `{description}`.
 
-The `pull` is a no-op if the name isn't in the dismissed list.
-
-Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Quote shell values with single quotes if they contain `[]`, `{}`, `~`, or backticks. Description may span paragraphs.
-
-If any command fails, surface the error and stop before the commit so the user can recover.
+Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Description may span paragraphs.
 
 Notes:
 
-- `init-phase` creates the item with `status: in-progress` automatically. Discovery items have no other valid status — do not pass `status` explicitly.
 - The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
 - `routing` is the value confirmed by the user at the synthesis gate.
 - `source: discovery` marks topics the user surfaced during discovery, distinguishing them from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
 
-→ Proceed to **B. Write Topics Identified**.
+Once every topic is persisted, → Proceed to **B. Write Topics Identified**.
 
 ## B. Write Topics Identified
 
