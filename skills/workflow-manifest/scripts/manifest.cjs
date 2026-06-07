@@ -737,6 +737,125 @@ function cmdInitPhase(args) {
   process.stdout.write(`Initialized ${phase} phase for "${topic}" in "${workUnit}"\n`);
 }
 
+// create-topic <work-unit>.<topic> [--phase research|discussion]
+//              --routing <r> --source <src> [--summary s] [--description d]
+//
+// Atomically create a discovery-map topic and, optionally, its initial phase
+// item. One withLock → readManifest → in-memory mutation → single
+// writeManifestAtomic, so a mid-sequence failure can never leave a half-built
+// topic (the hazard the multi-command sequence this replaces was prone to).
+//
+// DIVERGENCE FROM init-phase: the first positional is a TWO-segment `wu.topic`
+// path, not init-phase's three-segment `wu.phase.topic`. The phase is a flag
+// (`--phase`), never a path segment — a topic is created against exactly one
+// discovery item and at most one phase. Do not "fix" this to three segments.
+// We split on the first dot and reject any further dots, mirroring the
+// `name.includes('.')` guard in cmdInit.
+//
+// ASYMMETRY (preserved deliberately): the four descriptor fields
+// (routing, source, summary, description) live ONLY on the discovery item. The
+// phase item created by --phase carries `status` only — no other fields.
+//
+// --routing and --source are REQUIRED (no safe default — every call site sets a
+// different source). --summary and --description are truly omittable: when
+// absent the key is not written at all (not ""), so a later backfill can
+// distinguish "never set" from "set to empty".
+//
+// Errors if either the discovery item or the --phase item already exists (both
+// checked before any write).
+function cmdCreateTopic(args) {
+  const usage =
+    'Usage: create-topic <work-unit>.<topic> [--phase research|discussion] ' +
+    '--routing <research|discussion> --source <src> [--summary s] [--description d]';
+
+  let pathArg = null;
+  let phase = null;
+  let routing = null;
+  let source = null;
+  let summary = null;
+  let description = null;
+  let hasSummary = false;
+  let hasDescription = false;
+
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--phase' && i + 1 < args.length) {
+      phase = args[++i];
+    } else if (a === '--routing' && i + 1 < args.length) {
+      routing = args[++i];
+    } else if (a === '--source' && i + 1 < args.length) {
+      source = args[++i];
+    } else if (a === '--summary' && i + 1 < args.length) {
+      summary = args[++i];
+      hasSummary = true;
+    } else if (a === '--description' && i + 1 < args.length) {
+      description = args[++i];
+      hasDescription = true;
+    } else if (!pathArg) {
+      pathArg = a;
+    }
+  }
+
+  if (!pathArg) die(usage);
+
+  // Two-segment path: wu.topic (NOT wu.phase.topic). Split on the first dot;
+  // reject any further dots — mirrors cmdInit's name.includes('.') guard.
+  const dot = pathArg.indexOf('.');
+  if (dot === -1) die(`Invalid path "${pathArg}". Expected: <work-unit>.<topic>`);
+  const workUnit = pathArg.slice(0, dot);
+  const topic = pathArg.slice(dot + 1);
+  if (!workUnit || !topic) die(`Invalid path "${pathArg}". Expected: <work-unit>.<topic>`);
+  if (topic.includes('.')) die(`Topic "${topic}" must not contain dots`);
+
+  if (!routing) die('--routing is required');
+  if (!source) die('--source is required');
+
+  const PHASE_CHOICES = ['research', 'discussion'];
+  if (!PHASE_CHOICES.includes(routing)) {
+    die(`--routing must be one of: ${PHASE_CHOICES.join(', ')}`);
+  }
+  if (phase !== null && !PHASE_CHOICES.includes(phase)) {
+    die(`--phase must be one of: ${PHASE_CHOICES.join(', ')}`);
+  }
+
+  requireWorkUnit(workUnit);
+
+  withLock(workUnit, () => {
+    const manifest = readManifest(workUnit);
+
+    if (!manifest.phases) manifest.phases = {};
+    if (!manifest.phases.discovery) manifest.phases.discovery = {};
+    if (!manifest.phases.discovery.items) manifest.phases.discovery.items = {};
+
+    // Check BOTH targets before writing anything.
+    if (manifest.phases.discovery.items[topic]) {
+      die(`Discovery item "${topic}" already exists in "${workUnit}"`);
+    }
+    if (phase !== null) {
+      if (!manifest.phases[phase]) manifest.phases[phase] = {};
+      if (!manifest.phases[phase].items) manifest.phases[phase].items = {};
+      if (manifest.phases[phase].items[topic]) {
+        die(`Item "${topic}" already exists in phase "${phase}" of "${workUnit}"`);
+      }
+    }
+
+    const discoveryItem = { status: 'in-progress', routing, source };
+    if (hasSummary) discoveryItem.summary = summary;
+    if (hasDescription) discoveryItem.description = description;
+    manifest.phases.discovery.items[topic] = discoveryItem;
+
+    if (phase !== null) {
+      manifest.phases[phase].items[topic] = { status: 'in-progress' };
+    }
+
+    writeManifestAtomic(workUnit, manifest);
+  });
+
+  process.stdout.write(
+    `Created topic "${topic}" in "${workUnit}" (discovery${phase ? ` + ${phase}` : ''})\n`
+  );
+}
+
 function cmdPush(args) {
   // Project manifest routing: push project.field.path <value>
   const proj = parseProjectPath(args[0]);
@@ -1030,7 +1149,7 @@ function cmdResolve(args) {
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
-  die('Usage: manifest.cjs <command> [args]\nCommands: init, get, set, delete, list, init-phase, push, pull, exists, key-of, project, resolve');
+  die('Usage: manifest.cjs <command> [args]\nCommands: init, get, set, delete, list, init-phase, create-topic, push, pull, exists, key-of, project, resolve');
 }
 
 switch (command) {
@@ -1040,6 +1159,7 @@ switch (command) {
   case 'delete':   cmdDelete(args); break;
   case 'list':     cmdList(args); break;
   case 'init-phase': cmdInitPhase(args); break;
+  case 'create-topic': cmdCreateTopic(args); break;
   case 'push':     cmdPush(args); break;
   case 'pull':     cmdPull(args); break;
   case 'exists':   cmdExists(args); break;
