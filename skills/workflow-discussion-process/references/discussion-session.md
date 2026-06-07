@@ -169,41 +169,28 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
 #### If `elevate`
 
-1. Pick a kebab-case name reflecting the elevated concern. Surface it to the user for confirmation. Then validate:
-
-   → Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`.
-
-   On `collision-active`, re-prompt for an alternative and re-validate — loop until `ok` or `matches-dismissed`, or the user cancels the elevation. On `matches-dismissed`, proceed (the dismissed entry is pulled in step 4). On `ok`, proceed.
+1. Pick a kebab-case name reflecting the elevated concern. Surface it to the user for confirmation.
 
 2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation). This becomes the discovery item's `summary` field. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by discussion-entry as opening context when the user later picks the elevated topic up.
 
-3. Create the seed discussion file at `.workflows/{work_unit}/discussion/{new-topic}.md` with:
+3. → Load **[create-topic.md](../../workflow-shared/references/create-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`, phase = `discussion`, routing = `discussion`, source = `discussion-elevation:{topic}`, summary = `{summary}`, description = `{description}`.
+
+   `routing: discussion` because elevation fires inside a discussion session. `source: discussion-elevation:{topic}` is historical provenance; no cascade.
+
+   **If `result` is `cancelled`:** the user dropped the elevation — nothing was written.
+
+   → Return to **B. Session Loop**.
+
+   **Otherwise** the topic was created (`{created_topic}` holds the validated name). Continue.
+
+4. Create the seed discussion file at `.workflows/{work_unit}/discussion/{created_topic}.md` with:
    - Context section capturing what prompted the topic and any initial thinking from the current discussion
    - A Discussion Map with initial subtopics derived from what's been discussed so far
    - No decisions — those happen in the new discussion
 
-4. Write manifest items — discussion first, then discovery. If validation returned `matches-dismissed`, pull from the dismissed list first:
+5. Update the current Discussion Map — replace the subtopic row with `↑ Elevated: {created_topic:(titlecase)}` in the same slot (same branch, same gutter if it was a child). See **E. Status Display** for the marker rules.
 
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{new-topic}"
-   ```
-
-   Then:
-
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discussion.{new-topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{new-topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} routing discussion
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} summary "{one-line summary}"
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} description "{paragraphs}"
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new-topic} source "discussion-elevation:{topic}"
-   ```
-
-   `routing: discussion` because elevation fires inside a discussion session. `source: discussion-elevation:{parent_topic}` is historical provenance; no cascade.
-
-5. Update the current Discussion Map — replace the subtopic row with `↑ Elevated: {new-topic:(titlecase)}` in the same slot (same branch, same gutter if it was a child). See **E. Status Display** for the marker rules.
-
-6. Commit: `discussion({work_unit}/{topic}): elevate {new-topic} to separate discussion`
+6. Commit: `discussion({work_unit}/{topic}): elevate {created_topic} to separate discussion`
 
 → Return to **B. Session Loop**.
 

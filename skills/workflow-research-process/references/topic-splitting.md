@@ -37,34 +37,19 @@ Want to split these into separate research files?
 
 For each split topic:
 
-1. Pick a kebab-case name from the thread's content (e.g. `image-moderation`, `kitchen-utensils`). Surface it to the user for confirmation. Then validate:
+1. Pick a kebab-case name from the thread's content (e.g. `image-moderation`, `kitchen-utensils`). Surface it to the user for confirmation.
 
-   → Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`.
+2. Generate a one-sentence summary of the extracted content (drawn from the thread itself). This becomes the discovery item's `summary` field, used in map renders. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by entry skills as opening context when the user later picks the topic up.
 
-   On `collision-active`, re-prompt for an alternative and re-validate — loop until `ok` or `matches-dismissed`, or the user abandons this thread. On `matches-dismissed`, proceed (the dismissed entry is pulled in step 4). On `ok`, proceed.
-
-2. Create `.workflows/{work_unit}/research/{new_topic}.md` using **[template.md](template.md)**. Move content verbatim from the source file — reword only for flow and readability, no summarisation. Remove the extracted content from the source file.
-
-3. Generate a one-sentence summary of the extracted content (drawn from the thread itself). This becomes the discovery item's `summary` field, used in map renders. Generate a paragraph or two of richer context in the same turn — this becomes the `description` field, loaded by entry skills as opening context when the user later picks the topic up.
-
-4. Write manifest items — research first, then discovery. If the validation returned `matches-dismissed`, pull from the dismissed list first:
-
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{new_topic}"
-   ```
-
-   Then:
-
-   ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{new_topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{new_topic}
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new_topic} routing research
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new_topic} summary "{one-line summary}"
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new_topic} description "{paragraphs}"
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{new_topic} source "research-split:{parent_topic}"
-   ```
+3. → Load **[create-topic.md](../../workflow-shared/references/create-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`, phase = `research`, routing = `research`, source = `research-split:{parent_topic}`, summary = `{summary}`, description = `{description}`.
 
    `routing: research` because the split fires inside a research session — research is where the new topic enters the pipeline. `source: research-split:{parent_topic}` is historical provenance; the parent's later state changes don't cascade.
+
+   **If `result` is `cancelled`:** the user abandoned this thread — nothing was written. Skip it and continue with the next thread.
+
+   **Otherwise** the topic was created (`{created_topic}` holds the validated name). Continue.
+
+4. Create `.workflows/{work_unit}/research/{created_topic}.md` using **[template.md](template.md)**. Move content verbatim from the source file — reword only for flow and readability, no summarisation. Remove the extracted content from the source file.
 
 Once all accepted threads have been processed, single commit covering the manifest writes and the new research files:
 
