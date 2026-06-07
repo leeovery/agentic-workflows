@@ -88,6 +88,14 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > pick up where you left off or start fresh.
 ```
 
+Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
+
+#### If no file exists
+
+→ Proceed to **Step 1**.
+
+#### If file exists
+
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 3`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, commit = `spec({work_unit}): restart specification`.
 
 ---

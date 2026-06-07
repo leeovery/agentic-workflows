@@ -67,6 +67,14 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > pick up where you left off or start fresh.
 ```
 
+Check if the research file exists at `.workflows/{work_unit}/research/{topic}.md`.
+
+#### If no file exists
+
+→ Proceed to **Step 1**.
+
+#### If file exists
+
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file`, commit = `research({work_unit}): restart research`.
 
 ---

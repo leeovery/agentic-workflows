@@ -4,15 +4,7 @@
 
 ---
 
-Check if `{file}` exists.
-
-#### If no file exists
-
-→ Return to caller for **Step 1**.
-
-#### If file exists
-
-Read the file.
+Read `{file}`.
 
 > *Output the next fenced block as markdown (not a code block):*
 

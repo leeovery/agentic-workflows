@@ -88,6 +88,14 @@ The investigation file is your memory. Context compaction is lossy — what's no
 > pick up where you left off or start fresh.
 ```
 
+Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
+
+#### If no file exists
+
+→ Proceed to **Step 1**.
+
+#### If file exists
+
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file`, commit = `investigation({work_unit}): restart investigation`.
 
 ---
