@@ -28,7 +28,6 @@ Read `.workflows/{work_unit}/research/{name}.md` for each `completed_research` n
 
 For each discussion, note:
 - The Discussion Map state (topics and their statuses: pending, exploring, converging, decided)
-- Any `↑ Elevated: {topic}` markers
 - Key decisions made and their dependencies on other topics
 - Deferred items, open threads, and unresolved questions
 - Integration points with other discussions
@@ -41,20 +40,18 @@ Cross-reference across all documents — connections, contradictions, shared con
 
 ## B. Identify Gaps
 
-Analyse the artifacts from A to identify gaps across five categories:
+Analyse the artifacts from A to identify gaps across four categories:
 
 1. **Cross-artifact themes** — concepts, concerns, or architectural patterns that appear in multiple artifacts but are not the primary focus of any. These often emerge as recurring assumptions or shared constraints that deserve dedicated exploration.
 
-2. **Elevated but uncreated** — `↑ Elevated: {topic}` markers in Discussion Maps where no corresponding discussion file or manifest entry exists. These are topics explicitly flagged during discussion as needing their own conversation.
+2. **Research themes uncovered** — themes from completed research files that are not addressed by any completed discussion. Only identify themes that are genuinely unaddressed — a theme partially touched in a discussion does not count as a gap.
 
-3. **Research themes uncovered** — themes from completed research files that are not addressed by any completed discussion. Only identify themes that are genuinely unaddressed — a theme partially touched in a discussion does not count as a gap.
+3. **Emergent topics** — open threads, deferred items, and new subtopics that emerged during work and suggest the need for a top-level topic. Look for "parking lot" items, questions deferred, and new concerns raised but not explored.
 
-4. **Emergent topics** — open threads, deferred items, and new subtopics that emerged during work and suggest the need for a top-level topic. Look for "parking lot" items, questions deferred, and new concerns raised but not explored.
-
-5. **Integration gaps** — decisions made in separate artifacts that interact with each other but no existing artifact covers the integration between them. Look for shared data models, overlapping user journeys, competing resource needs, or architectural assumptions that span artifacts.
+4. **Integration gaps** — decisions made in separate artifacts that interact with each other but no existing artifact covers the integration between them. Look for shared data models, overlapping user journeys, competing resource needs, or architectural assumptions that span artifacts.
 
 For each gap, note:
-- The gap type (from the five above)
+- The gap type (from the four above)
 - Which source artifacts contributed to identifying it
 - Why it matters — what would be missed without dedicated work
 - Depth assessment — is the gap well-scoped (ready for discussion) or under-explored (needs research first)?
@@ -68,7 +65,6 @@ Group the identified gaps into topic-sized chunks.
 → Load **[topic-granularity.md](topic-granularity.md)**.
 
 **Gap-specific anti-patterns** (in addition to the shared ones above):
-- Creating a topic for each individual elevated marker when they relate to the same area
 - Splitting integration gaps into per-discussion-pair topics when they share the same integration boundary
 - Creating topics so narrow they'd be resolved in a few exchanges
 
@@ -183,13 +179,13 @@ Overwrite with the topic list:
 - **Summary**: {one-line summary}
 - **Routing**: {discussion|research}
 - **Source artifacts**: {filename1}.md, {filename2}.md
-- **Gap type**: {cross-artifact|elevated|emergent|integration|uncovered}
+- **Gap type**: {cross-artifact|emergent|integration|uncovered}
 
 ### {Another Topic}
 - **Summary**: {one-line summary}
 - **Routing**: {discussion|research}
 - **Source artifacts**: {filename1}.md, {filename2}.md
-- **Gap type**: {cross-artifact|elevated|emergent|integration|uncovered}
+- **Gap type**: {cross-artifact|emergent|integration|uncovered}
 ```
 
 List every topic from **C**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **C** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
