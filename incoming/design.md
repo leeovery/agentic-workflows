@@ -21,7 +21,7 @@ topic can't conclude with a non-empty Incoming.
 Building it surfaced that the "create a topic" sequence is **already duplicated across six call
 sites** and is non-atomic (multi-command, with explicit "stop before commit to recover" prose
 because a mid-sequence failure half-builds a topic). The feature therefore ships on top of extracted,
-hardened shared infra: an atomic `create-topic` CLI command + a `create-topic.md` shared reference.
+hardened shared infra: an atomic `create-discovery-topic` CLI command + a `create-discovery-topic.md` shared reference.
 
 **Outcome:** off-topic concerns are never lost and never pollute the wrong artefact; topic creation
 is atomic and defined once; existing spawn behaviour is unchanged.
@@ -49,18 +49,21 @@ is atomic and defined once; existing spawn behaviour is unchanged.
 - **Coexist with extraction:** keep extraction for already-written drift (research-split moves real
   content out of a file); Incoming is for conversational concerns not yet written up.
 
-## Component 1 — `create-topic` CLI command (atomic)
+## Component 1 — `create-discovery-topic` CLI command (atomic)
 
 `skills/workflow-manifest/scripts/manifest.cjs`. Mirrors `cmdInitPhase`'s lock/atomic pattern: one
 `withLock` → `readManifest` → in-memory mutations → single `writeManifestAtomic`.
 
 ```
-create-topic <work-unit>.<topic> [--phase research|discussion] --routing <r> --source <src> [--summary s] [--description d]
+create-discovery-topic <work-unit>.<topic> [--phase research|discussion] --routing <r> --source <src> [--summary s] [--description d]
 ```
 
 - First positional is a **two-segment** dotted path `wu.topic` (the discovery item it addresses) — a
   deliberate divergence from `init-phase`'s three-segment `wu.phase.topic` (phase is a flag here, not
   a path segment).
+- **Epic-only by intent** — the discovery map exists only for epics, so this is the epic topic-spawn
+  primitive. Single-topic types create their topic via `init` + a single `init-phase`. The work_type
+  gate lives in the callers; the CLI stays a dumb primitive.
 - Always creates the **discovery** item with `routing`/`source` (required) + `summary`/`description`
   (optional) on the discovery item.
 - `--phase` additionally creates `phases.{phase}.items.{topic} = {status:'in-progress'}` — status
@@ -70,10 +73,10 @@ create-topic <work-unit>.<topic> [--phase research|discussion] --routing <r> --s
   half-built-topic hazard outright.
 - `--phase` and `--routing` validated against `research`/`discussion`.
 
-## Component 2 — `create-topic.md` shared reference
+## Component 2 — `create-discovery-topic.md` shared reference
 
-`skills/workflow-shared/references/create-topic.md` encodes the **common core** only: name-validation
-loop, idempotent `pull dismissed`, the `create-topic` CLI call, no commit (returns dirty to caller).
+`skills/workflow-shared/references/create-discovery-topic.md` encodes the **common core** only: name-validation
+loop, idempotent `pull dismissed`, the `create-discovery-topic` CLI call, no commit (returns dirty to caller).
 
 Stays site-specific: artefact creation/templates, originating-side markers, summary/description
 generation, commit messages + staged paths, post-action prompts, trigger/offer gates.
@@ -88,7 +91,7 @@ no-op when the name is absent, and on the `ok` path the name is never in dismiss
 new `drain-incoming.md` + `incoming-landing.md` shared references; `incoming:{origin}` provenance.
 
 **Landing** (`incoming-landing.md`): recompute target lifecycle at landing time (never cached). New →
-`create-topic --phase {routing}`; fresh → plain `init-phase`; in-flight/decided → append `### {concern}`
+`create-discovery-topic --phase {routing}`; fresh → plain `init-phase`; in-flight/decided → append `### {concern}`
 subsection + reopen if completed. If the resolved target is the current topic, route to normal
 subtopic handling, not Incoming.
 
@@ -119,8 +122,8 @@ just carries a one-line note. KB re-index on re-conclude is safe (idempotent —
 
 Scope per PR:
 
-- **PR 1** — `create-topic` CLI + tests (also carries this design log).
-- **PR 2** — `create-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
+- **PR 1** — `create-discovery-topic` CLI + tests (also carries this design log).
+- **PR 2** — `create-discovery-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
 - **PR 3** — migrate discovery-only sites (confirm-and-persist, ensure-discovery-item, analysis-approval-gate).
 - **PR 4** — Incoming substrate (templates, initialize-*, stubs, CLAUDE.md provenance).
 - **PR 5** — Incoming landing (full incoming-landing.md, trigger wiring, non-epic routing).
@@ -149,7 +152,11 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 - **Entry From-line dropped `session {NNN}`.** Research and discussion track no session number
   anywhere, so the line is `origin · phase · date`. Detection keys on the `## Incoming` heading,
   the `(none)` placeholder, and `### ` subsections — not the From line — so this is safe.
-- **Shared-ref output vars renamed to avoid caller collisions.** `create-topic.md` returns
+- **`create-topic` renamed to `create-discovery-topic`.** The command (and its `create-topic.md`
+  shared ref → `create-discovery-topic.md`) spawns a topic onto an epic's discovery map; the old name
+  read as a universal "create any topic". Single-topic types create their topic via `init` + a single
+  `init-phase` and never call it, so the name now states the real epic-only scope.
+- **Shared-ref output vars renamed to avoid caller collisions.** `create-discovery-topic.md` returns
   `created_topic` (§F already binds `{topic}` to the parent); `incoming-landing.md` returns
   `landed_topic`.
 - **Research Incoming lives in `epic-session.md` §C (Topic Awareness)**, the conversational-concern
@@ -163,12 +170,12 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   offer, and single-topic types never reopen via Incoming. An initial `⚑` warning was added and then
   removed — it was redundant for epics and a false positive on the shared non-epic conclude path.
 - **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
-  (`status,routing,source,summary,description` from `create-topic` vs the old sequential `set`
+  (`status,routing,source,summary,description` from `create-discovery-topic` vs the old sequential `set`
   order). Values identical.
 
 ## Verification
 
-- CLI: `bash tests/scripts/test-workflow-manifest.sh` green incl. new create-topic cases; manual runs
+- CLI: `bash tests/scripts/test-workflow-manifest.sh` green incl. new create-discovery-topic cases; manual runs
   against a temp `.workflows/` fixture for full-spawn, discovery-only, duplicate-error, omitted-field,
   missing-flag paths.
 - Refactor no-op: diff resulting `manifest.json` + artefact before vs after migration on a temp

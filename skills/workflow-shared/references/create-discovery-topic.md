@@ -1,4 +1,4 @@
-# Create Topic
+# Create Discovery Topic
 
 *Shared reference. Loaded by `workflow-discussion-process` (topic elevation) and `workflow-research-process` (research split), and any flow that spawns a new discovery-map topic.*
 
@@ -77,7 +77,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.disc
 Create the discovery item and, when `phase` is set, its phase item in one atomic call:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs create-topic {work_unit}.{created_topic} --routing {routing} --source "{source}" --phase {phase} --summary "{summary}" --description "{description}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {work_unit}.{created_topic} --routing {routing} --source "{source}" --phase {phase} --summary "{summary}" --description "{description}"
 ```
 
 Assemble the flags as follows:

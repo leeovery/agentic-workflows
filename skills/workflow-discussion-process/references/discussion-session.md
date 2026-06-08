@@ -173,7 +173,7 @@ During organic discussion, a subtopic may grow beyond the scope of the current t
 
 2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation) for the discovery item's `summary` field. Generate a paragraph or two of richer context in the same turn for the `description` field, loaded by discussion-entry as opening context when the user later picks the elevated topic up.
 
-→ Load **[create-topic.md](../../workflow-shared/references/create-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`, phase = `discussion`, routing = `discussion`, source = `discussion-elevation:{topic}`, summary = `{summary}`, description = `{description}`.
+→ Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`, phase = `discussion`, routing = `discussion`, source = `discussion-elevation:{topic}`, summary = `{summary}`, description = `{description}`.
 
 **If `result` is `cancelled`:**
 

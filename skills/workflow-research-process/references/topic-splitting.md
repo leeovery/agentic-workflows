@@ -41,7 +41,7 @@ For each split topic:
 
 2. Generate a one-sentence summary of the extracted content (drawn from the thread itself) for the discovery item's `summary` field, used in map renders. Generate a paragraph or two of richer context in the same turn for the `description` field, loaded by entry skills as opening context when the user later picks the topic up.
 
-→ Load **[create-topic.md](../../workflow-shared/references/create-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`, phase = `research`, routing = `research`, source = `research-split:{parent_topic}`, summary = `{summary}`, description = `{description}`.
+→ Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new_topic}`, phase = `research`, routing = `research`, source = `research-split:{parent_topic}`, summary = `{summary}`, description = `{description}`.
 
 **If `result` is `cancelled`:**
 
