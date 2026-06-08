@@ -24,7 +24,7 @@ What we know so far:
 
 {Content follows - freeform, managed by the skill}
 
-## Incoming
+## Triage
 
 (none)
 ```
@@ -35,4 +35,4 @@ What we know so far:
 - Content after that is intentionally unstructured - let themes emerge naturally
 - The skill handles content organization during sessions
 - Research status is tracked in the work unit manifest, not in the document
-- `## Incoming` is a fixed terminal landing zone for off-topic concerns routed from other topics; working research content stays above it; left as `(none)` until an entry lands
+- `## Triage` is a fixed terminal landing zone for off-topic concerns rerouted from other topics; working research content stays above it; left as `(none)` until an entry lands

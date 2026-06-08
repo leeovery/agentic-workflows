@@ -102,7 +102,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - What's resolved
 - What's still uncertain
 
-## Incoming
+## Triage
 
 (none)
 ```
@@ -144,8 +144,8 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Don't summarise the journey — document it
 - Don't stuff sibling-level concerns into subtopics — elevate them to their own discussion topic
 
-**Incoming section**:
-- `## Incoming` is a fixed terminal landing zone for off-topic concerns routed from other topics; working discussion content stays above it; left as `(none)` until an entry lands
+**Triage section**:
+- `## Triage` is a fixed terminal landing zone for off-topic concerns rerouted from other topics; working discussion content stays above it; left as `(none)` until an entry lands
 
 **Complete when**:
 - All subtopics on the Discussion Map are `decided` (or deliberately deferred)

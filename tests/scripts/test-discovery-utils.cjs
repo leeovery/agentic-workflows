@@ -648,8 +648,8 @@ describe('discovery-utils', () => {
       assert.strictEqual(computeSourceProvenance('research-split:kitchen-hardware'), 'from kitchen-hardware');
     });
 
-    it('unwraps incoming:{origin} to "from {origin}"', () => {
-      assert.strictEqual(computeSourceProvenance('incoming:auth-flow'), 'from auth-flow');
+    it('unwraps reroute:{origin} to "from {origin}"', () => {
+      assert.strictEqual(computeSourceProvenance('reroute:auth-flow'), 'from auth-flow');
     });
 
     it('handles comma-joined plain sources', () => {
