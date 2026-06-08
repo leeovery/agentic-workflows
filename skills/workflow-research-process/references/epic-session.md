@@ -76,7 +76,11 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 
 → Return to **B. Session Loop**.
 
-**If `keep`:** keep exploring here. If written material keeps accumulating off-topic over multiple exchanges, the split path in **D. Convergence Routing** moves it out. → Return to **B. Session Loop**.
+**If `keep`:**
+
+Keep exploring here. If written material keeps accumulating off-topic over multiple exchanges, the split path in **D. Convergence Routing** moves it out.
+
+→ Return to **B. Session Loop**.
 
 ---
 

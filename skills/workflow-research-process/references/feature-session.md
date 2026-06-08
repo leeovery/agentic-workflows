@@ -87,8 +87,20 @@ When a concern surfaces that's beyond this topic's scope, a single-topic work ty
 
 **STOP.** Wait for user response.
 
-**If `log`:** capture the concern via the `workflow-log-idea` skill so it lands in the inbox for later triage. → Return to **B. Session Loop**.
+**If `log`:**
 
-**If `pivot`:** note the concern in the research file so it isn't lost, then tell the user they can pivot this work to an epic from the manage menu (`p`/`pivot`) and route the concern as a topic from there. → Return to **B. Session Loop**.
+Capture the concern via the `workflow-log-idea` skill so it lands in the inbox for later triage.
 
-**If `ignore`:** note the concern in the research file for the user to consider separately, and continue. → Return to **B. Session Loop**.
+→ Return to **B. Session Loop**.
+
+**If `pivot`:**
+
+Note the concern in the research file so it isn't lost, then tell the user they can pivot this work to an epic from the manage menu (`p`/`pivot`) and route the concern as a topic from there.
+
+→ Return to **B. Session Loop**.
+
+**If `ignore`:**
+
+Note the concern in the research file for the user to consider separately, and continue.
+
+→ Return to **B. Session Loop**.
