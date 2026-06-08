@@ -45,7 +45,6 @@ A living index of subtopics tracked during the discussion. This is the structura
   ├─ ◐ {Subtopic B} [exploring]
   │  ├─ ◐ {Child subtopic} [exploring]
   │  └─ ○ {Child subtopic} [pending]
-  ├─ ↑ Elevated: {Sibling Topic}
   └─ ○ {Subtopic C} [pending]
 
 ---
@@ -96,7 +95,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 ### Open Threads
 - Anything deliberately deferred or left for future discussion
-- Subtopics that were elevated to separate topics (with links)
+- Concerns rerouted to other topics (with links)
 
 ### Current State
 - What's resolved
@@ -133,7 +132,6 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Update states as the conversation progresses
 - New child subtopics can be added under parents
 - The map is the user's visibility into discussion shape and your tracking mechanism
-- Elevated topics (siblings that became their own discussion) are noted with `↑ Elevated:` on the map, occupying the same slot in the tree as the original subtopic
 
 **Flexibility**: Not every subtopic needs all sections. Some have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up — don't force structure onto a simple discussion.
 
@@ -142,7 +140,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - Don't turn into plan (no implementation steps)
 - Don't write code — unless it came up in discussion (e.g., API shape, pattern example) and is relevant to capture
 - Don't summarise the journey — document it
-- Don't stuff sibling-level concerns into subtopics — elevate them to their own discussion topic
+- Don't stuff concerns that belong to a different topic into subtopics — reroute them to that topic
 
 **Triage section**:
 - `## Triage` is a fixed terminal landing zone for off-topic concerns rerouted from other topics; working discussion content stays above it; left as `(none)` until an entry lands

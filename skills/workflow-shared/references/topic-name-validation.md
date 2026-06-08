@@ -77,7 +77,7 @@ or use edit-summary / change-routing on the existing item.
 
 Check whether `proposed_name` matches any entry in `dismissed` (case-sensitive).
 
-A dismissed-list match is **not** a rejection. User-explicit spawns (split, elevation, discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The caller pulls the name from `dismissed` before writing the new item.
+A dismissed-list match is **not** a rejection. User-explicit spawns (split, reroute, discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by analyses. The caller pulls the name from `dismissed` before writing the new item.
 
 #### If a match exists
 

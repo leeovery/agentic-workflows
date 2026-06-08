@@ -57,7 +57,7 @@ When you observe these signals, **propose** endpoint to the user. Don't declare 
 
 - **No inline topic decomposition.** Do not surface "hearing X, Y, Z as distinct shapes" moves during the loop. Topics are synthesised at endpoint.
 - **The user confirms endpoint.** You can propose, but the user decides. Don't move to synthesis without explicit confirmation.
-- **Initial spike, not exhaustive.** 2 topics is fine, 20 is fine. The map fills out as work progresses — analyses auto-add, splits and elevations spawn. Don't push for completeness at synthesis.
+- **Initial spike, not exhaustive.** 2 topics is fine, 20 is fine. The map fills out as work progresses — analyses auto-add, splits and reroutes spawn. Don't push for completeness at synthesis.
 - **No active missing-piece probes during exploration.** Don't list things the user "hasn't mentioned" as if you're auditing coverage. If something comes to mind during exploration, raise it as a natural question. At endpoint, optional pushback can surface one or two angles — bounded, not exhaustive.
 - **No decisions, no investigations.** Defer mechanism questions to discussion; defer feasibility to research. Use what you and the user already know; don't go searching.
 - **No code, no architecture, no implementation talk.** Topics are named at the level a future research or discussion phase would pick up — *kitchen-printers*, *menu-management*, *analytics* — not API shapes or data models.

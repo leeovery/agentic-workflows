@@ -2,6 +2,16 @@
 
 **Status:** In progress
 
+> ⚠️ **TERMINOLOGY CHANGED MID-STACK (from PR 5).** This doc is throwaway and was **not**
+> back-edited, so older sections below still say "Incoming"/"elevate". The shipped names are:
+> - **Section** in artefacts: `## Triage` (was `## Incoming`).
+> - **Menu verb**: `reroute` — a single option that replaces *both* the old `elevate` and `incoming`.
+>   `elevate` is **removed**; rerouting to a new topic is what used to be elevation.
+> - **Shared ref**: `triage-landing.md` (was `incoming-landing.md`).
+> - **Provenance**: `reroute:{origin}` (was `incoming:{origin}`).
+> - The feature/initiative name "Incoming" and the `incoming/` dir/branch names are kept as-is.
+> Future PRs (6, 7): use the new names; ignore the older terminology in the prose below.
+
 Design log for the Incoming initiative. Its own stacked-PR effort, independent of the discovery-map
 work. This doc is the durable scope reference; decisions are appended as the PR stack progresses.
 

@@ -78,7 +78,7 @@ Then commit. The file is the source of truth, not the conversation.
 
 **Too much detail too soon**: "Need user-specific cache keys with query params" not "Cache key: metrics:{user_id}:{date}:{SHA256(params)}"
 
-**Scope creep**: If a concern is expanding beyond the current topic's scope, it's likely a sibling topic — elevate it rather than stuffing it into the current discussion
+**Scope creep**: If a concern belongs to a different topic, reroute it to that topic rather than stuffing it into the current discussion
 
 ## Quality Check
 

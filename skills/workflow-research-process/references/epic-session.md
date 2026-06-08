@@ -32,14 +32,14 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 · · · · · · · · · · · ·
 **{concern}** belongs to a different topic, not this one.
 
-- **`i`/`incoming`** — Note it against that topic for it to pick up later
+- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later
 - **`k`/`keep`** — Keep exploring here for now
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-**If `incoming`:**
+**If `reroute`:**
 
 1. Identify the topic the concern belongs to. Read the live map:
 
@@ -63,15 +63,17 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 
    **STOP.** Wait for user response.
 
-   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic, it's not Incoming — fold it into this research file as a thread and → Return to **B. Session Loop**.
+   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic, it's not a reroute — fold it into this research file as a thread and → Return to **B. Session Loop**.
 
-2. Load **[incoming-landing.md](../../workflow-shared/references/incoming-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Incoming`.
+2. Gather the full context discussed about the concern — everything raised so far, not a one-line summary. The target topic picks this up cold, so it needs the whole thing.
 
-3. Commit:
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern and its full context}`, origin = `{topic}`, phase = `research`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
+
+4. Commit:
 
    ```bash
    git add -- .workflows/{work_unit}/
-   git commit -m "research({work_unit}/{topic}): route concern to {landed_topic} incoming"
+   git commit -m "research({work_unit}/{topic}): reroute concern to {landed_topic}"
    ```
 
 → Return to **B. Session Loop**.
