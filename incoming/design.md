@@ -143,7 +143,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 | open — carries design log |
 | 2 | `idea/incoming-pr-2-shared-create-topic` | PR 1 | #366 | open — redo (old #361 closed) |
 | 3 | `idea/incoming-pr-3-discovery-direct-cli` | PR 2 | #367 | open — redo (old #362 closed) |
-| 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | — | open — redo (old #363 closed) |
+| 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | _to re-cut_ | PR 4 | — | pending (old #364 closed) |
 | 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
 
