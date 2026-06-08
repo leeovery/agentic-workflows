@@ -128,8 +128,9 @@ Scope per PR:
 - **PR 4** — Incoming substrate: templates + initialize-* seed `## Incoming (none)`; CLAUDE.md + test declare `incoming:{origin}` provenance. (Stub *creation* on a fresh target is landing-time — PR 5.)
 - **PR 5** — Incoming landing: `incoming-landing.md` (classify target → new / fresh / existing+reopen), caller-side target resolution with an ambiguity menu, trigger wiring (discussion §F, epic-research §C), non-epic routing (feature §E).
 - **PR 6** — drain + conclusion gate + reopen guard.
+- **PR 7** — make the off-topic `pivot` option real: extract the feature→epic conversion core (set `work_type epic`, reindex, register the discovery-map topic, `create-discovery-topic`) from `manage-work-unit.md` into a shared `pivot-to-epic.md`; `manage-work-unit` loads it (no behaviour change). Wire the off-topic `pivot` (feature §E, discussion §F non-epic) to load it, then land the triggering concern as a topic. Today `pivot` only points the user at the manage menu — a no-op the off-topic menu shouldn't pretend to perform.
 
-PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–6 introduce new behaviour.
+PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–7 introduce new behaviour.
 
 **Execution: per-PR redo.** A first pass built the whole stack in one go and violated the authoring
 conventions, so the work is being redone one PR at a time. The first-pass PRs #359 and #361–#365 are
@@ -146,6 +147,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | `idea/incoming-pr-5-incoming-landing` | PR 4 | #369 | open — redo (old #364 closed) |
 | 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
+| 7 | _to cut_ | PR 6 | — | pending — make off-topic `pivot` real |
 
 ## Decisions taken during implementation
 
