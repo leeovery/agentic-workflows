@@ -124,7 +124,7 @@ Scope per PR:
 
 - **PR 1** — `create-discovery-topic` CLI + tests (also carries this design log).
 - **PR 2** — `create-discovery-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
-- **PR 3** — migrate discovery-only sites (confirm-and-persist, ensure-discovery-item, analysis-approval-gate).
+- **PR 3** — migrate discovery-only sites onto the CLI directly (confirm-and-persist §A, ensure-discovery-item §D, analysis-approval-gate §C, absorb-into-epic §J, manage-work-unit pivot).
 - **PR 4** — Incoming substrate (templates, initialize-*, stubs, CLAUDE.md provenance).
 - **PR 5** — Incoming landing (full incoming-landing.md, trigger wiring, non-epic routing).
 - **PR 6** — drain + conclusion gate + reopen guard.
@@ -142,7 +142,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 |---|---|---|---|---|
 | 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 | open — carries design log |
 | 2 | `idea/incoming-pr-2-shared-create-topic` | PR 1 | #366 | open — redo (old #361 closed) |
-| 3 | _to re-cut_ | PR 2 | — | pending (old #362 closed) |
+| 3 | `idea/incoming-pr-3-discovery-direct-cli` | PR 2 | — | open — redo (old #362 closed) |
 | 4 | _to re-cut_ | PR 3 | — | pending (old #363 closed) |
 | 5 | _to re-cut_ | PR 4 | — | pending (old #364 closed) |
 | 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
@@ -169,6 +169,14 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   reopened (regressed-to-`in-progress`) source via its `[extracted, reopened]` state and re-analysis
   offer, and single-topic types never reopen via Incoming. An initial `⚑` warning was added and then
   removed — it was redundant for epics and a false positive on the shared non-epic conclude path.
+- **PR 3's discovery-only sites call the `create-discovery-topic` CLI directly, not the shared ref.**
+  The ref (`create-discovery-topic.md`) is the *interactive* full-spawn helper — its section A renders a
+  collision menu with `**STOP.**` and has no flag to suppress it. The discovery-only sites are
+  non-interactive and several require a silent idempotent no-op (`ensure-discovery-item` §B), which the
+  ref's collision menu would break. Routing them through it would inject STOP gates that never existed.
+  Post-CLI the create is one line, so a wrapping ref would be parameter boilerplate with no instruction
+  density. Net: ref = interactive human-naming sites; CLI = non-interactive programmatic sites.
+  (`map-operations.md` §F is a topic *rename*, not a fresh spawn — deliberately excluded.)
 - **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
   (`status,routing,source,summary,description` from `create-discovery-topic` vs the old sequential `set`
   order). Values identical.

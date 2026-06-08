@@ -396,9 +396,7 @@ Routing reflects the work already done on the feature. `source` is set to `disco
 Set `routing` to `research`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discovery.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} routing research
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} source discovery
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {target_epic}.{topic} --routing research --source discovery
 ```
 
 → Proceed to **K. Cleanup**.
@@ -408,9 +406,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.dis
 Set `routing` to `discussion`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discovery.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} routing discussion
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discovery.{topic} source discovery
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {target_epic}.{topic} --routing discussion --source discovery
 ```
 
 → Proceed to **K. Cleanup**.

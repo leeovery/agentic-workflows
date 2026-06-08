@@ -143,14 +143,10 @@ Revise this block's `routing`, `summary`, or `description` in the staging file p
 
 ## C. Write Approved Candidate
 
-Set this block's `status: approved` in the staging file, then write the discovery item from the block's stored fields:
+Set this block's `status: approved` in the staging file, then write the discovery item from the block's stored fields in one atomic call:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{name}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} summary "{summary}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} description "{description}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} routing {routing}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} source "{source}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {work_unit}.{name} --routing {routing} --source "{source}" --summary "{summary}" --description "{description}"
 ```
 
 `source` is the block's stored value verbatim — `research-analysis:{parent}` for research-analysis (provenance renders as `from {parent}`), `gap-analysis` for gap-analysis.

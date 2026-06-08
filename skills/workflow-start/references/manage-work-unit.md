@@ -206,9 +206,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name
 Create the map item — `routing` is `research` if it exists, otherwise `discussion`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {selected.name}.discovery.{selected.name}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name}.discovery.{selected.name} routing {research|discussion}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name}.discovery.{selected.name} source discovery
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {selected.name}.{selected.name} --routing {research|discussion} --source discovery
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
