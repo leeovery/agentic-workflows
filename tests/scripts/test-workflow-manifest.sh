@@ -710,14 +710,14 @@ assert_exit_nonzero "Invalid phase in init-phase rejected" init-phase bad-phase-
 echo ""
 
 # ============================================================================
-# CREATE-TOPIC TESTS
+# CREATE-DISCOVERY-TOPIC TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: create-topic full spawn (with --phase) creates both items${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic full spawn (with --phase) creates both items${NC}"
 setup_fixture
 run_cli init ct-full --work-type epic --description "Create topic" >/dev/null 2>&1
-output=$(run_cli create-topic ct-full.auth --phase discussion --routing discussion --source "incoming:billing" --summary "Auth concern" --description "Longer context")
-assert_contains "$output" "Created topic" "create-topic full spawn reports creation"
+output=$(run_cli create-discovery-topic ct-full.auth --phase discussion --routing discussion --source "incoming:billing" --summary "Auth concern" --description "Longer context")
+assert_contains "$output" "Created topic" "create-discovery-topic full spawn reports creation"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth status)" "in-progress" "discovery item status in-progress"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth routing)" "discussion" "discovery item routing set"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth source)" "incoming:billing" "discovery item source set"
@@ -729,66 +729,66 @@ assert_equals "$(run_cli_stdout exists ct-full.discussion.auth routing)" "false"
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic discovery-only (no --phase) creates only discovery item${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic discovery-only (no --phase) creates only discovery item${NC}"
 setup_fixture
 run_cli init ct-disc --work-type epic --description "Create topic" >/dev/null 2>&1
-run_cli create-topic ct-disc.search --routing research --source direct-start >/dev/null 2>&1
+run_cli create-discovery-topic ct-disc.search --routing research --source direct-start >/dev/null 2>&1
 assert_equals "$(run_cli_stdout get ct-disc.discovery.search routing)" "research" "discovery-only routing set"
 assert_equals "$(run_cli_stdout get ct-disc.discovery.search source)" "direct-start" "discovery-only source set"
 assert_equals "$(run_cli_stdout exists ct-disc.research.search)" "false" "no phase item created without --phase"
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic omits summary/description as absent keys (not empty string)${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic omits summary/description as absent keys (not empty string)${NC}"
 setup_fixture
 run_cli init ct-omit --work-type epic --description "Create topic" >/dev/null 2>&1
-run_cli create-topic ct-omit.thread --routing research --source incoming:perf >/dev/null 2>&1
+run_cli create-discovery-topic ct-omit.thread --routing research --source incoming:perf >/dev/null 2>&1
 assert_equals "$(run_cli_stdout exists ct-omit.discovery.thread summary)" "false" "summary key absent when omitted"
 assert_equals "$(run_cli_stdout exists ct-omit.discovery.thread description)" "false" "description key absent when omitted"
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic rejects duplicate discovery item${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic rejects duplicate discovery item${NC}"
 setup_fixture
 run_cli init ct-dup --work-type epic --description "Create topic" >/dev/null 2>&1
-run_cli create-topic ct-dup.auth --routing discussion --source x >/dev/null 2>&1
-assert_exit_nonzero "duplicate discovery item rejected" create-topic ct-dup.auth --routing discussion --source y
+run_cli create-discovery-topic ct-dup.auth --routing discussion --source x >/dev/null 2>&1
+assert_exit_nonzero "duplicate discovery item rejected" create-discovery-topic ct-dup.auth --routing discussion --source y
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic rejects when phase item already exists${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic rejects when phase item already exists${NC}"
 setup_fixture
 run_cli init ct-dupphase --work-type epic --description "Create topic" >/dev/null 2>&1
 # Phase item present, discovery item absent → duplicate-phase guard must fire.
 run_cli init-phase ct-dupphase.discussion.auth >/dev/null 2>&1
-assert_exit_nonzero "duplicate phase item rejected" create-topic ct-dupphase.auth --phase discussion --routing discussion --source x
+assert_exit_nonzero "duplicate phase item rejected" create-discovery-topic ct-dupphase.auth --phase discussion --routing discussion --source x
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic requires --routing and --source${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic requires --routing and --source${NC}"
 setup_fixture
 run_cli init ct-req --work-type epic --description "Create topic" >/dev/null 2>&1
-assert_exit_nonzero "missing --routing rejected" create-topic ct-req.foo --source x
-assert_exit_nonzero "missing --source rejected" create-topic ct-req.bar --routing research
+assert_exit_nonzero "missing --routing rejected" create-discovery-topic ct-req.foo --source x
+assert_exit_nonzero "missing --source rejected" create-discovery-topic ct-req.bar --routing research
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic validates --routing and --phase values${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic validates --routing and --phase values${NC}"
 setup_fixture
 run_cli init ct-val --work-type epic --description "Create topic" >/dev/null 2>&1
-assert_exit_nonzero "invalid --routing rejected" create-topic ct-val.foo --routing planning --source x
-assert_exit_nonzero "invalid --phase rejected" create-topic ct-val.bar --phase planning --routing research --source x
+assert_exit_nonzero "invalid --routing rejected" create-discovery-topic ct-val.foo --routing planning --source x
+assert_exit_nonzero "invalid --phase rejected" create-discovery-topic ct-val.bar --phase planning --routing research --source x
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic rejects three-segment path${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic rejects three-segment path${NC}"
 setup_fixture
 run_cli init ct-path --work-type epic --description "Create topic" >/dev/null 2>&1
-assert_exit_nonzero "three-segment path rejected" create-topic ct-path.discussion.foo --routing research --source x
+assert_exit_nonzero "three-segment path rejected" create-discovery-topic ct-path.discussion.foo --routing research --source x
 
 echo ""
 
-echo -e "${YELLOW}Test: create-topic is atomic — a failing run leaves the manifest unchanged${NC}"
+echo -e "${YELLOW}Test: create-discovery-topic is atomic — a failing run leaves the manifest unchanged${NC}"
 setup_fixture
 run_cli init ct-atomic --work-type epic --description "Create topic" >/dev/null 2>&1
 run_cli init-phase ct-atomic.discussion.auth >/dev/null 2>&1
@@ -796,9 +796,9 @@ before=$(cat "$TEST_DIR/.workflows/ct-atomic/manifest.json")
 # Discovery item does not exist yet, but the discussion phase item does → the
 # duplicate-phase guard fires AFTER the discovery existence check but BEFORE any
 # write. The discovery item must NOT be left behind.
-run_cli create-topic ct-atomic.auth --phase discussion --routing discussion --source x >/dev/null 2>&1 || true
+run_cli create-discovery-topic ct-atomic.auth --phase discussion --routing discussion --source x >/dev/null 2>&1 || true
 after=$(cat "$TEST_DIR/.workflows/ct-atomic/manifest.json")
-assert_equals "$after" "$before" "manifest byte-identical after failed create-topic"
+assert_equals "$after" "$before" "manifest byte-identical after failed create-discovery-topic"
 assert_equals "$(run_cli_stdout exists ct-atomic.discovery.auth)" "false" "no half-built discovery item after failure"
 
 echo ""

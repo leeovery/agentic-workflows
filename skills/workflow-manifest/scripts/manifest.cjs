@@ -737,13 +737,20 @@ function cmdInitPhase(args) {
   process.stdout.write(`Initialized ${phase} phase for "${topic}" in "${workUnit}"\n`);
 }
 
-// create-topic <work-unit>.<topic> [--phase research|discussion]
+// create-discovery-topic <work-unit>.<topic> [--phase research|discussion]
 //              --routing <r> --source <src> [--summary s] [--description d]
 //
-// Atomically create a discovery-map topic and, optionally, its initial phase
-// item. One withLock → readManifest → in-memory mutation → single
-// writeManifestAtomic, so a mid-sequence failure can never leave a half-built
-// topic (the hazard the multi-command sequence this replaces was prone to).
+// Atomically spawn a new topic onto an epic's discovery map and, optionally,
+// seed its initial phase item. One withLock → readManifest → in-memory mutation
+// → single writeManifestAtomic, so a mid-sequence failure can never leave a
+// half-built topic (the hazard the multi-command sequence this replaces was
+// prone to).
+//
+// EPIC-ONLY by intent: the discovery map exists only for epics, so this is the
+// epic topic-spawn primitive. Single-topic types (feature/bugfix/quick-fix)
+// create their topic via `init` (the work unit IS the topic) plus a single
+// `init-phase` for the first phase — they never call this. The work_type gate
+// lives in the callers, not here; this command is a dumb primitive.
 //
 // DIVERGENCE FROM init-phase: the first positional is a TWO-segment `wu.topic`
 // path, not init-phase's three-segment `wu.phase.topic`. The phase is a flag
@@ -763,9 +770,9 @@ function cmdInitPhase(args) {
 //
 // Errors if either the discovery item or the --phase item already exists (both
 // checked before any write).
-function cmdCreateTopic(args) {
+function cmdCreateDiscoveryTopic(args) {
   const usage =
-    'Usage: create-topic <work-unit>.<topic> [--phase research|discussion] ' +
+    'Usage: create-discovery-topic <work-unit>.<topic> [--phase research|discussion] ' +
     '--routing <research|discussion> --source <src> [--summary s] [--description d]';
 
   let pathArg = null;
@@ -1149,7 +1156,7 @@ function cmdResolve(args) {
 const [command, ...args] = process.argv.slice(2);
 
 if (!command) {
-  die('Usage: manifest.cjs <command> [args]\nCommands: init, get, set, delete, list, init-phase, create-topic, push, pull, exists, key-of, project, resolve');
+  die('Usage: manifest.cjs <command> [args]\nCommands: init, get, set, delete, list, init-phase, create-discovery-topic, push, pull, exists, key-of, project, resolve');
 }
 
 switch (command) {
@@ -1159,7 +1166,7 @@ switch (command) {
   case 'delete':   cmdDelete(args); break;
   case 'list':     cmdList(args); break;
   case 'init-phase': cmdInitPhase(args); break;
-  case 'create-topic': cmdCreateTopic(args); break;
+  case 'create-discovery-topic': cmdCreateDiscoveryTopic(args); break;
   case 'push':     cmdPush(args); break;
   case 'pull':     cmdPull(args); break;
   case 'exists':   cmdExists(args); break;
