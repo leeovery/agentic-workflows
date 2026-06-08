@@ -716,11 +716,11 @@ echo ""
 echo -e "${YELLOW}Test: create-discovery-topic full spawn (with --phase) creates both items${NC}"
 setup_fixture
 run_cli init ct-full --work-type epic --description "Create topic" >/dev/null 2>&1
-output=$(run_cli create-discovery-topic ct-full.auth --phase discussion --routing discussion --source "incoming:billing" --summary "Auth concern" --description "Longer context")
+output=$(run_cli create-discovery-topic ct-full.auth --phase discussion --routing discussion --source "reroute:billing" --summary "Auth concern" --description "Longer context")
 assert_contains "$output" "Created topic" "create-discovery-topic full spawn reports creation"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth status)" "in-progress" "discovery item status in-progress"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth routing)" "discussion" "discovery item routing set"
-assert_equals "$(run_cli_stdout get ct-full.discovery.auth source)" "incoming:billing" "discovery item source set"
+assert_equals "$(run_cli_stdout get ct-full.discovery.auth source)" "reroute:billing" "discovery item source set"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth summary)" "Auth concern" "discovery item summary set"
 assert_equals "$(run_cli_stdout get ct-full.discovery.auth description)" "Longer context" "discovery item description set"
 assert_equals "$(run_cli_stdout get ct-full.discussion.auth status)" "in-progress" "phase item status in-progress"
@@ -742,7 +742,7 @@ echo ""
 echo -e "${YELLOW}Test: create-discovery-topic omits summary/description as absent keys (not empty string)${NC}"
 setup_fixture
 run_cli init ct-omit --work-type epic --description "Create topic" >/dev/null 2>&1
-run_cli create-discovery-topic ct-omit.thread --routing research --source incoming:perf >/dev/null 2>&1
+run_cli create-discovery-topic ct-omit.thread --routing research --source reroute:perf >/dev/null 2>&1
 assert_equals "$(run_cli_stdout exists ct-omit.discovery.thread summary)" "false" "summary key absent when omitted"
 assert_equals "$(run_cli_stdout exists ct-omit.discovery.thread description)" "false" "description key absent when omitted"
 
