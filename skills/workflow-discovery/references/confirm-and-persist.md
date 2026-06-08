@@ -29,7 +29,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topi
 
 The `pull` is a no-op if the name isn't in the dismissed list.
 
-Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Quote shell values with single quotes if they contain `[]`, `{}`, `~`, or backticks. Description may span paragraphs.
+Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~`. Description may span paragraphs.
 
 If any command fails, surface the error and stop before the commit so the user can recover.
 
