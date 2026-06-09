@@ -173,9 +173,9 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 
 1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic with this topic on its discovery map.
 
-2. Propose a kebab-case topic name for the concern and confirm it with the user. Gather the full context discussed about the concern — everything worked out so far, not a one-line summary; the new topic picks it up cold.
+2. From the context you already have, derive two values: `proposed_name` — a kebab-case topic name for the concern; and `concern` — the concern with the full context discussed about it.
 
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern and its full context}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, the topic wasn't created — note the concern in the Summary so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic.
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the concern in the Summary so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic.
 
 4. Commit the conversion and the landing:
 
