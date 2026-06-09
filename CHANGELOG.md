@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-06-09
+
+- Add **consult references** as a second specification input type — a sibling discussion read narrowly for an owed correction (cited, not extracted), tracked in the manifest under `specification.{topic}.consult_references.{name}.status` and gating spec completion until `addressed`
+- Surface candidate consult references at specification entry via consolidation analysis plus an advisory `--phase discussion` knowledge-base query, declared per-grouping on a `**Consult**` line in the analysis doc
+- Carry consult references through grouping confirmations, spec/grouping menus, and all spec handoffs (create, continue, refine, create-with-incorporation), with status branches shown in displays; unify path absorbs them via wholesale extraction
+- Register declared consult references as `pending` at session setup without overwriting existing `addressed` status, and reconcile each by reading the named slice during spec construction
+- Extend the discovery script to emit `consult_references` (name + status, defaulting to `pending`) and add coverage in the discovery and manifest CLI test suites
+- Relax the specification knowledge-query prohibition to allow the single advisory entry-time query while still barring queries during spec authoring
+
 ## [0.5.4] - 2026-06-09
 
 - Add `create-discovery-topic` manifest CLI command — atomic single-lock, single-write epic topic spawn that errors on existing items, eliminating the half-built-topic hazard of the prior multi-command sequence
