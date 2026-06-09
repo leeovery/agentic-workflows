@@ -95,7 +95,25 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 
 **If `pivot`:**
 
-Note the concern in the research file so it isn't lost, then tell the user they can pivot this work to an epic from the manage menu (`p`/`pivot`) and route the concern as a topic from there.
+1. Convert this work to an epic — load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic with this topic on its discovery map.
+
+2. Propose a kebab-case topic name for the concern and confirm it with the user. Gather the full context discussed about the concern — everything worked out so far, not a one-line summary; the new topic picks it up cold.
+
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern and its full context}`, origin = `{topic}`, phase = `research`, date = `{today}`. If `result` is `cancelled`, the topic wasn't created — note the concern in the research file so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic.
+
+4. Commit the conversion and the landing:
+
+   ```bash
+   git add -- .workflows/{work_unit}/
+   git commit -m "research({work_unit}/{topic}): pivot to epic"
+   ```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> This work is now an epic — continuing here with the current topic.
+> The concern is preserved for its own handling later.
+```
 
 → Return to **B. Session Loop**.
 

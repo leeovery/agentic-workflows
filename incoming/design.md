@@ -236,6 +236,23 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   Triage / `drain-triage.md`, and the reopen guard is dropped — the epic specification phase already handles a
   regressed-to-`in-progress` source via its `[extracted, reopened]` state, and single-topic types never reopen
   via Triage. #365's reopen `⚑` was added then removed as redundant / a false positive.
+- **PR 7 extracts the conversion core, it doesn't rewrite it.** `pivot-to-epic.md` lifts `manage-work-unit.md`'s
+  pivot steps verbatim (set `work_type epic` → reindex → register the topic on the discovery map via the
+  `create-discovery-topic` CLI direct, `--source discovery`). `manage-work-unit` now just loads it; its
+  continue/back menu (which already carries the "converted from feature to epic" line) is unchanged. Behaviour
+  is byte-identical.
+- **`pivot-to-epic.md` stays commitless.** `manage-work-unit`'s pivot block never committed (the continue/back
+  menu or the subsequent continue-epic entry carries the change forward), so the extracted core preserves that:
+  it writes the manifest and returns dirty. Each caller owns its commit — `manage-work-unit` keeps not
+  committing; the off-topic callers commit conversion + landing together.
+- **Off-topic pivot reuses `triage-landing.md` to land the concern.** After the conversion the situation is
+  exactly the epic reroute case — a concern bound for a new topic — so the off-topic `pivot` branch (feature
+  `feature-session.md` §E, discussion `discussion-session.md` §F non-epic) proposes + confirms a kebab name,
+  gathers full context, and loads `triage-landing.md` (new-target path) rather than inventing a second landing
+  mechanism. This preserves full context (into the new topic's `## Triage`, drained when it next runs) instead
+  of dropping a bare map row. The current topic's session then continues; the new topic waits on the map for
+  `continue-epic`. A `cancelled` name-validation leaves the pivot standing and notes the concern in the
+  current artefact.
 
 ## Verification
 
