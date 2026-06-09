@@ -58,6 +58,7 @@ function buildAnalysisCaches(cwd, manifest) {
 function buildEpicDetail(cwd, manifest) {
   const phases = {};
   const allSourcedDiscussions = new Set();
+  const groupedDiscussions = new Set();
   const completedItems = [];
   const inProgressItems = [];
   const cancelledItems = [];
@@ -77,9 +78,15 @@ function buildEpicDetail(cwd, manifest) {
           ? item.sources
           : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
         entry.sources = sourcesArr;
-        // A discussion that appears only in a proposed grouping is still
-        // legitimately "not yet in a spec" — skip proposed items' sources so
-        // those discussions stay in unaccounted_discussions.
+        // groupedDiscussions tracks every spec item's sources (proposed
+        // included) — a discussion in any spec item is "grouped", which is
+        // what unaccounted_discussions now measures.
+        for (const src of sourcesArr) {
+          groupedDiscussions.add(src.topic || src.name);
+        }
+        // allSourcedDiscussions tracks only materialized items' sources —
+        // a proposed grouping has nothing extracted, so its sources can't
+        // be "reopened". Reopened detection reads this set.
         if (item.status !== 'proposed') {
           for (const src of sourcesArr) {
             allSourcedDiscussions.add(src.topic || src.name);
@@ -121,7 +128,7 @@ function buildEpicDetail(cwd, manifest) {
   const discussionItems = phaseItems(manifest, 'discussion');
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
-    if (d.status === 'completed' && !allSourcedDiscussions.has(d.name)) {
+    if (d.status === 'completed' && !groupedDiscussions.has(d.name)) {
       unaccountedDiscussions.push(d.name);
     }
   }
@@ -136,6 +143,16 @@ function buildEpicDetail(cwd, manifest) {
   const specItems = phaseItems(manifest, 'specification');
   const planItems = phaseItems(manifest, 'planning');
   const implItems = phaseItems(manifest, 'implementation');
+
+  // Proposed groupings are actionable from the epic menu — surface them as
+  // start_specification. Pushed before start_planning so they precede it in
+  // pipeline order (spec → planning), which the settled-state recommendation
+  // reads.
+  for (const s of specItems) {
+    if (s.status === 'proposed') {
+      nextPhaseReady.push({ name: s.name, action: 'start_specification', label: 'grouping ready' });
+    }
+  }
 
   const planTopics = new Set(planItems.filter(i => i.status !== 'cancelled').map(i => i.name));
   for (const s of specItems) {
