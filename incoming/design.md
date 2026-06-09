@@ -125,7 +125,7 @@ Scope per PR:
 - **PR 1** — `create-discovery-topic` CLI + tests (also carries this design log).
 - **PR 2** — `create-discovery-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
 - **PR 3** — migrate discovery-only sites onto the CLI directly (confirm-and-persist §A, ensure-discovery-item §D, analysis-approval-gate §C, absorb-into-epic §J, manage-work-unit pivot).
-- **PR 4** — Incoming substrate (templates, initialize-*, stubs, CLAUDE.md provenance).
+- **PR 4** — Incoming substrate: templates + initialize-* seed `## Incoming (none)`; CLAUDE.md + test declare `incoming:{origin}` provenance. (Stub *creation* on a fresh target is landing-time — PR 5.)
 - **PR 5** — Incoming landing (full incoming-landing.md, trigger wiring, non-epic routing).
 - **PR 6** — drain + conclusion gate + reopen guard.
 
@@ -143,7 +143,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 1 | `idea/incoming-pr-1-create-topic-cli` | `main` | #360 | open — carries design log |
 | 2 | `idea/incoming-pr-2-shared-create-topic` | PR 1 | #366 | open — redo (old #361 closed) |
 | 3 | `idea/incoming-pr-3-discovery-direct-cli` | PR 2 | #367 | open — redo (old #362 closed) |
-| 4 | _to re-cut_ | PR 3 | — | pending (old #363 closed) |
+| 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | _to re-cut_ | PR 4 | — | pending (old #364 closed) |
 | 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
 
@@ -177,6 +177,18 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   Post-CLI the create is one line, so a wrapping ref would be parameter boilerplate with no instruction
   density. Net: ref = interactive human-naming sites; CLI = non-interactive programmatic sites.
   (`map-operations.md` §F is a topic *rename*, not a fresh spawn — deliberately excluded.)
+- **PR 4 confirmed substrate-only.** It seeds the `## Incoming (none)` section into both templates +
+  `initialize-*`, and declares `incoming:{origin}` (CLAUDE.md enum + one proving unit test). Nothing
+  reads or writes Incoming yet. Closed #363 over-scoped "substrate" by bundling `incoming-landing.md`
+  and `drain-incoming.md` (both landing/consuming behaviour) — those stay in PR 5/6.
+- **`## Incoming` is terminal in both templates.** Research artefacts are freeform with no reliable
+  interior `## ` boundary, so the only robust detection edge is "`## Incoming` heading → EOF". Placing
+  it terminal in both templates (research: after the freeform body; discussion: after `## Summary`)
+  keeps them symmetric and findable regardless of body content. Working content stays above it.
+- **Elevation's hand-built seed reconciled in PR 5.** `discussion-session.md` §F builds its elevated
+  seed file directly, bypassing `template.md`, so an elevated discussion won't carry `## Incoming` from
+  PR 4. Left deliberately: landing (PR 5) is robust to a missing section and reconciles creation paths
+  there.
 - **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
   (`status,routing,source,summary,description` from `create-discovery-topic` vs the old sequential `set`
   order). Values identical.
