@@ -24,7 +24,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} work_
 
 Re-index so every completed chunk carries the new `work_type: epic`:
 
-→ Load **[reindex-work-unit.md](../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{work_unit}`.
+→ Load **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{work_unit}`.
 
 → Proceed to **C. Register the Topic on the Discovery Map**.
 

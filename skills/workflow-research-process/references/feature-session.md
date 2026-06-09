@@ -95,7 +95,7 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 
 **If `pivot`:**
 
-1. Convert this work to an epic — load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic with this topic on its discovery map.
+1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic with this topic on its discovery map.
 
 2. Propose a kebab-case topic name for the concern and confirm it with the user. Gather the full context discussed about the concern — everything worked out so far, not a one-line summary; the new topic picks it up cold.
 
