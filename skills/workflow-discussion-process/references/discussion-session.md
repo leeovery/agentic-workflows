@@ -147,7 +147,7 @@ During organic discussion a concern may surface that doesn't belong under the cu
 
 #### If work type is not `epic`
 
-Single-topic work types (feature, bugfix, quick-fix) have no other topic to route to — the topic *is* the work unit.
+Single-topic work types (feature, cross-cutting) have no other topic to route to — the topic *is* the work unit.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -156,7 +156,9 @@ Single-topic work types (feature, bugfix, quick-fix) have no other topic to rout
 **{concern}** is beyond this topic's scope.
 
 - **`l`/`log`** — Capture it as an idea in the inbox for later
+@if(work_type == 'feature')
 - **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
+@endif
 - **`i`/`ignore`** — Note it in the Summary and move on
 · · · · · · · · · · · ·
 ```

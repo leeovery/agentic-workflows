@@ -80,7 +80,9 @@ When a concern surfaces that's beyond this topic's scope, a single-topic work ty
 **{concern}** is beyond this topic's scope.
 
 - **`l`/`log`** — Capture it as an idea in the inbox for later
+@if(work_type == 'feature')
 - **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
+@endif
 - **`i`/`ignore`** — Note it in the research file and move on
 · · · · · · · · · · · ·
 ```

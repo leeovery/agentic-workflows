@@ -253,6 +253,18 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   of dropping a bare map row. The current topic's session then continues; the new topic waits on the map for
   `continue-epic`. A `cancelled` name-validation leaves the pivot standing and notes the concern in the
   current artefact.
+- **Off-topic `pivot` is gated to `feature` only.** `feature-session.md` §E and `discussion-session.md` §F
+  (non-epic) are reached by exactly `feature` and `cross-cutting` (bugfix/quick-fix have no research or
+  discussion phase). `pivot` (feature→epic) is the wrong tool for cross-cutting: cross-cutting is the terminal,
+  define-only, project-level tier that work is promoted *to* (`promote-to-cross-cutting.md`), not converted away
+  from into a buildable epic. So the `p`/`pivot` menu line is wrapped in `@if(work_type == 'feature')`; a
+  cross-cutting off-topic concern uses `log` (→ inbox → its own standalone unit later) or `ignore`. This also
+  matches `manage-work-unit.md`'s existing `work_type == 'feature'` gate on pivot. (Also corrected §F's intro
+  parenthetical, which wrongly listed bugfix/quick-fix as the non-epic types reaching discussion.)
+- **Name confirmation/clash is delegated, not re-implemented.** The off-topic pivot's step 2 only derives
+  `proposed_name` + `concern` as named variables; `triage-landing.md` → `create-discovery-topic.md` →
+  `topic-name-validation.md` already own kebab normalisation, the live-map collision check, and the
+  pick-another/cancel loop (with its own STOP). No separate confirm gate in the caller.
 
 ## Verification
 
