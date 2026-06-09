@@ -14,7 +14,7 @@ Display two complementary views of the epic's cross-phase progress: a compact su
 
 Before rendering, derive the pipeline data from the discovery `detail` object. This section is not displayed to the user.
 
-**Pipeline definition:** Each specification topic defines a pipeline. The pipeline name is the spec topic name. Additional virtual rows exist for unassigned discussions and promoted items.
+**Pipeline definition:** Each specification topic that has been started (status other than `proposed`) defines a pipeline. The pipeline name is the spec topic name. Additional virtual rows exist for unassigned discussions, proposed groupings, and promoted items.
 
 **Per-pipeline data:**
 
@@ -30,9 +30,11 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
 
 **Unassigned row:** From `unaccounted_discussions`. Count of unaccounted discussions. `{N}✓` if all completed, `{N}◐` if any in-progress. Only the `disc` column is populated.
 
+**Proposed row:** Spec items with status `proposed`. Show `proposed` in the spec column (spanning onward). Only the `disc` column (source count, from the proposed item's sources) and `spec` column are populated.
+
 **Promoted row:** Spec items with status `promoted`. Show `promoted` in the spec column. Only the `disc` column (source count) and `spec` column are populated.
 
-**Pipeline ordering:** Completed pipelines first (all phases ✓), then in-progress (earliest active phase first), then not-started.
+**Pipeline ordering:** Completed pipelines first (all phases ✓), then in-progress (earliest active phase first), then not-started. Proposed and promoted rows follow the started pipelines.
 
 **Phase-level status icon** (for detail view headers): `✓` if all items in that phase are completed, `◐` if any are in-progress or some are completed but not all, `○` if no items are completed. When pending topics from research exist, include them in the discussion count.
 
@@ -72,6 +74,9 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
 @foreach(pipeline in pipelines)
   {pipeline.name:(left-padded)}  {disc}  {spec}  {plan}  {impl}  {rev}
 @endforeach
+@foreach(prop in proposed)
+  {prop.name:(left-padded)}  {disc}  proposed
+@endforeach
 @if(has_promoted)
   {promoted.name:(left-padded)}  {disc}  promoted
 @endif
@@ -95,7 +100,7 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
 - Pipeline names left-aligned, padded to the longest pipeline name + 2 spaces before the first column
 - Status cells use icons: `✓`, `◐`, `○`. Discussion column prefixes with count: `3✓`, `2◐`
 - Blank cells (phase doesn't exist for this pipeline) use empty space
-- `promoted` spans from the spec column onward
+- `proposed` and `promoted` each span from the spec column onward
 - Blank line between the research summary and the column headers
 - If no specification items exist, show the "No pipelines yet" message. Still show unassigned discussion count if applicable.
 
@@ -147,6 +152,7 @@ Before rendering, derive the pipeline data from the discovery `detail` object. T
 - Status icons before item names: `✓` completed, `◐` in-progress, `○` not started
 - Tree grammar: `├─` non-final, `└─` final within each phase
 - Specification items show source discussions as `← {source-topic}` sub-items using tree grammar
+- Proposed spec items use the `○` icon with a `[proposed]` suffix after the name; their source discussions still render as `← {source-topic}` sub-items
 - Promoted items show `→ promoted to {work_unit}` as a sub-item
 - Implementation items show progress as a sub-item when in-progress
 - Blank line between phase sections

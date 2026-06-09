@@ -126,13 +126,13 @@ The display groups every phase under three stage dividers — **DISCOVERY** (res
                custom Vue/Nuxt), JustEat import, staff/roles
                from exploration
       ```
-- **Build-phase sub-headers**: `{phase:(uppercase)} ({phase.count_summary})` — the phase name uppercased (`SPECIFICATION`, `PLANNING`, `IMPLEMENTATION`, `REVIEW`) with a parenthetical count summary combining the statuses present (e.g. `(2 completed)`, `(3 completed, 1 cancelled)`; omit zero counts). The item tree branches directly off the sub-header. Blank line between sub-headers within a stage.
-- **Item rows** (`{item_branch}`): `├─` for non-final items, `└─` for the final item in the phase. Planning items append ` · {format}` after the status.
+- **Build-phase sub-headers**: `{phase:(uppercase)} ({phase.count_summary})` — the phase name uppercased (`SPECIFICATION`, `PLANNING`, `IMPLEMENTATION`, `REVIEW`) with a parenthetical count summary combining the statuses present (e.g. `(2 completed)`, `(1 proposed, 2 completed)`, `(3 completed, 1 cancelled)`; omit zero counts). The item tree branches directly off the sub-header. Blank line between sub-headers within a stage.
+- **Item rows** (`{item_branch}`): `├─` for non-final items, `└─` for the final item in the phase. Planning items append ` · {format}` after the status. Within the specification phase, order proposed items first (analyzed groupings awaiting a start), then the remaining items in their existing order.
 - **Item sub-rows** — specification sources, implementation progress — branch beneath their item via `{child_gutter}` + `{child_branch}`:
   - `{child_gutter}` — under a **non-last item**: 2 spaces, `│`, 2 spaces; under the **last item**: 5 spaces. Both land the child branch at the same column, under the item name.
   - `{child_branch}`: `├─` for non-final children, `└─` for the final (or only) child.
   - Specification source status: `[incorporated]` or `[pending]` from the manifest. Implementation shows `Phase {N}, {M} task(s) completed` when in-progress with `current_phase`, else `{M} task(s) completed` (always a single `└─` child).
-- **Promoted items** render with `[promoted]` in the display but not the menu. **Cancelled items** show `[cancelled]`. Phases with no items don't appear.
+- **Promoted items** render with `[promoted]` in the display but not the menu. **Proposed specs** render with `[proposed]` in the display but are not offered as menu items. **Cancelled items** show `[cancelled]`. Phases with no items don't appear.
 - **No trailing recommendation callout** in this code block — build-phase recommendations attach to menu entries (see **C. Menu**).
 
 After the render block, run the **Plans Not Ready Check** below; it applies to both this branch and the otherwise branch.
@@ -240,6 +240,7 @@ Show only statuses and categories that appear in the current display. No `---` s
       ⊙  handled                ⊘  cancelled
 
     Status:
+      proposed    — analyzed grouping, not yet started
       in-progress — work is ongoing
       completed   — phase or implementation done
       cancelled   — topic removed from active work
@@ -261,6 +262,7 @@ Show only categories present in the current display: include the Discovery tier 
 ```
   Key:
     Status:
+      proposed    — analyzed grouping, not yet started
       in-progress — work is ongoing
       completed   — phase or implementation done
       cancelled   — topic removed from active work

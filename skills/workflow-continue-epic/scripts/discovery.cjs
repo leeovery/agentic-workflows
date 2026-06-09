@@ -77,8 +77,13 @@ function buildEpicDetail(cwd, manifest) {
           ? item.sources
           : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
         entry.sources = sourcesArr;
-        for (const src of sourcesArr) {
-          allSourcedDiscussions.add(src.topic || src.name);
+        // A discussion that appears only in a proposed grouping is still
+        // legitimately "not yet in a spec" — skip proposed items' sources so
+        // those discussions stay in unaccounted_discussions.
+        if (item.status !== 'proposed') {
+          for (const src of sourcesArr) {
+            allSourcedDiscussions.add(src.topic || src.name);
+          }
         }
       }
 

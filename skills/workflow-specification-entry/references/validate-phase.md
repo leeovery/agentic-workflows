@@ -4,17 +4,25 @@
 
 ---
 
-Check if a specification already exists for this work unit.
+Read the specification item's status from the manifest — not the file on disk. A `proposed` grouping has no file yet but is a real item:
 
-Read `.workflows/{work_unit}/specification/{topic}/specification.md` if it exists.
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} status
+```
 
-#### If specification doesn't exist
+#### If the output is empty
 
-Set verb = "Creating".
+The item does not exist. Set verb = "Creating".
 
 → Return to caller.
 
-#### If specification exists with status `in-progress`
+#### If the status is `proposed`
+
+The grouping exists as a proposed item; the process skill flips it to in-progress on entry. Set verb = "Creating".
+
+→ Return to caller.
+
+#### If the status is `in-progress`
 
 > *Output the next fenced block as a code block:*
 
@@ -26,7 +34,7 @@ Set verb = "Continuing".
 
 → Return to caller.
 
-#### If specification exists with status `completed`
+#### If the status is `completed`
 
 Reset to in-progress:
 

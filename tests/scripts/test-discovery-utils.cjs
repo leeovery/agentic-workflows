@@ -252,6 +252,30 @@ describe('discovery-utils', () => {
       assert.strictEqual(phaseStatus({ phases: { discussion: { items: {} } } }, 'discussion'), null);
     });
 
+    it('returns null for a single proposed spec item', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { specification: { items: { auth: { status: 'proposed' } } } },
+      }, 'specification'), null);
+    });
+
+    it('returns null when every spec item is proposed', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { specification: { items: { a: { status: 'proposed' }, b: { status: 'proposed' } } } },
+      }, 'specification'), null);
+    });
+
+    it('ignores proposed when aggregating — proposed + completed → completed', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { specification: { items: { a: { status: 'proposed' }, b: { status: 'completed' } } } },
+      }, 'specification'), 'completed');
+    });
+
+    it('ignores proposed when aggregating — proposed + in-progress → in-progress', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { specification: { items: { a: { status: 'proposed' }, b: { status: 'in-progress' } } } },
+      }, 'specification'), 'in-progress');
+    });
+
     it('returns null for phase with flat status but no items', () => {
       assert.strictEqual(phaseStatus({ phases: { discussion: { status: 'completed' } } }, 'discussion'), null);
     });

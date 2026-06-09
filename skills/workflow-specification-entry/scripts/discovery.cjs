@@ -25,10 +25,13 @@ function discover(cwd, workUnit) {
       if (item.status === 'completed') completedCount++;
       else if (item.status === 'in-progress') inProgressCount++;
 
-      // Check if this discussion has an individual spec via sources
+      // Check if this discussion has an individual spec via sources. Proposed
+      // groupings are not individual specs — ignore them so the single-discussion
+      // path and grouping "matching spec" logic stay correct.
       let hasIndividualSpec = false;
       let specStatus = '';
       for (const si of specItemsList) {
+        if (si.status === 'proposed') continue;
         if (si.sources && si.sources[item.name]) {
           hasIndividualSpec = true;
           specStatus = si.status || '';
@@ -45,21 +48,31 @@ function discover(cwd, workUnit) {
   }
 
   // --- Specifications ---
+  // Classify by status, not file presence. Materialized specs
+  // (in-progress/completed/promoted) are file-backed and count toward spec_count.
+  // Proposed groupings live only in the manifest — no file on disk — and count
+  // toward proposed_count. Both land in specifications[].
   const specifications = [];
   let specCount = 0;
+  let proposedCount = 0;
 
   for (const m of manifests) {
     const specItemsList = phaseItems(m, 'specification');
     const discItemsList = phaseItems(m, 'discussion');
 
     for (const item of specItemsList) {
-      const specFile = path.join(workflowsDir, m.name, 'specification', item.name, 'specification.md');
-      if (!fileExists(specFile)) continue;
-
       const status = item.status || 'in-progress';
       if (status === 'superseded' || status === 'cancelled') continue;
 
-      specCount++;
+      const isProposed = status === 'proposed';
+      if (isProposed) {
+        proposedCount++;
+      } else {
+        const specFile = path.join(workflowsDir, m.name, 'specification', item.name, 'specification.md');
+        if (!fileExists(specFile)) continue;
+        specCount++;
+      }
+
       const spec = {
         name: item.name, work_unit: m.name, status,
         work_type: m.work_type,
@@ -154,9 +167,11 @@ function discover(cwd, workUnit) {
       completed_count: completedCount,
       in_progress_count: inProgressCount,
       spec_count: specCount,
+      proposed_count: proposedCount,
       has_discussions: discCount > 0,
       has_completed: completedCount > 0,
       has_specs: specCount > 0,
+      has_proposed: proposedCount > 0,
     },
   };
 }
@@ -211,7 +226,7 @@ function format(result) {
   lines.push('=== STATE ===');
   const cs = result.current_state;
   lines.push(`discussions: ${cs.discussion_count} (${cs.completed_count} completed, ${cs.in_progress_count} in-progress)`);
-  lines.push(`specs: ${cs.spec_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
+  lines.push(`specs: ${cs.spec_count}, proposed: ${cs.proposed_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
   if (cs.discussions_checksum) lines.push(`checksum: ${cs.discussions_checksum}`);
 
   return lines.join('\n') + '\n';

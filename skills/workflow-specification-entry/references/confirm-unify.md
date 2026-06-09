@@ -6,6 +6,8 @@
 
 Unify folds every completed discussion into the unified spec as a full **source**, so any cross-grouping consult reference is absorbed by wholesale extraction. There is no separate consult-reference block on the unify path.
 
+"Existing specifications to incorporate" lists only materialized specs (status not `proposed`) — reconcile removed the other proposed items as deletes when the unified item was created, so only started/completed specs are superseded.
+
 ## A. Display Confirmation
 
 #### If existing specifications will be superseded

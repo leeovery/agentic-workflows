@@ -471,4 +471,102 @@ describe('workflow-specification-entry format', () => {
     const out = format(discover(dir));
     assert.ok(out.includes('checksum: '));
   });
+
+  describe('proposed groupings', () => {
+    it('counts a proposed spec item (no file) in proposed_count, not spec_count', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-grouping': {
+                status: 'proposed',
+                sources: { 'auth-design': { status: 'pending' } },
+              },
+            },
+          },
+        },
+      });
+      // No spec file on disk for the proposed item — must still be counted.
+      const r = discover(dir);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+      assert.strictEqual(r.current_state.has_proposed, true);
+      assert.strictEqual(r.current_state.spec_count, 0);
+      const spec = r.specifications.find(s => s.name === 'auth-grouping');
+      assert.ok(spec, 'proposed item present in specifications[]');
+      assert.strictEqual(spec.status, 'proposed');
+      assert.strictEqual(spec.sources.length, 1);
+      assert.strictEqual(spec.sources[0].name, 'auth-design');
+      assert.strictEqual(spec.sources[0].status, 'pending');
+    });
+
+    it('proposed source does not set has_individual_spec', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth-design': { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-grouping': { status: 'proposed', sources: { 'auth-design': { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const disc = r.discussions.find(d => d.name === 'auth-design');
+      assert.strictEqual(disc.has_individual_spec, false);
+    });
+
+    it('single completed discussion in a proposed item still has no individual spec', () => {
+      createManifest(dir, 'solo', {
+        work_type: 'feature',
+        phases: {
+          discussion: { items: { solo: { status: 'completed' } } },
+          specification: {
+            items: { solo: { status: 'proposed', sources: { solo: { status: 'pending' } } } },
+          },
+        },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.current_state.completed_count, 1);
+      assert.strictEqual(r.discussions[0].has_individual_spec, false);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+      assert.strictEqual(r.current_state.spec_count, 0);
+    });
+
+    it('mixed proposed and materialized specs count separately (R11 routing inputs)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-spec': { status: 'in-progress', sources: { 'auth-design': { status: 'extracted' } } },
+              'data-grouping': { status: 'proposed', sources: { 'data-model': { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
+      const r = discover(dir);
+      assert.strictEqual(r.current_state.spec_count, 1);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+      assert.strictEqual(r.specifications.length, 2);
+    });
+
+    it('proposed item is included even without a spec file (file not required)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { grp: { status: 'proposed', sources: { d: { status: 'pending' } } } } },
+        },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.specifications.length, 1);
+      assert.strictEqual(r.specifications[0].status, 'proposed');
+      assert.strictEqual(r.current_state.spec_count, 0);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+    });
+  });
 });

@@ -407,13 +407,15 @@ The CLI validates structural values to prevent invalid state:
 | Item `status` (discussion)     | `in-progress`, `completed`                         |
 | Item `status` (investigation)  | `in-progress`, `completed`                         |
 | Item `status` (scoping)        | `in-progress`, `completed`                         |
-| Item `status` (specification)  | `in-progress`, `completed`, `superseded`, `promoted` |
+| Item `status` (specification)  | `proposed`, `in-progress`, `completed`, `superseded`, `promoted`, `cancelled` |
 | Item `status` (planning)       | `in-progress`, `completed`                         |
 | Item `status` (implementation) | `in-progress`, `completed`                         |
 | Item `status` (review)         | `in-progress`, `completed`                         |
 | Gate modes (`*_gate_mode`)     | `gated`, `auto`                                    |
 
 Status is always tracked at the item level (`phases.{phase}.items.{topic}.status`), never at the phase level.
+
+A specification item with status `proposed` is an analyzed grouping not yet started — it carries `sources.{disc}.status` rows but has no specification file on disk and no `review_cycle`/gate fields. Starting it flips the status to `in-progress`.
 
 ## Output Conventions
 

@@ -24,7 +24,7 @@ const VALID_PHASE_STATUSES = {
   discussion:     ['in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
-  specification:  ['in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
+  specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
   planning:       ['in-progress', 'completed', 'cancelled'],
   implementation: ['in-progress', 'completed', 'cancelled'],
   review:         ['in-progress', 'completed', 'cancelled'],

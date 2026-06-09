@@ -4,7 +4,7 @@
 
 ---
 
-Shows when multiple completed discussions exist, specifications exist, and cache is none or stale. Displays existing specs from discovery manifest data (NOT from cache), lists unassigned discussions, and offers analysis or continue options.
+Shows when materialized specifications exist and no proposed groupings remain (every grouping has already been started). Displays existing specs from discovery manifest data (NOT from cache), lists unassigned discussions, and offers analysis or continue options.
 
 ## A. Display
 
@@ -93,6 +93,12 @@ Key:
 ### Cache-Aware Message
 
 No `---` separator before these messages.
+
+#### If cache status is `valid`
+
+The grouping analysis is current and every grouping has been started. No message.
+
+→ Proceed to **B. Menu**.
 
 #### If cache status is `none`
 

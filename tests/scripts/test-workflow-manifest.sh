@@ -1702,6 +1702,91 @@ assert_equals "$prev_exists" "false" "previous_status deleted after reactivation
 echo ""
 
 # ============================================================================
+# PROPOSED STATUS TESTS (spec groupings)
+# ============================================================================
+
+echo -e "${YELLOW}Test: proposed accepted as valid status for specification${NC}"
+setup_fixture
+run_cli init prop-spec --work-type epic --description "Proposed spec" >/dev/null 2>&1
+run_cli set prop-spec.specification.auth-flow status proposed >/dev/null 2>&1
+output=$(run_cli_stdout get prop-spec.specification.auth-flow status)
+
+assert_equals "$output" "proposed" "Specification accepts proposed status"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: bogus specification status rejected${NC}"
+setup_fixture
+run_cli init bogus-spec --work-type epic --description "Bogus" >/dev/null 2>&1
+assert_exit_nonzero "Invalid specification status rejected" \
+    set bogus-spec.specification.auth-flow status bogus
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: init-phase fails on an existing item (flip contract)${NC}"
+setup_fixture
+run_cli init flip-spec --work-type epic --description "Flip" >/dev/null 2>&1
+run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
+assert_exit_nonzero "init-phase rejects an existing proposed item" \
+    init-phase flip-spec.specification.auth-flow
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: upsert proposed item builds the exact shape${NC}"
+setup_fixture
+run_cli init upsert-spec --work-type epic --description "Upsert" >/dev/null 2>&1
+run_cli set upsert-spec.specification.auth-flow status proposed >/dev/null 2>&1
+run_cli set upsert-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
+run_cli set upsert-spec.specification.auth-flow sources.session-mgmt.status pending >/dev/null 2>&1
+status=$(run_cli_stdout get upsert-spec.specification.auth-flow status)
+src1=$(run_cli_stdout get upsert-spec.specification.auth-flow sources.auth-design.status)
+src2=$(run_cli_stdout get upsert-spec.specification.auth-flow sources.session-mgmt.status)
+rc_exists=$(run_cli_stdout exists upsert-spec.specification.auth-flow review_cycle)
+
+assert_equals "$status" "proposed" "Proposed item status set"
+assert_equals "$src1" "pending" "First source pending"
+assert_equals "$src2" "pending" "Second source pending"
+assert_equals "$rc_exists" "false" "Proposed item carries no review_cycle (invariant)"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: delete whole proposed spec item${NC}"
+setup_fixture
+run_cli init del-spec --work-type epic --description "Delete" >/dev/null 2>&1
+run_cli set del-spec.specification.auth-flow status proposed >/dev/null 2>&1
+run_cli set del-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
+run_cli delete del-spec.specification items.auth-flow >/dev/null 2>&1
+exists_after=$(run_cli_stdout exists del-spec.specification.auth-flow)
+
+assert_equals "$exists_after" "false" "Whole proposed item removed by delete items.{topic}"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: flip proposed to in-progress preserves sources${NC}"
+setup_fixture
+run_cli init flip2-spec --work-type epic --description "Flip2" >/dev/null 2>&1
+run_cli set flip2-spec.specification.auth-flow status proposed >/dev/null 2>&1
+run_cli set flip2-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
+run_cli set flip2-spec.specification.auth-flow status in-progress >/dev/null 2>&1
+status=$(run_cli_stdout get flip2-spec.specification.auth-flow status)
+src=$(run_cli_stdout get flip2-spec.specification.auth-flow sources.auth-design.status)
+
+assert_equals "$status" "in-progress" "Flip sets in-progress"
+assert_equals "$src" "pending" "Flip preserves source rows"
+
+echo ""
+
+# ============================================================================
 # DISCOVERY PHASE TESTS
 # ============================================================================
 

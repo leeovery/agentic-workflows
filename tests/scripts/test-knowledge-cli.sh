@@ -1754,6 +1754,20 @@ status_output=$(run_kb status 2>&1)
 assert_eq "bulk index skipped cancelled wu" "true" "$(echo "$status_output" | grep -q 'cancelled-wu' && echo false || echo true)"
 teardown_project
 
+# --- Test 80b: Bulk index skips proposed spec items (status filter) ---
+echo "Test 80b: Bulk index skips proposed spec items"
+setup_project
+create_work_unit "prop-wu" "epic" "Proposed groupings"
+write_stub_config
+# Spec file present on disk to prove it is the STATUS filter that skips it,
+# not the missing-file guard.
+create_spec_file "prop-wu" "auth-grouping"
+cd "$TEST_ROOT" && node "$MANIFEST_JS" set prop-wu.specification.auth-grouping status proposed >/dev/null 2>&1
+run_kb index >/dev/null 2>&1
+status_output=$(run_kb status 2>&1)
+assert_eq "bulk index skipped proposed spec" "true" "$(echo "$status_output" | grep -q 'auth-grouping' && echo false || echo true)"
+teardown_project
+
 # --- Test 81: pending-removal queue survives writes + drain works ---
 echo "Test 81: Pending removal queue"
 setup_project

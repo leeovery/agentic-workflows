@@ -50,12 +50,12 @@ Group discussions into specifications where each grouping represents a **coheren
 
 ### Preserve Anchored Names
 
-**CRITICAL**: Check the `cache.anchored_names` from discovery state. These are grouping names that have existing specifications.
+**Anchors** are existing specification items whose status is anything other than `proposed` — `in-progress`, `completed`, `superseded`, or `promoted` — from the discovery `specifications` array. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated.
 
 When forming groupings:
-- If a grouping contains a majority of the same discussions as an anchored name's spec, you MUST reuse that anchored name
+- If a grouping contains a majority of the same discussions as an anchor's sources, you MUST reuse that anchor's topic name
 - Only create new names for genuinely new groupings with no overlap
-- If an anchored spec's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
+- If an anchor's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
 
 ### Identify Cross-Grouping Hand-offs
 
@@ -79,24 +79,64 @@ Phrase the query as a natural-language description of the grouping's concern, no
 
 Treat hits as **candidate** consult references — a hit from a discussion outside this grouping that names a correction it owes is worth promoting onto the receiving grouping. **Advisory only**: never auto-add, never gate. You decide which candidates to record; the user confirms at the grouping menu.
 
-→ Proceed to **C. Save to Cache**.
+→ Proceed to **C. Reconcile Proposed Groupings**.
 
 ---
 
-## C. Save to Cache
+## C. Reconcile Proposed Groupings
 
-Write cache metadata to manifest:
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.checksum "{checksum from current_state.discussions_checksum}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.generated "{ISO date}"
-```
+Persist the analysis by reconciling the manifest's specification items against the freshly-formed groupings. The manifest is the source of truth: each purely-proposed grouping becomes a `proposed` specification item carrying its members as `pending` sources and **no file on disk**. Every mutation uses `set`/`delete` — never `init-phase`. Anchors are preserved; proposed items are freely regenerated.
+
+Work through these steps in order:
+
+1. **Snapshot existing items.** Read the current specification items and their sources:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{work_unit}.specification.*' status
+   ```
+   Partition them into **anchors** (status ∉ `proposed`) and **existing-proposed** (status `proposed`). Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
+
+2. **Map groupings to anchors.** For each freshly-formed grouping that substantially overlaps an anchor's sources (a majority of members shared), rename it in memory to the anchor's topic key. This splits the groupings into **maps-to-anchor** and **purely-proposed**.
+
+3. **Augment anchors.** For each grouping mapped to an anchor, add any member discussion not already in that anchor's sources:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{anchor} sources.{discussion}.status pending
+   ```
+   Never change an anchor's `status`. Never prune or overwrite an anchor's existing sources.
+
+4. **Compute the target proposed set.** The target names are the kebab-case names of the **purely-proposed** groupings. An independent discussion is a grouping of one — it becomes a proposed item too, so it is startable and visible.
+
+5. **Delete stale proposed.** For each existing-proposed item whose name is not in the target set, remove the whole item:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.specification items.{name}
+   ```
+
+6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it. Surface it as a **naming conflict** to the user and drop or rename the colliding target. This protects the invariant — an anchor is never overwritten by a proposed item.
+
+7. **Upsert proposed.** For each surviving target name:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{name} status proposed
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{name} sources.{discussion}.status pending
+   ```
+   Set one `sources.{discussion}.status pending` per grouping member. For an existing-proposed item being regenerated, prune any source no longer in the grouping (allowed only on proposed items, never anchors):
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.specification.{name} sources.{old-discussion}
+   ```
+   A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
+
+→ Proceed to **D. Write the Cache**.
+
+---
+
+## D. Write the Cache
+
+Write the cache **after** all manifest mutations. The checksum is written last — a mid-reconcile crash then leaves a stale checksum, forcing a clean re-reconcile on the next run.
 
 Create the cache directory if needed:
 ```bash
 mkdir -p .workflows/{work_unit}/.state
 ```
 
-Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter):
+Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter) — the manifest holds the authoritative grouping→source mapping, so this file carries only coupling/rationale and consult-slice hints:
 
 ```markdown
 # Discussion Consolidation Analysis
@@ -124,5 +164,13 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 ```
 
 The `**Consult**` line is per-grouping — one line per consult reference, omitted entirely when a grouping owes none. List sources under each grouping as bullets; consult references stay on their own `**Consult**` line so they are never mistaken for sources.
+
+Write the cache metadata to the manifest last:
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.checksum "{checksum from current_state.discussions_checksum}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.generated "{ISO date}"
+```
+
+Commit the whole reconcile as one commit: `spec({work_unit}): reconcile proposed groupings`
 
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.

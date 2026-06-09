@@ -22,7 +22,7 @@ Output: .workflows/{work_unit}/specification/unified/specification.md
 
 Context: This consolidates all discussions into a single unified specification. The existing specifications should be incorporated - extract and adapt their content alongside the discussion material.
 
-After the unified specification is complete, mark the incorporated specs as superseded via manifest CLI:
+After the unified specification is complete, mark the incorporated specs as superseded via manifest CLI — only specs whose status is not `proposed`:
 
     set {source-work-unit}.specification.{source-topic} status superseded
     set {source-work-unit}.specification.{source-topic} superseded_by unified
@@ -30,3 +30,5 @@ After the unified specification is complete, mark the incorporated specs as supe
 ---
 Invoke the workflow-specification-process skill.
 ```
+
+A proposed grouping is never an "existing specification to incorporate" — it has no file; reconcile already removed the other proposed items as deletes when the unified item was created.
