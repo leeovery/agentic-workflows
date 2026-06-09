@@ -157,7 +157,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | `idea/incoming-pr-5-incoming-landing` | PR 4 | #369 | open — redo (old #364 closed) |
 | 6 | `idea/incoming-pr-6-drain-and-gate` | PR 5 | #370 | open — redo (old #365 closed) |
-| 7 | _to cut_ | PR 6 | — | pending — make off-topic `pivot` real |
+| 7 | `idea/incoming-pr-7-pivot-to-epic` | PR 6 | #371 | open — make off-topic `pivot` real |
 
 ## Decisions taken during implementation
 
