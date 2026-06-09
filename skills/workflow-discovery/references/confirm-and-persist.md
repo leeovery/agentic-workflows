@@ -24,23 +24,18 @@ For each topic on the working list, in synthesised order:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{topic}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} summary "{one-line summary}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} description "{paragraphs}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} routing {research|discussion}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} source discovery
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {work_unit}.{topic} --routing {research|discussion} --source discovery --summary "{one-line summary}" --description "{paragraphs}"
 ```
 
 The `pull` is a no-op if the name isn't in the dismissed list.
 
-Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Quote shell values with single quotes if they contain `[]`, `{}`, `~`, or backticks. Description may span paragraphs.
+Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~`. Description may span paragraphs.
 
 If any command fails, surface the error and stop before the commit so the user can recover.
 
 Notes:
 
-- `init-phase` creates the item with `status: in-progress` automatically. Discovery items have no other valid status — do not pass `status` explicitly.
-- The topic name is the manifest dict key (third dot-path segment). There is no separate `name` field to set.
+- The topic name is the manifest dict key (the `{topic}` path segment). There is no separate `name` field to set.
 - `routing` is the value confirmed by the user at the synthesis gate.
 - `source: discovery` marks topics the user surfaced during discovery, distinguishing them from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
 

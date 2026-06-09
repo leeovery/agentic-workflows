@@ -73,25 +73,19 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.disc
 
 ## D. Create Discovery Item
 
-Initialise the item and set provenance fields:
+Create the item with its routing and `source: direct-start` in one atomic call:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discovery.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} routing {routing}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} source direct-start
+node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {work_unit}.{topic} --routing {routing} --source direct-start --summary "{summary}" --description "{description}"
 ```
 
-If `summary` was supplied and is non-empty, write it:
+Assemble the flags as follows:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} summary "{summary}"
-```
+- `--routing {routing}` and `--source direct-start` — always included.
+- `--summary "{summary}"` — included only when `summary` was supplied and is non-empty.
+- `--description "{description}"` — included only when `description` was supplied and is non-empty (multi-paragraph values are fine).
 
-If `description` was supplied and is non-empty, write it (multi-paragraph values are fine):
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} description "{description}"
-```
+Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~`.
 
 No commit here — the manifest writes are folded into the next commit produced by the calling phase's process.
 
