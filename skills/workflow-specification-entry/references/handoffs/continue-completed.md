@@ -17,8 +17,13 @@ New sources to extract:
 Previously extracted (for reference):
 - .workflows/{work_unit}/discussion/{existing-discussion-name}.md
 
+Consult references (read narrowly — do not extract):
+- .workflows/{work_unit}/discussion/{ref-topic}.md — {slice hint}
+
 Context: This specification was previously completed. New source discussions have been identified. Extract and incorporate their content while maintaining consistency with the existing specification.
 
 ---
 Invoke the workflow-specification-process skill.
 ```
+
+Omit the `Consult references` block when the grouping owes none.

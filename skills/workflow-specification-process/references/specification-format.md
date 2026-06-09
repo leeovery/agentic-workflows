@@ -36,6 +36,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 | `finding_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
 | `construction_gate_mode` | Spec creation → `gated`; user opts in → `auto` |
 | `sources` | Spec creation — all sources as `pending`; updated as extraction completes |
+| `consult_references` | Session setup — declared refs registered as `pending`; set `addressed` once the sibling discussion's hand-off slice is read narrowly and reconciled. Optional — absent when the spec owes no corrections |
 
 ---
 

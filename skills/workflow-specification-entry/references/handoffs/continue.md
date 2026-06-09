@@ -15,8 +15,13 @@ Sources for reference:
 - .workflows/{work_unit}/discussion/{discussion-name}.md
 - .workflows/{work_unit}/discussion/{discussion-name}.md
 
+Consult references (read narrowly — do not extract):
+- .workflows/{work_unit}/discussion/{ref-topic}.md — {slice hint}
+
 Context: This specification already exists. Review and refine it based on the source discussions.
 
 ---
 Invoke the workflow-specification-process skill.
 ```
+
+Omit the `Consult references` block when the grouping owes none.

@@ -76,6 +76,13 @@ function discover(cwd, workUnit) {
         });
       }
 
+      if (item.consult_references && typeof item.consult_references === 'object') {
+        spec.consult_references = Object.entries(item.consult_references).map(([refName, refData]) => {
+          const refStatus = (typeof refData === 'object') ? (refData.status || 'pending') : 'pending';
+          return { name: refName, status: refStatus };
+        });
+      }
+
       specifications.push(spec);
     }
   }
@@ -177,6 +184,11 @@ function format(result) {
       if (s.sources) {
         for (const src of s.sources) {
           lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
+        }
+      }
+      if (s.consult_references) {
+        for (const ref of s.consult_references) {
+          lines.push(`    consult: ${ref.name} (${ref.status})`);
         }
       }
     }

@@ -8,7 +8,7 @@ Shows when cache is valid (directly from routing) or after analysis completes. T
 
 ## A. Load Groupings
 
-Load groupings from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`. Parse the `### {Name}` headings and their discussion lists.
+Load groupings from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`. Parse the `### {Name}` headings and their discussion lists. Parse each grouping's `**Consult**` lines too — each names a consult reference the grouping owes (a sibling discussion read narrowly for corrections, not a source).
 
 → Proceed to **B. Determine Discussion Status**.
 
@@ -38,11 +38,13 @@ discussions) are silently skipped — there is nothing actionable.
 
 **Extraction count:** Y = count of unique discussions in (spec sources ∪ grouping members). X = count of those with `incorporated` status in spec sources. This ensures regressed sources that dropped out of the grouping still count toward Y.
 
+**Consult references:** For each `**Consult**` entry on the grouping, look it up in the spec's `consult_references` array (by `name`). If found → use its `status` (`pending` or `addressed`). If not found → status is `pending` (declared in the analysis but not yet registered on the spec).
+
 → Proceed to **C. Display**.
 
 #### Otherwise
 
-For each discussion: status is `ready`. Spec status: `none`.
+For each discussion: status is `ready`. For each `**Consult**` entry on the grouping: status is `pending`. Spec status: `none`.
 
 → Proceed to **C. Display**.
 
@@ -66,9 +68,14 @@ Recommended breakdown for specifications with their source discussions.
    └─ Discussions:
       ├─ {discussion} [{status:[extracted|pending|ready|reopened]}]
       └─ ...
+   └─ Consult:
+      ├─ {ref-topic} [{status:[pending|addressed]}]
+      └─ ...
 
 2. ...
 ```
+
+Omit the `Consult:` branch for groupings with no consult references.
 
 #### If in-progress discussions exist
 
@@ -96,6 +103,10 @@ Key:
     pending   — listed as source but content not yet extracted
     ready     — completed and available to be specified
     reopened  — was extracted but discussion has regressed to in-progress
+
+  Consult status:
+    pending   — sibling correction not yet read in and reconciled
+    addressed — correction applied or cited; reconciliation recorded
 
   Spec status:
     in-progress — specification work is ongoing
@@ -127,6 +138,8 @@ Present one numbered menu entry per grouping. The verb and description depend on
 - Spec is `completed` with no pending sources → **Refine** "{Name}" — completed spec
 - Spec is `completed` with pending sources → **Continue** "{Name}" — {N} new source(s) to extract
 
+When the grouping has pending consult references, append `— {N} consult ref(s) pending` to its description. Do not change the verb — consult references gate completion but never introduce a new action.
+
 After all grouping entries, append meta options:
 
 - **Unify all** (only when 2+ groupings exist) — all discussions combined into one specification instead of following the recommended groupings. If specs exist, note they will be incorporated and superseded.
@@ -139,7 +152,7 @@ After all grouping entries, append meta options:
 ```
 · · · · · · · · · · · ·
 - **`1`** — Start "Auth Flow" — 2 ready discussions
-- **`2`** — Continue "Data Model" — 1 source(s) pending extraction
+- **`2`** — Continue "Data Model" — 1 source(s) pending extraction — 1 consult ref(s) pending
 - **`3`** — Unify all into single specification
    `All discussions are combined into one specification. Existing`
    `specifications are incorporated and superseded.`

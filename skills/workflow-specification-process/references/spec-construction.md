@@ -7,7 +7,7 @@
 Follow stages A through F sequentially for each topic in the specification. Each topic completes a full cycle before the next begins.
 
 ```
-A. Exhaustive extraction from sources
+A. Exhaustive extraction from sources (incl. consult references read narrowly)
 B. Synthesize and present for approval
 C. Discuss and refine (if needed)
 D. Approval gate
@@ -83,6 +83,22 @@ Re-present the full updated section in the format it would appear in the specifi
 Work through the changes per **C. Discuss and Refine**, then re-present the diff with the revised content.
 
 Better to resurface and confirm "already covered" than let something slip past.
+
+### Read Consult References Narrowly
+
+Consult references are sibling discussions that owe this spec a correction — they are **not** sources. Read only the relevant slice, never the whole document.
+
+For each consult reference still `pending` (list them via `node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} consult_references`):
+
+1. Open the sibling discussion named by the reference and read **only** its `## Spec hand-offs` slice, or the specific decisions named in the slice hint. Do not extract it wholesale.
+2. Apply the correction to the affected spec content, or cite the sibling decision where the spec defers to it — cite, don't restate. Corrections to already-logged content go through **Context Resurfacing** above.
+3. Record what was reconciled (which slice, what changed) in the spec's **Working Notes** section.
+4. Mark the reference addressed:
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} consult_references.{ref}.status addressed
+   ```
+
+This runs once per reference — already-`addressed` references are skipped on later topic cycles.
 
 ---
 

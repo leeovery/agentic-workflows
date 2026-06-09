@@ -13,6 +13,9 @@ Source discussions:
 - .workflows/{work_unit}/discussion/{discussion-name}.md
 - .workflows/{work_unit}/discussion/{discussion-name}.md
 
+Consult references (read narrowly — do not extract):
+- .workflows/{work_unit}/discussion/{ref-topic}.md — {slice hint}
+
 Existing specifications to incorporate:
 - .workflows/{work_unit}/specification/{source-topic}/specification.md (covers: {discussion-name} discussion)
 
@@ -28,3 +31,5 @@ After the specification is complete, mark the incorporated specs as superseded v
 ---
 Invoke the workflow-specification-process skill.
 ```
+
+Omit the `Consult references` block when the grouping owes none.
