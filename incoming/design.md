@@ -137,7 +137,7 @@ Scope per PR:
 - **PR 3** — migrate discovery-only sites onto the CLI directly (confirm-and-persist §A, ensure-discovery-item §D, analysis-approval-gate §C, absorb-into-epic §J, manage-work-unit pivot).
 - **PR 4** — Incoming substrate: templates + initialize-* seed `## Incoming (none)`; CLAUDE.md + test declare `incoming:{origin}` provenance. (Stub *creation* on a fresh target is landing-time — PR 5.)
 - **PR 5** — Incoming landing: `incoming-landing.md` (classify target → new / fresh / existing+reopen), caller-side target resolution with an ambiguity menu, trigger wiring (discussion §F, epic-research §C), non-epic routing (feature §E).
-- **PR 6** — drain + conclusion gate + reopen guard.
+- **PR 6** — drain (`drain-triage.md`, folded in at the session step) + conclusion gate + document-review Triage check. No reopen guard (dropped per the prior decision).
 - **PR 7** — make the off-topic `pivot` option real: extract the feature→epic conversion core (set `work_type epic`, reindex, register the discovery-map topic, `create-discovery-topic`) from `manage-work-unit.md` into a shared `pivot-to-epic.md`; `manage-work-unit` loads it (no behaviour change). Wire the off-topic `pivot` (feature §E, discussion §F non-epic) to load it, then land the triggering concern as a topic. Today `pivot` only points the user at the manage menu — a no-op the off-topic menu shouldn't pretend to perform.
 
 PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–7 introduce new behaviour.
@@ -156,7 +156,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 3 | `idea/incoming-pr-3-discovery-direct-cli` | PR 2 | #367 | open — redo (old #362 closed) |
 | 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | `idea/incoming-pr-5-incoming-landing` | PR 4 | #369 | open — redo (old #364 closed) |
-| 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
+| 6 | `idea/incoming-pr-6-drain-and-gate` | PR 5 | — | open — redo (old #365 closed) |
 | 7 | _to cut_ | PR 6 | — | pending — make off-topic `pivot` real |
 
 ## Decisions taken during implementation
@@ -220,6 +220,22 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 - **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
   (`status,routing,source,summary,description` from `create-discovery-topic` vs the old sequential `set`
   order). Values identical.
+- **PR 6 drain runs at the SKILL.md session step**, not inside the session reference — discussion Step 5
+  (before `discussion-session.md` loads), research Step 6 (before `route-session.md` loads). `topic`/`work_unit`
+  are already bound there (the prior Contextual Query step operates on the topic), and the research insertion
+  sits above `route-session`'s epic/feature fan-out so one call covers both. Invoked once per session: a fresh
+  `(none)` artefact no-ops, resume/reopen folds whatever landed.
+- **Drain preserves the full rerouted context, not a bare map row.** Discussion → `pending` subtopic on the
+  Discussion Map + a seeded `## {title}` section (entry body as initial Context); research → a `### {title}`
+  seed thread in the freeform body. Then delete the drained subsection; reset to `(none)` when the last is gone.
+- **Conclusion gate is a backstop placed before the conclude action.** Drain at session start normally empties
+  Triage first, so the gate fires only when a concern lands in *this* topic mid-session (a reroute after drain
+  ran). On non-empty Triage it renders a `⚑` callout and returns to the session step (Step 5 / Step 6), which
+  re-runs drain and folds the late arrival.
+- **PR 6 adapts, not replays, closed #365.** Same shape (drain + gate + document-review check) but renamed to
+  Triage / `drain-triage.md`, and the reopen guard is dropped — the epic specification phase already handles a
+  regressed-to-`in-progress` source via its `[extracted, reopened]` state, and single-topic types never reopen
+  via Triage. #365's reopen `⚑` was added then removed as redundant / a false positive.
 
 ## Verification
 

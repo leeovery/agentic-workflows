@@ -4,6 +4,23 @@
 
 ---
 
+First check the `## Triage` section of `.workflows/{work_unit}/research/{topic}.md`.
+
+**If `## Triage` is not `(none)`:**
+
+A concern was rerouted into this topic after drain ran this session. It must be folded before concluding.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ Triage not empty — {N} rerouted concern(s) awaiting fold.
+    Returning to the session to drain and explore them before concluding.
+```
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+**If `## Triage` is `(none)`:**
+
 1. Set research status to completed:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research.{topic} status completed

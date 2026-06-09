@@ -4,7 +4,22 @@
 
 ---
 
-When the discussion session returns here (either through natural convergence or user-initiated conclusion):
+When the discussion session returns here (either through natural convergence or user-initiated conclusion), first check the `## Triage` section of `.workflows/{work_unit}/discussion/{topic}.md`.
+
+**If `## Triage` is not `(none)`:**
+
+A concern was rerouted into this topic after drain ran this session. It must be folded before concluding.
+
+> *Output the next fenced block as a code block:*
+
+```
+  ⚑ Triage not empty — {N} rerouted concern(s) awaiting fold.
+    Returning to the session to drain and explore them before concluding.
+```
+
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+
+**If `## Triage` is `(none)`:**
 
 > *Output the next fenced block as markdown (not a code block):*
 
