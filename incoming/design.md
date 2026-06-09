@@ -156,7 +156,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 3 | `idea/incoming-pr-3-discovery-direct-cli` | PR 2 | #367 | open — redo (old #362 closed) |
 | 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | `idea/incoming-pr-5-incoming-landing` | PR 4 | #369 | open — redo (old #364 closed) |
-| 6 | `idea/incoming-pr-6-drain-and-gate` | PR 5 | — | open — redo (old #365 closed) |
+| 6 | `idea/incoming-pr-6-drain-and-gate` | PR 5 | #370 | open — redo (old #365 closed) |
 | 7 | _to cut_ | PR 6 | — | pending — make off-topic `pivot` real |
 
 ## Decisions taken during implementation
