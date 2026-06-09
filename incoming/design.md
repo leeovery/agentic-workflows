@@ -265,6 +265,13 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   `proposed_name` + `concern` as named variables; `triage-landing.md` → `create-discovery-topic.md` →
   `topic-name-validation.md` already own kebab normalisation, the live-map collision check, and the
   pick-another/cancel loop (with its own STOP). No separate confirm gate in the caller.
+- **Reroute handoffs aligned with pivot for consistency.** The pre-existing reroute paths
+  (`discussion-session.md` §F `Otherwise`, `epic-session.md` §C) handed off to `triage-landing.md` with a
+  "Gather the full context…" non-action step and a `concern = {concern and its full context}` prose flag. Both
+  reworded to bind `concern` as a named variable and pass `concern = {concern}` — matching the pivot handoff so
+  the same operation reads the same way across the off-topic flow. Prose-only; behaviour unchanged. Target
+  *resolution* (step 1: propose/confirm an existing topic, candidate menu) is left as-is — a genuine interactive
+  choice, not the redundant name-confirm the pivot path dropped.
 
 ## Verification
 

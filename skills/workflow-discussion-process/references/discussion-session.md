@@ -242,9 +242,9 @@ Note the concern in the Summary section for the user to consider separately, and
 
    A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic (`{topic}`), it's a detail of this discussion, not a reroute — add it to the Discussion Map as a `pending` subtopic and → Return to **B. Session Loop**.
 
-2. Gather the full context discussed about the concern — everything worked out so far, not a one-line summary. The target topic picks this up cold, so it needs the whole thing.
+2. Record the concern with the full context discussed about it as `concern` — the target topic picks it up cold.
 
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern and its full context}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
 
 4. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it. Commit:
 
