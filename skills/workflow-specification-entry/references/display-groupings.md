@@ -43,7 +43,9 @@ Spec status: show the item's actual status with extraction count `({X} of {Y} so
 
 ## C. Display
 
-All items are first-class — every grouping (including single-discussion entries) is a numbered item.
+The tree and menu render only **actionable** groupings — every item except the concluded ones (`status: completed` with `has_pending_sources: false`). Concluded specs move to the `c`/`completed` submenu so finished work doesn't crowd the work-first list. Render actionable items in the discovery script's `specifications[]` order (already sorted proposed → in-progress → completed-with-pending). The numbered tree and the menu options must use the same ordering and numbering — they map 1:1.
+
+All actionable items are first-class — every grouping (including single-discussion entries) is a numbered item.
 
 > *Output the next fenced block as a code block:*
 
@@ -121,13 +123,14 @@ specification, choose "Re-analyze" and provide guidance.
 
 ## D. Menu
 
-Present one numbered menu entry per grouping. The verb and description depend on the item's status:
+Present one numbered menu entry per **actionable** grouping — the same set the tree showed, in the same order. The verb and description depend on the item's status:
 
 - Status `proposed` → **Start** "{Name}" — {N} ready discussions
 - Status `in-progress` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
 - Status `in-progress` with all extracted → **Continue** "{Name}" — all sources extracted
-- Status `completed` with no pending sources → **Refine** "{Name}" — completed spec
 - Status `completed` with pending sources → **Continue** "{Name}" — {N} new source(s) to extract
+
+Concluded groupings (`completed` with no pending sources) are not numbered here — they live behind `c`/`completed`.
 
 When the grouping has pending consult references, append `— {N} consult ref(s) pending` to its description. Do not change the verb — consult references gate completion but never introduce a new action.
 
@@ -136,7 +139,11 @@ After all grouping entries, append meta options:
 - **Unify all** (only when 2+ groupings exist) — all discussions combined into one specification instead of following the recommended groupings. If specs exist, note they will be incorporated and superseded.
 - **Re-analyze groupings** (always) — current groupings are discarded and rebuilt. If specs exist, existing names are preserved. User can provide guidance in the next step.
 
-**Example assembled menu** (2 groupings, specs exist):
+Then, after the numbered and meta options, append the command option (only when `concluded_count > 0`):
+
+- **`c`/`completed`** — Manage completed specifications — {concluded_count} completed
+
+**Example assembled menu** (2 actionable groupings, 1 concluded spec):
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -152,19 +159,27 @@ After all grouping entries, append meta options:
    `specification names are preserved. You can provide guidance`
    `in the next step.`
 
+- **`c`/`completed`** — Manage completed specifications — 1 completed
+
 Select an option:
 · · · · · · · · · · · ·
 ```
 
 Recreate with actual topics and states from discovery.
 
-Every meta option (Unify, Re-analyze) MUST include its description lines.
+Every meta option (Unify, Re-analyze) MUST include its description lines. Omit the `c`/`completed` option when `concluded_count` is 0.
 
 **STOP.** Wait for user response.
 
 #### If user picks a grouping
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
+
+#### If user picks `c`/`completed`
+
+→ Load **[display-completed-specs.md](display-completed-specs.md)** and follow its instructions as written.
+
+→ Return to **D. Menu**.
 
 #### If user picks `Unify all`
 

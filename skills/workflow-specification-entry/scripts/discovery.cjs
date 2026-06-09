@@ -3,6 +3,15 @@
 const path = require('path');
 const { loadActiveManifests, phaseItems, phaseData, listFiles, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
+// Actionable-first ordering rank for the spec menu. Lower sorts earlier:
+// proposed → in-progress → completed-with-pending → concluded → other/promoted.
+function specSortRank(spec) {
+  if (spec.status === 'proposed') return 0;
+  if (spec.status === 'in-progress') return 1;
+  if (spec.status === 'completed') return spec.has_pending_sources ? 2 : 3;
+  return 4;
+}
+
 function discover(cwd, workUnit) {
   const allManifests = loadActiveManifests(cwd);
   const manifests = workUnit
@@ -95,9 +104,21 @@ function discover(cwd, workUnit) {
         });
       }
 
+      spec.has_pending_sources = (spec.sources || []).some(s => s.status === 'pending');
+
       specifications.push(spec);
     }
   }
+
+  // Actionable specs first, concluded specs last. Stable within each tier
+  // (insertion order preserved), so the menu reads work-first.
+  specifications.sort((a, b) => specSortRank(a) - specSortRank(b));
+
+  // Concluded = completed with every source extracted. Drives the
+  // "Manage completed specifications" submenu gate.
+  const concludedCount = specifications.filter(
+    s => s.status === 'completed' && !s.has_pending_sources
+  ).length;
 
   // --- Cache (discussion-consolidation-analysis from manifest) ---
   const cacheEntries = [];
@@ -151,6 +172,7 @@ function discover(cwd, workUnit) {
       in_progress_count: inProgressCount,
       spec_count: specCount,
       proposed_count: proposedCount,
+      concluded_count: concludedCount,
       has_discussions: discCount > 0,
       has_completed: completedCount > 0,
       has_specs: specCount > 0,
@@ -178,7 +200,7 @@ function format(result) {
     lines.push('  (none)');
   } else {
     for (const s of result.specifications) {
-      lines.push(`  ${s.name}: ${s.status}, type=${s.work_type}`);
+      lines.push(`  ${s.name}: ${s.status}, type=${s.work_type}, has_pending_sources=${s.has_pending_sources}`);
       if (s.sources) {
         for (const src of s.sources) {
           lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
@@ -206,7 +228,7 @@ function format(result) {
   lines.push('=== STATE ===');
   const cs = result.current_state;
   lines.push(`discussions: ${cs.discussion_count} (${cs.completed_count} completed, ${cs.in_progress_count} in-progress)`);
-  lines.push(`specs: ${cs.spec_count}, proposed: ${cs.proposed_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
+  lines.push(`specs: ${cs.spec_count}, proposed: ${cs.proposed_count}, concluded: ${cs.concluded_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
   if (cs.discussions_checksum) lines.push(`checksum: ${cs.discussions_checksum}`);
 
   return lines.join('\n') + '\n';
