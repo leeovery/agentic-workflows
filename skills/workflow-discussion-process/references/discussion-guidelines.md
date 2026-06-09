@@ -46,7 +46,7 @@ The discussion file is your memory. Context compaction is lossy — what's not o
 - The Discussion Map states change
 - A piece of the puzzle is solved
 - The discussion is about to branch into a new subtopic
-- A new subtopic is uncovered or elevated
+- A new subtopic is uncovered
 - Before context refresh
 
 These are natural pauses, not every exchange. Document the reasoning and context — not a verbatim transcript.

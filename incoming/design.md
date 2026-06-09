@@ -2,6 +2,16 @@
 
 **Status:** In progress
 
+> ⚠️ **TERMINOLOGY CHANGED MID-STACK (from PR 5).** This doc is throwaway and was **not**
+> back-edited, so older sections below still say "Incoming"/"elevate". The shipped names are:
+> - **Section** in artefacts: `## Triage` (was `## Incoming`).
+> - **Menu verb**: `reroute` — a single option that replaces *both* the old `elevate` and `incoming`.
+>   `elevate` is **removed**; rerouting to a new topic is what used to be elevation.
+> - **Shared ref**: `triage-landing.md` (was `incoming-landing.md`).
+> - **Provenance**: `reroute:{origin}` (was `incoming:{origin}`).
+> - The feature/initiative name "Incoming" and the `incoming/` dir/branch names are kept as-is.
+> Future PRs (6, 7): use the new names; ignore the older terminology in the prose below.
+
 Design log for the Incoming initiative. Its own stacked-PR effort, independent of the discovery-map
 work. This doc is the durable scope reference; decisions are appended as the PR stack progresses.
 
@@ -126,10 +136,11 @@ Scope per PR:
 - **PR 2** — `create-discovery-topic.md` shared ref + migrate full-spawn sites (§F, topic-splitting).
 - **PR 3** — migrate discovery-only sites onto the CLI directly (confirm-and-persist §A, ensure-discovery-item §D, analysis-approval-gate §C, absorb-into-epic §J, manage-work-unit pivot).
 - **PR 4** — Incoming substrate: templates + initialize-* seed `## Incoming (none)`; CLAUDE.md + test declare `incoming:{origin}` provenance. (Stub *creation* on a fresh target is landing-time — PR 5.)
-- **PR 5** — Incoming landing (full incoming-landing.md, trigger wiring, non-epic routing).
+- **PR 5** — Incoming landing: `incoming-landing.md` (classify target → new / fresh / existing+reopen), caller-side target resolution with an ambiguity menu, trigger wiring (discussion §F, epic-research §C), non-epic routing (feature §E).
 - **PR 6** — drain + conclusion gate + reopen guard.
+- **PR 7** — make the off-topic `pivot` option real: extract the feature→epic conversion core (set `work_type epic`, reindex, register the discovery-map topic, `create-discovery-topic`) from `manage-work-unit.md` into a shared `pivot-to-epic.md`; `manage-work-unit` loads it (no behaviour change). Wire the off-topic `pivot` (feature §E, discussion §F non-epic) to load it, then land the triggering concern as a topic. Today `pivot` only points the user at the manage menu — a no-op the off-topic menu shouldn't pretend to perform.
 
-PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–6 introduce new behaviour.
+PRs 1–3 are a behaviour-preserving no-op refactor. Only PRs 4–7 introduce new behaviour.
 
 **Execution: per-PR redo.** A first pass built the whole stack in one go and violated the authoring
 conventions, so the work is being redone one PR at a time. The first-pass PRs #359 and #361–#365 are
@@ -144,8 +155,9 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 2 | `idea/incoming-pr-2-shared-create-topic` | PR 1 | #366 | open — redo (old #361 closed) |
 | 3 | `idea/incoming-pr-3-discovery-direct-cli` | PR 2 | #367 | open — redo (old #362 closed) |
 | 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
-| 5 | _to re-cut_ | PR 4 | — | pending (old #364 closed) |
+| 5 | `idea/incoming-pr-5-incoming-landing` | PR 4 | #369 | open — redo (old #364 closed) |
 | 6 | _to re-cut_ | PR 5 | — | pending (old #365 closed) |
+| 7 | _to cut_ | PR 6 | — | pending — make off-topic `pivot` real |
 
 ## Decisions taken during implementation
 
@@ -189,6 +201,22 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   seed file directly, bypassing `template.md`, so an elevated discussion won't carry `## Incoming` from
   PR 4. Left deliberately: landing (PR 5) is robust to a missing section and reconciles creation paths
   there.
+- **PR 5 target resolution lives caller-side, with an ambiguity menu.** The trigger sites (discussion §F,
+  epic-research §C) resolve which topic a concern belongs to before loading `incoming-landing.md`: one
+  clear match → propose + confirm; several plausible candidates or an unsure near-match → present a menu
+  of candidates plus an `n`/`new` option; nothing fits → propose a new kebab-case name. Creating a topic
+  is therefore always user-chosen, never a silent "no exact match → create" fallback.
+- **Landing classifies on `phase=` presence, not a lifecycle string.** `incoming-landing.md` keys off the
+  live `discovery.cjs` row: no row → create (`incoming:{origin}` provenance via `create-discovery-topic`);
+  row with no `phase=` → `init-phase` per its `routing` + stub; row with `phase=` → append to that
+  artefact and reopen (flip the `phase=` item to `in-progress`) only when its status is `completed`.
+  Keying on `phase=` rather than enumerating lifecycle values sidesteps the terminal `handled`/`cancelled`
+  rows (no `phase=`, never proposed as sensible targets) — they fall through to the re-create path.
+- **Reopen is the concluded-target path** (the case discussed at length): a concern routed onto a finished
+  topic reopens its phase item so it recomputes as actionable, then drains the entry when next run.
+- **Elevation's hand-built seed reconciled in landing, not in §F.** Landing §D adds the `## Incoming`
+  heading if the target file lacks one (e.g. an elevated discussion seed built outside `template.md`), so
+  the PR 4 gap closes here without changing the elevation flow.
 - **Refactor (PRs 2–3) leaves one non-semantic diff:** discovery-item key order
   (`status,routing,source,summary,description` from `create-discovery-topic` vs the old sequential `set`
   order). Values identical.

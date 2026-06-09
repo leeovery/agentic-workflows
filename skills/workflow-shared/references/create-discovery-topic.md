@@ -1,6 +1,6 @@
 # Create Discovery Topic
 
-*Shared reference. Loaded by `workflow-discussion-process` (topic elevation) and `workflow-research-process` (research split), and any flow that spawns a new discovery-map topic.*
+*Shared reference. Loaded by `workflow-research-process` (research split) and `triage-landing.md` (reroute to a new topic), and any flow that spawns a new discovery-map topic.*
 
 ---
 
@@ -13,7 +13,7 @@ The caller provides these via context before loading:
 - `work_unit` — the epic's work unit name. Always present.
 - `proposed_name` — the topic name the caller has picked and confirmed with the user. Always present.
 - `routing` — the literal `research` or `discussion`. The new topic's initial routing intent.
-- `source` — the provenance string for the discovery item (e.g. `research-split:{parent}`, `discussion-elevation:{parent}`).
+- `source` — the provenance string for the discovery item (e.g. `research-split:{parent}`, `reroute:{origin}`).
 - `phase` — optional, `research` or `discussion`. When set, the matching phase item is created alongside the discovery item.
 - `summary` — optional one-line summary. Written only when provided and non-empty.
 - `description` — optional paragraph or two of richer context. Written only when provided and non-empty.

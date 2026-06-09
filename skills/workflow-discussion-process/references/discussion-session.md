@@ -96,7 +96,7 @@ At natural breaks — after a decision, when transitioning between subtopics, or
 
 - **Two-space left indent** on every row (matches the discovery map). Header included.
 - **Header**: `Discussion Map — {topic:(titlecase)} ({total} subtopics{state_breakdown})`. Followed by **one blank line** before the first row.
-  - `{total}` — count of **all subtopics** (parents + children), excluding `↑ Elevated:` marker rows.
+  - `{total}` — count of **all subtopics** (parents + children).
   - `{state_breakdown}` — append ` — {decided} decided · {converging} converging · {exploring} exploring · {pending} pending`, **omitting zero-count categories**. When only one state bucket is non-zero (e.g. every subtopic still `pending`), the breakdown is redundant with the rows; omit it and render just `({total} subtopics)`.
   - Examples: `Discussion Map — Portal Observability Layer (12 subtopics)` · `Discussion Map — Portal Observability Layer (12 subtopics — 3 decided · 2 converging · 1 exploring · 6 pending)`.
 - **Parent row**: `{parent_branch} {state_glyph} {name:(titlecase)} [{state}]`. **Single space** between each of the four segments. State label in lowercase, wrapped in square brackets.
@@ -112,10 +112,6 @@ At natural breaks — after a decision, when transitioning between subtopics, or
   - `exploring` — `◐`
   - `converging` — `→`
   - `decided` — `✓`
-- **Elevated marker** — when a subtopic was elevated to a sibling discussion, its row is replaced by an elevation marker that **occupies the same slot in the tree**:
-  - Parent slot: `{parent_branch} ↑ Elevated: {sibling-topic:(titlecase)}`
-  - Child slot: `{parent_gutter}{child_branch} ↑ Elevated: {sibling-topic:(titlecase)}`
-  - No state glyph, no `[state]` bracket. `↑` is reserved for this marker and never appears as a state glyph. Elevated rows are **not** counted in `{total}` or the state breakdown.
 - **Row order** within the map matches the order parents and children appear in the file's Discussion Map section. Do not re-sort.
 
 **Single-row case (one parent, no children):**
@@ -126,7 +122,7 @@ At natural breaks — after a decision, when transitioning between subtopics, or
   └─ ○ Subsystem Prefix Taxonomy [pending]
 ```
 
-**Full example (mixed states, nested children, one elevation):**
+**Full example (mixed states, nested children):**
 
 ```
   Discussion Map — Portal Observability Layer (12 subtopics — 3 decided · 2 converging · 1 exploring · 5 pending)
@@ -136,7 +132,6 @@ At natural breaks — after a decision, when transitioning between subtopics, or
   │  ├─ ✓ Field Order [decided]
   │  └─ ◐ Truncation Rules [exploring]
   ├─ → Diagnostic Context Preservation At Boundaries [converging]
-  ├─ ↑ Elevated: Log Aggregation Backend
   └─ ○ Rollout Sequencing And Scope Bundling [pending]
 ```
 
@@ -144,55 +139,103 @@ Don't render the map after every exchange — do it at meaningful transitions. I
 
 ---
 
-## F. Topic Elevation
+## F. Off-Topic Concerns
 
-**This section applies to epic work types only.** For features and bugfixes (single-topic), subtopics stay on the map regardless of scope. Note any out-of-scope concerns in the Summary section for the user to consider separately.
+During organic discussion a concern may surface that doesn't belong under the current topic — it belongs to a *different* topic entirely.
 
-During organic discussion, a subtopic may grow beyond the scope of the current topic — it starts needing its own decisions, its own options exploration, its own trade-offs. When this happens, it's a sibling topic, not a subtopic.
+**Heuristic**: If a concern is a detail that informs a decision within the current topic, it's a subtopic — keep it here. If it belongs to a *different* topic (one that exists, or one that should), it isn't this discussion's to resolve — reroute it to that topic, which picks it up later. Example: "How do we handle token refresh?" within an auth discussion = subtopic (keep). "What's our caching strategy?" surfacing during auth because tokens need caching = different topic (reroute).
 
-**Heuristic**: If a concern would need its own set of decisions, its own perspective agents, its own full exploration — it's a sibling. If it's a detail that informs a decision within the current topic — it's a subtopic. Example: "How do we handle token refresh?" within an auth discussion = subtopic. "What's our caching strategy?" surfacing during auth because tokens need caching = sibling.
+#### If work type is not `epic`
 
-**When you identify a potential sibling:**
+Single-topic work types (feature, bugfix, quick-fix) have no other topic to route to — the topic *is* the work unit.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-**{concern}** is expanding beyond a subtopic — it has its own decisions and trade-offs.
+**{concern}** is beyond this topic's scope.
 
-- **`e`/`elevate`** — Seed as a separate discussion topic
-- **`k`/`keep`** — Keep it as a subtopic here
+- **`l`/`log`** — Capture it as an idea in the inbox for later
+- **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
+- **`i`/`ignore`** — Note it in the Summary and move on
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-#### If `elevate`
+**If `log`:**
 
-1. Pick a kebab-case name reflecting the elevated concern. Surface it to the user for confirmation.
-
-2. Generate a one-sentence summary of the elevated concern (drawn from the context that triggered elevation) for the discovery item's `summary` field. Generate a paragraph or two of richer context in the same turn for the `description` field, loaded by discussion-entry as opening context when the user later picks the elevated topic up.
-
-→ Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{new-topic}`, phase = `discussion`, routing = `discussion`, source = `discussion-elevation:{topic}`, summary = `{summary}`, description = `{description}`.
-
-**If `result` is `cancelled`:**
+Capture the concern via the `workflow-log-idea` skill so it lands in the inbox for later triage.
 
 → Return to **B. Session Loop**.
 
-**Otherwise:**
+**If `pivot`:**
 
-3. Create the seed discussion file at `.workflows/{work_unit}/discussion/{created_topic}.md` with:
-   - Context section capturing what prompted the topic and any initial thinking from the current discussion
-   - A Discussion Map with initial subtopics derived from what's been discussed so far
-   - No decisions — those happen in the new discussion
-
-4. Update the current Discussion Map — replace the subtopic row with `↑ Elevated: {created_topic:(titlecase)}` in the same slot (same branch, same gutter if it was a child). See **E. Status Display** for the marker rules.
-
-5. Commit: `discussion({work_unit}/{topic}): elevate {created_topic} to separate discussion`
+Note the concern in the Summary so it isn't lost, then tell the user they can pivot this work to an epic from the manage menu (`p`/`pivot`) and route the concern as a topic from there.
 
 → Return to **B. Session Loop**.
 
-#### If `keep`
+**If `ignore`:**
+
+Note the concern in the Summary section for the user to consider separately, and continue.
+
+→ Return to **B. Session Loop**.
+
+#### Otherwise
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+**{concern}** belongs to a different topic, not this one.
+
+- **`r`/`reroute`** — Send it to the topic it belongs to; it picks it up later
+- **`k`/`keep`** — Keep it here as a subtopic
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `reroute`:**
+
+1. Identify the topic the concern belongs to. Read the live map:
+
+   ```bash
+   node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+   ```
+
+   Resolve the target. If one topic clearly matches, propose it and confirm with the user. If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
+
+   > *Output the next fenced block as markdown (not a code block):*
+
+   ```
+   · · · · · · · · · · · ·
+   Where should "{concern}" land?
+
+   - **`1`** — {candidate} [{state}]
+   - **`2`** — {candidate} [{state}]
+   - **`n`/`new`** — Create a new topic for it
+   · · · · · · · · · · · ·
+   ```
+
+   **STOP.** Wait for user response.
+
+   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic (`{topic}`), it's a detail of this discussion, not a reroute — add it to the Discussion Map as a `pending` subtopic and → Return to **B. Session Loop**.
+
+2. Gather the full context discussed about the concern — everything worked out so far, not a one-line summary. The target topic picks this up cold, so it needs the whole thing.
+
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern and its full context}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
+
+4. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it. Commit:
+
+   ```bash
+   git add -- .workflows/{work_unit}/
+   git commit -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
+   ```
+
+→ Return to **B. Session Loop**.
+
+**If `keep`:**
 
 Leave it as a subtopic on the map.
 
