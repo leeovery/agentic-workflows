@@ -4,7 +4,7 @@
 
 ---
 
-Shows when cache is valid (directly from routing) or after analysis completes. This is the most content-rich display.
+Shows when proposed groupings exist (directly from routing) or after analysis completes. This is the most content-rich display.
 
 ## A. Load Groupings
 
