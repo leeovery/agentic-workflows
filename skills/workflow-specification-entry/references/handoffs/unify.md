@@ -14,13 +14,8 @@ Sources:
 - .workflows/{work_unit}/discussion/{discussion-name}.md
 ...
 
-Consult references (read narrowly — do not extract):
-- .workflows/{work_unit}/discussion/{ref-topic}.md — {slice hint}
-
 Output: .workflows/{work_unit}/specification/unified/specification.md
 
 ---
 Invoke the workflow-specification-process skill.
 ```
-
-Omit the `Consult references` block when no folded-in grouping owes any.

@@ -4,14 +4,7 @@
 
 ---
 
-**Consult references** — if any grouping folded into the unified spec owes consult references (a `**Consult**` line in the consolidation-analysis doc, or a `consult_references` entry on a spec), append this block to the confirmation below, after the sources listing; omit it when there are none:
-
-> *Output the next fenced block as a code block:*
-
-```
-Consult references (read narrowly — do not extract):
-  • {ref-topic} — {slice hint}
-```
+Unify folds every completed discussion into the unified spec as a full **source**, so any cross-grouping consult reference is absorbed by wholesale extraction. There is no separate consult-reference block on the unify path.
 
 ## A. Display Confirmation
 

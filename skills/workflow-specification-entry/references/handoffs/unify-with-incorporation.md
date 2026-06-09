@@ -14,9 +14,6 @@ Source discussions:
 - .workflows/{work_unit}/discussion/{discussion-name}.md
 ...
 
-Consult references (read narrowly — do not extract):
-- .workflows/{work_unit}/discussion/{ref-topic}.md — {slice hint}
-
 Existing specifications to incorporate:
 - .workflows/{work_unit}/specification/{topic}/specification.md
 - .workflows/{work_unit}/specification/{topic}/specification.md
@@ -33,5 +30,3 @@ After the unified specification is complete, mark the incorporated specs as supe
 ---
 Invoke the workflow-specification-process skill.
 ```
-
-Omit the `Consult references` block when no folded-in grouping owes any.

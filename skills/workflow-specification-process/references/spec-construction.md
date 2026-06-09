@@ -88,17 +88,17 @@ Better to resurface and confirm "already covered" than let something slip past.
 
 Consult references are sibling discussions that owe this spec a correction — they are **not** sources. Read only the relevant slice, never the whole document.
 
-For each consult reference still `pending` (list them via `node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} consult_references`):
+List the pending ones (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} consult_references` returns names + status). For each still `pending`:
 
-1. Open the sibling discussion named by the reference and read **only** its `## Spec hand-offs` slice, or the specific decisions named in the slice hint. Do not extract it wholesale.
-2. Apply the correction to the affected spec content, or cite the sibling decision where the spec defers to it — cite, don't restate. Corrections to already-logged content go through **Context Resurfacing** above.
-3. Record what was reconciled (which slice, what changed) in the spec's **Working Notes** section.
-4. Mark the reference addressed:
+1. Find its slice hint — the `{ref-topic} — {slice hint}` entry in the handoff's `Consult references` block, or, if the handoff is no longer in context (e.g. after a resume), the `**Consult**` line for it in `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`.
+2. Open the named sibling discussion and read **only** the decisions the slice hint points to — plus its `## Spec hand-offs` section if the discussion happens to have one. Do not extract it wholesale.
+3. Apply the correction to the affected spec content, or cite the sibling decision where the spec defers to it — cite, don't restate. Corrections to already-logged content go through **Context Resurfacing** above. If the correction targets a topic not yet constructed, leave the reference `pending` and revisit it on that topic's cycle.
+4. Once applied or cited, record what was reconciled (which slice, what changed) in the spec's **Working Notes** section and mark the reference addressed:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} consult_references.{ref}.status addressed
    ```
 
-This runs once per reference — already-`addressed` references are skipped on later topic cycles.
+Already-`addressed` references are skipped on later topic cycles.
 
 ---
 
