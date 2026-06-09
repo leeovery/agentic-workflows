@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-06-09
+
+- Add `create-discovery-topic` manifest CLI command — atomic single-lock, single-write epic topic spawn that errors on existing items, eliminating the half-built-topic hazard of the prior multi-command sequence
+- Add Triage system for off-topic concerns: a terminal `## Triage` section in research and discussion artefacts where rerouted concerns land, drained into working content at session start and gated against at conclusion
+- Add `triage-landing.md` and `drain-triage.md` shared references handling concern landing (new/fresh/existing-with-reopen targets) and folding
+- Replace topic "elevation" with "reroute" — drop elevation markers from the Discussion Map, add `reroute:{origin}` provenance, and route off-topic concerns to the topic they belong to
+- Add non-epic off-topic handling (log to inbox / pivot to epic / ignore) for feature research and discussion sessions
+- Extract `pivot-to-epic.md` shared reference and wire the off-topic `pivot` option to actually convert a feature to an epic and land the triggering concern as a topic
+- Add `create-discovery-topic.md` and `pivot-to-epic.md` shared references; migrate discovery, analysis-gate, ensure-discovery-item, absorb-into-epic, and topic-splitting call sites onto the atomic CLI
+- Collapse discovery gap analysis from five categories to four by removing the obsolete "elevated but uncreated" gap type
+
 ## [0.5.3] - 2026-06-07
 
 Release notes for v0.5.3:
