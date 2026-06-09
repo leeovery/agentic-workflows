@@ -27,7 +27,7 @@ Read the research document(s) in full:
 - Feature: `.workflows/{work_unit}/research/{topic}.md`
 - Epic: all files in `.workflows/{work_unit}/research/` relevant to the current topic
 
-Pull the current state fresh into context — don't rely on your memory of what you wrote earlier.
+Pull the current state fresh into context — don't rely on your memory of what you wrote earlier. Include the `## Triage` section — it must read `(none)` by conclusion.
 
 → Proceed to **B. Compare and Reconcile**.
 
@@ -41,11 +41,14 @@ Walk the conversation against the document and check three dimensions:
 
 3. **Accuracy drift** — positions documented as firmer than they were, tentative leans written as decisions, softened user views, tradeoffs reframed beyond what the conversation supported, or context omitted that changes how a position should read.
 
+4. **Triage consistency** — `## Triage` must read `(none)` by conclusion. The drain at session start normally clears it, but a concern can land mid-session after drain ran. If any `### {title}` entry remains, fold it into the research body as a seed thread and clear the section. If the `(none)` placeholder drifted (missing, or replaced by stray text with no real entry), restore it.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the research file at the appropriate place
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation
+- Undrained Triage entry → fold into the research body as a seed thread, then reset `## Triage` to `(none)`; restore the placeholder if it drifted
 
 Commit the changes with a descriptive message (e.g., `docs(research): capture undocumented tradeoff thread`, `docs(research): correct drift on storage preference`).
 

@@ -31,6 +31,7 @@ Pull the current state fresh into context — don't rely on your memory of what 
 - The **Discussion Map** and every subtopic's state
 - Each subtopic section (Context → Options → Journey → Decision)
 - The **Summary** section (Key Insights, Open Threads, Current State)
+- The **Triage** section — it must read `(none)` by conclusion
 
 → Proceed to **B. Compare and Reconcile**.
 
@@ -44,11 +45,14 @@ Walk the conversation against the document and check three dimensions:
 
 3. **Accuracy drift** — positions documented as firmer than they were, tentative leans written as decisions, softened user pushback, competing options understated to make the chosen one look cleaner, or a subtopic marked `decided` on the Discussion Map when it was really `converging`. Check the Discussion Map itself for drift — child subtopics absorbed into a parent decision when they weren't fully resolved, Open Threads in the Summary that don't match what was actually left unresolved in the conversation.
 
+4. **Triage consistency** — `## Triage` must read `(none)` by conclusion. The drain at session start normally clears it, but a concern can land mid-session after drain ran. If any `### {title}` entry remains, fold it into the working content — a `pending` subtopic on the Discussion Map plus a seeded `## {title}` section — and clear the section. If the `(none)` placeholder drifted (missing, or replaced by stray text with no real entry), restore it.
+
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the discussion file at the appropriate place (subtopic section, Journey, or Summary)
 - Hallucination → remove or correct to match what was discussed
 - Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed
+- Undrained Triage entry → fold into the Discussion Map and a subtopic section, then reset `## Triage` to `(none)`; restore the placeholder if it drifted
 
 Commit the changes with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).
 
