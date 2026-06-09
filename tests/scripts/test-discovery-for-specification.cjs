@@ -184,23 +184,10 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.current_state.in_progress_count, 1);
   });
 
-  it('detects valid cache with anchored names from manifest', () => {
+  it('detects valid cache from manifest checksum', () => {
     const crypto = require('crypto');
-
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: {
-          analysis_cache: { checksum: null, generated: '2026-01-01' },
-          items: { auth: { status: 'completed' } },
-        },
-      },
-    });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
-
     const checksum = crypto.createHash('md5').update('# Auth').digest('hex');
 
-    // Update manifest with correct checksum
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -210,16 +197,12 @@ describe('workflow-specification-entry discovery', () => {
         },
       },
     });
-
-    // Cache file is pure markdown (no frontmatter)
-    createFile(dir, '.workflows/auth/.state/discussion-consolidation-analysis.md',
-      '### Auth\nContent here');
-    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
 
     const r = discover(dir);
     assert.strictEqual(r.cache.entries.length, 1);
     assert.strictEqual(r.cache.entries[0].status, 'valid');
-    assert.ok(r.cache.entries[0].anchored_names.includes('auth'));
+    assert.strictEqual(r.cache.entries[0].anchored_names, undefined);
   });
 
   it('returns empty cache entries when none exists', () => {

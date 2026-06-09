@@ -1,8 +1,7 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, phaseItems, phaseData, listFiles, listDirs, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, phaseItems, phaseData, listFiles, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 function discover(cwd, workUnit) {
   const allManifests = loadActiveManifests(cwd);
@@ -124,25 +123,9 @@ function discover(cwd, workUnit) {
       reason = 'no discussions to compare';
     }
 
-    // Extract anchored names (grouping headings with existing specs)
-    const anchoredNames = [];
-    const cacheFile = path.join(workflowsDir, m.name, '.state', 'discussion-consolidation-analysis.md');
-    try {
-      const content = fs.readFileSync(cacheFile, 'utf8');
-      const headings = content.match(/^### .+$/gm) || [];
-      for (const h of headings) {
-        const cleanName = h.replace(/^### /, '').replace(/\s*\(.*\)/, '').toLowerCase().replace(/\s+/g, '-');
-        const specDir = path.join(workflowsDir, m.name, 'specification');
-        if (fileExists(path.join(specDir, cleanName, 'specification.md'))) {
-          anchoredNames.push(cleanName);
-        }
-      }
-    } catch {}
-
     cacheEntries.push({
       work_unit: m.name, status, reason,
       checksum: cache.checksum, generated: cache.generated || 'unknown',
-      anchored_names: anchoredNames,
     });
   }
 
@@ -216,9 +199,6 @@ function format(result) {
   } else {
     for (const c of result.cache.entries) {
       lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);
-      if (c.anchored_names.length > 0) {
-        lines.push(`    anchored: ${c.anchored_names.join(', ')}`);
-      }
     }
   }
   lines.push('');
