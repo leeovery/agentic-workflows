@@ -4,6 +4,15 @@
 
 ---
 
+**Consult references** — if the selected grouping owes any (a `**Consult**` line in the consolidation-analysis doc, or a `consult_references` entry on the spec), append this block to the confirmation below, after the sources listing; omit it when there are none:
+
+> *Output the next fenced block as a code block:*
+
+```
+Consult references (read narrowly — do not extract):
+  • {ref-topic} — {slice hint}
+```
+
 ## A. Display Confirmation
 
 #### If spec is in-progress with pending sources

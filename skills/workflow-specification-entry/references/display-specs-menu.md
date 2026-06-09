@@ -30,6 +30,9 @@ For each non-superseded specification from discovery output, display as nested t
    └─ Discussions:
       ├─ {source-name} [extracted]
       └─ {source-name} [extracted]
+   └─ Consult:
+      ├─ {ref-name} [{status:[pending|addressed]}]
+      └─ ...
 ```
 
 Determine discussion status from the spec's `sources` array:
@@ -38,6 +41,8 @@ Determine discussion status from the spec's `sources` array:
 - `pending` → `pending`
 
 Extraction count: X = sources with `status: incorporated`, Y = total source count from the spec's `sources` array.
+
+Consult status comes from the spec's `consult_references` array (`pending` or `addressed`). Omit the `Consult:` branch for specs with no consult references.
 
 ### Unassigned Discussions
 
@@ -75,6 +80,10 @@ Key:
   Discussion status:
     extracted — content has been incorporated into the specification
     reopened  — was extracted but discussion has regressed to in-progress
+
+  Consult status:
+    pending   — sibling correction not yet read in and reconciled
+    addressed — correction applied or cited; reconciliation recorded
 
   Spec status:
     in-progress — specification work is ongoing
@@ -115,6 +124,8 @@ List "Analyze for groupings (recommended)" first, then one entry per existing no
 - Spec is `in-progress` → **Continue** "{Name}" — in-progress
 - Spec is `completed` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
 - Spec is `completed` with no pending sources → **Refine** "{Name}" — completed
+
+When the spec has pending consult references, append `— {N} consult ref(s) pending` to its description. The verb is unchanged — consult references gate completion but introduce no new action.
 
 **Example assembled menu** (2 specs exist):
 

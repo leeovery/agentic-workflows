@@ -82,6 +82,16 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 > **CHECKPOINT**: Do not proceed to sign-off if any tracking files still show `status: in-progress`. They indicate incomplete review work.
 
+Also confirm every consult reference is addressed:
+
+```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} consult_references
+```
+
+If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Read Consult References Narrowly — read the sibling slice, apply or cite the correction, record it in Working Notes, then mark `addressed`.
+
+> **CHECKPOINT**: Do not proceed to sign-off while any consult reference is `pending`. The owed correction has not been reconciled.
+
 → Proceed to **C. Sign-Off**.
 
 ---
@@ -125,6 +135,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 Specification is complete when:
 - All topics have validated content
 - All sources are marked as `incorporated`
+- All consult references are marked as `addressed`
 - At least one review cycle completed with no findings, OR user explicitly chose to proceed past the re-loop prompt
 - All review tracking files marked `status: complete`
 - User confirms the specification is complete

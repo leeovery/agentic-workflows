@@ -4,6 +4,8 @@
 
 ---
 
+Unify folds every completed discussion into the unified spec as a full **source**, so any cross-grouping consult reference is absorbed by wholesale extraction. There is no separate consult-reference block on the unify path.
+
 ## A. Display Confirmation
 
 #### If existing specifications will be superseded

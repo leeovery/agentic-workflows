@@ -57,6 +57,28 @@ When forming groupings:
 - Only create new names for genuinely new groupings with no overlap
 - If an anchored spec's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
 
+### Identify Cross-Grouping Hand-offs
+
+A discussion can belong wholly in one grouping yet still impose corrections on a **sibling** grouping (or on an anchored existing spec) — e.g. a decision redesigned in discussion A that supersedes what another grouping's spec documents. Carry these in as **consult references**, not sources: the receiving spec reads only the named slice for the correction and cites it; it does not extract the discussion wholesale.
+
+While grouping, for each discussion check whether it hands work to another grouping:
+- Harvest any `## Spec hand-offs` section or "reconciliation owed by {spec}" note in the discussion, if present
+- Note cross-grouping corrections you observe even when no such section exists
+
+Record each as a consult reference on the **receiving** grouping (never as a source), capturing which slice/decisions and why.
+
+### Knowledge-Base Advisory Query
+
+Before finalizing groupings, run one query per grouping to surface sibling discussions that may owe it corrections you missed:
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
+```
+
+Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[workflow-knowledge SKILL.md](../../workflow-knowledge/SKILL.md)** → Query construction).
+
+Treat hits as **candidate** consult references — a hit from a discussion outside this grouping that names a correction it owes is worth promoting onto the receiving grouping. **Advisory only**: never auto-add, never gate. You decide which candidates to record; the user confirms at the grouping menu.
+
 → Proceed to **C. Save to Cache**.
 
 ---
@@ -86,6 +108,7 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 - **{discussion-b}**: {why it belongs in this group}
 
 **Coupling**: {Brief explanation of what binds these together}
+**Consult**: {ref-topic} — {slice/why the correction is owed}
 
 ### {Another Specification Name}
 - **{discussion-d}**: {why it belongs}
@@ -99,5 +122,7 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 {Any additional context about the relationships discovered}
 {Note any naming conflicts with anchored specs here}
 ```
+
+The `**Consult**` line is per-grouping — one line per consult reference, omitted entirely when a grouping owes none. List sources under each grouping as bullets; consult references stay on their own `**Consult**` line so they are never mistaken for sources.
 
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.
