@@ -191,7 +191,8 @@ Group the phases under the same three stage dividers. This branch has no map —
 | In-progress items across multiple phases | No recommendation |
 | Some research in-progress, some completed | "Consider completing remaining research before starting discussion. Topic analysis works best with all research available." |
 | Some discussions in-progress, some completed | "Consider completing remaining discussions before starting specification. The grouping analysis works best with all discussions available." |
-| All discussions completed, specs not started | "All discussions are completed. Specification will analyze and group them." |
+| Proposed groupings exist (specs with status `proposed`) | "{N} analyzed grouping(s) ready to specify. Start them before planning to surface cross-cutting dependencies." |
+| All discussions completed, no specification items exist | "All discussions are completed. Specification will analyze and group them." |
 | Some specs completed, some in-progress | "Completing all specifications before planning helps identify cross-cutting dependencies." |
 | Some plans completed, some in-progress | "Completing all plans before implementation helps surface task dependencies across plans." |
 | Reopened discussion that's a source in a spec | "{Spec} specification sources the reopened {Discussion} discussion. Once that discussion concludes, the specification will need revisiting to extract new content." |
