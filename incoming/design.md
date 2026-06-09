@@ -157,7 +157,7 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
 | 4 | `idea/incoming-pr-4-template-substrate` | PR 3 | #368 | open — redo (old #363 closed) |
 | 5 | `idea/incoming-pr-5-incoming-landing` | PR 4 | #369 | open — redo (old #364 closed) |
 | 6 | `idea/incoming-pr-6-drain-and-gate` | PR 5 | #370 | open — redo (old #365 closed) |
-| 7 | _to cut_ | PR 6 | — | pending — make off-topic `pivot` real |
+| 7 | `idea/incoming-pr-7-pivot-to-epic` | PR 6 | #371 | open — make off-topic `pivot` real |
 
 ## Decisions taken during implementation
 
@@ -236,6 +236,42 @@ to main with it. From PR 2 onward each PR is re-cut fresh on top of its redone p
   Triage / `drain-triage.md`, and the reopen guard is dropped — the epic specification phase already handles a
   regressed-to-`in-progress` source via its `[extracted, reopened]` state, and single-topic types never reopen
   via Triage. #365's reopen `⚑` was added then removed as redundant / a false positive.
+- **PR 7 extracts the conversion core, it doesn't rewrite it.** `pivot-to-epic.md` lifts `manage-work-unit.md`'s
+  pivot steps verbatim (set `work_type epic` → reindex → register the topic on the discovery map via the
+  `create-discovery-topic` CLI direct, `--source discovery`). `manage-work-unit` now just loads it; its
+  continue/back menu (which already carries the "converted from feature to epic" line) is unchanged. Behaviour
+  is byte-identical.
+- **`pivot-to-epic.md` stays commitless.** `manage-work-unit`'s pivot block never committed (the continue/back
+  menu or the subsequent continue-epic entry carries the change forward), so the extracted core preserves that:
+  it writes the manifest and returns dirty. Each caller owns its commit — `manage-work-unit` keeps not
+  committing; the off-topic callers commit conversion + landing together.
+- **Off-topic pivot reuses `triage-landing.md` to land the concern.** After the conversion the situation is
+  exactly the epic reroute case — a concern bound for a new topic — so the off-topic `pivot` branch (feature
+  `feature-session.md` §E, discussion `discussion-session.md` §F non-epic) proposes + confirms a kebab name,
+  gathers full context, and loads `triage-landing.md` (new-target path) rather than inventing a second landing
+  mechanism. This preserves full context (into the new topic's `## Triage`, drained when it next runs) instead
+  of dropping a bare map row. The current topic's session then continues; the new topic waits on the map for
+  `continue-epic`. A `cancelled` name-validation leaves the pivot standing and notes the concern in the
+  current artefact.
+- **Off-topic `pivot` is gated to `feature` only.** `feature-session.md` §E and `discussion-session.md` §F
+  (non-epic) are reached by exactly `feature` and `cross-cutting` (bugfix/quick-fix have no research or
+  discussion phase). `pivot` (feature→epic) is the wrong tool for cross-cutting: cross-cutting is the terminal,
+  define-only, project-level tier that work is promoted *to* (`promote-to-cross-cutting.md`), not converted away
+  from into a buildable epic. So the `p`/`pivot` menu line is wrapped in `@if(work_type == 'feature')`; a
+  cross-cutting off-topic concern uses `log` (→ inbox → its own standalone unit later) or `ignore`. This also
+  matches `manage-work-unit.md`'s existing `work_type == 'feature'` gate on pivot. (Also corrected §F's intro
+  parenthetical, which wrongly listed bugfix/quick-fix as the non-epic types reaching discussion.)
+- **Name confirmation/clash is delegated, not re-implemented.** The off-topic pivot's step 2 only derives
+  `proposed_name` + `concern` as named variables; `triage-landing.md` → `create-discovery-topic.md` →
+  `topic-name-validation.md` already own kebab normalisation, the live-map collision check, and the
+  pick-another/cancel loop (with its own STOP). No separate confirm gate in the caller.
+- **Reroute handoffs aligned with pivot for consistency.** The pre-existing reroute paths
+  (`discussion-session.md` §F `Otherwise`, `epic-session.md` §C) handed off to `triage-landing.md` with a
+  "Gather the full context…" non-action step and a `concern = {concern and its full context}` prose flag. Both
+  reworded to bind `concern` as a named variable and pass `concern = {concern}` — matching the pivot handoff so
+  the same operation reads the same way across the off-topic flow. Prose-only; behaviour unchanged. Target
+  *resolution* (step 1: propose/confirm an existing topic, candidate menu) is left as-is — a genuine interactive
+  choice, not the redundant name-confirm the pivot path dropped.
 
 ## Verification
 

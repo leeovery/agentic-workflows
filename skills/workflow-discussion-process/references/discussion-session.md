@@ -147,7 +147,7 @@ During organic discussion a concern may surface that doesn't belong under the cu
 
 #### If work type is not `epic`
 
-Single-topic work types (feature, bugfix, quick-fix) have no other topic to route to — the topic *is* the work unit.
+Single-topic work types (feature, cross-cutting) have no other topic to route to — the topic *is* the work unit.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -156,7 +156,9 @@ Single-topic work types (feature, bugfix, quick-fix) have no other topic to rout
 **{concern}** is beyond this topic's scope.
 
 - **`l`/`log`** — Capture it as an idea in the inbox for later
+@if(work_type == 'feature')
 - **`p`/`pivot`** — Convert this work to an epic so it can hold the concern as its own topic
+@endif
 - **`i`/`ignore`** — Note it in the Summary and move on
 · · · · · · · · · · · ·
 ```
@@ -171,7 +173,25 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 
 **If `pivot`:**
 
-Note the concern in the Summary so it isn't lost, then tell the user they can pivot this work to an epic from the manage menu (`p`/`pivot`) and route the concern as a topic from there.
+1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic with this topic on its discovery map.
+
+2. From the context you already have, derive two values: `proposed_name` — a kebab-case topic name for the concern; and `concern` — the concern with the full context discussed about it.
+
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the concern in the Summary so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic.
+
+4. Commit the conversion and the landing:
+
+   ```bash
+   git add -- .workflows/{work_unit}/
+   git commit -m "discussion({work_unit}/{topic}): pivot to epic"
+   ```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> This work is now an epic — continuing here with the current topic.
+> The concern is preserved for its own handling later.
+```
 
 → Return to **B. Session Loop**.
 
@@ -222,9 +242,9 @@ Note the concern in the Summary section for the user to consider separately, and
 
    A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic (`{topic}`), it's a detail of this discussion, not a reroute — add it to the Discussion Map as a `pending` subtopic and → Return to **B. Session Loop**.
 
-2. Gather the full context discussed about the concern — everything worked out so far, not a one-line summary. The target topic picks this up cold, so it needs the whole thing.
+2. Record the concern with the full context discussed about it as `concern` — the target topic picks it up cold.
 
-3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern and its full context}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
+3. Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `discussion`, date = `{today}`. If `result` is `cancelled`, nothing landed — → Return to **B. Session Loop**. Otherwise the concern landed in `{landed_topic}`'s `## Triage`.
 
 4. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it. Commit:
 
