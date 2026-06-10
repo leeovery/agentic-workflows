@@ -54,7 +54,7 @@ Which phase would you like to revisit?
 
 - **`1`** — {phase:(titlecase)} — completed
 - **`2`** — ...
-- **`{N}`** — Back
+- **`b`/`back`** — Return to the previous menu
 
 Select an option:
 · · · · · · · · · · · ·
@@ -64,7 +64,7 @@ List only phases from `completed_phases`.
 
 **STOP.** Wait for user response.
 
-#### If user chose Back
+#### If user chose `back`
 
 → Return to **B. Proceed or Revisit**.
 
