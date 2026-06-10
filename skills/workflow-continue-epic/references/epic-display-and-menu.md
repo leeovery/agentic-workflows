@@ -625,7 +625,7 @@ Which topic would you like to resume?
 
 - **`1`** — Resume "{item.name:(titlecase)}" — {item.phase}
 - **`2`** — ...
-- **`{N}`** — Back to main menu
+- **`b`/`back`** — Return to menu
 
 Select an option:
 · · · · · · · · · · · ·
@@ -635,7 +635,7 @@ List all completed items across all phases.
 
 **STOP.** Wait for user response.
 
-#### If user chose `Back to main menu`
+#### If user chose `back`
 
 → Return to **C. Menu**.
 
