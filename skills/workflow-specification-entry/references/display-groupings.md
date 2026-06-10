@@ -4,11 +4,13 @@
 
 ---
 
-Shows when cache is valid (directly from routing) or after analysis completes. This is the most content-rich display.
+Shows when proposed groupings exist (directly from routing) or after analysis completes. This is the most content-rich display.
 
 ## A. Load Groupings
 
-Load groupings from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`. Parse the `### {Name}` headings and their discussion lists. Parse each grouping's `**Consult**` lines too — each names a consult reference the grouping owes (a sibling discussion read narrowly for corrections, not a source).
+Each grouping is a specification item from the discovery `specifications` array — proposed items and materialized specs alike. The item *is* the grouping: its `sources` are the grouping's discussions, its `status` drives the verb, its `consult_references` are the consult slices it owes.
+
+For consult-slice **hints** (the human-readable "which slice / why"), read `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` if present and match each grouping's `**Consult**` lines by name. The manifest holds the authoritative grouping→source mapping; the `.md` only enriches consult descriptions.
 
 → Proceed to **B. Determine Discussion Status**.
 
@@ -16,35 +18,24 @@ Load groupings from `.workflows/{work_unit}/.state/discussion-consolidation-anal
 
 ## B. Determine Discussion Status
 
-For each grouping, convert the name to kebab-case and check if a matching specification exists in the discovery `specifications` array.
+The item *is* the grouping — there is no name-matching step. Determine each discussion's status from the item's `status` and `sources`.
 
-#### If a matching spec exists
+#### If the item status is `proposed`
 
-For each discussion in the grouping:
-- Look up in the spec's `sources` array (by `name` field)
-- If found → use the source's `status` (`incorporated` → `extracted`, `pending` → `pending`)
-- If NOT found → status is `pending` (new source not yet in spec)
-
-Spec status: show actual status with extraction count `({X} of {Y} sources extracted)`.
-
-**Regressed sources:** After processing the grouping's discussions, check the spec's
-`sources` array from discovery. For any source where `discussion_status` is neither
-`completed` nor `not-found`, and the source is not already in the grouping:
-- Add it to the discussion tree with status `[extracted, reopened]`
-
-These represent sources that were incorporated but whose discussions have since
-regressed to in-progress. Sources with `discussion_status: "not-found"` (deleted
-discussions) are silently skipped — there is nothing actionable.
-
-**Extraction count:** Y = count of unique discussions in (spec sources ∪ grouping members). X = count of those with `incorporated` status in spec sources. This ensures regressed sources that dropped out of the grouping still count toward Y.
-
-**Consult references:** For each `**Consult**` entry on the grouping, look it up in the spec's `consult_references` array (by `name`). If found → use its `status` (`pending` or `addressed`). If not found → status is `pending` (declared in the analysis but not yet registered on the spec).
+The grouping has no spec yet. Each source discussion's status is `ready`. Each consult reference's status is `pending`. Spec status: `none`.
 
 → Proceed to **C. Display**.
 
 #### Otherwise
 
-For each discussion: status is `ready`. For each `**Consult**` entry on the grouping: status is `pending`. Spec status: `none`.
+The item is a materialized spec (`in-progress` or `completed`). For each source in the item's `sources` array:
+- `incorporated` + `discussion_status: completed` or `not-found` → `extracted`
+- `incorporated` + `discussion_status: other` (e.g. `in-progress`) → `extracted, reopened`
+- `pending` → `pending`
+
+Spec status: show the item's actual status with extraction count `({X} of {Y} sources extracted)`. Y = count of unique discussions in the item's sources; X = count of those with `incorporated` status. Sources with `discussion_status: "not-found"` (deleted discussions) are silently skipped.
+
+**Consult references:** For each entry on the item's `consult_references` array, use its `status` (`pending` or `addressed`).
 
 → Proceed to **C. Display**.
 
@@ -130,13 +121,13 @@ specification, choose "Re-analyze" and provide guidance.
 
 ## D. Menu
 
-Present one numbered menu entry per grouping. The verb and description depend on the grouping's spec state:
+Present one numbered menu entry per grouping. The verb and description depend on the item's status:
 
-- No spec exists → **Start** "{Name}" — {N} ready discussions
-- Spec is `in-progress` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
-- Spec is `in-progress` with all extracted → **Continue** "{Name}" — all sources extracted
-- Spec is `completed` with no pending sources → **Refine** "{Name}" — completed spec
-- Spec is `completed` with pending sources → **Continue** "{Name}" — {N} new source(s) to extract
+- Status `proposed` → **Start** "{Name}" — {N} ready discussions
+- Status `in-progress` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
+- Status `in-progress` with all extracted → **Continue** "{Name}" — all sources extracted
+- Status `completed` with no pending sources → **Refine** "{Name}" — completed spec
+- Status `completed` with pending sources → **Continue** "{Name}" — {N} new source(s) to extract
 
 When the grouping has pending consult references, append `— {N} consult ref(s) pending` to its description. Do not change the verb — consult references gate completion but never introduce a new action.
 
@@ -177,7 +168,17 @@ Every meta option (Unify, Re-analyze) MUST include its description lines.
 
 #### If user picks `Unify all`
 
-Update the cache: rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all completed discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`
+Reconcile the manifest to a single proposed grouping immediately, so it never lags the cache. The target proposed set is `{unified}`:
+1. Delete every existing proposed item (reconcile step 5 — none survive into the target set).
+2. Upsert `unified` as a proposed item with every completed discussion as a `pending` source (reconcile step 7):
+   ```bash
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.unified status proposed
+   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.unified sources.{discussion}.status pending
+   ```
+
+Then rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all completed discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`
+
+Commit: `spec({work_unit}): reconcile proposed groupings`
 
 Spec name: "Unified". Sources: all completed discussions.
 

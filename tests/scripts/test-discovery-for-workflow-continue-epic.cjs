@@ -1080,6 +1080,53 @@ describe('workflow-continue-epic discovery', () => {
       assert.strictEqual(d.gating.can_start_planning, true);
     });
   });
+
+  describe('proposed groupings', () => {
+    it('keeps a proposed item source in unaccounted_discussions (R1)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' }, payments: { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-spec': { status: 'in-progress', sources: [{ topic: 'auth', status: 'incorporated' }] },
+              'payments-grouping': { status: 'proposed', sources: { payments: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      // payments lives only in a proposed grouping → still "not yet in a spec".
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['payments']);
+    });
+
+    it('does not mark a proposed spec as next_phase_ready (R2)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
+        },
+      });
+      const r = discover(dir);
+      assert.strictEqual(r.epics[0].detail.next_phase_ready.length, 0);
+      assert.strictEqual(r.epics[0].detail.gating.can_start_planning, false);
+    });
+
+    it('includes a proposed spec item in phases.specification for display', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
+        },
+      });
+      const r = discover(dir);
+      const specPhase = r.epics[0].detail.phases.specification;
+      assert.ok(specPhase, 'specification phase present');
+      const item = specPhase.find(i => i.name === 'auth-grouping');
+      assert.strictEqual(item.status, 'proposed');
+      assert.ok(item.sources, 'proposed item carries sources for display');
+    });
+  });
 });
 
 describe('workflow-continue-epic format', () => {

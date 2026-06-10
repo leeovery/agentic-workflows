@@ -80,9 +80,9 @@ Parse the discovery output to understand:
 
 **From `specifications` array:** Each specification's name, work_unit, status, work_type, sources, and superseded_by (if applicable). Specifications with `status: superseded` should be noted but excluded from active counts.
 
-**From `cache` section:** `entries` array — each entry has `status` (valid/stale), `reason`, `generated`, `anchored_names`. Empty array if no cache exists.
+**From `cache` section:** `entries` array — each entry has `status` (valid/stale), `reason`, `generated`. Empty array if no cache exists.
 
-**From `current_state`:** `completed_count`, `spec_count`, `has_discussions`, `has_completed`, `has_specs`, and other counts/booleans for routing.
+**From `current_state`:** `completed_count`, `spec_count` (materialized, file-backed), `proposed_count`, `has_discussions`, `has_completed`, `has_specs`, `has_proposed`, and other counts/booleans for routing.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

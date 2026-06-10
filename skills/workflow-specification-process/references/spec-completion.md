@@ -167,7 +167,9 @@ If the index command fails, display the error but do not block — the artifact 
 
 If any of your sources were **existing specifications** (as opposed to discussions, research, or other reference material), these have now been consolidated into the new specification.
 
-1. Mark each source specification as superseded via manifest CLI:
+Only supersede sources whose status is **not** `proposed`. A proposed source is an analyzed grouping with no specification file — absorbing it is a delete handled by reconcile, never a supersede.
+
+1. Mark each non-proposed source specification as superseded via manifest CLI:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{source-topic} status superseded
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{source-topic} superseded_by {topic}

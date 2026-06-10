@@ -4,7 +4,7 @@
 
 ---
 
-Prompted when multiple completed discussions exist, no specifications exist, and cache is none or stale.
+Prompted when multiple completed discussions exist, no specifications or proposed groupings exist, and cache is none or stale.
 
 ## A. Display
 
@@ -47,8 +47,8 @@ No `---` separator before these messages.
 
 ```
 > What happens next. Your discussions will be analyzed for natural
-> groupings to determine how they should be organized into specifications.
-> Results are cached and reused until discussions change.
+> groupings. Each grouping becomes a proposed specification you can
+> start when ready. Results are cached and reused until discussions change.
 
 · · · · · · · · · · · ·
 Proceed with analysis?
