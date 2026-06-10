@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-06-10
+
+- Add `proposed` specification status — grouping analysis now reconciles its groupings into first-class manifest spec items (with pending sources, no file on disk) instead of living only in the analysis cache
+- Epic menu acts on proposed groupings: numbered "Start specification" entries, recommendation ranks pending specs ahead of planning, planning soft-gate covers proposed specs, and `unaccounted_discussions` now means "not yet grouped"
+- Reorder spec menus actionable-first (proposed → in-progress → completed-with-pending) and move concluded specs behind a new `c`/`completed` "Manage completed specifications" submenu
+- Replace `anchored_names` string-matching with status-based anchor identity — started/completed specs are preserved on re-analysis, proposed items are freely regenerated
+- Flip proposed items to in-progress on spec start (preserving sources, never re-running `init-phase`); skip proposed items in supersession, phase aggregation, knowledge-base indexing, and planning validation (terminal "not started" message)
+- Standardize revisit-phase and submenu navigation on a `b`/`back` shortcut instead of a numbered Back entry
+
 ## [0.5.5] - 2026-06-09
 
 - Add **consult references** as a second specification input type — a sibling discussion read narrowly for an owed correction (cited, not extracted), tracked in the manifest under `specification.{topic}.consult_references.{name}.status` and gating spec completion until `addressed`
