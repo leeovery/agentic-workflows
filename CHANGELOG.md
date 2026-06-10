@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2026-06-10
+
+- Fix epic incorrectly reported as done when a single topic completes review — `computeNextPhase` no longer phase-derives `done` for epics (completion is the explicit status flip), and the bridge all-done check now requires empty `next_phase_ready`/`in_progress`/`unaccounted_discussions` and a settled convergence state
+
 ## [0.5.7] - 2026-06-10
 
 - Fix epic dependency resolution to read implementation items from the same work unit's manifest instead of treating dependency topics as separate work units
