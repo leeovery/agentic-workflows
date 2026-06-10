@@ -371,6 +371,196 @@ describe('workflow-continue-epic discovery', () => {
     });
   });
 
+  describe('external dependencies', () => {
+    it('unresolved dependency blocks the plan', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'unresolved' } },
+              },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      assert.strictEqual(plan.deps_satisfied, false);
+      assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'dependency unresolved' }]);
+    });
+
+    it('resolved dependency with task in same-manifest completed_tasks is satisfied', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              auth: { status: 'completed' },
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-1-3' } },
+              },
+            },
+          },
+          implementation: {
+            items: {
+              auth: { status: 'in-progress', completed_tasks: ['auth-1-1', 'auth-1-2', 'auth-1-3'] },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning.find(p => p.name === 'billing');
+      assert.strictEqual(plan.deps_satisfied, true);
+      assert.strictEqual(plan.deps_blocking, undefined);
+    });
+
+    it('resolved dependency blocks while the task is incomplete', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-1-3' } },
+              },
+            },
+          },
+          implementation: {
+            items: {
+              auth: { status: 'in-progress', completed_tasks: ['auth-1-1'] },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      assert.strictEqual(plan.deps_satisfied, false);
+      assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', internal_id: 'auth-1-3', reason: 'task not yet completed' }]);
+    });
+
+    it('completed implementation satisfies the dependency even when the task id is absent', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-9-9' } },
+              },
+            },
+          },
+          implementation: {
+            items: {
+              auth: { status: 'completed', completed_tasks: ['auth-1-1'] },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      assert.strictEqual(plan.deps_satisfied, true);
+    });
+
+    it('resolved dependency blocks when the dep topic has no implementation entry', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-1-3' } },
+              },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      assert.strictEqual(plan.deps_satisfied, false);
+    });
+
+    it('satisfied_externally dependency never blocks', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'satisfied_externally' } },
+              },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      assert.strictEqual(plan.deps_satisfied, true);
+    });
+
+    it('resolved dependency without internal_id blocks as missing task reference', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              billing: {
+                status: 'completed',
+                external_dependencies: { auth: { description: 'User context', state: 'resolved' } },
+              },
+            },
+          },
+        },
+      });
+      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      assert.strictEqual(plan.deps_satisfied, false);
+      assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'resolved dependency missing task reference' }]);
+    });
+
+    it('next_phase_ready marks start_implementation blocked only while deps are unmet', () => {
+      // Three-topic chain: cli-presentation implemented; mint-release-tool
+      // depends on its task (met); commit-command depends on both (one unmet).
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          planning: {
+            items: {
+              'cli-presentation': { status: 'completed' },
+              'mint-release-tool': {
+                status: 'completed',
+                external_dependencies: {
+                  'cli-presentation': { description: 'Presentation layer', state: 'resolved', internal_id: 'cli-presentation-1-1' },
+                },
+              },
+              'commit-command': {
+                status: 'completed',
+                external_dependencies: {
+                  'cli-presentation': { description: 'Presentation layer', state: 'resolved', internal_id: 'cli-presentation-3-1' },
+                  'mint-release-tool': { description: 'Shared engine', state: 'resolved', internal_id: 'mint-release-tool-2-1' },
+                },
+              },
+            },
+          },
+          implementation: {
+            items: {
+              'cli-presentation': { status: 'completed', completed_tasks: ['cli-presentation-1-1', 'cli-presentation-3-1'] },
+            },
+          },
+        },
+      });
+      const ready = discover(dir).epics[0].detail.next_phase_ready;
+      const mint = ready.find(n => n.name === 'mint-release-tool');
+      const commit = ready.find(n => n.name === 'commit-command');
+      assert.strictEqual(mint.action, 'start_implementation');
+      assert.strictEqual(mint.blocked, undefined);
+      assert.strictEqual(commit.blocked, true);
+      assert.deepStrictEqual(commit.deps_blocking, [
+        { topic: 'mint-release-tool', internal_id: 'mint-release-tool-2-1', reason: 'task not yet completed' },
+      ]);
+    });
+  });
+
   describe('edge cases', () => {
     it('sources using name field instead of topic', () => {
       createManifest(dir, 'v1', {

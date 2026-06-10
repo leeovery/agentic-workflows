@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { loadActiveManifests, loadAllManifests, loadManifest, phaseItems, phaseData, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, computeAnalysisCacheStatus, compareMapRows, computeNeedsSequencing } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, loadAllManifests, phaseItems, computeTopicLifecycle, computeNextAction, computeMapSummary, computeSourceProvenance, computeAnalysisCacheStatus, compareMapRows, computeNeedsSequencing } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
@@ -16,7 +16,7 @@ function lastCompletedPhaseEpic(manifest) {
   return last;
 }
 
-function resolveDeps(cwd, manifest, planItem) {
+function resolveDeps(manifest, planItem) {
   const externalDepsObj = (planItem.external_dependencies && typeof planItem.external_dependencies === 'object' && !Array.isArray(planItem.external_dependencies))
     ? planItem.external_dependencies
     : {};
@@ -31,10 +31,12 @@ function resolveDeps(cwd, manifest, planItem) {
       depsSatisfied = false;
       depsBlocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
     } else if (dep.state === 'resolved' && dep.internal_id) {
-      const depManifest = loadManifest(cwd, dep.topic);
-      const depImpl = depManifest ? phaseData(depManifest, 'implementation') : {};
+      // Dep topics live in the same work unit — read the implementation item
+      // from this manifest. A completed implementation satisfies the dep even
+      // if the referenced task was skipped or its ID is stale.
+      const depImpl = phaseItems(manifest, 'implementation').find(i => i.name === dep.topic) || {};
       const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
-      if (!completedTasks.includes(dep.internal_id)) {
+      if (depImpl.status !== 'completed' && !completedTasks.includes(dep.internal_id)) {
         depsSatisfied = false;
         depsBlocking.push({ topic: dep.topic, internal_id: dep.internal_id, reason: 'task not yet completed' });
       }
@@ -97,7 +99,7 @@ function buildEpicDetail(cwd, manifest) {
       // Enrich planning items with format and dependency data
       if (phase === 'planning') {
         if (item.format) entry.format = item.format;
-        const { deps_satisfied, deps_blocking } = resolveDeps(cwd, manifest, item);
+        const { deps_satisfied, deps_blocking } = resolveDeps(manifest, item);
         entry.deps_satisfied = deps_satisfied;
         if (deps_blocking.length > 0) entry.deps_blocking = deps_blocking;
       }
@@ -165,7 +167,7 @@ function buildEpicDetail(cwd, manifest) {
   for (const p of planItems) {
     if (p.status === 'completed' && !implTopics.has(p.name)) {
       // Check deps before marking as ready for implementation
-      const { deps_satisfied, deps_blocking } = resolveDeps(cwd, manifest, p);
+      const { deps_satisfied, deps_blocking } = resolveDeps(manifest, p);
       if (deps_satisfied) {
         nextPhaseReady.push({ name: p.name, action: 'start_implementation', label: 'plan completed' });
       } else {
