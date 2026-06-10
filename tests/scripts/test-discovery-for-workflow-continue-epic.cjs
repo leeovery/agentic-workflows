@@ -1081,26 +1081,8 @@ describe('workflow-continue-epic discovery', () => {
     });
   });
 
-  describe('proposed groupings', () => {
-    it('keeps a proposed item source in unaccounted_discussions (R1)', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' }, payments: { status: 'completed' } } },
-          specification: {
-            items: {
-              'auth-spec': { status: 'in-progress', sources: [{ topic: 'auth', status: 'incorporated' }] },
-              'payments-grouping': { status: 'proposed', sources: { payments: { status: 'pending' } } },
-            },
-          },
-        },
-      });
-      const r = discover(dir);
-      // payments lives only in a proposed grouping → still "not yet in a spec".
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['payments']);
-    });
-
-    it('does not mark a proposed spec as next_phase_ready (R2)', () => {
+  describe('proposed groupings — menu intelligence', () => {
+    it('surfaces a proposed spec as start_specification in next_phase_ready', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -1108,7 +1090,73 @@ describe('workflow-continue-epic discovery', () => {
         },
       });
       const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.next_phase_ready.length, 0);
+      const ready = r.epics[0].detail.next_phase_ready;
+      const entry = ready.find(n => n.action === 'start_specification' && n.name === 'auth-grouping');
+      assert.ok(entry, 'proposed spec surfaced as a start_specification entry');
+    });
+
+    it('orders start_specification before start_planning in next_phase_ready', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: {
+            items: {
+              'done-spec': { status: 'completed' },
+              'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      const ready = r.epics[0].detail.next_phase_ready;
+      const specIdx = ready.findIndex(n => n.action === 'start_specification');
+      const planIdx = ready.findIndex(n => n.action === 'start_planning');
+      assert.ok(specIdx >= 0 && planIdx >= 0, 'both entries present');
+      // Settled-state recommendation reads the first entry in pipeline order;
+      // a proposed spec must outrank a completed spec's start_planning.
+      assert.ok(specIdx < planIdx, 'start_specification precedes start_planning');
+    });
+
+    it('treats a proposed-grouped discussion as accounted — unaccounted = ungrouped only', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' }, payments: { status: 'completed' } } },
+          specification: {
+            items: {
+              'payments-grouping': { status: 'proposed', sources: { payments: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      const r = discover(dir);
+      // payments is grouped into a proposed spec → accounted. auth is in no
+      // spec item at all → ungrouped, the new meaning of unaccounted.
+      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
+    });
+
+    it('does not mark an in-progress discussion sourced only by a proposed item as reopened', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'in-progress' } } },
+          specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
+        },
+      });
+      const r = discover(dir);
+      // Reopened stays materialized-only — a proposed grouping has nothing
+      // extracted to revisit.
+      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, []);
+    });
+
+    it('keeps can_start_planning false when the only spec is proposed', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
+        },
+      });
+      const r = discover(dir);
       assert.strictEqual(r.epics[0].detail.gating.can_start_planning, false);
     });
 

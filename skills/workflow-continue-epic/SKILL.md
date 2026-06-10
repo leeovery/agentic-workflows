@@ -82,7 +82,7 @@ Parse the discovery output to understand:
   - `in_progress` - items currently in-progress (name + phase)
   - `completed` - items that are completed (name + phase)
   - `next_phase_ready` - items ready for the next phase (name + action + label)
-  - `unaccounted_discussions` - completed discussions not sourced in any spec
+  - `unaccounted_discussions` - completed discussions not grouped into any spec item (proposed or materialized)
   - `reopened_discussions` - in-progress discussions that are sourced in a spec
   - `discovery_map` - per-topic lifecycle for the discovery/research/discussion span (tier-sorted; empty when no discovery items exist)
   - `convergence_state` - `'in-progress'` | `'settled'` | `null` (when no map)
@@ -308,10 +308,11 @@ Invoke the appropriate skill based on the user's menu selection. Match by **pref
 | Continue {topic} — planning | `/workflow-planning-entry epic {work_unit} {topic}` |
 | Continue {topic} — implementation | `/workflow-implementation-entry epic {work_unit} {topic}` |
 | Continue {topic} — review | `/workflow-review-entry epic {work_unit} {topic}` |
+| Start specification for {topic} | `/workflow-specification-entry epic {work_unit} {topic}` |
 | Start planning for {topic} | `/workflow-planning-entry epic {work_unit} {topic}` |
 | Start implementation of {topic} | `/workflow-implementation-entry epic {work_unit} {topic}` |
 | Start review for {topic} | `/workflow-review-entry epic {work_unit} {topic}` |
-| Start specification | `/workflow-specification-entry epic {work_unit}` |
+| Analyze / regroup discussions | `/workflow-specification-entry epic {work_unit}` |
 | Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
 | Start new research | `/workflow-research-entry epic {work_unit}` |
 | Continue discovery | `/workflow-discovery epic {work_unit}` |
