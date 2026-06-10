@@ -8,6 +8,8 @@ Shows when materialized specifications exist and no proposed groupings remain (e
 
 ## A. Display
 
+The tree and menu render only **actionable** specs — every spec except the concluded ones (`status: completed` with `has_pending_sources: false`). Concluded specs move to the `c`/`completed` submenu. Render actionable specs in the discovery script's `specifications[]` order (already sorted in-progress → completed-with-pending). The numbered tree and the menu options use the same ordering and numbering.
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -16,11 +18,17 @@ Shows when materialized specifications exist and no proposed groupings remain (e
 ●───────────────────────────────────────────────●
 
 {N} completed discussions found. {M} specifications exist.
+```
 
+#### If actionable specs exist
+
+> *Output the next fenced block as a code block:*
+
+```
 Existing specifications:
 ```
 
-For each non-superseded specification from discovery output, display as nested tree:
+For each actionable specification from discovery output, display as nested tree:
 
 > *Output the next fenced block as a code block:*
 
@@ -33,6 +41,14 @@ For each non-superseded specification from discovery output, display as nested t
    └─ Consult:
       ├─ {ref-name} [{status:[pending|addressed]}]
       └─ ...
+```
+
+#### If no actionable specs remain (every spec is concluded)
+
+> *Output the next fenced block as a code block:*
+
+```
+All specifications are completed — see Manage completed specifications.
 ```
 
 Determine discussion status from the spec's `sources` array:
@@ -125,15 +141,20 @@ have changed since it was created. Re-analysis is required.
 
 ## B. Menu
 
-List "Analyze for groupings (recommended)" first, then one entry per existing non-superseded specification. The verb depends on the spec's state:
+List "Analyze for groupings (recommended)" first, then one numbered entry per **actionable** spec — the same set the tree showed, in the same order. The verb depends on the spec's state:
 
 - Spec is `in-progress` → **Continue** "{Name}" — in-progress
 - Spec is `completed` with pending sources → **Continue** "{Name}" — {N} source(s) pending extraction
-- Spec is `completed` with no pending sources → **Refine** "{Name}" — completed
+
+Concluded specs (`completed` with no pending sources) are not numbered here — they live behind `c`/`completed`.
 
 When the spec has pending consult references, append `— {N} consult ref(s) pending` to its description. The verb is unchanged — consult references gate completion but introduce no new action.
 
-**Example assembled menu** (2 specs exist):
+After the numbered options, append the command option (only when `concluded_count > 0`):
+
+- **`c`/`completed`** — Manage completed specifications — {concluded_count} completed
+
+**Example assembled menu** (1 actionable spec, 1 concluded spec):
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -144,7 +165,25 @@ When the spec has pending consult references, append `— {N} consult ref(s) pen
    `specification names are preserved. You can provide guidance`
    `in the next step.`
 - **`2`** — Continue "Auth Flow" — in-progress
-- **`3`** — Refine "Data Model" — completed
+
+- **`c`/`completed`** — Manage completed specifications — 1 completed
+
+Select an option:
+· · · · · · · · · · · ·
+```
+
+When no actionable specs remain (every spec is concluded), the menu shows only Analyze and `c`/`completed`:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+- **`1`** — Analyze for groupings (recommended)
+   `All discussions are analyzed for natural groupings. Existing`
+   `specification names are preserved. You can provide guidance`
+   `in the next step.`
+
+- **`c`/`completed`** — Manage completed specifications — 2 completed
 
 Select an option:
 · · · · · · · · · · · ·
@@ -152,7 +191,7 @@ Select an option:
 
 Recreate with actual topics and states from discovery.
 
-Menu descriptions are wrapped in backticks to visually distinguish them from the choice labels.
+Menu descriptions are wrapped in backticks to visually distinguish them from the choice labels. Omit the `c`/`completed` option when `concluded_count` is 0.
 
 **STOP.** Wait for user response.
 
@@ -165,8 +204,14 @@ rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 
-#### If user picks `Continue` or `Refine` for a spec
+#### If user picks `Continue` for a spec
 
 The selected spec and its sources become the context for confirmation.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
+
+#### If user picks `c`/`completed`
+
+→ Load **[display-completed-specs.md](display-completed-specs.md)** and follow its instructions as written.
+
+→ Return to **B. Menu**.

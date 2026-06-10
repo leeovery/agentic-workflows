@@ -455,6 +455,142 @@ describe('workflow-specification-entry format', () => {
     assert.ok(out.includes('checksum: '));
   });
 
+  describe('spec menu reorder', () => {
+    // Builds an epic with four spec items in shuffled insertion order:
+    // concluded, completed-with-pending, proposed, in-progress. Files exist for
+    // every materialized (non-proposed) spec so they pass the fileExists gate.
+    function reorderFixture() {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              'd-concluded': { status: 'completed' },
+              'd-pending-a': { status: 'completed' },
+              'd-pending-b': { status: 'completed' },
+              'd-proposed': { status: 'completed' },
+              'd-wip': { status: 'completed' },
+            },
+          },
+          specification: {
+            items: {
+              'concluded-spec': {
+                status: 'completed',
+                sources: { 'd-concluded': { status: 'incorporated' } },
+              },
+              'pending-spec': {
+                status: 'completed',
+                sources: {
+                  'd-pending-a': { status: 'incorporated' },
+                  'd-pending-b': { status: 'pending' },
+                },
+              },
+              'proposed-grp': {
+                status: 'proposed',
+                sources: { 'd-proposed': { status: 'pending' } },
+              },
+              'wip-spec': {
+                status: 'in-progress',
+                sources: { 'd-wip': { status: 'extracted' } },
+              },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/concluded-spec/specification.md', '# Concluded');
+      createFile(dir, '.workflows/v1/specification/pending-spec/specification.md', '# Pending');
+      createFile(dir, '.workflows/v1/specification/wip-spec/specification.md', '# Wip');
+    }
+
+    it('has_pending_sources false when all sources incorporated', () => {
+      reorderFixture();
+      const r = discover(dir);
+      const spec = r.specifications.find(s => s.name === 'concluded-spec');
+      assert.strictEqual(spec.has_pending_sources, false);
+    });
+
+    it('has_pending_sources true when a source is pending', () => {
+      reorderFixture();
+      const r = discover(dir);
+      const spec = r.specifications.find(s => s.name === 'pending-spec');
+      assert.strictEqual(spec.has_pending_sources, true);
+    });
+
+    it('has_pending_sources true for a proposed grouping', () => {
+      reorderFixture();
+      const r = discover(dir);
+      const spec = r.specifications.find(s => s.name === 'proposed-grp');
+      assert.strictEqual(spec.has_pending_sources, true);
+    });
+
+    it('has_pending_sources false for a spec with no sources', () => {
+      createManifest(dir, 'auth', {
+        work_type: 'feature',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: { items: { auth: { status: 'in-progress' } } },
+        },
+      });
+      createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+      const r = discover(dir);
+      assert.strictEqual(r.specifications[0].has_pending_sources, false);
+    });
+
+    it('sorts specifications actionable-first (proposed, in-progress, completed+pending, concluded)', () => {
+      reorderFixture();
+      const r = discover(dir);
+      const order = r.specifications.map(s => s.name);
+      assert.deepStrictEqual(order, ['proposed-grp', 'wip-spec', 'pending-spec', 'concluded-spec']);
+    });
+
+    it('concluded_count counts only completed specs with no pending sources', () => {
+      reorderFixture();
+      const r = discover(dir);
+      assert.strictEqual(r.current_state.concluded_count, 1);
+    });
+
+    it('concluded_count is zero when no spec is concluded', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'd-prop': { status: 'completed' }, 'd-wip': { status: 'completed' } } },
+          specification: {
+            items: {
+              'prop': { status: 'proposed', sources: { 'd-prop': { status: 'pending' } } },
+              'wip': { status: 'in-progress', sources: { 'd-wip': { status: 'extracted' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/wip/specification.md', '# Wip');
+      const r = discover(dir);
+      assert.strictEqual(r.current_state.concluded_count, 0);
+    });
+
+    it('format STATE block shows concluded count', () => {
+      reorderFixture();
+      const out = format(discover(dir));
+      assert.ok(out.includes('concluded: 1'));
+    });
+
+    it('format spec lines carry has_pending_sources', () => {
+      reorderFixture();
+      const out = format(discover(dir));
+      assert.ok(out.includes('concluded-spec: completed, type=epic, has_pending_sources=false'));
+      assert.ok(out.includes('pending-spec: completed, type=epic, has_pending_sources=true'));
+    });
+
+    it('format prints specs in sorted order', () => {
+      reorderFixture();
+      const out = format(discover(dir));
+      const iProposed = out.indexOf('proposed-grp:');
+      const iWip = out.indexOf('wip-spec:');
+      const iPending = out.indexOf('pending-spec:');
+      const iConcluded = out.indexOf('concluded-spec:');
+      assert.ok(iProposed < iWip && iWip < iPending && iPending < iConcluded);
+    });
+  });
+
   describe('proposed groupings', () => {
     it('counts a proposed spec item (no file) in proposed_count, not spec_count', () => {
       createManifest(dir, 'v1', {

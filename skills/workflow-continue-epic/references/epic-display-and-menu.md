@@ -132,7 +132,7 @@ The display groups every phase under three stage dividers — **DISCOVERY** (res
   - `{child_gutter}` — under a **non-last item**: 2 spaces, `│`, 2 spaces; under the **last item**: 5 spaces. Both land the child branch at the same column, under the item name.
   - `{child_branch}`: `├─` for non-final children, `└─` for the final (or only) child.
   - Specification source status: `[incorporated]` or `[pending]` from the manifest. Implementation shows `Phase {N}, {M} task(s) completed` when in-progress with `current_phase`, else `{M} task(s) completed` (always a single `└─` child).
-- **Promoted items** render with `[promoted]` in the display but not the menu. **Proposed specs** render with `[proposed]` in the display but are not offered as menu items. **Cancelled items** show `[cancelled]`. Phases with no items don't appear.
+- **Promoted items** render with `[promoted]` in the display but not the menu. **Proposed specs** render with `[proposed]` and surface in the menu as `Start specification` entries (see **C. Menu**). **Cancelled items** show `[cancelled]`. Phases with no items don't appear.
 - **No trailing recommendation callout** in this code block — build-phase recommendations attach to menu entries (see **C. Menu**).
 
 After the render block, run the **Plans Not Ready Check** below; it applies to both this branch and the otherwise branch.
@@ -625,7 +625,7 @@ Which topic would you like to resume?
 
 - **`1`** — Resume "{item.name:(titlecase)}" — {item.phase}
 - **`2`** — ...
-- **`{N}`** — Back to main menu
+- **`b`/`back`** — Return to menu
 
 Select an option:
 · · · · · · · · · · · ·
@@ -635,7 +635,7 @@ List all completed items across all phases.
 
 **STOP.** Wait for user response.
 
-#### If user chose `Back to main menu`
+#### If user chose `back`
 
 → Return to **C. Menu**.
 
