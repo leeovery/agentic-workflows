@@ -16,17 +16,18 @@ Evaluate each dependency and collect any that are blocking into a list:
 
 - **`state: satisfied_externally`** — skip, not blocking
 - **`state: unresolved`** — add to the blocking list
-- **`state: resolved`** — check whether the referenced task has been completed:
+- **`state: resolved`** — check the dependency topic's implementation status and completed tasks:
 
 ```bash
+node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{dep_topic} status
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{dep_topic} completed_tasks
 ```
 
-**If `internal_id` is in the completed tasks list:**
+**If status is `completed`, or `internal_id` is in the completed tasks list:**
 
-Skip, not blocking.
+Skip, not blocking. A completed implementation satisfies the dependency even if the referenced task was skipped.
 
-**If `internal_id` is not in the list, or the implementation entry does not exist:**
+**If status is not `completed` and `internal_id` is not in the list, or the implementation entry does not exist:**
 
 Add to the blocking list.
 
