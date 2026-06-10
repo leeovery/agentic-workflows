@@ -93,7 +93,7 @@ Which phase would you like to revisit?
 
 - **`1`** — {phase:(titlecase)} — completed
 - **`2`** — ...
-- **`{N}`** — Back
+- **`b`/`back`** — Return to the previous menu
 
 Select an option:
 · · · · · · · · · · · ·
@@ -103,7 +103,7 @@ List only completed phases that come before `next_phase`.
 
 **STOP.** Wait for user response.
 
-#### If user chose Back
+#### If user chose `back`
 
 → Return to **C. Offer Revisit**.
 
