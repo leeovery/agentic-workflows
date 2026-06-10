@@ -100,3 +100,302 @@ Survey every tree- and menu-shaped render across the workflow skills, catalogue 
 ## Severity
 
 Low for data integrity (purely cosmetic — nothing corrupts), **medium for UX and recurring cost**. The visible breakage is intermittent and terminal-width-dependent, so it'll keep resurfacing unpredictably and reads as a quality defect each time. The deeper cost is the per-render reasoning/token tax of hand-drawing layout across dozens of skills, every invocation, forever — which is the real reason to make it deterministic.
+
+---
+
+## Update — PR #344 (epic-dashboard stage grouping)
+
+After this idea was written, PR #344 restructured `epic-display-and-menu.md`. Relevant to this proposal:
+
+- **The motivating bug persists.** The summary is still hard-wrapped at 65 chars; the gutter grew 7 → 9 (the map moved under a stage divider), so overflow is now at **74 cols**, not 72. The restructure did not touch the wrap budget. The immediate sub-fix (subtract gutter from budget) is still outstanding — and now even more clearly worth doing independently of the renderer.
+- **Several flagged drifts were hand-fixed** — dangling `└─` build sub-rows now nest properly; first-row `┌─` dropped for the discovery map (tree hangs off its header via `├─`); sub-headers uppercased. This is the survey's thesis demonstrated: per-file, by hand, correct only when watched.
+- **A composition layer appeared** — three `── DISCOVERY/DEFINITION/DELIVERY ──` stage dividers (Family 1) now wrap the trees (Family 3). The dashboard is now a multi-primitive composite — see **3B-composite** below.
+- **A new genuine tree** — the build-phase render gained a real `{child_gutter}`/`{child_branch}`, so `epic-display-and-menu.md` now holds two continuous-gutter trees sharing one mechanism (see **3B-v**). Best beachhead for the renderer.
+
+The survey below has been updated to reflect this state.
+
+---
+
+# Design Decisions (locked 2026-06-04)
+
+The model, agreed in discussion. Implementation flows from these.
+
+1. **One render library + CLI, in-repo under `skills/`.** A single shared renderer (e.g. `skills/workflow-render/scripts/render.cjs`) exposing per-shape functions (`renderSignpost`, `renderBox`, `renderMenu`, `renderList`, `renderTree`, `renderLegend`) over **one shared wrap/width/gutter core** — the single home of the budget math, so the wrap bug can exist in only one place. It is **both a library and a CLI**: scripts `require()` it in-process; Claude invokes the CLI via Bash for trivial shapes. Ships via AGNTC, no build step.
+2. **Caller owns the data.** Whoever holds the data calls the renderer. Claude calls the CLI directly for trivial-input shapes (signpost, box, simple menu). Data-backed shapes (the trees) are rendered by the data script (`discovery.cjs`), which already collates the manifest — it `require()`s the renderer and calls `renderTree()` **in-process**. Claude never assembles tree JSON.
+3. **One run, one source, two outputs — no double invocation.** `discovery.cjs` runs once: reads manifest → builds one structured object → from that object emits BOTH (a) the finished **display block** (by calling the render lib in-process) and (b) the thinned **reasoning data**. One process, one `stdout`, two clearly-demarcated sections. Drawing moves out of the prompt into the renderer; `format()` no longer asks Claude to draw — it concatenates a finished block + the data.
+4. **Two surfaces, one source of truth.** *Display surface* (the pretty tree — for the user, emitted verbatim) and *reasoning surface* (labeled data — for Claude's decisions) are two projections of the one structured object, so they can't drift. Fields that exist **only to draw the tree** (summary text, provenance, exact glyph) leave the reasoning surface once code draws the tree; what stays is only what the skill branches on (lifecycle/gating, routing, counts, next-action, blocked/deps). The dump thins; for some items it may vanish.
+5. **The tree is write-only-to-the-user (hard rule).** Claude must never read the rendered tree back to extract a decision — that re-introduces the fragile ASCII-parsing this exists to kill. Decision data always comes from the reasoning surface. `stdout` is demarcated so Claude knows which block to display vs reason about.
+6. **Display contract** — Claude re-emits the rendered block verbatim in its reply. Output tokens ~unchanged; the win is reasoning cost + correctness + one source of truth.
+7. **First slice → spike.** Build the **core + `signpost`** end-to-end first (prove the run→emit-verbatim loop, simplest shape). Then a **throwaway discovery-map spike**: render the map from `discovery.cjs` state and diff byte-for-byte against the hand-drawn block. The spike is the **go/no-go decider** for the whole effort, and doubles as the empirical test of which fields the reasoning surface keeps (= what continue-epic actually branches on).
+
+**Still open** (don't block the start): the exact reasoning-surface field set per skill (settled by the spike); the menu `description` sub-line (5th form vs row option); whether the reasoning surface stays labeled text or becomes JSON (tied to the broader code-based-orchestration push — out of scope here).
+
+## Build log
+
+- **Core + signpost slice** (shipped) — `skills/workflow-render/render.cjs` as library+CLI: shared `fillTo`/`wrap`/`wrapWithPrefix` core (budget = `width − prefix.length`, the single home of the gutter bug) + `signpost` (step/sub-step markers) + `box` (phase title). Proven byte-exact against live hand-drawn markers/borders; surfaced a real 50-vs-49 sub-step drift the renderer normalises.
+- **Tree spike → GO** (shipped) — `renderTree` (discovery-map shape) on the same core. Reproduces the documented hand-drawn rows **byte-for-byte**; the 74-col gutter-orphan bug is now structurally impossible (every body line stays within width at 49/58/65). The spike validated the whole approach, so `renderTree` is kept, not thrown away.
+  - **Finding — header-row overflow is inherent.** A long `label [lifecycle]` header row can't wrap without breaking glyph alignment, so it can exceed the width (the hand-drawn version overruns identically). The renderer guarantees only the wrappable *body* lines fit. Mitigation (truncating long labels) is a separate decision.
+  - **Decision deferred to wiring — tree content width.** 49 (consistent with the 49-wide dividers/markers) vs ~65 (current text density). The renderer is correct at any width; this is a visual-density call made when `discovery.cjs` is wired up.
+
+---
+
+# Render-Shape Survey
+
+The section above is the *why*. This is the **survey**: every structured-ASCII shape Claude is currently instructed to hand-draw across the skills, grouped into families, with the distinct variants, observed drift, and candidate canonical forms. These canonical forms are *candidates for discussion*, not decisions. Schema design stays out of scope (per the note above) — this is what a schema would have to absorb.
+
+## How to read this
+
+Two axes matter for the renderer, not just shape:
+
+1. **Shape family** — signpost, menu, list, tree, legend.
+2. **Where the input comes from** — does a script already hold the data (e.g. `discovery.cjs`), or does Claude compose it contextually? This decides whether the renderer kills the per-render reasoning or just relocates it. Marked **[script-backed]** / **[Claude-composed]** per shape.
+
+Volume note: section headers ≈176 occurrences, dotted gates ≈326 (paired), bullet boxes ≈59, `├─`-using files ≈28. The high-volume, high-consistency families (signposts, gates) are the cheapest wins; the trees are the highest-variation and where the bug lives.
+
+## Family 1 — Signposts, gates & banners  [Claude-composed, fixed-shape]
+
+Near-perfectly consistent already. Pure presentation with trivial input (usually one string). Highest reasoning-tax-per-character to draw by hand (padding/centering/dash-counting), lowest input cost to feed a renderer. Strong, low-risk first targets.
+
+### 1A. Section header — `── Label ──`
+Padded to ~50 cols total (PR #344's epic-dashboard stage dividers fix this at **49 chars** — `── DISCOVERY ──`, `── DEFINITION ──`, `── DELIVERY ──` — and use it as top-level structural grouping, not just a section break). ~176 occurrences across ~54 files. Title Case labels (the stage dividers are UPPERCASE).
+```
+── Resume Detection ─────────────────────────────
+── DISCOVERY ────────────────────────────────────
+```
+- **Drift:** total width not actually enforced — varies with label length because it's hand-counted (the 49 vs ~50 split is itself an instance). Same class of bug as the tree wrap: a width that's "supposed to be" fixed but is eyeballed.
+- **Candidate canonical:** `signpost --label "Resume Detection" [--width 50]` → dashes computed to fill.
+
+### 1B. Dotted gate — `· · · · · · · · · · · ·`
+12 middle-dots, always paired around an interactive prompt. ~326 occurrences (163 pairs). Extremely consistent.
+```
+· · · · · · · · · · · ·
+{prompt + options}
+· · · · · · · · · · · ·
+```
+- **Candidate canonical:** `gate` emits the rule; the prompt body between the rules is still Claude's. (Or a single `gate --open/--close`.)
+
+### 1C. Bullet box banner — `●───...───●`
+Two widths: short (~50, status/error headers, ~59 occ.) and long (~65, the `workflow-start` ASCII-art welcome).
+```
+●───────────────────────────────────────────────●
+  Knowledge Base Error
+●───────────────────────────────────────────────●
+```
+- **Candidate canonical:** `box --title "Knowledge Base Error" [--width 50]`. Long variant is the same shape at a different width — one form, parameterised.
+
+### 1D. Framed content box — `╭─ Finding N: … ──╮ / ╰──╯`
+Wraps diff blocks in review-findings flows. Two prefixes seen (`Finding {N}:`, `Resurfacing:`).
+```
+╭─ Finding {N}: {Brief Title} ──────────────────────╮
+{diff}
+╰───────────────────────────────────────────────────╯
+```
+- Low volume (6 occ.). Same `box` primitive with rounded corners + a body passthrough.
+
+### 1E. Callout line — `⚑ {label}`
+Single glyph + label, no padding. ~28 occ. Warning/precondition callouts. Trivial; arguably not worth a command — just document the glyph, leave inline.
+
+### 1F. Solid separator — `────…`
+One occurrence. Full-width rule. Folds into the `box`/`signpost` dash logic.
+
+**Family-1 normalisation:** all six reduce to **one dash/width engine** (fill-to-width with optional centred label and optional corner glyphs). Section header, bullet box, framed box, solid rule are the *same primitive* with different end-caps. Cheapest, highest-volume win; has its own latent width-drift bug (1A) worth fixing regardless.
+
+## Family 2 — Selection menus  [mixed]
+
+Four genuinely distinct forms (survey found ~8 variants; six are drift or composition of these four). Input is a list of `{key, label, suffix?}` rows — cheap for Claude to hand over **[Claude-composed]**, except epic/spec menus whose rows mirror manifest state **[script-backed, could be fed from the data script]**.
+
+### 2A. Numbered-items + lettered-commands  (dominant, ~60%)
+Numbered continuations, blank line, then letter commands. `active-work.md`, `empty-state.md`, all `select-*.md`.
+```
+What would you like to do?
+
+- **`1`** — Continue "Auth Flow" — feature, planning
+- **`2`** — Continue "Login Bug" — bugfix, investigation
+
+- **`s`/`start`** — Start something new
+- **`f`/`feature`** — Start new feature
+- **`m`/`manage`** — Manage a work unit
+
+Select an option:
+```
+
+### 2B. Simple numbered select (grouped, `b`/`back`)
+Continuous numbering across category sections; minimal labels. `manage-work-unit.md`, `view-completed.md`.
+```
+Features:
+  1. Auth Flow
+  2. Billing
+Bugfixes:
+  3. Login Bug
+
+Select a work unit (enter number, or **`b`/`back`**):
+```
+
+### 2C. Multi-select numbered (comma-separated)
+Inbox add/drop, `start-from-inbox.md`.
+```
+1. Item A (idea, 2026-06-01)
+2. Item B (bug, 2026-06-02)
+
+Add which? (enter number(s), comma-separated, or **`b`/`back`**)
+```
+
+### 2D. Letter decision menu (y/n/r/b)
+2–4 letter options under a context line; no explicit "Select an option". `revisit-phase.md`, `*-continuation.md`, soft-gates.
+```
+Continuing "Auth Flow" — planning.
+
+- **`y`/`yes`** — Proceed to implementation
+- **`r`/`revisit`** — Revisit an earlier phase
+```
+
+**Drift to normalise:**
+- Phase-selection menu uses a **numbered** "Back" instead of `b`/`back`. → make back always `b`/`back`.
+- `(recommended)` vs `*(recommended)*` (italic) — pick one.
+- Recommended-first menus add backtick-wrapped multi-line descriptions — decide whether that's a 5th form or a row option (`description`) on 2A.
+
+**Family-2 normalisation:** one `menu` command with a row list + a mode flag (`single` | `multi` | `letter`), optional grouping header per row, optional `recommended` and `suffix` per row, and a standard prompt line. Covers ~95%.
+
+## Family 3 — Lists vs Trees  (the important distinction)
+
+Biggest finding: **most "trees" are not trees.** They're flat lists with a single `└─` sub-row. True tree logic (continuous `│` gutter across siblings and wrapped sub-lines, last-sibling math) is needed by **five** renders (one of which, the epic build-phase tree, graduated out of the flat-list bucket in PR #344 when its sub-rows were given a proper `│/├─/└─` gutter). Separating these is the key scoping decision.
+
+### 3A. Flat list + single sub-row  — *NOT a tree*  [script-backed]
+`N. Name` then one `└─ detail` line. No `│`, no sibling continuity. Used by: `select-*.md` (all 5 types), `active-work.md`, `view-completed.md`, planning `define-tasks.md`, legacy-split themes, dependency lists (`resolve-dependencies.md`, `check-dependencies.md`), spec overview (`display-*.md`). (The epic dashboard's build-phase render used to live here too — PR #344 promoted it to a genuine tree, now 3B-v.)
+```
+1. Auth Flow
+   └─ Planning, in-progress
+```
+- **Drift:** indent is 2-space in dependency renders, 3-space elsewhere; multiple sub-rows sometimes all use `└─` where `├─`/`└─` is correct (exactly the dangling-`└─` defect #344 just hand-fixed in the epic dashboard — and which will recur elsewhere until a renderer owns it).
+- These don't need the tree renderer. A `list` form (item + optional sub-rows) covers them. Cheap.
+
+### 3B. Genuine trees — continuous gutter  [script-backed]
+Five renders. All share `├─ └─` branch grammar (some still use `┌─`; see below), a leading status glyph, and a `│`+indent gutter that must stay continuous. Where the renderer earns its keep.
+
+**3B-i. Discovery map** — `workflow-continue-epic/.../epic-display-and-menu.md` (now under the `── DISCOVERY ──` stage, header `RESEARCH & DISCUSSION`), `workflow-discovery/.../session-loop.md`
+Tier glyph (`→ ◐ ✓ ○ ⊙ ⊘`) + name + `[lifecycle]`, with **wrapped summary + provenance sub-lines** under each row hung off the `│` gutter. **The render with the motivating bug, still unfixed as of PR #344** (summary still hard-wrapped at 65 chars; gutter grew from 7 → **9 chars** when the map moved under the stage divider, so 65 + 9 = **74 cols** → terminal soft-wrap still orphans the gutter). First row now `├─` (was `┌─`) so the list hangs off the header.
+```
+  ├─ ◐ Ai Content Engine [researching]
+  │      AI imagery (enhancement-only v1), description
+  │      generation, per-tenant tone primitive
+  │      from exploration
+  └─ ◐ Menu And Admin [researching]
+         Business-side menu modelling, admin shell
+         from exploration
+```
+
+**3B-ii. Discussion map** — `workflow-discussion-process/.../discussion-session.md`
+State glyph (`○ ◐ → ✓`) + name + `[state]`, **two-level nesting** (parent → children, no grandchildren), `↑ Elevated: …` marker rows. No wrapped bodies.
+```
+  ┌─ ✓ Subsystem Prefix Taxonomy [decided]
+  ├─ → Decision-Point INFO Line Shape [converging]
+  │  ├─ ✓ Field Order [decided]
+  │  └─ ◐ Truncation Rules [exploring]
+  ├─ ↑ Elevated: Log Aggregation Backend
+  └─ ○ Rollout Sequencing [pending]
+```
+
+**3B-iii. Epic dependency / phase detail** — `workflow-continue-epic/.../display-epic-map.md`
+Status glyph + name, sub-rows for sources (`←`) and promotions (`→`), `│` phase continuation.
+```
+  ├─ ✓ User Authentication
+  │  ├─ ← Auth Flows Discussion
+  │  └─ ← Session Management Discussion
+  └─ ○ Admin Panel
+     └─ Phase 2, 4 task(s) completed
+```
+
+**3B-iv. Inbox working set** — `workflow-start/.../inbox-working-set.md`
+Bullet `•` (not a status glyph) + `(type)`, **wrapped summary max 3 lines + ellipsis**, and a **single-item special case** (lone item renders no branch glyph). Same `│`+gutter wrap concern as the discovery map.
+```
+  ┌─ • Item One (idea)
+  │      Summary that wraps to a second line if needed,
+  │      max 3 lines with ellipsis…
+  └─ • Item Three (quickfix)
+         single item gets no connector glyph
+```
+
+**3B-v. Epic build-phase tree** — `workflow-continue-epic/.../epic-display-and-menu.md` (under the `── DEFINITION ──` and `── DELIVERY ──` stages)
+Uppercase phase sub-header (`SPECIFICATION`, `PLANNING`, `IMPLEMENTATION`, `REVIEW`) + count summary, with items branching off it (`├─`/`└─`), and child sub-rows (spec sources, implementation progress) nested via a formal `{child_gutter}` + `{child_branch}`. Graduated from flat-list (3A) in PR #344. **Shares the exact gutter machinery as 3B-i in the same file** — the strongest single argument for a shared tree renderer.
+```
+  SPECIFICATION (2 completed)
+  ├─ ✓ User Authentication
+  │  ├─ ← Auth Flows [incorporated]
+  │  └─ ← Session Mgmt [pending]
+  └─ ○ Admin Panel
+     └─ Phase 2, 4 task(s) completed
+```
+- `{child_gutter}` — non-last item: `2sp │ 2sp`; last item: `5sp`. `{child_branch}`: `├─` non-final, `└─` final/only. Items hang off the sub-header (no `┌─`).
+
+**Structural variation the tree renderer must absorb (from 3B):**
+- Glyph source: tier set / state set / bullet / none — pluggable leading symbol.
+- **Hang-off-header vs free-standing first row:** discovery map (3B-i) and build trees (3B-v) now use `├─`/sole `└─` to tick up into a header label — **never `┌─`** (normalised in #344). Discussion map (3B-ii) and inbox (3B-iv) still open with `┌─`. The renderer should make "hang off header" the default; `┌─` the opt-in.
+- Wrapped multi-line bodies (discovery, inbox) vs single-line nodes (discussion, dependency, build).
+- Nesting: 1 level (discovery, inbox) vs 2 levels (discussion, dependency, build).
+- **Gutter width drift (now across three trees):** discovery body gutter `2sp │ 6sp` (9); discussion child `│`+2; build child `2sp │ 2sp`. Same concept, three widths. **Normalise.**
+- Single-item / last-sibling / last-line edge cases.
+- Marker rows that aren't nodes (`↑ Elevated`, source `←`, promotion `→`).
+- Body wrap budget **must subtract the gutter** — the bug, still live after #344 (65 + 9 = 74). Width is intentionally narrow; renderer enforces, never widens or defers to terminal.
+
+### 3B-composite. The epic dashboard is now a multi-primitive render
+PR #344 restructured `epic-display-and-menu.md` so the whole dashboard is **Family 1 signposts wrapping Family 3 trees**: three `── DISCOVERY/DEFINITION/DELIVERY ──` dividers (49-char section headers, see 1A), each followed by a header/sub-header and a tree. One render composes a box cap (`●──●` title), three dividers, two genuine trees, and several sub-headers. This is the clearest real example that the renderer is **composed primitives assembled into a dashboard**, not one schema per shape — and the obvious migration beachhead (one high-value file, two trees + three dividers, already hand-normalised to copy byte-for-byte).
+
+### 3C. Documentation trees — `├──` 3-dash filesystem diagrams  [static, OUT OF SCOPE]
+`output-formats/{tick,linear,local-markdown}/about.md`. Static docs illustrating directory/issue layout, not per-session data-driven renders. Different glyph (`├──` 3-dash + 4-space). **Exclude from the renderer** — prose, not output.
+
+## Shared vocabulary (consistent — renderer config, not per-call reasoning)
+
+### Glyph table (one meaning per context; no collisions found)
+```
+Discovery tier:  →ready-next  ◐in-flight  ✓decided  ○fresh  ⊙handled  ⊘cancelled
+Discussion state: ○pending   ◐exploring  →converging ✓decided
+Markers:         ↑elevated   ←source     →promoted
+Alert:           ⚑
+Decoration:      ● (box caps)
+```
+Discovery and discussion share `○ ◐ → ✓` with semantically aligned meanings — safe.
+
+### Suffix grammar (bracket type signals metadata type — consistent)
+```
+[]  status / state           [in-progress] [decided] [extracted, reopened]
+()  metadata                 (recommended) (was: {status}) (3 of 5 sources extracted)
+·   provenance / routing     · {format}   · routed to research   · seeded from the inbox
+—   phase / progress / block — implementation (Phase 2, Task 3)   — blocked by {plan}:{task}
+:   cross-plan task ref      {plan}:{task}
+```
+
+### Legend / Key blocks
+Several near-identical `Key:` blocks (spec-entry display-*.md, epic display) listing the subset of glyphs/statuses in play. **Candidate:** a `legend` command that emits the canonical block for a given vocabulary subset — removes the copy-paste drift between the five spec-entry variants.
+
+## Cross-cutting observations
+
+1. **The system is already remarkably consistent.** Most drift is mechanical (indent width, dash count, `└─` vs `├─`, italic vs plain `(recommended)`) — exactly the class of error a renderer eliminates by construction.
+2. **The latent width bug isn't unique to the tree.** Section headers (1A) and boxes (1C) also rely on hand-counted widths that aren't enforced. Same fix, same primitive.
+3. **The four families collapse toward shared primitives**, not one schema:
+   - a **width/dash engine** (signposts, boxes, rules) — Family 1
+   - a **wrap-with-prefix primitive** (`budget = width − prefixWidth`) — the root of the bug, shared by trees and wrapped lists
+   - a **menu** form — Family 2
+   - a **tree** form (4 real trees) over the wrap primitive — Family 3B
+   - **vocab/legend** as config, not logic
+4. **Scope ladder by payoff/risk:**
+   - Cheapest, safest, highest volume: **signposts/gates/boxes** (Family 1) + the width-drift fix.
+   - High value, contained: **menus** (Family 2, 4 forms).
+   - Highest value + where the bug lives + most variation: **the 4 real trees** (3B). Feed from the data scripts that already hold the rows.
+   - Skip: doc filesystem trees (3C), maybe the bare `⚑` callout (1E).
+
+## Open questions
+
+Most of the original open questions are now resolved — see **Design Decisions (locked 2026-06-04)** above (packaging, location, tree input, caller model, display contract). What remains:
+
+- **Reasoning-surface field set** per consuming skill — which fields stay vs leave once code draws the tree. Settled empirically by the first-slice spike (= what continue-epic actually branches on).
+- **Recommended-description menus** — 5th menu form, or a `description` option on the numbered form?
+- **Reasoning surface format** — stays labeled text vs becomes JSON. Tied to the broader code-based-orchestration push; out of scope for the renderer itself.
+
+## Relevant files (call-site index)
+
+- **Trees (real):** `workflow-continue-epic/references/{epic-display-and-menu,display-epic-map}.md`, `workflow-discussion-process/references/discussion-session.md`, `workflow-discovery/references/session-loop.md`, `workflow-start/references/inbox-working-set.md`
+- **Lists (sub-row, not trees):** `workflow-continue-*/references/select-*.md`, `workflow-start/references/{active-work,view-completed}.md`, `workflow-planning-process/references/{define-tasks,resolve-dependencies}.md`, `workflow-implementation-entry/references/check-dependencies.md`, `workflow-legacy-research-split/references/dialog.md`, `workflow-specification-entry/references/display-*.md`
+- **Menus:** `workflow-start/references/{active-work,empty-state,manage-work-unit,inbox-working-set,start-from-inbox,absorb-into-epic,inbox-archived}.md`, `workflow-continue-*/references/{select-*,revisit-phase}.md`, `workflow-bridge/references/*-continuation.md`, `workflow-specification-entry/references/display-specs-menu.md`
+- **Signposts/gates/boxes:** ~54 SKILL.md + references for `── ──`; ~40 reference files for `· · ·`; `workflow-knowledge/references/knowledge-check.md`, `workflow-start/SKILL.md` (boxes); `*/process-review-findings.md`, `spec-construction.md` (framed)
+- **Legends/vocab:** `workflow-specification-entry/references/display-*.md`, `workflow-continue-epic/references/epic-display-and-menu.md`
+- **Out of scope:** `workflow-planning-process/references/output-formats/{tick,linear,local-markdown}/about.md` (doc filesystem trees)
