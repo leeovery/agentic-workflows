@@ -68,6 +68,37 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.features.count, 0);
   });
 
+  it('epic stays active when one topic completes review with others mid-pipeline', () => {
+    createManifest(dir, 'mint', {
+      work_type: 'epic',
+      phases: {
+        planning: {
+          items: {
+            'cli-presentation': { status: 'completed' },
+            'mint-release-tool': { status: 'completed' },
+            'commit-command': { status: 'completed' },
+          },
+        },
+        implementation: { items: { 'cli-presentation': { status: 'completed' } } },
+        review: { items: { 'cli-presentation': { status: 'completed' } } },
+      },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.state.has_any_work, true);
+    assert.strictEqual(r.state.epic_count, 1);
+    assert.strictEqual(r.epics.work_units[0].name, 'mint');
+  });
+
+  it('epic with completed status is not listed as active', () => {
+    createManifest(dir, 'shipped', {
+      work_type: 'epic',
+      status: 'completed',
+      phases: { review: { items: { a: { status: 'completed' } } } },
+    });
+    const r = discover(dir);
+    assert.strictEqual(r.state.epic_count, 0);
+  });
+
   it('skips archived work units', () => {
     createManifest(dir, 'old', { work_type: 'feature', status: 'completed' });
     createManifest(dir, 'active', { work_type: 'feature' });
