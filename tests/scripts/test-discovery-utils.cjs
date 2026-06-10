@@ -336,6 +336,30 @@ describe('discovery-utils', () => {
       assert.strictEqual(r.next_phase, 'done');
     });
 
+    it('epic: not done when one topic completes review with others mid-pipeline', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          planning: { items: { 'cli-presentation': { status: 'completed' }, 'mint-release-tool': { status: 'completed' } } },
+          implementation: { items: { 'cli-presentation': { status: 'completed' } } },
+          review: { items: { 'cli-presentation': { status: 'completed' } } },
+        },
+      });
+      assert.strictEqual(r.next_phase, 'review');
+      assert.strictEqual(r.phase_label, 'review completed for current topics');
+    });
+
+    it('epic: never phase-derives done — completion is the explicit status flip', () => {
+      const r = computeNextPhase({
+        work_type: 'epic',
+        phases: {
+          implementation: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
+          review: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
+        },
+      });
+      assert.notStrictEqual(r.next_phase, 'done');
+    });
+
     it('returns review when implementation completed', () => {
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { implementation: { items: { test: { status: 'completed' } } } } });
       assert.strictEqual(r.next_phase, 'review');

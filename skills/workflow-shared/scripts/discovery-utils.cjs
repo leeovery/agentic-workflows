@@ -142,6 +142,12 @@ function computeNextPhase(manifest) {
   }
 
   if (ps('review') === 'completed') {
+    // Phase aggregation only covers topics that have reached the phase. For
+    // an epic, one topic completing review must not mark the whole epic done
+    // — completion is the explicit status flip, never derived.
+    if (wt === 'epic') {
+      return { next_phase: 'review', phase_label: 'review completed for current topics' };
+    }
     return { next_phase: 'done', phase_label: 'pipeline complete' };
   }
   if (ps('review') === 'in-progress') {

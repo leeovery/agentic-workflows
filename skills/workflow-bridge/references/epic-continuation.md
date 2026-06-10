@@ -54,9 +54,15 @@ The map is already sequenced.
 
 ## D. Check All-Done
 
-Using the enriched discovery data from section A, check if ALL topics across ALL phases have review status `completed`. Specifically: check if any review items exist, and if so, whether every one has `status: completed`, and no topics in earlier phases are still `in-progress`.
+Phase statuses aggregate only the topics present in each phase, so a completed review phase alone does not mean the epic is finished — topics may not have reached review yet. Using the enriched discovery `detail`, the epic is all-done only when every condition holds:
 
-#### If all topics have completed review
+- review items exist and every non-cancelled one has `status: completed`
+- `next_phase_ready` is empty (no topic is awaiting its next phase)
+- `in_progress` is empty
+- `unaccounted_discussions` is empty
+- `convergence_state` is `settled` (or `null` when the epic has no discovery map)
+
+#### If all conditions hold
 
 > *Output the next fenced block as markdown (not a code block):*
 
