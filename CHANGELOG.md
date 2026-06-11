@@ -5,6 +5,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2026-06-11
+
+- Add a "Never lose your work" hard rule to all 18 sub-agent definitions, mandating an explicit Write to the output path, verbatim error reporting on write failure, and content return via final message only as a last resort after a failed write attempt
+
 ## [0.5.8] - 2026-06-10
 
 - Fix epic incorrectly reported as done when a single topic completes review — `computeNextPhase` no longer phase-derives `done` for epics (completion is the explicit status flip), and the bridge all-done check now requires empty `next_phase_ready`/`in_progress`/`unaccounted_discussions` and a settled convergence state
