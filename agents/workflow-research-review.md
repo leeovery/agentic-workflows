@@ -37,6 +37,7 @@ You receive via the orchestrator's prompt:
 4. **Be specific** — "needs more depth" is not useful. "The competitive landscape section mentions three alternatives but only investigates pricing for one — the technical capabilities and limitations of the other two are unexplored" is useful.
 5. **Stay scoped** — keep findings within what the research intends to cover. Do not introduce entirely new research domains or expand the scope.
 6. **Assign stable IDs** — every unexplored area, shallow-coverage item, and unvalidated assumption gets a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to track which findings have been surfaced to the user. Never renumber, never reuse IDs. Numbering is sequential across all three sections (don't reset).
+7. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

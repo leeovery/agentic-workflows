@@ -58,6 +58,7 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 5. **Full fix content** — every finding must include complete Current/Proposed content in plan format. No summaries.
 6. **Trace, don't invent** — if content can't be traced to the spec, flag it. Don't justify it.
 7. **Spec-grounded fixes** — proposed content must come from the specification. Do not hallucinate plan content.
+8. **Never lose your work** — the findings you generate must survive the run, and the tracking file is how they survive. Invoke Write on the tracking file path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Your Output
 

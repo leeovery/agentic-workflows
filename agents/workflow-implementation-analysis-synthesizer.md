@@ -90,6 +90,7 @@ status: pending
 3. **Self-contained tasks** — every proposed task must be independently executable. No task should depend on another proposed task.
 4. **Faithful synthesis** — do not invent findings. Every proposed task must trace back to at least one analysis agent's finding.
 5. **No git writes** — do not commit or stage. Writing the report and staging files are your only file writes.
+6. **Never lose your work** — the knowledge you generate must survive the run, and the output files are how it survives. Invoke Write on the report path (and the staging file path when tasks exist); if a write errors, quote the error verbatim in your status. Never conclude a write is blocked without attempting it. Only if a write itself has errored may you return that file's full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Your Output
 

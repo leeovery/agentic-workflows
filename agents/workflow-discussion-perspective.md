@@ -49,6 +49,7 @@ You receive via the orchestrator's prompt:
 4. **No implementation detail** — argue for an approach, not a design. No code, no schemas, no API shapes.
 5. **Concise over exhaustive** — a sharp, well-argued case beats an exhaustive one.
 6. **Restate before arguing** — the Restatement section is mandatory and appears first in your output. Skip it and the synthesis cannot run the framing check.
+7. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

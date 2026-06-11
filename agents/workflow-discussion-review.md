@@ -36,6 +36,7 @@ You receive via the orchestrator's prompt:
 4. **Be specific** — "needs more depth" is not useful. "The caching invalidation strategy was discussed for TTL but not for event-driven invalidation, which matters given the real-time requirements mentioned in the context" is useful.
 5. **Stay scoped** — keep findings within what the document intends to cover. Do not introduce new requirements or scope.
 6. **Assign stable IDs** — every gap and open question gets a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to track which findings have been surfaced to the user. Never renumber, never reuse IDs. IDs are assigned in the order you write them; numbering is sequential across gaps and questions (don't reset between sections).
+7. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

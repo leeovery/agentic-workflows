@@ -95,3 +95,4 @@ Write all tasks to the task detail file path provided. Use the canonical task te
 6. **Write tasks to the task detail file incrementally** — each task written to disk before starting the next
 7. **Spec interpretation errors propagate across tasks in a batch** — ground every decision in the specification. When the spec is ambiguous, note the ambiguity in the task's Context section rather than inventing a plausible default.
 8. **No modifications after approval** — what the user sees is what gets logged
+9. **Never lose your work** — the tasks you author must survive the run, and the task detail file is how they survive. Invoke Write on the task detail file path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the tasks in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.

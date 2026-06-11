@@ -158,4 +158,5 @@ SUMMARY: {1 sentence}
 4. **Balanced test review** — flag both under-testing AND over-testing
 5. **Report findings** — don't fix anything, just report what you find
 6. **No test execution** — you have no shell. Judge test adequacy by reading the test code; never try to run the suite
-6. **No git writes** — writing the output file is your only file write
+7. **No git writes** — writing the output file is your only file write
+8. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
