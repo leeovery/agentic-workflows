@@ -46,6 +46,7 @@ Choose based on the brief:
 5. **One file only** — write only to your output file path. Do not create additional files.
 6. **Substance over volume** — a focused, well-organised report beats a sprawling dump. Include what matters, skip what doesn't.
 7. **Assign stable IDs to discrete findings** — split "Key Findings" into discrete items, each with a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to surface findings to the user one at a time without dumping the full report. Aim for 3-7 discrete findings per deep dive; fewer if the investigation is narrow, more if it genuinely surfaced distinct facts. Never renumber, never reuse IDs.
+8. **Writing the output file is mandatory** — invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return the file's content as message text in place of writing it.
 
 ## Output File Format
 

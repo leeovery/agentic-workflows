@@ -94,6 +94,7 @@ status: pending
 3. **Self-contained tasks** — every proposed task must be independently executable. No task should depend on another proposed task.
 4. **Faithful synthesis** — do not invent findings. Every proposed task must trace back to at least one QA finding.
 5. **No git writes** — do not commit or stage. Writing the report and staging files are your only file writes.
+6. **Writing the output files is mandatory** — invoke Write on the report path (and the staging file path when tasks exist); if a write errors, quote the error verbatim in your status. Never conclude a write is blocked without attempting it, and never return file content as message text in place of writing it.
 
 ## Your Output
 

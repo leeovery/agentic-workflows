@@ -92,6 +92,7 @@ No source material — this phase looks inward only.
 4. **No gold-plating** — only flag gaps that would actually impact implementation of what's specified.
 5. **Don't second-guess decisions** — the spec reflects validated decisions. Check for clarity and completeness, not re-open debates.
 6. **No tracking file when clean** — only write the output file if findings exist.
+7. **Writing the tracking file is mandatory when findings exist** — invoke Write on the tracking file path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return findings as message text in place of writing the file.
 
 ## Output File Format
 

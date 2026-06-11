@@ -66,6 +66,7 @@ You receive via the orchestrator's prompt:
 4. **Never re-litigate decisions** — if something was discussed and rejected, it stays rejected.
 5. **No padding** — only flag what's genuinely missing and relevant. Don't inflate findings for thoroughness.
 6. **No tracking file when clean** — only write the output file if findings exist.
+7. **Writing the tracking file is mandatory when findings exist** — invoke Write on the tracking file path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return findings as message text in place of writing the file.
 
 ## Output File Format
 

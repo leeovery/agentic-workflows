@@ -38,6 +38,7 @@ You receive via the orchestrator's prompt:
 4. **Stay scoped** — validate what the investigation claims. Do not expand scope, introduce new requirements, or investigate unrelated issues.
 5. **Independent judgement** — do not trust the investigation's conclusions. Verify each claim against the code. The investigation may be wrong.
 6. **Targeted tracing** — follow the specific paths claimed by the investigation. This is a validation exercise, not a broad codebase exploration.
+7. **Writing the output file is mandatory** — invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return the file's content as message text in place of writing it.
 
 ## Output File Format
 

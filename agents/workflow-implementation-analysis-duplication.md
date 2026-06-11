@@ -46,6 +46,7 @@ You receive via the orchestrator's prompt:
 3. **Plan scope only** — only analyze files from the implementation. Do not flag duplication in pre-existing code.
 4. **Proportional** — focus on high-impact duplication. Three similar lines is not worth extracting. Three similar 20-line blocks is.
 5. **No new features** — recommend extracting/consolidating existing code only. Never suggest adding functionality.
+6. **Writing the output file is mandatory** — invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return the file's content as message text in place of writing it.
 
 ## Output File Format
 
