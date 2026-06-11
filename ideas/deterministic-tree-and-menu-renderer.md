@@ -643,6 +643,8 @@ The onion. The engine is central but **"dumb" means skill-blind, not domain-blin
 
 **Evidence the codebase already wants this:** `discovery-utils.cjs` is a half-formed domain ring (`computeTopicLifecycle`, `computeNextPhase`, gating); the render spike split exactly on the kernel/domain line (`render.cjs` = kernel, `conventions.cjs` = domain).
 
+**Typed state lives in the manifest; knowledge lives in markdown** *(agreed 2026-06-11, resolving walkthrough-2 finding 5)*. Anything that fits a typed system — subtopic states (`pending`/`exploring`/`converging`/`decided`), map items, lifecycle markers — is an **enum, not prose**, and belongs in the manifest. It should never have been in markdown; it's a remnant of the everything-was-markdown era that state has been steadily migrating out of. The markdown document keeps what markdown is *for*: the knowledge — transcript, discoveries, pathways, failed paths, rationale, the conversation itself. The agent and human still drive everything conversationally; but the moment an item lands on a map or a state changes, that's a CLI call recording it. Judgment decides, code records.
+
 **Settled mechanics** (from the earlier discussion, still standing):
 
 - **JS, not TS.** `.cjs` is both source and shipped artifact — no build step, no bundle drift, installed projects read real source. JSDoc typedefs on the core contracts (`detail`, tree node, projection inputs) + `tsc --noEmit` (checkJS) enforced in tests/CI. Escape hatch if deps/scale ever force it: the `src/` + esbuild path knowledge already uses.
@@ -717,7 +719,9 @@ The opposite character: the LLM owns the content (organic conversation, judgment
 - **(a) Claude stays the data owner** and passes compact node JSON to the renderer at display time. Honest generalisation of "the data owner calls the renderer" — in-session, the owner *is* Claude. Layout math still never hand-drawn; but convergence checks, unresolved-counts, and resume-after-compaction all stay prose/context.
 - **(b) The map becomes structured state** — a sidecar (in-manifest under the discussion item, or `.workflows/{wu}/discussion/.{topic}.map.json`). Claude still makes every state-transition *judgment* but records it via an engine command (`engine map set {subtopic} converging`). Then: the map render is a normal projection; "all decided" and "{N} not yet decided" become domain queries; the discussion file's map section can be *generated*; and **resume after context compaction becomes deterministic** instead of re-derived from prose. Cost: a cheap CLI call per state change during conversation.
 
-Option (b) is where the ambition points (data as source of truth; code derives "what's next" — convergence *is* a next-decision question), and it generalises to every live map in the system. *Note: (a)/(b) both supersede locked decision #2's "Claude never assembles tree JSON" — that rule was written for manifest-backed data and survives there; in-session state needs one of these two answers.* **Open.**
+**DECIDED (2026-06-11): option (b), unreservedly — and into the manifest, not a sidecar file.** All live maps (discussion map, discovery map session state, and equivalents) are typed state and move to the manifest; subtopic states are an enum and should never have been in prose. The conversation still drives everything — but the moment an item lands on a map or its state changes, that's a CLI call. The markdown document keeps the knowledge: transcript, discoveries, pathways, failed paths, the conversation. (See the matching agreed principle in §2.) *Locked decision #2 survives fully — with the map in the manifest, the data owner is the engine again, and Claude never assembles tree JSON anywhere.*
+
+Follow-on details (settled in spirit, specifics at design time): the manifest schema grows subtopic entries under the discussion item; a migration extracts map state from in-flight discussions' markdown; the discussion file's Discussion Map section becomes generated from the manifest (or is dropped); the discussion template updates accordingly.
 
 **Finding 6 — the two maps are the same shape.** Discussion map ≅ discovery map structurally: two-level tree, state glyphs, header with count breakdown omitting zero categories. One projection family covers both — evidence for the normalisation push. The `┌─` first-parent here vs hang-off-header in the epic dashboard is exactly the kind of inconsistency that dies in `conventions`.
 
@@ -740,13 +744,13 @@ The walkthrough moments generalise into recurring classes — each with one home
 | 7 | Conversation (gates, STOPs, selection capture) | Skill .md |
 | 8 | Routing a choice | .md routes on **action keys** from the menu projection *(proposed)* |
 | 9 | State transitions (cancel/reactivate/unblock/triage-landing + commit) | Engine commands, transactional *(proposed)* |
-| 10 | Session/conversational state (live maps) | **Open** — finding 5 fork |
+| 10 | Session/conversational state (live maps) | Manifest-backed typed state; judgment decides, engine CLI records *(agreed)* |
 
 ## 7. Open questions
 
 1. **Static chrome** — runtime renderer calls (original instinct) vs author-time literals + lint (walkthrough-1 counter-proposal, cost math above). Affects locked decision #1.
 2. **Action-key routing** — proposed; restructures the .md menu/route sections of every navigation skill.
-3. **Write side in v1** — are cancel/reactivate (+ the session commit helper) in the engine's first iteration, or does v1 stay read-only?
-4. **Conversational state** — markdown-embedded (Claude renders via CLI) vs structured sidecar with engine-recorded transitions. The biggest fork from walkthrough 2; generalises to every live map.
+3. **Write side in v1** — are cancel/reactivate (+ the session commit helper) in the engine's first iteration, or does v1 stay read-only? *Half-answered by the conversational-state decision (#4): recording map/state transitions IS an engine write, so v1 cannot be read-only — the remaining question is only whether the bigger transactions (cancel/reactivate, triage-landing) join the first wave.*
+4. ~~**Conversational state**~~ — **RESOLVED**: manifest-backed typed state, engine-recorded transitions (finding 5 decision + §2 principle).
 5. **Adapter thinness in practice** — walked per concrete case; working line so far: views of *domain objects* (maps, dashboards) = domain; views of *conversational moments* (soft gates, off-topic prompts) = adapter/skill.
 6. **Flows still to walk** before the shape is called settled: `workflow-start` (inbox working set — multi-select, archive lifecycle), implementation (task loop — the long-running, judgment-heavy shape), and one entry skill (bootstrap questions).
