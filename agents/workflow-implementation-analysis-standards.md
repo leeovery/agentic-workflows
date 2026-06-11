@@ -46,7 +46,7 @@ You receive via the orchestrator's prompt:
 3. **Plan scope only** — only analyze files from the implementation against the current spec.
 4. **Proportional** — focus on high-impact drift. A minor naming preference is not worth flagging. A missing validation from the spec is.
 5. **No new features** — only flag where existing code diverges from what was specified. Never suggest adding unspecified functionality.
-6. **Writing the output file is mandatory** — invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return the file's content as message text in place of writing it.
+6. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

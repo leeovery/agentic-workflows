@@ -55,7 +55,7 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 5. **Full fix content** — every finding must include complete Current/Proposed content in plan format. No summaries.
 6. **Proportional** — prioritize by impact. Don't nitpick style when architecture is wrong.
 7. **Task scope only** — check the plan as built; don't redesign it
-8. **Writing the tracking file is mandatory** — invoke Write on the tracking file path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return findings as message text in place of writing the file.
+8. **Never lose your work** — the findings you generate must survive the run, and the tracking file is how they survive. Invoke Write on the tracking file path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the findings in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Your Output
 

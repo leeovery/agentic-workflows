@@ -50,7 +50,7 @@ You receive via the orchestrator's prompt:
 3. **Plan scope only** — only analyze what this implementation built. Do not flag missing features belonging to other plans.
 4. **Proportional** — focus on high-impact structural issues. Minor preferences are not worth flagging.
 5. **No new features** — only improve what exists. Never suggest adding functionality beyond what was planned.
-6. **Writing the output file is mandatory** — invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return the file's content as message text in place of writing it.
+6. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

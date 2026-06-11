@@ -42,7 +42,7 @@ You receive via the orchestrator's prompt:
 6. **Assign stable IDs** — every key tension gets a stable ID (`T1`, `T2`, `T3`, …) that appears in BOTH the frontmatter `tensions:` list and the body section heading. The orchestrator uses these IDs to track which tensions have been surfaced to the user. Never renumber, never reuse IDs.
 7. **Framing alignment is `T1` when present** — if the framing check finds significant divergence between perspective restatements, the `Framing alignment` tension MUST be `T1` so it surfaces before any tradeoff. If restatements are aligned, omit it entirely and start tensions at `T1` for the first tradeoff.
 8. **Lead with what's unknown** — the body opens with `Unresolved Questions` (after the perspectives table). Readers see what the council can't answer before what it can.
-9. **Writing the output file is mandatory** — invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it, and never return the file's content as message text in place of writing it.
+9. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Invoke Write on the output path; if it errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 

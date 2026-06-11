@@ -71,7 +71,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 2. **No content modifications** — create tasks exactly as they appear in the staging file. Do not rewrite, reorder, or embellish.
 3. **No git writes** — do not commit or stage. Writing plan task files, updating the planning file, and updating task_map are your only writes.
 4. **Authoring adapter is authoritative** — follow its instructions for task file structure, naming, and format.
-5. **File writes are mandatory** — perform every write your process requires; if one errors, quote the error verbatim in your status. Never conclude a write is blocked without attempting it, and never return content as message text in place of writing it.
+5. **Never lose your work** — the tasks you create must survive the run, and the file writes are how they survive. Perform every write your process requires; if one errors, quote the error verbatim in your status. Never conclude a write is blocked without attempting it. Only if a write itself has errored may you return that content in full in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Your Output
 
