@@ -404,7 +404,7 @@ Most of the original open questions are now resolved — see **Design Decisions 
 
 # Discovery / Projection Architecture Spec (Draft)
 
-Status: **draft for mark-up.** Everything above covers the renderer (built — survey, decisions, build log). This part covers the *integration* going forward — how each skill's discovery script, the data it holds, and the deterministic renders fit together cleanly. Written to be handed to an implementing agent once the open decisions (§9) are settled.
+Status: **superseded in part** — see the **Engine Architecture design log** below (2026-06-10/11). The §8 flavour fork is resolved there (neither A nor B as written — the three-ring engine), several §9 decisions are settled, and the engine model subsumes the §4 layer diagram. Kept for the grounding work (§6 invocation mechanics, §7 live-`detail` inventory) which still holds.
 
 ---
 
@@ -594,3 +594,159 @@ Recommendation: **prototype the epic in flavour (A) on paper first**; if the sch
 - Rewriting all discovery scripts at once (incremental only).
 - Changing the manifest schema or the manifest CLI.
 - The no-discovery-map epic branch and recommendation logic — port after the main path proves out.
+
+---
+
+# Engine Architecture — Design Log (2026-06-10/11)
+
+Status: **active design discussion.** This section supersedes the draft spec above where they conflict. It reframes the renderer as the first module of something bigger, records what's been **agreed**, what's **proposed but open**, and pressure-tests the model with flow walkthroughs. No code yet — the shape gets settled first.
+
+## 1. Reframing — why this got bigger than the renderer
+
+The ambition: move **all orchestration that doesn't need reasoning** into code. The ideal (everything in code, LLM called only for intelligence) is economically closed off — that path requires metered API billing, and the Claude subscription is by far the better deal. So the architecture **inverts**: Claude Code stays the orchestrator/driver, and code becomes the thing Claude *consults*. Claude asks "what's next?", "give me the menu for this epic" — code answers from data.
+
+Consequences that shape everything below:
+
+- **The manifest is the source of truth.** Kept current (which it must be anyway), code can derive next steps, gating, loops, position-in-process. Example: discussions not yet extracted into a specification ⇒ a spec is due. No LLM needed.
+- **Prime directive: decision-ready answers.** Every engine answer must be consumable without re-derivation — the scarce resources are Claude's reasoning and tokens per turn.
+- The four existing code islands (manifest CLI, per-skill discovery scripts, knowledge CLI, render spike) grew organically with no shared core. The engine is the designed system they converge into — **iteratively, not all at once, not every skill at once**.
+- It may look over-engineered for producing a signpost. It isn't sized for signposts — it's sized for what gets bolted on.
+
+## 2. AGREED — the three-ring engine
+
+The onion. The engine is central but **"dumb" means skill-blind, not domain-blind** — the manifest schema's vocabulary (phases, topics, sources, routing) *is* the domain, so an engine that owns the manifest already speaks it. What the engine must never know is what any *skill's conversation* does with an answer.
+
+```
+┌─ Skills (.md / Claude) ── conversation, judgment, routing choices
+│  ┌─ Adapters (per-skill discovery.cjs) ── skill-owned shaping:
+│  │   "which of the engine's answers does MY flow need, in what form"
+│  │  ┌─ Domain ring ── the workflow ontology: phases, lifecycle,
+│  │  │   gating, next-actions, transitions, glyph/tag conventions,
+│  │  │   canonical projections. Skill-blind, workflow-aware.
+│  │  │  ┌─ Kernel ── manifest IO + schema validation, KB store,
+│  │  │  │   render primitives, wrap math. No workflow words at all.
+```
+
+**The discriminator** (for every future "where does this go?" call):
+
+- Derivable purely from manifest semantics, reusable by any caller → **domain ring**. (Lifecycle, gating, "what's next", spec-due detection, staleness.)
+- About one skill's conversational flow → **adapter** (or the .md itself). (Which projections this step requests; flow-specific decoration.)
+- Knows no workflow vocabulary → **kernel**. (`renderTree`, wrap budget, JSON IO, KB plumbing.)
+
+**Adapters are thin — decorators, not derivers.** An adapter only *shapes* data it gets from the rings below; it never derives its own. If something needs to happen at the adapter, fine — that's what it's for — but the default home for logic is the domain ring. As skills migrate, expect **converging patterns**: variations that look skill-specific should be pushed toward normalised shapes (skill-specific → work-type-specific → general) rather than absorbed as one-off custom behaviour.
+
+**Contract tenets:**
+
+1. **Stable action keys.** Engine answers carry machine keys (`action: start_specification`), and skills route on keys — never by parsing labels or rendered text. (Generalises the existing write-only-display rule.)
+2. **Same state → same answer.** Pure functions over the manifest; fixture-testable.
+3. **Validation at the kernel.** Everything derives from the manifest, so the engine *refuses* malformed state loudly rather than deriving garbage politely. Schema validation becomes load-bearing.
+
+**Evidence the codebase already wants this:** `discovery-utils.cjs` is a half-formed domain ring (`computeTopicLifecycle`, `computeNextPhase`, gating); the render spike split exactly on the kernel/domain line (`render.cjs` = kernel, `conventions.cjs` = domain).
+
+**Settled mechanics** (from the earlier discussion, still standing):
+
+- **JS, not TS.** `.cjs` is both source and shipped artifact — no build step, no bundle drift, installed projects read real source. JSDoc typedefs on the core contracts (`detail`, tree node, projection inputs) + `tsc --noEmit` (checkJS) enforced in tests/CI. Escape hatch if deps/scale ever force it: the `src/` + esbuild path knowledge already uses.
+- **Writes migrate progressively.** Not all writing moves into the engine — skills will still drive writes determined by conversational logic. But the more process is codified, the more writes (including templated git commits over known file sets, e.g. `.workflows/{wu}/`) happen engine-side. Implementation-phase commits stay with Claude where only the agent knows which files it touched.
+
+## 3. PROPOSED — file layout
+
+```
+skills/workflow-engine/scripts/
+  engine.cjs            ← thin CLI entry
+  kernel/               ← manifest IO + validation, render, wrap, KB plumbing
+  domain/               ← lifecycle, gating, next-actions, transitions,
+                          conventions (glyphs/tags), projections/ (dashboard,
+                          menu, legend, maps…)
+skills/{skill}/scripts/discovery.cjs   ← adapters, stay in-skill, require() the engine
+```
+
+- `workflow-render`'s contents move into `kernel/` — it's unwired (zero call sites), so zero migration cost.
+- `discovery-utils.cjs` dissolves into `domain/` over time.
+- `manifest.cjs` and `knowledge.cjs` remain compatibility islands, absorbed later. (Their CLI surfaces are referenced from dozens of skill files — keep the surfaces, swap the internals.)
+- Multi-file, no build: cross-skill relative `require()` already works installed (adapters require `../../workflow-shared/` today).
+
+## 4. Walkthrough 1 — continue-epic (the navigation shape)
+
+Every moment of the flow (SKILL.md + the 848-line `epic-display-and-menu.md`), assigned to a ring:
+
+| # | Moment (today) | What it actually is | Ring |
+|---|---|---|---|
+| 0 | `Continue Epic` box + step signposts (literal fenced blocks) | Static chrome — Claude *copies*, doesn't draw | → finding 1 |
+| 1 | `!` head insert runs `discovery.cjs` (labelled dump) | Reasoning surface | kernel→domain→adapter |
+| 2 | Branch on `count`, store `$0` | Flow control off reasoning surface | skill .md |
+| 3 | Select-epic menu | Script-backed numbered menu | domain projection |
+| 5 | Backfill: `detect.cjs`, then *Claude filters* `discovery_map` for missing summaries in-context | **Derivation leaked into prose** — pure data filtering done by LLM | domain (expose `items_to_recover`) |
+| 6 | `analysis_caches` staleness → dispatch analyses | Detection in code; analysis content is judgment | domain / LLM ✓ already right |
+| 7 | `needs_sequencing` flag → Claude assigns order values → scoped re-run | Detection in code, **judgment in LLM — the boundary done right**; the pattern exemplar | domain + LLM |
+| 8a | Dashboard (stage dividers, trees, callouts, wrap rules — ~200 lines of template prose) | Fully determined by `detail` | domain projection |
+| 8b | Key/legend ("show only categories present") | Derivable from detail | domain projection |
+| 8c | Menu composition (~90 lines: entries from `next_action`/`next_phase_ready`, gating filters, ordering, `(recommended)` pick) | Fully deterministic — zero judgment in section C | domain projection |
+| 8d | Gate prompt, STOP, collect selection | Conversation | skill .md |
+| D | Soft gates (conditions = counts; fixed message templates) | Condition + body codifiable; STOP stays | domain + .md |
+| E | Route selection by **label prefix-matching** (16-row table) | Fragile string matching | → finding 3 |
+| H/I | Cancel/reactivate: 2–4 manifest calls + KB remove/index + commit, step-by-step in prose | A **transaction** Claude hand-executes | → finding 4 |
+
+**Finding 1 — static chrome wants author-time enforcement, not runtime rendering.** The step signposts are already *literal* fenced blocks — Claude copies them; there is no character arithmetic at runtime. The 49-vs-50 drift happens at **authoring** time, hand-counting dashes while writing the .md. A runtime Bash call per signpost adds a tool round-trip + more tokens than the line itself (~9× per continue-epic session) to fix a bug that doesn't occur at runtime. Cheaper kill: a **repo-side lint** — a test that extracts fenced blocks from skill .mds and validates every `── … ──` / `●──●` against the renderer. Proposed rule: **static → literal + lint; dynamic (parameterised labels, where dash-count actually varies) → rendered by code.** *Challenges locked decision #1 (CLI for trivial shapes). Open — the counter-instinct was that prose signposts become renderer calls.*
+
+**Finding 2 — dashboard + key + menu is one projection, not three.** All derive from the same `detail`; the menu rules are pure logic re-executed by Claude per render. One adapter call returns one demarcated block (reasoning data / display / menu); ~500 of the 848 reference lines leave the .md. Also resolves the locked-decision-#3 vs §6 contradiction (one run, one snapshot — individual projections kept as utilities).
+
+**Finding 3 — menus must return action keys; routing uses keys.** Today: code derives `next_action` → prose maps to label → user picks → another table **prefix-matches the label back** to a skill invocation. The label round-trip is the fragility. The menu projection emits, on the reasoning surface, `{n, action, topic, route}` per entry; .md routing collapses to "invoke the `route` of the selected key". This is "ask the engine what's next" made concrete — **the menu is the next-decision API**.
+
+**Finding 4 — cancel/reactivate are the perfect first write commands.** Section H is a five-step transaction (stash status → set cancelled → drop order → KB remove → commit) with prose-specified error tolerance; reactivate has Claude piping a read value back by hand. `engine topic cancel {wu} {phase} {topic}` does it atomically; the .md keeps only the confirmation conversation. Small, high-value, proves the write side early — transitions with invariants, not raw field sets.
+
+## 5. Walkthrough 2 — discussion-session (the in-phase shape)
+
+The opposite character: the LLM owns the content (organic conversation, judgment everywhere) and code only punctuates. The flow (`discussion-session.md`, 407 lines):
+
+| Moment (today) | What it actually is | Ring |
+|---|---|---|
+| A. Background-agent dispatch/check protocol | Judgment + protocol prose | skill .md / LLM |
+| B2–B3. Discuss, navigate, track subtopics | Pure judgment | LLM |
+| B4. Document — update discussion file + map states | Judgment content; **state lives in the discussion .md file**, not the manifest | → finding 5 |
+| B5. Commit after each write (don't batch) | Mechanical, templated message, known file set | engine commit helper (finding 7) |
+| C. Subtopic state transitions ("judgement calls") | Judgment decides; recording is mechanical | LLM decides → finding 5 for the recording |
+| E. Status display — Discussion Map tree (~40 lines of exact glyph/gutter/branch rules) | Deterministic layout over session state | renderer — but see finding 5/6 for who holds the data |
+| F. Off-topic concern detection + heuristic | Judgment | LLM |
+| F. Off-topic gates (log/pivot/ignore, reroute/keep) | Parameterised conversational chrome | .md (conversational moment — adapter/skill side of the views line) |
+| F-reroute. Read live map, candidate menu, triage-landing, scoped commit | Candidates from data; resolution is judgment; landing+commit is a transaction | domain (candidates) + LLM (choice) + engine (transaction) |
+| G/H. Convergence: "all subtopics decided" + count review files in `.workflows/.cache/…` | **Prose rules over filesystem/session state** — pure checks | domain query → finding 8 |
+| G/H. Conclusion gates, wait-for-agents | Conversation | .md |
+
+**Finding 5 — conversational state is the structural decision here.** The Discussion Map (subtopics, states, parent/child) lives **inside the discussion markdown file**, maintained by Claude as the conversation flows. So the data the tree renders is held by Claude, not the manifest — the continue-epic pattern (kernel reads manifest → domain projects) doesn't apply as-is. Two options:
+
+- **(a) Claude stays the data owner** and passes compact node JSON to the renderer at display time. Honest generalisation of "the data owner calls the renderer" — in-session, the owner *is* Claude. Layout math still never hand-drawn; but convergence checks, unresolved-counts, and resume-after-compaction all stay prose/context.
+- **(b) The map becomes structured state** — a sidecar (in-manifest under the discussion item, or `.workflows/{wu}/discussion/.{topic}.map.json`). Claude still makes every state-transition *judgment* but records it via an engine command (`engine map set {subtopic} converging`). Then: the map render is a normal projection; "all decided" and "{N} not yet decided" become domain queries; the discussion file's map section can be *generated*; and **resume after context compaction becomes deterministic** instead of re-derived from prose. Cost: a cheap CLI call per state change during conversation.
+
+Option (b) is where the ambition points (data as source of truth; code derives "what's next" — convergence *is* a next-decision question), and it generalises to every live map in the system. *Note: (a)/(b) both supersede locked decision #2's "Claude never assembles tree JSON" — that rule was written for manifest-backed data and survives there; in-session state needs one of these two answers.* **Open.**
+
+**Finding 6 — the two maps are the same shape.** Discussion map ≅ discovery map structurally: two-level tree, state glyphs, header with count breakdown omitting zero categories. One projection family covers both — evidence for the normalisation push. The `┌─` first-parent here vs hang-off-header in the epic dashboard is exactly the kind of inconsistency that dies in `conventions`.
+
+**Finding 7 — session commits are codifiable.** `git add -- .workflows/{wu}/` + templated message (`discussion({wu}/{topic}): reroute concern to {x}`) appears at every documentation pause and transaction. An engine commit helper (scoped pathspec, conventional message) removes a per-pause hand-typed command — and is exactly the "git can be partly codified" case; implementation-phase commits (unknown file sets) stay with Claude.
+
+**Finding 8 — prose rules reading the filesystem are domain queries.** "Count review files in `.workflows/.cache/{wu}/discussion/{topic}/`" is a session-state fact the adapter should surface (e.g. `review_cycles: 0`) — not an ad-hoc bash + prose rule re-stated in two sections (G and H).
+
+## 6. Moment taxonomy (emerging, cross-flow)
+
+The walkthrough moments generalise into recurring classes — each with one home:
+
+| # | Moment class | Home |
+|---|---|---|
+| 1 | Static chrome (boxes, signposts, gate rules) | Author-time literal + CI lint *(proposed)* |
+| 2 | Parameterised chrome (dynamic labels) | Rendered by code |
+| 3 | Reasoning surface (state dumps) | Adapter prints domain detail |
+| 4 | In-context filtering/counting (leaked derivation) | Domain ring |
+| 5 | Canonical projections (dashboards, maps, menus, legends, callout bodies) | Domain ring, via kernel renderer |
+| 6 | Judgment moments (sequencing, analysis, state-transition calls, content) | LLM — stays |
+| 7 | Conversation (gates, STOPs, selection capture) | Skill .md |
+| 8 | Routing a choice | .md routes on **action keys** from the menu projection *(proposed)* |
+| 9 | State transitions (cancel/reactivate/unblock/triage-landing + commit) | Engine commands, transactional *(proposed)* |
+| 10 | Session/conversational state (live maps) | **Open** — finding 5 fork |
+
+## 7. Open questions
+
+1. **Static chrome** — runtime renderer calls (original instinct) vs author-time literals + lint (walkthrough-1 counter-proposal, cost math above). Affects locked decision #1.
+2. **Action-key routing** — proposed; restructures the .md menu/route sections of every navigation skill.
+3. **Write side in v1** — are cancel/reactivate (+ the session commit helper) in the engine's first iteration, or does v1 stay read-only?
+4. **Conversational state** — markdown-embedded (Claude renders via CLI) vs structured sidecar with engine-recorded transitions. The biggest fork from walkthrough 2; generalises to every live map.
+5. **Adapter thinness in practice** — walked per concrete case; working line so far: views of *domain objects* (maps, dashboards) = domain; views of *conversational moments* (soft gates, off-topic prompts) = adapter/skill.
+6. **Flows still to walk** before the shape is called settled: `workflow-start` (inbox working set — multi-select, archive lifecycle), implementation (task loop — the long-running, judgment-heavy shape), and one entry skill (bootstrap questions).
