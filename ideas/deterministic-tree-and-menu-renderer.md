@@ -729,7 +729,54 @@ Follow-on details (settled in spirit, specifics at design time): the manifest sc
 
 **Finding 8 — prose rules reading the filesystem are domain queries.** "Count review files in `.workflows/.cache/{wu}/discussion/{topic}/`" is a session-state fact the adapter should surface (e.g. `review_cycles: 0`) — not an ad-hoc bash + prose rule re-stated in two sections (G and H).
 
-## 6. Moment taxonomy (emerging, cross-flow)
+## 6. Walkthrough 3 — workflow-start (the front door)
+
+The entry hub: boot gates, the overview, and the inbox working set (`SKILL.md` + `active-work.md` + `inbox-working-set.md`; the lifecycle sub-flows `manage-work-unit.md` / `absorb-into-epic.md` were not walked in detail — noted below).
+
+| Moment (today) | What it actually is | Ring |
+|---|---|---|
+| Step 0: ASCII-art welcome + init signposts | Static chrome (already literal blocks) | author-time literal + lint |
+| Step 0.2: invoke `/workflow-migrate` | Already code (an island); orchestration + commit gate in prose | → finding 9 |
+| Step 0.3: `knowledge check` → branch → `knowledge compact` | **Fixed check pipeline in prose** — two CLI calls + branching, same every boot | → finding 9 |
+| Step 1: `!` head insert overview | Reasoning surface | adapter |
+| Step 2: `has_any_work` branch | Flow control | skill .md |
+| Step 3: Workflow Overview (grouped numbered list + `└─` sub-rows, inbox hint, counts) | Flat list (survey 3A — not a tree), fully data-determined | domain projection |
+| Step 3: menu + per-type routing table | Deterministic from data; routing label-matched | menu projection + action keys (finding 3 again) |
+| "Re-run discovery to refresh" after each sub-flow returns | State refresh | one adapter call |
+| Working set render: tree + wrapped summaries (third gutter user) | Layout = renderer; **summaries are LLM-synthesised from item files** | → findings 10, 11 |
+| Working set add/drop: multi-select lists, NL mapping ("add 2 and 4") | Menus deterministic; mapping free-text to action+selection is judgment | projection + LLM |
+| Archive the set: `mkdir` + `mv` per item + one commit | Hand-executed **transaction** | engine command → finding 12 |
+| Work the set: type-uniform table → work_type pre-seed | Pure lookup | domain |
+
+**Finding 9 — boot is a check pipeline; collapse it to one call.** Step 0 is pure sequential checks (casing aside): migrations status/run, knowledge `check`, knowledge `compact`. All code already — the prose just sequences CLI calls and branches on their output. An `engine boot` (or `status`) returning one decision-ready answer (`ready` / `not-ready: knowledge setup needed` / `migrations applied: [...]`) replaces the per-boot plumbing; the .md keeps only the terminal-stop and commit-gate conversations. Migrations stay idempotent scripts — this changes their *orchestration*, not them.
+
+**Finding 10 — ephemeral session state is a third category.** The working set (items added/dropped during one menu flow) is session state like the discussion map — but *deliberately transient*: it dies when you leave, has no resume value, and drives exactly one derived fact (type-uniform ⇒ `w` available). Forcing it into the manifest would be ceremony. The typed-state-in-manifest decision (§2) is about **durable** state; ephemeral selection state can stay in-context with the data-owner-calls-renderer pattern, or a transient `.cache` file. Needs a ruling so the boundary is principled, not vibes: **durable + derivable-from = manifest; ephemeral + single-flow = context/cache.**
+
+**Finding 11 — projections can contain LLM-authored content.** Working-set rows include a summary Claude *synthesises* from each item file ("do not quote verbatim"). So projection inputs aren't always manifest fields — sometimes a field's *value* is LLM-produced text that the renderer then lays out (wrap, cap at 3 lines, ellipsis). The contract holds (layout is code, content is data) — but worth noting synthesised summaries are cacheable (synthesise once per item, not per render).
+
+**Finding 12 — inbox lifecycle is another transaction family.** Archive (`mkdir -p` + `mv` per item + scoped commit), restore, and hard-delete (`git rm`) are hand-executed multi-step transactions — same family as cancel/reactivate (finding 4). `manage-work-unit.md` and `absorb-into-epic.md` (495 lines, unwalked) almost certainly hold the biggest ones (pivot, absorb) — flagged for a later pass.
+
+## 7. Walkthrough 4 — implementation task loop (the iterating shape)
+
+The most distinct character: a **state machine in prose** (`task-loop.md`, stages A–H looped per task) — Claude drives the loop, executor/reviewer agents do the work, the user gates. Walked: the task loop specifically (bootstrap steps and analysis loop not yet).
+
+| Moment (today) | What it actually is | Ring |
+|---|---|---|
+| A. Next task: manifest `get external_id` → format `reading.md` → "next available task" | **"What's next" over the output format**, not the manifest — task graph lives in the format backend | → finding 14 |
+| A. Reset `fix_attempts`, delete fix-tracking cache, mark in-progress | Per-task setup **transaction** (3 ops) | engine `task start` → finding 13 |
+| B/D. Executor / reviewer dispatch + checkpoints | Delegation + judgment | skill .md / LLM |
+| C. Executor-block menu | Conversation | skill .md |
+| E. Increment counter (CLI), append findings to cache file (templated), branch on `attempts >= 3` and `fix_gate_mode` (CLI get) | Mechanical bookkeeping spread over 3+ tool calls + prose branching | engine `task fix-attempt` → finding 13 |
+| F/G. Fix/task gates + `auto` mode writes | Conversation + single-field state | .md (mode writes ride engine responses) |
+| H. Format `updating.md` + remaining-in-phase check + `key-of` resolution + 3–4 manifest writes | Completion **transaction** | engine `task complete` → finding 13 |
+| H. Commit code + tests + plan progress | Only the agent knows which files it touched | **Claude — the confirmed counter-example** for codified commits |
+| I. Exit → analysis loop | Flow control | skill .md |
+
+**Finding 13 — the loop driver stays Claude; the bookkeeping collapses.** The economic constraint means Claude *is* the loop engine — that's fine, the loop's control flow is conversation-shaped (gates, retries, user comments). What collapses is each iteration's plumbing: today ~6–8 tool calls of counters, cache appends, mode reads, and manifest writes per task; with `engine task start` / `task fix-attempt` / `task complete` it's ~2–3, each returning decision-ready state (`{attempts, threshold_reached, gate_mode, phase_complete, next_task}`) so the .md never does a separate `get` to decide a branch. Over a 30-task plan, that's a large absolute saving — the iterating shapes multiply every win.
+
+**Finding 14 — output formats are a second state backend, capability-split.** "Next available task" is the next-decision API again, but answered by the format adapter (tick / local-markdown / linear), not the manifest. Some backends are code-driveable (tick CLI, local-markdown files); some are inherently Claude-mediated (linear via MCP). The engine's task commands need one contract with a capability split per format driver: engine answers directly where it can, returns a `delegate: {format reading.md}` instruction where only Claude can reach the backend. Open design point — don't flatten this distinction.
+
+## 8. Moment taxonomy (emerging, cross-flow)
 
 The walkthrough moments generalise into recurring classes — each with one home:
 
@@ -745,12 +792,19 @@ The walkthrough moments generalise into recurring classes — each with one home
 | 8 | Routing a choice | .md routes on **action keys** from the menu projection *(proposed)* |
 | 9 | State transitions (cancel/reactivate/unblock/triage-landing + commit) | Engine commands, transactional *(proposed)* |
 | 10 | Session/conversational state (live maps) | Manifest-backed typed state; judgment decides, engine CLI records *(agreed)* |
+| 11 | Boot/check pipelines (migrations, knowledge check + compact) | One engine status call, decision-ready *(proposed)* |
+| 12 | Ephemeral session state (working set) | Context/cache, not manifest — durable+derivable = manifest; ephemeral+single-flow = context *(proposed ruling)* |
+| 13 | LLM-authored content inside projections (synthesised summaries) | LLM produces, projection lays out; cacheable per item |
+| 14 | Loop bookkeeping (counters, caches, progress, format updates) | Engine task commands with decision-ready responses *(proposed)* |
+| 15 | External task backends (output formats) | Format drivers behind one contract, capability-split: code-driveable vs Claude-mediated *(open)* |
 
-## 7. Open questions
+## 9. Open questions
 
 1. **Static chrome** — runtime renderer calls (original instinct) vs author-time literals + lint (walkthrough-1 counter-proposal, cost math above). Affects locked decision #1.
 2. **Action-key routing** — proposed; restructures the .md menu/route sections of every navigation skill.
-3. **Write side in v1** — are cancel/reactivate (+ the session commit helper) in the engine's first iteration, or does v1 stay read-only? *Half-answered by the conversational-state decision (#4): recording map/state transitions IS an engine write, so v1 cannot be read-only — the remaining question is only whether the bigger transactions (cancel/reactivate, triage-landing) join the first wave.*
+3. **Write side in v1** — are cancel/reactivate (+ the session commit helper) in the engine's first iteration, or does v1 stay read-only? *Half-answered by the conversational-state decision (#4): recording map/state transitions IS an engine write, so v1 cannot be read-only — the remaining question is only whether the bigger transactions (cancel/reactivate, triage-landing, inbox archive) join the first wave.*
 4. ~~**Conversational state**~~ — **RESOLVED**: manifest-backed typed state, engine-recorded transitions (finding 5 decision + §2 principle).
 5. **Adapter thinness in practice** — walked per concrete case; working line so far: views of *domain objects* (maps, dashboards) = domain; views of *conversational moments* (soft gates, off-topic prompts) = adapter/skill.
-6. **Flows still to walk** before the shape is called settled: `workflow-start` (inbox working set — multi-select, archive lifecycle), implementation (task loop — the long-running, judgment-heavy shape), and one entry skill (bootstrap questions).
+6. **Ephemeral session state** — ratify the finding-10 ruling (durable+derivable = manifest; ephemeral+single-flow = context/cache) so the typed-state principle has a principled boundary.
+7. **Format-driver capability split** (finding 14) — engine answers directly for code-driveable backends, returns a delegate instruction for Claude-mediated ones; shape the contract before `engine task` commands are designed.
+8. **Flows still to walk**: one entry skill (bootstrap questions), the lifecycle transactions (`manage-work-unit.md`, `absorb-into-epic.md`), the implementation analysis loop, and discovery's session loop (new-work shaping). Four walked so far: continue-epic (navigation), discussion-session (in-phase), workflow-start (front door), implementation task loop (iterating) — the model has absorbed all four with additive, not structural, changes.
