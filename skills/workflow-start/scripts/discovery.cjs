@@ -1,168 +1,18 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const { loadActiveManifests, loadAllManifests, phaseStatus, phaseItems, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+// ---------------------------------------------------------------------------
+// Adapter (read gateway) for workflow-start. Thin by design: collation lives
+// in the engine's domain ring; this script selects which engine answers the
+// skill's flow needs and sections the output.
+//
+//   discovery.cjs        → labelled dump, all work + inbox (head insert)
+//   discovery.cjs view   → DATA + DISPLAY + MENU snapshot (Step 3)
+// ---------------------------------------------------------------------------
 
-const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
-
-const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
-
-function lastCompletedPhase(manifest) {
-  let last = null;
-  if (manifest.work_type === 'epic') {
-    for (const phase of ALL_PHASES) {
-      const items = phaseItems(manifest, phase);
-      if (items.length > 0 && items.some(i => i.status === 'completed')) {
-        last = phase;
-      }
-    }
-  } else {
-    for (const phase of ALL_PHASES) {
-      const s = phaseStatus(manifest, phase);
-      if (s === 'completed') last = phase;
-    }
-  }
-  return last;
-}
-
-function readTitle(filePath) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const match = content.match(/^#\s+(.+)$/m);
-    return match ? match[1].trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-function parseInboxFile(filename) {
-  const match = filename.match(/^(\d{4}-\d{2}-\d{2})--(.+)\.md$/);
-  if (!match) return null;
-  return { date: match[1], slug: match[2] };
-}
-
-function scanInboxDir(baseDir) {
-  const ideas = [];
-  const bugs = [];
-  const quickfixes = [];
-
-  for (const type of ['ideas', 'bugs', 'quickfixes']) {
-    const dir = path.join(baseDir, type);
-    let files;
-    try {
-      files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort();
-    } catch {
-      files = [];
-    }
-    for (const f of files) {
-      const parsed = parseInboxFile(f);
-      if (!parsed) continue;
-      const title = readTitle(path.join(dir, f)) || parsed.slug;
-      const item = { slug: parsed.slug, date: parsed.date, title, file: f };
-      if (type === 'ideas') ideas.push(item);
-      else if (type === 'bugs') bugs.push(item);
-      else quickfixes.push(item);
-    }
-  }
-
-  return {
-    ideas,
-    bugs,
-    quickfixes,
-    idea_count: ideas.length,
-    bug_count: bugs.length,
-    quickfix_count: quickfixes.length,
-    total_count: ideas.length + bugs.length + quickfixes.length,
-  };
-}
-
-function discoverInbox(cwd) {
-  const inboxDir = path.join(cwd, '.workflows', '.inbox');
-  const inbox = scanInboxDir(inboxDir);
-  inbox.archived = scanInboxDir(path.join(inboxDir, '.archived'));
-  return inbox;
-}
+const engine = require('../../workflow-engine/scripts/lib.cjs');
 
 function discover(cwd) {
-  const manifests = loadActiveManifests(cwd);
-  const epics = [];
-  const features = [];
-  const bugfixes = [];
-  const quick_fixes = [];
-  const cross_cutting = [];
-
-  for (const m of manifests) {
-    const state = computeNextPhase(m);
-    if (state.next_phase === 'done') continue;
-
-    const unit = {
-      name: m.name,
-      next_phase: state.next_phase,
-      phase_label: state.phase_label,
-    };
-
-    if (m.work_type === 'epic') {
-      // For epics, include list of phases that have items or status
-      const activePhases = [];
-      for (const phase of EPIC_PHASES) {
-        const items = phaseItems(m, phase);
-        if (items.length > 0) {
-          activePhases.push(phase);
-        }
-      }
-      unit.active_phases = activePhases;
-      epics.push(unit);
-    } else if (m.work_type === 'bugfix') {
-      bugfixes.push(unit);
-    } else if (m.work_type === 'quick-fix') {
-      quick_fixes.push(unit);
-    } else if (m.work_type === 'cross-cutting') {
-      cross_cutting.push(unit);
-    } else {
-      features.push(unit);
-    }
-  }
-
-  // Load completed/cancelled work units across all types
-  const allManifests = loadAllManifests(cwd);
-  const completed = [];
-  const cancelled = [];
-
-  for (const m of allManifests) {
-    if (m.status === 'completed') {
-      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
-    } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
-    }
-  }
-
-  const inbox = discoverInbox(cwd);
-
-  return {
-    epics: { work_units: epics, count: epics.length },
-    features: { work_units: features, count: features.length },
-    bugfixes: { work_units: bugfixes, count: bugfixes.length },
-    quick_fixes: { work_units: quick_fixes, count: quick_fixes.length },
-    cross_cutting: { work_units: cross_cutting, count: cross_cutting.length },
-    completed,
-    cancelled,
-    completed_count: completed.length,
-    cancelled_count: cancelled.length,
-    inbox,
-    state: {
-      has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
-      epic_count: epics.length,
-      feature_count: features.length,
-      bugfix_count: bugfixes.length,
-      quickfix_count: quick_fixes.length,
-      cross_cutting_count: cross_cutting.length,
-      has_inbox: inbox.total_count > 0,
-      inbox_count: inbox.total_count,
-      has_archived: inbox.archived.total_count > 0,
-      archived_count: inbox.archived.total_count,
-    },
-  };
+  return engine.detail.startDetail(cwd);
 }
 
 function format(result) {
@@ -253,8 +103,38 @@ function format(result) {
   return lines.join('\n') + '\n';
 }
 
+// One snapshot for Step 3: reasoning DATA (state flags + the ACTIONS table),
+// the rendered overview (DISPLAY), and the menu (MENU).
+function view() {
+  const detail = discover(process.cwd());
+  const menu = engine.project.startMenu(detail);
+
+  const dataLines = [];
+  dataLines.push(`has_any_work: ${detail.state.has_any_work}`);
+  dataLines.push(`counts: ${detail.state.epic_count} epic, ${detail.state.feature_count} feature, ${detail.state.bugfix_count} bugfix, ${detail.state.quickfix_count} quick-fix, ${detail.state.cross_cutting_count} cross-cutting`);
+  dataLines.push(`inbox_count: ${detail.state.inbox_count}`);
+  dataLines.push(`completed_count: ${detail.completed_count}`);
+  dataLines.push(`cancelled_count: ${detail.cancelled_count}`);
+  dataLines.push('ACTIONS (key  action  work_unit  → route):');
+  for (const k of menu.keys) {
+    let line = `  ${k.key}  ${k.action}  ${k.work_unit || '—'}  → ${k.route || '(internal)'}`;
+    if (k.pre_seed) line += `  (pre_seed: ${k.pre_seed})`;
+    dataLines.push(line);
+  }
+
+  return [
+    engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.displayBlock(engine.project.startOverview(detail)),
+    engine.gateway.menuBlock(menu.rendered),
+  ].join('\n');
+}
+
 if (require.main === module) {
-  process.stdout.write(format(discover(process.cwd())));
+  engine.gateway.runGateway({
+    index: () => format(discover(process.cwd())),
+    view,
+    fallback: () => format(discover(process.cwd())),
+  });
 }
 
 module.exports = { discover, format };
