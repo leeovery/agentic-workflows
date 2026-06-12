@@ -142,7 +142,6 @@ describe('discussion-map projection: golden renders', () => {
     });
     assert.strictEqual(discussionMap('auth-flow', m), [
       '  Discussion Map — Auth Flow (6 subtopics — 2 decided · 1 converging · 1 exploring · 1 pending · 1 deferred)',
-      '',
       '  ├─ ✓ Subsystem Prefix Taxonomy [decided]',
       '  ├─ → Info Line Shape [converging]',
       '  │  ├─ ✓ Field Order [decided]',
@@ -160,7 +159,6 @@ describe('discussion-map projection: golden renders', () => {
     });
     assert.strictEqual(discussionMap('auth-flow', m), [
       '  Discussion Map — Auth Flow (2 subtopics)',
-      '',
       '  ├─ ○ One [pending]',
       '  └─ ○ Two [pending]',
       '',
@@ -171,7 +169,6 @@ describe('discussion-map projection: golden renders', () => {
     const m = manifestWith({ 'prefix-taxonomy': { status: 'pending', parent: null } });
     assert.strictEqual(discussionMap('auth-flow', m), [
       '  Discussion Map — Auth Flow (1 subtopic)',
-      '',
       '  └─ ○ Prefix Taxonomy [pending]',
       '',
     ].join('\n'));
@@ -299,7 +296,6 @@ describe('discussion adapter: map verb', () => {
       '',
       '=== DISPLAY (emit verbatim as a code block) ===',
       '  Discussion Map — Auth Flow (2 subtopics — 1 decided · 1 exploring)',
-      '',
       '  ├─ ◐ Token Refresh [exploring]',
       '  └─ ✓ Session Storage [decided]',
       '',
