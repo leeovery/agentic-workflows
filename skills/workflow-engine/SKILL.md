@@ -27,36 +27,9 @@ Output sections are one-directional: DATA is for reasoning and is never displaye
 node .claude/skills/workflow-engine/scripts/engine.cjs <command> [args]
 ```
 
-### `render signpost <label> [--style step|substep] [--width N]`
+Domain commands (state transitions, queries) land here as they are built.
 
-A step or sub-step marker, padded to width (default 49). One line.
-
-```
-engine render signpost "Construct Specification"
-── Construct Specification ──────────────────────
-
-engine render signpost "Extract Sources" --style substep
-·· Extract Sources ······························
-```
-
-### `render box <title> [--width N]`
-
-A bullet-bordered phase-title box with a trailing blank line.
-
-```
-engine render box "Planning Overview"
-●───────────────────────────────────────────────●
-  Planning Overview
-●───────────────────────────────────────────────●
-```
-
-### `render wrap <text> [--width N] [--prefix STR]`
-
-Word-wrap so that `prefix + line` stays within `width`; every line carries the prefix. Utility/inspection command — in code, call `wrapWithPrefix` directly.
-
-### `render tree [--width N]` (reads a JSON node array on stdin)
-
-A continuous-gutter tree. Pure layout — glyphs, tags, and provenance are composed into the strings by the caller. Each node is `{ title, body?: string[], children?: node[] }`; rows hang off the preceding header via `├─`/sole `└─` (never `┌─`); body lines wrap under a continuous `│` gutter with the budget already subtracting the gutter. Default width 72. `title` is single-line and never wrapped.
+**Rendering is not a runtime CLI concern.** Static chrome (signposts, boxes, gate rules) lives as literal blocks in skill prose; parameterised chrome is rendered in-process by projections. No skill flow calls a render command at runtime — the `render` command group in `engine.cjs` is a development/debugging utility only (e.g. generating a correct literal while authoring prose).
 
 ## Library — `scripts/lib.cjs`
 

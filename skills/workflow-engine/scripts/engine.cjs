@@ -5,8 +5,13 @@
 // Engine CLI — the shell door into the engine.
 //
 // Skills' .md files call this at prescribed points; scripts should prefer the
-// in-process library (lib.cjs). Current surface: render utilities. Domain
-// commands (transitions, queries) land here as they're built.
+// in-process library (lib.cjs). Domain commands (transitions, queries) land
+// here as they're built.
+//
+// The `render` command group is a DEV/DEBUG utility only (authoring aid for
+// prose literals, layout inspection). Skill flows never call it at runtime:
+// static chrome stays literal in prose; parameterised chrome is rendered
+// in-process by projections.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
