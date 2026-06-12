@@ -23,9 +23,11 @@ const manifest = require('./kernel/manifest.cjs');
 const conventions = require('./domain/conventions.cjs');
 const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic.cjs');
+const start = require('./domain/start.cjs');
 const map = require('./domain/map.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const discussionProjections = require('./domain/projections/discussion.cjs');
+const startProjections = require('./domain/projections/start.cjs');
 
 module.exports = {
   render,
@@ -38,11 +40,13 @@ module.exports = {
     mapState: map.mapState,
     SUBTOPIC_STATES: map.SUBTOPIC_STATES,
   },
-  detail: { epicDetail: epic.epicDetail, EPIC_PHASES: epic.EPIC_PHASES },
+  detail: { epicDetail: epic.epicDetail, EPIC_PHASES: epic.EPIC_PHASES, startDetail: start.startDetail },
   project: {
     epicDashboard: epicProjections.epicDashboard,
     epicKey: epicProjections.epicKey,
     epicMenu: epicProjections.epicMenu,
     discussionMap: discussionProjections.discussionMap,
+    startOverview: startProjections.startOverview,
+    startMenu: startProjections.startMenu,
   },
 };
