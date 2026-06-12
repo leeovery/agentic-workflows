@@ -24,32 +24,9 @@ What this is about, why we're discussing it, the problem or opportunity, current
 - [Related spec or doc](link)
 - [Prior discussion](link)
 
-## Discussion Map
-
-A living index of subtopics tracked during the discussion. This is the structural backbone — it grows as the conversation branches, and converges as decisions land. You maintain this section throughout.
-
-### States
-
-- **pending** (`○`) — identified but not yet explored
-- **exploring** (`◐`) — actively being discussed
-- **converging** (`→`) — narrowing toward a decision
-- **decided** (`✓`) — decision reached with rationale documented
-
-### Map
-
-  Discussion Map — {Topic} ({total} subtopics{state_breakdown})
-
-  ┌─ ✓ {Subtopic A} [decided]
-  │  ├─ ✓ {Child subtopic} [decided]
-  │  └─ → {Child subtopic} [converging]
-  ├─ ◐ {Subtopic B} [exploring]
-  │  ├─ ◐ {Child subtopic} [exploring]
-  │  └─ ○ {Child subtopic} [pending]
-  └─ ○ {Subtopic C} [pending]
-
 ---
 
-*Subtopics are documented below as they reach `decided` or accumulate enough exploration to capture. Not every subtopic needs its own section — minor items resolved in passing can be folded into their parent.*
+*Subtopics are documented below as they reach `decided` or accumulate enough exploration to capture. Not every subtopic needs its own section — minor items resolved in passing can be folded into their parent. The Discussion Map (which subtopics exist and their states) lives in the manifest, not this file.*
 
 ---
 
@@ -112,14 +89,13 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 1. Ensure discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Create file: `.workflows/{work_unit}/discussion/{topic}.md`
 3. Start with context: why discussing?
-4. Seed the Discussion Map with initial subtopics (derived from research, handoff, or user input)
-5. Set status via manifest CLI (the skill handles this)
+4. Register in the manifest and seed the Discussion Map via the engine `map add` command (the skill handles this)
 
 **During discussion**:
 - Follow the conversation organically — don't force a rigid question order
-- Update the Discussion Map as subtopics are identified, explored, and decided
+- Track subtopics on the Discussion Map (manifest state, maintained via the engine `map` commands)
 - Document subtopics when they reach `decided` (or accumulate enough exploration to capture)
-- New subtopics emerge naturally — add them to the map as `pending`
+- New subtopics emerge naturally — record them on the map as `pending`
 - Minor items resolved in passing can be folded into their parent subtopic's documentation
 
 **Per-subtopic structure** (when documenting):
@@ -128,9 +104,9 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - **Journey**: The exploration — what we thought, what changed, false paths, debates, insights
 - **Decision**: What we chose, why, the deciding factor
 
-**Discussion Map maintenance**:
-- Update states as the conversation progresses
-- New child subtopics can be added under parents
+**Discussion Map**:
+- Subtopic states (`pending`, `exploring`, `converging`, `decided`, `deferred`) live in the manifest — the file holds the knowledge, the map holds the live state
+- New child subtopics can be added under top-level parents (two levels max)
 - The map is the user's visibility into discussion shape and your tracking mechanism
 
 **Flexibility**: Not every subtopic needs all sections. Some have clear options with pros/cons. Some have heated debate worth capturing. Some are straightforward. Document what naturally came up — don't force structure onto a simple discussion.
@@ -146,7 +122,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 - `## Triage` is a fixed terminal landing zone for off-topic concerns rerouted from other topics; working discussion content stays above it; left as `(none)` until an entry lands
 
 **Complete when**:
-- All subtopics on the Discussion Map are `decided` (or deliberately deferred)
+- All subtopics on the Discussion Map are `decided` (or `deferred`)
 - Trade-offs understood
 - Path forward clear
 - No new subtopics emerging without breaking scope

@@ -93,6 +93,6 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-**Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and add it to the Discussion Map as a `pending` subtopic. Commit the update.
+**Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs map add {work_unit} {topic} {subtopic}`). Commit the update.
 
 **Findings the user deflects**: If the user doesn't want to engage with a finding you raised, note it in the Summary → Open Threads section of the discussion file.
