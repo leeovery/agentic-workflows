@@ -38,6 +38,28 @@ engine map set <work-unit> <topic> <subtopic> <state>                 # pending|
 
 Subtopic names are kebab-case slugs; `--parent` nests under an existing top-level subtopic (two levels max).
 
+**`topic`** — epic topic cancel / reactivate, each one transaction: manifest write (stash/restore `previous_status`, cancel also drops the topic's discovery-map `order`), knowledge-base sync (remove on cancel; re-index on reactivate when the restored status is `completed` in research/discussion/investigation/specification), and a commit scoped to `.workflows/{wu}` (`workflow({wu}): cancel {topic} ({phase})` / `… reactivate …`). The knowledge base is a derived index — its failures land in `warnings`, never block. Response: `{"ok": true, "topic": "…", "phase": "…", "status": "…", "committed": "<short-sha>", "warnings": []}` (`committed: null` plus a note when nothing was staged).
+
+```bash
+engine topic cancel <work-unit> <phase> <topic>
+engine topic reactivate <work-unit> <phase> <topic>
+```
+
+**`inbox`** — archive / restore / delete one or more inbox items as a single transaction. Paths are validated strictly against the inbox layout (`.workflows/.inbox/{ideas|bugs|quickfixes}/…`, archived items under `.inbox/.archived/…`) before anything moves; one commit covers the whole set (`workflow(inbox): archive {slug}` for one item, `… archive {N} items` for several — same forms for restore/delete). Response: `{"ok": true, "archived": [paths…], "committed": "<short-sha>"}` (key matches the verb: `archived` / `restored` / `deleted`).
+
+```bash
+engine inbox archive <path> [<path> …]   # live → .archived/{folder}/
+engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
+engine inbox delete <path> [<path> …]    # git rm archived items
+```
+
+**`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (or `.workflows/.inbox` with `--inbox`) plus commit. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
+
+```bash
+engine commit <work-unit> -m "<message>"
+engine commit --inbox -m "<message>"
+```
+
 **Rendering is not a runtime CLI concern.** Static chrome (signposts, boxes, gate rules) lives as literal blocks in skill prose; parameterised chrome is rendered in-process by projections. No skill flow calls a render command at runtime — the `render` command group in `engine.cjs` is a development/debugging utility only (e.g. generating a correct literal while authoring prose).
 
 ## Library — `scripts/lib.cjs`
@@ -103,4 +125,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, and `tests/scripts/test-engine-map.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-map.cjs`, and `tests/scripts/test-engine-transactions.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
