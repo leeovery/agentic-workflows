@@ -278,36 +278,21 @@ cancelled. You can reactivate it later.
 
 **If user chose `yes`:**
 
-Run two manifest CLI calls to set cancelled status and preserve previous status:
+Run the cancel transaction — one command stashes the current status, marks the item cancelled, drops the topic's discovery-map order, removes its knowledge-base chunks, and commits:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} previous_status {current_status}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status cancelled
+node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
 ```
 
-Drop the topic's discovery-map order so reactivation renumbers it cleanly:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{topic} order
-```
-
-Remove the cancelled topic's chunks from the knowledge base:
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase {phase} --topic {topic}
-```
-
-If the remove command fails, display the error but do not block — the cancellation is already recorded:
+The JSON response reports `status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the cancellation is already recorded:
 
 > *Output the next fenced block as a code block:*
 
 ```
 ⚑ Knowledge removal warning
-  {error details}
+  {warning}
   The topic is cancelled. You can run knowledge remove manually later.
 ```
-
-Commit the change.
 
 > *Output the next fenced block as a code block:*
 
@@ -365,47 +350,26 @@ Recreate with actual items from discovery.
 
 #### If user chose a numbered topic
 
-Read the `previous_status` via manifest CLI:
+Run the reactivate transaction — one command restores the stashed status, removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.{phase}.{topic} previous_status
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}
 ```
 
-Use the returned value as `{previous_status}` in the next two commands to restore the original status and remove the `previous_status` field:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{phase}.{topic} status {previous_status}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.{phase}.{topic} previous_status
-```
-
-**If `previous_status` is `completed` and `phase` is one of the indexed phases (research / discussion / investigation / specification):**
-
-Re-index the reactivated topic's artifact into the knowledge base. Resolve the artifact path by phase:
-- research: `.workflows/{work_unit}/research/{topic}.md`
-- discussion: `.workflows/{work_unit}/discussion/{topic}.md`
-- investigation: `.workflows/{work_unit}/investigation/{topic}.md`
-- specification: `.workflows/{work_unit}/specification/{topic}/specification.md`
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index {artifact_path}
-```
-
-If the index command fails, display the error but do not block — the reactivation is already recorded:
+The JSON response reports the restored `status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the reactivation is already recorded:
 
 > *Output the next fenced block as a code block:*
 
 ```
 ⚑ Knowledge indexing warning
-  {error details}
+  {warning}
   The artifact is saved. Indexing can be retried later.
 ```
-
-Commit the change.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Reactivated "{topic:(titlecase)}" in {phase}. Status restored to {previous_status}.
+Reactivated "{topic:(titlecase)}" in {phase}. Status restored to {status}.
 ```
 
 → Return to **A. State Display and Menu**.
