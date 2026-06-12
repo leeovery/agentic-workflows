@@ -22,6 +22,7 @@ const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/map.cjs');
 const { cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
+const { boot } = require('./domain/boot.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -61,6 +62,7 @@ function parseArgs(argv) {
 const USAGE = `Usage: engine <command> [args]
 
 Commands:
+  boot
   map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   map set <work-unit> <topic> <subtopic> <state>
   topic cancel <work-unit> <phase> <topic>
@@ -70,6 +72,7 @@ Commands:
   inbox delete <path> [<path> …]
   commit <work-unit> -m <message>
   commit --inbox -m <message>
+  commit --workflows -m <message>
   render signpost <label> [--style step|substep] [--width N]
   render box <title> [--width N]
   render wrap <text> [--width N] [--prefix STR]
@@ -170,8 +173,22 @@ function runInbox(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// commit — the scoped commit helper: stage `.workflows/{wu}` (or the inbox
-// with --inbox) and commit. A clean tree is fine: {committed: null}.
+// boot — the entry pipeline: migrations (hard error on failure), knowledge
+// check (failure reports not-ready), compact when ready (warn-don't-block).
+// ---------------------------------------------------------------------------
+
+function runBoot() {
+  try {
+    respond(boot(process.cwd()));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// commit — the scoped commit helper: stage `.workflows/{wu}` (the inbox with
+// --inbox, or the whole tree with --workflows) and commit. A clean tree is
+// fine: {committed: null}.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -180,19 +197,24 @@ function runCommit(argv) {
     /** @type {string|null} */ let workUnit = null;
     /** @type {string|null} */ let message = null;
     let inbox = false;
+    let workflows = false;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '-m' || a === '--message') message = argv[++i];
       else if (a === '--inbox') inbox = true;
+      else if (a === '--workflows') workflows = true;
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
     }
-    if (!message || (inbox ? workUnit !== null : workUnit === null)) {
-      throw new Error('Usage: engine commit <work-unit> -m <message> | engine commit --inbox -m <message>');
+    const scopeCount = [inbox, workflows, workUnit !== null].filter(Boolean).length;
+    if (!message || scopeCount !== 1) {
+      throw new Error('Usage: engine commit <work-unit> -m <message> | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
     }
     const cwd = process.cwd();
     let scope;
-    if (inbox) {
+    if (workflows) {
+      scope = '.workflows';
+    } else if (inbox) {
       scope = '.workflows/.inbox';
     } else {
       const wu = /** @type {string} */ (workUnit);
@@ -246,6 +268,9 @@ function runRender(argv) {
 function runCli(argv) {
   const [command, ...rest] = argv;
   switch (command) {
+    case 'boot':
+      runBoot();
+      break;
     case 'map':
       runMap(rest);
       break;
