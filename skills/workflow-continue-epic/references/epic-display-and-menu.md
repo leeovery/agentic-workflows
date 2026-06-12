@@ -32,7 +32,7 @@ The output is one snapshot in three demarcated sections:
 - **DISPLAY** — the dashboard and key. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim as markdown (not a code block).
 
-Emit the DISPLAY section, then the MENU section.
+Emit the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 **STOP.** Wait for user response.
 
