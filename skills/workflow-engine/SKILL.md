@@ -49,6 +49,14 @@ engine.conventions.title({ glyph, label, tag })   // → "◐ Menu And Admin [re
 engine.conventions.tag('decided')                 // → "[decided]"
 engine.conventions.derivedFrom('from exploration')// → "↳ From exploration"
 engine.conventions.discoveryGlyph('researching')  // → "◐"
+engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
+engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
+
+// domain: detail builders + projections
+engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
+engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
+engine.project.epicKey(detail)                    // → Key block ('' for a brand-new epic)
+engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
 
 // gateway: adapter harness
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
@@ -76,4 +84,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs` and `tests/scripts/test-engine-gateway.cjs` (run `node --test tests/scripts/test-render.cjs tests/scripts/test-engine-gateway.cjs`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, and `tests/scripts/test-engine-epic-projections.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
