@@ -20,11 +20,12 @@ You receive via the orchestrator's prompt:
 ## Your Process
 
 1. **Read the discussion file** completely before beginning assessment
-2. **Assess coverage** — are there subtopics still `pending` or `exploring` that should have progressed? Are there obvious adjacent concerns never mentioned on the Discussion Map? (Security, error handling, scalability, observability, migration, rollback — depending on the domain)
-3. **Assess decision quality** — does each decision have rationale? Were alternatives explored? Are trade-offs acknowledged? Is confidence appropriate?
-4. **Assess depth** — are there shallow areas? Are edge cases identified? Were false paths documented?
-5. **Identify gaps** — implicit assumptions never validated, external dependencies not acknowledged, questions the participants should be asking but haven't
-6. **Write findings** to the output file path via the `.txt`-then-rename mechanism (see Output File Format)
+2. **Read the Discussion Map** — subtopic states live in the work unit's manifest, not the discussion file. From the discussion file path `.workflows/{work_unit}/discussion/{topic}.md`, read `.workflows/{work_unit}/manifest.json` → `phases.discussion.items.{topic}.subtopics` (states: `pending`, `exploring`, `converging`, `decided`, `deferred`)
+3. **Assess coverage** — are there subtopics still `pending` or `exploring` that should have progressed? Are there obvious adjacent concerns never mentioned on the Discussion Map? (Security, error handling, scalability, observability, migration, rollback — depending on the domain)
+4. **Assess decision quality** — does each decision have rationale? Were alternatives explored? Are trade-offs acknowledged? Is confidence appropriate?
+5. **Assess depth** — are there shallow areas? Are edge cases identified? Were false paths documented?
+6. **Identify gaps** — implicit assumptions never validated, external dependencies not acknowledged, questions the participants should be asking but haven't
+7. **Write findings** to the output file path via the `.txt`-then-rename mechanism (see Output File Format)
 
 ## Hard Rules
 
