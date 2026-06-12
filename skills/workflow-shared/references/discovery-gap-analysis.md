@@ -27,7 +27,7 @@ Analyzing completed research and discussions for coverage gaps...
 Read `.workflows/{work_unit}/research/{name}.md` for each `completed_research` name and `.workflows/{work_unit}/discussion/{name}.md` for each `completed_discussion` name. Skip files missing on disk. Items with `in-progress`, `superseded`, or `cancelled` status are not in the input set.
 
 For each discussion, note:
-- The Discussion Map state (topics and their statuses: pending, exploring, converging, decided)
+- The subtopic map — final states live in the work unit manifest under `phases.discussion.items.{name}.subtopics` (`decided` / `deferred` for completed discussions; legacy files may instead carry a Discussion Map section inline)
 - Key decisions made and their dependencies on other topics
 - Deferred items, open threads, and unresolved questions
 - Integration points with other discussions

@@ -59,14 +59,13 @@ Best practices for documenting discussions. For DOCUMENTATION only - no plans or
 
 At natural pauses — not every exchange, but when something meaningful has been completed, explored, or uncovered — update the file on disk:
 
-- Update Discussion Map states as subtopics progress
+- Record Discussion Map state changes as subtopics progress (engine `map set`) and new subtopics as they emerge (engine `map add`)
 - Document subtopics when they reach `decided`
-- Add new subtopics to the map as they emerge
 - Document false paths when identified
 - Record decisions (even provisional ones) with rationale
 - Capture provisional thinking for in-progress subtopics before context refresh
 
-Then commit. The file is the source of truth, not the conversation.
+Then commit. The file and manifest are the source of truth, not the conversation.
 
 ## Common Pitfalls
 
@@ -83,7 +82,7 @@ Then commit. The file is the source of truth, not the conversation.
 ## Quality Check
 
 Before marking discussion complete:
-- ✅ All Discussion Map subtopics are `decided` or deliberately deferred
+- ✅ All Discussion Map subtopics are `decided` or `deferred`
 - ✅ Context clear
 - ✅ Options explored with trade-offs
 - ✅ False paths documented
