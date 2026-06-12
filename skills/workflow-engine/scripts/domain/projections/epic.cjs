@@ -491,9 +491,6 @@ function commandOptions(workUnit, detail, hasMap) {
   if (detail.cancelled.length > 0) {
     opts.push({ key: 'e', word: 'reactivate', action: 'reactivate_topic', topic: null, route: null, label: 'Reactivate a cancelled topic' });
   }
-  if (Object.keys(detail.phases).length > 0) {
-    opts.push({ key: 'm', word: 'map', action: 'view_map', topic: null, route: null, label: hasMap ? 'View pipeline map' : 'View epic dependency map' });
-  }
   return opts;
 }
 
