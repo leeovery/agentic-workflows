@@ -5,11 +5,15 @@
   "description": "Agentic engineering workflows for Claude Code",
   "scripts": {
     "build": "node build/knowledge.build.js",
-    "knowledge:repl": "node scripts/knowledge-repl.js"
+    "knowledge:repl": "node scripts/knowledge-repl.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test tests/scripts/test-render.cjs tests/scripts/test-engine-gateway.cjs"
   },
   "devDependencies": {
-    "@orama/orama": "3.1.18",
     "@msgpack/msgpack": "3.1.3",
-    "esbuild": "0.28.0"
+    "@orama/orama": "3.1.18",
+    "@types/node": "^25.9.3",
+    "esbuild": "0.28.0",
+    "typescript": "^6.0.3"
   }
 }

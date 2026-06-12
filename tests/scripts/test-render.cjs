@@ -11,7 +11,7 @@ const {
   signpost,
   box,
   renderTree,
-} = require('../../skills/workflow-render/scripts/render.cjs');
+} = require('../../skills/workflow-engine/scripts/kernel/render.cjs');
 
 const {
   capitalise,
@@ -19,7 +19,7 @@ const {
   derivedFrom,
   title,
   discoveryGlyph,
-} = require('../../skills/workflow-render/scripts/conventions.cjs');
+} = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
 // A realistic discovery-map fixture, composed via the conventions layer (proving
 // the split: conventions builds the strings, the renderer lays them out).
