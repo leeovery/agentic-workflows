@@ -643,7 +643,7 @@ The onion. The engine is central but **"dumb" means skill-blind, not domain-blin
 
 **Evidence the codebase already wants this:** `discovery-utils.cjs` is a half-formed domain ring (`computeTopicLifecycle`, `computeNextPhase`, gating); the render spike split exactly on the kernel/domain line (`render.cjs` = kernel, `conventions.cjs` = domain).
 
-**Typed state lives in the manifest; knowledge lives in markdown** *(agreed 2026-06-11, resolving walkthrough-2 finding 5)*. Anything that fits a typed system — subtopic states (`pending`/`exploring`/`converging`/`decided`), map items, lifecycle markers — is an **enum, not prose**, and belongs in the manifest. It should never have been in markdown; it's a remnant of the everything-was-markdown era that state has been steadily migrating out of. The markdown document keeps what markdown is *for*: the knowledge — transcript, discoveries, pathways, failed paths, rationale, the conversation itself. The agent and human still drive everything conversationally; but the moment an item lands on a map or a state changes, that's a CLI call recording it. Judgment decides, code records.
+**Typed state lives in the manifest; knowledge lives in markdown** *(agreed 2026-06-11, resolving walkthrough-2 finding 5)*. Anything that fits a typed system — subtopic states (`pending`/`exploring`/`converging`/`decided`), map items, lifecycle markers — is an **enum, not prose**, and belongs in the manifest. It should never have been in markdown; it's a remnant of the everything-was-markdown era that state has been steadily migrating out of. The markdown document keeps what markdown is *for*: the knowledge — transcript, discoveries, pathways, failed paths, rationale, the conversation itself. The agent and human still drive everything conversationally; but the moment an item lands on a map or a state changes, that's a CLI call recording it. Judgment decides, code records. *Boundary ratified 2026-06-12 (finding 10): this applies to **durable, derivable-from** state; ephemeral single-flow state (e.g. the inbox working set) stays in context or `.cache` — no manifest ceremony for state that dies with the flow.*
 
 **Settled mechanics** (from the earlier discussion, still standing):
 
@@ -782,29 +782,42 @@ The walkthrough moments generalise into recurring classes — each with one home
 
 | # | Moment class | Home |
 |---|---|---|
-| 1 | Static chrome (boxes, signposts, gate rules) | Author-time literal + CI lint *(proposed)* |
+| 1 | Static chrome (boxes, signposts, gate rules) | Author-time literal + CI lint *(agreed 2026-06-12)* |
 | 2 | Parameterised chrome (dynamic labels) | Rendered by code |
 | 3 | Reasoning surface (state dumps) | Adapter prints domain detail |
 | 4 | In-context filtering/counting (leaked derivation) | Domain ring |
 | 5 | Canonical projections (dashboards, maps, menus, legends, callout bodies) | Domain ring, via kernel renderer |
 | 6 | Judgment moments (sequencing, analysis, state-transition calls, content) | LLM — stays |
 | 7 | Conversation (gates, STOPs, selection capture) | Skill .md |
-| 8 | Routing a choice | .md routes on **action keys** from the menu projection *(proposed)* |
-| 9 | State transitions (cancel/reactivate/unblock/triage-landing + commit) | Engine commands, transactional *(proposed)* |
+| 8 | Routing a choice | .md routes on **action keys** from the menu projection *(agreed 2026-06-12)* |
+| 9 | State transitions (cancel/reactivate/unblock/triage-landing + commit) | Engine commands, transactional *(agreed — small transactions in first wave; pivot/absorb later)* |
 | 10 | Session/conversational state (live maps) | Manifest-backed typed state; judgment decides, engine CLI records *(agreed)* |
 | 11 | Boot/check pipelines (migrations, knowledge check + compact) | One engine status call, decision-ready *(proposed)* |
-| 12 | Ephemeral session state (working set) | Context/cache, not manifest — durable+derivable = manifest; ephemeral+single-flow = context *(proposed ruling)* |
+| 12 | Ephemeral session state (working set) | Context/cache, not manifest — durable+derivable = manifest; ephemeral+single-flow = context *(agreed 2026-06-12)* |
 | 13 | LLM-authored content inside projections (synthesised summaries) | LLM produces, projection lays out; cacheable per item |
 | 14 | Loop bookkeeping (counters, caches, progress, format updates) | Engine task commands with decision-ready responses *(proposed)* |
 | 15 | External task backends (output formats) | Format drivers behind one contract, capability-split: code-driveable vs Claude-mediated *(open)* |
 
-## 9. Open questions
+## 9. Open questions — resolutions (2026-06-12)
 
-1. **Static chrome** — runtime renderer calls (original instinct) vs author-time literals + lint (walkthrough-1 counter-proposal, cost math above). Affects locked decision #1.
-2. **Action-key routing** — proposed; restructures the .md menu/route sections of every navigation skill.
-3. **Write side in v1** — are cancel/reactivate (+ the session commit helper) in the engine's first iteration, or does v1 stay read-only? *Half-answered by the conversational-state decision (#4): recording map/state transitions IS an engine write, so v1 cannot be read-only — the remaining question is only whether the bigger transactions (cancel/reactivate, triage-landing, inbox archive) join the first wave.*
+Walking concluded after four flows: continue-epic (navigation), discussion-session (in-phase), workflow-start (front door), implementation task loop (iterating). Walkthroughs 3–4 produced only additive taxonomy changes — the convergence signal. Remaining flows (entry-skill bootstrap, manage/absorb transactions, analysis loop, discovery session loop) get walked per-skill during migration, where tests catch the details.
+
+1. ~~**Static chrome**~~ — **RESOLVED: literals + lint.** Static blocks stay literal in .mds, validated by a CI test against the renderer; runtime rendering only for parameterised content. *Supersedes locked decision #1's "CLI for trivial shapes" at static call sites — the CLI remains as a utility.*
+2. ~~**Action-key routing**~~ — **RESOLVED: yes.** Menu projections emit `{key, action, topic, route}` on the reasoning surface; .mds route on the selected key. Label prefix-match tables go.
+3. ~~**Write side in v1**~~ — **RESOLVED: transitions + small transactions.** Map-state recording (mandated by #4) plus cancel/reactivate, inbox archive, and the scoped session-commit helper. Pivot/absorb wait for a later wave.
 4. ~~**Conversational state**~~ — **RESOLVED**: manifest-backed typed state, engine-recorded transitions (finding 5 decision + §2 principle).
 5. **Adapter thinness in practice** — walked per concrete case; working line so far: views of *domain objects* (maps, dashboards) = domain; views of *conversational moments* (soft gates, off-topic prompts) = adapter/skill.
-6. **Ephemeral session state** — ratify the finding-10 ruling (durable+derivable = manifest; ephemeral+single-flow = context/cache) so the typed-state principle has a principled boundary.
-7. **Format-driver capability split** (finding 14) — engine answers directly for code-driveable backends, returns a delegate instruction for Claude-mediated ones; shape the contract before `engine task` commands are designed.
-8. **Flows still to walk**: one entry skill (bootstrap questions), the lifecycle transactions (`manage-work-unit.md`, `absorb-into-epic.md`), the implementation analysis loop, and discovery's session loop (new-work shaping). Four walked so far: continue-epic (navigation), discussion-session (in-phase), workflow-start (front door), implementation task loop (iterating) — the model has absorbed all four with additive, not structural, changes.
+6. ~~**Ephemeral session state**~~ — **RESOLVED: ratified.** Durable + derivable-from → manifest; ephemeral + single-flow → context/`.cache` (§2 boundary note).
+7. **Format-driver capability split** (finding 14) — engine answers directly for code-driveable backends, returns a delegate instruction for Claude-mediated ones; shape the contract when `engine task` commands are designed (implementation skill's migration turn). Not blocking.
+
+## 10. Build sequence (PROPOSED — for mark-up)
+
+Each phase is its own PR off `main` (one PR per change); this design log stays on its long-lived branch and merges at the end. Iterative throughout — fixtures + tests per phase, reasoning surfaces byte-stable unless intentionally changed.
+
+**Phase 0 — engine skeleton + chrome lint.** Create `skills/workflow-engine/scripts/` (kernel/, domain/, `engine.cjs` stub). Move `render.cjs` → kernel, `conventions.cjs` → domain; retire `workflow-render` (unwired, zero cost). JSDoc typedefs + `tsc --noEmit` gate wired into tests. The chrome lint: a test extracting fenced blocks from skill .mds and validating every `── … ──` / `●──●` against the renderer — fixes the width-drift class repo-wide with no runtime change.
+
+**Phase 1 — the beachhead: epic dashboard read path.** Seed the domain ring (epic detail builder over `discovery-utils` functions); projections: dashboard + key + menu with action keys; continue-epic adapter emits the combined demarcated block (DATA / DISPLAY / MENU); `epic-display-and-menu.md` sections A–C collapse to "call, emit verbatim, route on keys". Kills the motivating bug at its origin. Tree content-width decision (49 vs ~65) made here, as a named constant in conventions.
+
+**Phase 2 — write side, first wave.** Manifest schema for discussion-map subtopics + migration extracting map state from in-flight discussions; `engine map` transition commands; `discussion-session.md` re-pointed (map render = projection; convergence/unresolved = domain queries); cancel/reactivate + inbox archive transactions; session commit helper.
+
+**Phase 3+ — skill-by-skill.** workflow-start (overview projection + `engine boot` consolidation), then the remaining navigation/entry skills one at a time; implementation last of the big ones (`engine task` commands + the format-driver capability contract designed together). Each migration walks its own flow's details; surprises land in that skill's PR, not the platform.
