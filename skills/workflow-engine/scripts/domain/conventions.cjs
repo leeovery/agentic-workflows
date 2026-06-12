@@ -12,10 +12,24 @@
 // This layer grows as call sites are wired; only add what a real consumer needs.
 // ---------------------------------------------------------------------------
 
+// Tree content width: total rendered width INCLUDING the gutter — the
+// deliberate narrow-wrap choice (narrow reads well on mobile / split panes,
+// and pre-empts terminal soft-wrap orphaning the │ gutter). Dividers, boxes,
+// and markers stay at the kernel's canonical 49; trees wrap to this.
+const TREE_WIDTH = 65;
+
 // Upper-case the first character (the rest is left untouched).
 /** @param {string} s */
 function capitalise(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+// Human-readable display name (the `(titlecase)` casing hint): split on
+// hyphens and underscores, capitalise the first letter of each word, join
+// with spaces. `auth-flow` → `Auth Flow`.
+/** @param {string} s */
+function titlecase(s) {
+  return String(s).split(/[-_\s]+/).filter(Boolean).map(capitalise).join(' ');
 }
 
 // `[term]` — the item status / lifecycle suffix.
@@ -58,4 +72,4 @@ function discoveryGlyph(tier) {
   return DISCOVERY_GLYPH[/** @type {keyof typeof DISCOVERY_GLYPH} */ (tier)] || '';
 }
 
-module.exports = { capitalise, tag, derivedFrom, title, discoveryGlyph, DISCOVERY_GLYPH };
+module.exports = { TREE_WIDTH, capitalise, titlecase, tag, derivedFrom, title, discoveryGlyph, DISCOVERY_GLYPH };
