@@ -782,7 +782,7 @@ The walkthrough moments generalise into recurring classes — each with one home
 
 | # | Moment class | Home |
 |---|---|---|
-| 1 | Static chrome (boxes, signposts, gate rules) | Author-time literal + CI lint *(agreed 2026-06-12)* |
+| 1 | Static chrome (boxes, signposts, gate rules) | Author-time literal; one-time normalisation pass, no lint — drift tolerated *(agreed 2026-06-12)* |
 | 2 | Parameterised chrome (dynamic labels) | Rendered by code |
 | 3 | Reasoning surface (state dumps) | Adapter prints domain detail |
 | 4 | In-context filtering/counting (leaked derivation) | Domain ring |
@@ -802,7 +802,7 @@ The walkthrough moments generalise into recurring classes — each with one home
 
 Walking concluded after four flows: continue-epic (navigation), discussion-session (in-phase), workflow-start (front door), implementation task loop (iterating). Walkthroughs 3–4 produced only additive taxonomy changes — the convergence signal. Remaining flows (entry-skill bootstrap, manage/absorb transactions, analysis loop, discovery session loop) get walked per-skill during migration, where tests catch the details.
 
-1. ~~**Static chrome**~~ — **RESOLVED: literals + lint.** Static blocks stay literal in .mds, validated by a CI test against the renderer; runtime rendering only for parameterised content. *Supersedes locked decision #1's "CLI for trivial shapes" at static call sites — the CLI remains as a utility.*
+1. ~~**Static chrome**~~ — **RESOLVED (revised same day): literals, one-time normalisation pass, no lint.** Static blocks stay literal in .mds; a single pass normalises widths/shapes across the repo and that's it — slight future drift is cosmetic and tolerated, not worth standing enforcement. Runtime rendering only for parameterised content (inside projections). The leverage is elsewhere: menus, trees, manifest calls. *Supersedes locked decision #1's "CLI for trivial shapes" at static call sites — the CLI remains as a utility.*
 2. ~~**Action-key routing**~~ — **RESOLVED: yes.** Menu projections emit `{key, action, topic, route}` on the reasoning surface; .mds route on the selected key. Label prefix-match tables go.
 3. ~~**Write side in v1**~~ — **RESOLVED: transitions + small transactions.** Map-state recording (mandated by #4) plus cancel/reactivate, inbox archive, and the scoped session-commit helper. Pivot/absorb wait for a later wave.
 4. ~~**Conversational state**~~ — **RESOLVED**: manifest-backed typed state, engine-recorded transitions (finding 5 decision + §2 principle).
@@ -814,7 +814,7 @@ Walking concluded after four flows: continue-epic (navigation), discussion-sessi
 
 Each phase is its own PR off `main` (one PR per change); this design log stays on its long-lived branch and merges at the end. Iterative throughout — fixtures + tests per phase, reasoning surfaces byte-stable unless intentionally changed.
 
-**Phase 0 — engine skeleton + chrome lint.** Create `skills/workflow-engine/scripts/` (kernel/, domain/, `engine.cjs` stub). Move `render.cjs` → kernel, `conventions.cjs` → domain; retire `workflow-render` (unwired, zero cost). JSDoc typedefs + `tsc --noEmit` gate wired into tests. The chrome lint: a test extracting fenced blocks from skill .mds and validating every `── … ──` / `●──●` against the renderer — fixes the width-drift class repo-wide with no runtime change.
+**Phase 0 — engine skeleton.** Create `skills/workflow-engine/scripts/` (kernel/, domain/, `engine.cjs` stub). Move `render.cjs` → kernel, `conventions.cjs` → domain; retire `workflow-render` (unwired, zero cost). JSDoc typedefs + `tsc --noEmit` gate wired into tests. A one-time normalisation pass over static chrome in the .mds (widths/shapes made consistent) can ride along or land any time — no standing lint; drift is cosmetic and tolerated.
 
 **Phase 1 — the beachhead: epic dashboard read path.** Seed the domain ring (epic detail builder over `discovery-utils` functions); projections: dashboard + key + menu with action keys; continue-epic adapter emits the combined demarcated block (DATA / DISPLAY / MENU); `epic-display-and-menu.md` sections A–C collapse to "call, emit verbatim, route on keys". Kills the motivating bug at its origin. Tree content-width decision (49 vs ~65) made here, as a named constant in conventions.
 
