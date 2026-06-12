@@ -188,18 +188,10 @@ Remove the chosen items from the working set; they stay in the inbox. If the set
 
 ## D. Archive the Set
 
-Archive every item in the working set out of the inbox. For each item, move its file into the matching `.archived/{folder}` folder — `{folder}` is the item's inbox folder (`ideas` / `bugs` / `quickfixes`):
+Archive every item in the working set out of the inbox — one command moves each file into `.archived/` under its inbox folder and commits the whole set:
 
 ```bash
-mkdir -p .workflows/.inbox/.archived/{folder}/
-mv {path} .workflows/.inbox/.archived/{folder}/
-```
-
-Once every item has moved, commit the whole set in one commit — `archive {slug}` for a single item, `archive {N} items` for several:
-
-```bash
-git add -- .workflows/.inbox/
-git commit -m "workflow(inbox): archive {slug | N items}"
+node .claude/skills/workflow-engine/scripts/engine.cjs inbox archive {path} [{path} …]
 ```
 
 > *Output the next fenced block as a code block:*

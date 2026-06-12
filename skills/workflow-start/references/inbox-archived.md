@@ -95,13 +95,10 @@ Read the file and render its full content.
 
 #### If user chose `u`/`unarchive`
 
-Move the file back into its inbox folder and commit:
+Move the file back into its inbox folder and commit — one command:
 
 ```bash
-mkdir -p .workflows/.inbox/{type}/
-mv .workflows/.inbox/.archived/{type}/{date}--{slug}.md .workflows/.inbox/{type}/
-git add -- .workflows/.inbox/
-git commit -m "workflow(inbox): restore {slug}"
+node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore .workflows/.inbox/.archived/{type}/{date}--{slug}.md
 ```
 
 > *Output the next fenced block as a code block:*
@@ -137,8 +134,7 @@ repo and cannot be undone.
 **If user chose `y`/`yes`:**
 
 ```bash
-git rm .workflows/.inbox/.archived/{type}/{date}--{slug}.md
-git commit -m "workflow(inbox): delete {slug}"
+node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete .workflows/.inbox/.archived/{type}/{date}--{slug}.md
 ```
 
 > *Output the next fenced block as a code block:*
