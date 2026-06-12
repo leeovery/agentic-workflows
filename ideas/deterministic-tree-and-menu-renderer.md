@@ -667,7 +667,109 @@ skills/{skill}/scripts/discovery.cjs   ← adapters, stay in-skill, require() th
 - `manifest.cjs` and `knowledge.cjs` remain compatibility islands, absorbed later. (Their CLI surfaces are referenced from dozens of skill files — keep the surfaces, swap the internals.)
 - Multi-file, no build: cross-skill relative `require()` already works installed (adapters require `../../workflow-shared/` today).
 
-## 4. Walkthrough 1 — continue-epic (the navigation shape)
+## 4. Invocation model — the session lifecycle (agreed 2026-06-12)
+
+How a skill session actually talks to the layers, top to bottom. The principle is **layered exposure**: different call points expose different slices; nothing is dumped before the flow needs it.
+
+### Two doors, one engine
+
+- **Reads and renders go through the skill's adapter** (`discovery.cjs`). The adapter is the skill's *only* read surface — it decides which engine projections/queries this skill's flow ever sees (the "controlled exposure"). Claude never assembles render input and never calls the engine directly for views.
+- **Writes/transitions go to the engine CLI directly** (`engine map set …`, `engine topic cancel …`). Domain commands with fixed semantics — nothing for an adapter to shape; proxying them would be a layer with no job. Mirrors how skills call `manifest.cjs` directly today; engine commands replace those call sites one-for-one.
+
+Underneath, both doors hit the same engine library — adapters `require()` it in-process; the CLI exposes the same functions at the .md's prescribed call points.
+
+### The verb vocabulary
+
+Every adapter exposes the same uniform verbs (via a shared ~30-line harness — the "thin CLI harness" decided early on). The .md's prescribed call names the verb, so the script never guesses what a call is for:
+
+| Verb | When | Returns |
+|---|---|---|
+| *(no args)* | `!` head insert at skill load (parameterless by mechanism) | **index only** — units, counts, status labels; enough to select/validate |
+| `data {wu}` | housekeeping steps after the unit is known | DATA only — flow-branch flags the .md tests |
+| `view {wu}` | the display moment | **one run, one snapshot**: DATA (flags + action-key table) + DISPLAY + MENU, demarcated |
+| skill-specific sub-views (`map {wu}`, `cancel-menu {wu}`, …) | only on the branch that needs them | that projection's block |
+
+### The lifecycle (continue-epic as the example)
+
+```
+LOAD      !discovery.cjs            → index. (count check, select menu, validation)
+SELECTED  discovery.cjs data {wu}   → branch flags for steps 5–7
+          …housekeeping runs; some steps mutate state (sequencing, analyses)…
+DISPLAY   discovery.cjs view {wu}   → fresh snapshot: DATA + DISPLAY + MENU
+          emit DISPLAY/MENU verbatim · STOP · route on selected key's `route`
+BRANCH    discovery.cjs cancel-menu {wu}   → sub-view, only if that branch taken
+WRITE     engine topic cancel {wu} {phase} {topic}   → after the .md's confirmation
+          engine map set {wu} {topic} {sub} converging → mid-session, when judgment lands
+```
+
+The .md prescribes every call point — "run X, emit DISPLAY verbatim, route on keys". Claude never decides spontaneously when to render. Skill files stop containing *how to draw* and keep *when to show*.
+
+### The reasoning surface thins drastically
+
+Auditing today's epic dump against this model: `phases` breakdown, `discovery_map` rows + summaries, `map_summary` exist only to draw the display — they leave DATA entirely. `next_phase_ready`, `gating`, `convergence_state`, recommendation ordering exist only to compose the menu — they become engine-internal, surfacing as the finished MENU plus its key table. What survives on DATA: flow-branch flags the .md actually tests, the **action-key table** (which *is* the routing — the 16-row label-matching table dies with it), and small facts for conversation. ~80 lines per epic becomes ~15. Both surfaces project from one in-process object per run, so they can't drift (locked decision #4).
+
+### Pseudocode — a display step and a write step through the layers
+
+Illustrative, not final API. The point is the *thinness* at each layer:
+
+```js
+// ── skill .md (Step 8) ─────────────────────────────────────────────
+//   ```bash
+//   node .claude/skills/workflow-continue-epic/scripts/discovery.cjs view {work_unit}
+//   ```
+//   Emit the DISPLAY and MENU sections verbatim. STOP.
+//   On selection: invoke the `route` of the chosen key from the DATA action table.
+
+// ── adapter: workflow-continue-epic/scripts/discovery.cjs ──────────
+const engine = require('../../workflow-engine/scripts/lib.cjs');
+
+runGateway({                                    // shared harness: argv → verb
+  index: () => engine.project.workUnitsIndex({ type: 'epic' }),
+
+  data: (wu) => dataBlock(
+    pick(engine.detail.epic(wu),                // domain builds the one object
+      ['count', 'needs_sequencing', 'analysis_caches', 'items_to_recover'])),
+
+  view: (wu) => {
+    const epic = engine.detail.epic(wu);        // one snapshot, in-process
+    const menu = engine.project.epicMenu(epic); // entries+keys+routes+recommendation
+    return [
+      dataBlock({ flags: pick(epic, FLAGS), actions: menu.keys }),
+      displayBlock(engine.project.epicDashboard(epic)),
+      menuBlock(menu.rendered),
+    ].join('\n');
+  },
+
+  map:        (wu) => engine.project.pipelineMap(wu),     // sub-views,
+  cancelMenu: (wu) => engine.project.cancellableTopics(wu), // branch-only
+});
+
+// ── domain ring: workflow-engine/scripts/domain/ ───────────────────
+// detail.epic(wu)         — lifecycle, gating, next-actions (the ontology)
+// project.epicDashboard   — detail → tree nodes + stage dividers → kernel
+// project.epicMenu        — detail → [{key, action, topic, route, label,
+//                           recommended}] + rendered block
+
+// ── kernel: workflow-engine/scripts/kernel/ ────────────────────────
+// manifest.load(wu)       — read + schema-validate (throws loudly)
+// renderTree / signpost / wrap — pure layout, no workflow words
+
+// ── a write moment (.md section H, after the user confirms) ────────
+//   ```bash
+//   node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {wu} {phase} {topic}
+//   ```
+// engine internally: stash previous_status → set cancelled → drop order
+//                    → KB remove (warn, don't block) → scoped commit
+// prints: { ok: true, committed: "<sha>", warnings: [] }   ← decision-ready
+```
+
+The adapter stays a decorator: it names which engine answers this skill uses and how they're sectioned — nothing else. All construction happens in the rings below.
+
+### Naming note
+
+"Discovery script" stops being accurate — these become the skill's read **gateway**. Rename (to a consistent name across skills — `gateway`, or similar) is deferred to the **end** of the migration: keeping `discovery.cjs` avoids churning every `!` insert and allowed-tools line mid-flight.
+
+## 5. Walkthrough 1 — continue-epic (the navigation shape)
 
 Every moment of the flow (SKILL.md + the 848-line `epic-display-and-menu.md`), assigned to a ring:
 
@@ -696,7 +798,7 @@ Every moment of the flow (SKILL.md + the 848-line `epic-display-and-menu.md`), a
 
 **Finding 4 — cancel/reactivate are the perfect first write commands.** Section H is a five-step transaction (stash status → set cancelled → drop order → KB remove → commit) with prose-specified error tolerance; reactivate has Claude piping a read value back by hand. `engine topic cancel {wu} {phase} {topic}` does it atomically; the .md keeps only the confirmation conversation. Small, high-value, proves the write side early — transitions with invariants, not raw field sets.
 
-## 5. Walkthrough 2 — discussion-session (the in-phase shape)
+## 6. Walkthrough 2 — discussion-session (the in-phase shape)
 
 The opposite character: the LLM owns the content (organic conversation, judgment everywhere) and code only punctuates. The flow (`discussion-session.md`, 407 lines):
 
@@ -729,7 +831,7 @@ Follow-on details (settled in spirit, specifics at design time): the manifest sc
 
 **Finding 8 — prose rules reading the filesystem are domain queries.** "Count review files in `.workflows/.cache/{wu}/discussion/{topic}/`" is a session-state fact the adapter should surface (e.g. `review_cycles: 0`) — not an ad-hoc bash + prose rule re-stated in two sections (G and H).
 
-## 6. Walkthrough 3 — workflow-start (the front door)
+## 7. Walkthrough 3 — workflow-start (the front door)
 
 The entry hub: boot gates, the overview, and the inbox working set (`SKILL.md` + `active-work.md` + `inbox-working-set.md`; the lifecycle sub-flows `manage-work-unit.md` / `absorb-into-epic.md` were not walked in detail — noted below).
 
@@ -756,7 +858,7 @@ The entry hub: boot gates, the overview, and the inbox working set (`SKILL.md` +
 
 **Finding 12 — inbox lifecycle is another transaction family.** Archive (`mkdir -p` + `mv` per item + scoped commit), restore, and hard-delete (`git rm`) are hand-executed multi-step transactions — same family as cancel/reactivate (finding 4). `manage-work-unit.md` and `absorb-into-epic.md` (495 lines, unwalked) almost certainly hold the biggest ones (pivot, absorb) — flagged for a later pass.
 
-## 7. Walkthrough 4 — implementation task loop (the iterating shape)
+## 8. Walkthrough 4 — implementation task loop (the iterating shape)
 
 The most distinct character: a **state machine in prose** (`task-loop.md`, stages A–H looped per task) — Claude drives the loop, executor/reviewer agents do the work, the user gates. Walked: the task loop specifically (bootstrap steps and analysis loop not yet).
 
@@ -776,7 +878,7 @@ The most distinct character: a **state machine in prose** (`task-loop.md`, stage
 
 **Finding 14 — output formats are a second state backend, capability-split.** "Next available task" is the next-decision API again, but answered by the format adapter (tick / local-markdown / linear), not the manifest. Some backends are code-driveable (tick CLI, local-markdown files); some are inherently Claude-mediated (linear via MCP). The engine's task commands need one contract with a capability split per format driver: engine answers directly where it can, returns a `delegate: {format reading.md}` instruction where only Claude can reach the backend. Open design point — don't flatten this distinction.
 
-## 8. Moment taxonomy (emerging, cross-flow)
+## 9. Moment taxonomy (emerging, cross-flow)
 
 The walkthrough moments generalise into recurring classes — each with one home:
 
@@ -798,7 +900,7 @@ The walkthrough moments generalise into recurring classes — each with one home
 | 14 | Loop bookkeeping (counters, caches, progress, format updates) | Engine task commands with decision-ready responses *(proposed)* |
 | 15 | External task backends (output formats) | Format drivers behind one contract, capability-split: code-driveable vs Claude-mediated *(open)* |
 
-## 9. Open questions — resolutions (2026-06-12)
+## 10. Open questions — resolutions (2026-06-12)
 
 Walking concluded after four flows: continue-epic (navigation), discussion-session (in-phase), workflow-start (front door), implementation task loop (iterating). Walkthroughs 3–4 produced only additive taxonomy changes — the convergence signal. Remaining flows (entry-skill bootstrap, manage/absorb transactions, analysis loop, discovery session loop) get walked per-skill during migration, where tests catch the details.
 
@@ -810,7 +912,7 @@ Walking concluded after four flows: continue-epic (navigation), discussion-sessi
 6. ~~**Ephemeral session state**~~ — **RESOLVED: ratified.** Durable + derivable-from → manifest; ephemeral + single-flow → context/`.cache` (§2 boundary note).
 7. **Format-driver capability split** (finding 14) — engine answers directly for code-driveable backends, returns a delegate instruction for Claude-mediated ones; shape the contract when `engine task` commands are designed (implementation skill's migration turn). Not blocking.
 
-## 10. Build sequence (PROPOSED — for mark-up)
+## 11. Build sequence (PROPOSED — for mark-up)
 
 Each phase is its own PR off `main` (one PR per change); this design log stays on its long-lived branch and merges at the end. Iterative throughout — fixtures + tests per phase, reasoning surfaces byte-stable unless intentionally changed.
 
