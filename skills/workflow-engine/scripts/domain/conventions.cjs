@@ -72,4 +72,22 @@ function discoveryGlyph(tier) {
   return DISCOVERY_GLYPH[/** @type {keyof typeof DISCOVERY_GLYPH} */ (tier)] || '';
 }
 
-module.exports = { TREE_WIDTH, capitalise, titlecase, tag, derivedFrom, title, discoveryGlyph, DISCOVERY_GLYPH };
+// Discussion-map glyph vocabulary — subtopic states. Distinct from the
+// discovery tiers: the symbol sets evolve independently.
+const DISCUSSION_GLYPH = {
+  pending: '○',
+  exploring: '◐',
+  converging: '→',
+  decided: '✓',
+  deferred: '⊙',
+};
+
+/** @param {string} state */
+function discussionGlyph(state) {
+  return DISCUSSION_GLYPH[/** @type {keyof typeof DISCUSSION_GLYPH} */ (state)] || '';
+}
+
+module.exports = {
+  TREE_WIDTH, capitalise, titlecase, tag, derivedFrom, title,
+  discoveryGlyph, DISCOVERY_GLYPH, discussionGlyph, DISCUSSION_GLYPH,
+};

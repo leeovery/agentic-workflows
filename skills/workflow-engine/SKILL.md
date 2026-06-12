@@ -29,6 +29,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs <command> [args]
 
 Domain commands (state transitions, queries) land here as they are built.
 
+**`map`** — discussion-map transitions. Both commands load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1. No git commit — the calling session's commit cadence picks the manifest change up.
+
+```bash
+engine map add <work-unit> <topic> <subtopic> [--parent <subtopic>]   # new subtopic, starts pending
+engine map set <work-unit> <topic> <subtopic> <state>                 # pending|exploring|converging|decided|deferred
+```
+
+Subtopic names are kebab-case slugs; `--parent` nests under an existing top-level subtopic (two levels max).
+
 **Rendering is not a runtime CLI concern.** Static chrome (signposts, boxes, gate rules) lives as literal blocks in skill prose; parameterised chrome is rendered in-process by projections. No skill flow calls a render command at runtime — the `render` command group in `engine.cjs` is a development/debugging utility only (e.g. generating a correct literal while authoring prose).
 
 ## Library — `scripts/lib.cjs`
@@ -44,6 +53,10 @@ engine.render.wrapWithPrefix(text, { width, prefix }) // → string[] (prefixed 
 engine.render.wrap(text, budget)                  // → string[] (segments ≤ budget)
 engine.render.fillTo(head, fillChar, width)       // → string (padded)
 
+// kernel: manifest IO
+engine.manifest.loadWorkUnitManifest(cwd, wu)     // → parsed manifest (loud on missing/invalid)
+engine.manifest.saveWorkUnitManifest(cwd, wu, m)  // atomic write (temp file + rename)
+
 // domain: composition conventions
 engine.conventions.title({ glyph, label, tag })   // → "◐ Menu And Admin [researching]"
 engine.conventions.tag('decided')                 // → "[decided]"
@@ -52,11 +65,17 @@ engine.conventions.discoveryGlyph('researching')  // → "◐"
 engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
+// domain: discussion-map transitions + queries
+engine.map.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
+engine.map.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
+engine.map.mapState(manifest, topic)              // → { counts, total, all_decided, unresolved }
+
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' for a brand-new epic)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
+engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
 
 // gateway: adapter harness
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
@@ -84,4 +103,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, and `tests/scripts/test-engine-epic-projections.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, and `tests/scripts/test-engine-map.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
