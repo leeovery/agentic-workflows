@@ -36,7 +36,13 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
    The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
 4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
-5. **Commit & dispatch check** — Git commit after each write. Don't batch. Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, dispatch before continuing. If not, proceed.
+5. **Commit & dispatch check** — Commit after each write. Don't batch:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): {what changed}"
+   ```
+
+   Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, dispatch before continuing. If not, proceed.
 6. **Repeat** — Continue with the next subtopic or follow where the conversation leads.
 
 ---
@@ -149,8 +155,7 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 4. Commit the conversion and the landing:
 
    ```bash
-   git add -- .workflows/{work_unit}/
-   git commit -m "discussion({work_unit}/{topic}): pivot to epic"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): pivot to epic"
    ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -216,8 +221,7 @@ Note the concern in the Summary section for the user to consider separately, and
 4. The current Discussion Map is unchanged — rerouting sends the concern away from this topic, it doesn't mark it. Commit:
 
    ```bash
-   git add -- .workflows/{work_unit}/
-   git commit -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}/{topic}): reroute concern to {landed_topic}"
    ```
 
 → Return to **B. Session Loop**.
