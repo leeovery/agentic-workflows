@@ -296,27 +296,8 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with ne
 > Handing off to the selected phase for this epic.
 ```
 
-Invoke the appropriate skill based on the user's menu selection. Match by **prefix** — labels may carry a trailing context segment (e.g., `— research completed`, `— spec completed`, `(Phase 2, Task 3)`) which doesn't change the routing target.
+Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from epic-display-and-menu.md (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). Selections with route `(internal)` resolve inside that reference and never reach this step.
 
-| Menu option | Invoke |
-|-------------|--------|
-| Start research for {topic} | `/workflow-research-entry epic {work_unit} {topic}` |
-| Start discussion for {topic} | `/workflow-discussion-entry epic {work_unit} {topic}` |
-| Continue {topic} — discussion | `/workflow-discussion-entry epic {work_unit} {topic}` |
-| Continue {topic} — research | `/workflow-research-entry epic {work_unit} {topic}` |
-| Continue {topic} — specification | `/workflow-specification-entry epic {work_unit} {topic}` |
-| Continue {topic} — planning | `/workflow-planning-entry epic {work_unit} {topic}` |
-| Continue {topic} — implementation | `/workflow-implementation-entry epic {work_unit} {topic}` |
-| Continue {topic} — review | `/workflow-review-entry epic {work_unit} {topic}` |
-| Start specification for {topic} | `/workflow-specification-entry epic {work_unit} {topic}` |
-| Start planning for {topic} | `/workflow-planning-entry epic {work_unit} {topic}` |
-| Start implementation of {topic} | `/workflow-implementation-entry epic {work_unit} {topic}` |
-| Start review for {topic} | `/workflow-review-entry epic {work_unit} {topic}` |
-| Analyze / regroup discussions | `/workflow-specification-entry epic {work_unit}` |
-| Start new discussion topic | `/workflow-discussion-entry epic {work_unit}` |
-| Start new research | `/workflow-research-entry epic {work_unit}` |
-| Continue discovery | `/workflow-discovery epic {work_unit}` |
-
-Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided). "Continue discovery" routes to the discovery skill, which detects the existing work unit and re-shapes the map (existing-epic mode) — workflow-continue-epic navigates; discovery owns the shaping.
+Skills receive positional arguments: `$0` = work_type (`epic`), `$1` = work_unit, `$2` = topic (when provided). The `continue_discovery` route hands to the discovery skill, which detects the existing work unit and re-shapes the map (existing-epic mode) — workflow-continue-epic navigates; discovery owns the shaping.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
