@@ -85,12 +85,6 @@ Commit the change.
 
 → Return to **A. State Display and Menu**.
 
-#### If `action` is `view_map`
-
-Load **[display-epic-map.md](display-epic-map.md)** and follow its instructions as written.
-
-→ Return to **A. State Display and Menu**.
-
 #### If `action` is `resume_completed`
 
 → Proceed to **D. Resume Completed**.
