@@ -30,7 +30,7 @@ The phases group into three stages (the **three D's**), used as the top-level gr
 
 Skills organised in tiers:
 
-**Entry skill** (`workflow-start`): the sole user-invocable entry. Shows all work; routes new work into discovery and existing work into the per-type `workflow-continue-*` skills. Also hosts the inbox pickup — a **working set** (multi-select promotion, single-type-gated) with an `.archived` lifecycle (archive · restore · delete). Hosts the full Step 0 (casing · migrations · knowledge-check · knowledge-compact), run once. `/workflow-migrate` is model-invoked only (Step 0 of `workflow-start`).
+**Entry skill** (`workflow-start`): the sole user-invocable entry. Shows all work; routes new work into discovery and existing work into the per-type `workflow-continue-*` skills. Also hosts the inbox pickup — a **working set** (multi-select promotion, single-type-gated) with an `.archived` lifecycle (archive · restore · delete). Hosts the full Step 0 (casing, then `engine boot` — migrations + knowledge check + compact in one call), run once.
 
 **Discovery** (`workflow-discovery`): model-only (`user-invocable: false`). The universal first phase (see Workflow Phases #1) — new work is shaped and its type settled here before the pipeline branches into the type-specific phases. Two modes — new (decide the work type, persist at the commit, route out) and existing-epic (re-shape the map, delegated from `workflow-continue-epic`).
 
@@ -136,7 +136,7 @@ Contract and scaffolding templates live in `.claude/skills/create-output-format/
 
 ## Migrations
 
-`/workflow-migrate` keeps workflow files in sync with current system design (runs via Step 0 of every entry-point skill).
+Migrations keep workflow files in sync with current system design (run via `engine boot` in Step 0 of `workflow-start`).
 
 **How it works:**
 - `skills/workflow-migrate/scripts/migrate.sh` runs all migration scripts in `skills/workflow-migrate/scripts/migrations/` in numeric order
