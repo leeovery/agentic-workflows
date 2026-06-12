@@ -44,6 +44,16 @@ or:
 
 Code blocks are used for informational displays (overviews, status, keys, phase titles, step markers) — they preserve indentation for tree structures and aligned lists. Markdown is used for interactive elements (menus, prompts) and signpost blockquotes where bold formatting is needed. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays.
 
+### Engine Output Sections
+
+Skills that render state via an engine/adapter call (e.g. `discovery.cjs view {work_unit}`) receive one snapshot in three demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
+
+- `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions.
+- `=== DISPLAY … ===` — emit verbatim **as a code block**. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering.
+- `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
+
+A section is everything beneath its marker up to the next marker; the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, trimmed, or re-derived. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
+
 ### Phase Titles
 
 Bullet-bordered box. One per skill invocation. Serves as the top-level anchor telling the user where they are. Always followed by a blank line before any subsequent content.
