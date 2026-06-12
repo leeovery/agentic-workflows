@@ -416,7 +416,7 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
 
-- **Step 0** runs migrations via the `/workflow-migrate` skill (mandatory in all entry-point skills)
+- **Step 0** hosts initialisation; `workflow-start` runs migrations and the knowledge gate via `engine boot`
 - Steps are separated by `---` horizontal rules
 - Each step completes fully before the next begins
 - User-facing step markers (see Display & Output Conventions → Step Markers) use names only — no numbers. They are embedded at each step boundary, including steps with no explicit output (Claude's visible processing labels the activity for the user)
@@ -434,13 +434,14 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 Load **[casing-conventions.md](...)** and follow its instructions as written.
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Migrations
+### Step 0.2: Boot
 
-#### If the `/workflow-migrate` skill has already been invoked in this conversation
+#### If `migrations.changed` is `true`
+[diff review + summary + confirm gate]
 → Proceed to **Step 0.3**.
 
 #### Otherwise
-[run migrations + CRITICAL note]
+[up-to-date display]
 → Proceed to **Step 0.3**.
 
 ### Step 0.3: Intro and Knowledge Check
