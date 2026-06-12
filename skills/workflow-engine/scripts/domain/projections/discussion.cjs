@@ -59,7 +59,7 @@ function discussionMap(topic, manifest) {
       (parent.children = parent.children || []).push(node);
     }
   }
-  return header + '\n\n' + renderTree(top, { width: TREE_WIDTH });
+  return header + '\n' + renderTree(top, { width: TREE_WIDTH });
 }
 
 module.exports = { discussionMap };
