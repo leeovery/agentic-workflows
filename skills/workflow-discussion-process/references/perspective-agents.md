@@ -171,6 +171,6 @@ This section handles two responsibilities: promoting completed perspective sets 
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `synthesis`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `synthesis-*.md`, findings_key = `tensions`.
 
-**Deriving subtopics during presentation**: When the user engages with a raised tension, reframe it as a practical subtopic tied to project constraints and add it to the Discussion Map as `pending`. Commit the update.
+**Deriving subtopics during presentation**: When the user engages with a raised tension, reframe it as a practical subtopic tied to project constraints and record it on the Discussion Map as `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs map add {work_unit} {topic} {subtopic}`). Commit the update.
 
 **Perspective files**: The shared protocol handles the synthesis file only. The individual perspective files remain available for reference if the user wants to drill into a specific angle — mention their existence during presentation if relevant, but do not read them out.
