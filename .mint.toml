@@ -1,0 +1,34 @@
+# .mint.toml — mint configuration. This file is fully OPTIONAL: every default is
+# compiled into mint, so an empty file is valid and changes nothing. Add a key only
+# to set a value that differs from the default.
+#
+# Config reference (every key, level, and default): https://github.com/leeovery/mint
+# AI-assisted setup (inspects your project and proposes config): run `mint setup`
+
+# Release-notes diffs can exceed mint's 50000 default on large skill-documentation
+# releases even after the bundle is excluded. The previous ./release script ran at
+# 60000 for this exact reason; carried over.
+max_diff_lines = 60000
+
+# Keep release-notes NOISE out of the AI diff (the release itself is unaffected):
+#   knowledge.cjs     — minified, huge generated bundle; wastes the token budget
+#   package-lock.json — lockfile churn
+#   .claude/          — dev-only agent skills, not shipped product
+#   .tick/            — task-tracker state
+diff_exclude = [
+  "skills/workflow-knowledge/scripts/knowledge.cjs",
+  "package-lock.json",
+  ".claude/",
+  ".tick/",
+]
+
+[release.hooks]
+# Rebuild and commit the knowledge CLI bundle before the tag so every release ships
+# a fresh skills/workflow-knowledge/scripts/knowledge.cjs (AGNTC installs from tags
+# with no build step). `npm ci` (not install) keeps the lockfile from drifting; the
+# final step commits the bundle only if the build changed it.
+pre_tag = [
+  "npm ci",
+  "npm run build",
+  "git diff --quiet -- skills/workflow-knowledge/scripts/knowledge.cjs || git commit -m 'chore(release): rebuild knowledge bundle' -- skills/workflow-knowledge/scripts/knowledge.cjs",
+]
