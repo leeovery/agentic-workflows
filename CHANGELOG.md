@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.11] - 2026-06-17
+
+🔧 Changed
+
+- The `release` script is now a thin wrapper around the `mint` CLI — the hand-rolled bash release logic has been replaced, and `mint` must be installed to release.
+
+✨ Added
+
+- `.mint.toml` configures the mint release tool with a 60 000-line diff limit, excludes the generated knowledge bundle, lockfile, and dev-only directories from AI diffs, and adds a pre-tag hook that rebuilds and commits the knowledge CLI bundle before each tag.
+
 ## [0.5.10] - 2026-06-11
 
 - Roll out the `.txt`-then-rename output mechanism to all artifact-writing sub-agents (discussion, research, investigation, planning, implementation, specification, and review agents) — deliverables are written as `.txt` then renamed to `.md` via Bash, since the harness blocks report-shaped `.md` writes from sub-agents
