@@ -32,8 +32,8 @@ Where we'd got to:
   {2–4 lines from the recent session(s): the threads we were
   circling, what you were leaning toward, what was still open}
 
-  {if older sessions exist: "Earlier: {one line per older session
-  from its Conclusion}" — only when it adds orientation}
+  {older sessions, if any: one line each from their Conclusion,
+  under an "Earlier:" lead — only when it aids orientation}
 ```
 
 The caller renders its own opener prompt and STOP after this briefing.
