@@ -4,6 +4,8 @@
 
 ---
 
+These guidelines govern **epic exploration** — deep discovery's open-ended, challenging mode — and load only on the epic path. For epic exploration they are the governing stance: the backbone's default *"stay in your lane"* **widens here**. Discovery engages substance and lands **soft** decisions (§D), and challenges rather than mirrors (§B). Non-epic discovery never loads this file; it holds the thin lane throughout.
+
 ## A. Curatorial Moves
 
 - **Open exploration is the loop.** The session is a conversation that pulls on the idea — sketches the shape, finds the edges, sees how the parts connect, and reasons across the whole. Topics emerge at harvest from the picture as a whole.

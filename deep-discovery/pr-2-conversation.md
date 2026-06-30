@@ -16,7 +16,7 @@ Turn epic discovery's session loop from shallow-mirror-and-close into open-ended
 
 ### 1. Stance fork (epic: mirror → challenge; allow substance; soft-by-location)
 
-- `SKILL.md` (~lines 30–31, "Stay in your lane") — fork epic vs non-epic. **Epic:** may explore substance (feasibility, leanings, even spikes) and make **soft** decisions; **non-epic:** keeps the thin lane (no research/decide/scope). Keep the existing table; add the epic carve-out tightly (prose economy).
+- `SKILL.md` (~lines 30–31, "Stay in your lane") — **leave the backbone as the universal thin-lane default** (no inline "except epic" carve-out — that contradicts itself in the always-loaded backbone). The epic stance is delivered by **progressive disclosure**: `discovery-guidelines.md` loads only on the epic path (Step 9), so it is the sole home of the wider epic stance. Non-epic keeps the thin lane because it never loads that file. The fork is *structural* (which file loads), not a conditional inside the shared backbone.
 - `references/discovery-guidelines.md`:
   - §B (~line 41, "Mirroring, not challenging") — fork for epic into **collaborative challenge / sparring**: opinionated, willing to disagree and counter-frame, surface tensions, propose "what if" alternatives — explicitly **NOT** interrogation (rapid-fire questions) and **NOT** lecturing (monologue); still one live thread at a time. Non-epic retains mirroring.
   - §A Curatorial Moves — add epic moves (surface tensions, probe framing, hold a conflict open).
