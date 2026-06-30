@@ -75,6 +75,6 @@ Harvest writes per-topic briefs (views) with `brief_path`; regenerate-on-touch +
 
 ## When this PR is approved
 
-- **Do NOT merge.**
-- **Clear context.**
-- **Re-enter plan mode** and write the executable plan for **PR6** from `deep-discovery/pr-6-downstream.md`. Branch `feat/deep-discovery-pr6-downstream`, base/target `feat/deep-discovery-pr5-briefs`. Its hand-off is the **stack-landing** instruction (final PR).
+- **Confirm the approval**, then **do NOT merge.**
+- **Plan PR6 now, in this same session:** enter plan mode and write the executable plan for **PR6** from `deep-discovery/pr-6-downstream.md`. Branch `feat/deep-discovery-pr6-downstream`, base/target `feat/deep-discovery-pr5-briefs`. Its hand-off is the **stack-landing** instruction (final PR).
+- **Do not clear context yourself, and do not ask the user to** — accepting the PR6 plan triggers the harness's *clear-and-proceed* into a fresh session that executes PR6.

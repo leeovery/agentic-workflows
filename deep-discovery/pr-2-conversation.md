@@ -66,6 +66,6 @@ Epic discovery explores open-endedly with a challenge stance; eager gate replace
 
 ## When this PR is approved
 
-- **Do NOT merge.**
-- **Clear context.**
-- **Re-enter plan mode** and write the executable plan for **PR3** from `deep-discovery/pr-3-reentry.md`. Branch `feat/deep-discovery-pr3-reentry`, base/target `feat/deep-discovery-pr2-conversation`. Include its own when-approved hand-off (→ PR4).
+- **Confirm the approval**, then **do NOT merge.**
+- **Plan PR3 now, in this same session:** enter plan mode and write the executable plan for **PR3** from `deep-discovery/pr-3-reentry.md`. Branch `feat/deep-discovery-pr3-reentry`, base/target `feat/deep-discovery-pr2-conversation`. Include its own when-approved hand-off (→ PR4).
+- **Do not clear context yourself, and do not ask the user to** — accepting the PR3 plan triggers the harness's *clear-and-proceed* into a fresh session that executes PR3.
