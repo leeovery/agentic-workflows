@@ -10,10 +10,10 @@ One template, all sessions. Sections that don't apply this session write `(none)
 
 The session has two distinct flavours of content recorded in two distinct sections:
 
-- **Exploration** is **narrative** — strong-summary prose, written at natural pauses during the conversation. It's Claude's durable record of what got discussed for end-of-session topic synthesis (and for surviving context refresh).
+- **Exploration** is **narrative** — a prose record of the conversation. The writer sets its fidelity and write-timing: an epic writes a running record across the session; single-phase work backfills once at creation. It's the durable record of what got discussed — read downstream, and a hedge against context refresh.
 - **Edits** is **structured** — a deterministic record of map-operations applied to existing items during the session. Only meaningful for continuing sessions where the map is non-empty.
 
-**Topics Identified** is filled at endpoint synthesis, from analysing the exploration as a whole.
+**Topics Identified** is filled at the harvest, from analysing the exploration as a whole.
 
 ## Template
 
@@ -50,10 +50,12 @@ Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
 
 ## Exploration
 
-{Strong-summary prose covering what was explored, what surfaces
-were named, what crystallised. Not verbatim. Grows over the
-session as natural pauses produce new entries. Used at endpoint
-synthesis to identify topics from the picture as a whole.}
+{Prose record of the conversation — what was explored and what
+came of it: the surfaces named, the threads followed, what was
+decided or set aside. Not verbatim. For an epic it's written
+across the session at natural pauses; for single-phase work it's
+backfilled once at creation. Used at the harvest to identify
+topics from the picture as a whole.}
 
 ## Edits
 
@@ -112,9 +114,7 @@ At finalisation, replace the `(none)` Conclusion with one of:
 
 ## Anti-patterns
 
-- **No transcript-style content in Exploration.** It's strong summary, not verbatim dialogue.
-- **No decisions, option weighing, or feasibility analysis.** Those belong in discussion and research. Capture what was framed, not what was uncovered.
-- **No investigation.** The log records the shape that was explored, not the answers to research questions.
-- **Don't write to Topics Identified during the loop.** It's filled by synthesis at endpoint.
+- **No transcript-style content in Exploration.** It's a prose record, not verbatim dialogue.
+- **Don't write to Topics Identified during the loop.** It's filled by synthesis at the harvest.
 
 → Return to caller.
