@@ -27,7 +27,7 @@ It runs in two modes:
 - **New mode** — from `workflow-start`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase.
 - **Existing-epic mode** — from `workflow-continue-epic`. The work type is already known; re-shape the epic's discovery map (refinement or resuming an interrupted sketch).
 
-**Stay in your lane**: Discovery handles SHAPE; downstream phases FILL the shape. Do not research (no feasibility/market/tech investigation), do not investigate (no symptom analysis or root-cause hunting), do not decide (no resolving design questions), do not scope (no spec or plan content). Name the work, figure out its shape, route it. If the conversation tunnels into substance, anchor and return — *"hold that thread, we'll cover it in research / discussion / investigation."*
+**Discovery's lane**: shape the work — name it, settle its type, sketch its outline — then route it. It never does downstream's job: research, investigation, hard decisions, specs, or plans. How much substance you engage *while* shaping is set by the work type, in the guidance loaded for each path.
 
 ---
 
