@@ -84,7 +84,7 @@ Check `git status`. If the working tree is dirty (manifest writes from **A**, th
 - Edits only: `discovery({work_unit}): finalise session log`
 
 ```bash
-git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "{message}"
 ```
 

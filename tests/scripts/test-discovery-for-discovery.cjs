@@ -32,7 +32,7 @@ Work unit: ${workUnit}
 ## Conclusion
 
 ${conclusionBody}${trailing}`;
-  createFile(dir, `.workflows/${workUnit}/discovery/${filename}`, content);
+  createFile(dir, `.workflows/${workUnit}/discovery/sessions/${filename}`, content);
 }
 
 describe('workflow-discovery discovery', () => {
@@ -419,11 +419,11 @@ describe('workflow-discovery discovery', () => {
 
   // --- session-log scan (drives next_session_number) ---
 
-  it('next_session_number ignores non-matching filenames in the discovery directory', () => {
+  it('next_session_number ignores non-matching filenames in the sessions directory', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
-    createFile(dir, '.workflows/payments/discovery/session-abc.md', 'should be ignored');
-    createFile(dir, '.workflows/payments/discovery/notes.md', 'should be ignored');
+    createFile(dir, '.workflows/payments/discovery/sessions/session-abc.md', 'should be ignored');
+    createFile(dir, '.workflows/payments/discovery/sessions/notes.md', 'should be ignored');
     const r = discover(dir, 'payments');
     assert.strictEqual(r.next_session_number, 2);
   });
