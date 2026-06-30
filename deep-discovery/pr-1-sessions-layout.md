@@ -7,7 +7,7 @@ Move discovery session logs from `discovery/session-NNN.md` into `discovery/sess
 ## At a glance
 
 - **Branch:** `feat/deep-discovery-pr1-sessions-layout`
-- **Base / target:** `deep-discovery` (the docs base)
+- **Base / target:** `feat/deep-discovery-pr0-docs` (the docs base, PR0)
 - **Builds on:** nothing but the docs base
 - **Design slice:** the `sessions/` half of the layout (`00-overview.md` → Design → Layout). Briefs/`briefs/` come in PR5.
 

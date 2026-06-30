@@ -60,6 +60,6 @@ Research/discussion consume the discovery brief in full (with `description` fall
 ## When this PR is approved — land the stack
 
 This is the final slice. Once approved:
-- **Land the stack** root-first using the `pr-stacked` skill + local `stack` CLI: `deep-discovery` (docs) → PR1 → PR2 → … → PR6, squash-merging into `main`, rebasing descendants after each merge. Get usage live (`stack --help`, `stack guide`, dry-run before any mutating run) — the CLI is the source of truth.
+- **Land the stack** root-first using the `pr-stacked` skill + local `stack` CLI: `feat/deep-discovery-pr0-docs` (docs, PR0) → PR1 → PR2 → … → PR6, squash-merging into `main`, rebasing descendants after each merge. Get usage live (`stack --help`, `stack guide`, dry-run before any mutating run) — the CLI is the source of truth.
 - The planning docs in `deep-discovery/` merge through as the feature's record. Strip the directory in a final commit only if the user asks.
 - After landing, run the **full test suite** on `main` and do a final sandbox smoke of an epic discovery end-to-end (explore → harvest → brief → downstream consume).
