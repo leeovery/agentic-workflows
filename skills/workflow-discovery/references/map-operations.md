@@ -201,7 +201,7 @@ Append a single batch entry to the session log under **Edits**. The session log 
 Single commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): edit {N} summary(ies)"
 ```
 
@@ -258,7 +258,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): remove {name} from map"
 ```
 
@@ -361,7 +361,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): rename {old} → {new}"
 ```
 
@@ -414,7 +414,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): re-route {name} to {new routing}"
 ```
 
@@ -471,7 +471,7 @@ Append a single batch entry to the session log under **Edits**. If the log doesn
 Single commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): edit {N} description(s)"
 ```
 
@@ -526,7 +526,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): mark {name} handled"
 ```
 
@@ -579,7 +579,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/session-{session_number:03d}.md
+git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 git commit -m "discovery({work_unit}): reactivate {name}"
 ```
 
