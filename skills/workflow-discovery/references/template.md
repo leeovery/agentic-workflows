@@ -10,7 +10,7 @@ One template, all sessions. Sections that don't apply this session write `(none)
 
 The session has two distinct flavours of content recorded in two distinct sections:
 
-- **Exploration** is **narrative** — strong-summary prose, written at natural pauses during the conversation. It's Claude's durable record of what got discussed for end-of-session topic synthesis (and for surviving context refresh).
+- **Exploration** is **narrative**. For an epic it accrues across the session as **medium-fidelity narrative** — the reasoning-moves (ideas, objections, pivots, soft-landings, rejected paths), written at natural pauses and layered down, never edited back. For single-phase work it is a one-paragraph strong-summary backfill of the shaping conversation. Either way it's Claude's durable record — for topic synthesis (epic) or for the first phase's handoff (single-phase) — and for surviving context refresh.
 - **Edits** is **structured** — a deterministic record of map-operations applied to existing items during the session. Only meaningful for continuing sessions where the map is non-empty.
 
 **Topics Identified** is filled at endpoint synthesis, from analysing the exploration as a whole.
@@ -50,10 +50,13 @@ Example: `8 topics — 2 decided · 3 in flight · 1 ready · 2 fresh`
 
 ## Exploration
 
-{Strong-summary prose covering what was explored, what surfaces
-were named, what crystallised. Not verbatim. Grows over the
-session as natural pauses produce new entries. Used at endpoint
-synthesis to identify topics from the picture as a whole.}
+{Epic: medium-fidelity narrative of the exploration — the
+reasoning-moves, the leanings and tensions, the soft decisions and
+the paths rejected (and why). Not verbatim, not a strong summary.
+Grows over the session as natural pauses layer down new entries;
+used at harvest to synthesise topics from the picture as a whole.
+Single-phase work: a one-paragraph strong-summary backfill of the
+shaping conversation.}
 
 ## Edits
 
@@ -112,9 +115,9 @@ At finalisation, replace the `(none)` Conclusion with one of:
 
 ## Anti-patterns
 
-- **No transcript-style content in Exploration.** It's strong summary, not verbatim dialogue.
-- **No decisions, option weighing, or feasibility analysis.** Those belong in discussion and research. Capture what was framed, not what was uncovered.
-- **No investigation.** The log records the shape that was explored, not the answers to research questions.
-- **Don't write to Topics Identified during the loop.** It's filled by synthesis at endpoint.
+- **No transcript-style content in Exploration.** It's narrative, not verbatim dialogue.
+- **Soft decisions and rejected paths are wanted (epic).** Record the leanings, the tensions, and the paths set aside — in soft language. What still defers downstream is feasibility analysis to a verdict and option-weighing resolved to a conclusion; those belong in research and discussion. (The single-phase backfill carries none of this — it's a strong-summary of the shaping talk.)
+- **No investigation.** The log records the journey of the exploration, not the answers to research questions.
+- **Don't write to Topics Identified during the loop.** It's filled by synthesis at harvest.
 
 → Return to caller.

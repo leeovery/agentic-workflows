@@ -27,7 +27,7 @@ It runs in two modes:
 - **New mode** — from `workflow-start`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase.
 - **Existing-epic mode** — from `workflow-continue-epic`. The work type is already known; re-shape the epic's discovery map (refinement or resuming an interrupted sketch).
 
-**Stay in your lane**: Discovery handles SHAPE; downstream phases FILL the shape. Do not research (no feasibility/market/tech investigation), do not investigate (no symptom analysis or root-cause hunting), do not decide (no resolving design questions), do not scope (no spec or plan content). Name the work, figure out its shape, route it. If the conversation tunnels into substance, anchor and return — *"hold that thread, we'll cover it in research / discussion / investigation."*
+**Stay in your lane**: Discovery handles SHAPE; downstream phases FILL the shape. Do not research (no feasibility/market/tech investigation), do not investigate (no symptom analysis or root-cause hunting), do not decide (no resolving design questions), do not scope (no spec or plan content). Name the work, figure out its shape, route it. If the conversation tunnels into substance, anchor and return — *"hold that thread, we'll cover it in research / discussion / investigation."* For an epic the lane widens once the type is confirmed: epic exploration may engage substance — feasibility leanings, design tensions, even spikes — and make **soft** decisions, recorded in soft language and hardened later in discussion. The prohibitions above hold for every other work type, and for an epic until its type is confirmed.
 
 ---
 
@@ -284,9 +284,10 @@ Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follo
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Mapping out the topics this epic breaks into. A new epic carries
-> on from what we've shaped so far; an existing map can be edited
-> here too. We name the topics once the picture feels complete.
+> Exploring this epic as a whole — pulling on the shape, the
+> tensions, the leanings. A new one carries on from what we've
+> shaped; an existing map can be edited here too. Topics get
+> pulled out at the end, whenever you're ready.
 ```
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
