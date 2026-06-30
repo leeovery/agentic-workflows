@@ -182,10 +182,10 @@ Reached from **B** step 2 when the user pulls the harvest. Synthesis is user-pul
 
 → Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written. It owns its own confirmation (`y` / `explore` / `adjust`) and returns a synthesis outcome:
 
-**If the outcome is `confirmed`:**
+#### If the outcome is `confirmed`
 
 → Return to caller.
 
-**If the outcome is `explore`:**
+#### If the outcome is `explore`
 
 → Return to **B. Session Loop**.
