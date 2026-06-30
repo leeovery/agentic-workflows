@@ -87,6 +87,6 @@ All readers use `discovery/sessions/`; migration + test green; grep clean; full 
 
 ## When this PR is approved
 
-- **Do NOT merge.** The stack lands at the end.
-- **Clear context** (fresh session).
-- **Re-enter plan mode** and write the executable plan for **PR2** from `deep-discovery/pr-2-conversation.md`. The plan states: branch `feat/deep-discovery-pr2-conversation`, base/target `feat/deep-discovery-pr1-sessions-layout`, what it builds on, the plan, verification, and its own when-approved hand-off (→ PR3).
+- **Confirm the approval**, then **do NOT merge** — the stack stays open and lands at the end.
+- **Plan PR2 now, in this same session.** Enter plan mode and write the executable plan for **PR2** from `deep-discovery/pr-2-conversation.md`: branch `feat/deep-discovery-pr2-conversation`, base/target `feat/deep-discovery-pr1-sessions-layout`, what it builds on, the plan, verification, and its own when-approved hand-off (→ PR3).
+- **Do not clear context yourself, and do not ask the user to.** When the user accepts the PR2 plan, the harness's *clear-and-proceed* carries it into a fresh session that executes PR2.

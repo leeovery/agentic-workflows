@@ -56,6 +56,6 @@ Re-entry reads prior logs (map + recent-in-full + older-indexed) and briefs like
 
 ## When this PR is approved
 
-- **Do NOT merge.**
-- **Clear context.**
-- **Re-enter plan mode** and write the executable plan for **PR4** from `deep-discovery/pr-4-kb-indexing.md`. Branch `feat/deep-discovery-pr4-kb-indexing`, base/target `feat/deep-discovery-pr3-reentry`. Include its own when-approved hand-off (→ PR5).
+- **Confirm the approval**, then **do NOT merge.**
+- **Plan PR4 now, in this same session:** enter plan mode and write the executable plan for **PR4** from `deep-discovery/pr-4-kb-indexing.md`. Branch `feat/deep-discovery-pr4-kb-indexing`, base/target `feat/deep-discovery-pr3-reentry`. Include its own when-approved hand-off (→ PR5).
+- **Do not clear context yourself, and do not ask the user to** — accepting the PR4 plan triggers the harness's *clear-and-proceed* into a fresh session that executes PR4.
