@@ -18,7 +18,7 @@ Read the durable carrier discovery left, to seed the scoping session. It has two
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
 ```
 
-2. The latest discovery session log when one exists (`.workflows/{work_unit}/discovery/session-NNN.md`, highest-numbered) — read its **Exploration** so discovery's shaped context is in hand for scoping-process. A logless quick-fix (e.g. one created before phase-17) has none; scoping-process then gathers from scratch.
+2. The latest discovery session log when one exists (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered) — read its **Exploration** so discovery's shaped context is in hand for scoping-process. A logless quick-fix (e.g. one created before phase-17) has none; scoping-process then gathers from scratch.
 
 Construct the handoff:
 

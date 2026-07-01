@@ -4,7 +4,7 @@
 
 ---
 
-Structure for `.workflows/{work_unit}/discovery/session-{NNN}.md` where `NNN` is the next zero-padded sequence number after the existing session logs (first = `001`, second = `002`, etc.).
+Structure for `.workflows/{work_unit}/discovery/sessions/session-{NNN}.md` where `NNN` is the next zero-padded sequence number after the existing session logs (first = `001`, second = `002`, etc.).
 
 One template, all sessions. Sections that don't apply this session write `(none)` rather than disappearing — the empty section is a positive signal it was considered, not missed.
 

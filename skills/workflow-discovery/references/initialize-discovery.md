@@ -4,7 +4,7 @@
 
 ---
 
-1. Ensure the discovery directory exists: `mkdir -p .workflows/{work_unit}/discovery/` (safe to re-run).
+1. Ensure the session-log directory exists: `mkdir -p .workflows/{work_unit}/discovery/sessions/` (safe to re-run).
 2. Read the work-unit `description`, `seeds` list, and `imports` list from the manifest — they are not carried in the discovery output, and the session loop's opener and seed/import-launchpad branch read them:
 
    ```bash

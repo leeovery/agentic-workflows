@@ -36,7 +36,7 @@ function buildDiscoveryMap(manifest) {
 }
 
 function findLatestSessionLog(cwd, workUnit) {
-  const dir = path.join(cwd, '.workflows', workUnit, 'discovery');
+  const dir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
   let files;
   try {
     files = fs.readdirSync(dir).filter(f => /^session-\d+\.md$/.test(f)).sort();

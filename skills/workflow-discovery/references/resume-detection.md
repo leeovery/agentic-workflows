@@ -37,7 +37,7 @@ Found an in-progress discovery session for **{work_unit:(titlecase)}** at `sessi
 
 #### If `continue`
 
-Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/session-{session_number}.md` is the working state for the session loop.
+Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/sessions/session-{session_number}.md` is the working state for the session loop.
 
 → Return to caller.
 
@@ -46,7 +46,7 @@ Set `session_number` = `active_session`. The existing file at `.workflows/{work_
 Delete the in-progress log and clear the marker:
 
 ```bash
-rm .workflows/{work_unit}/discovery/session-{active_session}.md
+rm .workflows/{work_unit}/discovery/sessions/session-{active_session}.md
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
 git add -- .workflows/{work_unit}/
 git commit -m "discovery({work_unit}): restart interrupted session"

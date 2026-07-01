@@ -77,10 +77,10 @@ This work unit is brand new, so there are no prior sessions: `session_number` = 
 Ensure the directory exists and create the log from [template.md](template.md):
 
 ```bash
-mkdir -p .workflows/{work_unit}/discovery/
+mkdir -p .workflows/{work_unit}/discovery/sessions/
 ```
 
-Write `.workflows/{work_unit}/discovery/session-001.md` populating the header, **Description (as of session)** (the shaped `description`), **Seed** (the landed seed path(s) from **D** — read from `manifest.seeds[]`, listing each — or `(none)`), **Imports** (the landed import paths from **C** — read from `manifest.imports[]` — or `(none)`), and **Map State at Start** — `(empty — first session)` for epic, `(n/a — single-topic work)` for the single-phase types. Backfill **Exploration** with a strong-summary of the shaping conversation so far (the intent and any topic seeds — prose, not transcript). Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
+Write `.workflows/{work_unit}/discovery/sessions/session-001.md` populating the header, **Description (as of session)** (the shaped `description`), **Seed** (the landed seed path(s) from **D** — read from `manifest.seeds[]`, listing each — or `(none)`), **Imports** (the landed import paths from **C** — read from `manifest.imports[]` — or `(none)`), and **Map State at Start** — `(empty — first session)` for epic, `(n/a — single-topic work)` for the single-phase types. Backfill **Exploration** with a strong-summary of the shaping conversation so far (the intent and any topic seeds — prose, not transcript). Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
 
 This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. Do not KB-index it — it is shape-talk, not validated substance.
 
