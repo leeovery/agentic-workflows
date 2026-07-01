@@ -26,6 +26,8 @@ Reopening research: {topic:(titlecase)}
 
 Set source="continue".
 
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `research`.
+
 → Return to caller.
 
 #### If status is `in-progress`
@@ -37,5 +39,7 @@ Resuming research: {topic:(titlecase)}
 ```
 
 Set source="continue".
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `research`.
 
 → Return to caller.

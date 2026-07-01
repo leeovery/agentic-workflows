@@ -196,11 +196,9 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 **Otherwise:**
 
-The topic was shaped on the discovery map — its seed lives on the map item. Read the `description` and seed the research session from it:
+The topic was shaped on the discovery map. Read its discovery brief as the starting context:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
-```
+Load **[read-brief-context.md](../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 Do not re-ask; live conversation context, when present, supplements the carrier.
 

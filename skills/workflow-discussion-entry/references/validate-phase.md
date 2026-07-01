@@ -22,6 +22,8 @@ Resuming discussion: {topic:(titlecase)}
 
 Set source="continue".
 
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
+
 → Return to caller.
 
 #### If discussion exists and status is `completed`
@@ -39,5 +41,7 @@ Reopening discussion: {topic:(titlecase)}
 ```
 
 Set source="continue".
+
+→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
 → Return to caller.
