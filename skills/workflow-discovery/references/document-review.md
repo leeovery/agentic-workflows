@@ -61,6 +61,8 @@ Walk the conversation against the log. Five checks:
 
 5. **No prose where structure is expected.** Edits is structured (bulleted operation entries); Topics Identified is structured (per-topic subsections). If freeform prose has leaked into either, move it to Exploration.
 
+Briefs (`discovery/briefs/`) are views — regenerated at each harvest, never records — and are **out of scope** here. Reconcile only the log's narrative sections.
+
 Apply corrections directly to the file. Stage and commit the fixes:
 
 ```bash
