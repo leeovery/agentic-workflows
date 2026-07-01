@@ -5,15 +5,15 @@
 // Pure function — no external dependencies. Given a markdown string and a
 // phase config, returns an array of { content } objects. Each `content`
 // includes the heading line so it travels with its body as a semantic
-// anchor (see knowledge-base/design.md finding #9).
+// anchor.
 //
 // The algorithm is the same for every phase — only the config parameters
 // change. See the `chunk()` function for the execution order; the order
 // matters and resolves ambiguity between `keep_whole_below` (whole-file
 // gate) and `special_sections` (split-time behaviour).
 //
-// Content preservation invariant (design doc line 74 — "no lossy
-// compression anywhere in the pipeline"): every emitted chunk's content
+// Content preservation invariant — "no lossy compression anywhere in the
+// pipeline": every emitted chunk's content
 // must be a verbatim substring of the post-frontmatter source. The
 // implementation tracks source line ranges on sections and slices from
 // the source when merging, rather than concatenating with a synthetic
