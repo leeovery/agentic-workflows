@@ -6,7 +6,7 @@
 
 Per-operation handling for **edits to existing map items**. Loaded by [session-loop.md](session-loop.md) when the user names one or more map operations in a conversational turn. Owns parsing, validation, manifest writes, session-log entries (under **Edits**), and commits for these moves.
 
-New topics are not added here — they are synthesised at endpoint from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
+New topics are not added here — they are synthesised at the harvest from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
 
 State for validation comes from `skills/workflow-discovery/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 

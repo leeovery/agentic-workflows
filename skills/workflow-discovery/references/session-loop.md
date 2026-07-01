@@ -6,7 +6,7 @@
 
 Follow the curatorial moves and hard rules from **[discovery-guidelines.md](discovery-guidelines.md)** throughout. No background agents, no review cycles, no perspective dispatches.
 
-State-driven branches in **A. Open** pick the opening shape; **B. Session Loop** runs pure exploration; **C. Endpoint and Synthesis** detects the endpoint and produces the topic set. When the map already has items, edits to existing items happen in the loop alongside exploration.
+State-driven branches in **A. Open** pick the opening shape; **B. Session Loop** runs the exploration; **C. Harvest** synthesises topics when the user pulls. When the map already has items, edits to existing items happen in the loop alongside exploration.
 
 ## A. Open
 
@@ -14,16 +14,16 @@ Read `discovery_map` and `dismissed` from the most recent discovery output. `imp
 
 #### If `macro_continuation` is set (new epic, just confirmed)
 
-The macro shaping at Step 4 already explored the work enough to confirm it's an epic and surfaced the first topic seeds; the confirm-trigger backfilled that into `session-{session_number}.md`. Don't re-open with a cold prompt — the conversation is already live. Render a brief transition that moves from "what is this" to "what are its topics":
+The macro shaping at Step 4 already explored the work enough to confirm it's an epic and surfaced the first topic seeds; the confirm-trigger backfilled that into `session-{session_number}.md`. Don't re-open with a cold prompt — the conversation is already live. Render a brief transition that moves from "what is this" into exploring the whole:
 
 > *Output the next fenced block as a code block:*
 
 ```
-That's an epic — work unit created. Now let's map its topics. We can
-keep pulling on the shape, or synthesise the topics we've already
-sketched whenever you're ready.
+That's an epic — work unit created. We've started sketching the shape;
+now let's get into it properly. Topics come later — they fall out once
+we've thought the whole thing through.
 
-Anything more to sketch, or shall I synthesise?
+What do you want to dig into first?
 ```
 
 **STOP.** Wait for user response.
@@ -146,32 +146,26 @@ synthesise topics.
 
 ## B. Session Loop
 
-No fixed cadence — follow the conversation, not a checklist. **The loop is pure exploration.** Topics are synthesised at endpoint in **C**.
+No fixed cadence — follow the conversation, not a checklist. **The loop is the exploration.** Topics are synthesised at the harvest in **C**, when the user pulls.
 
 1. **Listen.** Take in what the user just said.
 2. **Recognise intent.** The user's message may contain:
-   - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect. Continue the conversation: ask the next exploratory question, follow the thread the user opened. See [discovery-guidelines.md](discovery-guidelines.md) → *Open Exploration — How* for what to ask and where to push.
+   - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect, positions taken on a decision. Continue the conversation: push on the thread the user opened, counter-frame, follow where it leads. See [discovery-guidelines.md](discovery-guidelines.md) → *The Exploration Stance — How* for the register and where to push.
    - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
    - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-render using the opener's render rules. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
    - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
-   - **An endpoint signal** — *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Endpoint and Synthesis**.
+   - **A harvest pull** — *"let's pull topics"*, *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Harvest**.
 
-3. **Continue the exploration.** Ask one question at a time. Follow the conversation. See *Mirroring, not challenging* in the guidelines.
+3. **Continue the exploration.** One thread at a time. Follow the conversation. See *The Exploration Stance — How* in the guidelines for the sparring register.
 
-4. **Watch for natural endpoint patterns** — Claude-side observations that the picture has been adequately mapped:
-   - The conversation circles back to surfaces already covered
-   - Several turns produce only confirmation of existing surfaces, no new ground
-   - The shape feels mapped to you and to the user
+4. **Read the arc for convergence.** Track whether the conversation is diverging, in tension, or converging (see [harvest-nudge.md](harvest-nudge.md) for the arc, and [discovery-guidelines.md](discovery-guidelines.md) → *Reading Convergence* for the proxies). When it converges:
 
-   When you observe these patterns, route to **C. Endpoint and Synthesis** — *propose* endpoint, don't *declare* it. The user confirms or extends.
+   → Load **[harvest-nudge.md](harvest-nudge.md)** and follow its instructions to surface the ambient nudge, then **stay in B** and keep exploring.
 
-5. **Document at natural pauses.** Write a strong-summary entry to the **Exploration** section of the session log at:
-   - A surface has been adequately explored — capture what was covered
-   - Conversation is about to branch to a new area — close out the current thread
-   - Context-compaction risk feels real (long conversation, lots of detail accumulating)
+   Convergence cues the nudge; it does **not** trigger synthesis. Only the user's pull (step 2) routes to **C**.
 
-   The Exploration entry is **prose, not transcript** — capture what was named, what crystallised, what was decided not to pursue. The log survives context refresh; in-context memory does not.
+5. **Keep the running record.** The **Exploration** section is a constant running record of the conversation — not verbatim, but **not summarised away; nothing of substance is lost.** Write to it at natural pauses (a thread worked through, the conversation about to branch, detail accumulating, context-compaction risk). Capture the journey: the ideas, the objections, the pivots, the route taken, the **false paths and failed designs** (with why they were dropped), the soft decisions reached, and the **answers to any research or investigation done in-session**. Append-forward — add depth by **layering down**, never by editing earlier entries back. Prose, not transcript; the log survives context refresh, in-context memory does not. Lossiness defeats the point: if the detail of the discovery is lost, the session was wasted.
 
    The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*, which sets the active-session marker on first creation. After writing, commit:
 
@@ -180,53 +174,18 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is pur
    git commit -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"
    ```
 
-→ Proceed to **C. Endpoint and Synthesis** when either an endpoint signal is recognised in step 2 or a natural endpoint pattern is observed in step 4. Otherwise loop within **B**.
+→ Proceed to **C. Harvest** when the user pulls the harvest (a harvest pull recognised in step 2). Otherwise loop within **B** — convergence (step 4) cues the nudge but stays in the loop.
 
-## C. Endpoint and Synthesis
+## C. Harvest
 
-Reached from B when an endpoint signal arrives from the user or Claude observes natural endpoint patterns.
+Reached from **B** step 2 when the user pulls the harvest. Synthesis is user-pulled — there is no Claude-side gate here; the user has already asked.
 
-**Propose endpoint with optional pushback.** First, a one-line read of what got covered, plus zero, one, or two pushback angles if any genuinely unexplored ground comes to mind:
+→ Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written. It owns its own confirmation (`y` / `explore` / `adjust`) and returns a synthesis outcome:
 
-> *Output the next fenced block as a code block:*
-
-```
-Feels like we've sketched the shape — {one-line read of what got covered}.
-
-{Optional pushback — one or two angles not yet pulled on. Examples:}
-- We didn't talk about how X handles Y — worth a moment?
-- Did you want to map Z, or is that scope for later?
-```
-
-Pushback is **optional and bounded**. If nothing genuinely unexplored comes to mind, skip the pushback lines entirely. Don't fabricate angles to look thorough.
-
-Then prompt the user:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Ready to synthesise topics?
-
-- **`y`/`yes`** — Synthesise topics now
-- **Keep going** — Tell me what else to explore
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-#### If `yes`
-
-Load **[topic-synthesis.md](topic-synthesis.md)** and follow its instructions as written. It returns a synthesis outcome:
-
-**If the outcome is `confirmed`:**
+#### If the outcome is `confirmed`
 
 → Return to caller.
 
-**If the outcome is `explore`:**
-
-→ Return to **B. Session Loop**.
-
-#### If keep going
+#### If the outcome is `explore`
 
 → Return to **B. Session Loop**.

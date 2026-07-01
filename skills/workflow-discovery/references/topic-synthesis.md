@@ -4,7 +4,7 @@
 
 ---
 
-The endpoint ceremony. Analyse the session's exploration as a whole, produce a topic set, and confirm it with the user. Loaded by [session-loop.md](session-loop.md) C when the user confirms ready to synthesise.
+The harvest ceremony. Analyse the session's exploration as a whole, produce a topic set, and confirm it with the user. Loaded by [session-loop.md](session-loop.md) C when the user pulls the harvest.
 
 ## A. Gather Source Material
 

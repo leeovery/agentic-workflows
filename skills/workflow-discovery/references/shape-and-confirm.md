@@ -10,7 +10,7 @@ Run the shaping conversation governed by the detection core (loaded at Step 2), 
 
 Gather all signal flavours simultaneously (work-type cues and topic seeds co-emerge); resolve in dependency order. Surface tentative reads mid-loop (soft, easy to redirect). Watch for pivots, and offer scope-down-to-inbox for tangential concerns. One question at a time — keep exploring until confident-enough-to-commit per the confidence clock.
 
-→ Proceed to **B. Commit** when convergence holds (detection core **H**); otherwise keep looping in **A**.
+→ Proceed to **B. Commit** when convergence holds (detection core **I**); otherwise keep looping in **A**.
 
 ## B. Commit
 

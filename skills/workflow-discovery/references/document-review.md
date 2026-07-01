@@ -51,7 +51,7 @@ Read `.workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md`
 
 Walk the conversation against the log. Five checks:
 
-1. **Exploration narrative reflects the conversation.** The Exploration section should describe what was actually discussed — surfaces named, questions asked, what crystallised. If the conversation covered ground that isn't in the Exploration summary (and would be useful for the next session's resume or for synthesis), add a short entry. If the Exploration summary describes something that didn't actually come up, remove it. Strong summary, not verbatim — don't bloat with detail that wasn't substantive.
+1. **Exploration is a faithful running record.** The Exploration section should capture what was actually discussed — surfaces named, threads followed, the soft decisions reached, the false paths and why they were dropped, and the answers to any in-session research or investigation. If the conversation covered substance that isn't in the log (and the next session's resume or the downstream phase would want it), add it. If the log describes something that didn't come up, remove it. A running record, not verbatim — nothing of substance lost, but don't pad with detail that wasn't substantive.
 
 2. **Edits section matches applied operations.** Each entry under **Edits** should correspond to a manifest operation that actually committed. Each committed operation should have a matching entry. Map-operations writes these as it goes — gaps here are rare but worth catching, especially if a commit happened without a session-log update.
 

@@ -102,7 +102,15 @@ When a tangential concern surfaces that doesn't fit the current shape, offer to 
 
 If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`git add` the new `.workflows/.inbox/` file and commit) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
 
-## H. Confirm with reasons — the commit protocol
+## H. Anchor and return — shape, don't dive
+
+While you're determining the type, you're shaping the work, not resolving it. Substance — mechanism, feasibility, design decisions, root cause — belongs to the phase the work routes into. If the conversation tunnels into it, anchor and return: note the thread for the right later phase, then keep shaping.
+
+> *"That's the kind of thing we'll get into once this is set up — hold that thread, we'll pick it up in research / discussion / investigation. For now, let's pin down what this is."*
+
+This is determination discipline; it doesn't carry past the commit (per the scope note above). It governs every type — and since the single-phase types route straight out once the type is settled, it is the whole of their discovery.
+
+## I. Confirm with reasons — the commit protocol
 
 This protocol governs the macro commit, rendered at **Step 4** — not here. Hold it in mind.
 
