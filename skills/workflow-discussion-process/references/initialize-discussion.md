@@ -6,6 +6,8 @@
 
 → Load **[../../workflow-shared/references/seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
+→ Load **[../../workflow-shared/references/read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
+
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`. Include the terminal `## Triage` section seeded as `(none)`.
 3. Populate Context section and seed the Discussion Map:
