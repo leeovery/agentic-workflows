@@ -54,7 +54,9 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
    both the system map and spikes. (Modelled on FlowX's `docs/` trust system.)
 3. **Interactive spiking *in* discovery** — the dig → spike → draft → refactor-to-test-fit → document
    loop is part of discovery. We **modify discovery** to permit user+Claude drafting throwaway code
-   during exploration, tagged `prototype`, with learnings feeding the briefs. — *Decision 1, in progress.*
+   during exploration, kept in `.workflows/{work_unit}/discovery/code/` (a new sibling to `sessions/`
+   and `briefs/` — discovery was deliberately split into directories precisely so we could add
+   elements like this), tagged `prototype`, with learnings feeding the briefs. — *Decision 1, in progress.*
 
 ## Reasoning journey (paths taken — including the ones we rejected)
 
@@ -82,18 +84,47 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
 
 ## Open decisions
 
-- **Decision 1 — Interactive spiking in discovery** *(in progress)*: confirm it belongs in discovery,
-  and settle scope (which work types / when), invocation, what it produces & where, guardrails, and
-  the concrete edits to the shipped discovery skill.
+- **Decision 1 — Interactive spiking in discovery** *(core agreed; sub-points open)*: definition,
+  keep-code, location and prototype-framing are settled (see Decision log). Open sub-points:
+  **surfacing** (how the spike tree is searched/referenced — leaning wiki-style, NOT the RAG KB) and
+  the remaining guardrails + concrete discovery-skill edits.
 - **Decision 2 — Trust-grading scope**: import-class artefacts only (system map + spikes), or the
   fuller FlowX model that grades design/spec too?
-- **Decision 3 — Surfacing**: a visible `rebuild` preset that auto-invokes ingestion, or just
-  "start an epic, then invoke ingestion"?
+- **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
+  or just "start an epic, then invoke ingestion"?
 - **Decision 4 — Build order / PR split**: which capability is the first PR in the stack.
+- **Decision 5 — Firming-up spike code in discussion** *(new, downstream of Decision 1)*: promoting a
+  prototype spike into a blessed reference example during discussion. Leaning **option (ii)** — embed
+  the firmed-up code *verbatim in the discussion document* so it rides the existing
+  discussion → spec → plan pipe (indexed, extracted to spec, into plan) rather than adding
+  file-management machinery to the discussion phase. Touches the discussion skill, not discovery.
 
 ## Decision log
 
 _(Outcomes recorded here as each decision closes — newest last.)_
+
+### Decision 1 — Interactive spiking in discovery (core agreed 2026-07-01)
+
+- **What it is:** user + Claude collaboratively write/refactor *throwaway* code **during** discovery to
+  test whether a design idea holds before it's recorded. The value is the *learning*; the code is a
+  prototype, never copied verbatim, but a genuine worked example of how the thing could be built.
+- **User-pulled, never Claude-pushed.** The user drives it and drives the volume — a rebuild may spike
+  a lot (FlowX did). Claude still challenges ideas and stays detailed, but must let the user flow:
+  branch off to investigate a tactic/architecture/model, then come back to the code, back and forth,
+  across weeks and many sessions.
+- **Not a reversal of the shipped guardrail.** `discovery-guidelines.md` bans *autonomous* spiking
+  (Claude wandering off alone). Interactive, user-initiated spiking is a **carve-out** that keeps that
+  protection — it already fits the shipped "only if the user asks" clause.
+- **Kept & durable.** Spike code lives in `.workflows/{work_unit}/discovery/code/` — a new sibling to
+  `sessions/` and `briefs/`. (The dir-per-element structure of discovery exists precisely so we can
+  add elements like this; `code/` is one example.) Work-unit-level and holistic (not per-topic),
+  optionally organised into per-spike subdirs (cf. FlowX `docs/code/` xmas-spike / flowx-drafts).
+- **Always framed `prototype` / soft.** Consistent with discovery's soft-by-nature model: softness
+  isn't over-emphasised in-session, but everything discovery emits is soft on consumption. Code is the
+  same — real and usable as an example, but tagged prototype wherever it's referenced.
+- **Open within this decision:** the surfacing mechanism (leaning wiki-style browse + brief-carried
+  pointers, NOT RAG — code RAGs poorly and the KB wasn't built for it) and the concrete
+  discovery-skill edits. Downstream firming-up moved to Decision 5.
 
 ## Build approach
 
