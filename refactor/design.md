@@ -45,10 +45,11 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
 
 ## Capabilities to build (layered on epic)
 
-1. **System ingestion** — point epic discovery at the old system(s): multi-target (a system rarely
-   stands alone — FlowV1 needs 4–6 surrounding subsystems), user-fed (you say where to point),
-   fan-out agents to document → a **"system map"** import-class artefact + the disposition table.
-   Extends the existing `imports/` idea from "import a file" to **"import a system."**
+1. **Ingestion** (general capability, not rebuild-only) — Claude reads an external *reference* and
+   produces **our documented interpretation + a backlink to the source** (never verbatim). Point it at
+   the old system(s) for a rebuild; at a reference implementation for a feature; at other artefact
+   types later. Source-type-agnostic via **adapters** (v1 = local-path/code; URL/website/service
+   later). Rebuild is just the heaviest consumer. Distinct from imports (which copy files *in*).
 2. **Trust / provenance grading** — `canonical / reference / prototype` tags + a "no-guesses, cite the
    source" rule. Legacy facts are ground truth, not soft decisions; spikes are throwaway. Underpins
    both the system map and spikes. (Modelled on FlowX's `docs/` trust system.)
@@ -91,7 +92,10 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
 - **Decision 2 — Trust-grading scope**: import-class artefacts only (system map + spikes), or the
   fuller FlowX model that grades design/spec too?
 - **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
-  or just "start an epic, then invoke ingestion"?
+  or just "start an epic, then invoke ingestion"? *Leaning: **don't type-gate.** Ingestion & spiking
+  are general, offered discovery moves — the opener just asks "any existing systems / reference impls
+  to map?" for any epic. "Rebuild" may not need to be a designation at all. Revisit once the
+  capabilities are designed.*
 - **Decision 4 — Build order / PR split**: which capability is the first PR in the stack.
 - **Decision 5 — Firming-up spike code in discussion** *(new, downstream of Decision 1)*: promoting a
   prototype spike into a blessed reference example during discussion. Leaning **option (ii)** — embed
@@ -158,6 +162,35 @@ _(Outcomes recorded here as each decision closes — newest last.)_
   `discovery-guidelines.md`; new `discovery/code/` dir + README convention; session-log ↔ code linking;
   exclude `discovery/code/` from discovery KB-indexing; brief pointer convention into the draft.
 - **Status: design settled.** Downstream firming-up is Decision 5.
+
+### Capability #1 — Ingestion (piece 1: definition + targeting + storage, agreed 2026-07-01)
+
+- **Import vs ingestion (core distinction):** an *import* copies a file **verbatim** into the project;
+  an *ingestion* is **our documented interpretation of an external reference + a backlink to the
+  source** — never verbatim, not quite a "summary" (implies lossy), but an interpretation rich enough
+  that Claude can follow the backlink to the original and read it when needed. The reference is
+  understood and documented, never replaced. The **backlink IS the provenance** (trust-grading, piece 4,
+  largely falls out of this).
+- **General capability, not rebuild-only.** Ingest existing systems (rebuild's heavy case), a reference
+  implementation from another project (even a feature epic), other artefact types later. Rebuild is the
+  heaviest *consumer*, not the owner — reinforces that the capabilities are general discovery moves and
+  "rebuild" is just an epic that leans on them (feeds Decision 3).
+- **Source-type-agnostic via adapters.** A *target* is an abstract reference; ingestion =
+  read-via-adapter → interpret → document + backlink. **v1 ships the local-path (code) adapter**;
+  URL/website/running-service are future adapters. Design the seam; don't build every adapter.
+- **Storage:** interpretation is **Markdown** (a discovery artefact, like sessions/briefs/code — cf.
+  FlowX `current-systems/`), under `discovery/ingested/`. The **manifest registers** each ingestion
+  (identity, source pointer/backlink, provenance metadata). Markdown content + manifest registration.
+- **Targeting:** interactive, persisted, incremental; gently **offered** by Claude (offered-not-hidden).
+  Multi-target, user-curated (add targets as the map reveals dependencies), **mandatory user steering
+  context** per target (role, what matters for the rebuild, name-traps, entry points, what to ignore) +
+  scope hints. Registers pointer + git ref (citation anchor + staleness); **reads in place, stores only
+  the map** (the source system is never copied in).
+- **Rebuild-specific synthesis (add-on):** the ABSORB/PRESERVE/REPLACE **disposition table** is a
+  cross-cutting synthesis produced *over* the ingested systems when the epic is a rebuild — layered on
+  general ingestion, not part of every ingestion.
+- **Open next:** fan-out mapping (piece 2), map/artefact structure (piece 3), trust/provenance
+  (piece 4 = ex-Decision 2), downstream surfacing (piece 5), when-it-runs (piece 6), refresh (piece 7).
 
 ## Build approach
 
