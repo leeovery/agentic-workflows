@@ -264,6 +264,46 @@ describe('knowledge store — end-to-end integration (via built bundle)', () => 
     assert.strictEqual(gone.length, 0);
   });
 
+  it('keeps discovery sessions as distinct per-session identities', async () => {
+    const db = await createStore(STUB_DIMS);
+    const base = { work_unit: 'payments', work_type: 'epic', phase: 'discovery', confidence: 'low' };
+    await insertDocument(db, {
+      ...base,
+      id: 'payments-discovery-session-001-1',
+      content: 'Session one explored the offline mode surface for the ordering flow.',
+      topic: 'session-001',
+      source_file: '.workflows/payments/discovery/sessions/session-001.md',
+      timestamp: 1700000070000,
+      embedding: provider.embed('offline mode surface'),
+    });
+    await insertDocument(db, {
+      ...base,
+      id: 'payments-discovery-session-002-1',
+      content: 'Session two explored the analytics dashboard tempo versus live operational state.',
+      topic: 'session-002',
+      source_file: '.workflows/payments/discovery/sessions/session-002.md',
+      timestamp: 1700000080000,
+      embedding: provider.embed('analytics dashboard tempo'),
+    });
+
+    // Both sessions coexist under the same (work_unit, phase) but distinct topics.
+    const s1 = await searchFulltext(db, { term: 'offline', where: { phase: { eq: 'discovery' } } });
+    const s2 = await searchFulltext(db, { term: 'analytics', where: { phase: { eq: 'discovery' } } });
+    assert.strictEqual(s1.length, 1);
+    assert.strictEqual(s1[0].topic, 'session-001');
+    assert.strictEqual(s2.length, 1);
+    assert.strictEqual(s2[0].topic, 'session-002');
+
+    // Removing one session's identity leaves the other intact — the core of the
+    // per-session-topic decision (topic=work_unit would wipe both at once).
+    const removed = await removeByIdentity(db, { work_unit: 'payments', phase: 'discovery', topic: 'session-001' });
+    assert.strictEqual(removed, 1);
+    const afterS1 = await searchFulltext(db, { term: 'offline', where: { phase: { eq: 'discovery' } } });
+    const afterS2 = await searchFulltext(db, { term: 'analytics', where: { phase: { eq: 'discovery' } } });
+    assert.strictEqual(afterS1.length, 0);
+    assert.strictEqual(afterS2.length, 1);
+  });
+
   it('returns an empty array for queries with zero matches', async () => {
     const db = await createStore(STUB_DIMS);
     await seedStore(db, provider);

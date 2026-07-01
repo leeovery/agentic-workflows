@@ -19,7 +19,7 @@ const setup = require('./setup');
 // Constants
 // ---------------------------------------------------------------------------
 
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery'];
 
 // Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
 // on-disk basename to its KB topic identity. The .state/ directory also holds
@@ -293,7 +293,7 @@ function deriveIdentity(filePath) {
   }
 
   // Match .workflows/{work_unit}/{phase}/{rest}
-  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports|seeds)\/(.+)$/.exec(norm);
+  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
@@ -371,6 +371,18 @@ function deriveIdentity(filePath) {
       );
     }
     topic = seedMatch[1];
+  } else if (phase === 'discovery') {
+    // .workflows/{wu}/discovery/sessions/session-NNN.md — one file per session,
+    // nested under sessions/. Topic is the session basename so each session is
+    // a distinct KB identity and sessions never overwrite one another.
+    const discMatch = /^sessions\/(session-\d+)\.md$/.exec(rest);
+    if (!discMatch) {
+      throw new UserError(
+        `Unexpected discovery path structure: ${rest}\n` +
+          'Expected: .workflows/{work_unit}/discovery/sessions/session-NNN.md'
+      );
+    }
+    topic = discMatch[1];
   }
 
   if (topic === '.' || topic === '..' || topic.startsWith('.')) {
@@ -741,6 +753,9 @@ function discoverArtifacts() {
       // Analysis caches are file-based, not manifest-tracked. Handled
       // separately at the end of this work-unit iteration.
       if (phase === 'analysis') continue;
+      // Discovery logs are session files, not manifest-per-topic. Epic-only,
+      // handled by a dedicated traversal at the end of this iteration.
+      if (phase === 'discovery') continue;
 
       const phaseData = wu.phases && wu.phases[phase];
       if (!phaseData || !phaseData.items) continue;
@@ -827,6 +842,23 @@ function discoverArtifacts() {
       const filePath = path.posix.join('.workflows', wuName, '.state', `${basename}.md`);
       if (!fs.existsSync(path.resolve(filePath))) continue;
       items.push({ file: filePath, workUnit: wuName, phase: 'analysis', topic });
+    }
+
+    // Discovery session logs — epic-only, file-based (not manifest-per-topic).
+    // One indexed doc per session file, topic = session basename, so sessions
+    // coexist rather than overwrite. Non-epic discovery logs are thin
+    // shape-and-route and are not indexed.
+    if (wu.work_type === 'epic') {
+      const sessDir = path.posix.join('.workflows', wuName, 'discovery', 'sessions');
+      let sessFiles = [];
+      try {
+        sessFiles = fs.readdirSync(path.resolve(sessDir)).filter((f) => /^session-\d+\.md$/.test(f));
+      } catch (_) {
+        sessFiles = [];
+      }
+      for (const f of sessFiles) {
+        items.push({ file: path.posix.join(sessDir, f), workUnit: wuName, phase: 'discovery', topic: f.slice(0, -3) });
+      }
     }
   }
 
