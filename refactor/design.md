@@ -45,11 +45,12 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
 
 ## Capabilities to build (layered on epic)
 
-1. **Ingestion** (general capability, not rebuild-only) — Claude reads an external *reference* and
-   produces **our documented interpretation + a backlink to the source** (never verbatim). Point it at
-   the old system(s) for a rebuild; at a reference implementation for a feature; at other artefact
-   types later. Source-type-agnostic via **adapters** (v1 = local-path/code; URL/website/service
-   later). Rebuild is just the heaviest consumer. Distinct from imports (which copy files *in*).
+1. **Ingestion** (general capability, not rebuild-only) — Claude reads external *references* of any kind
+   (code, dirs, sites, files, images, spreadsheets…) and produces **our documented interpretation + a
+   backlink to the source** (never verbatim). **No adapters, no per-type instructions** — the model
+   already reads anything; generality is what ships it *complete*, not a breadth of handlers. Point it at
+   the old system(s) for a rebuild, a reference impl for a feature. Rebuild is just the heaviest
+   consumer. Distinct from imports (which copy files *in*).
 2. **Trust / provenance grading** — `canonical / reference / prototype` tags + a "no-guesses, cite the
    source" rule. Legacy facts are ground truth, not soft decisions; spikes are throwaway. Underpins
    both the system map and spikes. (Modelled on FlowX's `docs/` trust system.)
@@ -89,8 +90,9 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
   location (one evolving draft in `discovery/code/`), prototype-framing, surfacing (wiki index + brief
   pointers, reference-in-place), guardrails, and code ↔ session linking all agreed (see Decision log).
   Detailed skill edits deferred to its PR plan.
-- **Decision 2 — Trust-grading scope**: import-class artefacts only (system map + spikes), or the
-  fuller FlowX model that grades design/spec too?
+- **Decision 2 — Trust-grading scope**: *Leaning — nothing to build.* For ingestion the **backlink is
+  the provenance**; for spikes the `prototype` framing suffices. Any verified-vs-inferred nuance is
+  Claude's call in the prose, not a tracked field. Confirm and likely close.
 - **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
   or just "start an epic, then invoke ingestion"? *Leaning: **don't type-gate.** Ingestion & spiking
   are general, offered discovery moves — the opener just asks "any existing systems / reference impls
@@ -175,12 +177,22 @@ _(Outcomes recorded here as each decision closes — newest last.)_
   implementation from another project (even a feature epic), other artefact types later. Rebuild is the
   heaviest *consumer*, not the owner — reinforces that the capabilities are general discovery moves and
   "rebuild" is just an epic that leans on them (feeds Decision 3).
-- **Source-type-agnostic via adapters.** A *target* is an abstract reference; ingestion =
-  read-via-adapter → interpret → document + backlink. **v1 ships the local-path (code) adapter**;
-  URL/website/running-service are future adapters. Design the seam; don't build every adapter.
-- **Storage:** interpretation is **Markdown** (a discovery artefact, like sessions/briefs/code — cf.
-  FlowX `current-systems/`), under `discovery/ingested/`. The **manifest registers** each ingestion
-  (identity, source pointer/backlink, provenance metadata). Markdown content + manifest registration.
+- **No adapters; ships complete via generality.** The model reads anything (code, sites, files, images,
+  CSVs) without per-type instructions — ingestion is source-type-agnostic *by nature*, not by building
+  handlers. "Complete" = works for any source on day one, NOT a v1 subset. *(Corrects the earlier adapter
+  framing — that was over-engineering.)*
+- **Structure is emergent, not prescribed.** We do NOT hardwire a two-phase digest+synthesis pipeline.
+  Claude organizes the interpretation sensibly for the material (as it did unprompted for FlowV1);
+  cross-cutting synthesis (interaction map, event catalogue, disposition table) is something it *can* do
+  when useful/asked — not a built phase. We author for unknown projects; we can't prescribe FlowX's shape.
+- **Fan-out is a scale technique, kept.** For large/multi-target ingestion Claude fans out to parallel
+  agents (context/scale management) then collates — real value, minimal machinery. Distinct from the
+  synthesis *structure* (emergent).
+- **Storage & registry:** interpretation is **Markdown** under `discovery/ingested/` — a *known,
+  searchable, collaborative space*: everything in it is relevant reference material for the epic, shaped
+  by user + Claude. The **directory is effectively the registry** ("just search it"); manifest stays
+  light-to-none — heavy per-file provenance is explicitly out (esp. for code). The **backlink is the
+  provenance.**
 - **Targeting:** interactive, persisted, incremental; gently **offered** by Claude (offered-not-hidden).
   Multi-target, user-curated (add targets as the map reveals dependencies), **mandatory user steering
   context** per target (role, what matters for the rebuild, name-traps, entry points, what to ignore) +
@@ -189,8 +201,9 @@ _(Outcomes recorded here as each decision closes — newest last.)_
 - **Rebuild-specific synthesis (add-on):** the ABSORB/PRESERVE/REPLACE **disposition table** is a
   cross-cutting synthesis produced *over* the ingested systems when the epic is a rebuild — layered on
   general ingestion, not part of every ingestion.
-- **Open next:** fan-out mapping (piece 2), map/artefact structure (piece 3), trust/provenance
-  (piece 4 = ex-Decision 2), downstream surfacing (piece 5), when-it-runs (piece 6), refresh (piece 7).
+- **Open (piece 2 fan-out & piece 3 structure now resolved above):** downstream surfacing — KB-index
+  the prose vs dir-search-only (genuine Q); trust/provenance — leaning *backlink is enough, nothing to
+  build* (folds Decision 2); when-it-runs (opener offer); refresh/staleness.
 
 ## Build approach
 
