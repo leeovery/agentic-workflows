@@ -73,7 +73,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths (`{topic
 
 - Project manifest: `.workflows/manifest.json` (work unit registry + project defaults)
 - Manifest: `.workflows/{work_unit}/manifest.json`
-- Discovery sessions: `.workflows/{work_unit}/discovery/session-NNN.md`
+- Discovery sessions: `.workflows/{work_unit}/discovery/sessions/session-NNN.md`
 - Research: `.workflows/{work_unit}/research/`
 - Discussion: `.workflows/{work_unit}/discussion/{topic}.md` (flat file)
 - Investigation: `.workflows/{work_unit}/investigation/{topic}.md` (flat file)

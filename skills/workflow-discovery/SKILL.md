@@ -221,6 +221,7 @@ Hold the output in conversation context as **the most recent discovery output**.
 - `map_summary` — counts string used for the opener render
 - `dismissed` — names previously removed from the map
 - `active_session` — in-progress session number set by lazy log creation, cleared at conclude. Authoritative resume signal (read at Step 6).
+- `session_logs` — every session log's number + path (ascending); read from this rather than re-globbing (used by continuity-load.md)
 - `next_session_number` — used to set `session_number` for fresh entries
 
 If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5), set it now: `session_number` = `next_session_number`. When `macro_continuation` is set, the confirm-trigger already created `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
