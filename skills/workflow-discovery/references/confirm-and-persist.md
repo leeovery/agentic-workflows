@@ -4,7 +4,7 @@
 
 ---
 
-Persists the topic set produced by [topic-synthesis.md](topic-synthesis.md) to the manifest, writes the **Topics Identified** section of the session log, clears the active-session marker, and finalises the **Conclusion** placeholder.
+Persists the topic set produced by [topic-synthesis.md](topic-synthesis.md) to the manifest, writes the **Topics Identified** section of the session log, clears the active-session marker, finalises the **Conclusion** placeholder, and indexes the finalised log into the knowledge base.
 
 Edits to existing items committed via [map-operations.md](map-operations.md) during the session loop. For edits-only sessions, the manifest-writes step is empty but the marker delete and Conclusion finalisation still run.
 
@@ -89,5 +89,17 @@ git commit -m "{message}"
 ```
 
 If `git status` reports nothing to commit, skip the commit entirely.
+
+→ Proceed to **D. Index the Session Log**.
+
+## D. Index the Session Log
+
+Index the finalised session log into the knowledge base so this epic's discovery is retrievable by later phases and sibling epics. Skip for a browse-only session (no log file exists):
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
+```
+
+Idempotent — re-indexing the same session replaces that session's chunks; distinct sessions coexist under their own identity. No commit — the store lives outside git, like every other indexing call site.
 
 → Return to caller.

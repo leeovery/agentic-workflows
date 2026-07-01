@@ -10,7 +10,7 @@ CLI tool for querying the workflow knowledge base — a retrieval-augmented stor
 
 ## What the knowledge base is
 
-A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time and analysis caches (research-analysis, gap-analysis) indexed when topic-discovery rewrites them. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, when it was indexed.
+A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time, analysis caches (research-analysis, gap-analysis) indexed when topic-discovery rewrites them, and epic discovery session logs indexed at each harvest. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, when it was indexed.
 
 **Why it exists**: to surface prior context that would otherwise be lost across work units or forgotten within one. A spec written three months ago, a discussion that rejected an approach, an investigation that ruled out a cause — all remain queryable.
 
@@ -22,6 +22,7 @@ A local semantic-search index over every completed research, discussion, investi
 - `specification` (high — validated decisions, "what we decided to build")
 - `imports` (low — seed material, often loose, may contain multiple topics)
 - `analysis` (low — research-analysis and gap-analysis caches, meta-summaries derived from low-confidence material)
+- `discovery` (low — epic exploration logs: the running record, not validated decisions; topic = session, so a work unit's whole discovery is `--phase discovery --work-unit {wu}`)
 
 **What is NOT indexed**: planning, implementation, review. These phases describe execution, not knowledge. Searching them would surface task IDs and code fragments, not insight. Operational `.state/` files (migrations, environment-setup) are also excluded — only the two analysis cache filenames are accepted from `.state/`.
 

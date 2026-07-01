@@ -2369,6 +2369,76 @@ assert_eq "query post-remove returns no seed chunks" "true" \
   "$(echo "$query_after" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout' && echo false || echo true)"
 teardown_project
 
+# ============================================================================
+# DISCOVERY LOG INDEXING TESTS
+# ============================================================================
+
+echo ""
+echo "=== Discovery Log Indexing Tests ==="
+
+# Write an epic discovery session log with distinctive Exploration content.
+create_discovery_session() {
+  local wu="$1" num="$2" body="$3"
+  mkdir -p "$TEST_ROOT/.workflows/$wu/discovery/sessions"
+  cat > "$TEST_ROOT/.workflows/$wu/discovery/sessions/session-$num.md" <<MD
+# Discovery Session $num
+
+## Exploration
+
+$body
+
+## Conclusion
+
+1 topic added. Map now has 1 topics.
+MD
+}
+
+# --- Test D1: Index a discovery session log → phase=discovery, topic=session-NNN ---
+echo "Test D1: Index a discovery session log"
+setup_project
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+create_discovery_session "payments" "001" "Explored the kitchen printer as the source of truth for order state."
+output=$(run_kb index .workflows/payments/discovery/sessions/session-001.md 2>&1)
+assert_eq "indexes discovery session" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+q=$(run_kb query "kitchen printer" --phase discovery 2>&1)
+assert_eq "query --phase discovery finds the session (topic=session-001)" "true" \
+  "$(echo "$q" | grep -q 'discovery | payments/session-001' && echo true || echo false)"
+teardown_project
+
+# --- Test D2: Multiple sessions coexist (per-session topic, no overwrite) ---
+echo "Test D2: Multiple discovery sessions coexist"
+setup_project
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+create_discovery_session "payments" "001" "Session one explored the offline mode surface for ordering."
+create_discovery_session "payments" "002" "Session two explored the analytics dashboard tempo."
+run_kb index .workflows/payments/discovery/sessions/session-001.md >/dev/null 2>&1
+run_kb index .workflows/payments/discovery/sessions/session-002.md >/dev/null 2>&1
+q1=$(run_kb query "offline mode" --phase discovery 2>&1)
+q2=$(run_kb query "analytics dashboard" --phase discovery 2>&1)
+assert_eq "session-001 still retrievable after session-002 indexed" "true" \
+  "$(echo "$q1" | grep -q 'payments/session-001' && echo true || echo false)"
+assert_eq "session-002 retrievable" "true" \
+  "$(echo "$q2" | grep -q 'payments/session-002' && echo true || echo false)"
+teardown_project
+
+# --- Test D3: work-unit-level remove clears discovery chunks (cancel cascade) ---
+echo "Test D3: remove --work-unit clears discovery chunks"
+setup_project
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+create_discovery_session "payments" "001" "Explored the refund flow boundary and its handoffs."
+run_kb index .workflows/payments/discovery/sessions/session-001.md >/dev/null 2>&1
+before=$(run_kb query "refund flow" --phase discovery 2>&1)
+assert_eq "discovery indexed before remove" "true" \
+  "$(echo "$before" | grep -q 'payments/session-001' && echo true || echo false)"
+run_kb remove --work-unit payments >/dev/null 2>&1
+after=$(run_kb query "refund flow" --phase discovery 2>&1)
+assert_eq "discovery chunks gone after work-unit remove" "true" \
+  "$(echo "$after" | grep -q 'payments/session-001' && echo false || echo true)"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
