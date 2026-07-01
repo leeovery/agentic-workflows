@@ -4,7 +4,7 @@
 
 ---
 
-Loaded by [topic-synthesis.md](topic-synthesis.md) E on the confirmed harvest, while the whole exploration is still in context. A **brief** is a per-topic *view* — one topic's slice of the discovery record (soft decisions, reasoning, rejected paths, open questions), projected out of the source-of-truth logs. It is regenerated freely at every harvest that touches its topic; it is never a record. Overwrite it without hesitation. Writes the briefs for the confirmed set, reconciles brief files against any topics the harvest restructured, and flags downstream work that a regenerated brief now post-dates.
+Loaded by [topic-synthesis.md](topic-synthesis.md) E on the confirmed harvest, while the whole exploration is still in context. A **brief** is a per-topic *view* — one topic's slice of the discovery record (soft decisions, reasoning, rejected paths, open questions), projected out of the source-of-truth logs. It is regenerated at every harvest that touches its topic — overwrite freely; it is never a record. Writes the briefs for the confirmed set, reconciles brief files against any topics the harvest restructured, and flags downstream work that a regenerated brief now post-dates.
 
 ## A. Write the Briefs
 
@@ -34,25 +34,25 @@ Drawn from discovery session(s) {coarse session range}.
 
 → Proceed to **B. Lifecycle**.
 
-## B. Lifecycle — Split / Merge / Drop
+## B. Lifecycle
 
-When the harvest restructured topics that were already on the map, keep brief files and `brief_path` pointers in step with the confirmed set. Apply whichever operations occurred. The new topics' briefs are written in **A**; this section only removes what the restructuring orphaned.
+When the harvest restructured topics that were already on the map, keep brief files and `brief_path` pointers in step with the confirmed set. Apply whichever operations occurred — split, merge, and drop are independent, and more than one may apply in a single harvest. This section removes only what the restructuring orphaned.
 
-**Split** — parent `P` became children `C1`, `C2`:
+**Split** — a parent topic became two or more children. The children's briefs are written in **A**; remove the parent's:
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{parent} brief_path
 ```
 
-**Merge** — topics `A` and `B` became `M`. For each absorbed topic:
+**Merge** — two or more topics were absorbed into one merged topic. The merged topic's brief is written in **A**; for each absorbed topic, remove its brief:
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{absorbed}.md
 node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{absorbed} brief_path
 ```
 
-**Drop** — topic `T` removed from the set:
+**Drop** — a topic was removed from the set:
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{topic}.md
@@ -63,9 +63,9 @@ New topics with no prior brief need no cleanup. `delete` fails loudly when the f
 
 → Proceed to **C. Propagation**.
 
-## C. Propagation — Flag, Don't Overwrite
+## C. Propagation
 
-For each brief **regenerated** in **A** (the topic already had a brief before this harvest), check whether downstream research or discussion work exists for that topic:
+Flag downstream work, never overwrite it. For each brief **regenerated** in **A** (the topic already had a brief before this harvest), check whether downstream research or discussion work exists for that topic:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.research.{topic}
