@@ -84,9 +84,10 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
 
 ## Open decisions
 
-- **Decision 1 — Interactive spiking in discovery** *(mostly settled)*: definition, keep-code,
-  location, prototype-framing, and **surfacing** (wiki index + brief pointers, reference-in-place) are
-  agreed (see Decision log). Remaining: **guardrails** + concrete discovery-skill edits.
+- **Decision 1 — Interactive spiking in discovery** *(design settled ✅)*: definition, keep-code,
+  location (one evolving draft in `discovery/code/`), prototype-framing, surfacing (wiki index + brief
+  pointers, reference-in-place), guardrails, and code ↔ session linking all agreed (see Decision log).
+  Detailed skill edits deferred to its PR plan.
 - **Decision 2 — Trust-grading scope**: import-class artefacts only (system map + spikes), or the
   fuller FlowX model that grades design/spec too?
 - **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
@@ -131,8 +132,32 @@ _(Outcomes recorded here as each decision closes — newest last.)_
   feeds the whole epic. Any number of topic discussions reference the *same* code from where it lives —
   referencing, not copying. (Firming-up in Decision 5 embeds only a blessed excerpt into a discussion
   doc; the underlying prototype stays put and stays referenceable.)
-- **Still open in Decision 1:** guardrails (how spiking coexists with the harvest/convergence flow
-  without derailing) and the concrete discovery-skill edits. Downstream firming-up is Decision 5.
+- **Guardrails:**
+  1. *User-controlled execution; Claude never spikes autonomously* — but spiking is a **visible,
+     offered** move, not a hidden feature. Claude may softly surface it alongside the other ways to
+     proceed ("we can keep discussing, I can run some research, or we can spike this — got an
+     example?") — offer, never "just do it." (Principle: **surface the available moves, let the user
+     pick** — the offer naturally re-exposes discovery's existing moves too: discuss / research / spike.)
+  2. *During a spike Claude contributes but doesn't drive* — challenges, proposes, flags problems, but
+     follows the user's lead; no gold-plating or tangents.
+  3. *Capture the learning automatically at natural pauses* into the session-log Exploration narrative
+     (a concluding spike is a natural pause). Inline doc-blocks in the code are complementary, not a
+     replacement.
+  4. *Spiking is divergent — it defers the harvest signal*, never trips convergence; the nudge doesn't
+     fire mid-code.
+  5. *Prototype discipline* — stays in `discovery/code/`, tagged prototype; if it starts becoming the
+     real build, that's the tell you've left discovery (Claude may name it; the user decides).
+- **Code shape:** one **single evolving draft** — NOT per-session, NOT per-spike. A coherent whole, "a
+  draft version of the real code," built out as far as needed and **heavily inline-documented**
+  (doc-blocks carry the thinking alongside the code — more than normal style, on purpose). A
+  `discovery/code/README.md` orients Claude to it (structure, what it demonstrates, `status: prototype`).
+- **Linked to sessions:** session logs (`discovery/sessions/session-NNN.md`) link to the code — it's
+  part of the same sessions — and the code links back. It's one block *because* code works as a
+  consistent whole; sessions fragment, the draft doesn't.
+- **Implementation surface (detailed edits deferred to the PR plan):** carve-out + offer-mechanism in
+  `discovery-guidelines.md`; new `discovery/code/` dir + README convention; session-log ↔ code linking;
+  exclude `discovery/code/` from discovery KB-indexing; brief pointer convention into the draft.
+- **Status: design settled.** Downstream firming-up is Decision 5.
 
 ## Build approach
 
