@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.12] - 2026-07-01
+
+✨ Added
+
+- Discovery now synthesizes a per-topic "brief" at harvest time — soft decisions, rejected paths, and open questions — read in full by that topic's research or discussion session so context carries forward instead of starting cold.
+- Epic discovery conversations are now indexed into the knowledge base, so past discovery sessions are searchable alongside research and discussions.
+
+🔧 Changed
+
+- Discovery conversations go deeper — sparring, challenging framing, and working through real decisions — before topics are harvested, rather than lightly sketching a map.
+- Resuming a discovery session now briefs you on the prior sessions' thinking, not just the current topic map.
+- If a discovery brief is regenerated after downstream research or discussion has already started, that work is now flagged to reconcile against the new context instead of drifting silently.
+- Simplified the README's getting-started flow and condensed the knowledge-base setup instructions.
+
+🗑️ Removed
+
+- The interactive Workflow Explorer visualization and its GitHub Pages deploy workflow.
+
 ## [0.5.11] - 2026-06-17
 
 🔧 Changed
