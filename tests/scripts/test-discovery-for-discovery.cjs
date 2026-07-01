@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-discovery/scripts/discovery.cjs');
+const { discover, format, listSessionLogs } = require('../../skills/workflow-discovery/scripts/discovery.cjs');
 
 function writeSessionLog(dir, workUnit, number, conclusionBody, opts = {}) {
   const padded = String(number).padStart(3, '0');
@@ -512,6 +512,53 @@ describe('workflow-discovery discovery', () => {
   });
 });
 
+describe('workflow-discovery listSessionLogs', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('returns [] when no sessions directory exists', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    assert.deepStrictEqual(listSessionLogs(dir, 'payments'), []);
+  });
+
+  it('returns all session numbers and cwd-relative paths in ascending order', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    writeSessionLog(dir, 'payments', 1, 'concluded');
+    writeSessionLog(dir, 'payments', 2, 'concluded');
+    writeSessionLog(dir, 'payments', 3, '(none)');
+    assert.deepStrictEqual(listSessionLogs(dir, 'payments'), [
+      { number: 1, path: '.workflows/payments/discovery/sessions/session-001.md' },
+      { number: 2, path: '.workflows/payments/discovery/sessions/session-002.md' },
+      { number: 3, path: '.workflows/payments/discovery/sessions/session-003.md' },
+    ]);
+  });
+
+  it('ignores filenames that are not session-NNN.md', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    writeSessionLog(dir, 'payments', 1, 'concluded');
+    createFile(dir, '.workflows/payments/discovery/sessions/session-abc.md', 'ignore');
+    createFile(dir, '.workflows/payments/discovery/sessions/notes.md', 'ignore');
+    assert.deepStrictEqual(listSessionLogs(dir, 'payments'), [
+      { number: 1, path: '.workflows/payments/discovery/sessions/session-001.md' },
+    ]);
+  });
+
+  it('discover().session_logs matches listSessionLogs', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    writeSessionLog(dir, 'payments', 1, 'concluded');
+    writeSessionLog(dir, 'payments', 2, 'concluded');
+    const r = discover(dir, 'payments');
+    assert.deepStrictEqual(r.session_logs, listSessionLogs(dir, 'payments'));
+  });
+
+  it('discover().session_logs is [] when no logs exist', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    const r = discover(dir, 'payments');
+    assert.deepStrictEqual(r.session_logs, []);
+  });
+});
+
 describe('workflow-discovery format', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -681,6 +728,24 @@ describe('workflow-discovery format', () => {
     });
   });
 
+  // --- session_logs block ---
+
+  it('renders session_logs "(none)" when no logs exist', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    const out = format(discover(dir, 'payments'));
+    assert.match(out, /session_logs \(0\):\n {2}\(none\)/);
+  });
+
+  it('renders each session log with zero-padded number and path', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    writeSessionLog(dir, 'payments', 1, 'concluded');
+    writeSessionLog(dir, 'payments', 2, 'concluded');
+    const out = format(discover(dir, 'payments'));
+    assert.ok(out.includes('session_logs (2):'));
+    assert.ok(out.includes('- 001 .workflows/payments/discovery/sessions/session-001.md'));
+    assert.ok(out.includes('- 002 .workflows/payments/discovery/sessions/session-002.md'));
+  });
+
   // --- next_session_number line ---
 
   it('next_session_number line is zero-padded to 3 digits', () => {
@@ -714,6 +779,7 @@ describe('workflow-discovery format', () => {
       out.indexOf('discovery_map ('),
       out.indexOf('dismissed ('),
       out.indexOf('active_session:'),
+      out.indexOf('session_logs ('),
       out.indexOf('analysis_caches:'),
       out.indexOf('next_session_number:'),
     ];

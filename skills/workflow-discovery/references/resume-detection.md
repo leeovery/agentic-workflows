@@ -37,7 +37,7 @@ Found an in-progress discovery session for **{work_unit:(titlecase)}** at `sessi
 
 #### If `continue`
 
-Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/sessions/session-{session_number}.md` is the working state for the session loop.
+Set `session_number` = `active_session`. The existing file at `.workflows/{work_unit}/discovery/sessions/session-{session_number}.md` is the working state for the session loop, which briefs across the prior sessions on re-open (see [continuity-load.md](continuity-load.md)).
 
 → Return to caller.
 

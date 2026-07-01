@@ -35,19 +35,23 @@ function buildDiscoveryMap(manifest) {
   return { map, summary: computeMapSummary(map), needs_sequencing: computeNeedsSequencing(map) };
 }
 
-function findLatestSessionLog(cwd, workUnit) {
+function listSessionLogs(cwd, workUnit) {
   const dir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
   let files;
   try {
     files = fs.readdirSync(dir).filter(f => /^session-\d+\.md$/.test(f)).sort();
   } catch {
-    return null;
+    return [];
   }
-  if (files.length === 0) return null;
-  const filename = files[files.length - 1];
-  const m = filename.match(/^session-(\d+)\.md$/);
-  const number = parseInt(m[1], 10);
-  return { number };
+  return files.map(filename => ({
+    number: parseInt(filename.match(/^session-(\d+)\.md$/)[1], 10),
+    path: path.posix.join('.workflows', workUnit, 'discovery', 'sessions', filename),
+  }));
+}
+
+function findLatestSessionLog(cwd, workUnit) {
+  const logs = listSessionLogs(cwd, workUnit);
+  return logs.length === 0 ? null : { number: logs[logs.length - 1].number };
 }
 
 function discover(cwd, workUnit) {
@@ -75,6 +79,7 @@ function discover(cwd, workUnit) {
     needs_sequencing,
     dismissed,
     active_session: activeSession,
+    session_logs: listSessionLogs(cwd, workUnit),
     analysis_caches: analysisCaches,
     next_session_number: nextSessionNumber,
   };
@@ -120,6 +125,17 @@ function format(result) {
   lines.push(`active_session: ${result.active_session || '(none)'}`);
   lines.push('');
 
+  const sessionLogs = result.session_logs || [];
+  lines.push(`session_logs (${sessionLogs.length}):`);
+  if (sessionLogs.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const log of sessionLogs) {
+      lines.push(`  - ${String(log.number).padStart(3, '0')} ${log.path}`);
+    }
+  }
+  lines.push('');
+
   lines.push('analysis_caches:');
   const caches = result.analysis_caches || {};
   for (const kind of ['research_analysis', 'gap_analysis']) {
@@ -149,4 +165,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { discover, format };
+module.exports = { discover, format, listSessionLogs };

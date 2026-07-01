@@ -34,20 +34,13 @@ What do you want to dig into first?
 
 The session is picked up from disk — either the user chose `continue` at resume detection, or a context refresh recovered a discovery session that was confirmed but not yet synthesised (e.g. a new epic whose in-memory `macro_continuation` was lost). The active session log on disk is the working state — the highest-numbered `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, whose number is `session_number`. Read it to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
 
-Brief the user with the working state and ask where to pick up:
+Brief across the prior sessions, then ask where to pick up:
+
+→ Load **[continuity-load.md](continuity-load.md)** and follow its instructions as written.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Picking up where we left off.
-
-  Exploration so far:
-  {one-line summary of the Exploration narrative — or "no exploration yet" if empty}
-
-  Edits applied:
-  • {operation} {target}
-  • ...
-
 Where do you want to take it from here?
 ```
 
@@ -85,6 +78,10 @@ Render rules:
   - `○` — `fresh · routed to {topic.routing}` (omit ` · routed to ...` if `topic.routing` is null)
   - `⊙` — `handled · research fanned out`
   - `⊘` — `cancelled`
+
+With the map rendered, read the prior sessions to resume the conversation:
+
+→ Load **[continuity-load.md](continuity-load.md)** and follow its instructions as written.
 
 Then frame the opener:
 
