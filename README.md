@@ -21,40 +21,50 @@ A development workflow for Claude Code that turns conversations into working sof
 **What you get:**
 
 - **An expert in the room.** The system acts as an expert architect — challenging your thinking, probing edge cases before they become bugs, and capturing not just decisions but *why* you made them. Every phase adds real analytical value, not just formatting.
-- **Decisions that stick.** Discussions flow organically — follow threads, challenge assumptions, circle back when new context changes the thinking. A live Discussion Map tracks every subtopic's state (pending → exploring → converging → decided), so you always see the shape of the conversation. A background review agent catches gaps as you go — with a mandatory final review before concluding to ensure nothing was missed. When a decision has genuine ambiguity, competing perspective agents argue each position before a synthesis agent maps the tradeoff landscape. When you come back in a week, the context is there.
-- **Memory that compounds across work units.** Every completed research, discussion, investigation, and specification — plus each epic's discovery session logs — is indexed into a searchable knowledge base. The next discussion checks whether you've already decided this, planning sees how comparable specs were structured, review catches drift from prior decisions in other work units. A spec from three months ago or a discussion that rejected an approach stays one query away — surfaced automatically, not hunted for.
+- **Decisions that stick.** Discussions flow organically — follow threads, challenge assumptions, circle back when new context shifts the thinking. A live map tracks the state of every subtopic, and background agents catch gaps as you go. Come back in a week and the context is still there.
+- **Memory that compounds across work units.** Every completed research, discussion, investigation, and specification (plus each epic's discovery session logs) is indexed into a searchable knowledge base. The next discussion checks whether you've already decided this, planning sees how comparable specs were structured, and review catches drift from prior decisions in other work units. A spec from three months ago or a discussion that rejected an approach stays one query away — surfaced automatically, not hunted for.
 - **Specifications that catch mistakes early.** The system analyses your discussions, filters hallucinations, fills gaps, and produces a validated spec before any code is written.
 - **Plans with real structure.** Specifications become phased implementation plans with tasks, acceptance criteria, and dependency ordering. Choose where tasks live — [Tick CLI, Linear issues, or local markdown files](#output-formats).
 - **Implementation via strict TDD.** Tests first, then code, commit after each task. Per-task approval gates keep you in control, or switch to auto-mode when you trust the flow.
-- **Validation at every stage.** Research is reviewed by a background agent for coverage gaps, shallow areas, and unvalidated assumptions — with deep-dive agents dispatched for independent investigation of substantial threads and a mandatory final review before concluding. Discussions are reviewed by a background agent for gaps and shallow coverage — with a mandatory final review before concluding — plus competing perspective agents for ambiguous decisions. Investigation root causes are independently validated by a synthesis agent before proceeding. Specifications get bidirectional review — one agent checks against source material for accuracy, another analyses the spec as a standalone document for gaps. Plans are checked for spec traceability and structural integrity. Implementation is analysed for architecture conformance, duplication, and coding standards. Review verifies against spec and plan. Findings become remediation tasks automatically.
+- **Validation at every stage.** Independent agents check every phase — research and discussions reviewed for gaps, root causes validated, specs checked against their sources, implementation held to your architecture and standards. Findings become remediation tasks automatically.
 - **Context that survives.** Each phase clears the context window and starts fresh, so you're never fighting token limits on large work. All progress lives on disk — pick up exactly where you left off, even after context compaction or a new session.
 
 ## Getting Started
 
-### Install
+Two steps and you're running. (Node.js 18+ required.)
+
+### 1. Install into your project
+
+Run this from **the project you want to work on** (skills install into that project's `.claude/`, not globally):
 
 ```bash
 npx agntc add leeovery/agentic-workflows
 ```
 
-Skills are copied to `.claude/` in your project. Commit them to make them available everywhere, including Claude Code for Web.
+Commit them to share with your team or to use them in Claude Code for Web. Later, `npx agntc update` pulls the latest, and `npx agntc remove leeovery/agentic-workflows` uninstalls.
+
+### 2. Open Claude Code and run `/workflow-start`
+
+```
+/workflow-start
+```
+
+That's the whole interface. On a fresh project it walks you through a one-time knowledge-base setup: a single guided command where you pick a search provider (or skip it for keyword-only). After that, `/workflow-start` is where you start new work, pick up where you left off, and get guided through every phase automatically. No config files to write, no phases to memorise; it drives everything.
+
+Want to jot something down without starting a pipeline? Log it and pick it up later from `/workflow-start`:
+
+| Command | Use when... |
+|---------|-------------|
+| `/workflow-log-idea` | You want to capture an idea for later |
+| `/workflow-log-bug` | You want to log a bug for later |
+| `/workflow-log-quickfix` | You want to log a quick-fix for later |
 
 <details>
-<summary>Removal</summary>
+<summary><strong>Knowledge-base setup, requirements & self-hosting</strong></summary>
 
-```bash
-npx agntc remove leeovery/agentic-workflows
-```
-</details>
+**Requirements:** Node.js 18+, plus (optionally) an OpenAI API key for semantic search across your workflow history. Keyword-only stub mode works without one.
 
-### Requirements
-
-- Node.js 18+
-- (Optional) OpenAI API key — enables semantic search across your workflow history. See [Knowledge Base Setup](#knowledge-base-setup) below; stub mode is available if you'd rather skip embeddings.
-
-### Knowledge Base Setup
-
-Workflows require an initialised knowledge base — see [Knowledge Base](#knowledge-base) under Key Features for what it does. New installs are prompted to run setup once before any workflow command can execute:
+Workflows require an initialised knowledge base. New installs are prompted to run setup once before any workflow command can execute:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
@@ -62,15 +72,13 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 
 The interactive wizard walks through:
 - **Embedding provider**: `openai` (cloud), `openai-compatible` (local/self-hosted), or `skip` (keyword-only).
-- **OpenAI API key** (if `openai`): from `$OPENAI_API_KEY` or `~/.config/workflows/credentials.json` (mode 0600). The wizard validates with a test embed before saving.
-- **Base URL + model + dimensions** (if `openai-compatible`): the endpoint, model, and vector size. The API key is optional — press Enter to skip it for servers that don't need one. The wizard validates with a test embed.
+- **OpenAI API key** (if `openai`): from `$OPENAI_API_KEY` or `~/.config/workflows/credentials.json` (mode 0600), validated with a test embed before saving.
+- **Base URL + model + dimensions** (if `openai-compatible`): the endpoint, model, and vector size. The API key is optional — press Enter to skip it for servers that don't need one.
 - **Project init**: creates `.workflows/.knowledge/` and runs the initial indexing pass over any existing artifacts.
 
-If you skip the embedding provider, search falls back to BM25 keyword matching. Re-run setup later to switch providers.
+If you skip the provider, search falls back to BM25 keyword matching. Re-run setup later to switch.
 
-#### Local / self-hosted embeddings (`openai-compatible`)
-
-Any server that exposes an OpenAI-compatible `/v1/embeddings` endpoint works — LM Studio, Ollama (OpenAI-compat shim), vLLM, LiteLLM, etc. Pick `openai-compatible` in setup, or write the system config directly at `~/.config/workflows/config.json`:
+**Local / self-hosted embeddings (`openai-compatible`).** Any server exposing an OpenAI-compatible `/v1/embeddings` endpoint works: LM Studio, Ollama (OpenAI-compat shim), vLLM, LiteLLM, etc. Pick `openai-compatible` in setup, or write `~/.config/workflows/config.json` directly:
 
 ```json
 {
@@ -83,21 +91,9 @@ Any server that exposes an OpenAI-compatible `/v1/embeddings` endpoint works —
 }
 ```
 
-Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), vLLM (`http://localhost:8000/v1`). `dimensions` **must match the local model's native output** — the wizard's test embed checks this and fails loudly on a mismatch. The API key is optional; store one via `knowledge setup` only if your server requires it (`base_url` is ignored under the `openai` provider).
+Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), vLLM (`http://localhost:8000/v1`). `dimensions` **must match the local model's native output** — the wizard's test embed checks this and fails loudly on a mismatch.
 
-### Your First Workflow
-
-Run `/workflow-start` — the single entry point. It shows all active work, lets you continue where you left off, or start something new. When you start new work you pick the type if you know it (feature, epic, bugfix, quick-fix, cross-cutting), or choose **start** if you're not sure — either way you land in **discovery**, which shapes the work, confirms its type, and routes it into the right pipeline.
-
-To capture something for later without starting a pipeline:
-
-| Command | Use when... |
-|---------|-------------|
-| `/workflow-log-idea` | You want to capture an idea for later |
-| `/workflow-log-bug` | You want to log a bug for later |
-| `/workflow-log-quickfix` | You want to log a quick-fix for later |
-
-Logged items wait in the inbox and can be picked up anytime from `/workflow-start`. Discovery gathers context through conversation, then pipelines you through every phase automatically. Phase transitions clear context and start fresh — you approve each one.
+</details>
 
 ## The Workflow
 
@@ -111,17 +107,17 @@ Quick-fix:     Discovery → Scoping → Implementation → Review
 Cross-cutting: Discovery → (Research) → Discussion → Specification (terminal)
 ```
 
-Every type begins with **discovery** — it shapes the work, confirms its type, and routes it onward — then the pipelines diverge. And these aren't just different shapes: every phase adapts its behaviour to the work type, running deep from how research is analysed to how plans are structured to how review findings are prioritised.
+Every type begins with **discovery**, which shapes the work, confirms its type, and routes it onward; the pipelines diverge from there. And these aren't just different shapes: every phase adapts its behaviour to the work type, from how research is analysed to how plans are structured to how review findings are prioritised.
 
-**Epics** get the richest discovery — a substantive, challenging design conversation held across as many sessions as it takes, exploring the whole shape and working through the decisions it forces. It keeps a running record; at the harvest it synthesises a per-topic **brief** (soft decisions, rejected paths, open questions) and a discovery map that routes each topic to research or discussion — the briefs seed those phases as read-in-full starting context, and the session logs are indexed into the knowledge base. Re-entry briefs the prior sessions so a multi-session epic resumes its own thinking, and if a regenerated brief post-dates work already underway a non-blocking advisory flags it to reconcile — never overwriting. They're for large initiatives spanning multiple sessions. Topics move independently — 10 discussions might yield 5 specifications, each planned and implemented separately. Research analysis identifies potential discussion topics and tracks which ones haven't been started yet. As discussions mature, a discussion gap analysis reads all completed discussions holistically to surface cross-discussion themes, elevated-but-uncreated topics, emergent topics, and integration gaps — suggesting new discussions that research couldn't have anticipated. Both sources of pending topics are managed from the epic menu (discuss or skip). Planning uses walking skeletons and steel threads to prove architecture end-to-end before building features on top. Advisory soft gates warn when moving between phases if prerequisite items are still in progress. When a spec is assessed as cross-cutting, it's auto-promoted to its own cross-cutting work unit.
+**Epics** are large, multi-session initiatives. They get the richest discovery — a challenging design conversation that maps out the topics and hands each one a brief to carry into research or discussion. From there topics move independently: ten discussions might yield five specs, each planned and built on its own. Background analyses keep surfacing new topics as the work matures, and a spec that turns out cross-cutting is promoted to its own work unit.
 
-**Features** are for adding functionality. Single topic, linear pipeline. Planning analyses your codebase and follows existing patterns — it won't introduce new architectural conventions unless the spec calls for it. Research is optional — skip it if you know what you're building, or import existing research files to pick up where you left off. If a feature grows beyond scope, pivot it to an epic without losing progress. If it belongs in an existing epic, absorb it — the discussion and research move into the epic as a new topic.
+**Features** add functionality: single topic, linear pipeline. Planning follows your codebase's existing patterns rather than inventing new ones, and research is optional. Features aren't locked in — outgrow the scope and you can pivot to an epic, or fold one into an existing epic as a new topic.
 
-**Bugfixes** replace discussion with investigation — structured symptom gathering combined with code analysis to find the root cause before specifying the fix. An optional synthesis agent independently validates the root cause hypothesis by tracing code fresh, catching flawed reasoning before it propagates through the pipeline. Planning applies minimal-change surgical fixes with regression prevention as a first-class deliverable.
+**Bugfixes** swap discussion for investigation — structured symptom-gathering plus code analysis to find the root cause before fixing it. Planning favours minimal, surgical changes, with regression prevention built in.
 
-**Quick-fixes** are for trivially scoped mechanical changes — global find-and-replace, syntax updates, API renames. Scoping combines context gathering, specification, and planning into a single pass, producing 1-2 tasks directly without agents or review cycles. Implementation uses a verification workflow (baseline → change → verify) instead of TDD, since mechanical changes can't meaningfully be test-driven. If scoping reveals the change is more complex than expected, it promotes to a feature or bugfix automatically.
+**Quick-fixes** are trivial mechanical changes — renames, syntax updates, find-and-replace. A single scoping pass produces the tasks, and implementation verifies rather than test-drives. If it turns out to be more than trivial, it's promoted to a feature or bugfix.
 
-**Cross-cutting** concerns define patterns, policies, or architectural decisions that inform how features are built (caching strategies, error handling conventions, API versioning). They terminate after specification — there's nothing to build. During planning for any work type, completed cross-cutting specs are surfaced as context.
+**Cross-cutting** concerns are patterns or policies that shape how features get built — caching strategy, error handling, API versioning. They stop at specification (there's nothing to build) and resurface as context whenever you plan other work.
 
 ### Three Stages — the three D's
 
@@ -137,15 +133,15 @@ The epic dashboard groups its phase breakdown under these three headings, so the
 
 | Phase | Purpose | Applies to |
 |-------|---------|------------|
-| **Discovery** | The universal first phase — every work type begins here. Shapes the work, confirms its type, and routes it into the pipeline. For epics it's a deep, challenging design conversation across multiple sessions: it builds the discovery map, classifies each topic as research or discussion, and at the harvest synthesises per-topic **briefs** (soft decisions, rejected paths, open questions) that seed those phases; session logs are indexed into the knowledge base, re-entry briefs prior sessions, and refinement re-entry adds, dismisses, re-routes, splits, or elevates topics. Single-phase types are shaped and routed in one pass. | All |
-| **Research** | Explore ideas, market fit, technical feasibility. Existing research files can be imported verbatim at phase selection — content is ingested as-is and the session continues normally. Background review agent identifies coverage gaps and shallow areas; before concluding, a final review and a document reconciliation pass catch both topical gaps and substance discussed in-session but never captured in the research file. Deep-dive agents investigate independent threads (competitors, APIs, feasibility) in parallel. Output is analysed to derive discussion topics automatically. | Epic, Feature (opt.), Cross-cutting (opt.) |
-| **Discussion** | Organic conversation guided by a live Discussion Map that tracks subtopics through pending → exploring → converging → decided. Background review agent catches topical gaps — with a mandatory final review and a document reconciliation pass that catches substance discussed in-session but never captured in the discussion file before concluding; competing perspective agents argue viable approaches on ambiguous decisions, then a synthesis agent maps the tradeoff landscape. For epics, sibling concerns discovered during discussion are elevated to their own topic automatically. Discussion gap analysis (epics) reads all completed discussions to surface cross-discussion themes, integration gaps, and emergent topics. | Epic, Feature, Cross-cutting |
-| **Investigation** | Symptom gathering + code analysis to identify root cause. Optional synthesis agent validates the hypothesis independently. The bugfix alternative to discussion. | Bugfix |
-| **Scoping** | Context gathering, specification, and planning in a single pass. Produces 1-2 tasks directly. Includes complexity check with promotion to feature/bugfix if needed. | Quick-fix |
-| **Specification** | Analyses all discussions/investigation, filters hallucinations, enriches gaps, validates decisions. Most discussions are **sources**, extracted in full; a discussion that's its own spec yet owes a correction to a *sibling* spec is carried in as a **consult reference** — read narrowly for just that correction and cited, never extracted, and must be addressed before the spec completes. Reviewed against source material and analysed for gaps before finalising. The spec becomes the golden document — planning references only this. | Epic, Feature, Bugfix, Cross-cutting |
-| **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. Validated for spec traceability and structural integrity. Per-item approval gates with auto-mode. | Epic, Feature, Bugfix |
-| **Implementation** | TDD (or verification workflow for quick-fix) — commit per task. Post-implementation analysis agents check architecture, duplication, and standards. | Epic, Feature, Bugfix, Quick-fix |
-| **Review** | Parallel subagents verify each task against spec and plan. Non-blocking recommendations are categorized as quick-fixes, ideas, or bugs — surface selected items to the inbox for future work. Blocking findings become remediation tasks that feed back into implementation. | Epic, Feature, Bugfix, Quick-fix |
+| **Discovery** | The universal first phase — shapes the work, confirms its type, routes it onward. For epics, a multi-session design conversation that maps the topics and hands each one a brief to carry forward. | All |
+| **Research** | Explore ideas, market fit, and feasibility. Background agents flag gaps; deep-dive agents chase threads in parallel. | Epic, Feature (opt.), Cross-cutting (opt.) |
+| **Discussion** | Organic conversation guided by a live map (pending → exploring → converging → decided). Review agents catch gaps; perspective agents argue the ambiguous calls. | Epic, Feature, Cross-cutting |
+| **Investigation** | Symptom gathering and code analysis to find the root cause. The bugfix alternative to discussion. | Bugfix |
+| **Scoping** | Context, spec, and plan in one pass. Produces 1–2 tasks; promotes to feature/bugfix if it turns complex. | Quick-fix |
+| **Specification** | Turns the discussion into one validated, standalone spec — the golden document planning builds from. | Epic, Feature, Bugfix, Cross-cutting |
+| **Planning** | Converts specs into phased plans with tasks, acceptance criteria, and dependencies. | Epic, Feature, Bugfix |
+| **Implementation** | Builds it via TDD (verification for quick-fix), committing per task, then checks architecture and standards. | Epic, Feature, Bugfix, Quick-fix |
+| **Review** | Verifies each task against spec and plan. Blocking findings become fix tasks; the rest can go to the inbox. | Epic, Feature, Bugfix, Quick-fix |
 
 ### Lifecycle
 
@@ -155,11 +151,11 @@ Work units are **in-progress**, **completed**, or **cancelled**. Completion happ
 
 ### 23 Specialized Agents
 
-Complex phases spawn parallel subagents for isolated concerns — research uses 2 agents for periodic gap analysis and independent deep-dive investigation. Discussion uses 3 for independent review, competing perspectives, and synthesis of tradeoffs. Investigation uses 1 for independent root cause validation. Specification and review each use 2 for input validation and gap analysis. Planning uses 6 for phase design, task authoring, dependency graphing, and quality review. Implementation uses 7 for TDD execution, post-task review, and cross-cutting analysis.
+Complex phases fan out to parallel subagents, each with one job — gap analysis, deep-dive investigation, competing perspectives, dependency graphing, post-implementation review, and more. Twenty-three in all, spread across the phases that benefit from a second set of eyes.
 
 ### Knowledge Base
 
-Every completed research, discussion, investigation, and specification — plus each epic's discovery session logs — is indexed into a local semantic-search store. Phases query it as you work — discussion finds whether a similar topic was already decided, planning surfaces how comparable specs were structured, review compares against cross-work-unit decisions for consistency. Queries are natural language, not topic slugs: *"why we ruled out email as a primary identity field"* returns the original discussion chunk with full provenance (work unit, phase, topic, date), so you can read the source when it matters and skim chunks when it doesn't. Hybrid search (vector + keyword) when an embedding provider is configured, BM25 keyword-only as a supported fallback. Older context fades in ranking as the project moves on — decay tracks how much work has completed since, not the calendar, so a dormant project keeps its context sharp — and a storage backstop prunes only what's already unreachable; specifications never decay.
+Every completed research, discussion, investigation, and spec — plus each epic's discovery logs — is indexed into a local semantic-search store. Phases query it as you work, in plain language: *"why we ruled out email as a primary identity field"* returns the original discussion with full provenance, so past decisions surface automatically instead of getting re-litigated. Works with an embedding provider or in keyword-only mode. Older context fades in ranking as the project moves on, but specs never decay.
 
 ### Output Formats
 
@@ -177,13 +173,11 @@ Every approval gate (task authoring, implementation, review findings) can be swi
 
 ### Smart Fix Loops
 
-When a task reviewer finds issues, the executor re-invokes with feedback automatically. Loops cap at 3 attempts before escalating with a convergence diagnostic — showing what's been resolved, what's still stuck, and a trend assessment (converging, stable, or diverging). The same diagnostic applies to analysis cycles, planning review, and specification review at their respective caps.
+When a reviewer finds issues, the executor retries with the feedback automatically — capped at three attempts before it escalates with a diagnostic of what's resolved and what's still stuck. The same loop guards analysis, planning, and spec review.
 
 ### Change Detection & Cached Analysis
 
-The system tracks content changes across phase boundaries using checksums. If research documents change, the discussion phase recommends reanalysing to identify new topics — anchoring against existing discussions so nothing is lost. Surfaced topics from research are tracked in the manifest so the epic menu shows which topics are pending discussion, and a soft gate warns before starting specification if undiscussed topics remain. Discussion gap analysis works the same way — if any discussion file changes, the gap analysis re-runs to check for new cross-discussion themes and integration gaps. If discussions change, the specification phase recommends regrouping. If a spec changes after planning, the system asks whether to continue or replan.
-
-Analysis results are cached — the system only reanalyses when content actually changed. This keeps behaviour deterministic across session replays and backwards navigation, avoiding redundant work when revisiting earlier phases.
+Phase outputs are checksummed, so the system notices when something actually changes. Edit a research file and it suggests re-analysing for new topics; edit a spec after planning and it asks whether to replan. Analysis results are cached in between, so revisiting an earlier phase doesn't redo work that's still current.
 
 ### Environment Awareness
 
@@ -191,19 +185,19 @@ Implementation auto-discovers linters (ESLint, Prettier, PHP CS Fixer, etc.) and
 
 ### Structured Review Findings
 
-Reviewers identify problems but don't fix them. Each finding includes a recommended fix, optional alternative approach, and confidence level. When multiple parallel reviewers flag the same issue, findings are deduplicated — and low-severity items are discarded unless they cluster into a pattern. Non-blocking recommendations are categorized as quick-fixes (mechanical, no logic changes), ideas (require discussion), or bugs (latent, non-blocking). Surface any of them to the inbox directly from the review verdict screen.
+Reviewers flag problems, they don't fix them — each finding comes with a recommended fix, an optional alternative, and a confidence level. Duplicates from parallel reviewers are merged, and non-blocking items are sorted into quick-fixes, ideas, or bugs you can send to the inbox for later.
 
 ### Navigate Freely
 
-Revisit any completed phase before moving forward — refine a discussion, update a spec — without losing forward progress. During planning, jump to any point (leading edge, beginning, specific task) without advancing the progress tracker.
+Revisit any completed phase before moving forward (refine a discussion, update a spec) without losing forward progress. During planning, jump to any point (leading edge, beginning, specific task) without advancing the progress tracker.
 
 ### Inbox Capture
 
-Log ideas, bugs, and quick-fixes as you go — mid-conversation or from scratch. Say "log that as an idea" during any conversation, or invoke `/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` directly. Review recommendations can also be surfaced to the inbox from the verdict screen. Captured items land in `.inbox` as plain markdown files. When you're ready, `/workflow-start` shows your inbox as a working set: pick one or more items — of the same type — to promote together into the pipeline, pre-filling context and skipping the gather-context interview. (Different types route to different pipelines, so promotion is single-type; archiving isn't.) Items you no longer want can be archived out of the inbox, then restored or permanently deleted from the archived view. Promoted item(s) become the work unit's **seed(s)**: their verbatim content (exact repro, stack trace, fully-worked idea) travels with the work — read directly to seed single-phase work and surfaced through the knowledge base for each topic of an epic — so nothing you captured is lost downstream.
+Log ideas, bugs, and quick-fixes as they occur to you — say "log that as an idea" mid-conversation, or use the capture commands directly. They wait in the inbox until you're ready; then `/workflow-start` lets you promote one or more into a pipeline, pre-filled with their content, or archive the ones you've dropped. Whatever you promote travels with the work as its seed, so nothing you captured gets lost.
 
 ### Workflow Dashboard
 
-`/workflow-start` is a unified dashboard — view all active work, manage lifecycle (complete, cancel, reactivate), pivot features to epics, absorb features into existing epics, browse and curate your inbox (promote, archive, restore, delete), and route to the right skill.
+`/workflow-start` is the hub — see all active work, manage its lifecycle, pivot or absorb features, curate the inbox, and jump into the right phase.
 
 ## Skills Reference
 
@@ -259,7 +253,7 @@ Contributions are welcome! Whether it's bug fixes, workflow improvements, or new
 
 ## Related Packages
 
-- [**Agntc**](https://github.com/leeovery/agntc) — The CLI that powers skill, agent, and hook installation
+- [**agntc**](https://github.com/leeovery/agntc) — The CLI that powers skill, agent, and hook installation
 - [**@leeovery/claude-laravel**](https://github.com/leeovery/claude-laravel) — Laravel development skills for Claude Code
 - [**@leeovery/claude-nuxt**](https://github.com/leeovery/claude-nuxt) — Nuxt.js development skills for Claude Code
 

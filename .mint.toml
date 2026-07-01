@@ -15,11 +15,15 @@ max_diff_lines = 60000
 #   package-lock.json — lockfile churn
 #   .claude/          — dev-only agent skills, not shipped product
 #   .tick/            — task-tracker state
+#   deep-discovery/   — design-session artifacts (incl. a 1.9MB .jsonl transcript),
+#                       process notes not shipped product; overflowed the AI budget
 diff_exclude = [
-  "skills/workflow-knowledge/scripts/knowledge.cjs",
-  "package-lock.json",
-  ".claude/",
-  ".tick/",
+    "skills/workflow-knowledge/scripts/knowledge.cjs",
+    "package-lock.json",
+    ".claude/",
+    ".tick/",
+    "ideas/",
+    "tests/"
 ]
 
 [release.hooks]
@@ -28,7 +32,7 @@ diff_exclude = [
 # with no build step). `npm ci` (not install) keeps the lockfile from drifting; the
 # final step commits the bundle only if the build changed it.
 pre_tag = [
-  "npm ci",
-  "npm run build",
-  "git diff --quiet -- skills/workflow-knowledge/scripts/knowledge.cjs || git commit -m 'chore(release): rebuild knowledge bundle' -- skills/workflow-knowledge/scripts/knowledge.cjs",
+    "npm ci",
+    "npm run build",
+    "git diff --quiet -- skills/workflow-knowledge/scripts/knowledge.cjs || git commit -m 'chore(release): rebuild knowledge bundle' -- skills/workflow-knowledge/scripts/knowledge.cjs",
 ]
