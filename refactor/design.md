@@ -84,10 +84,9 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
 
 ## Open decisions
 
-- **Decision 1 — Interactive spiking in discovery** *(core agreed; sub-points open)*: definition,
-  keep-code, location and prototype-framing are settled (see Decision log). Open sub-points:
-  **surfacing** (how the spike tree is searched/referenced — leaning wiki-style, NOT the RAG KB) and
-  the remaining guardrails + concrete discovery-skill edits.
+- **Decision 1 — Interactive spiking in discovery** *(mostly settled)*: definition, keep-code,
+  location, prototype-framing, and **surfacing** (wiki index + brief pointers, reference-in-place) are
+  agreed (see Decision log). Remaining: **guardrails** + concrete discovery-skill edits.
 - **Decision 2 — Trust-grading scope**: import-class artefacts only (system map + spikes), or the
   fuller FlowX model that grades design/spec too?
 - **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
@@ -122,9 +121,18 @@ _(Outcomes recorded here as each decision closes — newest last.)_
 - **Always framed `prototype` / soft.** Consistent with discovery's soft-by-nature model: softness
   isn't over-emphasised in-session, but everything discovery emits is soft on consumption. Code is the
   same — real and usable as an example, but tagged prototype wherever it's referenced.
-- **Open within this decision:** the surfacing mechanism (leaning wiki-style browse + brief-carried
-  pointers, NOT RAG — code RAGs poorly and the KB wasn't built for it) and the concrete
-  discovery-skill edits. Downstream firming-up moved to Decision 5.
+- **Surfacing (agreed):** wiki-style, not RAG. `discovery/code/README.md` is a browsable index (per
+  spike: title, what-it-demonstrates, related topics, `status: prototype`); Claude scans it and
+  greps/reads the files directly. Downstream reference rides the **briefs** — a topic's brief carries a
+  *pointer* (path + prototype framing), which spec/plan follow and read directly. KB-indexing of
+  discovery logs (PR4) must **exclude** `discovery/code/` so prototype code never pollutes the prose
+  embeddings.
+- **Reference in place, never move.** Spike code is epic-level (it predates the harvested map) and
+  feeds the whole epic. Any number of topic discussions reference the *same* code from where it lives —
+  referencing, not copying. (Firming-up in Decision 5 embeds only a blessed excerpt into a discussion
+  doc; the underlying prototype stays put and stays referenceable.)
+- **Still open in Decision 1:** guardrails (how spiking coexists with the harvest/convergence flow
+  without derailing) and the concrete discovery-skill edits. Downstream firming-up is Decision 5.
 
 ## Build approach
 
