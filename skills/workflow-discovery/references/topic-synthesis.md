@@ -81,6 +81,8 @@ Confirm to commit, or tell me what to adjust.
 
 The topic set is confirmed. Hold it in conversation memory as the **working list** for Step 12 confirm-and-persist. Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together. Synthesis outcome: `confirmed`.
 
+→ Load **[brief-synthesis.md](brief-synthesis.md)** and follow its instructions as written.
+
 → Return to caller.
 
 #### If `explore`
