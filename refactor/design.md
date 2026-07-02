@@ -90,9 +90,10 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
   location (one evolving draft in `discovery/code/`), prototype-framing, surfacing (wiki index + brief
   pointers, reference-in-place), guardrails, and code ↔ session linking all agreed (see Decision log).
   Detailed skill edits deferred to its PR plan.
-- **Decision 2 — Trust-grading scope**: *Leaning — nothing to build.* For ingestion the **backlink is
-  the provenance**; for spikes the `prototype` framing suffices. Any verified-vs-inferred nuance is
-  Claude's call in the prose, not a tracked field. Confirm and likely close.
+- **Decision 2 — Trust-grading scope** *(closed ✅ — nothing to build)*: **location encodes trust**
+  (`ingested/` verifiable ref · `code/` prototype · exploration/briefs soft · spec firm). Backlink is
+  the provenance. FlowX needed tags only for its flat `docs/` tree; our phase/dir structure conveys it
+  for free.
 - **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
   or just "start an epic, then invoke ingestion"? *Leaning: **don't type-gate.** Ingestion & spiking
   are general, offered discovery moves — the opener just asks "any existing systems / reference impls
@@ -188,11 +189,20 @@ _(Outcomes recorded here as each decision closes — newest last.)_
 - **Fan-out is a scale technique, kept.** For large/multi-target ingestion Claude fans out to parallel
   agents (context/scale management) then collates — real value, minimal machinery. Distinct from the
   synthesis *structure* (emergent).
-- **Storage & registry:** interpretation is **Markdown** under `discovery/ingested/` — a *known,
-  searchable, collaborative space*: everything in it is relevant reference material for the epic, shaped
-  by user + Claude. The **directory is effectively the registry** ("just search it"); manifest stays
-  light-to-none — heavy per-file provenance is explicitly out (esp. for code). The **backlink is the
-  provenance.**
+- **Storage & registry:** interpretation is **Markdown** under `discovery/ingested/` — markdown *even
+  when the target is code* (documented interpretation with embedded code examples, not raw source), so
+  it RAGs well. A *known, searchable, collaborative space*: everything in it is relevant reference
+  material for the epic, shaped by user + Claude. The **directory is the registry**; **no manifest
+  tracking** — when a skill needs to know "systems are mapped" the discovery scripts *scan the dir and
+  inject* (existing skill convention; a filesystem scan can't drift). The **backlink is the provenance.**
+- **KB-indexed.** Extends the shipped discovery-log indexing: index `ingested/` prose; `discovery/code/`
+  (raw prototype we wrote) stays excluded.
+- **Incremental & demand-driven.** Not all-up-front — enriched as the conversation needs it (Claude- or
+  user-triggered: "what does X do?" → uncaptured → read X → add to `ingested/` → KB). "As complete as
+  the moment requires," growing over sessions.
+- **Trust needs no system — location encodes it.** FlowX tagged trust only because everything sat in one
+  flat `docs/` tree. Our phase/dir separation conveys it for free: `ingested/` = verifiable reference,
+  `code/` = prototype, exploration/briefs = soft, spec = firm. **Decision 2 closes: nothing to build.**
 - **Targeting:** interactive, persisted, incremental; gently **offered** by Claude (offered-not-hidden).
   Multi-target, user-curated (add targets as the map reveals dependencies), **mandatory user steering
   context** per target (role, what matters for the rebuild, name-traps, entry points, what to ignore) +
@@ -201,9 +211,9 @@ _(Outcomes recorded here as each decision closes — newest last.)_
 - **Rebuild-specific synthesis (add-on):** the ABSORB/PRESERVE/REPLACE **disposition table** is a
   cross-cutting synthesis produced *over* the ingested systems when the epic is a rebuild — layered on
   general ingestion, not part of every ingestion.
-- **Open (piece 2 fan-out & piece 3 structure now resolved above):** downstream surfacing — KB-index
-  the prose vs dir-search-only (genuine Q); trust/provenance — leaning *backlink is enough, nothing to
-  build* (folds Decision 2); when-it-runs (opener offer); refresh/staleness.
+- **Resolved:** downstream surfacing (KB-index the prose *and* dir-searchable); trust/provenance
+  (location encodes trust — Decision 2 closed, nothing to build); manifest (none — dir is registry,
+  scripts scan). **Open:** when-it-runs (opener offer) + refresh/staleness — both small.
 
 ## Build approach
 
