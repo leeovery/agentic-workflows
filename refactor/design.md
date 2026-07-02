@@ -42,6 +42,13 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
    Discovery** (v0.5.12). Rebuild inherits it. Coupling sets its tempo: greenfield = low coupling =
    harvest topics early = short discovery; rebuild = high coupling = harvest late = long discovery
    ("convergence = decoupled-enough-to-silo", now in the shipped guidelines).
+5. **The cone of collaboration** (intentional, pre-existing ethos these moves plug into): collaboration
+   *narrows* across phases — Discovery (widest: user intelligence ≥ agent, idea-driven) →
+   Research/Discussion (still high) → Specification (agent distils agreed content into a golden doc) →
+   Planning/Implementation (agent ~95%; review optional/skippable) → Review (agent-led). Every new
+   discovery move sits at the **wide** end: **suggest, never auto; user drives.** Suggestions have a
+   lifecycle — Claude may gently re-offer a declined one later ("still open to mapping X"), but honours
+   an explicit "don't remind me again." Claude is a *senior collaborative partner* in discovery.
 
 ## Capabilities to build (layered on epic)
 
@@ -94,11 +101,11 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
   (`ingested/` verifiable ref · `code/` prototype · exploration/briefs soft · spec firm). Backlink is
   the provenance. FlowX needed tags only for its flat `docs/` tree; our phase/dir structure conveys it
   for free.
-- **Decision 3 — Surfacing the work type**: a visible `rebuild` preset that auto-invokes ingestion,
-  or just "start an epic, then invoke ingestion"? *Leaning: **don't type-gate.** Ingestion & spiking
-  are general, offered discovery moves — the opener just asks "any existing systems / reference impls
-  to map?" for any epic. "Rebuild" may not need to be a designation at all. Revisit once the
-  capabilities are designed.*
+- **Decision 3 — Surfacing the work type** *(closed ✅ — no designation)*: `rebuild` is **not** a
+  registered type, preset, menu entry, or manifest work-type. It's an epic that leans on the general
+  offered moves (ingestion, spiking), surfaced naturally by discovery's offers — no gate. The original
+  "new refactor/rebuild work type?" question resolves to **no**; the value was always the two general
+  capabilities. Document the brownfield/rebuild *usage pattern* in user-facing docs at ship.
 - **Decision 4 — Build order / PR split**: which capability is the first PR in the stack.
 - **Decision 5 — Firming-up spike code in discussion** *(new, downstream of Decision 1)*: promoting a
   prototype spike into a blessed reference example during discussion. Leaning **option (ii)** — embed
@@ -213,7 +220,14 @@ _(Outcomes recorded here as each decision closes — newest last.)_
   general ingestion, not part of every ingestion.
 - **Resolved:** downstream surfacing (KB-index the prose *and* dir-searchable); trust/provenance
   (location encodes trust — Decision 2 closed, nothing to build); manifest (none — dir is registry,
-  scripts scan). **Open:** when-it-runs (opener offer) + refresh/staleness — both small.
+  scripts scan).
+- **When it runs:** offered at the discovery opener (extends the existing imports invite) as an
+  available move + on-demand throughout (incremental). User-pulled; Claude may offer, never auto-runs.
+  No rebuild gate.
+- **Refresh/staleness:** the ingested doc notes its **source anchor** (path + commit/ref-or-URL +
+  captured-on date) as prose; **refresh = re-ingest on demand**; Claude may flag likely staleness, never
+  auto-refreshes. Backlink keeps ground truth reachable.
+- **Ingestion design: complete ✅.**
 
 ## Build approach
 
