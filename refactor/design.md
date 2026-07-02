@@ -106,8 +106,12 @@ rebuild"), not idea-first. The question was whether "refactor" should be a sixth
   offered moves (ingestion, spiking), surfaced naturally by discovery's offers — no gate. The original
   "new refactor/rebuild work type?" question resolves to **no**; the value was always the two general
   capabilities. Document the brownfield/rebuild *usage pattern* in user-facing docs at ship.
-- **Decision 4 — Build order / PR split**: which capability is the first PR in the stack.
-- **Decision 5 — Firming-up spike code in discussion** *(new, downstream of Decision 1)*: promoting a
+- **Decision 4 — Build order / PR split** *(closed ✅)*: stacked, **spiking-first** —
+  **PR1 Spiking** (establishes the shared discovery patterns: sibling-dir, offer posture, KB touch,
+  script-scan, brief pointers) → **PR2 Ingestion** (reuses them; + user-docs note on the brownfield
+  usage pattern) → **PR3 Firming-up** (Decision 5; needs spikes; touches the discussion skill). The
+  offer/suggestion posture folds into PR1.
+- **Decision 5 — Firming-up spike code in discussion** *(in scope; designing now)*: promoting a
   prototype spike into a blessed reference example during discussion. Leaning **option (ii)** — embed
   the firmed-up code *verbatim in the discussion document* so it rides the existing
   discussion → spec → plan pipe (indexed, extracted to spec, into plan) rather than adding
