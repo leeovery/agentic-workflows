@@ -34,7 +34,7 @@ Skills organised in tiers:
 
 **Discovery** (`workflow-discovery`): model-only (`user-invocable: false`). The universal first phase (see Workflow Phases #1) — new work is shaped and its type settled here before the pipeline branches into the type-specific phases. Two modes — new (decide the work type, persist at the commit, route out) and existing-epic (re-shape the map, delegated from `workflow-continue-epic`).
 
-**Navigation skills** (`workflow-continue-{epic,feature,bugfix,quickfix,cross-cutting}`): model-only (`user-invocable: false`). Per-type resume/dashboard — show state and route to the right phase. `workflow-continue-epic` also delegates map refinement to discovery and triggers the analytical bridge enrichment. Step 0 is casing-only (migrations + knowledge-check are guaranteed by `workflow-start`).
+**Navigation skills** (`workflow-continue-{epic,feature,bugfix,quickfix,cross-cutting}`): model-only (`user-invocable: false`). Per-type resume/dashboard — show state and route to the right phase. `workflow-continue-epic` also delegates map refinement to discovery and triggers the analytical bridge enrichment. Step 0 is casing-only (migrations + the knowledge gate are guaranteed by `workflow-start`).
 
 **Phase entry skills** (`workflow-*-entry`): internal (`user-invocable: false`). Invoked by discovery, `workflow-continue-*`, and the bridge with work_type and work_unit always provided. Handle phase-specific validation, bootstrap questions, processing skill invocation. New single-phase work seeds from the durable carrier (session log + manifest `description`).
 
@@ -190,7 +190,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 **Allowed tools**: Skills that invoke the CLI must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in their frontmatter. SKILL.md is the authoritative API reference — read it before adding a new call site.
 
-**Mandatory Step 0.3 gate**: Every entry-point skill ends Step 0 with `Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)**`. The reference runs `knowledge check` → if `not-ready`, terminal stop directing the user to `knowledge setup`; if `ready`, runs `knowledge compact` (TTL-based decay) and returns. Setup is human-only (interactive readline) — Claude cannot run it.
+**Mandatory boot gate**: `engine boot` (Step 0 of `workflow-start`) runs `knowledge check` and, when ready, `knowledge compact` (TTL-based decay). A `not-ready` response is a terminal stop directing the user to `knowledge setup`. Setup is human-only (interactive readline) — Claude cannot run it.
 
 **Phase-completion indexing**: Processing skills invoke `knowledge index <path>` at phase completion to add the new artifact. Spec promotion and work-unit cancellation invoke `knowledge remove --work-unit ... [--phase ...] [--topic ...]` to clean up. Pending queue handles transient failures with retry on next `index` call.
 
