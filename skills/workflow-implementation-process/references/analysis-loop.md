@@ -7,7 +7,7 @@
 Each cycle follows stages A through H sequentially. Always start at **A. Cycle Gate**.
 
 ```
-A. Cycle gate (check analysis_cycle_session, warn if over limit)
+A. Cycle gate (record the cycle, warn if over the session limit)
 B. Git checkpoint
 C. Dispatch analysis agents → invoke-analysis.md
 D. Dispatch synthesis agent → invoke-synthesizer.md
@@ -22,25 +22,18 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Read both counters:
+Record the cycle via the engine (increments both the lifetime and session counters):
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} analysis_cycle_total
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} analysis_cycle_session
+node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
 ```
 
-Write each back incremented by 1 (previous value + 1):
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_total {total+1}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_cycle_session {session+1}
-```
+`{N}` and `{cycle-number}` throughout this loop refer to the response's `cycle_total`; **F. Process Task** branches on its `analysis_gate_mode`.
 
-`{N}` and `{cycle-number}` throughout this loop refer to the new `analysis_cycle_total`.
-
-#### If `analysis_cycle_session` <= 3
+#### If the response's `over_session_limit` is `false`
 
 → Proceed to **B. Git Checkpoint**.
 
-#### If `analysis_cycle_session` > 3
+#### If the response's `over_session_limit` is `true`
 
 **Do NOT skip analysis autonomously.** This gate is an escape hatch for the user — not a signal to stop. The expected default is to continue running analysis until no issues are found. Present the choice and let the user decide.
 
@@ -67,7 +60,7 @@ You MUST NOT choose on the user's behalf.
 
 **If `skip`:**
 
-→ Return to **[the skill](../SKILL.md)** for **Step 9**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 ---
 
@@ -151,7 +144,7 @@ impl({work_unit}): analysis cycle {N} — findings
 
 #### If all three agents returned `STATUS: clean`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 9**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 #### Otherwise
 
@@ -173,7 +166,7 @@ impl({work_unit}): analysis cycle {N} — synthesis
 
 #### If `STATUS` is `clean`
 
-→ Return to **[the skill](../SKILL.md)** for **Step 9**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 #### If `STATUS` is `tasks_proposed`
 
@@ -226,7 +219,7 @@ Sources: {sources}
 {tests}
 ```
 
-Check `analysis_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} analysis_gate_mode`).
+Branch on the `analysis_gate_mode` carried by this cycle's response (or `auto` if the user opted in at a previous task this cycle).
 
 #### If `analysis_gate_mode` is `auto`
 
@@ -301,7 +294,7 @@ Commit the staging file updates:
 impl({work_unit}): analysis cycle {N} — tasks skipped
 ```
 
-→ Return to **[the skill](../SKILL.md)** for **Step 9**.
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 ---
 
