@@ -21,6 +21,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifes
 const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/map.cjs');
 const { cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { boot } = require('./domain/boot.cjs');
 
@@ -41,22 +42,27 @@ function failJson(err) {
   process.exit(1);
 }
 
-// Minimal flag parser: collects `--key value` pairs and bare positionals.
-/** @param {string[]} argv */
-function parseArgs(argv) {
+// Minimal flag parser: collects `--key value` pairs, value-less flags named
+// in `booleans`, and bare positionals.
+/** @param {string[]} argv @param {string[]} [booleans] */
+function parseArgs(argv, booleans = []) {
   /** @type {Record<string, string>} */
   const opts = {};
+  /** @type {Set<string>} */
+  const flags = new Set();
   /** @type {string[]} */
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('--')) {
-      opts[a.slice(2)] = argv[++i];
+      const name = a.slice(2);
+      if (booleans.includes(name)) flags.add(name);
+      else opts[name] = argv[++i];
     } else {
       positional.push(a);
     }
   }
-  return { opts, positional };
+  return { opts, flags, positional };
 }
 
 const USAGE = `Usage: engine <command> [args]
@@ -67,6 +73,12 @@ Commands:
   map set <work-unit> <topic> <subtopic> <state>
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
+  task init <work-unit> <topic>
+  task start <work-unit> <topic> <internal-id>
+  task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
+  task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped]
+                [--next-task <id|~>] [--phase <N>] [--phase-complete]
+  task analysis-cycle <work-unit> <topic>
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -145,6 +157,60 @@ function runTopic(argv) {
     }
     const fn = command === 'cancel' ? cancelTopic : reactivateTopic;
     respond(fn(process.cwd(), workUnit, phase, topic));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// task — implementation-task bookkeeping: format-blind, manifest-side only.
+// The engine never touches a task backend; the session does the plan surgery,
+// these commands record it. No git commit — the per-task commit is the
+// session's.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runTask(argv) {
+  const [command, ...rest] = argv;
+  const cwd = process.cwd();
+  try {
+    const { opts, flags, positional } = parseArgs(rest, ['skipped', 'phase-complete']);
+    const [workUnit, topic, internalId] = positional;
+    if (command === 'init' || command === 'analysis-cycle') {
+      if (!workUnit || !topic) throw new Error(`Usage: engine task ${command} <work-unit> <topic>`);
+      respond(command === 'init' ? initTasks(cwd, workUnit, topic) : analysisCycle(cwd, workUnit, topic));
+    } else if (command === 'start') {
+      if (!workUnit || !topic || !internalId) {
+        throw new Error('Usage: engine task start <work-unit> <topic> <internal-id>');
+      }
+      respond(startTask(cwd, workUnit, topic, internalId));
+    } else if (command === 'fix-attempt') {
+      if (!workUnit || !topic || !internalId || !opts['findings-file']) {
+        throw new Error('Usage: engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>');
+      }
+      respond(fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']));
+    } else if (command === 'complete') {
+      if (!workUnit || !topic) {
+        throw new Error('Usage: engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]');
+      }
+      /** @type {number|undefined} */
+      let phase;
+      if (opts.phase !== undefined) {
+        phase = parseInt(opts.phase, 10);
+        if (!Number.isInteger(phase)) throw new Error(`--phase must be a number (got "${opts.phase}")`);
+      }
+      const next = opts['next-task'];
+      respond(completeTask(cwd, workUnit, topic, {
+        internalId: internalId ?? null,
+        externalId: opts.external ?? null,
+        skipped: flags.has('skipped'),
+        nextTask: next === undefined ? undefined : next === '~' ? null : next,
+        phase,
+        phaseComplete: flags.has('phase-complete'),
+      }));
+    } else {
+      throw new Error('Usage: engine task <init|start|fix-attempt|complete|analysis-cycle> …');
+    }
   } catch (err) {
     failJson(err);
   }
@@ -276,6 +342,9 @@ function runCli(argv) {
       break;
     case 'topic':
       runTopic(rest);
+      break;
+    case 'task':
+      runTask(rest);
       break;
     case 'inbox':
       runInbox(rest);
