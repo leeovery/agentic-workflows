@@ -20,7 +20,7 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/map.cjs');
-const { cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { cancelTopic, reactivateTopic, sequenceMap } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -71,6 +71,7 @@ Commands:
   boot
   map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   map set <work-unit> <topic> <subtopic> <state>
+  map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
   task init <work-unit> <topic>
@@ -91,9 +92,11 @@ Commands:
   render tree [--width N]            (reads a JSON TreeNode array on stdin)`;
 
 // ---------------------------------------------------------------------------
-// map — discussion-map transitions. Load (kernel) → apply (domain) → save →
-// one decision-ready JSON line, so the flow needs no follow-up read. No git
-// commit here: the session's commit cadence picks the manifest change up.
+// map — map transitions. add/set are discussion-map subtopic writes: load
+// (kernel) → apply (domain) → save → one decision-ready JSON line, no git
+// commit (the session's commit cadence picks the manifest change up).
+// sequence records a discovery-map ordering as one transaction with its own
+// scoped commit — the judgment (choosing the order) stays with the caller.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -104,7 +107,26 @@ function runMap(argv) {
 
   try {
     const [workUnit, topic, subtopic, state] = positional;
-    if (command === 'add') {
+    if (command === 'sequence') {
+      if (!workUnit || positional.length < 2) {
+        throw new Error('Usage: engine map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+      }
+      /** @type {Record<string, number>} */
+      const orders = {};
+      for (const pair of positional.slice(1)) {
+        const eq = pair.indexOf('=');
+        const name = eq > 0 ? pair.slice(0, eq) : '';
+        const value = eq > 0 ? pair.slice(eq + 1) : '';
+        if (!name || !/^[1-9][0-9]*$/.test(value)) {
+          throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
+        }
+        if (name in orders) {
+          throw new Error(`topic "${name}" assigned twice`);
+        }
+        orders[name] = parseInt(value, 10);
+      }
+      respond(sequenceMap(cwd, workUnit, orders));
+    } else if (command === 'add') {
       if (!workUnit || !topic || !subtopic) {
         throw new Error('Usage: engine map add <work-unit> <topic> <subtopic> [--parent <subtopic>]');
       }
