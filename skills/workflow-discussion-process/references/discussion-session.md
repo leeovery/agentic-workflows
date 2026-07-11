@@ -16,7 +16,7 @@ Two types of background agent operate during the discussion. Load their lifecycl
 
 ## B. Session Loop
 
-The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. It is typed state in the manifest (`phases.discussion.items.{topic}.subtopics`): you make every state call, the engine `map` commands record it, and the adapter renders it (see **E**). Follow this loop:
+The discussion is an organic conversation. The Discussion Map is your tracking backbone — it tells you where you are, what's been decided, what's still open, and where to go next. It is typed state in the manifest (`phases.discussion.items.{topic}.subtopics`): you make every state call, the engine `discussion-map` commands record it, and the adapter renders it (see **E**). Follow this loop:
 
 1. **Check for findings** — Before each conversational turn, run the check-for-results logic from the background-agent files loaded above. Each file knows its own rules; follow the named section in each:
    - **Review agent**: follow **B. Check and Surface** in **[review-agent.md](review-agent.md)** — delegates to the shared surfacing protocol for review findings.
@@ -26,12 +26,12 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs map add {work_unit} {topic} {subtopic} [--parent {parent}]
+   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs map set {work_unit} {topic} {subtopic} {state}
+   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
    ```
 
    The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Don't force transitions — suggest them. The user can follow your suggestion or go wherever they want.
@@ -49,7 +49,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
 ## C. Subtopic Lifecycle
 
-Subtopics move through states as the conversation progresses. The judgment call is yours; recording it is the `map set` command (session loop step 3):
+Subtopics move through states as the conversation progresses. The judgment call is yours; recording it is the `discussion-map set` command (session loop step 3):
 
 **pending** → Identified but not yet explored. Sits on the map waiting for attention. New subtopics from tangents, agent findings, or natural discovery start here.
 
@@ -77,7 +77,7 @@ You own transitions between subtopics. The goal is natural flow, not rigid seque
 
 **When a tangent surfaces a new concern:**
 
-Record it on the map as `pending` (`map add`, session loop step 2). If it's closely related to the current subtopic, it might become a child (`--parent`). If it's independent, it sits at the top level.
+Record it on the map as `pending` (`discussion-map add`, session loop step 2). If it's closely related to the current subtopic, it might become a child (`--parent`). If it's independent, it sits at the top level.
 
 > "Good catch — I've added {new subtopic} to the map. Let's finish {current} first and we can pick that up after."
 
@@ -212,7 +212,7 @@ Note the concern in the Summary section for the user to consider separately, and
 
    **STOP.** Wait for user response.
 
-   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic (`{topic}`), it's a detail of this discussion, not a reroute — record it as a `pending` subtopic (`map add`, session loop step 2) and → Return to **B. Session Loop**.
+   A chosen candidate is the target; `new` means propose a kebab-case name and confirm it. If the resolved target is the current topic (`{topic}`), it's a detail of this discussion, not a reroute — record it as a `pending` subtopic (`discussion-map add`, session loop step 2) and → Return to **B. Session Loop**.
 
 2. Record the concern with the full context discussed about it as `concern` — the target topic picks it up cold.
 
@@ -353,7 +353,7 @@ There are still {N} subtopics not yet decided:
 Set each `unresolved` subtopic to `deferred`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs map set {work_unit} {topic} {subtopic} deferred
+node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} deferred
 ```
 
 Note them in the Summary → Open Threads section of the discussion file. Commit.

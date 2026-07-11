@@ -41,7 +41,7 @@ For each `### {title}` subsection under `## Triage`, carry its **full body** (ev
 - Add `{title}` to the Discussion Map as a `pending` subtopic:
 
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs map add {work_unit} {topic} {title:(kebabcase)}
+  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
   ```
 - Create a `## {title}` subtopic section with the entry body written in as its `### Context`, so the session explores it from there.
 

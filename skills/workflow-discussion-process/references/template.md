@@ -89,11 +89,11 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 1. Ensure discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Create file: `.workflows/{work_unit}/discussion/{topic}.md`
 3. Start with context: why discussing?
-4. Register in the manifest and seed the Discussion Map via the engine `map add` command (the skill handles this)
+4. Register in the manifest and seed the Discussion Map via the engine `discussion-map add` command (the skill handles this)
 
 **During discussion**:
 - Follow the conversation organically — don't force a rigid question order
-- Track subtopics on the Discussion Map (manifest state, maintained via the engine `map` commands)
+- Track subtopics on the Discussion Map (manifest state, maintained via the engine `discussion-map` commands)
 - Document subtopics when they reach `decided` (or accumulate enough exploration to capture)
 - New subtopics emerge naturally — record them on the map as `pending`
 - Minor items resolved in passing can be folded into their parent subtopic's documentation

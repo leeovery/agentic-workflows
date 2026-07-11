@@ -59,7 +59,7 @@ Best practices for documenting discussions. For DOCUMENTATION only - no plans or
 
 At natural pauses — not every exchange, but when something meaningful has been completed, explored, or uncovered — update the file on disk:
 
-- Record Discussion Map state changes as subtopics progress (engine `map set`) and new subtopics as they emerge (engine `map add`)
+- Record Discussion Map state changes as subtopics progress (engine `discussion-map set`) and new subtopics as they emerge (engine `discussion-map add`)
 - Document subtopics when they reach `decided`
 - Document false paths when identified
 - Record decisions (even provisional ones) with rationale
