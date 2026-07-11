@@ -6,13 +6,13 @@
 //   const engine = require('../../workflow-engine/scripts/lib.cjs');
 //
 // Rings:
-//   engine.render       kernel — pure layout (no workflow vocabulary)
-//   engine.manifest     kernel — work-unit manifest IO (load / atomic save)
-//   engine.conventions  domain — workflow glyphs, tags, title composition
-//   engine.map          domain — discussion-map transitions + queries
-//   engine.detail       domain — detail builders (the one structured object per work unit)
-//   engine.project      domain — projections (dashboard / key / menu / map views)
-//   engine.gateway      adapter harness — verb dispatch + output sections
+//   engine.render         kernel — pure layout (no workflow vocabulary)
+//   engine.manifest       kernel — work-unit manifest IO (load / atomic save)
+//   engine.conventions    domain — workflow glyphs, tags, title composition
+//   engine.discussionMap  domain — discussion-map transitions + queries
+//   engine.detail         domain — detail builders (the one structured object per work unit)
+//   engine.project        domain — projections (dashboard / key / menu / map views)
+//   engine.gateway        adapter harness — verb dispatch + output sections
 //
 // Domain queries, projections, and transitions grow here as call sites
 // migrate — added when a real consumer lands, never speculatively.
@@ -25,7 +25,7 @@ const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic.cjs');
 const start = require('./domain/start.cjs');
 const workunit = require('./domain/workunit.cjs');
-const map = require('./domain/map.cjs');
+const discussionMap = require('./domain/discussion-map.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const discussionProjections = require('./domain/projections/discussion.cjs');
 const startProjections = require('./domain/projections/start.cjs');
@@ -36,11 +36,11 @@ module.exports = {
   manifest,
   conventions,
   gateway,
-  map: {
-    addSubtopic: map.addSubtopic,
-    setSubtopicState: map.setSubtopicState,
-    mapState: map.mapState,
-    SUBTOPIC_STATES: map.SUBTOPIC_STATES,
+  discussionMap: {
+    addSubtopic: discussionMap.addSubtopic,
+    setSubtopicState: discussionMap.setSubtopicState,
+    mapState: discussionMap.mapState,
+    SUBTOPIC_STATES: discussionMap.SUBTOPIC_STATES,
   },
   detail: {
     epicDetail: epic.epicDetail,

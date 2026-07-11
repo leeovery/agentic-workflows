@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: discussion projections — the Discussion Map view over one
-// discussion item's subtopics (see ../map.cjs).
+// discussion item's subtopics (see ../discussion-map.cjs).
 //
 // Deterministic: same manifest, same string. Rows hang off the header via the
 // kernel tree (├─/└─); insertion order is render order; children nest under
@@ -11,10 +11,10 @@
 
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, discussionGlyph } = require('../conventions.cjs');
-const { mapState, subtopicsOf } = require('../map.cjs');
+const { mapState, subtopicsOf } = require('../discussion-map.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
-/** @typedef {import('../map.cjs').SubtopicCounts} SubtopicCounts */
+/** @typedef {import('../discussion-map.cjs').SubtopicCounts} SubtopicCounts */
 
 // Breakdown categories in display order. Omitted entirely when only one
 // category is non-zero (the rows already say it).

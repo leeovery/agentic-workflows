@@ -30,7 +30,7 @@ function map(workUnit, topic) {
   }
   const cwd = process.cwd();
   const manifest = engine.manifest.loadWorkUnitManifest(cwd, workUnit);
-  const state = engine.map.mapState(manifest, topic);
+  const state = engine.discussionMap.mapState(manifest, topic);
 
   return [
     engine.gateway.dataBlock({
