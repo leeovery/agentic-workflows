@@ -301,13 +301,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
 
-**Commit all changes** in a single commit:
+**Commit all changes** with raw git — stage the task's code and tests, the plan format's tracking state, and the work unit's manifest, then commit:
 
 ```
 impl({work_unit}): T{internal_id} — {brief description}
 ```
 
-Code, tests, and plan progress — one commit per approved task.
+One commit per approved task. Never `engine commit` here — its scopes cover `.workflows` only, never code or the plan format's storage.
 
 → Return to **A. Retrieve Next Task**.
 
