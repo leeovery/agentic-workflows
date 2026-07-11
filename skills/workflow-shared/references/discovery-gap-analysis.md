@@ -190,46 +190,10 @@ Overwrite with the topic list:
 
 List every topic from **C**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **C** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
 
-Compute the input checksum from completed research files plus completed discussion files only:
+Stamp the manifest's gap_analysis_cache — one command checksums the completed research plus completed discussion files and writes `checksum`, `generated`, and `input_files`:
 
 ```bash
-node -e "
-const fs = require('fs');
-const crypto = require('crypto');
-const path = require('path');
-const manifest = JSON.parse(fs.readFileSync('.workflows/{work_unit}/manifest.json', 'utf8'));
-const rItems = ((manifest.phases || {}).research || {}).items || {};
-const dItems = ((manifest.phases || {}).discussion || {}).items || {};
-const rDir = '.workflows/{work_unit}/research';
-const dDir = '.workflows/{work_unit}/discussion';
-const inputs = [];
-for (const [k, v] of Object.entries(rItems)) {
-  if (v && v.status === 'completed') {
-    const p = path.join(rDir, k + '.md');
-    if (fs.existsSync(p)) inputs.push(p);
-  }
-}
-for (const [k, v] of Object.entries(dItems)) {
-  if (v && v.status === 'completed') {
-    const p = path.join(dDir, k + '.md');
-    if (fs.existsSync(p)) inputs.push(p);
-  }
-}
-inputs.sort();
-const hash = crypto.createHash('md5');
-for (const f of inputs) hash.update(fs.readFileSync(f));
-console.log(hash.digest('hex'));
-"
-```
-
-Update the manifest's gap_analysis_cache (note: now lives under `phases.discovery`, not `phases.discussion`):
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery gap_analysis_cache.checksum "{computed-checksum}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery gap_analysis_cache.generated "{ISO timestamp}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery gap_analysis_cache.input_files '[]'
-# Push one entry per input file (completed research + completed discussion):
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.discovery gap_analysis_cache.input_files "{file}.md"
+node .claude/skills/workflow-engine/scripts/engine.cjs cache stamp {work_unit} gap-analysis
 ```
 
 Index the cache file into the knowledge base so its content surfaces in future contextual queries:
