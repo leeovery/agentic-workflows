@@ -9,6 +9,9 @@
 //   discovery.cjs {work_unit}   → labelled dump, one epic (scoped re-runs)
 //   discovery.cjs view {work_unit} [new_arrivals_json]
 //                               → DATA + DISPLAY + MENU snapshot (Step 8)
+//   discovery.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
+//   discovery.cjs cancel-menu {work_unit}      → Cancel Topic sub-view (E)
+//   discovery.cjs reactivate-menu {work_unit}  → Reactivate Topic sub-view (F)
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
@@ -222,10 +225,37 @@ function view(workUnit, newArrivalsJson) {
   ].join('\n');
 }
 
+// One selection sub-view (sections D–F): the keys table as DATA, the grouped
+// list as DISPLAY, the pick menu as MENU.
+/** @param {string} workUnit @param {(name: string, detail: object) => {keys: object[], display: string, rendered: string}} projection */
+function subView(workUnit, projection) {
+  const result = discover(process.cwd(), workUnit);
+  const e = result.epics[0];
+  if (!e) {
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
+  }
+  const view = projection(e.name, e.detail);
+
+  const dataLines = [`work_unit: ${e.name}`];
+  dataLines.push('ACTIONS (key  action  topic  phase  → route):');
+  for (const k of view.keys) {
+    dataLines.push(`  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.phase || '—'}  → ${k.route || '(internal)'}`);
+  }
+
+  return [
+    engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.displayBlock(view.display),
+    engine.gateway.menuBlock(view.rendered),
+  ].join('\n');
+}
+
 if (require.main === module) {
   engine.gateway.runGateway({
     index: () => format(discover(process.cwd())),
     view,
+    'completed-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicCompletedMenu(name, d)),
+    'cancel-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicCancelMenu(d)),
+    'reactivate-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicReactivateMenu(d)),
     fallback: (workUnit) => format(discover(process.cwd(), workUnit)),
   });
 }

@@ -2,11 +2,17 @@
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { discover } = require('../../skills/workflow-continue-epic/scripts/discovery.cjs');
-const { epicDashboard, epicKey, epicMenu } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
+const {
+  epicDashboard, epicKey, epicMenu, epicCompletedMenu, epicCancelMenu, epicReactivateMenu,
+} = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
+
+const ADAPTER = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/discovery.cjs');
 
 // Golden tests: byte-exact expected strings for the epic dashboard, key, and
 // menu projections. Fixtures go through real manifests in temp dirs (the same
@@ -419,6 +425,211 @@ describe('epic projections: menu', () => {
       '',
       'Select an option:',
       '· · · · · · · · · · · ·',
+    ].join('\n'));
+  });
+});
+
+describe('epic projections: selection sub-views', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  // Two topics per one phase, one topic in others, a cancelled item with a
+  // stashed previous_status, and a promoted item — exercises the grouping,
+  // continuous numbering, and status-filter rules together.
+  function richDetail() {
+    return detailFor(dir, 'quiz-competition-v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { 'kitchen-hardware': { status: 'completed' }, 'menu-admin': { status: 'in-progress' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' }, 'stale-topic': { status: 'cancelled', previous_status: 'in-progress' } } },
+        specification: { items: { 'roles-and-permissions': { status: 'completed' }, billing: { status: 'promoted' } } },
+        implementation: { items: { 'roles-and-permissions': { status: 'in-progress' } } },
+      },
+    });
+  }
+
+  it('completed-menu: unnumbered └─ rows grouped by phase, routes per entry', () => {
+    const view = epicCompletedMenu('quiz-competition-v1', richDetail());
+    assert.strictEqual(view.display, [
+      'Completed Topics',
+      '',
+      '  Research',
+      '    └─ Kitchen Hardware [completed]',
+      '',
+      '  Discussion',
+      '    └─ Auth Flow [completed]',
+      '',
+      '  Specification',
+      '    └─ Roles And Permissions [completed]',
+      '',
+    ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      'Which topic would you like to resume?',
+      '',
+      '- **`1`** — Resume "Kitchen Hardware" — research',
+      '- **`2`** — Resume "Auth Flow" — discussion',
+      '- **`3`** — Resume "Roles And Permissions" — specification',
+      '- **`b`/`back`** — Return to menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
+      [
+        ['1', 'resume', 'kitchen-hardware', 'research', '/workflow-research-entry epic quiz-competition-v1 kitchen-hardware'],
+        ['2', 'resume', 'auth-flow', 'discussion', '/workflow-discussion-entry epic quiz-competition-v1 auth-flow'],
+        ['3', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-entry epic quiz-competition-v1 roles-and-permissions'],
+        ['b', 'back', null, null, null],
+      ]
+    );
+  });
+
+  it('cancel-menu: numbered rows, continuous across phases, cancelled/promoted excluded', () => {
+    const view = epicCancelMenu(richDetail());
+    assert.strictEqual(view.display, [
+      'Cancellable Topics',
+      '',
+      '  Research',
+      '    1. Kitchen Hardware [completed]',
+      '    2. Menu Admin [in-progress]',
+      '',
+      '  Discussion',
+      '    3. Auth Flow [completed]',
+      '',
+      '  Specification',
+      '    4. Roles And Permissions [completed]',
+      '',
+      '  Implementation',
+      '    5. Roles And Permissions [in-progress]',
+      '',
+    ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      'Which topic would you like to cancel?',
+      '',
+      '- **`1`** — Cancel "Kitchen Hardware" — research [completed]',
+      '- **`2`** — Cancel "Menu Admin" — research [in-progress]',
+      '- **`3`** — Cancel "Auth Flow" — discussion [completed]',
+      '- **`4`** — Cancel "Roles And Permissions" — specification [completed]',
+      '- **`5`** — Cancel "Roles And Permissions" — implementation [in-progress]',
+      '- **`b`/`back`** — Return to menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+    ].join('\n'));
+    // No routes — the flow continues to its confirmation gate.
+    assert.deepStrictEqual(
+      view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
+      [
+        ['1', 'cancel', 'kitchen-hardware', 'research', null],
+        ['2', 'cancel', 'menu-admin', 'research', null],
+        ['3', 'cancel', 'auth-flow', 'discussion', null],
+        ['4', 'cancel', 'roles-and-permissions', 'specification', null],
+        ['5', 'cancel', 'roles-and-permissions', 'implementation', null],
+        ['b', 'back', null, null, null],
+      ]
+    );
+  });
+
+  it('reactivate-menu: numbered rows with (was: previous_status)', () => {
+    const view = epicReactivateMenu(richDetail());
+    assert.strictEqual(view.display, [
+      'Cancelled Topics',
+      '',
+      '  Discussion',
+      '    1. Stale Topic [cancelled] (was: in-progress)',
+      '',
+    ].join('\n'));
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      'Which topic would you like to reactivate?',
+      '',
+      '- **`1`** — Reactivate "Stale Topic" — discussion (was: in-progress)',
+      '- **`b`/`back`** — Return to menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
+      [
+        ['1', 'reactivate', 'stale-topic', 'discussion', null],
+        ['b', 'back', null, null, null],
+      ]
+    );
+  });
+
+  it('reactivate-menu: a missing previous_status renders as unknown', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: { research: { items: { dropped: { status: 'cancelled' } } } },
+    });
+    const view = epicReactivateMenu(d);
+    assert.strictEqual(view.display, [
+      'Cancelled Topics',
+      '',
+      '  Research',
+      '    1. Dropped [cancelled] (was: unknown)',
+      '',
+    ].join('\n'));
+  });
+
+  it('empty sub-view: heading only, menu offers only back', () => {
+    const d = detailFor(dir, 'fresh', { work_type: 'epic' });
+    const view = epicCompletedMenu('fresh', d);
+    assert.strictEqual(view.display, 'Completed Topics\n');
+    assert.strictEqual(view.rendered, [
+      '· · · · · · · · · · · ·',
+      'Which topic would you like to resume?',
+      '',
+      '- **`b`/`back`** — Return to menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+    ].join('\n'));
+    assert.deepStrictEqual(view.keys.map((k) => k.key), ['b']);
+  });
+
+  it('adapter emits the DATA keys table plus DISPLAY and MENU for a sub-view verb', () => {
+    createManifest(dir, 'quiz-competition-v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { 'kitchen-hardware': { status: 'completed' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const out = execFileSync('node', [ADAPTER, 'completed-menu', 'quiz-competition-v1'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(out, [
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      'work_unit: quiz-competition-v1',
+      'ACTIONS (key  action  topic  phase  → route):',
+      '  1  resume  kitchen-hardware  research  → /workflow-research-entry epic quiz-competition-v1 kitchen-hardware',
+      '  2  resume  auth-flow  discussion  → /workflow-discussion-entry epic quiz-competition-v1 auth-flow',
+      '  b  back  —  —  → (internal)',
+      '',
+      '=== DISPLAY (emit verbatim as a code block) ===',
+      'Completed Topics',
+      '',
+      '  Research',
+      '    └─ Kitchen Hardware [completed]',
+      '',
+      '  Discussion',
+      '    └─ Auth Flow [completed]',
+      '',
+      '=== MENU (emit verbatim as markdown) ===',
+      '· · · · · · · · · · · ·',
+      'Which topic would you like to resume?',
+      '',
+      '- **`1`** — Resume "Kitchen Hardware" — research',
+      '- **`2`** — Resume "Auth Flow" — discussion',
+      '- **`b`/`back`** — Return to menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+      '',
     ].join('\n'));
   });
 });
