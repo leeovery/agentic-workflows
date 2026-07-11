@@ -53,6 +53,6 @@ These are natural pauses, not every exchange. Document the reasoning and context
 
 **After writing, git commit.** Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
 
-**Create the file early.** After understanding the topic and initial seed subtopics, create the discussion file with context and seed the Discussion Map (manifest state, via the engine `map add` command). Don't wait until you have decisions.
+**Create the file early.** After understanding the topic and initial seed subtopics, create the discussion file with context and seed the Discussion Map (manifest state, via the engine `discussion-map add` command). Don't wait until you have decisions.
 
 → Return to caller.

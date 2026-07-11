@@ -50,7 +50,7 @@ Analyse the live set holistically and decide a suggested execution order — whi
 Assign contiguous integers `1..N` over the live topics — `1` is the suggested first topic. Full renumber every time: close any gaps, ignore any prior `order` values. Record the whole assignment in one call — it sets each topic's `order` and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs map sequence {work_unit} {topic}={N} {topic}={N}
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map sequence {work_unit} {topic}={N} {topic}={N}
 ```
 
 → Return to caller.

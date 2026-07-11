@@ -35,15 +35,20 @@ Domain commands (state transitions, queries) land here as they are built.
 engine boot
 ```
 
-**`map`** — map transitions. `add` and `set` are discussion-map subtopic writes: each loads the work unit's manifest, applies the transition, saves atomically, and prints one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up). `sequence` records a discovery-map ordering as one transaction: validates every topic exists under `phases.discovery.items` and every order is a positive integer, sets each topic's `order`, and commits scoped to the work unit (`discovery({wu}): sequence topic map`); response `{"ok": true, "ordered": {"{topic}": N, …}, "committed": "<short-sha>"}` (`committed: null` plus a note when nothing was staged). Choosing the order is the caller's judgment — the command only records it. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1.
+**`discussion-map`** — Discussion Map subtopic writes. `add` and `set` each load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up). Errors print `{"ok": false, "error": "…"}` to stderr and exit 1.
 
 ```bash
-engine map add <work-unit> <topic> <subtopic> [--parent <subtopic>]   # new subtopic, starts pending
-engine map set <work-unit> <topic> <subtopic> <state>                 # pending|exploring|converging|decided|deferred
-engine map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # discovery-map ordering, scoped commit
+engine discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]   # new subtopic, starts pending
+engine discussion-map set <work-unit> <topic> <subtopic> <state>                 # pending|exploring|converging|decided|deferred
 ```
 
 Subtopic names are kebab-case slugs; `--parent` nests under an existing top-level subtopic (two levels max).
+
+**`discovery-map`** — the Discovery Map's ordering. `sequence` records it as one transaction: validates every topic exists under `phases.discovery.items` and every order is a positive integer, sets each topic's `order`, and commits scoped to the work unit (`discovery({wu}): sequence topic map`); response `{"ok": true, "ordered": {"{topic}": N, …}, "committed": "<short-sha>"}` (`committed: null` plus a note when nothing was staged). Choosing the order is the caller's judgment — the command only records it. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1.
+
+```bash
+engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # suggested execution order, scoped commit
+```
 
 **`topic`** — epic topic cancel / reactivate, each one transaction: manifest write (stash/restore `previous_status`, cancel also drops the topic's discovery-map `order`), knowledge-base sync (remove on cancel; re-index on reactivate when the restored status is `completed` in research/discussion/investigation/specification), and a commit scoped to `.workflows/{wu}` (`workflow({wu}): cancel {topic} ({phase})` / `… reactivate …`). The knowledge base is a derived index — its failures land in `warnings`, never block. Response: `{"ok": true, "topic": "…", "phase": "…", "status": "…", "committed": "<short-sha>", "warnings": []}` (`committed: null` plus a note when nothing was staged).
 
@@ -114,9 +119,9 @@ engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
 // domain: discussion-map transitions + queries
-engine.map.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
-engine.map.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
-engine.map.mapState(manifest, topic)              // → { counts, total, all_decided, unresolved }
+engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
+engine.discussionMap.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
+engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_decided, unresolved }
 
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
@@ -159,4 +164,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-discussion-map.cjs`, `tests/scripts/test-engine-discovery-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
