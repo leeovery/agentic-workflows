@@ -21,6 +21,19 @@ Two ways in:
 
 Output sections are one-directional: DATA is for reasoning and is never displayed; DISPLAY and MENU are emitted to the user verbatim and never parsed for decisions.
 
+## Command grammar
+
+Every command follows six rules — new commands must too:
+
+1. **Identity is positional, in containment order**: `{work-unit}`, then `{topic}`, then `{item}`.
+2. **Required values with closed vocabularies are positional enums** (`discussion-map set … {state}`, `cache stamp {wu} research-analysis|gap-analysis`).
+3. **Payloads are always named flags, even when required** (`-m {message}`, `--findings-file {path}`).
+4. **Optional modifiers and alternate addressing are flags** (`--skipped`, `--parent`, `--external {id}`).
+5. **Mappings are `key=value` pairs** (`discovery-map sequence {wu} {topic}={order} …`).
+6. **A reserved word sharing a slot with user-named values must be a flag** — why `commit --inbox`/`--workflows` are flags beside positional `commit {work-unit}`.
+
+Responses: one decision-ready JSON line — `{"ok": true, …}` carrying the derived state the calling flow needs next (no follow-up read); failures are `{"ok": false, "error": …}` on stderr with exit 1; recoverable side-effect failures ride in `warnings` (warn-don't-block).
+
 ## CLI
 
 ```bash
