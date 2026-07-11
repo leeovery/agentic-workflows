@@ -72,6 +72,12 @@ engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
 engine inbox delete <path> [<path> …]    # git rm archived items
 ```
 
+**`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in workflow-shared/discovery-utils) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis`. Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N}`. No git commit — the calling flow's commit cadence picks the manifest change up.
+
+```bash
+engine cache stamp <work-unit> (research-analysis|gap-analysis)
+```
+
 **`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (`.workflows/.inbox` with `--inbox`, or the whole `.workflows` tree with `--workflows` — migrations touch many work units plus `.workflows/.state`) plus commit. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
 
 ```bash
@@ -153,4 +159,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.

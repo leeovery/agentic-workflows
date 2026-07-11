@@ -23,6 +23,7 @@ const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./
 const { cancelTopic, reactivateTopic, sequenceMap } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
+const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
 
 /** @param {string} msg @returns {never} */
@@ -83,6 +84,7 @@ Commands:
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
+  cache stamp <work-unit> (research-analysis|gap-analysis)
   commit <work-unit> -m <message>
   commit --inbox -m <message>
   commit --workflows -m <message>
@@ -261,6 +263,25 @@ function runInbox(argv) {
 }
 
 // ---------------------------------------------------------------------------
+// cache — analysis-cache stamping. Checksums the current completed inputs
+// exactly as the read side does and writes the cache object. No git commit —
+// the calling flow's commit cadence picks the manifest change up.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runCache(argv) {
+  const [command, workUnit, kind] = argv;
+  try {
+    if (command !== 'stamp' || !workUnit || !kind) {
+      throw new Error('Usage: engine cache stamp <work-unit> <research-analysis|gap-analysis>');
+    }
+    respond(stampAnalysisCache(process.cwd(), workUnit, kind));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // boot — the entry pipeline: migrations (hard error on failure), knowledge
 // check (failure reports not-ready), compact when ready (warn-don't-block).
 // ---------------------------------------------------------------------------
@@ -370,6 +391,9 @@ function runCli(argv) {
       break;
     case 'inbox':
       runInbox(rest);
+      break;
+    case 'cache':
+      runCache(rest);
       break;
     case 'commit':
       runCommit(rest);

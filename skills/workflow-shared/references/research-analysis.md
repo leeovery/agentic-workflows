@@ -174,35 +174,10 @@ Overwrite with the topic list:
 
 List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **B** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
 
-Compute the input checksum from the completed research files only:
+Stamp the manifest's analysis_cache — one command checksums the completed research files and writes `checksum`, `generated`, and `files`:
 
 ```bash
-node -e "
-const fs = require('fs');
-const crypto = require('crypto');
-const path = require('path');
-const manifest = JSON.parse(fs.readFileSync('.workflows/{work_unit}/manifest.json', 'utf8'));
-const items = ((manifest.phases || {}).research || {}).items || {};
-const dir = '.workflows/{work_unit}/research';
-const files = Object.entries(items)
-  .filter(([_, v]) => v && v.status === 'completed')
-  .map(([k]) => k + '.md')
-  .filter(f => fs.existsSync(path.join(dir, f)))
-  .sort();
-const hash = crypto.createHash('md5');
-for (const f of files) hash.update(fs.readFileSync(path.join(dir, f)));
-console.log(hash.digest('hex'));
-"
-```
-
-Update the manifest's analysis_cache:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.checksum "{computed-checksum}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.generated "{ISO timestamp}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research analysis_cache.files '[]'
-# Push one entry per completed research file:
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.research analysis_cache.files "{research-file}.md"
+node .claude/skills/workflow-engine/scripts/engine.cjs cache stamp {work_unit} research-analysis
 ```
 
 Index the cache file into the knowledge base so its content surfaces in future contextual queries:
