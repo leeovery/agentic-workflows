@@ -134,7 +134,6 @@ function workUnitMenu(type, unit) {
       '',
       `- **\`y\`/\`yes\`** — Proceed to ${unit.next_phase}`,
       '- **`r`/`revisit`** — Revisit an earlier phase',
-      '',
       '· · · · · · · · · · · ·',
     ].join('\n');
   }
