@@ -135,7 +135,6 @@ describe('workunit projections: menu', () => {
       '',
       '- **`y`/`yes`** — Proceed to specification',
       '- **`r`/`revisit`** — Revisit an earlier phase',
-      '',
       '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -170,7 +169,6 @@ describe('workunit projections: menu', () => {
       '',
       '- **`y`/`yes`** — Proceed to specification',
       '- **`r`/`revisit`** — Revisit an earlier phase',
-      '',
       '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -198,7 +196,6 @@ describe('workunit projections: menu', () => {
       '',
       '- **`y`/`yes`** — Proceed to implementation',
       '- **`r`/`revisit`** — Revisit an earlier phase',
-      '',
       '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -239,7 +236,6 @@ describe('workunit projections: menu', () => {
       '',
       '- **`y`/`yes`** — Proceed to specification',
       '- **`r`/`revisit`** — Revisit an earlier phase',
-      '',
       '· · · · · · · · · · · ·',
     ].join('\n'));
     assert.deepStrictEqual(
