@@ -35,11 +35,12 @@ Domain commands (state transitions, queries) land here as they are built.
 engine boot
 ```
 
-**`map`** — discussion-map transitions. Both commands load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1. No git commit — the calling session's commit cadence picks the manifest change up.
+**`map`** — map transitions. `add` and `set` are discussion-map subtopic writes: each loads the work unit's manifest, applies the transition, saves atomically, and prints one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up). `sequence` records a discovery-map ordering as one transaction: validates every topic exists under `phases.discovery.items` and every order is a positive integer, sets each topic's `order`, and commits scoped to the work unit (`discovery({wu}): sequence topic map`); response `{"ok": true, "ordered": {"{topic}": N, …}, "committed": "<short-sha>"}` (`committed: null` plus a note when nothing was staged). Choosing the order is the caller's judgment — the command only records it. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1.
 
 ```bash
 engine map add <work-unit> <topic> <subtopic> [--parent <subtopic>]   # new subtopic, starts pending
 engine map set <work-unit> <topic> <subtopic> <state>                 # pending|exploring|converging|decided|deferred
+engine map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # discovery-map ordering, scoped commit
 ```
 
 Subtopic names are kebab-case slugs; `--parent` nests under an existing top-level subtopic (two levels max).
