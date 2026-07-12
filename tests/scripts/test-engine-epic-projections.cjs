@@ -442,7 +442,7 @@ describe('epic projections: selection sub-views', () => {
       work_type: 'epic',
       phases: {
         research: { items: { 'kitchen-hardware': { status: 'completed' }, 'menu-admin': { status: 'in-progress' } } },
-        discussion: { items: { 'auth-flow': { status: 'completed' }, 'stale-topic': { status: 'cancelled', previous_status: 'in-progress' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' }, 'session-storage': { status: 'completed' }, 'stale-topic': { status: 'cancelled', previous_status: 'in-progress' } } },
         specification: { items: { 'roles-and-permissions': { status: 'completed' }, billing: { status: 'promoted' } } },
         implementation: { items: { 'roles-and-permissions': { status: 'in-progress' } } },
       },
@@ -458,7 +458,8 @@ describe('epic projections: selection sub-views', () => {
       '    └─ Kitchen Hardware [completed]',
       '',
       '  Discussion',
-      '    └─ Auth Flow [completed]',
+      '    ├─ Auth Flow [completed]',
+      '    └─ Session Storage [completed]',
       '',
       '  Specification',
       '    └─ Roles And Permissions [completed]',
@@ -470,7 +471,8 @@ describe('epic projections: selection sub-views', () => {
       '',
       '- **`1`** — Resume "Kitchen Hardware" — research',
       '- **`2`** — Resume "Auth Flow" — discussion',
-      '- **`3`** — Resume "Roles And Permissions" — specification',
+      '- **`3`** — Resume "Session Storage" — discussion',
+      '- **`4`** — Resume "Roles And Permissions" — specification',
       '- **`b`/`back`** — Return to menu',
       '',
       'Select an option:',
@@ -481,7 +483,8 @@ describe('epic projections: selection sub-views', () => {
       [
         ['1', 'resume', 'kitchen-hardware', 'research', '/workflow-research-entry epic quiz-competition-v1 kitchen-hardware'],
         ['2', 'resume', 'auth-flow', 'discussion', '/workflow-discussion-entry epic quiz-competition-v1 auth-flow'],
-        ['3', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-entry epic quiz-competition-v1 roles-and-permissions'],
+        ['3', 'resume', 'session-storage', 'discussion', '/workflow-discussion-entry epic quiz-competition-v1 session-storage'],
+        ['4', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-entry epic quiz-competition-v1 roles-and-permissions'],
         ['b', 'back', null, null, null],
       ]
     );
@@ -498,12 +501,13 @@ describe('epic projections: selection sub-views', () => {
       '',
       '  Discussion',
       '    3. Auth Flow [completed]',
+      '    4. Session Storage [completed]',
       '',
       '  Specification',
-      '    4. Roles And Permissions [completed]',
+      '    5. Roles And Permissions [completed]',
       '',
       '  Implementation',
-      '    5. Roles And Permissions [in-progress]',
+      '    6. Roles And Permissions [in-progress]',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -513,8 +517,9 @@ describe('epic projections: selection sub-views', () => {
       '- **`1`** — Cancel "Kitchen Hardware" — research [completed]',
       '- **`2`** — Cancel "Menu Admin" — research [in-progress]',
       '- **`3`** — Cancel "Auth Flow" — discussion [completed]',
-      '- **`4`** — Cancel "Roles And Permissions" — specification [completed]',
-      '- **`5`** — Cancel "Roles And Permissions" — implementation [in-progress]',
+      '- **`4`** — Cancel "Session Storage" — discussion [completed]',
+      '- **`5`** — Cancel "Roles And Permissions" — specification [completed]',
+      '- **`6`** — Cancel "Roles And Permissions" — implementation [in-progress]',
       '- **`b`/`back`** — Return to menu',
       '',
       'Select an option:',
@@ -527,8 +532,9 @@ describe('epic projections: selection sub-views', () => {
         ['1', 'cancel', 'kitchen-hardware', 'research', null],
         ['2', 'cancel', 'menu-admin', 'research', null],
         ['3', 'cancel', 'auth-flow', 'discussion', null],
-        ['4', 'cancel', 'roles-and-permissions', 'specification', null],
-        ['5', 'cancel', 'roles-and-permissions', 'implementation', null],
+        ['4', 'cancel', 'session-storage', 'discussion', null],
+        ['5', 'cancel', 'roles-and-permissions', 'specification', null],
+        ['6', 'cancel', 'roles-and-permissions', 'implementation', null],
         ['b', 'back', null, null, null],
       ]
     );
