@@ -669,7 +669,8 @@ function selectionSubView(heading, question, action, rows, opts = {}) {
       displayLines.push('', `  ${titlecase(r.phase)}`);
       phase = r.phase;
     }
-    displayLines.push(`    ${opts.numberedRows ? `${key}. ` : '└─ '}${r.row}`);
+    const lastInGroup = i === rows.length - 1 || rows[i + 1].phase !== r.phase;
+    displayLines.push(`    ${opts.numberedRows ? `${key}. ` : (lastInGroup ? '└─ ' : '├─ ')}${r.row}`);
   });
   keys.push(backKey());
 
