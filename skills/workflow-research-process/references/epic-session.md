@@ -72,8 +72,7 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 4. Commit:
 
    ```bash
-   git add -- .workflows/{work_unit}/
-   git commit -m "research({work_unit}/{topic}): reroute concern to {landed_topic}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{topic}): reroute concern to {landed_topic}"
    ```
 
 → Return to **B. Session Loop**.
