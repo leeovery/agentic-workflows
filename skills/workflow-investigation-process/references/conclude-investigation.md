@@ -25,18 +25,16 @@ Investigation complete. Ready to conclude?
 
 #### If `yes`
 
-1. Set investigation status to completed via manifest CLI:
+1. Mark the investigation completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.investigation.{topic} status completed
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} investigation {topic}
    ```
-2. Final commit
-3. Index the completed artifact into the knowledge base:
+2. Final commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): complete {topic} investigation"
+   ```
 
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/investigation/{topic}.md
-```
-
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
@@ -46,7 +44,7 @@ If the index command fails, display the error but do not block — the artifact 
   The artifact is saved. Indexing can be retried later.
 ```
 
-4. Display conclusion:
+3. Display conclusion:
 
 > *Output the next fenced block as a code block:*
 
@@ -59,7 +57,7 @@ Fix direction: {chosen approach}
 The investigation is completed. Root cause and fix direction are documented.
 ```
 
-5. Closure signpost:
+4. Closure signpost:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -68,7 +66,7 @@ The investigation is completed. Root cause and fix direction are documented.
 > the fix approach into a document that drives planning.
 ```
 
-6. Invoke the bridge:
+5. Invoke the bridge:
 
 ```
 Pipeline bridge for: {work_unit}
