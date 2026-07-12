@@ -59,7 +59,11 @@ Update the work type in the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} work_type feature
 ```
 
-Commit: `workflow({work_unit}): promote quick-fix to feature`
+Commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "workflow({work_unit}): promote quick-fix to feature"
+```
 
 Invoke `/workflow-discussion-entry feature {work_unit}`.
 
@@ -73,7 +77,11 @@ Update the work type in the manifest:
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} work_type bugfix
 ```
 
-Commit: `workflow({work_unit}): promote quick-fix to bugfix`
+Commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "workflow({work_unit}): promote quick-fix to bugfix"
+```
 
 Invoke `/workflow-investigation-entry bugfix {work_unit}`.
 
