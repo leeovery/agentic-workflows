@@ -22,7 +22,13 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
 5. **Document** — At natural pauses, update the research file with insights, open questions, and emerging themes. Capture the substance, not a transcript. The research file is freeform — let structure emerge from the content rather than imposing it.
 
-6. **Commit & dispatch check** — Git commit after each write. Don't batch. The commit history is your safety net across context compaction. Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and deep-dive agent instructions loaded by the session wrapper. If conditions are met, dispatch before continuing. If not, proceed.
+6. **Commit & dispatch check** — Commit after each write. Don't batch — the commit history is your safety net across context compaction:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{topic}): {what changed}"
+   ```
+
+   Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and deep-dive agent instructions loaded by the session wrapper. If conditions are met, dispatch before continuing. If not, proceed.
 
 7. **Continue** — Follow the conversation where it leads. If a tangent is promising, pursue it. If a thread is exhausted, move on. If earlier threads gain new context from what was just discussed, circle back.
 

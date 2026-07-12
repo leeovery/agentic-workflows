@@ -145,9 +145,12 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 2. Synthesise the deep-dive findings into the file (don't copy the cache file verbatim — organise for the research document context)
 3. Register in the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{thread}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {thread}
    ```
-4. Commit: `research({work_unit}): add {thread} research from deep dive`
+4. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): add {thread} research from deep dive"
+   ```
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
 
