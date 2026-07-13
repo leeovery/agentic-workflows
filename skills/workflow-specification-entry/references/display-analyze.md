@@ -4,44 +4,15 @@
 
 ---
 
-Prompted when multiple completed discussions exist, no specifications or proposed groupings exist, and cache is none or stale.
+Prompted when multiple completed discussions exist, no specifications or proposed groupings exist, and the cache is none or stale.
 
 ## A. Display
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Specification Overview
-●───────────────────────────────────────────────●
-
-{N} completed discussions found. No specifications exist yet.
-
-Completed discussions:
-  • {discussion-name}
-  • {discussion-name}
-  • {discussion-name}
-```
-
-List all completed discussions from discovery output.
-
-#### If in-progress discussions exist
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Discussions not ready for specification:
-  These discussions are still in progress and must be completed
-  before they can be included in a specification.
-
-  • {discussion-name}
-```
+Emit the DISPLAY section from the Step 1 snapshot verbatim as a code block.
 
 ### Cache-Aware Message
 
-No `---` separator before these messages.
-
-#### If cache status is `none`
+#### If `cache_status` is `none`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -61,7 +32,7 @@ Proceed with analysis?
 
 → Proceed to **B. Handle Response**.
 
-#### If cache status is `stale`
+#### If `cache_status` is `stale`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -88,7 +59,7 @@ Proceed with analysis?
 
 #### If user confirms (y)
 
-If cache is stale, delete it first:
+If `cache_status` is `stale`, delete the cache first:
 ```bash
 rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 ```
