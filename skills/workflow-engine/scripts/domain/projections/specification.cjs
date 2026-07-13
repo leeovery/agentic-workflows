@@ -143,7 +143,6 @@ function blockedDisplay(detail) {
       'The specification phase requires completed discussions to work from.\n'
       + 'Discussions capture the technical decisions, edge cases, and rationale\n'
       + 'that specifications are built upon.',
-      'The specification phase requires completed discussions to work from.',
     ]);
   }
   return compose([

@@ -492,8 +492,6 @@ describe('specification projections: display goldens', () => {
       'Discussions capture the technical decisions, edge cases, and rationale',
       'that specifications are built upon.',
       '',
-      'The specification phase requires completed discussions to work from.',
-      '',
     ].join('\n'));
   });
 
