@@ -132,7 +132,7 @@ describe('engine topic cancel', () => {
 
   it('rejects unknown work unit, phase, and topic — loud and specific', () => {
     assert.match(engineFails(dir, ['topic', 'cancel', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'nonsense', 'auth-flow']).error, /unknown phase "nonsense"/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'planning', 'auth-flow']).error, /no planning items/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'research', 'ghost']).error, /no research item "ghost"/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments']).error, /Usage: engine topic cancel/);
@@ -237,7 +237,7 @@ describe('engine topic start', () => {
 
   it('rejects unknown work unit, phase, and missing args — loud and specific', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown phase "nonsense"/);
+    assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
     assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|complete\|cancel\|reactivate>/);
   });
@@ -293,7 +293,7 @@ describe('engine topic complete', () => {
   it('rejects completing a non-existent item, unknown phase, and a cancelled item', () => {
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'ghost']).error, /no research item "ghost"/);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']).error, /no investigation items/);
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'nonsense', 'auth-flow']).error, /unknown phase "nonsense"/);
+    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).error, /is cancelled — reactivate it instead/);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments']).error, /Usage: engine topic complete/);
@@ -445,5 +445,36 @@ describe('engine commit', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '--inbox', '-m', 'msg']).error, /Usage: engine commit/);
     assert.match(engineFails(dir, ['commit', '../escape', '-m', 'msg']).error, /invalid work unit name/);
     assert.match(engineFails(dir, ['commit', 'ghost', '-m', 'msg']).error, /no work unit directory/);
+  });
+});
+
+describe('schema enforcement: engine refuses what the manifest CLI refuses', () => {
+  const { VALID_PHASE_STATUSES } = require('../../skills/workflow-shared/scripts/manifest-schema.cjs');
+
+  it('discovery is not a lifecycle phase — start/complete/cancel all refuse', () => {
+    const dir = setupGitFixture();
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify({
+      name: 'payments', work_type: 'epic', status: 'in-progress',
+      phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
+    }, null, 2));
+    for (const verb of ['start', 'complete', 'cancel']) {
+      assert.match(
+        engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
+        /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
+      );
+    }
+    // the invalid state the live drive produced must now be impossible
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    assert.strictEqual(m.phases.discovery.items['auth-flow'].status, undefined);
+    cleanupFixture(dir);
+  });
+
+  it('the enforcement table IS the manifest CLI schema (shared module, no mirror)', () => {
+    assert.deepStrictEqual(VALID_PHASE_STATUSES.discovery, ['in-progress']);
+    const src = fs.readFileSync(
+      path.join(__dirname, '../../skills/workflow-engine/scripts/domain/transitions.cjs'), 'utf8');
+    assert.ok(src.includes("require('../../../workflow-shared/scripts/manifest-schema.cjs')"),
+      'transitions must require the shared schema, not mirror it');
+    assert.ok(!/VALID_PHASE_STATUSES\s*=\s*{/.test(src), 'no local copy of the status table');
   });
 });

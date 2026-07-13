@@ -23,7 +23,26 @@ const { commitScoped } = require('../kernel/git.cjs');
 // Resolved against this file so it works wherever the skill tree is installed.
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
-const PHASES = ['discovery', 'research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+
+// Phase-item lifecycle operates on WORK phases only. Discovery items are map
+// items (no lifecycle status — computed at render time); they are created and
+// edited by the discovery tooling, never by topic commands.
+const LIFECYCLE_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
+
+// Refuse any status write the manifest CLI would refuse — the two enforcers
+// share one schema (workflow-shared/scripts/manifest-schema.cjs), so the
+// engine can never be the permissive path around a validation refusal.
+/** @param {string} phase @param {string} status */
+function assertLegalWrite(phase, status) {
+  if (!LIFECYCLE_PHASES.includes(phase)) {
+    throw new Error(`unknown or non-lifecycle phase "${phase}" (${LIFECYCLE_PHASES.join('|')}) — discovery items are map items; use the discovery tooling`);
+  }
+  const valid = VALID_PHASE_STATUSES[/** @type {keyof typeof VALID_PHASE_STATUSES} */ (phase)];
+  if (!valid || !valid.includes(status)) {
+    throw new Error(`Invalid status "${status}" for phase "${phase}". Must be one of: ${(valid || []).join(', ')}`);
+  }
+}
 
 /** Phases whose completed artifact is knowledge-base indexed, with the artifact path per topic. */
 const INDEXED_ARTIFACTS = {
@@ -49,9 +68,7 @@ const INDEXED_ARTIFACTS = {
  * @returns {{status?: string, previous_status?: string}}
  */
 function phaseItem(manifest, phase, topic) {
-  if (!PHASES.includes(phase)) {
-    throw new Error(`unknown phase "${phase}" (${PHASES.join('|')})`);
-  }
+  assertLegalWrite(phase, 'cancelled');
   const phases = manifest && manifest.phases;
   const ph = phases && typeof phases === 'object' ? phases[phase] : undefined;
   const items = ph && typeof ph === 'object' ? ph.items : undefined;
@@ -108,9 +125,7 @@ function knowledge(cwd, args, label, warnings) {
  * @returns {TopicStartResult}
  */
 function startTopic(cwd, workUnit, phase, topic) {
-  if (!PHASES.includes(phase)) {
-    throw new Error(`unknown phase "${phase}" (${PHASES.join('|')})`);
-  }
+  assertLegalWrite(phase, 'in-progress');
   const manifest = loadWorkUnitManifest(cwd, workUnit);
   if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
   if (!manifest.phases[phase] || typeof manifest.phases[phase] !== 'object') manifest.phases[phase] = {};
@@ -146,6 +161,7 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @returns {TopicCompleteResult}
  */
 function completeTopic(cwd, workUnit, phase, topic) {
+  assertLegalWrite(phase, 'completed');
   const manifest = loadWorkUnitManifest(cwd, workUnit);
   const item = phaseItem(manifest, phase, topic);
   if (item.status === 'cancelled') {
@@ -222,6 +238,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   if (!restored) {
     throw new Error(`${phase} item "${topic}" has no previous_status to restore`);
   }
+  assertLegalWrite(phase, restored);
   item.status = restored;
   delete item.previous_status;
 
