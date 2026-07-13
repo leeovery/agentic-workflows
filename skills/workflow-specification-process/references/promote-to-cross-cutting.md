@@ -60,21 +60,15 @@ mkdir -p .workflows/{cc_work_unit}/discussion/
 mv .workflows/{work_unit}/discussion/{source}.md .workflows/{cc_work_unit}/discussion/{source}.md
 ```
 
-Initialize discussion phase in the new manifest for each moved source:
+Register each moved source in the new manifest — the `complete` call indexes the discussion at its new location — then remove the old chunks:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {cc_work_unit}.discussion.{source}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.discussion.{source} status completed
-```
-
-Index the discussion at its new location and remove old chunks (per source):
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{cc_work_unit}/discussion/{source}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {cc_work_unit} discussion {source}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {cc_work_unit} discussion {source}
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase discussion --topic {source}
 ```
 
-If either command fails, display the error but do not block — the move is already recorded:
+If the `complete` response carries `warnings` or the remove command fails, display the error but do not block — the move is already recorded:
 
 > *Output the next fenced block as a code block:*
 
@@ -95,21 +89,15 @@ mkdir -p .workflows/{cc_work_unit}/specification/
 mv .workflows/{work_unit}/specification/{topic}/ .workflows/{cc_work_unit}/specification/{cc_work_unit}/
 ```
 
-Initialize specification phase in the new manifest:
+Register the specification in the new manifest — the `complete` call indexes it at its new location — then stamp the date:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {cc_work_unit}.specification.{cc_work_unit}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.specification.{cc_work_unit} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {cc_work_unit} specification {cc_work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {cc_work_unit} specification {cc_work_unit}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.specification.{cc_work_unit} date $(date +%Y-%m-%d)
 ```
 
-Index the specification at its new location in the knowledge base:
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{cc_work_unit}/specification/{cc_work_unit}/specification.md
-```
-
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
@@ -150,7 +138,12 @@ If the remove command fails, display the error but do not block — the promotio
 
 ## F. Commit and Display
 
-Commit: `spec({work_unit}): promote {topic} to cross-cutting work unit`
+The promotion spans two work units, so the scoped commit helper cannot cover it — stage both directly:
+
+```bash
+git add -- .workflows/{work_unit} .workflows/{cc_work_unit}
+git commit -m "spec({work_unit}): promote {topic} to cross-cutting work unit"
+```
 
 > *Output the next fenced block as a code block:*
 
