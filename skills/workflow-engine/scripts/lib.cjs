@@ -25,11 +25,13 @@ const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic.cjs');
 const start = require('./domain/start.cjs');
 const workunit = require('./domain/workunit.cjs');
+const specification = require('./domain/specification.cjs');
 const discussionMap = require('./domain/discussion-map.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const discussionProjections = require('./domain/projections/discussion.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
+const specificationProjections = require('./domain/projections/specification.cjs');
 
 module.exports = {
   render,
@@ -49,6 +51,7 @@ module.exports = {
     workUnitDetail: workunit.workUnitDetail,
     workUnitIndex: workunit.workUnitIndex,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
+    specificationDetail: specification.specificationDetail,
   },
   project: {
     epicDashboard: epicProjections.epicDashboard,
@@ -63,5 +66,8 @@ module.exports = {
     workUnitStatus: workunitProjections.workUnitStatus,
     workUnitMenu: workunitProjections.workUnitMenu,
     workUnitData: workunitProjections.workUnitData,
+    specificationDisplay: specificationProjections.specificationDisplay,
+    specificationMenu: specificationProjections.specificationMenu,
+    specificationCompletedMenu: specificationProjections.specificationCompletedMenu,
   },
 };

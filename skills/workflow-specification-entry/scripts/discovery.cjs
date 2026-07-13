@@ -1,6 +1,20 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// Adapter (read gateway) for workflow-specification-entry. Thin by design:
+// scenario derivation and rendering live in the engine's domain ring; this
+// script builds the discovery result, parses the consult-hint doc (its one
+// piece of file IO the engine stays blind to), and sections the output.
+//
+//   discovery.cjs                        → labelled dump, all work units
+//   discovery.cjs {work_unit}            → labelled dump, one work unit
+//   discovery.cjs view {work_unit}       → DATA (+ DISPLAY + MENU) snapshot
+//   discovery.cjs completed-menu {work_unit} → concluded-specs sub-view
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
 const path = require('path');
+const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadActiveManifests, phaseItems, phaseData, listFiles, filesChecksum, fileExists } = require('../../workflow-shared/scripts/discovery-utils.cjs');
 
 // Actionable-first ordering rank for the spec menu. Lower sorts earlier:
@@ -234,9 +248,120 @@ function format(result) {
   return lines.join('\n') + '\n';
 }
 
+// ---------------------------------------------------------------------------
+// View verbs — the scenario snapshot and the concluded-specs sub-view.
+// ---------------------------------------------------------------------------
+
+// Consult-slice hints from the work unit's consolidation-analysis doc: each
+// `### {Grouping}` section's `**Consult**: {ref} — {hint}` lines, keyed by
+// the grouping's kebab-case name. The manifest holds the authoritative
+// grouping→source mapping; this doc only enriches consult rows.
+function consultHints(cwd, workUnit) {
+  const file = path.join(cwd, '.workflows', workUnit, '.state', 'discussion-consolidation-analysis.md');
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return {}; }
+  const hints = {};
+  let current = null;
+  for (const line of text.split('\n')) {
+    const heading = line.match(/^###\s+(.+?)\s*$/);
+    if (heading) { current = engine.conventions.kebabcase(heading[1]); continue; }
+    const consult = current && line.match(/^\*\*Consult\*\*:\s*(.+)$/);
+    if (consult) {
+      const [ref, ...rest] = consult[1].split('—');
+      const name = ref.trim();
+      if (name) (hints[current] = hints[current] || []).push({ name, hint: rest.join('—').trim() });
+    }
+  }
+  return hints;
+}
+
+function buildDetail(workUnit) {
+  if (!workUnit) throw new Error('Usage: discovery.cjs <view|completed-menu> {work_unit}');
+  const cwd = process.cwd();
+  const result = discover(cwd, workUnit);
+  return { result, detail: engine.detail.specificationDetail(workUnit, result, { consultHints: consultHints(cwd, workUnit) }) };
+}
+
+// The DATA body: scenario + flags, the discussion/spec detail the downstream
+// confirmations reason from, and the ACTIONS key table when a menu exists.
+function viewData(result, detail, keys) {
+  const cs = result.current_state;
+  const lines = [];
+  lines.push(`scenario: ${detail.scenario}`);
+  lines.push(`work_unit: ${detail.work_unit}`);
+  lines.push(`counts: discussions=${cs.discussion_count} completed=${cs.completed_count} in_progress=${cs.in_progress_count} specs=${cs.spec_count} proposed=${cs.proposed_count} concluded=${cs.concluded_count}`);
+  lines.push(`cache_status: ${detail.cache_status}`);
+  lines.push(`discussions_checksum: ${cs.discussions_checksum || '(none)'}`);
+  if (detail.single) {
+    lines.push(`single_variant: ${detail.single.variant}`);
+    lines.push(`verb: ${detail.single.verb}`);
+    lines.push(`proceed_name: ${detail.single.proceed_name}`);
+  }
+  lines.push('discussions:');
+  if (result.discussions.length === 0) lines.push('  (none)');
+  for (const d of result.discussions) {
+    lines.push(`  ${d.name}: ${d.status}${d.has_individual_spec ? `, individual spec: ${d.spec_status}` : ''}`);
+  }
+  lines.push('specifications:');
+  if (result.specifications.length === 0) lines.push('  (none)');
+  const hintRows = new Map();
+  for (const row of [...detail.actionable, ...detail.concluded]) hintRows.set(row.name, row);
+  for (const s of result.specifications) {
+    lines.push(`  ${s.name}: ${s.status}, has_pending_sources=${s.has_pending_sources}`);
+    for (const src of s.sources || []) {
+      lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
+    }
+    const row = hintRows.get(s.name);
+    for (const c of (row && row.consult) || []) {
+      lines.push(`    consult: ${c.name} (${c.status}${c.hint ? ` — ${c.hint}` : ''})`);
+    }
+  }
+  lines.push(`unassigned_discussions: ${detail.unassigned.join(', ') || '(none)'}`);
+  lines.push(`in_progress_discussions: ${detail.in_progress_discussions.join(', ') || '(none)'}`);
+  if (keys.length > 0) {
+    lines.push('ACTIONS (key  action  topic  verb):');
+    for (const k of keys) {
+      lines.push(`  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.verb || '—'}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// One snapshot: reasoning DATA always; DISPLAY and MENU when the scenario
+// renders them (analysis-rerun routes without either).
+function view(workUnit) {
+  const { result, detail } = buildDetail(workUnit);
+  const menu = engine.project.specificationMenu(detail);
+  const display = engine.project.specificationDisplay(detail);
+  const parts = [engine.gateway.dataBlock(viewData(result, detail, menu.keys))];
+  if (display) parts.push(engine.gateway.displayBlock(display));
+  if (menu.rendered) parts.push(engine.gateway.menuBlock(menu.rendered));
+  return parts.join('\n');
+}
+
+// The concluded-specs sub-view: keys table as DATA, the heading as DISPLAY,
+// the Refine pick menu as MENU.
+function completedMenu(workUnit) {
+  const { detail } = buildDetail(workUnit);
+  const sub = engine.project.specificationCompletedMenu(detail);
+  const dataLines = [`work_unit: ${detail.work_unit}`, 'ACTIONS (key  action  topic  verb):'];
+  for (const k of sub.keys) {
+    dataLines.push(`  ${k.key}  ${k.action}  ${k.topic || '—'}  ${k.verb || '—'}`);
+  }
+  return [
+    engine.gateway.dataBlock(dataLines.join('\n')),
+    engine.gateway.displayBlock(sub.display),
+    engine.gateway.menuBlock(sub.rendered),
+  ].join('\n');
+}
+
 if (require.main === module) {
-  const workUnit = process.argv[2] || null;
-  process.stdout.write(format(discover(process.cwd(), workUnit)));
+  engine.gateway.runGateway({
+    index: () => format(discover(process.cwd())),
+    view,
+    'completed-menu': completedMenu,
+    fallback: (workUnit) => format(discover(process.cwd(), workUnit)),
+  });
 }
 
 module.exports = { discover, format };
