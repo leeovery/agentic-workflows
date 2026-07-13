@@ -216,7 +216,10 @@ Approve the dependency resolution?
 
 #### If `yes`
 
-Commit: `planning({work_unit}): resolve external dependencies`
+Commit:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies"
+```
 
 → Return to caller.
 

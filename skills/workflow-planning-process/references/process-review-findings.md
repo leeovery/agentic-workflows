@@ -8,6 +8,8 @@ Process findings from a review agent interactively with the user. The agent writ
 
 **Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (B or C in plan-review.md).
 
+**Commits in this file**: applying a finding writes through the format adapter, and the format's task storage may live outside the work unit. Commit with raw git — `git add -- .workflows/{work_unit} {format task storage paths}`, then `git commit` — never the scoped helper.
+
 #### If `STATUS` is `clean`
 
 > *Output the next fenced block as a code block:*

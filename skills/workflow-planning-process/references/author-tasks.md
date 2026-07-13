@@ -198,7 +198,11 @@ For each approved task in the task detail file, in order:
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task {next_task_id}
    ```
-7. Commit: `planning({work_unit}): author task {internal_id} ({task name})`
+7. Commit with raw git — the format's task storage may live outside the work unit, so the scoped helper cannot cover it. Stage the format's storage and the work unit, then commit:
+   ```bash
+   git add -- .workflows/{work_unit} {format task storage paths}
+   git commit -m "planning({work_unit}): author task {internal_id} ({task name})"
+   ```
 
 > *Output the next fenced block as a code block:*
 
