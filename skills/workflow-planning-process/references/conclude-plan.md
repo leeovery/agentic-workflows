@@ -25,11 +25,14 @@ Ready to conclude?
 
 #### If `yes`
 
-1. **Update plan status** via manifest CLI:
+1. **Mark the plan completed** — the engine sets the status:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} status completed
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
    ```
-2. **Final commit** — Commit the completed plan: `planning({work_unit}): complete plan`
+2. **Final commit** — Commit the completed plan:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan"
+   ```
 3. **Present completion summary**:
 
 > *Output the next fenced block as markdown (not a code block):*
