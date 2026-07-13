@@ -24,9 +24,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.speci
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} sources.{source-name}.status
 
 # Write fields
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status completed
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
 ```
+
+Lifecycle `status` transitions go through the engine, not `set` — `engine topic start` on creation, `engine topic complete` (which also indexes the artifact) at conclusion.
 
 | Field | Set when |
 |-------|----------|
@@ -89,7 +90,7 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**Important**: The specification's overall status should only be set to `completed` (via `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status completed`) when:
+**Important**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
 - All sources are marked as `incorporated`
 - Both review phases are complete
 - User has signed off

@@ -125,10 +125,10 @@ Discuss the user's context and apply any changes.
 
 ## D. Update Manifest and Conclude
 
-Update the specification metadata via manifest CLI:
+Mark the specification completed — the engine sets the status and indexes the artifact into the knowledge base — then stamp the date:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
@@ -141,15 +141,13 @@ Specification is complete when:
 - User confirms the specification is complete
 - No blocking gaps remain
 
-Commit: `spec({work_unit}): conclude specification`
-
-Index the completed artifact into the knowledge base:
+Commit:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/specification/{topic}/specification.md
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): conclude specification"
 ```
 
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
@@ -191,7 +189,10 @@ If the remove command fails, display the error but do not block — the superses
 ```
 
 3. Inform the user which topics were updated
-4. Commit: `spec({work_unit}): mark source specifications as superseded`
+4. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark source specifications as superseded"
+   ```
 
 → Proceed to **F. Pipeline Continuation**.
 
