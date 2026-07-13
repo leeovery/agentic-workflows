@@ -32,6 +32,13 @@ function titlecase(s) {
   return String(s).split(/[-_\s]+/).filter(Boolean).map(capitalise).join(' ');
 }
 
+// Slug form (the `(kebabcase)` casing hint): lower-case, non-alphanumeric runs
+// collapse to single hyphens. `Auth Flow` → `auth-flow`.
+/** @param {string} s */
+function kebabcase(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 // `[term]` — the item status / lifecycle suffix.
 /** @param {string} term */
 function tag(term) {
@@ -87,7 +94,26 @@ function discussionGlyph(state) {
   return DISCUSSION_GLYPH[/** @type {keyof typeof DISCUSSION_GLYPH} */ (state)] || '';
 }
 
+// Specification legend vocabulary — the Key block's term descriptions, by
+// category. Projections compose a Key from whichever terms the display shows.
+const SPEC_LEGEND = {
+  discussion: {
+    extracted: 'content has been incorporated into the specification',
+    pending: 'listed as source but content not yet extracted',
+    ready: 'completed and available to be specified',
+    reopened: 'was extracted but discussion has regressed to in-progress',
+  },
+  consult: {
+    pending: 'sibling correction not yet read in and reconciled',
+    addressed: 'correction applied or cited; reconciliation recorded',
+  },
+  spec: {
+    'in-progress': 'specification work is ongoing',
+    completed: 'specification is done',
+  },
+};
+
 module.exports = {
-  TREE_WIDTH, capitalise, titlecase, tag, derivedFrom, title,
-  discoveryGlyph, DISCOVERY_GLYPH, discussionGlyph, DISCUSSION_GLYPH,
+  TREE_WIDTH, capitalise, titlecase, kebabcase, tag, derivedFrom, title,
+  discoveryGlyph, DISCOVERY_GLYPH, discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
 };
