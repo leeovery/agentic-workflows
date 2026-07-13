@@ -4,40 +4,24 @@
 
 ---
 
-Loaded from the primary spec menu when the user picks `c`/`completed`. Lists the concluded specs — `status: completed` with `has_pending_sources: false` — from the discovery `specifications[]` array. These have no pending work, so each is a flat one-line Refine entry; no tree.
+Loaded from the primary spec menu when the user picks `c`/`completed`. Render the concluded-specs sub-view:
 
-> *Output the next fenced block as a code block:*
-
-```
-Completed Specifications
+```bash
+node .claude/skills/workflow-specification-entry/scripts/discovery.cjs completed-menu {work_unit}
 ```
 
-Present one numbered entry per concluded spec, in `specifications[]` order, then a `back` command option.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which completed specification would you like to refine?
-
-- **`1`** — Refine "Auth Flow" — completed
-- **`2`** — Refine "Data Model" — completed
-- **`b`/`back`** — Return to the specifications menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-Recreate with actual specs from discovery.
+Emit the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 
-#### If user picks a spec
+Match the user's input to its `ACTIONS` entry by `key`.
 
-The selected spec and its sources become the context for confirmation.
+#### If `action` is `refine_spec`
+
+The entry's `topic` and `verb`, plus that spec's DATA detail (sources, consult references), become the context for confirmation.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 
-#### If user picks `b`/`back`
+#### If `action` is `back`
 
 → Return to caller.

@@ -167,10 +167,14 @@ The `**Consult**` line is per-grouping — one line per consult reference, omitt
 
 Write the cache metadata to the manifest last:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.checksum "{checksum from current_state.discussions_checksum}"
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.checksum "{discussions_checksum from the DATA section}"
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion analysis_cache.generated "{ISO date}"
 ```
 
-Commit the whole reconcile as one commit: `spec({work_unit}): reconcile proposed groupings`
+Commit the whole reconcile as one commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile proposed groupings"
+```
 
 → Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.

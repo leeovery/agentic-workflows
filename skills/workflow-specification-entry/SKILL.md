@@ -1,7 +1,7 @@
 ---
 name: workflow-specification-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
+allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -68,21 +68,19 @@ Store work_unit for the handoff.
 
 #### If no `topic` (epic — scoped path)
 
-Run discovery scoped to this work unit:
+Render the scoped snapshot:
 
 ```bash
-node .claude/skills/workflow-specification-entry/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-specification-entry/scripts/discovery.cjs view {work_unit}
 ```
 
-Parse the discovery output to understand:
+The output is one snapshot in up to three demarcated sections:
 
-**From `discussions` array:** Each discussion's name, work_unit, status, work_type, and whether it has an individual specification.
+- **DATA** — reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, the discussion/specification detail (statuses, sources, consult references with slice hints), and — for scenarios with a menu — the `ACTIONS` key table (`key  action  topic  verb`). Reason from it; never display or restate it.
+- **DISPLAY** — the scenario's overview block. Emitted verbatim as a code block, only where a later step directs.
+- **MENU** — the scenario's selection menu. Emitted verbatim as markdown (not a code block), only where a later step directs. Absent for menu-less scenarios.
 
-**From `specifications` array:** Each specification's name, work_unit, status, work_type, sources, and superseded_by (if applicable). Specifications with `status: superseded` should be noted but excluded from active counts.
-
-**From `cache` section:** `entries` array — each entry has `status` (valid/stale), `reason`, `generated`. Empty array if no cache exists.
-
-**From `current_state`:** `completed_count`, `spec_count` (materialized, file-backed), `proposed_count`, `has_discussions`, `has_completed`, `has_specs`, `has_proposed`, and other counts/booleans for routing.
+A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

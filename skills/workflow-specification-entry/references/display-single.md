@@ -4,20 +4,20 @@
 
 ---
 
-Auto-proceed path — only one completed discussion exists, so no selection menu is needed.
+Auto-proceed path — only one completed discussion exists, so no selection menu is needed. The DATA section carries the spec-coverage outcome: `single_variant` (`no-spec` | `has-spec` | `grouped`), `verb`, and `proceed_name`.
 
-## Route by Spec Coverage
+## Display
 
-Check if a spec covers this discussion — either by name match (`has_individual_spec`) or by listing it in a spec's `sources` array.
+Emit the DISPLAY section from the Step 1 snapshot verbatim as a code block.
 
-#### If a spec covers this discussion and has a single source
+## After Display
 
-→ Load **[display-single-has-spec.md](display-single-has-spec.md)** and follow its instructions as written.
+> *Output the next fenced block as a code block:*
 
-#### If a spec covers this discussion and has multiple sources
+```
+Automatically proceeding with "{proceed_name:(titlecase)}".
+```
 
-→ Load **[display-single-grouped.md](display-single-grouped.md)** and follow its instructions as written.
+Auto-proceed with the DATA `verb`.
 
-#### Otherwise
-
-→ Load **[display-single-no-spec.md](display-single-no-spec.md)** and follow its instructions as written.
+→ Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.

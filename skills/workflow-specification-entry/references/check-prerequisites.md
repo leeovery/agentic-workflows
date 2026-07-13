@@ -4,9 +4,9 @@
 
 ---
 
-Discovery mode — use the discovery output from Step 1 to check prerequisites.
+Discovery mode — read `scenario` from the Step 1 DATA section.
 
-#### If `has_discussions` is false or `has_completed` is false
+#### If `scenario` is `blocked-no-discussions` or `blocked-none-completed`
 
 → Load **[display-blocks.md](display-blocks.md)** and follow its instructions as written.
 
