@@ -203,7 +203,10 @@ Run another review round?
 
 > **CHECKPOINT**: Do not confirm completion if any tracking files still show `status: in-progress`. They indicate incomplete review work.
 
-2. **Commit** all review tracking files: `planning({work_unit}): complete plan review (cycle {N})`
+2. **Commit** all review tracking files:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})"
+   ```
 
 > *Output the next fenced block as a code block:*
 

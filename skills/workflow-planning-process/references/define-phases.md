@@ -54,7 +54,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
 ```
 
-Commit: `planning({work_unit}): draft phase structure`
+Commit:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft phase structure"
+```
 
 → Proceed to **B. Review and Approve**.
 
@@ -93,7 +96,10 @@ Update the planning file with the revised output.
 **If the phase structure is new or was amended:**
 
 1. Update each phase in the planning file: set `status: approved` and `approved_at: YYYY-MM-DD` (use today's actual date)
-2. Commit: `planning({work_unit}): approve phase structure`
+2. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve phase structure"
+   ```
 
 If the phase structure was already approved and unchanged, no updates are needed.
 
