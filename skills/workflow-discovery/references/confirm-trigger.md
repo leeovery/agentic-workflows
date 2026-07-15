@@ -4,7 +4,7 @@
 
 ---
 
-The single persistence hinge. Until the work-type commit, all shaping is ephemeral — nothing is on disk. This reference fires once, at the commit, and persists the work unit for **every** work type: resolve the name → create it → land imports → land the seed(s) → write the session log. Persistence is uniform except two epic-specific touches in **E** (the session log's *Map State at Start* wording and the active-session marker); routing by work type is deferred to **G**.
+The single persistence hinge. Until the work-type commit, all shaping is ephemeral — nothing is on disk. This reference fires once, at the commit, and persists the work unit for **every** work type: resolve the name → author the session log → one engine transaction that creates the work unit, lands imports and seed(s), installs the log, and commits. Routing by work type is deferred to **D**.
 
 Inputs held from earlier steps: committed `work_type`, shaped one-line `description`, `import_paths` (paths the user shared during shaping, may be empty), `inbox_seeds` (the list of promoted inbox file paths, may be empty).
 
@@ -12,106 +12,67 @@ Inputs held from earlier steps: committed `work_type`, shaped one-line `descript
 
 Load **[name-resolution.md](name-resolution.md)** and follow its instructions as written. On return, `work_unit` is confirmed and collision-free.
 
-→ Proceed to **B. Create the Work Unit**.
+→ Proceed to **B. Author the Session Log**.
 
-## B. Create the Work Unit
-
-Create-if-absent — in new mode the manifest never exists yet; the guard is plain correctness:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}
-```
-
-#### If output is `false` (absent)
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init {work_unit} --work-type {work_type} --description "{description}"
-```
-
-`{description}` is the one-line intent compiled from the user's framing during shaping. Single-quote the value if it contains `[]`, `{}`, `~`, or backticks.
-
-→ Proceed to **C. Land Imports**.
-
-#### Otherwise
-
-The work unit already exists (defensive — should not occur after a clean name resolution). Do not overwrite. Reuse it as-is.
-
-→ Proceed to **C. Land Imports**.
-
-## C. Land Imports
-
-#### If `import_paths` is non-empty
-
-The user shared reference files during shaping. Land them now — copied into `imports/`, tracked in `manifest.imports[]`, indexed into the knowledge base so they surface via retrieval in this and every future phase.
-
-→ Load **[import-files.md](import-files.md)** with work_unit = `{work_unit}`, import_paths = `{import_paths}`.
-
-→ Proceed to **D. Land the Seeds**.
-
-#### Otherwise
-
-No imports.
-
-→ Proceed to **D. Land the Seeds**.
-
-## D. Land the Seeds
-
-#### If inbox seeds were the origin
-
-Land each promoted inbox file as a seed of the work unit. For every path in `inbox_seeds`, derive the seed's type from its inbox folder (`bugs` → `bug`, `quickfixes` → `quickfix`, `ideas` → `idea`) and land it — repeat until all are landed:
-
-→ Load **[land-seed.md](land-seed.md)** with work_unit = `{work_unit}`, seed_path = `{path}`, source = `inbox:{type}`.
-
-→ Proceed to **E. Write the Session Log**.
-
-#### Otherwise
-
-No inbox seeds.
-
-→ Proceed to **E. Write the Session Log**.
-
-## E. Write the Session Log
+## B. Author the Session Log
 
 This work unit is brand new, so there are no prior sessions: `session_number` = `001`. Hold it for the epic topic machinery (Step 7 keeps it via `macro_continuation`).
 
-Ensure the directory exists and create the log from [template.md](template.md):
+Write the log content to the staging path `.workflows/.cache/{work_unit}/discovery/session-001.md`, following [template.md](template.md): populate the header, **Description (as of session)** (the shaped `description`), **Seed** (one line per `inbox_seeds` entry as `seeds/{filename} ({source})` with `source` = `inbox:{idea|bug|quickfix}` from the item's inbox folder — or `(none)`), **Imports** (one line per `import_paths` entry as `imports/{filename}` — or `(none)`), and **Map State at Start** — `(empty — first session)` for epic, `(n/a — single-topic work)` for the single-phase types. Backfill **Exploration** with a strong-summary of the shaping conversation so far (the intent and any topic seeds — prose, not transcript). Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
+
+For each listed `{filename}`, derive the landed name the way the engine will: the source basename lowercased, whitespace/punctuation runs collapsed to `-`, `.md` ensured (an inbox basename just collapses its `--` separator).
+
+This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and never KB-indexed — it is shape-talk, not validated substance.
+
+→ Proceed to **C. Create the Work Unit**.
+
+## C. Create the Work Unit
+
+One engine transaction persists everything: the manifest (create-if-absent — an existing work unit is reused, never overwritten), imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked and knowledge-base-indexed), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit:
 
 ```bash
-mkdir -p .workflows/{work_unit}/discovery/sessions/
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md --import {path} --seed {path}
 ```
 
-Write `.workflows/{work_unit}/discovery/sessions/session-001.md` populating the header, **Description (as of session)** (the shaped `description`), **Seed** (the landed seed path(s) from **D** — read from `manifest.seeds[]`, listing each — or `(none)`), **Imports** (the landed import paths from **C** — read from `manifest.imports[]` — or `(none)`), and **Map State at Start** — `(empty — first session)` for epic, `(n/a — single-topic work)` for the single-phase types. Backfill **Exploration** with a strong-summary of the shaping conversation so far (the intent and any topic seeds — prose, not transcript). Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
+Pass one `--import` per `import_paths` entry and one `--seed` per `inbox_seeds` entry; omit either flag when its list is empty. `{description}` is the one-line intent compiled from the user's framing during shaping — single-quote it if it contains `[]`, `{}`, `~`, or backticks.
 
-This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. Do not KB-index it — it is shape-talk, not validated substance.
+#### If the response is `ok: false` with `missing_imports`
 
-Set the active-session marker — only for epics, the sole work type with a resumable discovery session loop:
+One or more import paths don't exist — nothing was created. Report them and re-prompt:
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "001"
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> One or more paths could not be found:
+>   • {missing_path_1}
+>   • {missing_path_2}
+
+· · · · · · · · · · · ·
+Provide the corrected file path(s):
+
+- **Provide file paths** — one or more, space or newline separated
+· · · · · · · · · · · ·
 ```
 
-→ Proceed to **F. Commit**.
+**STOP.** Wait for user response.
 
-## F. Commit
+Replace the missing entries in `import_paths` with the corrected value(s).
 
-Stage and commit the new work unit:
+→ Return to **C. Create the Work Unit**.
 
-```bash
-git add -- .workflows/{work_unit}/ .workflows/.inbox/
-git commit -m "discovery({work_unit}): create work unit ({work_type})"
-```
+#### Otherwise
 
-The `.workflows/.inbox/` path is staged so the inbox seeds' removal (for any promoted in **D**) lands in the same commit as their new home under `seeds/`.
+The work unit is on disk. The response reports what landed — if `skipped_imports` is non-empty (filenames that normalise to dotfiles are skipped), or `warnings` carries knowledge-base indexing failures, mention them to the user in passing; neither blocks.
 
-→ Proceed to **G. Route to the First Phase**.
+→ Proceed to **D. Route to the First Phase**.
 
-## G. Route to the First Phase
+## D. Route to the First Phase
 
-The work unit is on disk. Route by the committed `work_type`:
+Route by the committed `work_type`:
 
 #### If `work_type` is `epic`
 
-The work continues into the initial topic sketch — the same shaping, deepened. Hold `macro_continuation` = true and the `session_number` set in **E**.
+The work continues into the initial topic sketch — the same shaping, deepened. Hold `macro_continuation` = true and the `session_number` set in **B**.
 
 → Return to **[the skill](../SKILL.md)** for **Step 7**.
 
