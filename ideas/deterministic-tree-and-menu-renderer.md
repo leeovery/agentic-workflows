@@ -950,4 +950,20 @@ Each phase is its own PR off `main` (one PR per change); this design log stays o
 
 **PR 16 (#407) — wave 6, review (2026-07-15):** .md-only, zero engine code — same shape as planning (no read gateway; entry untouched entirely). All five completion sites in the actions loop → `topic complete` (checked individually); `init-phase` → `topic start` behind its kept `exists` guard (the process skill is model-invocable; start refuses completed). Commit lanes: wu-scoped prescribed sites → `engine commit` verbatim; **surface-to-inbox → `engine commit --inbox`** (stages only `.workflows/.inbox/` — first prose use of the inbox lane); do-now fixes + remediation task writing → raw git with explicit staging (project files / format storage). Cross-phase reopen (`implementation` → in-progress on send-back) stays manifest-lane by design. Defects fixed: undefined `{scope}` commit placeholder; a format name leaking as an example wu name in the re-open handoff. **Flagged, preserved:** 4 of 5 completion sites set `completed` with no commit before the terminal bridge stop — the manifest change rides uncommitted into the bridge (same class as the KB-store looseness; deferred decision). Also pre-existing: the process allowed-tools `mkdir -p .workflows/.inbox` entry doesn't prefix-match the prescribed `mkdir -p .workflows/.inbox/{category}`.
 
+## Deferred ledger (release gate — every item fixed or explicitly ruled out before the final regression campaign and landing)
+
+**Latent-bug class (mechanical fixes, no design input needed — batched into a hardening PR during platform deepening):**
+1. Review completion commit gap — 4 of 5 `topic complete` sites in `review-actions-loop.md` reach the terminal bridge stop without committing the manifest change (only tasks-skipped commits). Fix: add the scoped commit after each completion write (or fold a `--commit` flag decision into #2).
+2. KB-store commit point — `.workflows/.knowledge/*` are tracked files mutated by index/remove/query-side-effects with no owned commit; they linger until the next broad commit. Needs a decision on ownership (ride the next scoped commit? own commit at boot/compact?) then a mechanical fix.
+3. `workflow-review-process` allowed-tools `Bash(mkdir -p .workflows/.inbox)` doesn't prefix-match the prescribed `mkdir -p .workflows/.inbox/{category}`.
+4. CONVENTIONS.md List Display example carries the repeated-`└─` shape the projections corrected — fix the example so new prose doesn't reinherit the defect.
+
+**Design decisions (Lee rules, then mechanical):**
+5. `topic supersede` — build or not; the two supersession call sites disagree on what `superseded_by` points at (`{topic}` in spec-completion vs `{work_unit}`/`unified` in the handoffs).
+6. Planning review agents' git contract — `agents/workflow-planning-review-*` self-commit with `planning({topic})` messages while the criteria files say `planning({work_unit})`; recommend aligning to the spec/review agents' no-git-writes contract (orchestrator commits).
+
+**Queued removals/tidies (already agreed):**
+7. Epic `m`/map view removal (`display-epic-map.md` + `view_map` key) — agreed 2026-06-12.
+8. One-time chrome normalisation pass (platform deepening).
+
 **Phase 3+ — skill-by-skill.** workflow-start (overview projection + `engine boot` consolidation), then the remaining navigation/entry skills one at a time; implementation last of the big ones (`engine task` commands + the format-driver capability contract designed together). Each migration walks its own flow's details; surprises land in that skill's PR, not the platform. Also queued here: **remove the epic `m`/map view** (`display-epic-map.md` + the `view_map` action key) — agreed 2026-06-12 during the live test; the engine dashboard displays that data better, and removal deletes an unmigrated tree surface from the port list.
