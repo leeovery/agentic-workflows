@@ -26,6 +26,7 @@ const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = requir
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
+const { createWorkUnit } = require('./domain/workunit-create.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -38,20 +39,31 @@ function respond(obj) {
   process.stdout.write(JSON.stringify({ ok: true, ...obj }) + '\n');
 }
 
-/** `{ok:false}` JSON on stderr, exit 1. @param {unknown} err @returns {never} */
+/**
+ * `{ok:false}` JSON on stderr, exit 1. Extra decision-ready fields ride on
+ * the error's `payload` (e.g. `missing_imports`).
+ * @param {unknown} err @returns {never}
+ */
 function failJson(err) {
-  process.stderr.write(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }) + '\n');
+  const payload =
+    err && typeof err === 'object' && 'payload' in err && err.payload && typeof err.payload === 'object'
+      ? err.payload
+      : {};
+  process.stderr.write(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err), ...payload }) + '\n');
   process.exit(1);
 }
 
 // Minimal flag parser: collects `--key value` pairs, value-less flags named
-// in `booleans`, and bare positionals.
-/** @param {string[]} argv @param {string[]} [booleans] */
-function parseArgs(argv, booleans = []) {
+// in `booleans`, repeatable `--key value` flags named in `repeatable`
+// (gathered into `lists` arrays), and bare positionals.
+/** @param {string[]} argv @param {string[]} [booleans] @param {string[]} [repeatable] */
+function parseArgs(argv, booleans = [], repeatable = []) {
   /** @type {Record<string, string>} */
   const opts = {};
   /** @type {Set<string>} */
   const flags = new Set();
+  /** @type {Record<string, string[]>} */
+  const lists = {};
   /** @type {string[]} */
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
@@ -59,18 +71,21 @@ function parseArgs(argv, booleans = []) {
     if (a.startsWith('--')) {
       const name = a.slice(2);
       if (booleans.includes(name)) flags.add(name);
+      else if (repeatable.includes(name)) (lists[name] = lists[name] || []).push(argv[++i]);
       else opts[name] = argv[++i];
     } else {
       positional.push(a);
     }
   }
-  return { opts, flags, positional };
+  return { opts, flags, lists, positional };
 }
 
 const USAGE = `Usage: engine <command> [args]
 
 Commands:
   boot
+  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
+                  [--import <path> …] [--seed <path> …]
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
@@ -95,6 +110,34 @@ Commands:
   render box <title> [--width N]
   render wrap <text> [--width N] [--prefix STR]
   render tree [--width N]            (reads a JSON TreeNode array on stdin)`;
+
+// ---------------------------------------------------------------------------
+// workunit — work-unit lifecycle. create is the work-type commit: one
+// transaction covering the manifest, imports, seeds, the model-authored
+// session log (installed verbatim — the engine never writes prose), and the
+// scoped commit. A missing import fails the whole call with
+// `missing_imports` in the response so the calling flow can re-prompt.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runWorkunit(argv) {
+  const [command, ...rest] = argv;
+  try {
+    const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
+    const [workUnit, workType] = positional;
+    if (command !== 'create' || !workUnit || !workType || !opts.description || !opts['session-log-file']) {
+      throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]');
+    }
+    respond(createWorkUnit(process.cwd(), workUnit, workType, {
+      description: opts.description,
+      sessionLogFile: opts['session-log-file'],
+      imports: lists.import || [],
+      seeds: lists.seed || [],
+    }));
+  } catch (err) {
+    failJson(err);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // discussion-map — Discussion Map subtopic writes. add/set: load (kernel) →
@@ -403,6 +446,9 @@ function runCli(argv) {
   switch (command) {
     case 'boot':
       runBoot();
+      break;
+    case 'workunit':
+      runWorkunit(rest);
       break;
     case 'discussion-map':
       runDiscussionMap(rest);
