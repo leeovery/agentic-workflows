@@ -14,6 +14,7 @@ const {
   VALID_WORK_TYPES,
   VALID_PHASES,
   VALID_PHASE_STATUSES,
+  VALID_ROUTINGS,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   RESERVED_WORK_UNIT_NAMES: RESERVED_NAMES,
@@ -800,12 +801,11 @@ function cmdCreateDiscoveryTopic(args) {
   if (!routing) die('--routing is required');
   if (!source) die('--source is required');
 
-  const PHASE_CHOICES = ['research', 'discussion'];
-  if (!PHASE_CHOICES.includes(routing)) {
-    die(`--routing must be one of: ${PHASE_CHOICES.join(', ')}`);
+  if (!VALID_ROUTINGS.includes(routing)) {
+    die(`--routing must be one of: ${VALID_ROUTINGS.join(', ')}`);
   }
-  if (phase !== null && !PHASE_CHOICES.includes(phase)) {
-    die(`--phase must be one of: ${PHASE_CHOICES.join(', ')}`);
+  if (phase !== null && !VALID_ROUTINGS.includes(phase)) {
+    die(`--phase must be one of: ${VALID_ROUTINGS.join(', ')}`);
   }
 
   requireWorkUnit(workUnit);
