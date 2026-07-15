@@ -8,9 +8,23 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const os = require('os');
 
-const { cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+
+/** Run a discovery-map command expecting success; returns the parsed JSON line. */
+function runOk(dir, args) {
+  return JSON.parse(execFileSync('node', [ENGINE, 'discovery-map', ...args], { cwd: dir, encoding: 'utf8' }).trim());
+}
+
+/** Run a discovery-map command expecting failure; returns the parsed stderr JSON. */
+function runFail(dir, args) {
+  const res = spawnSync('node', [ENGINE, 'discovery-map', ...args], { cwd: dir, encoding: 'utf8' });
+  assert.strictEqual(res.status, 1, `expected failure for: ${args.join(' ')}`);
+  const parsed = JSON.parse(res.stderr.trim());
+  assert.strictEqual(parsed.ok, false);
+  return parsed;
+}
 
 describe('engine CLI: discovery-map sequence', () => {
   // Hermetic git: no user/system config leaks into the engine's spawned git.
@@ -96,5 +110,284 @@ describe('engine CLI: discovery-map sequence', () => {
     assert.match(JSON.parse(usage.stderr.trim()).error, /Usage: engine discovery-map sequence/);
     const noMap = spawnSync('node', [ENGINE, 'discovery-map', 'sequence', 'ghost-unit', 'auth-flow=1'], { cwd: dir, encoding: 'utf8' });
     assert.match(JSON.parse(noMap.stderr.trim()).error, /manifest not found/);
+  });
+});
+
+describe('engine CLI: discovery-map operations', () => {
+  // One item per lifecycle, joined at render time from the per-phase items —
+  // the same computation the epic detail builder uses.
+  const RICH_FRESH = {
+    routing: 'research',
+    source: 'discovery,research-analysis',
+    order: 3,
+    brief_path: 'discovery/briefs/rich-fresh.md',
+    brief_incorporated: false,
+    legacy_split_state: 'applied',
+    summary: 'about rich',
+    description: 'longer text about rich',
+  };
+
+  function opsFixture() {
+    const dir = setupFixture();
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            'fresh-topic': { routing: 'discussion', source: 'discovery' },
+            'rich-fresh': { ...RICH_FRESH },
+            'researching-topic': { routing: 'research', source: 'discovery' },
+            'ready-topic': { routing: 'research', source: 'discovery' },
+            'discussing-topic': { routing: 'discussion', source: 'discovery' },
+            'decided-topic': { routing: 'discussion', source: 'discovery' },
+            'handled-topic': { routing: 'research', source: 'discovery', handled: true },
+            'cancelled-topic': { routing: 'research', source: 'discovery' },
+          },
+          dismissed: ['dismissed-name'],
+        },
+        research: {
+          items: {
+            'researching-topic': { status: 'in-progress' },
+            'ready-topic': { status: 'completed' },
+            'cancelled-topic': { status: 'cancelled' },
+          },
+        },
+        discussion: {
+          items: {
+            'discussing-topic': { status: 'in-progress' },
+            'decided-topic': { status: 'completed' },
+            'cancelled-topic': { status: 'cancelled' },
+          },
+        },
+      },
+    });
+    return dir;
+  }
+
+  function readManifest(dir) {
+    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'));
+  }
+
+  let dir;
+  beforeEach(() => { dir = opsFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  describe('edit', () => {
+    it('sets summary, echoes it with the lifecycle', () => {
+      const res = runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'new blurb']);
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'edit', lifecycle: 'fresh', summary: 'new blurb' });
+      assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].summary, 'new blurb');
+    });
+
+    it('sets description alone, or both fields in one call', () => {
+      const one = runOk(dir, ['edit', 'payments', 'fresh-topic', '--description', 'full detail']);
+      assert.strictEqual(one.description, 'full detail');
+      assert.strictEqual(one.summary, undefined);
+      const both = runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 's2', '--description', 'd2']);
+      assert.strictEqual(both.summary, 's2');
+      assert.strictEqual(both.description, 'd2');
+      const item = readManifest(dir).phases.discovery.items['fresh-topic'];
+      assert.strictEqual(item.summary, 's2');
+      assert.strictEqual(item.description, 'd2');
+    });
+
+    it('is allowed at any lifecycle — an in-flight item takes the edit', () => {
+      const res = runOk(dir, ['edit', 'payments', 'researching-topic', '--summary', 'still editable']);
+      assert.strictEqual(res.lifecycle, 'researching');
+      assert.strictEqual(readManifest(dir).phases.discovery.items['researching-topic'].summary, 'still editable');
+    });
+
+    it('requires at least one flag', () => {
+      const err = runFail(dir, ['edit', 'payments', 'fresh-topic']);
+      assert.match(err.error, /at least one flag required/);
+    });
+
+    it('errors loudly on a missing item', () => {
+      const err = runFail(dir, ['edit', 'payments', 'ghost', '--summary', 'x']);
+      assert.match(err.error, /no discovery item "ghost"/);
+    });
+  });
+
+  describe('remove', () => {
+    it('hard-deletes a fresh item and pushes its name onto the dismissed list', () => {
+      const res = runOk(dir, ['remove', 'payments', 'fresh-topic']);
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'remove', dismissed: true, lifecycle: 'fresh' });
+      const discovery = readManifest(dir).phases.discovery;
+      assert.strictEqual(discovery.items['fresh-topic'], undefined);
+      assert.deepStrictEqual(discovery.dismissed, ['dismissed-name', 'fresh-topic']);
+    });
+
+    it('does not duplicate a name already on the dismissed list', () => {
+      runOk(dir, ['rename', 'payments', 'fresh-topic', 'dismissed-name']);
+      runOk(dir, ['remove', 'payments', 'dismissed-name']);
+      assert.deepStrictEqual(readManifest(dir).phases.discovery.dismissed, ['dismissed-name']);
+    });
+  });
+
+  describe('rename', () => {
+    it('moves the item preserving every field and its map position', () => {
+      const res = runOk(dir, ['rename', 'payments', 'rich-fresh', 'menu-admin']);
+      assert.strictEqual(res.op, 'rename');
+      assert.strictEqual(res.name, 'menu-admin');
+      assert.strictEqual(res.renamed_from, 'rich-fresh');
+      assert.strictEqual(res.lifecycle, 'fresh');
+      assert.strictEqual(res.matches_dismissed, false);
+      assert.deepStrictEqual(res.preserved_fields.sort(), Object.keys(RICH_FRESH).sort());
+
+      const items = readManifest(dir).phases.discovery.items;
+      assert.strictEqual(items['rich-fresh'], undefined);
+      // Every field — order, brief_path, brief_incorporated, the accumulated
+      // source, and the legacy_split_state sentinel — carries across intact.
+      assert.deepStrictEqual(items['menu-admin'], RICH_FRESH);
+      // Map position holds: the renamed key sits where the old one did.
+      assert.strictEqual(Object.keys(items)[1], 'menu-admin');
+    });
+
+    it('refuses a collision with an active map item', () => {
+      const before = JSON.stringify(readManifest(dir));
+      const err = runFail(dir, ['rename', 'payments', 'fresh-topic', 'decided-topic']);
+      assert.match(err.error, /"decided-topic" is already on the map — pick a different name/);
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
+    it('allows a match against the dismissed list, leaving the entry alone', () => {
+      const res = runOk(dir, ['rename', 'payments', 'fresh-topic', 'dismissed-name']);
+      assert.strictEqual(res.matches_dismissed, true);
+      const discovery = readManifest(dir).phases.discovery;
+      assert.ok(discovery.items['dismissed-name']);
+      assert.deepStrictEqual(discovery.dismissed, ['dismissed-name']);
+    });
+
+    it('refuses names that break manifest addressing, and the identity rename', () => {
+      assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic', 'a.b']).error, /not a legal topic name/);
+      assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic', 'a/b']).error, /not a legal topic name/);
+      assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic', 'fresh-topic']).error, /must differ/);
+    });
+  });
+
+  describe('reroute', () => {
+    it('records the new routing', () => {
+      const res = runOk(dir, ['reroute', 'payments', 'fresh-topic', 'research']);
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'reroute', routing: 'research', lifecycle: 'fresh' });
+      assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].routing, 'research');
+    });
+
+    it('rejects a routing outside the enum', () => {
+      const err = runFail(dir, ['reroute', 'payments', 'fresh-topic', 'planning']);
+      assert.match(err.error, /unknown routing "planning" \(research\|discussion\)/);
+    });
+  });
+
+  describe('lifecycle gates on destructive ops', () => {
+    // Every non-fresh lifecycle refuses remove/rename/reroute, naming the
+    // blocking lifecycle and the recovery path — identical to the prose gate.
+    const BLOCKED = {
+      'researching-topic': /research is in flight on it.*cancel from the epic menu instead/,
+      'ready-topic': /research has completed and discussion is queued.*cancel from the epic menu instead/,
+      'discussing-topic': /discussion is in flight on it.*cancel from the epic menu instead/,
+      'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
+      'handled-topic': /fanned out into discussions.*reactivate it to make it actionable again/,
+      'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
+    };
+
+    it('remove refuses every non-fresh lifecycle, leaving the manifest untouched', () => {
+      const before = JSON.stringify(readManifest(dir));
+      for (const [topic, message] of Object.entries(BLOCKED)) {
+        const err = runFail(dir, ['remove', 'payments', topic]);
+        assert.match(err.error, new RegExp(`"${topic}" can't be removed`), topic);
+        assert.match(err.error, message, topic);
+      }
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
+    it('rename refuses every non-fresh lifecycle', () => {
+      for (const [topic, message] of Object.entries(BLOCKED)) {
+        const err = runFail(dir, ['rename', 'payments', topic, 'anything-else']);
+        assert.match(err.error, new RegExp(`"${topic}" can't be renamed`), topic);
+        assert.match(err.error, message, topic);
+      }
+    });
+
+    it('reroute refuses every non-fresh lifecycle', () => {
+      for (const [topic, message] of Object.entries(BLOCKED)) {
+        const err = runFail(dir, ['reroute', 'payments', topic, 'discussion']);
+        assert.match(err.error, new RegExp(`"${topic}" can't be re-routed`), topic);
+        assert.match(err.error, message, topic);
+      }
+    });
+  });
+
+  describe('handle', () => {
+    it('marks an item handled from any actionable lifecycle', () => {
+      for (const topic of ['fresh-topic', 'researching-topic', 'ready-topic', 'discussing-topic', 'decided-topic']) {
+        const res = runOk(dir, ['handle', 'payments', topic]);
+        assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: topic, op: 'handle', handled: true, lifecycle: 'handled' }, topic);
+        assert.strictEqual(readManifest(dir).phases.discovery.items[topic].handled, true, topic);
+      }
+    });
+
+    it('refuses an already-handled item', () => {
+      const err = runFail(dir, ['handle', 'payments', 'handled-topic']);
+      assert.match(err.error, /"handled-topic" can't be marked handled — it's already marked handled/);
+    });
+
+    it('refuses a cancelled item, pointing at phase-work reactivation', () => {
+      const err = runFail(dir, ['handle', 'payments', 'cancelled-topic']);
+      assert.match(err.error, /it's cancelled; reactivate the phase work from the epic menu first/);
+    });
+  });
+
+  describe('reactivate', () => {
+    it('clears the marker and reports the name-matched lifecycle', () => {
+      const res = runOk(dir, ['reactivate', 'payments', 'handled-topic']);
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'reactivate', handled: false, lifecycle: 'fresh' });
+      assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['handled-topic'], false);
+    });
+
+    it('reports the recomputed lifecycle when phase work exists under the name', () => {
+      runOk(dir, ['handle', 'payments', 'researching-topic']);
+      const res = runOk(dir, ['reactivate', 'payments', 'researching-topic']);
+      assert.strictEqual(res.lifecycle, 'researching');
+    });
+
+    it('refuses any non-handled item', () => {
+      for (const topic of ['fresh-topic', 'researching-topic', 'decided-topic', 'cancelled-topic']) {
+        const err = runFail(dir, ['reactivate', 'payments', topic]);
+        assert.match(err.error, /isn't marked handled, so there's nothing to reactivate/, topic);
+      }
+    });
+  });
+
+  describe('argument validation', () => {
+    it('rejects unknown verbs and malformed arg counts with usage errors', () => {
+      assert.match(runFail(dir, ['frobnicate', 'payments', 'x']).error, /Usage: engine discovery-map <sequence\|edit\|remove\|rename\|reroute\|handle\|reactivate>/);
+      assert.match(runFail(dir, ['remove', 'payments']).error, /Usage: engine discovery-map remove/);
+      assert.match(runFail(dir, ['remove', 'payments', 'fresh-topic', 'extra']).error, /Usage: engine discovery-map remove/);
+      assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map rename/);
+      assert.match(runFail(dir, ['reroute', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map reroute <work-unit> <name> <research\|discussion>/);
+      assert.match(runFail(dir, ['handle', 'payments']).error, /Usage: engine discovery-map handle/);
+      // An unquoted payload spills into positionals — refused, not truncated.
+      assert.match(runFail(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'two', 'words']).error, /Usage: engine discovery-map edit/);
+    });
+  });
+
+  describe('commit cadence', () => {
+    it('map operations never commit — the session picks the change up', () => {
+      execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir, encoding: 'utf8' });
+      execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
+      execFileSync('git', ['config', 'user.name', 'Test'], { cwd: dir });
+      execFileSync('git', ['add', '-A'], { cwd: dir });
+      execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: dir });
+
+      runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'no commit']);
+      runOk(dir, ['remove', 'payments', 'fresh-topic']);
+      runOk(dir, ['rename', 'payments', 'rich-fresh', 'renamed-rich']);
+      runOk(dir, ['reroute', 'payments', 'renamed-rich', 'discussion']);
+      runOk(dir, ['handle', 'payments', 'renamed-rich']);
+      runOk(dir, ['reactivate', 'payments', 'renamed-rich']);
+
+      assert.strictEqual(execFileSync('git', ['log', '--pretty=%s'], { cwd: dir, encoding: 'utf8' }).trim(), 'init');
+      assert.match(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }), / M \.workflows\/payments\/manifest\.json/);
+    });
   });
 });
