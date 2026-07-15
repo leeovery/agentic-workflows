@@ -41,14 +41,15 @@ function hasStagedChanges(cwd) {
 }
 
 /**
- * Stage one pathspec and commit with the given message.
+ * Stage one or more pathspecs and commit with the given message.
  * @param {string} cwd      project root
- * @param {string} pathspec e.g. `.workflows/{wu}` or `.workflows/.inbox`
+ * @param {string|string[]} pathspec e.g. `.workflows/{wu}` or `.workflows/.inbox`
  * @param {string} message
  * @returns {string|null} the short commit sha, or null when nothing was staged
  */
 function commitScoped(cwd, pathspec, message) {
-  git(cwd, ['add', '--', pathspec]);
+  const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
+  git(cwd, ['add', '--', ...specs]);
   if (!hasStagedChanges(cwd)) return null;
   git(cwd, ['commit', '-m', message]);
   return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();

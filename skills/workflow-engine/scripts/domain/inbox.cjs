@@ -147,4 +147,4 @@ function deleteItems(cwd, paths) {
   };
 }
 
-module.exports = { archiveItems, restoreItems, deleteItems };
+module.exports = { archiveItems, restoreItems, deleteItems, parseInboxPath };
