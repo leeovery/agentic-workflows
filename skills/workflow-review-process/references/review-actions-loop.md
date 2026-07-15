@@ -358,7 +358,7 @@ Review findings have been synthesized into {N} implementation tasks.
 
 ## Summary
 
-{Summary, e.g., "tick-core: 3 tasks in Phase 9"}
+{Summary, e.g., "auth-flow: 3 tasks in Phase 9"}
 
 ## Instructions
 
