@@ -213,7 +213,11 @@ Surfaced to inbox:
 @endforeach
 ```
 
-Commit: `review({work_unit}): surface recommendations to inbox`
+Commit — the surfaced files live in `.workflows/.inbox/`, outside the work unit, so use the inbox scope:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): surface recommendations to inbox"
+```
 
 → Return to **B. Q&A Loop**.
 
@@ -234,7 +238,12 @@ Apply every item in the `### Do now` subsection of `report.md`:
 2. Run the project's linters; when any change touched a code or test file, also run the test suite (see the project skills loaded in Step 3 and the topic's configured linters).
 3. If a change fails verification, revert that single change and re-tag its item `[quickfix]` in `report.md` — leave the rest applied.
 
-Commit the applied changes: `review({work_unit}): apply do-now fixes`
+Commit the applied changes with raw git — the fixes touch project files outside the work unit, so the scoped helper cannot cover them. Stage the touched files and the work unit (for any report re-tags), then commit:
+
+```bash
+git add -- .workflows/{work_unit} {files the fixes touched}
+git commit -m "review({work_unit}): apply do-now fixes"
+```
 
 > *Output the next fenced block as a code block:*
 
