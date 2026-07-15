@@ -1,7 +1,7 @@
 ---
 name: workflow-review-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(mkdir -p .workflows/.inbox)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/.inbox)
 ---
 
 # Review Process
@@ -192,8 +192,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.re
 
 #### If `false`
 
+Start the review item — the engine creates it with `status: in-progress`:
+
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.review.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} review {topic}
 ```
 
 → Proceed to **Step 2**.
