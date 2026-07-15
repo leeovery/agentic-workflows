@@ -164,7 +164,10 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.review.{topic} reviewed_tasks
    ```
-3. Commit: `review({work_unit}): restart review`
+3. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review"
+   ```
 
 → Proceed to **Step 1**.
 

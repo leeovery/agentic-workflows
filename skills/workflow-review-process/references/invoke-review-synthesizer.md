@@ -46,8 +46,8 @@ If the agent fails (error, timeout), record the failure and report "synthesis fa
 
 Commit the report and staging file (if created):
 
-```
-review({scope}): synthesis cycle {N} — findings
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — findings"
 ```
 
 ---
