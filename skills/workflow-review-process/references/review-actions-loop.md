@@ -32,10 +32,10 @@ Check the verdict(s) from the review(s) being analyzed.
 No actionable findings. All reviews passed with no required changes.
 ```
 
-Set the review phase status to completed:
+Mark the review completed — the engine sets the status:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.review.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -79,10 +79,10 @@ Proceed with synthesis?
 
 **If `no`:**
 
-Set review status to completed:
+Mark the review completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.review.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -126,10 +126,10 @@ Synthesize non-blocking findings?
 
 **If `no`:**
 
-Set review status to completed:
+Mark the review completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.review.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -153,10 +153,10 @@ Invoke the workflow-bridge skill to enter plan mode with completion confirmation
 
 #### If `STATUS` is `clean`
 
-No actionable tasks from synthesis. Set review status to completed:
+No actionable tasks from synthesis. Mark the review completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.review.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
 > *Output the next fenced block as a code block:*
@@ -292,10 +292,10 @@ Revise the task content in the staging file based on the user's feedback.
 
 #### If all tasks were skipped
 
-Set review status to completed:
+Mark the review completed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.review.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
 Commit the staging file updates:
