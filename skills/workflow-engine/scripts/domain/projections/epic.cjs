@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, title, derivedFrom, discoveryGlyph } = require('../conventions.cjs');
+const { TREE_WIDTH, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 
 /** @typedef {import('../epic.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic.cjs').MapRow} MapRow */
@@ -87,15 +87,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  switch (row.lifecycle) {
-    case 'ready_for_discussion': return 'research complete · ready for discussion';
-    case 'researching': return 'researching';
-    case 'discussing': return 'discussing';
-    case 'decided': return 'decided';
-    case 'handled': return 'handled · research fanned out';
-    case 'cancelled': return 'cancelled';
-    default: return row.routing ? `fresh · routed to ${row.routing}` : 'fresh';
-  }
+  return discoveryLifecycleLabel(row.lifecycle, row.routing);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
