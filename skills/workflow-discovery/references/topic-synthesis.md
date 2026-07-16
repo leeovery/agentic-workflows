@@ -48,20 +48,27 @@ For each topic in the synthesised set, propose `research` or `discussion` based 
 
 ## E. Render Proposal
 
-> *Output the next fenced block as a code block:*
+Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration; routing is the value inferred in **D**:
 
-```
-Synthesised Discovery Map — {work_unit:(titlecase)}
-
-@foreach(topic in proposed_set)
-  • {topic.name} — {one-line summary}    [routing: {research|discussion}]
-@endforeach
-
-{N} topic(s). One-line summary per topic comes from the exploration;
-routing is my read of where each one goes next.
+```json
+[
+  {"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}"}
+]
 ```
 
-For continuing sessions, mark new items with `(new this session)` and include existing map items below unchanged so the full picture is visible.
+Then render the proposal:
+
+```bash
+node .claude/skills/workflow-discovery/scripts/discovery.cjs map-view {work_unit} --proposed-file .workflows/.cache/{work_unit}/discovery/proposed-topics.json
+```
+
+The output arrives in demarcated sections. Read `=== DATA` to reason from (never display it) — it carries a per-name flag row for each proposed topic:
+
+- `exists_on_map=true` — the name collides with an active map item. Fold the exploration into that item or pick a different name (revise the set, rewrite the file, re-run) before rendering the gate.
+- `legal_name=false` — dots or slashes break manifest addressing. Rename and re-run.
+- `matches_dismissed=true` — the name was previously dismissed. Fine to proceed — confirming at the gate below is the re-add decision; hold the flag for Step 12, which passes `--force-dismissed` on the write.
+
+Emit the `=== DISPLAY` section verbatim **as a code block** — it shows the proposed topics with the existing map unchanged below, so the full picture is visible.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -79,7 +86,7 @@ Confirm to commit, or tell me what to adjust.
 
 #### If `yes`
 
-The topic set is confirmed. Hold it in conversation memory as the **working list** for Step 12 confirm-and-persist. Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together. Synthesis outcome: `confirmed`.
+The topic set is confirmed. Hold it in conversation memory as the **working list** for Step 12 confirm-and-persist, along with any `matches_dismissed` names from the DATA flags (Step 12 passes `--force-dismissed` for those). Do not write Topics Identified to the log yet — Step 12 writes the manifest items and the log section together. Synthesis outcome: `confirmed`.
 
 → Load **[brief-synthesis.md](brief-synthesis.md)** and follow its instructions as written.
 
@@ -102,6 +109,6 @@ Apply the named adjustments to the working set:
 - **Edit summary** *"Y's summary should be ..."* — replace the summary line
 - **Drop** *"Forget Z entirely"* — remove from set (note: this means Claude misread the exploration; reflect on what was overweighted)
 
-After applying, re-render the proposal (back to the top of **E**) and ask again. Loop until confirmed or `explore` is chosen.
+After applying, rewrite `proposed-topics.json`, re-render the proposal (back to the top of **E**), and ask again. Loop until confirmed or `explore` is chosen.
 
 → Return to **E. Render Proposal**.
