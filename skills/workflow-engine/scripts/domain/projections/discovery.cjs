@@ -89,7 +89,7 @@ function proposedNodes(proposed) {
  */
 function discoveryMapView(workUnit, map) {
   const head = box(`Discovery — ${titlecase(workUnit)}`)
-    + `  Discovery Map (${map.summary.total} topics${breakdown(map.summary)})\n\n`;
+    + `  Discovery Map (${map.summary.total} topics${breakdown(map.summary)})\n`;
   if (map.rows.length === 0) return head + '  (empty)\n';
   return head + renderTree(mapNodes(map.rows), { width: TREE_WIDTH });
 }
@@ -111,11 +111,11 @@ function discoverySynthesisView(workUnit, map, proposed) {
   const parts = [`  Synthesised Discovery Map — ${titlecase(workUnit)}\n`];
   const hasExisting = map.rows.length > 0;
 
-  parts.push(`  ${hasExisting ? 'New this session' : 'Proposed topics'} (${proposed.length}):\n`);
+  parts.push(`  ${hasExisting ? 'New this session' : 'Proposed topics'} (${proposed.length}):`);
   parts.push(renderTree(proposedNodes(proposed), { width: TREE_WIDTH }));
 
   if (hasExisting) {
-    parts.push(`  Already on the map (${map.rows.length}):\n`);
+    parts.push(`  Already on the map (${map.rows.length}):`);
     parts.push(renderTree(mapNodes(map.rows), { width: TREE_WIDTH }));
   }
 
