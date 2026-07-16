@@ -4,9 +4,11 @@
 // Domain ring: the discovery map — the epic's manifest-backed topic map at
 // `phases.discovery.items`. Sequencing records a suggested execution order
 // across its topics as a single transaction: manifest write, scoped git
-// commit. The Tier-2 map operations (edit/remove/rename/reroute/handle/
+// commit. The Tier-2 map operations (add/edit/remove/rename/reroute/handle/
 // reactivate) are per-item writes with NO git commit — the calling session's
-// commit cadence picks the manifest change up.
+// commit cadence picks the manifest change up. An added item is
+// `{routing, source, summary[, description]}` — never a `status` field:
+// map-item lifecycle is computed at render time, not stored.
 //
 // Judgment decides, code records: the conversation proposes every move; these
 // ops validate and write it. Lifecycle gates are enforced here with the SAME
@@ -44,16 +46,19 @@ const LIFECYCLE_PHRASES = {
  * @typedef {object} MapOpResult
  * @property {string} work_unit
  * @property {string} name       the item's (current) map name
- * @property {string} op         edit|remove|rename|reroute|handle|reactivate
+ * @property {string} op         add|edit|remove|rename|reroute|handle|reactivate
  * @property {string} lifecycle  the item's lifecycle after the op (pre-removal for remove)
- * @property {string} [summary]           edit: the value written
- * @property {string} [description]       edit: the value written
+ * @property {string} [summary]           add/edit: the value written
+ * @property {string} [description]       add/edit: the value written
  * @property {boolean} [dismissed]        remove: name pushed onto the dismissed list
  * @property {string} [renamed_from]      rename: the old name
  * @property {string[]} [preserved_fields] rename: every field carried across
  * @property {boolean} [matches_dismissed] rename: new name matches a dismissed entry (left alone)
- * @property {string} [routing]           reroute: the value written
+ * @property {string} [routing]           add/reroute: the value written
+ * @property {string} [source]            add: the provenance tag written
  * @property {boolean} [handled]          handle/reactivate: the marker after the op
+ * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
+ * @property {number} [map_total]         add: items on the map after the add
  */
 
 /**
@@ -134,6 +139,65 @@ function sequenceMap(cwd, workUnit, orders) {
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed };
   if (committed === null) result.note = 'nothing to commit';
+  return result;
+}
+
+/**
+ * Add a new map item: `{routing, source, summary[, description]}` — never a
+ * `status` field; map-item lifecycle is computed at render time, not stored.
+ * Refuses an active duplicate, and a dismissed name unless `forceDismissed`
+ * carries the user's confirmed re-add decision (the entry is then pulled off
+ * the dismissed list so analyses treat the topic as live again). No git
+ * commit — the calling session's commit cadence picks the change up.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} name
+ * @param {{routing?: string, source?: string, summary?: string, description?: string, forceDismissed?: boolean}} [fields]
+ * @returns {MapOpResult}
+ */
+function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, forceDismissed = false } = {}) {
+  if (!routing || !VALID_ROUTINGS.includes(routing)) {
+    throw new Error(`unknown routing ${JSON.stringify(routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
+  }
+  if (summary === undefined) {
+    throw new Error('--summary is required');
+  }
+  // Same structural rule rename enforces: dots break the manifest CLI's
+  // dot-path addressing, slashes break paths.
+  if (!name || /[./]/.test(name)) {
+    throw new Error(`"${name}" is not a legal topic name — dots and slashes break manifest addressing`);
+  }
+
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+  if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
+  const discovery = manifest.phases.discovery;
+  if (!discovery.items || typeof discovery.items !== 'object') discovery.items = {};
+
+  if (discovery.items[name]) {
+    throw new Error(`"${name}" is already on the map — edit it, or pick a different name`);
+  }
+  const dismissed = Array.isArray(discovery.dismissed) ? discovery.dismissed : [];
+  const wasDismissed = dismissed.includes(name);
+  if (wasDismissed && !forceDismissed) {
+    throw new Error(`"${name}" was previously dismissed from this map — confirm the re-add with the user, then re-run with --force-dismissed`);
+  }
+  if (wasDismissed) {
+    discovery.dismissed = dismissed.filter((n) => n !== name);
+  }
+
+  /** @type {Record<string, unknown>} */
+  const item = { routing, source, summary };
+  if (description !== undefined) item.description = description;
+  discovery.items[name] = item;
+
+  saveWorkUnitManifest(cwd, workUnit, manifest);
+
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
+  /** @type {MapOpResult} */
+  const result = { work_unit: workUnit, name, op: 'add', routing, source, summary, lifecycle, map_total: Object.keys(discovery.items).length };
+  if (description !== undefined) result.description = description;
+  if (wasDismissed) result.undismissed = true;
   return result;
 }
 
@@ -314,4 +378,4 @@ function reactivateItem(cwd, workUnit, name) {
   return { work_unit: workUnit, name, op: 'reactivate', handled: false, lifecycle: after.lifecycle };
 }
 
-module.exports = { sequenceMap, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem };
+module.exports = { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem };
