@@ -28,6 +28,7 @@ const workunit = require('./domain/workunit.cjs');
 const specification = require('./domain/specification.cjs');
 const discussionMap = require('./domain/discussion-map.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
+const discoveryProjections = require('./domain/projections/discovery.cjs');
 const discussionProjections = require('./domain/projections/discussion.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
@@ -60,6 +61,8 @@ module.exports = {
     epicCompletedMenu: epicProjections.epicCompletedMenu,
     epicCancelMenu: epicProjections.epicCancelMenu,
     epicReactivateMenu: epicProjections.epicReactivateMenu,
+    discoveryMapView: discoveryProjections.discoveryMapView,
+    discoverySynthesisView: discoveryProjections.discoverySynthesisView,
     discussionMap: discussionProjections.discussionMap,
     startOverview: startProjections.startOverview,
     startMenu: startProjections.startMenu,

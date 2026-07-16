@@ -1,7 +1,20 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// Adapter (read gateway) for workflow-discovery. Thin by design: the scoped
+// discovery dump plus the map-view projection over one epic's discovery map.
+//
+//   discovery.cjs {work_unit}            → labelled dump (byte-stable legacy format)
+//   discovery.cjs map-view {work_unit}   → DATA + DISPLAY map snapshot
+//   discovery.cjs map-view {work_unit} --proposed-file {path}
+//                                        → synthesis overlay: the harvest's
+//                                          proposed set (model-authored JSON)
+//                                          rendered over the existing map
+// ---------------------------------------------------------------------------
+
 const fs = require('fs');
 const path = require('path');
+const engine = require('../../workflow-engine/scripts/lib.cjs');
 const {
   loadManifest,
   phaseItems,
@@ -152,17 +165,113 @@ function format(result) {
   return lines.join('\n') + '\n';
 }
 
+// ---------------------------------------------------------------------------
+// map-view — the Discovery Map snapshot: DATA (counts, rows, and — with a
+// proposed set — the per-name flags the persist step routes on) + DISPLAY
+// (the projection). No MENU: the confirm gate is static prose in the skill.
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse and validate the harvest's proposed-topics JSON: a non-empty array of
+ * `{name, routing, summary}`. Model-authored judgment; shape errors are loud.
+ * @param {string} cwd @param {string} file
+ * @returns {{name: string, routing: string, summary: string}[]}
+ */
+function readProposedFile(cwd, file) {
+  let raw;
+  try {
+    raw = fs.readFileSync(path.resolve(cwd, file), 'utf8');
+  } catch {
+    throw new Error(`proposed-topics file not found: ${file}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`proposed-topics file is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('proposed-topics file must be a non-empty JSON array of {name, routing, summary}');
+  }
+  for (const [i, t] of parsed.entries()) {
+    for (const field of ['name', 'routing', 'summary']) {
+      if (!t || typeof t[field] !== 'string' || t[field].trim() === '') {
+        throw new Error(`proposed topic ${i} is missing "${field}" (each entry needs name, routing, summary)`);
+      }
+    }
+  }
+  return parsed;
+}
+
+function mapView(workUnit, ...rest) {
+  if (!workUnit || workUnit.startsWith('--')) {
+    throw new Error('Usage: discovery.cjs map-view <work_unit> [--proposed-file <path>]');
+  }
+  const cwd = process.cwd();
+  let proposedFile = null;
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === '--proposed-file' && rest[i + 1]) proposedFile = rest[++i];
+    else throw new Error(`map-view: unexpected argument "${rest[i]}"`);
+  }
+
+  const result = discover(cwd, workUnit);
+  if (result.error) throw new Error(result.error);
+  const map = { rows: result.discovery_map, summary: result.map_summary };
+
+  const dataLines = [`work_unit: ${workUnit}`, `mode: ${proposedFile ? 'synthesis' : 'map'}`];
+  const s = result.map_summary;
+  dataLines.push(`map: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled`);
+
+  let display;
+  if (proposedFile) {
+    const proposed = readProposedFile(cwd, proposedFile);
+    // Per-name flags the flow routes on: an active collision must be resolved
+    // before the gate; a dismissed match needs --force-dismissed at persist.
+    dataLines.push(`proposed (${proposed.length}):`);
+    for (const t of proposed) {
+      const flags = [
+        `routing=${t.routing}`,
+        `exists_on_map=${result.discovery_map.some((r) => r.name === t.name)}`,
+        `matches_dismissed=${result.dismissed.includes(t.name)}`,
+        `legal_name=${!/[./]/.test(t.name)}`,
+      ];
+      dataLines.push(`  ${t.name} ${flags.join(' ')}`);
+    }
+    display = engine.project.discoverySynthesisView(workUnit, map, proposed);
+  } else {
+    display = engine.project.discoveryMapView(workUnit, map);
+  }
+
+  return engine.gateway.dataBlock(dataLines.join('\n')) + '\n' + engine.gateway.displayBlock(display);
+}
+
 if (require.main === module) {
-  const workUnit = process.argv[2];
-  if (!workUnit) {
-    process.stderr.write('Error: work unit name required\nUsage: discovery.cjs <work_unit>\n');
-    process.exit(1);
-  }
-  const result = discover(process.cwd(), workUnit);
-  process.stdout.write(format(result));
-  if (result.error) {
-    process.exit(2);
-  }
+  engine.gateway.runGateway({
+    index: () => {
+      process.stderr.write('Error: work unit name required\nUsage: discovery.cjs <work_unit> | discovery.cjs map-view <work_unit> [--proposed-file <path>]\n');
+      process.exit(1);
+      return ''; // unreachable; keeps the handler's return type uniform
+    },
+    'map-view': (workUnit, ...rest) => {
+      try {
+        return mapView(workUnit, ...rest);
+      } catch (err) {
+        process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exit(1);
+        return ''; // unreachable
+      }
+    },
+    // Byte-stable legacy form: `discovery.cjs {work_unit}` — same stdout and
+    // exit codes as before the gateway wrapped it.
+    fallback: (workUnit) => {
+      const result = discover(process.cwd(), workUnit);
+      if (result.error) {
+        process.stdout.write(format(result));
+        process.exit(2);
+      }
+      return format(result);
+    },
+  });
 }
 
 module.exports = { discover, format, listSessionLogs };

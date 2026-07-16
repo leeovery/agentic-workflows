@@ -79,6 +79,22 @@ function discoveryGlyph(tier) {
   return DISCOVERY_GLYPH[/** @type {keyof typeof DISCOVERY_GLYPH} */ (tier)] || '';
 }
 
+// Discovery-map row `[tag]` vocabulary — the lifecycle label each map row
+// carries. One phrasing, every map render (epic dashboard, discovery session
+// map view).
+/** @param {string} lifecycle @param {string|null} [routing] */
+function discoveryLifecycleLabel(lifecycle, routing) {
+  switch (lifecycle) {
+    case 'ready_for_discussion': return 'research complete · ready for discussion';
+    case 'researching': return 'researching';
+    case 'discussing': return 'discussing';
+    case 'decided': return 'decided';
+    case 'handled': return 'handled · research fanned out';
+    case 'cancelled': return 'cancelled';
+    default: return routing ? `fresh · routed to ${routing}` : 'fresh';
+  }
+}
+
 // Discussion-map glyph vocabulary — subtopic states. Distinct from the
 // discovery tiers: the symbol sets evolve independently.
 const DISCUSSION_GLYPH = {
@@ -115,5 +131,6 @@ const SPEC_LEGEND = {
 
 module.exports = {
   TREE_WIDTH, capitalise, titlecase, kebabcase, tag, derivedFrom, title,
-  discoveryGlyph, DISCOVERY_GLYPH, discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
+  discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
+  discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
 };
