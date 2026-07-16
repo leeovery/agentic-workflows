@@ -50,34 +50,13 @@ Where do you want to take it from here?
 
 #### If `discovery_map` is non-empty (map already populated)
 
-The map exists; editing existing items is available alongside new exploration. Render the map as an anchor using the discovery output from Step 7, then open the conversation:
+The map exists; editing existing items is available alongside new exploration. Render the map as an anchor, then open the conversation:
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Discovery — {work_unit:(titlecase)}
-●───────────────────────────────────────────────●
-
-  Discovery Map ({total} topics{tier_breakdown})
-
-@foreach(topic in discovery_map)
-  {branch} {topic.tier} {topic.name:(titlecase)} [{lifecycle_label}]
-@endforeach
+```bash
+node .claude/skills/workflow-discovery/scripts/discovery.cjs map-view {work_unit}
 ```
 
-Render rules:
-
-- `tier_breakdown` — append ` — {decided} decided · {in_flight} in flight · {ready} ready · {fresh} fresh · {handled} handled · {cancelled} cancelled` (omitting zero-count categories) only when more than one tier bucket is non-zero. When only one bucket is non-zero, omit the breakdown and render just `Discovery Map ({total} topics)`.
-- `{branch}` — `┌─` for the first row, `└─` for the last, `├─` for the rest. With a single row, use `└─` (no upward stroke).
-- Tier ordering — discovery output is already tier-sorted (`→ ◐ ✓ ○ ⊙ ⊘`, suggested execution order within tier). Render in the order given.
-- `lifecycle_label` by tier (wrapped in square brackets per the row template):
-  - `→` — `research complete · ready for discussion`
-  - `◐` — `researching` or `discussing` (use `topic.current_phase`)
-  - `✓` — `decided`
-  - `○` — `fresh · routed to {topic.routing}` (omit ` · routed to ...` if `topic.routing` is null)
-  - `⊙` — `handled · research fanned out`
-  - `⊘` — `cancelled`
+The output arrives in demarcated sections: read `=== DATA` to reason from (never display it); emit the `=== DISPLAY` section verbatim **as a code block**.
 
 With the map rendered, read the prior sessions to resume the conversation:
 
@@ -149,7 +128,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
 2. **Recognise intent.** The user's message may contain:
    - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect, positions taken on a decision. Continue the conversation: push on the thread the user opened, counter-frame, follow where it leads. See [discovery-guidelines.md](discovery-guidelines.md) → *The Exploration Stance — How* for the register and where to push.
    - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
-   - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-render using the opener's render rules. No STOP gate; just render and continue.
+   - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-run `discovery.cjs map-view {work_unit}` and emit its `=== DISPLAY` section verbatim as a code block. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
    - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
    - **A harvest pull** — *"let's pull topics"*, *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Harvest**.
@@ -167,8 +146,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*, which sets the active-session marker on first creation. After writing, commit:
 
    ```bash
-   git add -- .workflows/{work_unit}/
-   git commit -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"
    ```
 
 → Proceed to **C. Harvest** when the user pulls the harvest (a harvest pull recognised in step 2). Otherwise loop within **B** — convergence (step 4) cues the nudge but stays in the loop.

@@ -15,14 +15,11 @@ Two anti-patterns (all work types):
 
 ## A. Final Sweep
 
-Check `git status`. If the working tree is dirty (e.g. an endpoint's Conclusion write or marker clear), commit the residual changes:
+Commit any residual changes (e.g. an endpoint's Conclusion write or marker clear) — a clean tree reports `committed: null` and is fine:
 
 ```bash
-git add -- .workflows/{work_unit}/
-git commit -m "discovery({work_unit}): finalise session log"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log"
 ```
-
-If the working tree is already clean, skip the commit.
 
 → Proceed to **B. Bridge**.
 
