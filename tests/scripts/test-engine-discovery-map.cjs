@@ -172,6 +172,94 @@ describe('engine CLI: discovery-map operations', () => {
   beforeEach(() => { dir = opsFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
+  describe('add', () => {
+    it('creates the item as {routing, source, summary} — no status field — and reports map_total', () => {
+      const res = runOk(dir, ['add', 'payments', 'menu-management', '--routing', 'research', '--summary', 'owner-managed menus']);
+      assert.deepStrictEqual(res, {
+        ok: true, work_unit: 'payments', name: 'menu-management', op: 'add',
+        routing: 'research', source: 'discovery', summary: 'owner-managed menus',
+        lifecycle: 'fresh', map_total: 9,
+      });
+      // Exact shape: never a `status` field — lifecycle is computed at render
+      // time, not stored (the create-discovery-topic defect this op corrects).
+      assert.deepStrictEqual(readManifest(dir).phases.discovery.items['menu-management'], {
+        routing: 'research', source: 'discovery', summary: 'owner-managed menus',
+      });
+    });
+
+    it('writes description when given, and honours an explicit --source tag', () => {
+      const res = runOk(dir, ['add', 'payments', 'menu-management', '--routing', 'discussion', '--summary', 's', '--description', 'two paragraphs', '--source', 'gap-analysis']);
+      assert.strictEqual(res.description, 'two paragraphs');
+      assert.strictEqual(res.source, 'gap-analysis');
+      assert.deepStrictEqual(readManifest(dir).phases.discovery.items['menu-management'], {
+        routing: 'discussion', source: 'gap-analysis', summary: 's', description: 'two paragraphs',
+      });
+    });
+
+    it('creates the discovery scaffolding on a manifest with no discovery phase', () => {
+      createManifest(dir, 'bare', { work_type: 'epic', phases: {} });
+      const res = runOk(dir, ['add', 'bare', 'first-topic', '--routing', 'research', '--summary', 's']);
+      assert.strictEqual(res.map_total, 1);
+      const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'bare', 'manifest.json'), 'utf8'));
+      assert.deepStrictEqual(manifest.phases.discovery.items['first-topic'], {
+        routing: 'research', source: 'discovery', summary: 's',
+      });
+    });
+
+    it('reports the joined lifecycle when phase work already exists under the name', () => {
+      // A legacy manifest can hold a research item with no map anchor; the add
+      // re-anchors it and the response reflects the real lifecycle.
+      const file = path.join(dir, '.workflows', 'payments', 'manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+      manifest.phases.research.items['orphan-topic'] = { status: 'in-progress' };
+      fs.writeFileSync(file, JSON.stringify(manifest, null, 2));
+      const res = runOk(dir, ['add', 'payments', 'orphan-topic', '--routing', 'research', '--summary', 's']);
+      assert.strictEqual(res.lifecycle, 'researching');
+    });
+
+    it('refuses an active duplicate, leaving the manifest untouched', () => {
+      const before = JSON.stringify(readManifest(dir));
+      const err = runFail(dir, ['add', 'payments', 'fresh-topic', '--routing', 'research', '--summary', 's']);
+      assert.match(err.error, /"fresh-topic" is already on the map/);
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
+    it('refuses a dismissed name without --force-dismissed, naming the recovery', () => {
+      const before = JSON.stringify(readManifest(dir));
+      const err = runFail(dir, ['add', 'payments', 'dismissed-name', '--routing', 'research', '--summary', 's']);
+      assert.match(err.error, /"dismissed-name" was previously dismissed.*--force-dismissed/);
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
+    it('--force-dismissed adds the item and pulls the name off the dismissed list', () => {
+      const res = runOk(dir, ['add', 'payments', 'dismissed-name', '--routing', 'discussion', '--summary', 'back again', '--force-dismissed']);
+      assert.strictEqual(res.undismissed, true);
+      const discovery = readManifest(dir).phases.discovery;
+      assert.deepStrictEqual(discovery.items['dismissed-name'], {
+        routing: 'discussion', source: 'discovery', summary: 'back again',
+      });
+      assert.deepStrictEqual(discovery.dismissed, []);
+    });
+
+    it('--force-dismissed on a non-dismissed name is a plain add — no undismissed flag', () => {
+      const res = runOk(dir, ['add', 'payments', 'brand-new', '--routing', 'research', '--summary', 's', '--force-dismissed']);
+      assert.strictEqual('undismissed' in res, false);
+    });
+
+    it('refuses names that break manifest addressing', () => {
+      assert.match(runFail(dir, ['add', 'payments', 'a.b', '--routing', 'research', '--summary', 's']).error, /not a legal topic name/);
+      assert.match(runFail(dir, ['add', 'payments', 'a/b', '--routing', 'research', '--summary', 's']).error, /not a legal topic name/);
+    });
+
+    it('rejects a routing outside the enum, and missing required flags with usage', () => {
+      assert.match(runFail(dir, ['add', 'payments', 'x', '--routing', 'planning', '--summary', 's']).error, /unknown routing "planning" \(research\|discussion\)/);
+      assert.match(runFail(dir, ['add', 'payments', 'x', '--summary', 's']).error, /Usage: engine discovery-map add/);
+      assert.match(runFail(dir, ['add', 'payments', 'x', '--routing', 'research']).error, /Usage: engine discovery-map add/);
+      // An unquoted payload spills into positionals — refused, not truncated.
+      assert.match(runFail(dir, ['add', 'payments', 'x', '--routing', 'research', '--summary', 'two', 'words']).error, /Usage: engine discovery-map add/);
+    });
+  });
+
   describe('edit', () => {
     it('sets summary, echoes it with the lifecycle', () => {
       const res = runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'new blurb']);
@@ -360,7 +448,7 @@ describe('engine CLI: discovery-map operations', () => {
 
   describe('argument validation', () => {
     it('rejects unknown verbs and malformed arg counts with usage errors', () => {
-      assert.match(runFail(dir, ['frobnicate', 'payments', 'x']).error, /Usage: engine discovery-map <sequence\|edit\|remove\|rename\|reroute\|handle\|reactivate>/);
+      assert.match(runFail(dir, ['frobnicate', 'payments', 'x']).error, /Usage: engine discovery-map <sequence\|add\|edit\|remove\|rename\|reroute\|handle\|reactivate>/);
       assert.match(runFail(dir, ['remove', 'payments']).error, /Usage: engine discovery-map remove/);
       assert.match(runFail(dir, ['remove', 'payments', 'fresh-topic', 'extra']).error, /Usage: engine discovery-map remove/);
       assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map rename/);
@@ -379,6 +467,7 @@ describe('engine CLI: discovery-map operations', () => {
       execFileSync('git', ['add', '-A'], { cwd: dir });
       execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: dir });
 
+      runOk(dir, ['add', 'payments', 'brand-new', '--routing', 'research', '--summary', 'no commit']);
       runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'no commit']);
       runOk(dir, ['remove', 'payments', 'fresh-topic']);
       runOk(dir, ['rename', 'payments', 'rich-fresh', 'renamed-rich']);
