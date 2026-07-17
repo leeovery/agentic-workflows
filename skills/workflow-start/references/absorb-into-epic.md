@@ -4,7 +4,7 @@
 
 ---
 
-Merge a feature's discussion into an existing epic as a new topic, then remove the feature entirely.
+Merge a feature's discussion into an existing epic as a new topic, then remove the feature entirely. This reference owns the judgment — which epic, what topic name, the user's confirmation; the engine transaction (`workunit absorb`) owns the mechanical tail.
 
 ## A. Select Target Epic
 
@@ -121,17 +121,7 @@ Set `has_research` = false.
 
 #### Otherwise
 
-Set `has_research` = true.
-
-Store the result as `research_items` (list of topic name + status pairs), and set `research_item_count` to its length.
-
-For each research item, check for collision in the target epic:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {target_epic}.research.{research_topic}
-```
-
-Collisions are resolved by appending `-{selected.name}` (e.g. `exploration` becomes `exploration-{selected.name}`). Store the mapping of original name → target name as `research_moves`.
+Set `has_research` = true and `research_item_count` to the number of items. Name collisions in the target epic are resolved by the engine (suffixing `-{selected.name}`).
 
 → Proceed to **E. Imports and Seeds Check**.
 
@@ -146,23 +136,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} i
 node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} seeds
 ```
 
-#### If the feature has imports or seeds
-
-Default both to absent — `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false` / `seeds_count` = 0 — then override for each non-empty list:
-
-**If the imports list is non-empty:**
-
-Set `has_imports` = `true`, store the result as `imports_entries` (list of `{path, imported_at}` objects), and set `imports_count` to its length. For each entry, derive the basename from `path` (the filename under `imports/`), check for a collision in the target epic's `imports/` directory (`test -e .workflows/{target_epic}/imports/<basename>`), and resolve collisions by suffixing the stem with `-{selected.name}` before `.md`. Store the original → target mapping as `imports_moves`, preserving each entry's `imported_at`.
-
-**If the seeds list is non-empty:**
-
-Set `has_seeds` = `true`, store the result as `seeds_entries` (list of `{path, source, seeded_at}` objects), and set `seeds_count` to its length. Compute `seeds_moves` the same way (collision-resolved against the target epic's `seeds/`, `-{selected.name}` suffix), preserving each entry's `source` and `seeded_at`.
-
-→ Proceed to **F. Confirm**.
-
-#### Otherwise
-
-The feature has neither imports nor seeds — both flags stay `false` and both counts `0`.
+Default `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false` / `seeds_count` = 0 — then, for each non-empty JSON array, set the flag `true` and the count to its length. Filename collisions in the target epic's directories are resolved by the engine; entries move with their original timestamps and seed provenance.
 
 → Proceed to **F. Confirm**.
 
@@ -230,223 +204,53 @@ Proceed?
 
 #### If user chose `y`/`yes`
 
-→ Proceed to **G. Move Discussion**.
+→ Proceed to **G. Absorb**.
 
 ---
 
-## G. Move Discussion
+## G. Absorb
+
+One engine transaction moves the discussion (and any research, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/workflow-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base, deletes the feature, and commits:
 
 ```bash
-mkdir -p .workflows/{target_epic}/discussion/
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-```bash
-mv .workflows/{selected.name}/discussion/{selected.name}.md .workflows/{target_epic}/discussion/{topic}.md
-```
+The JSON response reports what moved (`discussion`, `research`, `imports`, `seeds` — research topics may carry a collision suffix), `routing`, `committed`, and `warnings`.
 
-Register the discussion topic in the epic manifest:
+#### If the command failed
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {target_epic} discussion {topic}
-```
+The refusal names the blocking condition; nothing was touched — relay the error.
 
-#### If `discussion_status` is `completed`
+**If the error is a topic-name collision:**
 
-Complete the item — one command sets `status: completed` and indexes the discussion at its new location in the knowledge base:
+→ Return to **B. Name Topic**.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {target_epic} discussion {topic}
-```
+**Otherwise:**
 
-If the JSON response's `warnings` is non-empty, display them — the artifact is already saved:
+→ Return to caller.
+
+#### If `warnings` is non-empty
+
+Display them — the absorption is already recorded and committed:
 
 > *Output the next fenced block as a code block:*
 
 ```
-⚑ Knowledge indexing warning
+⚑ Knowledge sync warning
   {warning}
-  The artifact is saved. Indexing can be retried later.
+  The feature is absorbed. Indexing can be retried later.
 ```
 
-→ Proceed to **H. Move Research**.
+→ Proceed to **H. Post-Absorption**.
 
 #### Otherwise
 
-→ Proceed to **H. Move Research**.
+→ Proceed to **H. Post-Absorption**.
 
 ---
 
-## H. Move Research
-
-#### If `has_research` is `true`
-
-For each item in `research_moves` (original_name → target_name):
-
-```bash
-mkdir -p .workflows/{target_epic}/research/
-mv .workflows/{selected.name}/research/{original_name}.md .workflows/{target_epic}/research/{target_name}.md
-```
-
-Register in the epic manifest:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {target_epic} research {target_name}
-```
-
-**If the original item status was `completed`:**
-
-Complete the item — one command sets `status: completed` and indexes the research at its new location in the knowledge base:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {target_epic} research {target_name}
-```
-
-If the JSON response's `warnings` is non-empty, display them — the artifact is already saved:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {warning}
-  The artifact is saved. Indexing can be retried later.
-```
-
-→ Proceed to **I. Move Imports and Seeds**.
-
-#### Otherwise
-
-→ Proceed to **I. Move Imports and Seeds**.
-
----
-
-## I. Move Imports and Seeds
-
-#### If the feature has imports or seeds to move
-
-Move whichever exist:
-
-**If `has_imports` is `true`:**
-
-Ensure the target imports directory exists:
-
-```bash
-mkdir -p .workflows/{target_epic}/imports/
-```
-
-For each item in `imports_moves` (original_filename → target_filename, with preserved `imported_at`), move, track, and re-index it:
-
-```bash
-mv .workflows/{selected.name}/imports/<original_filename> .workflows/{target_epic}/imports/<target_filename>
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {target_epic} imports '{"path":"imports/<target_filename>","imported_at":"<imported_at>"}'
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/imports/<target_filename>
-```
-
-**If `has_seeds` is `true`:**
-
-Ensure the target seeds directory exists:
-
-```bash
-mkdir -p .workflows/{target_epic}/seeds/
-```
-
-For each item in `seeds_moves` (original_filename → target_filename, preserving `source` and `seeded_at`), move, track, and re-index it:
-
-```bash
-mv .workflows/{selected.name}/seeds/<original_filename> .workflows/{target_epic}/seeds/<target_filename>
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {target_epic} seeds '{"path":"seeds/<target_filename>","source":"<source>","seeded_at":"<seeded_at>"}'
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/seeds/<target_filename>
-```
-
-If any index command fails, display the error but do not block — the file is already saved at its new location and tracked in the target manifest:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {error details}
-  The artifact is saved. Indexing can be retried later.
-```
-
-→ Proceed to **J. Register Discovery Item**.
-
-#### Otherwise
-
-The feature has nothing to move.
-
-→ Proceed to **J. Register Discovery Item**.
-
----
-
-## J. Register Discovery Item
-
-The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.discovery.items` — without an discovery entry, the topic is invisible to the workflow-continue-epic display, subsequent discovery sessions, map-summary counts, and the dismissed-list flow.
-
-Routing reflects the work already done on the feature. `--backfill` leaves `summary` and `description` unset — the next `/workflow-continue-epic` entry detects the missing fields and routes to `summary-backfill.md` so the user can review derived values.
-
-#### If `has_research` is `true`
-
-Set `routing` to `research`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {target_epic} {topic} --routing research --backfill
-```
-
-→ Proceed to **K. Cleanup**.
-
-#### Otherwise
-
-Set `routing` to `discussion`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {target_epic} {topic} --routing discussion --backfill
-```
-
-→ Proceed to **K. Cleanup**.
-
----
-
-## K. Cleanup
-
-Remove the absorbed feature's chunks from the knowledge base (moved files were re-indexed under the epic):
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {selected.name}
-```
-
-If the remove command fails, display the error but do not block — the absorption itself is already recorded:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge removal warning
-  {error details}
-  The feature is absorbed. You can run knowledge remove manually later.
-```
-
-Remove the feature from the project manifest:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete project.work_units.{selected.name}
-```
-
-Remove the feature directory:
-
-```bash
-rm -rf .workflows/{selected.name}/
-```
-
-The absorption spans two work units plus the project manifest, so the scoped commit helper cannot cover it — stage all three directly:
-
-```bash
-git add -- .workflows/{selected.name} .workflows/{target_epic} .workflows/manifest.json
-git commit -m "workflow({selected.name}): absorb into {target_epic}"
-```
-
-→ Proceed to **L. Post-Absorption**.
-
----
-
-## L. Post-Absorption
+## H. Post-Absorption
 
 > *Output the next fenced block as a code block:*
 
