@@ -20,9 +20,11 @@ const {
   RESERVED_WORK_UNIT_NAMES: RESERVED_NAMES,
 } = require('../../workflow-shared/scripts/manifest-schema.cjs');
 
-const LOCK_STALE_MS = 30000;
-const LOCK_RETRY_MS = 50;
-const LOCK_TIMEOUT_MS = 10000;
+// Shared manifest IO (read/parse, locked atomic writes, lock discipline) —
+// one implementation for this CLI and the engine, so the two writers can
+// never drift. This CLI translates its thrown errors to the die/exit-code
+// convention.
+const io = require('../../workflow-shared/scripts/manifest-io.cjs');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -43,76 +45,31 @@ function manifestDir(name) {
 }
 
 function manifestPath(name) {
-  return path.join(manifestDir(name), 'manifest.json');
-}
-
-function lockPath(name) {
-  return path.join(manifestDir(name), '.lock');
+  return io.workUnitManifestPath(WORKFLOWS_DIR, name);
 }
 
 function readManifest(name) {
-  const p = manifestPath(name);
-  if (!fs.existsSync(p)) die(`Work unit "${name}" not found`, 2);
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+  if (!fs.existsSync(manifestPath(name))) die(`Work unit "${name}" not found`, 2);
+  try {
+    return io.readWorkUnitManifest(WORKFLOWS_DIR, name);
+  } catch (e) {
+    die(e instanceof Error ? e.message : String(e));
+  }
 }
 
 function writeManifestAtomic(name, data) {
-  const p = manifestPath(name);
-  const tmp = p + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
-  fs.renameSync(tmp, p);
+  io.writeWorkUnitManifestAtomic(WORKFLOWS_DIR, name, data);
 }
 
 // ---------------------------------------------------------------------------
 // File Locking
 // ---------------------------------------------------------------------------
 
-function acquireLock(name) {
-  const lp = lockPath(name);
-  const deadline = Date.now() + LOCK_TIMEOUT_MS;
-
-  while (true) {
-    try {
-      const fd = fs.openSync(lp, 'wx');
-      fs.writeSync(fd, String(process.pid));
-      fs.closeSync(fd);
-      return;
-    } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
-    }
-
-    // Check stale lock
-    try {
-      const stat = fs.statSync(lp);
-      if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-        fs.unlinkSync(lp);
-        continue;
-      }
-    } catch (_) {
-      // Lock was removed between check and stat — retry
-      continue;
-    }
-
-    if (Date.now() >= deadline) {
-      die(`Timed out waiting for lock on "${name}"`);
-    }
-
-    // Busy wait (short)
-    const end = Date.now() + LOCK_RETRY_MS;
-    while (Date.now() < end) { /* spin */ }
-  }
-}
-
-function releaseLock(name) {
-  try { fs.unlinkSync(lockPath(name)); } catch (_) {}
-}
-
 function withLock(name, fn) {
-  acquireLock(name);
   try {
-    return fn();
-  } finally {
-    releaseLock(name);
+    return io.withWorkUnitLock(WORKFLOWS_DIR, name, fn);
+  } catch (e) {
+    die(e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -120,95 +77,26 @@ function withLock(name, fn) {
 // Project Manifest
 // ---------------------------------------------------------------------------
 
-function projectManifestPath() {
-  return path.join(WORKFLOWS_DIR, 'manifest.json');
-}
-
-function projectLockPath() {
-  return path.join(WORKFLOWS_DIR, '.project-lock');
-}
-
 function readProjectManifest() {
-  const p = projectManifestPath();
-  let raw;
+  // Missing file is a legitimate first-write state ({}); corrupt JSON or any
+  // other read error aborts loudly — a write against a silently-empty
+  // document would erase every registered work unit.
   try {
-    raw = fs.readFileSync(p, 'utf8');
+    return io.readProjectManifest(WORKFLOWS_DIR);
   } catch (e) {
-    // Missing file is a legitimate first-write state — callers can
-    // populate and write. Any other read error (permissions, I/O)
-    // must surface loudly rather than producing a fresh empty manifest
-    // that would then be written back, clobbering on-disk state.
-    if (e.code === 'ENOENT') return {};
-    die(`Failed to read project manifest at ${p}: ${e.message}`);
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    // Corrupt JSON in an existing manifest — abort instead of silently
-    // returning an empty object. Returning {} here and letting callers
-    // write would erase every registered work unit. Force the user to
-    // inspect and repair rather than destroying state.
-    die(
-      `Project manifest at ${p} is not valid JSON: ${e.message}\n` +
-      'Inspect the file and fix it by hand, then re-run the command. ' +
-      'Do not let another workflow command write to it first — a write ' +
-      'against a corrupt manifest would replace all registered work units.'
-    );
+    die(e instanceof Error ? e.message : String(e));
   }
 }
 
 function writeProjectManifestAtomic(data) {
-  const p = projectManifestPath();
-  fs.mkdirSync(WORKFLOWS_DIR, { recursive: true });
-  const tmp = p + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
-  fs.renameSync(tmp, p);
-}
-
-function acquireProjectLock() {
-  const lp = projectLockPath();
-  fs.mkdirSync(WORKFLOWS_DIR, { recursive: true });
-  const deadline = Date.now() + LOCK_TIMEOUT_MS;
-
-  while (true) {
-    try {
-      const fd = fs.openSync(lp, 'wx');
-      fs.writeSync(fd, String(process.pid));
-      fs.closeSync(fd);
-      return;
-    } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
-    }
-
-    try {
-      const stat = fs.statSync(lp);
-      if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-        fs.unlinkSync(lp);
-        continue;
-      }
-    } catch (_) {
-      continue;
-    }
-
-    if (Date.now() >= deadline) {
-      die('Timed out waiting for project manifest lock');
-    }
-
-    const end = Date.now() + LOCK_RETRY_MS;
-    while (Date.now() < end) { /* spin */ }
-  }
-}
-
-function releaseProjectLock() {
-  try { fs.unlinkSync(projectLockPath()); } catch (_) {}
+  io.writeProjectManifestAtomic(WORKFLOWS_DIR, data);
 }
 
 function withProjectLock(fn) {
-  acquireProjectLock();
   try {
-    return fn();
-  } finally {
-    releaseProjectLock();
+    return io.withProjectLock(WORKFLOWS_DIR, fn);
+  } catch (e) {
+    die(e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -541,7 +429,7 @@ function cmdGet(args) {
 
   const { workUnit, phase, topic } = parsePath(args[0]);
   if (!fs.existsSync(manifestPath(workUnit))) return;
-  const manifest = JSON.parse(fs.readFileSync(manifestPath(workUnit), 'utf8'));
+  const manifest = readManifest(workUnit);
 
   if (!phase) {
     // Work-unit-level: get <wu> [field]
@@ -676,11 +564,10 @@ function cmdList(args) {
   const results = [];
 
   for (const name of names) {
-    const mp = path.join(WORKFLOWS_DIR, name, 'manifest.json');
-    if (!fs.existsSync(mp)) continue;
+    if (!fs.existsSync(manifestPath(name))) continue;
 
     try {
-      const manifest = JSON.parse(fs.readFileSync(mp, 'utf8'));
+      const manifest = io.readWorkUnitManifest(WORKFLOWS_DIR, name);
 
       if (filterStatus && manifest.status !== filterStatus) continue;
       if (filterWorkType && manifest.work_type !== filterWorkType) continue;
@@ -859,7 +746,7 @@ function cmdExists(args) {
     return;
   }
 
-  const manifest = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  const manifest = readManifest(workUnit);
 
   if (!phase) {
     // Work-unit level with field path
@@ -897,13 +784,7 @@ function cmdProject(args) {
         filterType = args[++i];
       }
     }
-    const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
-    if (!fs.existsSync(projPath)) {
-      // No output — no work units registered
-      return;
-    }
-    const proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
-    const units = proj.work_units || {};
+    const units = readProjectManifest().work_units || {};
     const names = Object.keys(units).filter(n => !filterType || units[n].work_type === filterType);
     if (names.length > 0) {
       process.stdout.write(names.join('\n') + '\n');
@@ -914,10 +795,7 @@ function cmdProject(args) {
   if (sub === 'get') {
     const name = args[1];
     if (!name) die('Usage: project get <name>');
-    const projPath = path.join(WORKFLOWS_DIR, 'manifest.json');
-    if (!fs.existsSync(projPath)) return;
-    const proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
-    const entry = (proj.work_units || {})[name];
+    const entry = (readProjectManifest().work_units || {})[name];
     if (!entry) return;
     process.stdout.write(`work_type: ${entry.work_type}\n`);
     return;
