@@ -30,7 +30,7 @@ Re-index so every completed chunk carries the new `work_type: epic`:
 
 ## C. Register the Topic on the Discovery Map
 
-The feature's single topic (topic name = work unit name) joins the discovery map. Leave `summary` and `description` unset — `summary-backfill.md` fills them on the next `/workflow-continue-epic` entry.
+The feature's single topic (topic name = work unit name) joins the discovery map. `--backfill` leaves `summary` and `description` unset — `summary-backfill.md` fills them on the next `/workflow-continue-epic` entry.
 
 Determine routing from whether the feature did research:
 
@@ -41,7 +41,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.re
 Create the map item — `routing` is `research` if the research phase exists, otherwise `discussion`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {work_unit}.{work_unit} --routing {research|discussion} --source discovery
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {work_unit} --routing {research|discussion} --backfill
 ```
 
 No commit here — the caller frames the conversion and folds this write into its own commit.
