@@ -23,14 +23,11 @@ Use `next_phase` from discovery output to determine the target skill:
 
 #### If `next_phase` is `done`
 
-Set the work unit status to completed:
+Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} completed_at $(date +%Y-%m-%d)
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete cross-cutting pipeline"
 ```
-
-Commit: `workflow({work_unit}): complete cross-cutting pipeline`
 
 > *Output the next fenced block as a code block:*
 
