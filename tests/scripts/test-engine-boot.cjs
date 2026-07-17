@@ -164,6 +164,7 @@ describe('engine boot', () => {
       migrations: { changed: false, output: '[SKIP] No changes needed' },
       knowledge: 'ready',
       compacted: true,
+      kb_committed: null,
       warnings: [],
     });
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);
@@ -183,7 +184,7 @@ describe('engine boot', () => {
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
   });
 
-  it('knowledge not-ready: boot initialises keyword-only and continues', () => {
+  it('knowledge not-ready: boot initialises keyword-only, commits the store, continues', () => {
     const res = runEngine(fix.engine, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'initialised-keyword-only');
@@ -192,6 +193,25 @@ describe('engine boot', () => {
     assert.strictEqual(res.compacted, false);
     assert.deepStrictEqual(res.warnings, []);
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'init --keyword-only']);
+    // The store the init created is committed by boot itself.
+    assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
+    const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim();
+    assert.strictEqual(show, '.workflows/.knowledge/store.msp');
+  });
+
+  it('finds compact dirt on the ready path and commits it', () => {
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'store v1']);
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v2-compacted\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.compacted, true);
+    assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): compact store');
   });
 
   it('a crashing knowledge check still self-serves via init', () => {
@@ -212,6 +232,8 @@ describe('engine boot', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge init failed: init blew up/);
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'init --keyword-only']);
+    // The failure path never commits.
+    assert.strictEqual(res.kb_committed, null);
   });
 
   it('not-ready with nothing missing (broken store) stays not-ready — points at rebuild', () => {
@@ -270,6 +292,9 @@ describe('engine boot (real scripts)', () => {
     for (const rel of ['config.json', 'store.msp', 'metadata.json']) {
       assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge', rel)), `missing ${rel}`);
     }
+    // …and boot committed the store it created.
+    assert.strictEqual(first.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
     // The tracking file landed in the fixture, not the repo.
     assert.ok(fs.existsSync(path.join(project, '.workflows/.state/migrations')));
 
@@ -280,6 +305,8 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(second.migrations.output, '[SKIP] No changes needed');
     assert.strictEqual(second.knowledge, 'ready');
     assert.strictEqual(second.compacted, true);
+    // Nothing changed in the store on the second pass — no commit.
+    assert.strictEqual(second.kb_committed, null);
   });
 });
 

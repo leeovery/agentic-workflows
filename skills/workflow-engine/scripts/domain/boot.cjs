@@ -14,8 +14,11 @@
 // `compact` is a warning, never a block.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { git, commitScoped } = require('../kernel/git.cjs');
+const { KB_DIR } = require('./commit.cjs');
 
 // Resolved against this file so they work wherever the skill tree is installed.
 const SKILLS_ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -35,7 +38,8 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
  * @property {'ready'|'initialised-keyword-only'|'not-ready'} knowledge
  * @property {string} [note] set with 'initialised-keyword-only' — the line the calling skill surfaces
  * @property {boolean} compacted
- * @property {string[]} warnings non-blocking failures (knowledge init/compaction)
+ * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
+ * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  */
 
 /**
@@ -110,8 +114,31 @@ function boot(cwd) {
     }
   }
 
+  // Commit the knowledge-store dirt this boot found or created (the init
+  // above, the compact, or leftovers from an interrupted earlier session).
+  // The store is a derived index and boot must stay usable, so a commit
+  // failure is a warning, never a block. The failed-init path leaves any
+  // half-created state uncommitted for the next boot to finish.
+  /** @type {string|null} */
+  let kbCommitted = null;
+  if (knowledge !== 'not-ready') {
+    try {
+      const kbDirty =
+        fs.existsSync(path.join(cwd, KB_DIR)) &&
+        git(cwd, ['status', '--porcelain', '--', KB_DIR]).trim() !== '';
+      if (kbDirty) {
+        const message = knowledge === 'initialised-keyword-only'
+          ? 'chore(knowledge): initialise store'
+          : 'chore(knowledge): compact store';
+        kbCommitted = commitScoped(cwd, KB_DIR, message);
+      }
+    } catch (err) {
+      warnings.push(`knowledge store commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   /** @type {BootResult} */
-  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, warnings };
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings };
   if (note !== undefined) result.note = note;
   return result;
 }
