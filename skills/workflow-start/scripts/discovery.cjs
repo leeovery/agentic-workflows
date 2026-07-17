@@ -15,22 +15,30 @@ function discover(cwd) {
   return engine.detail.startDetail(cwd);
 }
 
+// The thin head-insert dump: work-unit names per type, the closed sets, inbox
+// items (with titles — the pickup flows display them), and the STATE flags the
+// routing steps branch on. Phase labels, trees, and menus are the `view`
+// verb's concern, never this dump's.
 function format(result) {
   const lines = [];
 
   function emitSection(label, items) {
     lines.push(`=== ${label.toUpperCase()} ===`);
-    if (items.length === 0) {
-      lines.push('  (none)');
-    }
     for (const u of items) {
-      if (u.active_phases) {
-        lines.push(`  ${u.name} (${u.active_phases.join(', ')})`);
-      } else {
-        lines.push(`  ${u.name} (${u.phase_label})`);
-      }
+      lines.push(`  ${u.name}`);
     }
-    lines.push('');
+  }
+
+  function emitInboxItems(scan) {
+    for (const item of scan.ideas) {
+      lines.push(`  ${item.slug} (idea, ${item.date}) — ${item.title}`);
+    }
+    for (const item of scan.bugs) {
+      lines.push(`  ${item.slug} (bug, ${item.date}) — ${item.title}`);
+    }
+    for (const item of scan.quickfixes) {
+      lines.push(`  ${item.slug} (quick-fix, ${item.date}) — ${item.title}`);
+    }
   }
 
   emitSection('epics', result.epics.work_units);
@@ -44,7 +52,6 @@ function format(result) {
     for (const u of result.completed) {
       lines.push(`  ${u.name} (${u.work_type}, last phase: ${u.last_phase || 'none'})`);
     }
-    lines.push('');
   }
 
   if (result.cancelled.length > 0) {
@@ -52,42 +59,16 @@ function format(result) {
     for (const u of result.cancelled) {
       lines.push(`  ${u.name} (${u.work_type}, last phase: ${u.last_phase || 'none'})`);
     }
-    lines.push('');
   }
 
   if (result.inbox.total_count > 0) {
     lines.push('=== INBOX ===');
-    lines.push(`  ideas: ${result.inbox.idea_count}`);
-    lines.push(`  bugs: ${result.inbox.bug_count}`);
-    lines.push(`  quickfixes: ${result.inbox.quickfix_count}`);
-    for (const item of result.inbox.ideas) {
-      lines.push(`  ${item.slug} (idea, ${item.date})`);
-    }
-    for (const item of result.inbox.bugs) {
-      lines.push(`  ${item.slug} (bug, ${item.date})`);
-    }
-    for (const item of result.inbox.quickfixes) {
-      lines.push(`  ${item.slug} (quick-fix, ${item.date})`);
-    }
-    lines.push('');
+    emitInboxItems(result.inbox);
   }
 
   if (result.inbox.archived.total_count > 0) {
-    const archived = result.inbox.archived;
     lines.push('=== ARCHIVED ===');
-    lines.push(`  ideas: ${archived.idea_count}`);
-    lines.push(`  bugs: ${archived.bug_count}`);
-    lines.push(`  quickfixes: ${archived.quickfix_count}`);
-    for (const item of archived.ideas) {
-      lines.push(`  ${item.slug} (idea, ${item.date})`);
-    }
-    for (const item of archived.bugs) {
-      lines.push(`  ${item.slug} (bug, ${item.date})`);
-    }
-    for (const item of archived.quickfixes) {
-      lines.push(`  ${item.slug} (quick-fix, ${item.date})`);
-    }
-    lines.push('');
+    emitInboxItems(result.inbox.archived);
   }
 
   lines.push('=== STATE ===');

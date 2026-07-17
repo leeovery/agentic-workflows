@@ -211,28 +211,21 @@ node .claude/skills/workflow-start/scripts/discovery.cjs
 
 Parse the output to understand the current workflow state:
 
-**From `epics` section:**
-- `work_units` — name, active_phases (list of phase names with artifacts)
+**From the per-type sections** (`=== EPICS ===` through `=== CROSS-CUTTING ===`):
+- one line per active work unit — the name
 
-**From `features` section:**
-- `work_units` — name, next_phase, phase_label
+**From `=== COMPLETED ===` / `=== CANCELLED ===`** (present only when non-empty):
+- one line per closed work unit — `{name} ({work_type}, last phase: {phase})`
 
-**From `bugfixes` section:**
-- `work_units` — name, next_phase, phase_label
+**From `=== INBOX ===` / `=== ARCHIVED ===`** (present only when items exist):
+- one line per item — `{slug} ({type}, {date}) — {title}`
 
-**From `completed`/`cancelled` arrays:**
-- Non-active work units with name, work_type, status, last_phase
-- `completed_count`, `cancelled_count`
+**From `=== STATE ===`:**
+- `has_any_work` and the per-type counts
+- `completed_count` / `cancelled_count`
+- `has_inbox` / `inbox_count`, `has_archived` / `archived_count`
 
-**From `inbox` section (only present when inbox items exist):**
-- `ideas` — slug, date, title for each idea
-- `bugs` — slug, date, title for each bug
-- `quickfixes` — slug, date, title for each quick-fix
-- `idea_count`, `bug_count`, `quickfix_count`, `total_count`
-
-**From `state` section:**
-- Counts for each work type, `has_any_work` flag
-- `has_inbox`, `inbox_count`
+Display and routing derive from the `view` snapshot at Step 3 — this dump is the index, not the display surface.
 
 → Proceed to **Step 2**.
 

@@ -416,31 +416,28 @@ describe('workflow-start format', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes section headers for all types', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== EPICS ==='));
-    assert.ok(out.includes('=== FEATURES ==='));
-    assert.ok(out.includes('=== BUGFIXES ==='));
-    assert.ok(out.includes('=== QUICK-FIXES ==='));
-    assert.ok(out.includes('=== CROSS-CUTTING ==='));
-    assert.ok(out.includes('=== STATE ==='));
+    assert.strictEqual(out, [
+      '=== EPICS ===',
+      '=== FEATURES ===',
+      '=== BUGFIXES ===',
+      '=== QUICK-FIXES ===',
+      '=== CROSS-CUTTING ===',
+      '=== STATE ===',
+      'has_any_work: false',
+      'counts: 0 epic, 0 feature, 0 bugfix, 0 quick-fix, 0 cross-cutting',
+      'completed_count: 0',
+      'cancelled_count: 0',
+      'has_inbox: false',
+      'inbox_count: 0',
+      'has_archived: false',
+      'archived_count: 0',
+      '',
+    ].join('\n'));
   });
 
-  it('shows (none) for empty sections', () => {
-    const out = format(discover(dir));
-    assert.ok(out.includes('  (none)'));
-  });
-
-  it('includes feature with phase_label', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  auth (discussion (in-progress))'));
-  });
-
-  it('includes epic with active_phases', () => {
+  it('populated project pins the full dump byte-exactly', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -448,103 +445,79 @@ describe('workflow-start format', () => {
         discussion: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  v1 (research, discussion)'));
-  });
-
-  it('includes has_any_work in state', () => {
-    const out = format(discover(dir));
-    assert.ok(out.includes('has_any_work: false'));
-  });
-
-  it('includes counts in state', () => {
-    createManifest(dir, 'auth', { work_type: 'feature' });
-    const out = format(discover(dir));
-    assert.ok(out.includes('counts: 0 epic, 1 feature, 0 bugfix, 0 quick-fix, 0 cross-cutting'));
-  });
-
-  it('includes completed_count and cancelled_count', () => {
-    createManifest(dir, 'done', { work_type: 'feature', status: 'completed' });
-    createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-    const out = format(discover(dir));
-    assert.ok(out.includes('completed_count: 1'));
-    assert.ok(out.includes('cancelled_count: 1'));
-  });
-
-  it('shows zero completed and cancelled when none exist', () => {
-    const out = format(discover(dir));
-    assert.ok(out.includes('completed_count: 0'));
-    assert.ok(out.includes('cancelled_count: 0'));
-  });
-
-  it('emits completed work unit details', () => {
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } } });
+    createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
-    const out = format(discover(dir));
-    assert.ok(out.includes('=== COMPLETED ==='));
-    assert.ok(out.includes('  done-feat (feature, last phase: review)'));
-  });
-
-  it('emits cancelled work unit details', () => {
     createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
+    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--bump-dep.md', '# Bump Dep\n\nContent.');
+    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-01--old-idea.md', '# Old Idea\n\nContent.');
     const out = format(discover(dir));
-    assert.ok(out.includes('=== CANCELLED ==='));
-    assert.ok(out.includes('  dropped (bugfix, last phase: investigation)'));
+    assert.strictEqual(out, [
+      '=== EPICS ===',
+      '  v1',
+      '=== FEATURES ===',
+      '  auth',
+      '=== BUGFIXES ===',
+      '  crash',
+      '=== QUICK-FIXES ===',
+      '  rename-api',
+      '=== CROSS-CUTTING ===',
+      '  caching',
+      '=== COMPLETED ===',
+      '  done-feat (feature, last phase: review)',
+      '=== CANCELLED ===',
+      '  dropped (bugfix, last phase: investigation)',
+      '=== INBOX ===',
+      '  smart-retry (idea, 2026-03-19) — Smart Retry',
+      '  login-timeout (bug, 2026-03-18) — Login Timeout',
+      '  bump-dep (quick-fix, 2026-03-28) — Bump Dep',
+      '=== ARCHIVED ===',
+      '  old-idea (idea, 2026-03-01) — Old Idea',
+      '=== STATE ===',
+      'has_any_work: true',
+      'counts: 1 epic, 1 feature, 1 bugfix, 1 quick-fix, 1 cross-cutting',
+      'completed_count: 1',
+      'cancelled_count: 1',
+      'has_inbox: true',
+      'inbox_count: 3',
+      'has_archived: true',
+      'archived_count: 1',
+      '',
+    ].join('\n'));
   });
 
-  it('omits completed/cancelled sections when empty', () => {
+  it('shows (last phase: none) for a closed unit with nothing completed', () => {
+    createManifest(dir, 'never-started', { work_type: 'feature', status: 'cancelled' });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  never-started (feature, last phase: none)'));
+  });
+
+  it('inbox item with no H1 falls back to the slug as its title', () => {
+    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
+    const out = format(discover(dir));
+    assert.ok(out.includes('  no-title (idea, 2026-03-19) — no-title'));
+  });
+
+  it('omits COMPLETED, CANCELLED, INBOX, and ARCHIVED sections when empty', () => {
     const out = format(discover(dir));
     assert.ok(!out.includes('=== COMPLETED ==='));
     assert.ok(!out.includes('=== CANCELLED ==='));
-  });
-
-  it('emits inbox section with ideas, bugs, and quickfixes', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--rename-api.md', '# Rename API\n\nContent.');
-    const out = format(discover(dir));
-    assert.ok(out.includes('=== INBOX ==='));
-    assert.ok(out.includes('  ideas: 1'));
-    assert.ok(out.includes('  bugs: 1'));
-    assert.ok(out.includes('  quickfixes: 1'));
-    assert.ok(out.includes('  smart-retry (idea, 2026-03-19)'));
-    assert.ok(out.includes('  login-timeout (bug, 2026-03-18)'));
-    assert.ok(out.includes('  rename-api (quick-fix, 2026-03-28)'));
-  });
-
-  it('omits inbox section when empty', () => {
-    const out = format(discover(dir));
     assert.ok(!out.includes('=== INBOX ==='));
-  });
-
-  it('includes has_inbox and inbox_count in state output', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
-    const out = format(discover(dir));
-    assert.ok(out.includes('has_inbox: true'));
-    assert.ok(out.includes('inbox_count: 1'));
-  });
-
-  it('shows has_inbox false when no inbox items', () => {
-    const out = format(discover(dir));
-    assert.ok(out.includes('has_inbox: false'));
-    assert.ok(out.includes('inbox_count: 0'));
-  });
-
-  it('emits archived section with counts and items', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-19--old-idea.md', '# Old Idea\n\nContent.');
-    const out = format(discover(dir));
-    assert.ok(out.includes('=== ARCHIVED ==='));
-    assert.ok(out.includes('  old-idea (idea, 2026-03-19)'));
-  });
-
-  it('omits archived section when empty', () => {
-    const out = format(discover(dir));
     assert.ok(!out.includes('=== ARCHIVED ==='));
   });
 
-  it('includes has_archived and archived_count in state output', () => {
-    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-03-18--gone.md', '# Gone\n\nContent.');
+  it('carries no phase labels or active phases — the view verb owns them', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { research: { items: { exploration: { status: 'completed' } } } },
+    });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     const out = format(discover(dir));
-    assert.ok(out.includes('has_archived: true'));
-    assert.ok(out.includes('archived_count: 1'));
+    assert.ok(!out.includes('  v1 ('));
+    assert.ok(!out.includes('  auth ('));
   });
 });
