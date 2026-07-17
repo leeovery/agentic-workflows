@@ -11,14 +11,25 @@
 // deletion and the commit. The manifest writes are the source of truth; the
 // knowledge base is a derived index (warn-don't-block); one multi-pathspec
 // commit covers the feature's deletion, the epic, and the project manifest.
+// Each manifest's read-modify-write runs under its own lock (epic, then the
+// map add's own, then the project lock — one at a time, never nested, so the
+// multi-manifest transaction cannot deadlock); the feature manifest is only
+// read, and its directory is deleted, so it takes no lock.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const {
+  loadWorkUnitManifest,
+  saveWorkUnitManifest,
+  withWorkUnitLock,
+  readProjectManifest,
+  writeProjectManifestAtomic,
+  withProjectLock,
+} = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { dedupe, readProjectManifest, writeProjectManifestAtomic } = require('./workunit-create.cjs');
+const { dedupe } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
@@ -104,153 +115,168 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   if (featureManifest.work_type !== 'feature') {
     throw new Error(`work unit "${feature}" is not a feature (work_type: ${featureManifest.work_type ?? 'none'}) — only features absorb into epics`);
   }
-  const epicManifest = loadWorkUnitManifest(cwd, into);
-  if (epicManifest.work_type !== 'epic') {
-    throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
-  }
-  if (epicManifest.status !== 'in-progress') {
-    throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
-  }
-  // Same structural rule every topic name lives under.
-  if (!topic || /[./]/.test(topic)) {
-    throw new Error(`"${topic}" is not a legal topic name — dots and slashes break manifest addressing`);
-  }
-
-  // The feature must have a discussion (item + file) and no spec-or-beyond
-  // work.
-  const discussionItem = phaseItems(featureManifest, 'discussion')[feature];
-  if (!discussionItem || typeof discussionItem !== 'object' || typeof discussionItem.status !== 'string') {
-    throw new Error(`feature "${feature}" has no discussion — absorb moves the discussion in as the epic topic`);
-  }
-  const discussionSrc = `.workflows/${feature}/discussion/${feature}.md`;
-  if (!fs.existsSync(path.join(cwd, discussionSrc))) {
-    throw new Error(`discussion file missing on disk: ${discussionSrc}`);
-  }
-  for (const phase of SPEC_OR_BEYOND) {
-    if (featureManifest.phases && typeof featureManifest.phases === 'object' && featureManifest.phases[phase]) {
-      throw new Error(`feature "${feature}" has ${phase} work — absorb is only for features before specification`);
+  const { discussionStatus, researchMoves, importMoves, seedMoves, routing } = withWorkUnitLock(cwd, into, () => {
+    const epicManifest = loadWorkUnitManifest(cwd, into);
+    if (epicManifest.work_type !== 'epic') {
+      throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
     }
-  }
-
-  // The topic must be free in the epic: map, dismissed list, discussion item,
-  // discussion file.
-  const epicDiscovery = epicManifest.phases && typeof epicManifest.phases === 'object' && epicManifest.phases.discovery && typeof epicManifest.phases.discovery === 'object'
-    ? epicManifest.phases.discovery
-    : {};
-  const epicMapItems = epicDiscovery.items && typeof epicDiscovery.items === 'object' ? epicDiscovery.items : {};
-  if (epicMapItems[topic]) {
-    throw new Error(`"${topic}" is already on ${into}'s discovery map — pick a different name`);
-  }
-  if (Array.isArray(epicDiscovery.dismissed) && epicDiscovery.dismissed.includes(topic)) {
-    throw new Error(`"${topic}" was dismissed from ${into}'s discovery map — pick a different name, or re-add it from a discovery session first`);
-  }
-  if (phaseItems(epicManifest, 'discussion')[topic]) {
-    throw new Error(`discussion topic "${topic}" already exists in ${into} — pick a different name`);
-  }
-  const discussionDest = `.workflows/${into}/discussion/${topic}.md`;
-  if (fs.existsSync(path.join(cwd, discussionDest))) {
-    throw new Error(`${discussionDest} already exists — pick a different name`);
-  }
-
-  // Research moves: every item's file must exist; target names dodge the
-  // epic's items, its files on disk, and the batch — `-{feature}` first, then
-  // numbered.
-  const featureResearch = phaseItems(featureManifest, 'research');
-  const epicResearch = phaseItems(epicManifest, 'research');
-  const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
-  /** @type {Set<string>} */
-  const takenResearch = new Set();
-  /** @param {string} name @returns {string} */
-  const researchTarget = (name) => {
-    /** @param {string} n */
-    const clashes = (n) => takenResearch.has(n)
-      || Object.prototype.hasOwnProperty.call(epicResearch, n)
-      || fs.existsSync(path.join(epicResearchDir, `${n}.md`));
-    if (!clashes(name)) return name;
-    const suffixed = `${name}-${feature}`;
-    if (!clashes(suffixed)) return suffixed;
-    for (let i = 2; ; i++) {
-      if (!clashes(`${suffixed}-${i}`)) return `${suffixed}-${i}`;
+    if (epicManifest.status !== 'in-progress') {
+      throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
     }
-  };
-  /** @type {{from: string, target: string, status: string}[]} */
-  const researchMoves = [];
-  for (const [name, item] of Object.entries(featureResearch)) {
-    const src = `.workflows/${feature}/research/${name}.md`;
-    if (!fs.existsSync(path.join(cwd, src))) {
-      throw new Error(`research file missing on disk: ${src}`);
+    // Same structural rule every topic name lives under.
+    if (!topic || /[./]/.test(topic)) {
+      throw new Error(`"${topic}" is not a legal topic name — dots and slashes break manifest addressing`);
     }
-    const status = item && typeof item === 'object' && typeof item.status === 'string' ? item.status : null;
-    if (status === null) {
-      throw new Error(`research item "${name}" in "${feature}" has no status — fix the manifest before absorbing`);
+
+    // The feature must have a discussion (item + file) and no spec-or-beyond
+    // work.
+    const discussionItem = phaseItems(featureManifest, 'discussion')[feature];
+    if (!discussionItem || typeof discussionItem !== 'object' || typeof discussionItem.status !== 'string') {
+      throw new Error(`feature "${feature}" has no discussion — absorb moves the discussion in as the epic topic`);
     }
-    const target = researchTarget(name);
-    takenResearch.add(target);
-    researchMoves.push({ from: name, target, status });
-  }
+    const discussionSrc = `.workflows/${feature}/discussion/${feature}.md`;
+    if (!fs.existsSync(path.join(cwd, discussionSrc))) {
+      throw new Error(`discussion file missing on disk: ${discussionSrc}`);
+    }
+    for (const phase of SPEC_OR_BEYOND) {
+      if (featureManifest.phases && typeof featureManifest.phases === 'object' && featureManifest.phases[phase]) {
+        throw new Error(`feature "${feature}" has ${phase} work — absorb is only for features before specification`);
+      }
+    }
 
-  const importMoves = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
-  const seedMoves = planTrackedMoves(cwd, feature, into, 'seeds', Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);
+    // The topic must be free in the epic: map, dismissed list, discussion
+    // item, discussion file.
+    const epicDiscovery = epicManifest.phases && typeof epicManifest.phases === 'object' && epicManifest.phases.discovery && typeof epicManifest.phases.discovery === 'object'
+      ? epicManifest.phases.discovery
+      : {};
+    const epicMapItems = epicDiscovery.items && typeof epicDiscovery.items === 'object' ? epicDiscovery.items : {};
+    if (epicMapItems[topic]) {
+      throw new Error(`"${topic}" is already on ${into}'s discovery map — pick a different name`);
+    }
+    if (Array.isArray(epicDiscovery.dismissed) && epicDiscovery.dismissed.includes(topic)) {
+      throw new Error(`"${topic}" was dismissed from ${into}'s discovery map — pick a different name, or re-add it from a discovery session first`);
+    }
+    if (phaseItems(epicManifest, 'discussion')[topic]) {
+      throw new Error(`discussion topic "${topic}" already exists in ${into} — pick a different name`);
+    }
+    const discussionDest = `.workflows/${into}/discussion/${topic}.md`;
+    if (fs.existsSync(path.join(cwd, discussionDest))) {
+      throw new Error(`${discussionDest} already exists — pick a different name`);
+    }
 
-  // Read (and refuse corrupt JSON) before anything mutates.
-  const projectManifestFile = path.join(cwd, '.workflows', 'manifest.json');
-  const projectManifest = readProjectManifest(projectManifestFile);
+    // Research moves: every item's file must exist; target names dodge the
+    // epic's items, its files on disk, and the batch — `-{feature}` first,
+    // then numbered.
+    const featureResearch = phaseItems(featureManifest, 'research');
+    const epicResearch = phaseItems(epicManifest, 'research');
+    const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
+    /** @type {Set<string>} */
+    const takenResearch = new Set();
+    /** @param {string} name @returns {string} */
+    const researchTarget = (name) => {
+      /** @param {string} n */
+      const clashes = (n) => takenResearch.has(n)
+        || Object.prototype.hasOwnProperty.call(epicResearch, n)
+        || fs.existsSync(path.join(epicResearchDir, `${n}.md`));
+      if (!clashes(name)) return name;
+      const suffixed = `${name}-${feature}`;
+      if (!clashes(suffixed)) return suffixed;
+      for (let i = 2; ; i++) {
+        if (!clashes(`${suffixed}-${i}`)) return `${suffixed}-${i}`;
+      }
+    };
+    /** @type {{from: string, target: string, status: string}[]} */
+    const researchPlan = [];
+    for (const [name, item] of Object.entries(featureResearch)) {
+      const src = `.workflows/${feature}/research/${name}.md`;
+      if (!fs.existsSync(path.join(cwd, src))) {
+        throw new Error(`research file missing on disk: ${src}`);
+      }
+      const status = item && typeof item === 'object' && typeof item.status === 'string' ? item.status : null;
+      if (status === null) {
+        throw new Error(`research item "${name}" in "${feature}" has no status — fix the manifest before absorbing`);
+      }
+      const target = researchTarget(name);
+      takenResearch.add(target);
+      researchPlan.push({ from: name, target, status });
+    }
 
-  const routing = researchMoves.length > 0 ? 'research' : 'discussion';
+    const importPlan = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
+    const seedPlan = planTrackedMoves(cwd, feature, into, 'seeds', Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);
 
-  // -- mutate: files, then the manifests, then KB, then one commit ------------
-  fs.mkdirSync(path.join(cwd, '.workflows', into, 'discussion'), { recursive: true });
-  fs.renameSync(path.join(cwd, discussionSrc), path.join(cwd, discussionDest));
-  if (researchMoves.length > 0) fs.mkdirSync(epicResearchDir, { recursive: true });
-  for (const move of researchMoves) {
-    fs.renameSync(
-      path.join(cwd, '.workflows', feature, 'research', `${move.from}.md`),
-      path.join(epicResearchDir, `${move.target}.md`));
-  }
-  /** @param {string} field @param {{basename: string, dest: string}[]} moves */
-  const moveTrackedFiles = (field, moves) => {
-    if (moves.length === 0) return;
-    fs.mkdirSync(path.join(cwd, '.workflows', into, field), { recursive: true });
-    for (const move of moves) {
+    // Read (and refuse corrupt JSON) before anything mutates; the
+    // registration removal re-reads under the project lock after the epic
+    // lands.
+    readProjectManifest(cwd);
+
+    // -- mutate: files, then the epic manifest ---------------------------------
+    fs.mkdirSync(path.join(cwd, '.workflows', into, 'discussion'), { recursive: true });
+    fs.renameSync(path.join(cwd, discussionSrc), path.join(cwd, discussionDest));
+    if (researchPlan.length > 0) fs.mkdirSync(epicResearchDir, { recursive: true });
+    for (const move of researchPlan) {
       fs.renameSync(
-        path.join(cwd, '.workflows', feature, field, move.basename),
-        path.join(cwd, '.workflows', into, field, move.dest));
+        path.join(cwd, '.workflows', feature, 'research', `${move.from}.md`),
+        path.join(epicResearchDir, `${move.target}.md`));
     }
-  };
-  moveTrackedFiles('imports', importMoves);
-  moveTrackedFiles('seeds', seedMoves);
+    /** @param {string} field @param {{basename: string, dest: string}[]} moves */
+    const moveTrackedFiles = (field, moves) => {
+      if (moves.length === 0) return;
+      fs.mkdirSync(path.join(cwd, '.workflows', into, field), { recursive: true });
+      for (const move of moves) {
+        fs.renameSync(
+          path.join(cwd, '.workflows', feature, field, move.basename),
+          path.join(cwd, '.workflows', into, field, move.dest));
+      }
+    };
+    moveTrackedFiles('imports', importPlan);
+    moveTrackedFiles('seeds', seedPlan);
 
-  // Epic manifest: phase items mirror the feature's statuses; tracked entries
-  // carry their original timestamps (and seed provenance) with new paths.
-  if (!epicManifest.phases || typeof epicManifest.phases !== 'object') epicManifest.phases = {};
-  if (!epicManifest.phases.discussion || typeof epicManifest.phases.discussion !== 'object') epicManifest.phases.discussion = {};
-  if (!epicManifest.phases.discussion.items || typeof epicManifest.phases.discussion.items !== 'object') epicManifest.phases.discussion.items = {};
-  epicManifest.phases.discussion.items[topic] = { status: discussionItem.status };
-  if (researchMoves.length > 0) {
-    if (!epicManifest.phases.research || typeof epicManifest.phases.research !== 'object') epicManifest.phases.research = {};
-    if (!epicManifest.phases.research.items || typeof epicManifest.phases.research.items !== 'object') epicManifest.phases.research.items = {};
-    for (const move of researchMoves) {
-      epicManifest.phases.research.items[move.target] = { status: move.status };
+    // Epic manifest: phase items mirror the feature's statuses; tracked
+    // entries carry their original timestamps (and seed provenance) with new
+    // paths.
+    if (!epicManifest.phases || typeof epicManifest.phases !== 'object') epicManifest.phases = {};
+    if (!epicManifest.phases.discussion || typeof epicManifest.phases.discussion !== 'object') epicManifest.phases.discussion = {};
+    if (!epicManifest.phases.discussion.items || typeof epicManifest.phases.discussion.items !== 'object') epicManifest.phases.discussion.items = {};
+    epicManifest.phases.discussion.items[topic] = { status: discussionItem.status };
+    if (researchPlan.length > 0) {
+      if (!epicManifest.phases.research || typeof epicManifest.phases.research !== 'object') epicManifest.phases.research = {};
+      if (!epicManifest.phases.research.items || typeof epicManifest.phases.research.items !== 'object') epicManifest.phases.research.items = {};
+      for (const move of researchPlan) {
+        epicManifest.phases.research.items[move.target] = { status: move.status };
+      }
     }
-  }
-  for (const move of importMoves) {
-    if (!Array.isArray(epicManifest.imports)) epicManifest.imports = [];
-    epicManifest.imports.push({ ...move.entry, path: `imports/${move.dest}` });
-  }
-  for (const move of seedMoves) {
-    if (!Array.isArray(epicManifest.seeds)) epicManifest.seeds = [];
-    epicManifest.seeds.push({ ...move.entry, path: `seeds/${move.dest}` });
-  }
-  saveWorkUnitManifest(cwd, into, epicManifest);
+    for (const move of importPlan) {
+      if (!Array.isArray(epicManifest.imports)) epicManifest.imports = [];
+      epicManifest.imports.push({ ...move.entry, path: `imports/${move.dest}` });
+    }
+    for (const move of seedPlan) {
+      if (!Array.isArray(epicManifest.seeds)) epicManifest.seeds = [];
+      epicManifest.seeds.push({ ...move.entry, path: `seeds/${move.dest}` });
+    }
+    saveWorkUnitManifest(cwd, into, epicManifest);
+
+    return {
+      discussionStatus: discussionItem.status,
+      researchMoves: researchPlan,
+      importMoves: importPlan,
+      seedMoves: seedPlan,
+      routing: researchPlan.length > 0 ? 'research' : 'discussion',
+    };
+  });
 
   // The absorbed topic joins the map (routing per the work done, no summary/
-  // description — the next epic entry's summary-backfill drafts them).
+  // description — the next epic entry's summary-backfill drafts them). Its
+  // own locked read-modify-write.
   addItem(cwd, into, topic, { routing, backfill: true });
 
-  if (projectManifest.work_units && typeof projectManifest.work_units === 'object') {
-    delete projectManifest.work_units[feature];
-  }
-  writeProjectManifestAtomic(projectManifestFile, projectManifest);
+  // Registration removal — a fresh read under the project lock.
+  withProjectLock(cwd, () => {
+    const projectManifest = readProjectManifest(cwd);
+    if (projectManifest.work_units && typeof projectManifest.work_units === 'object') {
+      delete projectManifest.work_units[feature];
+    }
+    writeProjectManifestAtomic(cwd, projectManifest);
+  });
 
   fs.rmSync(path.join(cwd, '.workflows', feature), { recursive: true, force: true });
 
@@ -259,7 +285,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   /** @type {string[]} */
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', feature], 'knowledge remove', warnings);
-  if (discussionItem.status === 'completed') {
+  if (discussionStatus === 'completed') {
     knowledge(cwd, ['index', INDEXED_ARTIFACTS.discussion(into, topic)], `knowledge index (discussion/${topic})`, warnings);
   }
   for (const move of researchMoves) {
@@ -284,7 +310,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     feature,
     epic: into,
     topic,
-    discussion: { path: `discussion/${topic}.md`, status: discussionItem.status },
+    discussion: { path: `discussion/${topic}.md`, status: discussionStatus },
     research: researchMoves.map((move) => ({ from: move.from, topic: move.target, status: move.status })),
     imports: importMoves.map((move) => ({ path: `imports/${move.dest}` })),
     seeds: seedMoves.map((move) => ({ path: `seeds/${move.dest}`, source: move.entry.source })),

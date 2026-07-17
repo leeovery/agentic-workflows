@@ -19,7 +19,14 @@
 
 const fs = require('fs');
 const path = require('path');
-const { saveWorkUnitManifest, loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const {
+  saveWorkUnitManifest,
+  loadWorkUnitManifest,
+  withWorkUnitLock,
+  readProjectManifest,
+  writeProjectManifestAtomic,
+  withProjectLock,
+} = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
@@ -103,41 +110,6 @@ function pushEntry(manifest, field, value) {
 }
 
 /**
- * Read and parse the project manifest. A missing file is a legitimate
- * first-write state ({}); corrupt JSON is a hard error — writing through it
- * would replace every registered work unit.
- * @param {string} file
- * @returns {Record<string, any>}
- */
-function readProjectManifest(file) {
-  let raw = null;
-  try {
-    raw = fs.readFileSync(file, 'utf8');
-  } catch (err) {
-    const code = err && typeof err === 'object' && 'code' in err ? err.code : null;
-    if (code !== 'ENOENT') {
-      throw new Error(`failed to read project manifest at ${file}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-  if (raw === null) return {};
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new Error(
-      `project manifest at ${file} is not valid JSON: ${err instanceof Error ? err.message : String(err)} — ` +
-      'inspect and fix it by hand; a write against a corrupt manifest would replace all registered work units'
-    );
-  }
-}
-
-/** Atomic write, matching the manifest CLI's serialisation. @param {string} file @param {object} data */
-function writeProjectManifestAtomic(file, data) {
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
-  fs.renameSync(tmp, file);
-}
-
-/**
  * The work-type commit: create the work unit (manifest + project-manifest
  * registration, exactly as `manifest.cjs init` writes them — reused as-is
  * when it already exists), copy imports into `imports/`, move inbox seeds
@@ -197,84 +169,94 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
   const wuDir = path.join(cwd, '.workflows', workUnit);
   const created = !fs.existsSync(path.join(wuDir, 'manifest.json'));
-  const projectManifestFile = path.join(cwd, '.workflows', 'manifest.json');
-  // Read (and refuse corrupt JSON) before anything mutates.
-  const projectManifest = created ? readProjectManifest(projectManifestFile) : null;
-  /** @type {Record<string, any>} */
-  const manifest = created
-    ? {
-        name: workUnit,
-        work_type: workType,
-        status: 'in-progress',
-        created: new Date().toISOString().slice(0, 10),
-        description,
-        phases: {},
+  // Read (and refuse corrupt JSON) before anything mutates; the registration
+  // itself re-reads under the project lock after the work unit lands.
+  if (created) readProjectManifest(cwd);
+
+  // -- mutate: files + one manifest save under the work unit's lock, then the
+  // -- project registration under its own lock, then KB, then the commit -----
+  fs.mkdirSync(wuDir, { recursive: true });
+  const { importMoves, seedMoves, skippedImports } = withWorkUnitLock(cwd, workUnit, () => {
+    /** @type {Record<string, any>} */
+    const manifest = created
+      ? {
+          name: workUnit,
+          work_type: workType,
+          status: 'in-progress',
+          created: new Date().toISOString().slice(0, 10),
+          description,
+          phases: {},
+        }
+      : loadWorkUnitManifest(cwd, workUnit);
+
+    // Destination names, deduped against each directory and within the batch.
+    const importsDir = path.join(wuDir, 'imports');
+    /** @type {string[]} */
+    const skipped = [];
+    /** @type {{src: string, dest: string}[]} */
+    const importPlan = [];
+    const takenImports = new Set();
+    for (const src of imports) {
+      const name = normaliseBasename(path.basename(src));
+      if (name === null) {
+        skipped.push(src);
+        continue;
       }
-    : loadWorkUnitManifest(cwd, workUnit);
-
-  // Destination names, deduped against each directory and within the batch.
-  const importsDir = path.join(wuDir, 'imports');
-  /** @type {string[]} */
-  const skippedImports = [];
-  /** @type {{src: string, dest: string}[]} */
-  const importMoves = [];
-  const takenImports = new Set();
-  for (const src of imports) {
-    const name = normaliseBasename(path.basename(src));
-    if (name === null) {
-      skippedImports.push(src);
-      continue;
+      const dest = dedupe(name, importsDir, takenImports);
+      takenImports.add(dest);
+      importPlan.push({ src, dest });
     }
-    const dest = dedupe(name, importsDir, takenImports);
-    takenImports.add(dest);
-    importMoves.push({ src, dest });
-  }
 
-  const seedsDir = path.join(wuDir, 'seeds');
-  /** @type {{item: import('./inbox.cjs').InboxItem, dest: string}[]} */
-  const seedMoves = [];
-  const takenSeeds = new Set();
-  for (const item of seedItems) {
-    const name = normaliseBasename(item.file) ?? 'seed.md';
-    const dest = dedupe(name, seedsDir, takenSeeds);
-    takenSeeds.add(dest);
-    seedMoves.push({ item, dest });
-  }
+    const seedsDir = path.join(wuDir, 'seeds');
+    /** @type {{item: import('./inbox.cjs').InboxItem, dest: string}[]} */
+    const seedPlan = [];
+    const takenSeeds = new Set();
+    for (const item of seedItems) {
+      const name = normaliseBasename(item.file) ?? 'seed.md';
+      const dest = dedupe(name, seedsDir, takenSeeds);
+      takenSeeds.add(dest);
+      seedPlan.push({ item, dest });
+    }
 
-  // -- mutate: files, then one manifest save, then KB, then the commit --------
-  if (importMoves.length > 0) fs.mkdirSync(importsDir, { recursive: true });
-  for (const move of importMoves) {
-    fs.copyFileSync(path.resolve(cwd, move.src), path.join(importsDir, move.dest));
-    pushEntry(manifest, 'imports', { path: `imports/${move.dest}`, imported_at: isoNow() });
-  }
+    if (importPlan.length > 0) fs.mkdirSync(importsDir, { recursive: true });
+    for (const move of importPlan) {
+      fs.copyFileSync(path.resolve(cwd, move.src), path.join(importsDir, move.dest));
+      pushEntry(manifest, 'imports', { path: `imports/${move.dest}`, imported_at: isoNow() });
+    }
 
-  if (seedMoves.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
-  for (const move of seedMoves) {
-    fs.renameSync(path.join(cwd, move.item.given), path.join(seedsDir, move.dest));
-    pushEntry(manifest, 'seeds', {
-      path: `seeds/${move.dest}`,
-      source: SEED_SOURCES[/** @type {keyof typeof SEED_SOURCES} */ (move.item.folder)],
-      seeded_at: isoNow(),
-    });
-  }
+    if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
+    for (const move of seedPlan) {
+      fs.renameSync(path.join(cwd, move.item.given), path.join(seedsDir, move.dest));
+      pushEntry(manifest, 'seeds', {
+        path: `seeds/${move.dest}`,
+        source: SEED_SOURCES[/** @type {keyof typeof SEED_SOURCES} */ (move.item.folder)],
+        seeded_at: isoNow(),
+      });
+    }
 
-  const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
-  fs.mkdirSync(sessionsDir, { recursive: true });
-  fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
+    const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
+
+    // Epic is the sole work type with a resumable discovery session loop.
+    if (workType === 'epic') {
+      if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+      if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
+      manifest.phases.discovery.active_session = '001';
+    }
+
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { importMoves: importPlan, seedMoves: seedPlan, skippedImports: skipped };
+  });
   const sessionLogPath = `.workflows/${workUnit}/discovery/sessions/session-001.md`;
 
-  // Epic is the sole work type with a resumable discovery session loop.
-  if (workType === 'epic') {
-    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-    if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
-    manifest.phases.discovery.active_session = '001';
-  }
-
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  if (created && projectManifest !== null) {
-    if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
-    projectManifest.work_units[workUnit] = { work_type: workType };
-    writeProjectManifestAtomic(projectManifestFile, projectManifest);
+  if (created) {
+    withProjectLock(cwd, () => {
+      const projectManifest = readProjectManifest(cwd);
+      if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
+      projectManifest.work_units[workUnit] = { work_type: workType };
+      writeProjectManifestAtomic(cwd, projectManifest);
+    });
   }
 
   /** @type {string[]} */
@@ -310,4 +292,4 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   return result;
 }
 
-module.exports = { createWorkUnit, dedupe, readProjectManifest, writeProjectManifestAtomic };
+module.exports = { createWorkUnit, dedupe };

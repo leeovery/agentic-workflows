@@ -5,13 +5,14 @@
 // only. The engine never reads or writes a task backend and knows nothing
 // about plan formats; the session does the plan surgery, these transitions
 // record its progress. Load → apply → save, one decision-ready result per
-// call. No git commits — the session's commit cadence picks the changes up.
-// Validation throws loud and specific before anything is touched.
+// call, each under the work unit's manifest lock (the same lock the manifest
+// CLI honours). No git commits — the session's commit cadence picks the
+// changes up. Validation throws loud and specific before anything is touched.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 
 const FIX_THRESHOLD = 3;
 const SESSION_CYCLE_LIMIT = 3;
@@ -115,55 +116,57 @@ function counterOf(item, field) {
  * @returns {InitResult}
  */
 function initTasks(cwd, workUnit, topic) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-  const phases = manifest.phases;
-  if (!phases.implementation || typeof phases.implementation !== 'object') phases.implementation = {};
-  if (!phases.implementation.items || typeof phases.implementation.items !== 'object') phases.implementation.items = {};
-  const items = phases.implementation.items;
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+    const phases = manifest.phases;
+    if (!phases.implementation || typeof phases.implementation !== 'object') phases.implementation = {};
+    if (!phases.implementation.items || typeof phases.implementation.items !== 'object') phases.implementation.items = {};
+    const items = phases.implementation.items;
 
-  /** @type {'created'|'resumed'} */
-  let mode;
-  if (items[topic] && typeof items[topic] === 'object') {
-    mode = 'resumed';
+    /** @type {'created'|'resumed'} */
+    let mode;
+    if (items[topic] && typeof items[topic] === 'object') {
+      mode = 'resumed';
+      const item = items[topic];
+      item.task_gate_mode = 'gated';
+      item.fix_gate_mode = 'gated';
+      item.analysis_gate_mode = 'gated';
+      item.fix_attempts = 0;
+      item.analysis_cycle_session = 0;
+    } else {
+      mode = 'created';
+      items[topic] = {
+        status: 'in-progress',
+        task_gate_mode: 'gated',
+        fix_gate_mode: 'gated',
+        analysis_gate_mode: 'gated',
+        fix_attempts: 0,
+        analysis_cycle_total: 0,
+        analysis_cycle_session: 0,
+        linters: [],
+        project_skills: [],
+        current_phase: 1,
+        current_task: null,
+      };
+    }
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+
     const item = items[topic];
-    item.task_gate_mode = 'gated';
-    item.fix_gate_mode = 'gated';
-    item.analysis_gate_mode = 'gated';
-    item.fix_attempts = 0;
-    item.analysis_cycle_session = 0;
-  } else {
-    mode = 'created';
-    items[topic] = {
-      status: 'in-progress',
-      task_gate_mode: 'gated',
-      fix_gate_mode: 'gated',
-      analysis_gate_mode: 'gated',
-      fix_attempts: 0,
-      analysis_cycle_total: 0,
-      analysis_cycle_session: 0,
-      linters: [],
-      project_skills: [],
-      current_phase: 1,
-      current_task: null,
+    return {
+      mode,
+      gates: {
+        task_gate_mode: gateOf(item, 'task_gate_mode'),
+        fix_gate_mode: gateOf(item, 'fix_gate_mode'),
+        analysis_gate_mode: gateOf(item, 'analysis_gate_mode'),
+      },
+      counters: {
+        fix_attempts: counterOf(item, 'fix_attempts'),
+        analysis_cycle_total: counterOf(item, 'analysis_cycle_total'),
+        analysis_cycle_session: counterOf(item, 'analysis_cycle_session'),
+      },
     };
-  }
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-
-  const item = items[topic];
-  return {
-    mode,
-    gates: {
-      task_gate_mode: gateOf(item, 'task_gate_mode'),
-      fix_gate_mode: gateOf(item, 'fix_gate_mode'),
-      analysis_gate_mode: gateOf(item, 'analysis_gate_mode'),
-    },
-    counters: {
-      fix_attempts: counterOf(item, 'fix_attempts'),
-      analysis_cycle_total: counterOf(item, 'analysis_cycle_total'),
-      analysis_cycle_session: counterOf(item, 'analysis_cycle_session'),
-    },
-  };
+  });
 }
 
 /**
@@ -177,10 +180,13 @@ function initTasks(cwd, workUnit, topic) {
  */
 function startTask(cwd, workUnit, topic, internalId) {
   safeName(internalId, 'internal id');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = implementationItem(manifest, topic);
-  item.fix_attempts = 0;
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+  const item = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const found = implementationItem(manifest, topic);
+    found.fix_attempts = 0;
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return found;
+  });
 
   const file = fixTrackingPath(cwd, workUnit, topic, internalId);
   if (fs.existsSync(file)) fs.unlinkSync(file);
@@ -204,18 +210,21 @@ function startTask(cwd, workUnit, topic, internalId) {
  */
 function fixAttempt(cwd, workUnit, topic, internalId, findingsFile) {
   safeName(internalId, 'internal id');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = implementationItem(manifest, topic);
-  let findings;
-  try {
-    findings = fs.readFileSync(path.resolve(cwd, findingsFile), 'utf8');
-  } catch {
-    throw new Error(`findings file not found: ${findingsFile}`);
-  }
+  const { item, attempts, findings } = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const found = implementationItem(manifest, topic);
+    let content;
+    try {
+      content = fs.readFileSync(path.resolve(cwd, findingsFile), 'utf8');
+    } catch {
+      throw new Error(`findings file not found: ${findingsFile}`);
+    }
 
-  const attempts = counterOf(item, 'fix_attempts') + 1;
-  item.fix_attempts = attempts;
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    const n = counterOf(found, 'fix_attempts') + 1;
+    found.fix_attempts = n;
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { item: found, attempts: n, findings: content };
+  });
 
   const file = fixTrackingPath(cwd, workUnit, topic, internalId);
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -293,31 +302,33 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
   if ((internalId === null) === (externalId === null)) {
     throw new Error('provide exactly one of <internal-id> or --external <external-id>');
   }
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = implementationItem(manifest, topic);
-  const id = externalId !== null ? resolveInternalId(manifest, workUnit, topic, externalId) : /** @type {string} */ (internalId);
-  safeName(id, 'internal id');
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = implementationItem(manifest, topic);
+    const id = externalId !== null ? resolveInternalId(manifest, workUnit, topic, externalId) : /** @type {string} */ (internalId);
+    safeName(id, 'internal id');
 
-  /** @type {Record<string, unknown>} */
-  const recorded = { completed_task: id };
-  if (skipped) recorded.skipped = true;
-  pushTo(item, 'completed_tasks', id);
-  if (phase !== undefined) {
-    item.current_phase = phase;
-    recorded.current_phase = phase;
-  }
-  if (nextTask !== undefined) {
-    item.current_task = nextTask;
-    recorded.current_task = nextTask;
-  }
-  if (phaseComplete) {
-    const n = phase !== undefined ? phase : phaseOfInternalId(id);
-    pushTo(item, 'completed_phases', n);
-    recorded.completed_phase = n;
-  }
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    /** @type {Record<string, unknown>} */
+    const recorded = { completed_task: id };
+    if (skipped) recorded.skipped = true;
+    pushTo(item, 'completed_tasks', id);
+    if (phase !== undefined) {
+      item.current_phase = phase;
+      recorded.current_phase = phase;
+    }
+    if (nextTask !== undefined) {
+      item.current_task = nextTask;
+      recorded.current_task = nextTask;
+    }
+    if (phaseComplete) {
+      const n = phase !== undefined ? phase : phaseOfInternalId(id);
+      pushTo(item, 'completed_phases', n);
+      recorded.completed_phase = n;
+    }
+    saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  return { internal_id: id, recorded };
+    return { internal_id: id, recorded };
+  });
 }
 
 /**
@@ -329,20 +340,22 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
  * @returns {AnalysisCycleResult}
  */
 function analysisCycle(cwd, workUnit, topic) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = implementationItem(manifest, topic);
-  const total = counterOf(item, 'analysis_cycle_total') + 1;
-  const session = counterOf(item, 'analysis_cycle_session') + 1;
-  item.analysis_cycle_total = total;
-  item.analysis_cycle_session = session;
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = implementationItem(manifest, topic);
+    const total = counterOf(item, 'analysis_cycle_total') + 1;
+    const session = counterOf(item, 'analysis_cycle_session') + 1;
+    item.analysis_cycle_total = total;
+    item.analysis_cycle_session = session;
+    saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  return {
-    cycle_total: total,
-    cycle_session: session,
-    over_session_limit: session > SESSION_CYCLE_LIMIT,
-    analysis_gate_mode: gateOf(item, 'analysis_gate_mode'),
-  };
+    return {
+      cycle_total: total,
+      cycle_session: session,
+      over_session_limit: session > SESSION_CYCLE_LIMIT,
+      analysis_gate_mode: gateOf(item, 'analysis_gate_mode'),
+    };
+  });
 }
 
 module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle };
