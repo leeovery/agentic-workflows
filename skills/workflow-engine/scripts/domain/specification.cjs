@@ -4,8 +4,8 @@
 // Domain ring: specification-entry queries — scenario derivation and the
 // grouping rows the projections render.
 //
-// Input is the entry adapter's discover() result (its byte-stable legacy
-// surface, unchanged). This module derives what the flow needs next: which
+// Input is the entry adapter's discover() result (the library surface —
+// unchanged by the dump thinning). This module derives what the flow needs next: which
 // scenario the state is in, the actionable and concluded grouping rows with
 // display statuses and verbs, and the single-discussion auto-proceed context.
 // Pure derivation — no IO; consult-slice hints (parsed from the analysis doc

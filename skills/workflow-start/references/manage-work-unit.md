@@ -17,35 +17,35 @@ Manage an in-progress work unit's lifecycle.
 
 @if(feature_count > 0)
 Features:
-@foreach(unit in features.work_units)
+@foreach(unit in the FEATURES section)
   {N}. {unit.name:(titlecase)}
 @endforeach
 @endif
 
 @if(bugfix_count > 0)
 Bugfixes:
-@foreach(unit in bugfixes.work_units)
+@foreach(unit in the BUGFIXES section)
   {N}. {unit.name:(titlecase)}
 @endforeach
 @endif
 
 @if(quickfix_count > 0)
 Quick Fixes:
-@foreach(unit in quick_fixes.work_units)
+@foreach(unit in the QUICK-FIXES section)
   {N}. {unit.name:(titlecase)}
 @endforeach
 @endif
 
 @if(cross_cutting_count > 0)
 Cross-Cutting:
-@foreach(unit in cross_cutting.work_units)
+@foreach(unit in the CROSS-CUTTING section)
   {N}. {unit.name:(titlecase)}
 @endforeach
 @endif
 
 @if(epic_count > 0)
 Epics:
-@foreach(unit in epics.work_units)
+@foreach(unit in the EPICS section)
   {N}. {unit.name:(titlecase)}
 @endforeach
 @endif

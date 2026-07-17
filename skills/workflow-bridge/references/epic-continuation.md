@@ -54,7 +54,7 @@ The map is already sequenced.
 
 ## D. Check All-Done
 
-The scoped discovery derives `all_done` — true only when review items exist and every non-cancelled one is completed, nothing is in progress or awaiting its next phase, no completed discussion is unaccounted, and the discovery map has settled (or the epic has none). Read it from the most recent discovery output.
+The scoped discovery derives `all_done` — true only when at least one non-cancelled review item exists and every non-cancelled one is completed, nothing is in progress or awaiting its next phase, no completed discussion is unaccounted, and the discovery map has settled (or the epic has none). Read it from the most recent discovery output.
 
 #### If `all_done` is `true`
 
