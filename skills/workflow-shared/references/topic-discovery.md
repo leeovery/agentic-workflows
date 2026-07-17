@@ -34,10 +34,10 @@ Run discovery for the work unit:
 node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
 ```
 
-Parse `analysis_caches` from the output:
+Parse the `analysis_caches` line from the output (`research_analysis=<status>, gap_analysis=<status>`):
 
-- `analysis_caches.research_analysis` — `{status, generated, files}` for the research-analysis cache. `status` is `valid` | `stale` | `absent`.
-- `analysis_caches.gap_analysis` — same shape for the gap-analysis cache.
+- `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
+- `analysis_caches.gap_analysis.status` — same for the gap-analysis cache.
 
 Initialise an in-conversation tracker:
 
