@@ -15,9 +15,12 @@
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
 // blocks. Validation throws loud and specific before anything is touched.
+// Every load→mutate→save runs under the work unit's manifest lock (the same
+// lock the manifest CLI honours); the KB sync and the commit run after
+// release — the lock protects the manifest read-modify-write, nothing else.
 // ---------------------------------------------------------------------------
 
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
@@ -101,27 +104,29 @@ function phaseItem(manifest, phase, topic) {
  */
 function startTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-  if (!manifest.phases[phase] || typeof manifest.phases[phase] !== 'object') manifest.phases[phase] = {};
-  const ph = manifest.phases[phase];
-  if (!ph.items || typeof ph.items !== 'object') ph.items = {};
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+    if (!manifest.phases[phase] || typeof manifest.phases[phase] !== 'object') manifest.phases[phase] = {};
+    const ph = manifest.phases[phase];
+    if (!ph.items || typeof ph.items !== 'object') ph.items = {};
 
-  const existing = ph.items[topic];
-  let created = false;
-  if (!existing || typeof existing !== 'object') {
-    ph.items[topic] = { status: 'in-progress' };
-    created = true;
-  } else if (existing.status === 'completed') {
-    throw new Error(`${phase} item "${topic}" is already completed — start cannot resume it`);
-  } else if (existing.status === 'cancelled') {
-    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-  } else {
-    existing.status = 'in-progress';
-  }
+    const existing = ph.items[topic];
+    let created = false;
+    if (!existing || typeof existing !== 'object') {
+      ph.items[topic] = { status: 'in-progress' };
+      created = true;
+    } else if (existing.status === 'completed') {
+      throw new Error(`${phase} item "${topic}" is already completed — start cannot resume it`);
+    } else if (existing.status === 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    } else {
+      existing.status = 'in-progress';
+    }
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  return { topic, phase, status: 'in-progress', created };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { topic, phase, status: 'in-progress', created };
+  });
 }
 
 /**
@@ -137,14 +142,16 @@ function startTopic(cwd, workUnit, phase, topic) {
  */
 function completeTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'completed');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = phaseItem(manifest, phase, topic);
-  if (item.status === 'cancelled') {
-    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-  }
-  item.status = 'completed';
+  withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = phaseItem(manifest, phase, topic);
+    if (item.status === 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    }
+    item.status = 'completed';
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+  });
 
   /** @type {string[]} */
   const warnings = [];
@@ -184,29 +191,31 @@ function completeTopic(cwd, workUnit, phase, topic) {
  */
 function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
   assertLegalWrite(phase, 'superseded');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = phaseItem(manifest, phase, topic);
-  if (topic === by) {
-    throw new Error(`${phase} item "${topic}" cannot supersede itself`);
-  }
-  if (item.status === 'superseded') {
-    const already = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
-    throw new Error(`${phase} item "${topic}" is already superseded${already}`);
-  }
-  if (item.status === 'proposed') {
-    throw new Error(`${phase} item "${topic}" is proposed — a proposed item has no artifact to supersede; reconcile removes it instead`);
-  }
-  if (item.status === 'cancelled') {
-    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-  }
-  const items = manifest.phases[phase].items;
-  if (!items[by] || typeof items[by] !== 'object') {
-    throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
-  }
-  item.status = 'superseded';
-  item.superseded_by = by;
+  withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = phaseItem(manifest, phase, topic);
+    if (topic === by) {
+      throw new Error(`${phase} item "${topic}" cannot supersede itself`);
+    }
+    if (item.status === 'superseded') {
+      const already = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
+      throw new Error(`${phase} item "${topic}" is already superseded${already}`);
+    }
+    if (item.status === 'proposed') {
+      throw new Error(`${phase} item "${topic}" is proposed — a proposed item has no artifact to supersede; reconcile removes it instead`);
+    }
+    if (item.status === 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    }
+    const items = manifest.phases[phase].items;
+    if (!items[by] || typeof items[by] !== 'object') {
+      throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
+    }
+    item.status = 'superseded';
+    item.superseded_by = by;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+  });
 
   /** @type {string[]} */
   const warnings = [];
@@ -226,19 +235,21 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
  * @returns {TopicTransitionResult}
  */
 function cancelTopic(cwd, workUnit, phase, topic) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = phaseItem(manifest, phase, topic);
-  if (item.status === 'cancelled') {
-    throw new Error(`${phase} item "${topic}" is already cancelled`);
-  }
-  item.previous_status = item.status;
-  item.status = 'cancelled';
+  withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = phaseItem(manifest, phase, topic);
+    if (item.status === 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is already cancelled`);
+    }
+    item.previous_status = item.status;
+    item.status = 'cancelled';
 
-  const discovery = manifest.phases && manifest.phases.discovery;
-  const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
-  if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) delete mapItem.order;
+    const discovery = manifest.phases && manifest.phases.discovery;
+    const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
+    if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) delete mapItem.order;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+  });
 
   /** @type {string[]} */
   const warnings = [];
@@ -263,20 +274,23 @@ function cancelTopic(cwd, workUnit, phase, topic) {
  * @returns {TopicTransitionResult}
  */
 function reactivateTopic(cwd, workUnit, phase, topic) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = phaseItem(manifest, phase, topic);
-  if (item.status !== 'cancelled') {
-    throw new Error(`${phase} item "${topic}" is not cancelled (status: ${item.status ?? 'none'})`);
-  }
-  const restored = item.previous_status;
-  if (!restored) {
-    throw new Error(`${phase} item "${topic}" has no previous_status to restore`);
-  }
-  assertLegalWrite(phase, restored);
-  item.status = restored;
-  delete item.previous_status;
+  const restored = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = phaseItem(manifest, phase, topic);
+    if (item.status !== 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is not cancelled (status: ${item.status ?? 'none'})`);
+    }
+    const previous = item.previous_status;
+    if (!previous) {
+      throw new Error(`${phase} item "${topic}" has no previous_status to restore`);
+    }
+    assertLegalWrite(phase, previous);
+    item.status = previous;
+    delete item.previous_status;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return previous;
+  });
 
   /** @type {string[]} */
   const warnings = [];

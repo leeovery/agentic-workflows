@@ -12,14 +12,23 @@
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
 // blocks. Validation throws loud and specific before anything is touched.
+// Every load→mutate→save runs under the owning manifest's lock (work-unit or
+// project — the same locks the manifest CLI honours), taken one at a time and
+// never nested, so multi-manifest transactions cannot deadlock.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const {
+  loadWorkUnitManifest,
+  saveWorkUnitManifest,
+  withWorkUnitLock,
+  readProjectManifest,
+  writeProjectManifestAtomic,
+  withProjectLock,
+} = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
-const { readProjectManifest, writeProjectManifestAtomic } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
@@ -63,18 +72,21 @@ function todayStamp() {
  */
 function completeWorkUnit(cwd, workUnit, { message }) {
   assertLegalStatus('completed');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (manifest.status === 'completed') {
-    throw new Error(`work unit "${workUnit}" is already completed`);
-  }
-  if (manifest.status === 'cancelled') {
-    throw new Error(`work unit "${workUnit}" is cancelled — reactivate it first`);
-  }
-  manifest.status = 'completed';
-  const completedAt = todayStamp();
-  manifest.completed_at = completedAt;
+  const completedAt = withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (manifest.status === 'completed') {
+      throw new Error(`work unit "${workUnit}" is already completed`);
+    }
+    if (manifest.status === 'cancelled') {
+      throw new Error(`work unit "${workUnit}" is cancelled — reactivate it first`);
+    }
+    manifest.status = 'completed';
+    const stamped = todayStamp();
+    manifest.completed_at = stamped;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return stamped;
+  });
 
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
@@ -94,16 +106,18 @@ function completeWorkUnit(cwd, workUnit, { message }) {
  */
 function cancelWorkUnit(cwd, workUnit) {
   assertLegalStatus('cancelled');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (manifest.status === 'cancelled') {
-    throw new Error(`work unit "${workUnit}" is already cancelled`);
-  }
-  if (manifest.status === 'completed') {
-    throw new Error(`work unit "${workUnit}" is completed — reactivate it first`);
-  }
-  manifest.status = 'cancelled';
+  withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (manifest.status === 'cancelled') {
+      throw new Error(`work unit "${workUnit}" is already cancelled`);
+    }
+    if (manifest.status === 'completed') {
+      throw new Error(`work unit "${workUnit}" is completed — reactivate it first`);
+    }
+    manifest.status = 'cancelled';
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+  });
 
   /** @type {string[]} */
   const warnings = [];
@@ -186,18 +200,21 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
  */
 function reactivateWorkUnit(cwd, workUnit) {
   assertLegalStatus('in-progress');
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (manifest.status === 'in-progress') {
-    throw new Error(`work unit "${workUnit}" is already in-progress`);
-  }
-  if (manifest.status !== 'completed' && manifest.status !== 'cancelled') {
-    throw new Error(`work unit "${workUnit}" is not completed or cancelled (status: ${manifest.status ?? 'none'})`);
-  }
-  const previous = manifest.status;
-  manifest.status = 'in-progress';
-  if ('completed_at' in manifest) delete manifest.completed_at;
+  const { manifest, previous } = withWorkUnitLock(cwd, workUnit, () => {
+    const loaded = loadWorkUnitManifest(cwd, workUnit);
+    if (loaded.status === 'in-progress') {
+      throw new Error(`work unit "${workUnit}" is already in-progress`);
+    }
+    if (loaded.status !== 'completed' && loaded.status !== 'cancelled') {
+      throw new Error(`work unit "${workUnit}" is not completed or cancelled (status: ${loaded.status ?? 'none'})`);
+    }
+    const from = loaded.status;
+    loaded.status = 'in-progress';
+    if ('completed_at' in loaded) delete loaded.completed_at;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, loaded);
+    return { manifest: loaded, previous: from };
+  });
 
   /** @type {string[]} */
   const warnings = [];
@@ -236,45 +253,49 @@ function reactivateWorkUnit(cwd, workUnit) {
  * @returns {WorkUnitPivotResult}
  */
 function pivotWorkUnit(cwd, workUnit) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (manifest.work_type !== 'feature') {
-    throw new Error(`work unit "${workUnit}" is not a feature (work_type: ${manifest.work_type ?? 'none'}) — only features pivot to epics`);
-  }
-  if (manifest.status !== 'in-progress') {
-    throw new Error(`work unit "${workUnit}" is not in-progress (status: ${manifest.status ?? 'none'}) — reactivate it first`);
-  }
-  // The map add runs mid-transaction — prove it can succeed before flipping
-  // anything.
-  const phases = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases : {};
-  const discovery = phases.discovery && typeof phases.discovery === 'object' ? phases.discovery : {};
-  const items = discovery.items && typeof discovery.items === 'object' ? discovery.items : {};
-  if (items[workUnit]) {
-    throw new Error(`"${workUnit}" is already on the discovery map — the pivot appears to have already run`);
-  }
-  if (Array.isArray(discovery.dismissed) && discovery.dismissed.includes(workUnit)) {
-    throw new Error(`"${workUnit}" is on the discovery map's dismissed list — clear it before pivoting`);
-  }
-  // Read (and refuse corrupt JSON) before anything mutates.
-  const projectManifestFile = path.join(cwd, '.workflows', 'manifest.json');
-  const projectManifest = readProjectManifest(projectManifestFile);
+  const { manifest, routing } = withWorkUnitLock(cwd, workUnit, () => {
+    const loaded = loadWorkUnitManifest(cwd, workUnit);
+    if (loaded.work_type !== 'feature') {
+      throw new Error(`work unit "${workUnit}" is not a feature (work_type: ${loaded.work_type ?? 'none'}) — only features pivot to epics`);
+    }
+    if (loaded.status !== 'in-progress') {
+      throw new Error(`work unit "${workUnit}" is not in-progress (status: ${loaded.status ?? 'none'}) — reactivate it first`);
+    }
+    // The map add runs mid-transaction — prove it can succeed before flipping
+    // anything.
+    const phases = loaded.phases && typeof loaded.phases === 'object' ? loaded.phases : {};
+    const discovery = phases.discovery && typeof phases.discovery === 'object' ? phases.discovery : {};
+    const items = discovery.items && typeof discovery.items === 'object' ? discovery.items : {};
+    if (items[workUnit]) {
+      throw new Error(`"${workUnit}" is already on the discovery map — the pivot appears to have already run`);
+    }
+    if (Array.isArray(discovery.dismissed) && discovery.dismissed.includes(workUnit)) {
+      throw new Error(`"${workUnit}" is on the discovery map's dismissed list — clear it before pivoting`);
+    }
+    // Read (and refuse corrupt JSON) before anything mutates.
+    readProjectManifest(cwd);
 
-  const routing = phases.research ? 'research' : 'discussion';
-
-  manifest.work_type = 'epic';
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    loaded.work_type = 'epic';
+    saveWorkUnitManifest(cwd, workUnit, loaded);
+    return { manifest: loaded, routing: phases.research ? 'research' : 'discussion' };
+  });
 
   // The feature's single topic joins the map (routing, source, no summary/
-  // description — backfill semantics).
+  // description — backfill semantics). Its own locked read-modify-write.
   addItem(cwd, workUnit, workUnit, { routing, backfill: true });
 
-  // The registration must agree with the manifest — upserted, so a legacy
-  // unit that predates registration is registered rather than skipped.
-  if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
-  if (!projectManifest.work_units[workUnit] || typeof projectManifest.work_units[workUnit] !== 'object') {
-    projectManifest.work_units[workUnit] = {};
-  }
-  projectManifest.work_units[workUnit].work_type = 'epic';
-  writeProjectManifestAtomic(projectManifestFile, projectManifest);
+  // The registration must agree with the manifest — a fresh read under the
+  // project lock, upserted, so a legacy unit that predates registration is
+  // registered rather than skipped.
+  withProjectLock(cwd, () => {
+    const projectManifest = readProjectManifest(cwd);
+    if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
+    if (!projectManifest.work_units[workUnit] || typeof projectManifest.work_units[workUnit] !== 'object') {
+      projectManifest.work_units[workUnit] = {};
+    }
+    projectManifest.work_units[workUnit].work_type = 'epic';
+    writeProjectManifestAtomic(cwd, projectManifest);
+  });
 
   // Chunk metadata carries work_type — that's why pivot re-indexes.
   /** @type {string[]} */

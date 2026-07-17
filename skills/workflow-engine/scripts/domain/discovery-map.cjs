@@ -16,10 +16,11 @@
 // workflow-shared/discovery-utils) — one computation, two consumers, no
 // drift, and the engine can never be the permissive path around the prose's
 // conversational pre-validation. All errors throw loud and specific, before
-// anything is written.
+// anything is written. Every load→mutate→save runs under the work unit's
+// manifest lock (the same lock the manifest CLI honours).
 // ---------------------------------------------------------------------------
 
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { computeTopicLifecycle } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
 const { VALID_ROUTINGS } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
@@ -116,25 +117,27 @@ function assertFresh(manifest, name, verbPhrase) {
  * @returns {SequenceResult}
  */
 function sequenceMap(cwd, workUnit, orders) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const items = discoveryItems(manifest);
-  const entries = Object.entries(orders);
-  if (entries.length === 0) {
-    throw new Error('no {topic}={order} assignments given');
-  }
-  for (const [topic, order] of entries) {
-    if (!items[topic] || typeof items[topic] !== 'object') {
-      throw new Error(`no discovery item "${topic}" in the manifest (phases.discovery.items)`);
+  withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const items = discoveryItems(manifest);
+    const entries = Object.entries(orders);
+    if (entries.length === 0) {
+      throw new Error('no {topic}={order} assignments given');
     }
-    if (!Number.isInteger(order) || order < 1) {
-      throw new Error(`order for "${topic}" must be a positive integer (got ${JSON.stringify(order)})`);
+    for (const [topic, order] of entries) {
+      if (!items[topic] || typeof items[topic] !== 'object') {
+        throw new Error(`no discovery item "${topic}" in the manifest (phases.discovery.items)`);
+      }
+      if (!Number.isInteger(order) || order < 1) {
+        throw new Error(`order for "${topic}" must be a positive integer (got ${JSON.stringify(order)})`);
+      }
     }
-  }
-  for (const [topic, order] of entries) {
-    items[topic].order = order;
-  }
+    for (const [topic, order] of entries) {
+      items[topic].order = order;
+    }
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+  });
 
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`);
   /** @type {SequenceResult} */
@@ -176,40 +179,42 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
     throw new Error(`"${name}" is not a legal topic name — dots and slashes break manifest addressing`);
   }
 
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-  if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
-  const discovery = manifest.phases.discovery;
-  if (!discovery.items || typeof discovery.items !== 'object') discovery.items = {};
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+    if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
+    const discovery = manifest.phases.discovery;
+    if (!discovery.items || typeof discovery.items !== 'object') discovery.items = {};
 
-  if (discovery.items[name]) {
-    throw new Error(`"${name}" is already on the map — edit it, or pick a different name`);
-  }
-  const dismissed = Array.isArray(discovery.dismissed) ? discovery.dismissed : [];
-  const wasDismissed = dismissed.includes(name);
-  if (wasDismissed && !forceDismissed) {
-    throw new Error(`"${name}" was previously dismissed from this map — confirm the re-add with the user, then re-run with --force-dismissed`);
-  }
-  if (wasDismissed) {
-    discovery.dismissed = dismissed.filter((n) => n !== name);
-  }
+    if (discovery.items[name]) {
+      throw new Error(`"${name}" is already on the map — edit it, or pick a different name`);
+    }
+    const dismissed = Array.isArray(discovery.dismissed) ? discovery.dismissed : [];
+    const wasDismissed = dismissed.includes(name);
+    if (wasDismissed && !forceDismissed) {
+      throw new Error(`"${name}" was previously dismissed from this map — confirm the re-add with the user, then re-run with --force-dismissed`);
+    }
+    if (wasDismissed) {
+      discovery.dismissed = dismissed.filter((n) => n !== name);
+    }
 
-  /** @type {Record<string, unknown>} */
-  const item = { routing, source };
-  if (summary !== undefined) item.summary = summary;
-  if (description !== undefined) item.description = description;
-  discovery.items[name] = item;
+    /** @type {Record<string, unknown>} */
+    const item = { routing, source };
+    if (summary !== undefined) item.summary = summary;
+    if (description !== undefined) item.description = description;
+    discovery.items[name] = item;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
-  /** @type {MapOpResult} */
-  const result = { work_unit: workUnit, name, op: 'add', routing, source, lifecycle, map_total: Object.keys(discovery.items).length };
-  if (summary !== undefined) result.summary = summary;
-  if (description !== undefined) result.description = description;
-  if (backfill) result.backfill = true;
-  if (wasDismissed) result.undismissed = true;
-  return result;
+    const { lifecycle } = computeTopicLifecycle(manifest, name);
+    /** @type {MapOpResult} */
+    const result = { work_unit: workUnit, name, op: 'add', routing, source, lifecycle, map_total: Object.keys(discovery.items).length };
+    if (summary !== undefined) result.summary = summary;
+    if (description !== undefined) result.description = description;
+    if (backfill) result.backfill = true;
+    if (wasDismissed) result.undismissed = true;
+    return result;
+  });
 }
 
 /**
@@ -225,19 +230,21 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
   if (summary === undefined && description === undefined) {
     throw new Error('at least one of --summary/--description is required');
   }
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = mapItem(manifest, name);
-  if (summary !== undefined) item.summary = summary;
-  if (description !== undefined) item.description = description;
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = mapItem(manifest, name);
+    if (summary !== undefined) item.summary = summary;
+    if (description !== undefined) item.description = description;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
+    saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
-  /** @type {MapOpResult} */
-  const result = { work_unit: workUnit, name, op: 'edit', lifecycle };
-  if (summary !== undefined) result.summary = summary;
-  if (description !== undefined) result.description = description;
-  return result;
+    const { lifecycle } = computeTopicLifecycle(manifest, name);
+    /** @type {MapOpResult} */
+    const result = { work_unit: workUnit, name, op: 'edit', lifecycle };
+    if (summary !== undefined) result.summary = summary;
+    if (description !== undefined) result.description = description;
+    return result;
+  });
 }
 
 /**
@@ -250,18 +257,20 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
  * @returns {MapOpResult}
  */
 function removeItem(cwd, workUnit, name) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const items = discoveryItems(manifest);
-  mapItem(manifest, name);
-  assertFresh(manifest, name, 'removed');
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const items = discoveryItems(manifest);
+    mapItem(manifest, name);
+    assertFresh(manifest, name, 'removed');
 
-  delete items[name];
-  const discovery = manifest.phases.discovery;
-  if (!Array.isArray(discovery.dismissed)) discovery.dismissed = [];
-  if (!discovery.dismissed.includes(name)) discovery.dismissed.push(name);
+    delete items[name];
+    const discovery = manifest.phases.discovery;
+    if (!Array.isArray(discovery.dismissed)) discovery.dismissed = [];
+    if (!discovery.dismissed.includes(name)) discovery.dismissed.push(name);
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  return { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh' };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh' };
+  });
 }
 
 /**
@@ -278,44 +287,46 @@ function removeItem(cwd, workUnit, name) {
  * @returns {MapOpResult}
  */
 function renameItem(cwd, workUnit, oldName, newName) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const items = discoveryItems(manifest);
-  const item = mapItem(manifest, oldName);
-  assertFresh(manifest, oldName, 'renamed');
-  if (!newName || newName === oldName) {
-    throw new Error(`new name must differ from "${oldName}"`);
-  }
-  // Dots break the manifest CLI's dot-path addressing, slashes break paths —
-  // the same structural rule work-unit and topic names live under. Name-shape
-  // conventions beyond that (kebab-case) are the calling flow's job.
-  if (/[./]/.test(newName)) {
-    throw new Error(`"${newName}" is not a legal topic name — dots and slashes break manifest addressing`);
-  }
-  if (items[newName]) {
-    throw new Error(`"${newName}" is already on the map — pick a different name`);
-  }
-  const dismissed = manifest.phases.discovery.dismissed;
-  const matchesDismissed = Array.isArray(dismissed) && dismissed.includes(newName);
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const items = discoveryItems(manifest);
+    const item = mapItem(manifest, oldName);
+    assertFresh(manifest, oldName, 'renamed');
+    if (!newName || newName === oldName) {
+      throw new Error(`new name must differ from "${oldName}"`);
+    }
+    // Dots break the manifest CLI's dot-path addressing, slashes break paths —
+    // the same structural rule work-unit and topic names live under. Name-shape
+    // conventions beyond that (kebab-case) are the calling flow's job.
+    if (/[./]/.test(newName)) {
+      throw new Error(`"${newName}" is not a legal topic name — dots and slashes break manifest addressing`);
+    }
+    if (items[newName]) {
+      throw new Error(`"${newName}" is already on the map — pick a different name`);
+    }
+    const dismissed = manifest.phases.discovery.dismissed;
+    const matchesDismissed = Array.isArray(dismissed) && dismissed.includes(newName);
 
-  // Rebuild the items record with the key swapped in place: the item object
-  // itself is untouched (every field preserved) and its map position holds.
-  /** @type {Record<string, object>} */
-  const rebuilt = {};
-  for (const [key, value] of Object.entries(items)) {
-    rebuilt[key === oldName ? newName : key] = value;
-  }
-  manifest.phases.discovery.items = rebuilt;
+    // Rebuild the items record with the key swapped in place: the item object
+    // itself is untouched (every field preserved) and its map position holds.
+    /** @type {Record<string, object>} */
+    const rebuilt = {};
+    for (const [key, value] of Object.entries(items)) {
+      rebuilt[key === oldName ? newName : key] = value;
+    }
+    manifest.phases.discovery.items = rebuilt;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  return {
-    work_unit: workUnit,
-    name: newName,
-    op: 'rename',
-    renamed_from: oldName,
-    preserved_fields: Object.keys(item),
-    matches_dismissed: matchesDismissed,
-    lifecycle: 'fresh',
-  };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return {
+      work_unit: workUnit,
+      name: newName,
+      op: 'rename',
+      renamed_from: oldName,
+      preserved_fields: Object.keys(item),
+      matches_dismissed: matchesDismissed,
+      lifecycle: 'fresh',
+    };
+  });
 }
 
 /**
@@ -331,13 +342,15 @@ function rerouteItem(cwd, workUnit, name, routing) {
   if (!VALID_ROUTINGS.includes(routing)) {
     throw new Error(`unknown routing "${routing}" (${VALID_ROUTINGS.join('|')})`);
   }
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = mapItem(manifest, name);
-  assertFresh(manifest, name, 're-routed');
-  item.routing = routing;
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = mapItem(manifest, name);
+    assertFresh(manifest, name, 're-routed');
+    item.routing = routing;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  return { work_unit: workUnit, name, op: 'reroute', routing, lifecycle: 'fresh' };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { work_unit: workUnit, name, op: 'reroute', routing, lifecycle: 'fresh' };
+  });
 }
 
 /**
@@ -351,19 +364,21 @@ function rerouteItem(cwd, workUnit, name, routing) {
  * @returns {MapOpResult}
  */
 function handleItem(cwd, workUnit, name) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = mapItem(manifest, name);
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
-  if (lifecycle === 'handled') {
-    throw new Error(`"${name}" can't be marked handled — it's already marked handled`);
-  }
-  if (lifecycle === 'cancelled') {
-    throw new Error(`"${name}" can't be marked handled — it's cancelled; reactivate the phase work from the epic menu first`);
-  }
-  item.handled = true;
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = mapItem(manifest, name);
+    const { lifecycle } = computeTopicLifecycle(manifest, name);
+    if (lifecycle === 'handled') {
+      throw new Error(`"${name}" can't be marked handled — it's already marked handled`);
+    }
+    if (lifecycle === 'cancelled') {
+      throw new Error(`"${name}" can't be marked handled — it's cancelled; reactivate the phase work from the epic menu first`);
+    }
+    item.handled = true;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  return { work_unit: workUnit, name, op: 'handle', handled: true, lifecycle: 'handled' };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { work_unit: workUnit, name, op: 'handle', handled: true, lifecycle: 'handled' };
+  });
 }
 
 /**
@@ -376,17 +391,19 @@ function handleItem(cwd, workUnit, name) {
  * @returns {MapOpResult}
  */
 function reactivateItem(cwd, workUnit, name) {
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const item = mapItem(manifest, name);
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
-  if (lifecycle !== 'handled') {
-    throw new Error(`"${name}" can't be reactivated — it isn't marked handled, so there's nothing to reactivate`);
-  }
-  delete item.handled;
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = mapItem(manifest, name);
+    const { lifecycle } = computeTopicLifecycle(manifest, name);
+    if (lifecycle !== 'handled') {
+      throw new Error(`"${name}" can't be reactivated — it isn't marked handled, so there's nothing to reactivate`);
+    }
+    delete item.handled;
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  const after = computeTopicLifecycle(manifest, name);
-  return { work_unit: workUnit, name, op: 'reactivate', handled: false, lifecycle: after.lifecycle };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    const after = computeTopicLifecycle(manifest, name);
+    return { work_unit: workUnit, name, op: 'reactivate', handled: false, lifecycle: after.lifecycle };
+  });
 }
 
 module.exports = { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem };

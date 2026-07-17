@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('./kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
@@ -198,8 +198,9 @@ function runWorkunit(argv) {
 
 // ---------------------------------------------------------------------------
 // discussion-map — Discussion Map subtopic writes. add/set: load (kernel) →
-// apply (domain) → save → one decision-ready JSON line, no git commit (the
-// session's commit cadence picks the manifest change up).
+// apply (domain) → save, under the work unit's manifest lock → one
+// decision-ready JSON line, no git commit (the session's commit cadence picks
+// the manifest change up).
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -214,17 +215,23 @@ function runDiscussionMap(argv) {
       if (!workUnit || !topic || !subtopic) {
         throw new Error('Usage: engine discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]');
       }
-      const manifest = loadWorkUnitManifest(cwd, workUnit);
-      const sub = addSubtopic(manifest, topic, subtopic, { parent: opts.parent ?? null });
-      saveWorkUnitManifest(cwd, workUnit, manifest);
+      const { manifest, sub } = withWorkUnitLock(cwd, workUnit, () => {
+        const loaded = loadWorkUnitManifest(cwd, workUnit);
+        const applied = addSubtopic(loaded, topic, subtopic, { parent: opts.parent ?? null });
+        saveWorkUnitManifest(cwd, workUnit, loaded);
+        return { manifest: loaded, sub: applied };
+      });
       respondDiscussionMap(manifest, topic, subtopic, sub.status);
     } else if (command === 'set') {
       if (!workUnit || !topic || !subtopic || !state) {
         throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}>`);
       }
-      const manifest = loadWorkUnitManifest(cwd, workUnit);
-      const sub = setSubtopicState(manifest, topic, subtopic, state);
-      saveWorkUnitManifest(cwd, workUnit, manifest);
+      const { manifest, sub } = withWorkUnitLock(cwd, workUnit, () => {
+        const loaded = loadWorkUnitManifest(cwd, workUnit);
+        const applied = setSubtopicState(loaded, topic, subtopic, state);
+        saveWorkUnitManifest(cwd, workUnit, loaded);
+        return { manifest: loaded, sub: applied };
+      });
       respondDiscussionMap(manifest, topic, subtopic, sub.status);
     } else {
       throw new Error('Usage: engine discussion-map <add|set> …');

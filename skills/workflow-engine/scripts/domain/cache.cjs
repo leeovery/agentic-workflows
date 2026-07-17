@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { collectAnalysisInputs, filesChecksum } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
 
 const KINDS = ['research-analysis', 'gap-analysis'];
@@ -51,26 +51,28 @@ function stampAnalysisCache(cwd, workUnit, kind) {
   if (!KINDS.includes(kind)) {
     throw new Error(`unknown cache kind "${kind}" (${KINDS.join('|')})`);
   }
-  const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const inputs = collectAnalysisInputs(manifest, path.join(cwd, '.workflows'), kind);
-  if (inputs.length === 0) {
-    throw new Error(kind === 'research-analysis'
-      ? 'nothing to stamp: no completed research files'
-      : 'nothing to stamp: no completed research or discussion files');
-  }
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const inputs = collectAnalysisInputs(manifest, path.join(cwd, '.workflows'), kind);
+    if (inputs.length === 0) {
+      throw new Error(kind === 'research-analysis'
+        ? 'nothing to stamp: no completed research files'
+        : 'nothing to stamp: no completed research or discussion files');
+    }
 
-  const checksum = /** @type {string} */ (filesChecksum(inputs));
-  const generated = new Date().toISOString();
-  const names = inputs.map((p) => path.basename(p));
+    const checksum = /** @type {string} */ (filesChecksum(inputs));
+    const generated = new Date().toISOString();
+    const names = inputs.map((p) => path.basename(p));
 
-  if (kind === 'research-analysis') {
-    phaseObject(manifest, 'research').analysis_cache = { checksum, generated, files: names };
-  } else {
-    phaseObject(manifest, 'discovery').gap_analysis_cache = { checksum, generated, input_files: names };
-  }
+    if (kind === 'research-analysis') {
+      phaseObject(manifest, 'research').analysis_cache = { checksum, generated, files: names };
+    } else {
+      phaseObject(manifest, 'discovery').gap_analysis_cache = { checksum, generated, input_files: names };
+    }
 
-  saveWorkUnitManifest(cwd, workUnit, manifest);
-  return { kind, checksum, files: inputs.length };
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { kind, checksum, files: inputs.length };
+  });
 }
 
 module.exports = { stampAnalysisCache };
