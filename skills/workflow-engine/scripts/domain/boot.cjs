@@ -7,11 +7,10 @@
 //
 // Migrations are the durability-critical leg: a failing migrate.sh is a hard
 // error — migrations must never half-run silently. The knowledge base is a
-// derived index: a not-ready `check` triggers a non-interactive keyword-only
-// init (`knowledge init --keyword-only` — no human input needed, so boot can
-// self-serve instead of dead-ending the session at `knowledge setup`); only a
-// failing init still reports "not-ready" (the caller's gate). A failing
-// `compact` is a warning, never a block.
+// derived index: a failing `check` reports "not-ready" (the caller's gate —
+// knowledge setup is a deliberate human choice, never self-served). A failing
+// `compact` is a warning, never a block. Store dirt found when ready is
+// committed (the post-setup first boot, compact churn, or leftovers).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -35,8 +34,7 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 /**
  * @typedef {object} BootResult
  * @property {{changed: boolean, output: string}} migrations
- * @property {'ready'|'initialised-keyword-only'|'not-ready'} knowledge
- * @property {string} [note] set with 'initialised-keyword-only' — the line the calling skill surfaces
+ * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} compacted
  * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
  * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
@@ -78,28 +76,7 @@ function boot(cwd) {
   const check = spawnSync('node', [KNOWLEDGE_CLI, 'check'], { cwd, encoding: 'utf8' });
   const ready = !check.error && check.status === 0 && (check.stdout || '').trim() === 'ready';
 
-  // Not-ready is self-servable: keyword-only mode needs no human input, so
-  // boot initialises the store and continues. Only a genuine init failure
-  // (corrupt store, unwritable disk) still reports not-ready.
-  let knowledge = ready ? 'ready' : 'not-ready';
-  /** @type {string|undefined} */
-  let note;
-  if (!ready) {
-    const init = spawnSync('node', [KNOWLEDGE_CLI, 'init', '--keyword-only'], { cwd, encoding: 'utf8' });
-    if (init.error || init.status !== 0) {
-      const detail = init.error
-        ? init.error.message
-        : (init.stderr || init.stdout || `exit ${init.status}`).trim();
-      warnings.push(`knowledge init failed: ${detail}`);
-    } else if ((init.stdout || '').trim() === 'already-initialised') {
-      // check said not-ready but every file is present — the store (or its
-      // config) is broken, and init has nothing to create. Not self-servable.
-      warnings.push('knowledge store present but not loadable — run `knowledge rebuild`');
-    } else {
-      knowledge = 'initialised-keyword-only';
-      note = 'knowledge base initialised keyword-only — run `knowledge setup` anytime to configure embeddings';
-    }
-  }
+  const knowledge = ready ? 'ready' : 'not-ready';
 
   let compacted = false;
   if (ready) {
@@ -114,20 +91,22 @@ function boot(cwd) {
     }
   }
 
-  // Commit the knowledge-store dirt this boot found or created (the init
-  // above, the compact, or leftovers from an interrupted earlier session).
-  // The store is a derived index and boot must stay usable, so a commit
-  // failure is a warning, never a block. The failed-init path leaves any
-  // half-created state uncommitted for the next boot to finish.
+  // Commit the knowledge-store dirt this boot found (a fresh store from the
+  // user's `knowledge setup` run — the restart's first boot — compact churn,
+  // or leftovers from an interrupted session). The store is a derived index
+  // and boot must stay usable, so a commit failure is a warning, never a
+  // block.
   /** @type {string|null} */
   let kbCommitted = null;
-  if (knowledge !== 'not-ready') {
+  if (ready) {
     try {
-      const kbDirty =
-        fs.existsSync(path.join(cwd, KB_DIR)) &&
-        git(cwd, ['status', '--porcelain', '--', KB_DIR]).trim() !== '';
-      if (kbDirty) {
-        const message = knowledge === 'initialised-keyword-only'
+      const status = fs.existsSync(path.join(cwd, KB_DIR))
+        ? git(cwd, ['status', '--porcelain', '--', KB_DIR])
+        : '';
+      if (status.trim() !== '') {
+        // Untracked store files mean this is their first commit — the boot
+        // right after `knowledge setup` created them.
+        const message = status.split('\n').some((l) => l.startsWith('??'))
           ? 'chore(knowledge): initialise store'
           : 'chore(knowledge): compact store';
         kbCommitted = commitScoped(cwd, KB_DIR, message);
@@ -139,7 +118,6 @@ function boot(cwd) {
 
   /** @type {BootResult} */
   const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings };
-  if (note !== undefined) result.note = note;
   return result;
 }
 
