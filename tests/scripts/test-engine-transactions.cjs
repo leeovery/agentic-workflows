@@ -309,6 +309,182 @@ describe('engine topic complete', () => {
   });
 });
 
+/** A single-topic feature manifest with completed indexed artifacts, an import, and imports on disk. */
+function featureManifest() {
+  return {
+    name: 'auth-flow',
+    work_type: 'feature',
+    status: 'in-progress',
+    created: '2026-06-01',
+    description: 'auth flow work',
+    imports: [
+      { path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z' },
+      { path: 'evil/../notes.md', imported_at: '2026-06-01T09:00:00Z' },
+    ],
+    seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-01T09:00:00Z' }],
+    phases: {
+      discussion: { items: { 'auth-flow': { status: 'completed' } } },
+      research: { items: { exploration: { status: 'completed' }, 'dead-end': { status: 'cancelled' } } },
+      specification: { items: { 'auth-flow': { status: 'in-progress' } } },
+    },
+  };
+}
+
+function setupFeatureFixture() {
+  const dir = setupGitFixture();
+  writeFile(dir, '.workflows/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
+  writeFile(dir, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
+  writeFile(dir, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
+  writeFile(dir, '.workflows/auth-flow/.state/research-analysis.md', '# Analysis\n');
+  // A plain file where the knowledge store's directory belongs: every
+  // knowledge CLI call fails deterministically (stub mode would otherwise
+  // index existing files successfully), so each attempt is provable as a
+  // warning.
+  writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
+  commitAll(dir, 'init');
+  return dir;
+}
+
+describe('engine workunit complete', () => {
+  let dir;
+  beforeEach(() => { dir = setupFeatureFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('sets status completed, stamps completed_at today, commits with the given message', () => {
+    writeFile(dir, 'unrelated.txt', 'outside the scope\n');
+    const res = engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+
+    const today = new Date().toISOString().slice(0, 10);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.work_unit, 'auth-flow');
+    assert.strictEqual(res.status, 'completed');
+    assert.strictEqual(res.completed_at, today);
+    assert.strictEqual(res.committed, shortHead(dir));
+    // No KB action on complete — completed units retain their chunks.
+    assert.deepStrictEqual(res.warnings, []);
+
+    const m = readManifest(dir, 'auth-flow');
+    assert.strictEqual(m.status, 'completed');
+    assert.strictEqual(m.completed_at, today);
+    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): complete feature pipeline');
+    // Scoped: the unrelated file stays uncommitted.
+    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
+  });
+
+  it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
+    assert.match(
+      engineFails(dir, ['workunit', 'complete', 'auth-flow', '-m', 'again']).error,
+      /already completed/);
+
+    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+    engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    assert.match(
+      engineFails(dir, ['workunit', 'complete', 'auth-flow', '-m', 'msg']).error,
+      /is cancelled — reactivate it first/);
+  });
+
+  it('rejects a missing message, missing work unit, and unknown work unit', () => {
+    assert.match(engineFails(dir, ['workunit', 'complete', 'auth-flow']).error, /Usage: engine workunit complete/);
+    assert.match(engineFails(dir, ['workunit', 'complete', '-m', 'msg']).error, /Usage: engine workunit complete/);
+    assert.match(engineFails(dir, ['workunit', 'complete', 'ghost', '-m', 'msg']).error, /manifest not found/);
+    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate>/);
+  });
+});
+
+describe('engine workunit cancel', () => {
+  let dir;
+  beforeEach(() => { dir = setupFeatureFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('sets status cancelled, removes KB chunks (failure is a warning), commits the fixed message', () => {
+    const res = engine(dir, ['workunit', 'cancel', 'auth-flow']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.status, 'cancelled');
+    assert.strictEqual(res.committed, shortHead(dir));
+    // No KB configured in the fixture — warn-don't-block: the cancellation
+    // still landed and the failure is reported, not thrown.
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge remove failed/);
+
+    const m = readManifest(dir, 'auth-flow');
+    assert.strictEqual(m.status, 'cancelled');
+    assert.strictEqual(m.completed_at, undefined);
+    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): mark as cancelled');
+  });
+
+  it('rejects an already-cancelled unit and routes a completed unit through reactivate', () => {
+    engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    assert.match(engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error, /already cancelled/);
+
+    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
+    assert.match(
+      engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error,
+      /is completed — reactivate it first/);
+  });
+
+  it('rejects missing and unknown work units', () => {
+    assert.match(engineFails(dir, ['workunit', 'cancel']).error, /Usage: engine workunit cancel/);
+    assert.match(engineFails(dir, ['workunit', 'cancel', 'ghost']).error, /manifest not found/);
+    assert.match(engineFails(dir, ['workunit', 'cancel', 'auth-flow', 'extra']).error, /Usage: engine workunit cancel/);
+  });
+});
+
+describe('engine workunit reactivate', () => {
+  let dir;
+  beforeEach(() => { dir = setupFeatureFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('round-trips a complete: status restored, completed_at cleared, no KB attempt', () => {
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
+    const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.status, 'in-progress');
+    assert.strictEqual(res.previous_status, 'completed');
+    assert.strictEqual(res.committed, shortHead(dir));
+    // Completed units retained their chunks — no re-indexing, no warnings.
+    assert.deepStrictEqual(res.warnings, []);
+
+    const m = readManifest(dir, 'auth-flow');
+    assert.strictEqual(m.status, 'in-progress');
+    assert.ok(!('completed_at' in m), 'stale completed_at must be cleared');
+    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
+  });
+
+  it('re-indexes after a cancel: completed artifacts, valid imports, and analysis caches — failures are warnings', () => {
+    engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+
+    assert.strictEqual(res.status, 'in-progress');
+    assert.strictEqual(res.previous_status, 'cancelled');
+    // No KB configured in the fixture, so every re-index attempt lands as a
+    // warning — one per completed indexed artifact (discussion/auth-flow,
+    // research/exploration; the cancelled research item and the in-progress
+    // spec are skipped), one for the shape-valid import (the traversal entry
+    // is skipped), one for the on-disk analysis cache.
+    assert.strictEqual(res.warnings.length, 4, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index \(research\/exploration\)/);
+    assert.match(res.warnings[1], /knowledge index \(discussion\/auth-flow\)/);
+    assert.match(res.warnings[2], /knowledge index \(imports\/notes\.md\)/);
+    assert.match(res.warnings[3], /knowledge index \(\.state\/research-analysis\.md\)/);
+    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
+  });
+
+  it('rejects an in-progress unit and a status outside the shared vocabulary', () => {
+    assert.match(engineFails(dir, ['workunit', 'reactivate', 'auth-flow']).error, /already in-progress/);
+
+    const m = featureManifest();
+    m.status = 'archived';
+    writeFile(dir, '.workflows/auth-flow/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.match(
+      engineFails(dir, ['workunit', 'reactivate', 'auth-flow']).error,
+      /not completed or cancelled \(status: archived\)/);
+  });
+});
+
 describe('engine inbox archive / restore / delete', () => {
   let dir;
   beforeEach(() => {
