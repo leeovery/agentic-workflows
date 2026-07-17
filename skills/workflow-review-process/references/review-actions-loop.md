@@ -38,6 +38,12 @@ Mark the review completed — the engine sets the status:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
+Commit the completion:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
+```
+
 **Pipeline continuation** — Invoke the bridge:
 
 ```
@@ -83,6 +89,12 @@ Mark the review completed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
+```
+
+Commit the completion:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
 **Pipeline continuation** — Invoke the bridge:
@@ -132,6 +144,12 @@ Mark the review completed:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
 ```
 
+Commit the completion:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
+```
+
 **Pipeline continuation** — Invoke the bridge:
 
 ```
@@ -157,6 +175,12 @@ No actionable tasks from synthesis. Mark the review completed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} review {topic}
+```
+
+Commit the completion:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
 > *Output the next fenced block as a code block:*
