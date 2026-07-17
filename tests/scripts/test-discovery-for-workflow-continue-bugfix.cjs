@@ -135,17 +135,44 @@ describe('workflow-continue-bugfix format', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes header with count', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== BUGFIXES (0) ==='));
+    assert.strictEqual(out, [
+      '=== BUGFIXES (0) ===',
+      '=== COMPLETED (0) ===',
+      '=== CANCELLED (0) ===',
+      '',
+    ].join('\n'));
   });
 
-  it('includes summary', () => {
+  it('active, completed, and cancelled bugfixes pin the full dump byte-exactly', () => {
+    createManifest(dir, 'crash', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { items: { crash: { status: 'completed' } } },
+        specification: { items: { crash: { status: 'in-progress' } } },
+      },
+    });
+    createManifest(dir, 'leak', {
+      work_type: 'bugfix',
+      phases: { investigation: { items: { leak: { status: 'in-progress' } } } },
+    });
+    createManifest(dir, 'fixed', { work_type: 'bugfix', status: 'completed', phases: { review: { items: { fixed: { status: 'completed' } } } } });
+    createManifest(dir, 'wontfix', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { wontfix: { status: 'completed' } } } } });
     const out = format(discover(dir));
-    assert.ok(out.includes('summary: no active bugfixes'));
+    assert.strictEqual(out, [
+      '=== BUGFIXES (2) ===',
+      '  crash: specification (in-progress)',
+      '  leak: investigation (in-progress)',
+      '=== COMPLETED (1) ===',
+      '  fixed (last phase: review)',
+      '=== CANCELLED (1) ===',
+      '  wontfix (last phase: investigation)',
+      '',
+    ].join('\n'));
   });
 
-  it('includes bugfix with phase_label and completed_phases', () => {
+  it('carries no completed_phases clause — the view verb owns it', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
       phases: {
@@ -154,15 +181,7 @@ describe('workflow-continue-bugfix format', () => {
       },
     });
     const out = format(discover(dir));
-    assert.ok(out.includes('  crash: specification (in-progress) [completed: investigation]'));
-  });
-
-  it('shows none for empty completed_phases', () => {
-    createManifest(dir, 'crash', {
-      work_type: 'bugfix',
-      phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('[completed: none]'));
+    assert.ok(!out.includes('[completed:'));
+    assert.ok(!out.includes('summary:'));
   });
 });

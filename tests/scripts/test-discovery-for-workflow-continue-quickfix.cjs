@@ -129,17 +129,44 @@ describe('workflow-continue-quickfix format', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes header with count', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== QUICK-FIXES (0) ==='));
+    assert.strictEqual(out, [
+      '=== QUICK-FIXES (0) ===',
+      '=== COMPLETED (0) ===',
+      '=== CANCELLED (0) ===',
+      '',
+    ].join('\n'));
   });
 
-  it('includes summary', () => {
+  it('active, completed, and cancelled quick-fixes pin the full dump byte-exactly', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
+      phases: {
+        scoping: { items: { 'rename-api': { status: 'completed' } } },
+        implementation: { items: { 'rename-api': { status: 'in-progress' } } },
+      },
+    });
+    createManifest(dir, 'bump-dep', {
+      work_type: 'quick-fix',
+      phases: { scoping: { items: { 'bump-dep': { status: 'in-progress' } } } },
+    });
+    createManifest(dir, 'shipped', { work_type: 'quick-fix', status: 'completed', phases: { review: { items: { shipped: { status: 'completed' } } } } });
+    createManifest(dir, 'dropped', { work_type: 'quick-fix', status: 'cancelled', phases: { scoping: { items: { dropped: { status: 'completed' } } } } });
     const out = format(discover(dir));
-    assert.ok(out.includes('summary: no active quick-fixes'));
+    assert.strictEqual(out, [
+      '=== QUICK-FIXES (2) ===',
+      '  bump-dep: scoping (in-progress)',
+      '  rename-api: implementation (in-progress)',
+      '=== COMPLETED (1) ===',
+      '  shipped (last phase: review)',
+      '=== CANCELLED (1) ===',
+      '  dropped (last phase: scoping)',
+      '',
+    ].join('\n'));
   });
 
-  it('includes quick-fix with phase_label and completed_phases', () => {
+  it('carries no completed_phases clause — the view verb owns it', () => {
     createManifest(dir, 'rename-api', {
       work_type: 'quick-fix',
       phases: {
@@ -148,15 +175,7 @@ describe('workflow-continue-quickfix format', () => {
       },
     });
     const out = format(discover(dir));
-    assert.ok(out.includes('  rename-api: implementation (in-progress) [completed: scoping]'));
-  });
-
-  it('shows none for empty completed_phases', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('[completed: none]'));
+    assert.ok(!out.includes('[completed:'));
+    assert.ok(!out.includes('summary:'));
   });
 });

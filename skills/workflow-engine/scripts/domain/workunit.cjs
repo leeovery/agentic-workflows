@@ -188,7 +188,10 @@ function workUnitDetail(cwd, type) {
 }
 
 /**
- * The labelled dump for the head-of-skill insert — byte-stable legacy format.
+ * The labelled dump for the head-of-skill insert — the thin reasoning surface:
+ * active units with phase labels, plus the closed sets the select and
+ * view-completed flows read. Everything richer (completed phases, revisit
+ * routes, seeds/imports) comes from the `view` verb.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitDetail} detail
  * @returns {string}
@@ -197,17 +200,16 @@ function workUnitIndex(type, detail) {
   const cfg = typeConfig(type);
   const lines = [];
   lines.push(`=== ${cfg.header} (${detail.count}) ===`);
-  lines.push(`summary: ${detail.summary}`);
   for (const u of unitsOf(cfg, detail)) {
-    let line = `  ${u.name}: ${u.phase_label}`;
-    if (cfg.surfacesSeeds) {
-      const seeds = u.seeds_count || 0;
-      const imports = u.imports_count || 0;
-      if (seeds > 0) line += ` (${seeds} seed${seeds > 1 ? 's' : ''})`;
-      if (imports > 0) line += ` (${imports} imports)`;
-    }
-    line += ` [completed: ${u.completed_phases.join(', ') || 'none'}]`;
-    lines.push(line);
+    lines.push(`  ${u.name}: ${u.phase_label}`);
+  }
+  lines.push(`=== COMPLETED (${detail.completed_count}) ===`);
+  for (const u of detail.completed) {
+    lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
+  }
+  lines.push(`=== CANCELLED (${detail.cancelled_count}) ===`);
+  for (const u of detail.cancelled) {
+    lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
   }
   return lines.join('\n') + '\n';
 }
