@@ -29,6 +29,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
+const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -92,6 +93,7 @@ Commands:
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
   workunit pivot <work-unit>
+  workunit absorb <feature> --into <epic> --topic <name>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
@@ -138,7 +140,9 @@ Commands:
 // -m because its message varies by caller (manual vs pipeline-terminal vs
 // review-skipped); cancel/reactivate messages are engine-owned. pivot flips
 // a feature to an epic — both manifests, the map registration, the
-// re-index — as one transaction with an engine-owned message.
+// re-index — as one transaction with an engine-owned message. absorb merges
+// a feature into an epic as a new topic and deletes the feature — validated
+// completely before anything moves, one multi-pathspec commit at the end.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -177,8 +181,15 @@ function runWorkunit(argv) {
       }
       const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
       respond(fn(process.cwd(), workUnit));
+    } else if (command === 'absorb') {
+      const { opts, positional } = parseArgs(rest);
+      const [feature] = positional;
+      if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
+        throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
+      }
+      respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
     } else {
-      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot> …');
+      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb> …');
     }
   } catch (err) {
     failJson(err);
