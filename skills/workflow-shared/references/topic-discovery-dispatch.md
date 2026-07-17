@@ -11,7 +11,7 @@ Wraps the cache-status check and conditional dispatch around [topic-discovery.md
 The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
-- `analysis_caches` — the `analysis_caches` object from the caller's prior `workflow-continue-epic/scripts/discovery.cjs` invocation. Shape: `{research_analysis: {status, ...}, gap_analysis: {status, ...}}`.
+- `analysis_caches` — the `analysis_caches` line from the caller's prior `workflow-continue-epic/scripts/discovery.cjs` invocation: `research_analysis=<status>, gap_analysis=<status>`.
 
 The caller is also responsible for surfacing `new_arrivals` afterwards (e.g. as a callout above the discovery map).
 
@@ -29,10 +29,10 @@ This tracker is populated by `topic-discovery.md` when analyses fire below. The 
 
 ## B. Cache Status Check
 
-Read `analysis_caches` from the caller's prior discovery output:
+Read the statuses from the caller's `analysis_caches` line:
 
-- `analysis_caches.research_analysis.status` — `valid` | `stale` | `absent`
-- `analysis_caches.gap_analysis.status` — same
+- `research_analysis` — `valid` | `stale` | `absent`
+- `gap_analysis` — same
 
 #### If both caches are `valid` or `absent`
 

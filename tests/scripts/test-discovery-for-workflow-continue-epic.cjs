@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-continue-epic/scripts/discovery.cjs');
+const { discover, format, formatScoped } = require('../../skills/workflow-continue-epic/scripts/discovery.cjs');
 
 describe('workflow-continue-epic discovery', () => {
   let dir;
@@ -1367,18 +1367,22 @@ describe('workflow-continue-epic discovery', () => {
   });
 });
 
-describe('workflow-continue-epic format', () => {
+describe('workflow-continue-epic format (index dump)', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes header with count and summary', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== EPICS (0) ==='));
-    assert.ok(out.includes('summary: no active epics'));
+    assert.strictEqual(out, [
+      '=== EPICS (0) ===',
+      '=== COMPLETED (0) ===',
+      '=== CANCELLED (0) ===',
+      '',
+    ].join('\n'));
   });
 
-  it('includes epic name with active phases', () => {
+  it('active, completed, and cancelled epics pin the full dump byte-exactly', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -1386,208 +1390,272 @@ describe('workflow-continue-epic format', () => {
         discussion: { items: { auth: { status: 'in-progress' } } },
       },
     });
+    createManifest(dir, 'v2', { work_type: 'epic' });
+    createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed', phases: { review: { items: { a: { status: 'completed' } } } } });
+    createManifest(dir, 'abandoned', { work_type: 'epic', status: 'cancelled', phases: { research: { items: { a: { status: 'completed' } } } } });
     const out = format(discover(dir));
-    assert.ok(out.includes('  v1: research, discussion'));
+    assert.strictEqual(out, [
+      '=== EPICS (2) ===',
+      '  v1: research, discussion',
+      '  v2: (no phases)',
+      '=== COMPLETED (1) ===',
+      '  shipped (last phase: review)',
+      '=== CANCELLED (1) ===',
+      '  abandoned (last phase: research)',
+      '',
+    ].join('\n'));
   });
 
-  it('shows (no phases) for empty epic', () => {
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  v1: (no phases)'));
-  });
-
-  it('includes phase items with status', () => {
+  it('carries no per-epic detail — the scoped dump and view verb own it', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: {
-        discussion: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('    discussion:'));
-    assert.ok(out.includes('      - auth (in-progress)'));
-  });
-
-  it('includes sources in item output', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        specification: {
-          items: {
-            'auth-spec': {
-              status: 'in-progress',
-              sources: [{ topic: 'auth', status: 'incorporated' }],
-            },
-          },
-        },
-      },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('[sources: auth:incorporated]'));
-  });
-
-  it('includes in-progress section', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('    in-progress:'));
-    assert.ok(out.includes('      - auth (discussion)'));
-  });
-
-  it('includes next-phase-ready section', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        specification: { items: { auth: { status: 'completed' } } },
-      },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('    next-phase-ready:'));
-    assert.ok(out.includes('start_planning'));
-  });
-
-  it('includes completed section', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
+      imports: [{ path: 'imports/seed.md', imported_at: '2026-05-10T10:00:00Z' }],
+      seeds: [{ path: 'seeds/2026-04-02-x.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' }],
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
+        specification: {
+          items: {
+            'auth-spec': { status: 'in-progress', sources: [{ topic: 'auth', status: 'incorporated' }] },
+          },
+        },
       },
     });
     const out = format(discover(dir));
-    assert.ok(out.includes('    completed:'));
-    assert.ok(out.includes('      - auth (discussion)'));
+    assert.ok(!out.includes('sources'));
+    assert.ok(!out.includes('in-progress:'));
+    assert.ok(!out.includes('next-phase-ready'));
+    assert.ok(!out.includes('unaccounted'));
+    assert.ok(!out.includes('analysis_caches'));
+    assert.ok(!out.includes('imports_count'));
+    assert.ok(!out.includes('seeds_count'));
+    assert.ok(!out.includes('discovery_map'));
+    assert.ok(!out.includes('summary:'));
+  });
+});
+
+describe('workflow-continue-epic formatScoped (state dump)', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('reports an unknown epic loudly', () => {
+    const out = formatScoped('ghost', discover(dir, 'ghost'));
+    assert.strictEqual(out, '=== EPIC: ghost ===\nerror: no active epic with this name\n');
   });
 
-  it('includes analysis_caches in format output', () => {
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    const out = format(discover(dir));
-    assert.ok(out.includes('analysis_caches: research_analysis=absent, gap_analysis=absent'));
-  });
-
-  it('formats object-format sources correctly', () => {
+  it('mid-flight epic pins the full dump byte-exactly', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        specification: {
+        discovery: {
           items: {
-            'core-system': {
-              status: 'in-progress',
-              sources: {
-                auth: { status: 'incorporated' },
-                billing: { status: 'pending' },
-              },
-            },
+            'auth-flow': { status: 'in-progress', routing: 'research', source: 'discovery', summary: 'OAuth vs sessions', description: 'Longer context.', order: 1 },
+            'billing': { status: 'in-progress', routing: 'discussion', source: 'gap-analysis' },
           },
         },
+        research: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
     });
-    const out = format(discover(dir));
-    assert.ok(out.includes('[sources: auth:incorporated, billing:pending]'));
+    const out = formatScoped('v1', discover(dir, 'v1'));
+    assert.strictEqual(out, [
+      '=== EPIC: v1 ===',
+      'all_done: false',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'needs_sequencing: true',
+      'discovery_map (2):',
+      '  - ◐ auth-flow [researching] routing=research summary=present description=present — OAuth vs sessions',
+      '  - ○ billing [fresh] routing=discussion summary=absent description=absent',
+      '',
+    ].join('\n'));
   });
 
-  it('includes unaccounted_discussions', () => {
+  it('epic with no discovery items pins the empty-map shape byte-exactly', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: {
-        discussion: {
-          items: {
-            auth: { status: 'completed' },
-            payments: { status: 'completed' },
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+    });
+    const out = formatScoped('v1', discover(dir, 'v1'));
+    assert.strictEqual(out, [
+      '=== EPIC: v1 ===',
+      'all_done: false',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'needs_sequencing: false',
+      'discovery_map (0):',
+      '  (empty)',
+      '',
+    ].join('\n'));
+  });
+
+  it('rows omit the summary tail when the field is absent', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discovery: { items: { a: { status: 'in-progress', routing: 'research', source: 'discovery' } } } },
+    });
+    const out = formatScoped('v1', discover(dir, 'v1'));
+    assert.ok(out.includes('  - ○ a [fresh] routing=research summary=absent description=absent\n'));
+    assert.ok(!out.includes(' — '));
+  });
+
+  it('rows show routing=none for a legacy item with no routing', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discovery: { items: { a: { status: 'in-progress', source: 'discovery' } } } },
+    });
+    const out = formatScoped('v1', discover(dir, 'v1'));
+    assert.ok(out.includes('routing=none'));
+  });
+
+  describe('all_done', () => {
+    it('true when every non-cancelled review item is completed and nothing else is open', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
           },
-        },
-        specification: {
-          items: {
-            'auth-spec': {
-              status: 'in-progress',
-              sources: [{ topic: 'auth', status: 'incorporated' }],
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: {
+            items: {
+              'auth-spec': { status: 'completed' },
+              'old-topic': { status: 'cancelled', previous_status: 'in-progress' },
             },
           },
         },
-      },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: true'));
     });
-    const out = format(discover(dir));
-    assert.ok(out.includes('    unaccounted_discussions: payments'));
-  });
 
-  describe('imports_count', () => {
-    it('reports zero when no imports tracked', () => {
+    it('false while a review item is in progress', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'in-progress' } } },
+        },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'));
+    });
+
+    it('false when no review items exist', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
       });
-      const d = discover(dir).epics[0].detail;
-      assert.strictEqual(d.imports_count, 0);
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'));
     });
 
-    it('reports zero when imports field is missing entirely', () => {
-      createManifest(dir, 'v1', { work_type: 'epic' });
-      const d = discover(dir).epics[0].detail;
-      assert.strictEqual(d.imports_count, 0);
-    });
-
-    it('reports the length of manifest.imports[]', () => {
+    it('false while a completed discussion is unaccounted', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
-        imports: [
-          { path: 'imports/seed-conversation.md', imported_at: '2026-05-10T10:00:00Z' },
-          { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
-        ],
+        phases: {
+          discussion: {
+            items: {
+              auth: { status: 'completed' },
+              payments: { status: 'completed' },
+            },
+          },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'completed' } } },
+        },
       });
-      const d = discover(dir).epics[0].detail;
-      assert.strictEqual(d.imports_count, 2);
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'));
     });
 
-    it('format output shows imports_count when non-zero', () => {
+    it('false while the discovery map has not settled', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
-        imports: [{ path: 'imports/seed.md', imported_at: '2026-05-10T10:00:00Z' }],
+        phases: {
+          discovery: {
+            items: {
+              auth: { status: 'in-progress', routing: 'discussion', source: 'discovery', summary: 's', description: 'd', order: 1 },
+              'open-thread': { status: 'in-progress', routing: 'research', source: 'discovery', summary: 's', description: 'd', order: 2 },
+            },
+          },
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'completed' } } },
+        },
       });
-      const out = format(discover(dir));
-      assert.ok(out.includes('    imports_count: 1'));
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'));
     });
 
-    it('format output omits imports_count when zero', () => {
-      createManifest(dir, 'v1', { work_type: 'epic' });
-      const out = format(discover(dir));
-      assert.ok(!out.includes('imports_count:'));
+    it('a settled map does not hold all_done open', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discovery: { items: { auth: { status: 'in-progress', routing: 'discussion', source: 'discovery', summary: 's', description: 'd', order: 1 } } },
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: { items: { 'auth-spec': { status: 'completed' } } },
+        },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: true'));
     });
   });
+});
 
-  describe('seeds_count', () => {
-    it('reports zero when no seeds tracked', () => {
-      createManifest(dir, 'v1', { work_type: 'epic' });
-      const d = discover(dir).epics[0].detail;
-      assert.strictEqual(d.seeds_count, 0);
-    });
+describe('workflow-continue-epic detail counts (imports/seeds)', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
 
-    it('reports the length of manifest.seeds[]', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        seeds: [
-          { path: 'seeds/2026-04-02-billing-overhaul.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' },
-        ],
-      });
-      const d = discover(dir).epics[0].detail;
-      assert.strictEqual(d.seeds_count, 1);
+  it('imports_count reports the length of manifest.imports[]', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      imports: [
+        { path: 'imports/seed-conversation.md', imported_at: '2026-05-10T10:00:00Z' },
+        { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
+      ],
     });
+    const d = discover(dir).epics[0].detail;
+    assert.strictEqual(d.imports_count, 2);
+  });
 
-    it('format output shows seeds_count when non-zero', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        seeds: [{ path: 'seeds/2026-04-02-billing-overhaul.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' }],
-      });
-      const out = format(discover(dir));
-      assert.ok(out.includes('    seeds_count: 1'));
-    });
+  it('imports_count is zero when the field is missing', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    const d = discover(dir).epics[0].detail;
+    assert.strictEqual(d.imports_count, 0);
+  });
 
-    it('format output omits seeds_count when zero', () => {
-      createManifest(dir, 'v1', { work_type: 'epic' });
-      const out = format(discover(dir));
-      assert.ok(!out.includes('seeds_count:'));
+  it('seeds_count reports the length of manifest.seeds[]', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      seeds: [
+        { path: 'seeds/2026-04-02-billing-overhaul.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' },
+      ],
     });
+    const d = discover(dir).epics[0].detail;
+    assert.strictEqual(d.seeds_count, 1);
+  });
+
+  it('seeds_count is zero when the field is missing', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    const d = discover(dir).epics[0].detail;
+    assert.strictEqual(d.seeds_count, 0);
   });
 });

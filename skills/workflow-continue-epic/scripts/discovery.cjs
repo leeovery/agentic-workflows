@@ -5,8 +5,8 @@
 // building lives in the engine's domain ring; this script selects which
 // engine answers the skill's flow needs and sections the output.
 //
-//   discovery.cjs               → labelled dump, all active epics (head insert)
-//   discovery.cjs {work_unit}   → labelled dump, one epic (scoped re-runs)
+//   discovery.cjs               → thin index dump, all active epics (head insert)
+//   discovery.cjs {work_unit}   → scoped state dump, one epic (Steps 5–7, bridge)
 //   discovery.cjs view {work_unit} [new_arrivals_json]
 //                               → DATA + DISPLAY + MENU snapshot (Step 8)
 //   discovery.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
@@ -83,89 +83,73 @@ function discover(cwd, workUnit) {
   };
 }
 
+// The thin head-insert dump: active epic names with their active phases, plus
+// the closed sets the select and view-completed flows read. Per-epic state is
+// the scoped dump's concern; display and routing are the `view` verb's.
 function format(result) {
   const lines = [];
   lines.push(`=== EPICS (${result.count}) ===`);
-  lines.push(`summary: ${result.summary}`);
-
   for (const e of result.epics) {
     lines.push(`  ${e.name}: ${e.active_phases.join(', ') || '(no phases)'}`);
-    const d = e.detail;
-    for (const [phase, items] of Object.entries(d.phases)) {
-      lines.push(`    ${phase}:`);
-      for (const item of items) {
-        let line = `      - ${item.name} (${item.status})`;
-        if (item.sources) {
-          const sourcesArr = Array.isArray(item.sources)
-            ? item.sources
-            : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
-          const srcNames = sourcesArr.map(s => `${s.topic || s.name}:${s.status || '?'}`);
-          line += ` [sources: ${srcNames.join(', ')}]`;
-        }
-        if (item.format) line += ` [format: ${item.format}]`;
-        if (item.deps_blocking) {
-          line += ` [blocked: ${item.deps_blocking.map(b => b.topic + (b.internal_id ? ':' + b.internal_id : '')).join(', ')}]`;
-        }
-        if (item.completed_tasks) {
-          line += ` [tasks: ${item.completed_tasks.length} completed]`;
-        }
-        if (item.current_phase) {
-          line += ` [phase: ${item.current_phase}]`;
-        }
-        lines.push(line);
-      }
-    }
-    if (d.seeds_count && d.seeds_count > 0) {
-      lines.push(`    seeds_count: ${d.seeds_count}`);
-    }
-    if (d.imports_count && d.imports_count > 0) {
-      lines.push(`    imports_count: ${d.imports_count}`);
-    }
-    if (d.discovery_map && d.discovery_map.length > 0) {
-      const s = d.map_summary;
-      lines.push(`    discovery_map (${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, convergence: ${d.convergence_state}, needs_sequencing: ${d.needs_sequencing}):`);
-      for (const t of d.discovery_map) {
-        let line = `      - ${t.tier} ${t.name} [${t.lifecycle}]`;
-        if (t.next_action) line += ` -> ${t.next_action}`;
-        line += ` [summary: ${t.summary_present ? 'present' : 'absent'}, description: ${t.description_present ? 'present' : 'absent'}]`;
-        if (t.source_provenance) line += ` (${t.source_provenance})`;
-        lines.push(line);
-        if (t.summary) {
-          lines.push(`             summary: ${t.summary}`);
-        }
-      }
-    }
-    if (d.in_progress.length > 0) {
-      lines.push('    in-progress:');
-      for (const i of d.in_progress) lines.push(`      - ${i.name} (${i.phase})`);
-    }
-    if (d.next_phase_ready.length > 0) {
-      lines.push('    next-phase-ready:');
-      for (const n of d.next_phase_ready) {
-        let line = `      - ${n.name}: ${n.action} (${n.label})`;
-        if (n.blocked) line += ` [BLOCKED: ${n.deps_blocking.map(b => b.topic).join(', ')}]`;
-        lines.push(line);
-      }
-    }
-    if (d.unaccounted_discussions.length > 0) {
-      lines.push(`    unaccounted_discussions: ${d.unaccounted_discussions.join(', ')}`);
-    }
-    if (d.reopened_discussions.length > 0) {
-      lines.push(`    reopened_discussions: ${d.reopened_discussions.join(', ')}`);
-    }
-    if (d.analysis_caches) {
-      lines.push(`    analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
-    }
-    if (d.completed.length > 0) {
-      lines.push('    completed:');
-      for (const c of d.completed) lines.push(`      - ${c.name} (${c.phase})`);
-    }
-    if (d.cancelled.length > 0) {
-      lines.push('    cancelled:');
-      for (const c of d.cancelled) lines.push(`      - ${c.name} (${c.phase}, was: ${c.previous_status || 'unknown'})`);
-    }
   }
+  lines.push(`=== COMPLETED (${result.completed_count}) ===`);
+  for (const u of result.completed) {
+    lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
+  }
+  lines.push(`=== CANCELLED (${result.cancelled_count}) ===`);
+  for (const u of result.cancelled) {
+    lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
+  }
+  return lines.join('\n') + '\n';
+}
 
+/**
+ * The bridge's all-done derivation over one epic detail: review items exist
+ * and every non-cancelled one is completed, nothing is in progress or awaiting
+ * its next phase, no completed discussion is unaccounted, and the discovery
+ * map has settled (or the epic has none).
+ * @param {any} d  EpicDetail
+ * @returns {boolean}
+ */
+function computeAllDone(d) {
+  const review = (d.phases && d.phases.review) || [];
+  const nonCancelled = review.filter((i) => i.status !== 'cancelled');
+  return nonCancelled.length > 0
+    && nonCancelled.every((i) => i.status === 'completed')
+    && d.in_progress.length === 0
+    && d.next_phase_ready.length === 0
+    && d.unaccounted_discussions.length === 0
+    && (d.convergence_state === 'settled' || d.convergence_state === null);
+}
+
+// The scoped state dump for one epic — the reasoning surface Steps 5–7 and
+// the bridge's epic continuation read: the all-done flag, analysis-cache
+// statuses, the sequencing flag, and the discovery-map rows (tier, lifecycle,
+// routing, field presence, current summary text).
+function formatScoped(workUnit, result) {
+  const e = result.epics[0];
+  const lines = [];
+  lines.push(`=== EPIC: ${workUnit} ===`);
+  if (!e) {
+    lines.push('error: no active epic with this name');
+    return lines.join('\n') + '\n';
+  }
+  const d = e.detail;
+  lines.push(`all_done: ${computeAllDone(d)}`);
+  lines.push(`analysis_caches: research_analysis=${d.analysis_caches.research_analysis.status}, gap_analysis=${d.analysis_caches.gap_analysis.status}`);
+  lines.push(`needs_sequencing: ${d.needs_sequencing}`);
+  lines.push(`discovery_map (${d.discovery_map.length}):`);
+  if (d.discovery_map.length === 0) {
+    lines.push('  (empty)');
+  }
+  for (const t of d.discovery_map) {
+    let line = `  - ${t.tier} ${t.name} [${t.lifecycle}]`;
+    line += ` routing=${t.routing || 'none'}`;
+    line += ` summary=${t.summary_present ? 'present' : 'absent'}`;
+    line += ` description=${t.description_present ? 'present' : 'absent'}`;
+    if (t.summary) line += ` — ${t.summary}`;
+    lines.push(line);
+  }
   return lines.join('\n') + '\n';
 }
 
@@ -256,8 +240,10 @@ if (require.main === module) {
     'completed-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicCompletedMenu(name, d)),
     'cancel-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicCancelMenu(d)),
     'reactivate-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicReactivateMenu(d)),
-    fallback: (workUnit) => format(discover(process.cwd(), workUnit)),
+    fallback: (workUnit) => (workUnit
+      ? formatScoped(workUnit, discover(process.cwd(), workUnit))
+      : format(discover(process.cwd()))),
   });
 }
 
-module.exports = { discover, format };
+module.exports = { discover, format, formatScoped };
