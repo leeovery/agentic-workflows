@@ -488,7 +488,7 @@ describe('engine workunit complete', () => {
     assert.match(engineFails(dir, ['workunit', 'complete', 'auth-flow']).error, /Usage: engine workunit complete/);
     assert.match(engineFails(dir, ['workunit', 'complete', '-m', 'msg']).error, /Usage: engine workunit complete/);
     assert.match(engineFails(dir, ['workunit', 'complete', 'ghost', '-m', 'msg']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate>/);
+    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot>/);
   });
 });
 
@@ -554,7 +554,7 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 
-  it('re-indexes after a cancel: completed artifacts, valid imports, and analysis caches — failures are warnings', () => {
+  it('re-indexes after a cancel: completed artifacts, valid imports and seeds, and analysis caches — failures are warnings', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
 
@@ -564,12 +564,14 @@ describe('engine workunit reactivate', () => {
     // warning — one per completed indexed artifact (discussion/auth-flow,
     // research/exploration; the cancelled research item and the in-progress
     // spec are skipped), one for the shape-valid import (the traversal entry
-    // is skipped), one for the on-disk analysis cache.
-    assert.strictEqual(res.warnings.length, 4, res.warnings.join('\n'));
+    // is skipped), one for the seed — cancellation removed its chunks too —
+    // and one for the on-disk analysis cache.
+    assert.strictEqual(res.warnings.length, 5, res.warnings.join('\n'));
     assert.match(res.warnings[0], /knowledge index \(research\/exploration\)/);
     assert.match(res.warnings[1], /knowledge index \(discussion\/auth-flow\)/);
     assert.match(res.warnings[2], /knowledge index \(imports\/notes\.md\)/);
-    assert.match(res.warnings[3], /knowledge index \(\.state\/research-analysis\.md\)/);
+    assert.match(res.warnings[3], /knowledge index \(seeds\/seed\.md\)/);
+    assert.match(res.warnings[4], /knowledge index \(\.state\/research-analysis\.md\)/);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 

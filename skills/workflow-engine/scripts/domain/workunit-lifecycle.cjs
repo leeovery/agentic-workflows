@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: work-unit lifecycle transitions — complete, cancel, and
-// reactivate, each a single transaction from the caller's perspective:
-// manifest write, knowledge-base sync, scoped git commit.
+// Domain ring: work-unit lifecycle transitions — complete, cancel,
+// reactivate, and pivot, each a single transaction from the caller's
+// perspective: manifest write, knowledge-base sync, scoped git commit.
 //
 // The status vocabulary comes from the shared schema
 // (workflow-shared/scripts/manifest-schema.cjs) — the same table the manifest
@@ -19,6 +19,8 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { commitScoped } = require('../kernel/git.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { readProjectManifest, writeProjectManifestAtomic } = require('./workunit-create.cjs');
+const { addItem } = require('./discovery-map.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
 
@@ -115,10 +117,12 @@ function cancelWorkUnit(cwd, workUnit) {
 }
 
 /**
- * Re-index everything cancellation removed: every completed artifact in an
- * indexed phase, the tracked imports (entries must match `imports/{file}.md`
- * — anything else signals a tampered manifest entry and is skipped), and the
- * on-disk analysis caches. Seeds are not re-indexed. All warn-don't-block.
+ * Re-index the work unit's chunk-backed material: every completed artifact in
+ * an indexed phase, the tracked imports and seeds (entries must match
+ * `imports/{file}.md` / `seeds/{file}.md` — anything else signals a tampered
+ * manifest entry and is skipped), and the on-disk analysis caches. Restores
+ * what cancellation removed, and refreshes chunk metadata after a pivot. All
+ * warn-don't-block.
  * @param {string} cwd @param {string} workUnit @param {object} manifest @param {string[]} warnings
  */
 function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
@@ -133,11 +137,14 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
     }
   }
 
-  const imports = Array.isArray(manifest.imports) ? manifest.imports : [];
-  for (const entry of imports) {
-    const rel = entry && typeof entry === 'object' ? entry.path : null;
-    if (typeof rel !== 'string' || !/^imports\/[^./][^/]*\.md$/.test(rel)) continue;
-    knowledge(cwd, ['index', `.workflows/${workUnit}/${rel}`], `knowledge index (${rel})`, warnings);
+  for (const field of ['imports', 'seeds']) {
+    const entries = Array.isArray(manifest[field]) ? manifest[field] : [];
+    const shape = new RegExp(`^${field}/[^./][^/]*\\.md$`);
+    for (const entry of entries) {
+      const rel = entry && typeof entry === 'object' ? entry.path : null;
+      if (typeof rel !== 'string' || !shape.test(rel)) continue;
+      knowledge(cwd, ['index', `.workflows/${workUnit}/${rel}`], `knowledge index (${rel})`, warnings);
+    }
   }
 
   for (const cache of ['research-analysis.md', 'discovery-gap-analysis.md']) {
@@ -186,4 +193,80 @@ function reactivateWorkUnit(cwd, workUnit) {
   return result;
 }
 
-module.exports = { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit };
+/**
+ * @typedef {object} WorkUnitPivotResult
+ * @property {string} work_unit
+ * @property {string} work_type  always `epic`
+ * @property {string} routing    the map item's routing (research when the phase exists, else discussion)
+ * @property {string|null} committed  short commit sha, or null when nothing was staged
+ * @property {string} [note]     set when committed is null
+ * @property {string[]} warnings non-blocking failures (knowledge-base re-index)
+ */
+
+/**
+ * Pivot a feature to an epic: flip `work_type` in the work-unit manifest AND
+ * the project manifest's registration, register the feature's single topic
+ * (topic name = work unit name) on the discovery map with backfill semantics
+ * (summary-backfill drafts summary/description on the next epic entry),
+ * re-index the unit so chunk metadata carries the new work_type
+ * (warn-don't-block), and commit both manifests. Routing reflects the work
+ * already done: `research` when the research phase exists, else `discussion`.
+ * Only an in-progress feature pivots.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @returns {WorkUnitPivotResult}
+ */
+function pivotWorkUnit(cwd, workUnit) {
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  if (manifest.work_type !== 'feature') {
+    throw new Error(`work unit "${workUnit}" is not a feature (work_type: ${manifest.work_type ?? 'none'}) — only features pivot to epics`);
+  }
+  if (manifest.status !== 'in-progress') {
+    throw new Error(`work unit "${workUnit}" is not in-progress (status: ${manifest.status ?? 'none'}) — reactivate it first`);
+  }
+  // The map add runs mid-transaction — prove it can succeed before flipping
+  // anything.
+  const phases = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases : {};
+  const discovery = phases.discovery && typeof phases.discovery === 'object' ? phases.discovery : {};
+  const items = discovery.items && typeof discovery.items === 'object' ? discovery.items : {};
+  if (items[workUnit]) {
+    throw new Error(`"${workUnit}" is already on the discovery map — the pivot appears to have already run`);
+  }
+  if (Array.isArray(discovery.dismissed) && discovery.dismissed.includes(workUnit)) {
+    throw new Error(`"${workUnit}" is on the discovery map's dismissed list — clear it before pivoting`);
+  }
+  // Read (and refuse corrupt JSON) before anything mutates.
+  const projectManifestFile = path.join(cwd, '.workflows', 'manifest.json');
+  const projectManifest = readProjectManifest(projectManifestFile);
+
+  const routing = phases.research ? 'research' : 'discussion';
+
+  manifest.work_type = 'epic';
+  saveWorkUnitManifest(cwd, workUnit, manifest);
+
+  // The feature's single topic joins the map (routing, source, no summary/
+  // description — backfill semantics).
+  addItem(cwd, workUnit, workUnit, { routing, backfill: true });
+
+  // The registration must agree with the manifest — upserted, so a legacy
+  // unit that predates registration is registered rather than skipped.
+  if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
+  if (!projectManifest.work_units[workUnit] || typeof projectManifest.work_units[workUnit] !== 'object') {
+    projectManifest.work_units[workUnit] = {};
+  }
+  projectManifest.work_units[workUnit].work_type = 'epic';
+  writeProjectManifestAtomic(projectManifestFile, projectManifest);
+
+  // Chunk metadata carries work_type — that's why pivot re-indexes.
+  /** @type {string[]} */
+  const warnings = [];
+  reindexWorkUnit(cwd, workUnit, manifest, warnings);
+
+  const committed = commitScoped(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
+  /** @type {WorkUnitPivotResult} */
+  const result = { work_unit: workUnit, work_type: 'epic', routing, committed, warnings };
+  if (committed === null) result.note = 'nothing to commit';
+  return result;
+}
+
+module.exports = { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit };
