@@ -187,11 +187,11 @@ Two styles, chosen by whether items have sub-detail.
   • data-model
 ```
 
-**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Use `├─` for non-final children, `└─` for the last child. Depth is recursive — child items can have their own branches. **Blank line between each top-level item.** For numbered lists, show one full entry then `2. ...` to indicate repetition.
+**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item.** For numbered lists, show one full entry then `2. ...` to indicate repetition.
 
 ```
 1. {topic:(titlecase)}
-   └─ Plan: @if(has_plan) {plan_status:[in-progress|completed]} @else [no plan] @endif
+   ├─ Plan: @if(has_plan) {plan_status:[in-progress|completed]} @else [no plan] @endif
    └─ Spec: {spec_status:[in-progress|completed]}
 
 2. ...
@@ -201,7 +201,7 @@ Richer hierarchies nest naturally:
 
 ```
 1. {topic:(titlecase)}
-   └─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
+   ├─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
    └─ Discussions:
       ├─ {discussion} [{status:[extracted|pending]}]
       └─ ...
