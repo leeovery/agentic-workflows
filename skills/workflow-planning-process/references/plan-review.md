@@ -89,6 +89,12 @@ Continue with review?
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
+**If the agent created a tracking file**, commit it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}"
+```
+
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
 → Proceed to **D. Plan Integrity Review**.
@@ -100,6 +106,12 @@ Continue with review?
 → Load **[invoke-review-integrity.md](invoke-review-integrity.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
+
+**If the agent created a tracking file**, commit it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}"
+```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 

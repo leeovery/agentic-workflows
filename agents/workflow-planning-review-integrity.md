@@ -27,8 +27,7 @@ You receive file paths and context via the orchestrator's prompt:
 3. **Locate and read all task files** following the format's reading.md instructions
 4. **Evaluate all review criteria** as defined in the review criteria file
 5. **Create the tracking file** — write findings to `review-integrity-tracking-c{N}.md` in the plan topic directory, using the format defined in the review criteria file. Produce it in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents
-6. **Commit the tracking file**: `planning({topic}): integrity review cycle {N}`
-7. **Return status**
+6. **Return status** — the orchestrator commits the tracking file
 
 ## Writing Full Fix Content
 
@@ -50,7 +49,7 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 
 1. **Read everything** — plan and all tasks. Do not skip or skim.
 2. **Write only the tracking file** — do not modify the plan or tasks
-3. **Commit the tracking file** — ensures it survives context refresh
+3. **No git writes** — do not commit or stage. Writing the tracking file is your only file write.
 4. **No user interaction** — return status to the orchestrator
 5. **Full fix content** — every finding must include complete Current/Proposed content in plan format. No summaries.
 6. **Proportional** — prioritize by impact. Don't nitpick style when architecture is wrong.
