@@ -1528,6 +1528,28 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       assert.ok(out.includes('all_done: true'));
     });
 
+    it('false when every review item is cancelled — vacuous completion never counts', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: {
+            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
+          },
+          planning: { items: { 'auth-spec': { status: 'completed' } } },
+          implementation: { items: { 'auth-spec': { status: 'completed' } } },
+          review: {
+            items: {
+              'auth-spec': { status: 'cancelled', previous_status: 'in-progress' },
+              'old-topic': { status: 'cancelled', previous_status: 'in-progress' },
+            },
+          },
+        },
+      });
+      const out = formatScoped('v1', discover(dir, 'v1'));
+      assert.ok(out.includes('all_done: false'));
+    });
+
     it('false while a review item is in progress', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
