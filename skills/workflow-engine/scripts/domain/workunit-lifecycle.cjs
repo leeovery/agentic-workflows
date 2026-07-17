@@ -120,9 +120,9 @@ function cancelWorkUnit(cwd, workUnit) {
  * Re-index the work unit's chunk-backed material: every completed artifact in
  * an indexed phase, the tracked imports and seeds (entries must match
  * `imports/{file}.md` / `seeds/{file}.md` — anything else signals a tampered
- * manifest entry and is skipped), and the on-disk analysis caches. Restores
- * what cancellation removed, and refreshes chunk metadata after a pivot. All
- * warn-don't-block.
+ * manifest entry and is skipped), the on-disk analysis caches, and — epics
+ * only — the discovery session logs. Restores what cancellation removed, and
+ * refreshes chunk metadata after a pivot. All warn-don't-block.
  * @param {string} cwd @param {string} workUnit @param {object} manifest @param {string[]} warnings
  */
 function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
@@ -151,6 +151,25 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
     const rel = `.workflows/${workUnit}/.state/${cache}`;
     if (fs.existsSync(path.join(cwd, rel))) {
       knowledge(cwd, ['index', rel], `knowledge index (.state/${cache})`, warnings);
+    }
+  }
+
+  // Discovery session logs — file-based (the on-disk session files ARE the
+  // indexed artifacts), epic-only: the knowledge CLI's bulk walk indexes
+  // sessions only for epics (non-epic discovery logs are thin
+  // shape-and-route), and this walk restores exactly what that indexed.
+  if (manifest.work_type === 'epic') {
+    const sessDir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
+    /** @type {string[]} */
+    let sessions = [];
+    try {
+      sessions = fs.readdirSync(sessDir).filter((f) => /^session-\d+\.md$/.test(f)).sort();
+    } catch {
+      sessions = [];
+    }
+    for (const f of sessions) {
+      const rel = `.workflows/${workUnit}/discovery/sessions/${f}`;
+      knowledge(cwd, ['index', rel], `knowledge index (discovery/sessions/${f})`, warnings);
     }
   }
 }
