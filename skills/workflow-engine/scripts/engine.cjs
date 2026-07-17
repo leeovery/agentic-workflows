@@ -22,7 +22,7 @@ const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
 const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
-const { startTopic, completeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, completeTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -105,6 +105,7 @@ Commands:
   discovery-map reactivate <work-unit> <name>
   topic start <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
+  topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
   task init <work-unit> <topic>
@@ -314,24 +315,35 @@ function runDiscoveryMap(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/complete are manifest-side lifecycle
-// bookkeeping (complete also KB-indexes indexed phases, warn-don't-block) with
-// no git commit — the calling session's commit cadence picks the change up.
-// cancel/reactivate are one transaction per call: manifest write, knowledge-
-// base sync (warn-don't-block), scoped git commit. The JSON response reports
-// what happened — no follow-up read needed.
+// topic — phase-item transitions. start/complete/supersede are manifest-side
+// lifecycle bookkeeping (KB sync where the phase is indexed: index on
+// complete, remove on supersede — warn-don't-block) with no git commit — the
+// calling session's commit cadence picks the change up. cancel/reactivate are
+// one transaction per call: manifest write, knowledge-base sync
+// (warn-don't-block), scoped git commit. The JSON response reports what
+// happened — no follow-up read needed.
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 /** @param {string[]} argv */
 function runTopic(argv) {
-  const [command, workUnit, phase, topic] = argv;
+  const [command, ...rest] = argv;
   try {
+    if (command === 'supersede') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, phase, topic] = positional;
+      if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.by) {
+        throw new Error('Usage: engine topic supersede <work-unit> <phase> <topic> --by <topic>');
+      }
+      respond(supersedeTopic(process.cwd(), workUnit, phase, topic, { by: opts.by }));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|complete|cancel|reactivate> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|complete|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
+    const [workUnit, phase, topic] = rest;
     if (!workUnit || !phase || !topic) {
       throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
     }

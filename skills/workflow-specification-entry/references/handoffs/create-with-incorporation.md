@@ -23,10 +23,9 @@ Output: .workflows/{work_unit}/specification/{topic}/specification.md
 
 Context: This consolidates multiple sources. The existing specification should be incorporated - extract and adapt its content alongside the discussion material. The result should be a unified specification, not a simple merge.
 
-After the specification is complete, mark the incorporated specs as superseded via manifest CLI — only specs whose status is not `proposed`:
+After the specification is complete, mark the incorporated specs as superseded via the engine — only specs whose status is not `proposed`:
 
-    set {source-work-unit}.specification.{source-topic} status superseded
-    set {source-work-unit}.specification.{source-topic} superseded_by {work_unit}
+    engine topic supersede {work_unit} specification {source-topic} --by {topic}
 
 ---
 Invoke the workflow-specification-process skill.

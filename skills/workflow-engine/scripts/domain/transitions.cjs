@@ -1,14 +1,16 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: topic transitions — start, complete, cancel, and reactivate,
-// each a single transaction from the caller's perspective.
+// Domain ring: topic transitions — start, complete, supersede, cancel, and
+// reactivate, each a single transaction from the caller's perspective.
 //
-// start/complete are phase-item lifecycle bookkeeping: manifest write plus,
-// for complete in an indexed phase, a knowledge-base index. No git commit —
-// the calling session's commit cadence picks the manifest change up.
-// cancel/reactivate are the epic transactions: manifest write, knowledge-base
-// sync, scoped git commit.
+// start/complete/supersede are phase-item lifecycle bookkeeping: manifest
+// write plus a knowledge-base sync where the phase is indexed (index on
+// complete, remove on supersede). No git commit — the calling session's
+// commit cadence picks the manifest change up (supersession is
+// batch-oriented: spec completion supersedes several sources, then commits
+// once). cancel/reactivate are the epic transactions: manifest write,
+// knowledge-base sync, scoped git commit.
 //
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
@@ -53,7 +55,7 @@ function assertLegalWrite(phase, status) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -155,6 +157,65 @@ function completeTopic(cwd, workUnit, phase, topic) {
 }
 
 /**
+ * @typedef {object} TopicSupersedeResult
+ * @property {string} topic
+ * @property {string} phase
+ * @property {string} status   always `superseded`
+ * @property {string} superseded_by  the topic that absorbed this one
+ * @property {string[]} warnings non-blocking failures (knowledge-base removal)
+ */
+
+/**
+ * Supersede a phase item: set `status: superseded` and `superseded_by` to the
+ * absorbing topic, then remove the item's knowledge-base chunks
+ * (warn-don't-block). Legal only in phases whose shared-schema status
+ * vocabulary contains `superseded` — schema-driven, never a hardcoded phase
+ * list. The absorbing topic must already exist in the same phase (every
+ * supersession runs after the superseding item completed). A proposed item is
+ * refused — it has no artifact; reconcile deletes it instead — and a
+ * cancelled item must go through reactivate. No git commit — supersession is
+ * batch-oriented; the calling flow commits the whole set.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase
+ * @param {string} topic
+ * @param {{by: string}} opts  the absorbing topic
+ * @returns {TopicSupersedeResult}
+ */
+function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
+  assertLegalWrite(phase, 'superseded');
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  const item = phaseItem(manifest, phase, topic);
+  if (topic === by) {
+    throw new Error(`${phase} item "${topic}" cannot supersede itself`);
+  }
+  if (item.status === 'superseded') {
+    const already = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
+    throw new Error(`${phase} item "${topic}" is already superseded${already}`);
+  }
+  if (item.status === 'proposed') {
+    throw new Error(`${phase} item "${topic}" is proposed — a proposed item has no artifact to supersede; reconcile removes it instead`);
+  }
+  if (item.status === 'cancelled') {
+    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+  }
+  const items = manifest.phases[phase].items;
+  if (!items[by] || typeof items[by] !== 'object') {
+    throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
+  }
+  item.status = 'superseded';
+  item.superseded_by = by;
+
+  saveWorkUnitManifest(cwd, workUnit, manifest);
+
+  /** @type {string[]} */
+  const warnings = [];
+  knowledge(cwd, ['remove', '--work-unit', workUnit, '--phase', phase, '--topic', topic], 'knowledge remove', warnings);
+
+  return { topic, phase, status: 'superseded', superseded_by: by, warnings };
+}
+
+/**
  * Cancel an epic topic: stash the current status into `previous_status`, set
  * `status: cancelled`, drop the topic's discovery-map `order`, remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit.
@@ -231,4 +292,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, completeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, completeTopic, supersedeTopic, cancelTopic, reactivateTopic };

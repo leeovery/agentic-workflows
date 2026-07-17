@@ -239,7 +239,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|complete\|cancel\|reactivate>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|complete\|supersede\|cancel\|reactivate>/);
   });
 });
 
@@ -306,6 +306,106 @@ describe('engine topic complete', () => {
     assert.strictEqual(res.warnings.length, 1);
     const err = engineFails(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
     assert.match(err.error, /already completed/);
+  });
+});
+
+describe('engine topic supersede', () => {
+  let dir;
+
+  /** The epic manifest extended with specification items in every source status. */
+  function specManifest() {
+    const m = epicManifest();
+    m.phases.specification = {
+      items: {
+        unified: { status: 'completed' },
+        'auth-flow': { status: 'completed' },
+        'fee-model': { status: 'in-progress' },
+        'refund-policy': { status: 'proposed' },
+        'session-model': { status: 'cancelled', previous_status: 'completed' },
+      },
+    };
+    return m;
+  }
+
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specManifest(), null, 2) + '\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('marks a spec source superseded with superseded_by the TOPIC, removes KB chunks, no commit', () => {
+    const res = engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.topic, 'auth-flow');
+    assert.strictEqual(res.phase, 'specification');
+    assert.strictEqual(res.status, 'superseded');
+    assert.strictEqual(res.superseded_by, 'unified');
+    // No KB configured in the fixture — warn-don't-block.
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge remove failed/);
+
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(m.phases.specification.items['auth-flow'], {
+      status: 'superseded',
+      superseded_by: 'unified',
+    });
+    // Batch-oriented: no commit inside — the calling flow commits the set.
+    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+  });
+
+  it('supersedes an in-progress source too — prose only excludes proposed', () => {
+    const res = engine(dir, ['topic', 'supersede', 'payments', 'specification', 'fee-model', '--by', 'unified']);
+    assert.strictEqual(res.status, 'superseded');
+    const m = readManifest(dir, 'payments');
+    assert.strictEqual(m.phases.specification.items['fee-model'].superseded_by, 'unified');
+  });
+
+  it('phase gating is schema-driven: research allows supersede, discussion refuses', () => {
+    // research carries 'superseded' in the shared schema.
+    const res = engine(dir, ['topic', 'supersede', 'payments', 'research', 'auth-flow', '--by', 'fee-model']);
+    assert.strictEqual(res.status, 'superseded');
+
+    // discussion does not — refused with the schema's own vocabulary.
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const err = engineFails(dir, ['topic', 'supersede', 'payments', 'discussion', 'session-model', '--by', 'refund-policy']);
+    assert.match(err.error, /Invalid status "superseded" for phase "discussion"/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+  });
+
+  it('refuses a missing item, a missing --by target, and self-supersession — nothing touched', () => {
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    assert.match(
+      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'ghost', '--by', 'unified']).error,
+      /no specification item "ghost"/);
+    assert.match(
+      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'ghost']).error,
+      /no specification item "ghost" to supersede toward — the absorbing item must exist first/);
+    assert.match(
+      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'auth-flow']).error,
+      /cannot supersede itself/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+  });
+
+  it('refuses an already-superseded, proposed, or cancelled item', () => {
+    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']);
+    assert.match(
+      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']).error,
+      /already superseded \(by "unified"\)/);
+    assert.match(
+      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'refund-policy', '--by', 'unified']).error,
+      /is proposed — a proposed item has no artifact to supersede/);
+    assert.match(
+      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'session-model', '--by', 'unified']).error,
+      /is cancelled — reactivate it instead/);
+  });
+
+  it('rejects missing args and an unknown phase — loud and specific', () => {
+    assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow']).error, /Usage: engine topic supersede/);
+    assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification']).error, /Usage: engine topic supersede/);
+    assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'nonsense', 'auth-flow', '--by', 'unified']).error, /unknown or non-lifecycle phase "nonsense"/);
   });
 });
 
