@@ -826,7 +826,7 @@ describe('schema enforcement: engine refuses what the manifest CLI refuses', () 
   });
 
   it('the enforcement table IS the manifest CLI schema (shared module, no mirror)', () => {
-    assert.deepStrictEqual(VALID_PHASE_STATUSES.discovery, ['in-progress']);
+    assert.deepStrictEqual(VALID_PHASE_STATUSES.discovery, []);  // map items carry no status — empty vocabulary refuses every write
     const src = fs.readFileSync(
       path.join(__dirname, '../../skills/workflow-engine/scripts/domain/transitions.cjs'), 'utf8');
     assert.ok(src.includes("require('../../../workflow-shared/scripts/manifest-schema.cjs')"),

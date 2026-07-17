@@ -24,7 +24,7 @@ const VALID_PHASE_STATUSES = {
   // vocabulary makes every status write refusable. Deleting the key instead
   // would turn validators' `VALID_PHASE_STATUSES[phase]` lookups into
   // undefined — the silent permissive path this table exists to prevent.
-  discovery:      [],
+  discovery:      /** @type {string[]} */ ([]),
   research:       ['in-progress', 'completed', 'superseded', 'cancelled'],
   discussion:     ['in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],
