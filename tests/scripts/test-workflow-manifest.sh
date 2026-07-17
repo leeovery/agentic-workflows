@@ -1696,53 +1696,31 @@ echo ""
 # DISCOVERY PHASE TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: init-phase succeeds for discovery${NC}"
+echo -e "${YELLOW}Test: init-phase refuses discovery (map items carry no status)${NC}"
 setup_fixture
 run_cli init incept-init --work-type epic --description "Discovery init" >/dev/null 2>&1
 exit_code=$(run_cli_exit_code init-phase incept-init.discovery.foo)
-output=$(run_cli_stdout get incept-init.discovery.foo status)
+output=$(run_cli init-phase incept-init.discovery.foo 2>&1 || true)
 
-assert_equals "$exit_code" "0" "init-phase discovery succeeds"
-assert_equals "$output" "in-progress" "Discovery item status defaults to in-progress"
+assert_equals "$exit_code" "1" "init-phase discovery exits non-zero"
+assert_contains "$output" "carry no status field" "Error explains map items carry no status"
+assert_contains "$output" "discovery-map add" "Error points at engine discovery-map add"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: discovery accepts in-progress status${NC}"
+echo -e "${YELLOW}Test: discovery refuses every status write (empty vocabulary)${NC}"
 setup_fixture
 run_cli init incept-status --work-type epic --description "Discovery status" >/dev/null 2>&1
-run_cli init-phase incept-status.discovery.foo >/dev/null 2>&1
-run_cli set incept-status.discovery.foo status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout get incept-status.discovery.foo status)
+run_cli set incept-status.discovery.foo routing research >/dev/null 2>&1
 
-assert_equals "$output" "in-progress" "Set status in-progress accepted"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: discovery rejects cancelled status (hard-delete model)${NC}"
-setup_fixture
-run_cli init incept-cancel --work-type epic --description "Discovery cancel" >/dev/null 2>&1
-run_cli init-phase incept-cancel.discovery.foo >/dev/null 2>&1
-exit_code=$(run_cli_exit_code set incept-cancel.discovery.foo status cancelled)
-output=$(run_cli set incept-cancel.discovery.foo status cancelled 2>&1 || true)
-
-assert_equals "$exit_code" "1" "Set status cancelled exits non-zero"
-assert_contains "$output" "Invalid status" "Error mentions invalid status"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: discovery rejects completed status (hard-delete model)${NC}"
-setup_fixture
-run_cli init incept-comp --work-type epic --description "Discovery completed" >/dev/null 2>&1
-run_cli init-phase incept-comp.discovery.foo >/dev/null 2>&1
-exit_code=$(run_cli_exit_code set incept-comp.discovery.foo status completed)
-
-assert_equals "$exit_code" "1" "Set status completed exits non-zero"
+for status in in-progress completed cancelled; do
+    exit_code=$(run_cli_exit_code set incept-status.discovery.foo status "$status")
+    assert_equals "$exit_code" "1" "Set status $status exits non-zero"
+done
+output=$(run_cli set incept-status.discovery.foo status in-progress 2>&1 || true)
+assert_contains "$output" "carry no status field" "Error explains map items carry no status"
 
 echo ""
 
@@ -1751,7 +1729,6 @@ echo ""
 echo -e "${YELLOW}Test: discovery accepts free-form routing field${NC}"
 setup_fixture
 run_cli init incept-route --work-type epic --description "Discovery routing" >/dev/null 2>&1
-run_cli init-phase incept-route.discovery.foo >/dev/null 2>&1
 run_cli set incept-route.discovery.foo routing research >/dev/null 2>&1
 output=$(run_cli_stdout get incept-route.discovery.foo routing)
 
@@ -1769,7 +1746,6 @@ echo ""
 echo -e "${YELLOW}Test: discovery accepts summary field${NC}"
 setup_fixture
 run_cli init incept-sum --work-type epic --description "Discovery summary" >/dev/null 2>&1
-run_cli init-phase incept-sum.discovery.foo >/dev/null 2>&1
 run_cli set incept-sum.discovery.foo summary "A short summary of the topic" >/dev/null 2>&1
 output=$(run_cli_stdout get incept-sum.discovery.foo summary)
 
@@ -1782,12 +1758,11 @@ echo ""
 echo -e "${YELLOW}Test: get returns full discovery item${NC}"
 setup_fixture
 run_cli init incept-get --work-type epic --description "Discovery get" >/dev/null 2>&1
-run_cli init-phase incept-get.discovery.foo >/dev/null 2>&1
 run_cli set incept-get.discovery.foo summary "A topic" >/dev/null 2>&1
 run_cli set incept-get.discovery.foo routing research >/dev/null 2>&1
 output=$(run_cli_stdout get incept-get.discovery.foo)
 
-assert_contains "$output" '"status": "in-progress"' "Item JSON includes status"
+assert_not_contains "$output" '"status"' "Item JSON carries no status field"
 assert_contains "$output" '"summary": "A topic"' "Item JSON includes summary"
 assert_contains "$output" '"routing": "research"' "Item JSON includes routing"
 
@@ -1798,7 +1773,6 @@ echo ""
 echo -e "${YELLOW}Test: delete hard-removes discovery item${NC}"
 setup_fixture
 run_cli init incept-del --work-type epic --description "Discovery delete" >/dev/null 2>&1
-run_cli init-phase incept-del.discovery.foo >/dev/null 2>&1
 run_cli set incept-del.discovery.foo summary "to be deleted" >/dev/null 2>&1
 # Hard-delete the entire item via the items.<topic> field path (existing convention)
 run_cli delete incept-del.discovery items.foo >/dev/null 2>&1
@@ -1813,13 +1787,13 @@ echo ""
 echo -e "${YELLOW}Test: wildcard get on discovery phase${NC}"
 setup_fixture
 run_cli init incept-wild --work-type epic --description "Discovery wildcard" >/dev/null 2>&1
-run_cli init-phase incept-wild.discovery.alpha >/dev/null 2>&1
-run_cli init-phase incept-wild.discovery.beta >/dev/null 2>&1
-output=$(run_cli_stdout get 'incept-wild.discovery.*' status)
+run_cli set incept-wild.discovery.alpha routing research >/dev/null 2>&1
+run_cli set incept-wild.discovery.beta routing discussion >/dev/null 2>&1
+output=$(run_cli_stdout get 'incept-wild.discovery.*' routing)
 
 assert_contains "$output" '"topic": "alpha"' "Wildcard returns alpha topic"
 assert_contains "$output" '"topic": "beta"' "Wildcard returns beta topic"
-assert_contains "$output" '"value": "in-progress"' "Wildcard returns in-progress status"
+assert_contains "$output" '"value": "research"' "Wildcard returns alpha routing"
 
 echo ""
 
@@ -2158,30 +2132,28 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase discovery succeeds for every work type${NC}"
+echo -e "${YELLOW}Test: init-phase refuses discovery for every work type${NC}"
 setup_fixture
 for wt in epic feature bugfix quick-fix cross-cutting; do
     name="${wt//-/_}-disc-item"
     run_cli init "$name" --work-type "$wt" --description "Discovery item $wt" >/dev/null 2>&1
-    output=$(run_cli init-phase "$name.discovery.topic-one" 2>&1)
-    assert_contains "$output" "Initialized discovery phase" "$wt: init-phase discovery accepted"
-
-    status=$(run_cli_stdout get "$name.discovery.topic-one" status)
-    assert_equals "$status" "in-progress" "$wt: discovery item status defaults to in-progress"
+    output=$(run_cli init-phase "$name.discovery.topic-one" 2>&1 || true)
+    assert_contains "$output" "carry no status field" "$wt: init-phase discovery refused"
 done
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: discovery item status only accepts in-progress for every work type${NC}"
+echo -e "${YELLOW}Test: discovery item status writes refused for every work type${NC}"
 setup_fixture
 for wt in epic feature bugfix quick-fix cross-cutting; do
     name="${wt//-/_}-disc-guard"
     run_cli init "$name" --work-type "$wt" --description "Guard $wt" >/dev/null 2>&1
-    run_cli init-phase "$name.discovery.topic-one" >/dev/null 2>&1
-    assert_exit_nonzero "$wt: invalid discovery item status rejected" \
+    assert_exit_nonzero "$wt: discovery item status completed rejected" \
         set "$name.discovery.topic-one" status completed
+    assert_exit_nonzero "$wt: discovery item status in-progress rejected" \
+        set "$name.discovery.topic-one" status in-progress
 done
 
 echo ""
