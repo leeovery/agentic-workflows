@@ -94,8 +94,9 @@ Commands:
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map add <work-unit> <name> --routing <research|discussion> --summary <text>
-                [--description <text>] [--source <tag>] [--force-dismissed]
+  discovery-map add <work-unit> <name> --routing <research|discussion>
+                (--summary <text> [--description <text>] | --backfill)
+                [--source <tag>] [--force-dismissed]
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
   discovery-map remove <work-unit> <name>
   discovery-map rename <work-unit> <old> <new>
@@ -244,7 +245,7 @@ function runDiscoveryMap(argv) {
   const cwd = process.cwd();
 
   try {
-    const { opts, flags, positional } = parseArgs(rest, ['force-dismissed']);
+    const { opts, flags, positional } = parseArgs(rest, ['force-dismissed', 'backfill']);
     const [workUnit] = positional;
     if (command === 'sequence') {
       if (!workUnit || positional.length < 2) {
@@ -268,8 +269,8 @@ function runDiscoveryMap(argv) {
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
       // positionals and silently truncate the text — refuse instead.
-      if (!workUnit || positional.length !== 2 || !opts.routing || opts.summary === undefined) {
-        throw new Error('Usage: engine discovery-map add <work-unit> <name> --routing <research|discussion> --summary <text> [--description <text>] [--source <tag>] [--force-dismissed]');
+      if (!workUnit || positional.length !== 2 || !opts.routing || (opts.summary === undefined && !flags.has('backfill'))) {
+        throw new Error('Usage: engine discovery-map add <work-unit> <name> --routing <research|discussion> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]');
       }
       respond(addItem(cwd, workUnit, positional[1], {
         routing: opts.routing,
@@ -277,6 +278,7 @@ function runDiscoveryMap(argv) {
         summary: opts.summary,
         description: opts.description,
         forceDismissed: flags.has('force-dismissed'),
+        backfill: flags.has('backfill'),
       }));
     } else if (command === 'edit') {
       // Strict positional count: an unquoted payload would spill into
