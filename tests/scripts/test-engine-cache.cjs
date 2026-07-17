@@ -106,6 +106,18 @@ describe('engine cache stamp: research-analysis', () => {
     assert.deepStrictEqual(readManifest(dir).phases.research.analysis_cache.files, ['kitchen-hardware.md']);
     assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
   });
+
+  it('indexes the .state cache file in the same call — a failed index is a warning, never a block', () => {
+    // No .state/research-analysis.md on disk — the index attempt always
+    // fails (deterministically, whatever the machine's KB configuration),
+    // lands as a warning naming the cache file, and never blocks the stamp.
+    const res = engine(dir, ['cache', 'stamp', 'payments', 'research-analysis']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge index \(\.state\/research-analysis\.md\) failed/);
+    assert.strictEqual(readStatus(dir, 'research-analysis').status, 'valid');
+  });
 });
 
 describe('engine cache stamp: gap-analysis', () => {
@@ -143,6 +155,13 @@ describe('engine cache stamp: gap-analysis', () => {
     const inputs = collectAnalysisInputs(readManifest(dir), path.join(dir, '.workflows'), 'gap-analysis');
     assert.strictEqual(res.files, inputs.length);
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
+  });
+
+  it('indexes discovery-gap-analysis.md in the same call — warning names the gap-analysis cache file', () => {
+    // The cache file is absent, so the index attempt fails deterministically.
+    const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge index \(\.state\/discovery-gap-analysis\.md\) failed/);
   });
 });
 

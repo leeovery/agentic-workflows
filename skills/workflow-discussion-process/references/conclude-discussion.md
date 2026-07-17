@@ -37,18 +37,16 @@ Conclude this discussion and mark as completed?
 #### If `yes`
 
 1. Ensure the Summary section is populated — Key Insights, Open Threads, Current State
-2. Set discussion status to completed via manifest CLI:
+2. Mark the discussion completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discussion.{topic} status completed
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} discussion {topic}
    ```
-3. Final commit
-4. Index the completed artifact into the knowledge base:
+3. Final commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}): complete {topic} discussion"
+   ```
 
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discussion/{topic}.md
-```
-
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
@@ -58,7 +56,7 @@ If the index command fails, display the error but do not block — the artifact 
   The artifact is saved. Indexing can be retried later.
 ```
 
-5. Invoke the bridge:
+4. Invoke the bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

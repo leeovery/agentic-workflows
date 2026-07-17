@@ -6,21 +6,32 @@
 //
 // The input collection and checksum come from the same shared discovery-utils
 // logic the read side (computeAnalysisCacheStatus) uses, so a fresh stamp is
-// `valid` by construction and the two sides can never drift. No git commit —
-// the calling flow's commit cadence picks the manifest change up.
+// `valid` by construction and the two sides can never drift. The stamp also
+// indexes the kind's on-disk cache file into the knowledge base — the same
+// moment, one call — warn-don't-block like every engine KB sync. No git
+// commit — the calling flow's commit cadence picks the manifest change up.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { collectAnalysisInputs, filesChecksum } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
+const { knowledge } = require('./kb.cjs');
 
 const KINDS = ['research-analysis', 'gap-analysis'];
+
+// The kind's model-authored cache file under `.state/` — the analysis output
+// the stamp checksums the inputs of, and the artifact the KB index covers.
+const CACHE_FILES = {
+  'research-analysis': 'research-analysis.md',
+  'gap-analysis': 'discovery-gap-analysis.md',
+};
 
 /**
  * @typedef {object} CacheStampResult
  * @property {string} kind      `research-analysis` | `gap-analysis`
  * @property {string} checksum
  * @property {number} files     how many input files the checksum covers
+ * @property {string[]} warnings non-blocking failures (knowledge-base index)
  */
 
 /**
@@ -39,9 +50,10 @@ function phaseObject(manifest, phase) {
  * Stamp one analysis cache: checksum the current completed inputs (exactly as
  * the read side collects them), write the cache object to its manifest home —
  * `phases.research.analysis_cache` (`files`) for research-analysis,
- * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis.
- * Throws when there is nothing to stamp — the analyses' preconditions skip
- * the stamp when no qualifying inputs exist.
+ * `phases.discovery.gap_analysis_cache` (`input_files`) for gap-analysis —
+ * then index the kind's `.state/` cache file into the knowledge base
+ * (warn-don't-block). Throws when there is nothing to stamp — the analyses'
+ * preconditions skip the stamp when no qualifying inputs exist.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} kind  `research-analysis` | `gap-analysis`
@@ -51,7 +63,7 @@ function stampAnalysisCache(cwd, workUnit, kind) {
   if (!KINDS.includes(kind)) {
     throw new Error(`unknown cache kind "${kind}" (${KINDS.join('|')})`);
   }
-  return withWorkUnitLock(cwd, workUnit, () => {
+  const stamped = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const inputs = collectAnalysisInputs(manifest, path.join(cwd, '.workflows'), kind);
     if (inputs.length === 0) {
@@ -73,6 +85,13 @@ function stampAnalysisCache(cwd, workUnit, kind) {
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { kind, checksum, files: inputs.length };
   });
+
+  /** @type {string[]} */
+  const warnings = [];
+  const cacheFile = CACHE_FILES[/** @type {keyof typeof CACHE_FILES} */ (kind)];
+  knowledge(cwd, ['index', `.workflows/${workUnit}/.state/${cacheFile}`], `knowledge index (.state/${cacheFile})`, warnings);
+
+  return { ...stamped, warnings };
 }
 
 module.exports = { stampAnalysisCache };
