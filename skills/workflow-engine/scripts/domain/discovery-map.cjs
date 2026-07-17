@@ -20,7 +20,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { commitScoped } = require('../kernel/git.cjs');
+const { commitScopedWithKb } = require('./commit.cjs');
 const { computeTopicLifecycle } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
 const { VALID_ROUTINGS } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
 
@@ -136,7 +136,7 @@ function sequenceMap(cwd, workUnit, orders) {
 
   saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`);
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed };
   if (committed === null) result.note = 'nothing to commit';

@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { commitScoped } = require('../kernel/git.cjs');
+const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { dedupe, readProjectManifest, writeProjectManifestAtomic } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -274,7 +274,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     knowledge(cwd, ['index', `.workflows/${into}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
   }
 
-  const committed = commitScoped(
+  const committed = commitScopedWithKb(
     cwd,
     [`.workflows/${feature}`, `.workflows/${into}`, '.workflows/manifest.json'],
     `workflow(${feature}): absorb into ${into}`);

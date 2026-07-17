@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { saveWorkUnitManifest, loadWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { commitScoped } = require('../kernel/git.cjs');
+const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
 const {
@@ -289,7 +289,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   // Seed removals ride along in the same commit as their new home.
   const pathspecs = [`.workflows/${workUnit}`];
   if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
-  const committed = commitScoped(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`);
+  const committed = commitScopedWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`);
 
   /** @type {WorkUnitCreateResult} */
   const result = {

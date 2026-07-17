@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { commitScoped } = require('../kernel/git.cjs');
+const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { readProjectManifest, writeProjectManifestAtomic } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -76,7 +76,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
 
   saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, message);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'completed', completed_at: completedAt, committed, warnings: [] };
   if (committed === null) result.note = 'nothing to commit';
@@ -109,7 +109,7 @@ function cancelWorkUnit(cwd, workUnit) {
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
@@ -186,7 +186,7 @@ function reactivateWorkUnit(cwd, workUnit) {
     reindexWorkUnit(cwd, workUnit, manifest, warnings);
   }
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
@@ -262,7 +262,7 @@ function pivotWorkUnit(cwd, workUnit) {
   const warnings = [];
   reindexWorkUnit(cwd, workUnit, manifest, warnings);
 
-  const committed = commitScoped(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
+  const committed = commitScopedWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', routing, committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
