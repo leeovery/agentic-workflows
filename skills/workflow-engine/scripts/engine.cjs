@@ -28,7 +28,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
-const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit } = require('./domain/workunit-lifecycle.cjs');
+const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -91,6 +91,7 @@ Commands:
   workunit complete <work-unit> -m <message>
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
+  workunit pivot <work-unit>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
@@ -135,7 +136,9 @@ Commands:
 // complete/cancel/reactivate are the lifecycle transactions: manifest write,
 // knowledge-base sync (warn-don't-block), scoped git commit. complete takes
 // -m because its message varies by caller (manual vs pipeline-terminal vs
-// review-skipped); cancel/reactivate messages are engine-owned.
+// review-skipped); cancel/reactivate messages are engine-owned. pivot flips
+// a feature to an epic — both manifests, the map registration, the
+// re-index — as one transaction with an engine-owned message.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -167,15 +170,15 @@ function runWorkunit(argv) {
         throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
       }
       respond(completeWorkUnit(process.cwd(), workUnit, { message }));
-    } else if (command === 'cancel' || command === 'reactivate') {
+    } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
-      const fn = command === 'cancel' ? cancelWorkUnit : reactivateWorkUnit;
+      const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
       respond(fn(process.cwd(), workUnit));
     } else {
-      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate> …');
+      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot> …');
     }
   } catch (err) {
     failJson(err);

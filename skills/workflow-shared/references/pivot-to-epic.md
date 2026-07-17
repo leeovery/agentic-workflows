@@ -4,7 +4,7 @@
 
 ---
 
-Converts a feature work unit into an epic: flips its `work_type`, re-indexes its completed artifacts so chunk metadata stays in sync, and registers its single topic on the new discovery map. Mechanical only — the caller owns the user-facing framing and the commit (this reference writes the manifest but does **not** commit).
+One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map — routing reflects whether the feature did research; `summary`/`description` are left unset for `summary-backfill.md` to fill on the next `/workflow-continue-epic` entry — re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
 
 ## Parameters
 
@@ -12,38 +12,20 @@ The caller provides this via context before loading:
 
 - `work_unit` — the feature being converted. Its single topic shares the work unit's name.
 
-## A. Convert the Work Type
+## A. Run the Pivot
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} work_type epic
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit}
 ```
 
-→ Proceed to **B. Re-Index Completed Artifacts**.
+If the JSON response's `warnings` is non-empty, display them — the conversion is already recorded and committed:
 
-## B. Re-Index Completed Artifacts
+> *Output the next fenced block as a code block:*
 
-Re-index so every completed chunk carries the new `work_type: epic`:
-
-→ Load **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{work_unit}`.
-
-→ Proceed to **C. Register the Topic on the Discovery Map**.
-
-## C. Register the Topic on the Discovery Map
-
-The feature's single topic (topic name = work unit name) joins the discovery map. `--backfill` leaves `summary` and `description` unset — `summary-backfill.md` fills them on the next `/workflow-continue-epic` entry.
-
-Determine routing from whether the feature did research:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.research
 ```
-
-Create the map item — `routing` is `research` if the research phase exists, otherwise `discussion`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {work_unit} --routing {research|discussion} --backfill
+⚑ Knowledge indexing warning
+  {warning}
+  The pivot is complete. Indexing can be retried later.
 ```
-
-No commit here — the caller frames the conversion and folds this write into its own commit.
 
 → Return to caller.
