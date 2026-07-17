@@ -436,6 +436,9 @@ function setupFeatureFixture() {
   writeFile(dir, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(dir, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(dir, '.workflows/auth-flow/.state/research-analysis.md', '# Analysis\n');
+  // Present but never indexed for a feature — the re-index walk's session
+  // leg is epic-only, and the 5-warning reactivate test pins that gate.
+  writeFile(dir, '.workflows/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');
   // A plain file where the knowledge store's directory belongs: every
   // knowledge CLI call fails deterministically (stub mode would otherwise
   // index existing files successfully), so each attempt is provable as a
@@ -573,6 +576,35 @@ describe('engine workunit reactivate', () => {
     assert.match(res.warnings[3], /knowledge index \(seeds\/seed\.md\)/);
     assert.match(res.warnings[4], /knowledge index \(\.state\/research-analysis\.md\)/);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
+  });
+
+  it('epic reactivate re-indexes discovery session logs alongside the rest', () => {
+    const epicDir = setupGitFixture();
+    writeFile(epicDir, '.workflows/payments/manifest.json', JSON.stringify({
+      name: 'payments', work_type: 'epic', status: 'in-progress',
+      phases: {
+        discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    }, null, 2) + '\n');
+    writeFile(epicDir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
+    writeFile(epicDir, '.workflows/payments/discovery/sessions/session-002.md', '# Session 002\n');
+    writeFile(epicDir, '.workflows/payments/discovery/sessions/notes.txt', 'not a session log\n');
+    // Deterministic KB failure: a plain file where the store directory belongs.
+    writeFile(epicDir, '.workflows/.knowledge', 'not a directory\n');
+    commitAll(epicDir, 'init');
+
+    engine(epicDir, ['workunit', 'cancel', 'payments']);
+    const res = engine(epicDir, ['workunit', 'reactivate', 'payments']);
+
+    assert.strictEqual(res.status, 'in-progress');
+    // One warning per re-index attempt: the completed discussion, then the
+    // two session logs (the non-matching file is skipped).
+    assert.strictEqual(res.warnings.length, 3, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index \(discussion\/auth-flow\)/);
+    assert.match(res.warnings[1], /knowledge index \(discovery\/sessions\/session-001\.md\)/);
+    assert.match(res.warnings[2], /knowledge index \(discovery\/sessions\/session-002\.md\)/);
+    cleanupFixture(epicDir);
   });
 
   it('rejects an in-progress unit and a status outside the shared vocabulary', () => {
