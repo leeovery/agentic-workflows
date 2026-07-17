@@ -962,6 +962,8 @@ Each phase is its own PR off `main` (one PR per change); this design log stays o
 
 Full roadmap completes before launch — hardening PR, reasoning-surface thinning, island absorption, gateway rename, docs, chrome pass. **The final full sandbox regression is replaced** by maximum Claude-side verification: deep PR review plus directly-driven end-to-end runs of every work type's flow (CLI/adapters/projections exercised against fixtures, renders byte-checked) — as close to perfect as achievable without live sessions. Then launch into a real project and **fix forward** (fixes ride new PRs/migrations against main; shipped migrations are never edited). The per-wave live campaigns already banked remain the behavioural evidence base.
 
+**PR 20 (#412) — wave 9, workunit lifecycle + bridge (2026-07-17):** `workunit complete/cancel/reactivate` join the noun, mirroring the topic-transition family — complete takes `-m` (message encodes how completion happened: manual vs pipeline-terminal vs review-skipped); cancel owns the KB remove; reactivate clears `completed_at`, re-indexes when coming from cancelled (mirrors `reindex-work-unit.md`'s walk), and gains a commit the prose lacked (flagged). Re-points: manage d/c, view-completed (3 branches → 1 call), six bridge continuations' completion chains (messages verbatim), absorb/pivot mechanical chains incl. their `create-discovery-topic` sites → `discovery-map add --backfill` (new mutually-exclusive flag; items land status-less with explicit provenance — 2 of ledger-item-5's 6 sites done). Absorb's cross-wu commit + deletion stay raw. Recommended-not-built: `workunit absorb`/`workunit pivot` transactions (absorb has a crash window a transaction would close). 11 new tests (559); smoke-verified round-trip. The last unmigrated write surface outside platform deepening.
+
 ## Deferred ledger (release gate — every item fixed or explicitly ruled out before landing)
 
 **Latent-bug class (mechanical fixes, no design input needed — batched into a hardening PR during platform deepening):**
@@ -970,6 +972,8 @@ Full roadmap completes before launch — hardening PR, reasoning-surface thinnin
 3. `workflow-review-process` allowed-tools `Bash(mkdir -p .workflows/.inbox)` doesn't prefix-match the prescribed `mkdir -p .workflows/.inbox/{category}`.
 4. CONVENTIONS.md List Display example carries the repeated-`└─` shape the projections corrected — fix the example so new prose doesn't reinherit the defect.
 5. `manifest.cjs cmdCreateDiscoveryTopic` stamps a dead `status: 'in-progress'` on map items (map items are status-less; nothing reads it). Migrate its six remaining call sites (workflow-shared create-discovery-topic.md, ensure-discovery-item.md, analysis-approval-gate.md, topic-splitting, pivot-to-epic, absorb-into-epic) onto `engine discovery-map add`, strip the status write, and revisit `VALID_PHASE_STATUSES.discovery` in manifest-schema.cjs which codifies the same defect.
+6. Reindex walk exists twice after PR 20 — engine (`workunit reactivate`) and prose (`reindex-work-unit.md`, still loaded by pivot). Unify when pivot's chain migrates (or if `workunit pivot` is built).
+7. Seeds are not re-indexed on cancel→reactivate (prose gap carried faithfully — seed chunks lost under both writers). Fix alongside #6.
 
 **Design decisions (Lee rules, then mechanical):**
 5. `topic supersede` — build or not; the two supersession call sites disagree on what `superseded_by` points at (`{topic}` in spec-completion vs `{work_unit}`/`unified` in the handoffs).
