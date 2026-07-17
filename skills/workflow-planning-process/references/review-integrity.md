@@ -123,9 +123,3 @@ topic: {Topic Name}
 ### 2. [Next Finding]
 ...
 ```
-
-Commit the tracking file after creation:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}"
-```
