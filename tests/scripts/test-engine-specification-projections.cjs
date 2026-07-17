@@ -768,15 +768,16 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('- **`b`/`back`** — Return to the specifications menu'));
   });
 
-  it('no-arg and positional forms stay on the legacy labelled dump', () => {
+  it('no-arg and positional forms emit the thin state line, not sectioned output', () => {
     groupingsFixture(dir);
     const noArg = run([]);
     const scoped = run(['v1']);
     for (const out of [noArg, scoped]) {
-      assert.ok(out.includes('=== DISCUSSIONS ==='));
-      assert.ok(out.includes('=== SPECIFICATIONS ==='));
-      assert.ok(out.includes('=== CACHE ==='));
       assert.ok(out.includes('=== STATE ==='));
+      assert.ok(out.includes('counts: discussions='));
+      assert.ok(!out.includes('=== DISCUSSIONS ==='));
+      assert.ok(!out.includes('=== SPECIFICATIONS ==='));
+      assert.ok(!out.includes('=== CACHE ==='));
       assert.ok(!out.includes('=== DATA'));
     }
   });

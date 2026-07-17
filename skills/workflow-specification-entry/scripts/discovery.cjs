@@ -6,8 +6,8 @@
 // script builds the discovery result, parses the consult-hint doc (its one
 // piece of file IO the engine stays blind to), and sections the output.
 //
-//   discovery.cjs                        → labelled dump, all work units
-//   discovery.cjs {work_unit}            → labelled dump, one work unit
+//   discovery.cjs                        → minimal state line, all work units
+//   discovery.cjs {work_unit}            → minimal state line, one work unit
 //   discovery.cjs view {work_unit}       → DATA (+ DISPLAY + MENU) snapshot
 //   discovery.cjs completed-menu {work_unit} → concluded-specs sub-view
 // ---------------------------------------------------------------------------
@@ -195,57 +195,16 @@ function discover(cwd, workUnit) {
   };
 }
 
+// The labelled dump has no prose consumers — every flow reads the `view`
+// snapshot. A bare invocation answers with the one decision-ready counts line,
+// in the view DATA's vocabulary.
 function format(result) {
-  const lines = [];
-
-  lines.push('=== DISCUSSIONS ===');
-  if (result.discussions.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (const d of result.discussions) {
-      let extra = d.has_individual_spec ? `, spec: ${d.spec_status}` : '';
-      lines.push(`  ${d.work_unit}/${d.name} (${d.work_type}): ${d.status}${extra}`);
-    }
-  }
-  lines.push('');
-
-  lines.push('=== SPECIFICATIONS ===');
-  if (result.specifications.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (const s of result.specifications) {
-      lines.push(`  ${s.name}: ${s.status}, type=${s.work_type}, has_pending_sources=${s.has_pending_sources}`);
-      if (s.sources) {
-        for (const src of s.sources) {
-          lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
-        }
-      }
-      if (s.consult_references) {
-        for (const ref of s.consult_references) {
-          lines.push(`    consult: ${ref.name} (${ref.status})`);
-        }
-      }
-    }
-  }
-  lines.push('');
-
-  lines.push('=== CACHE ===');
-  if (result.cache.entries.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (const c of result.cache.entries) {
-      lines.push(`  ${c.work_unit}: ${c.status} (${c.reason})`);
-    }
-  }
-  lines.push('');
-
-  lines.push('=== STATE ===');
   const cs = result.current_state;
-  lines.push(`discussions: ${cs.discussion_count} (${cs.completed_count} completed, ${cs.in_progress_count} in-progress)`);
-  lines.push(`specs: ${cs.spec_count}, proposed: ${cs.proposed_count}, concluded: ${cs.concluded_count}, has_discussions: ${cs.has_discussions}, has_completed: ${cs.has_completed}`);
-  if (cs.discussions_checksum) lines.push(`checksum: ${cs.discussions_checksum}`);
-
-  return lines.join('\n') + '\n';
+  return [
+    '=== STATE ===',
+    `counts: discussions=${cs.discussion_count} completed=${cs.completed_count} in_progress=${cs.in_progress_count} specs=${cs.spec_count} proposed=${cs.proposed_count} concluded=${cs.concluded_count}`,
+    '',
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
