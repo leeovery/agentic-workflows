@@ -1,7 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the knowledge-base door — spawn the knowledge CLI with the
+// Domain ring: the knowledge-base door — the ONLY place the engine spawns the
+// knowledge CLI. `spawnKnowledge` is the raw spawn for callers that branch on
+// the result themselves (boot's check/compact); `knowledge` layers the
 // warn-don't-block contract every engine transaction shares. The knowledge
 // base is a derived index: its failures are recorded as warnings on the
 // caller's result, never thrown.
@@ -27,11 +29,20 @@ const INDEXED_ARTIFACTS = {
 };
 
 /**
+ * Spawn the knowledge CLI and return the raw result — for callers that
+ * branch on it themselves.
+ * @param {string} cwd @param {string[]} args
+ */
+function spawnKnowledge(cwd, args) {
+  return spawnSync('node', [KNOWLEDGE_CLI, ...args], { cwd, encoding: 'utf8' });
+}
+
+/**
  * Spawn the knowledge CLI; on failure push a warning instead of throwing.
  * @param {string} cwd @param {string[]} args @param {string} label @param {string[]} warnings
  */
 function knowledge(cwd, args, label, warnings) {
-  const res = spawnSync('node', [KNOWLEDGE_CLI, ...args], { cwd, encoding: 'utf8' });
+  const res = spawnKnowledge(cwd, args);
   const failed = res.error || res.status !== 0;
   if (failed) {
     const detail = res.error
@@ -41,4 +52,4 @@ function knowledge(cwd, args, label, warnings) {
   }
 }
 
-module.exports = { knowledge, INDEXED_ARTIFACTS };
+module.exports = { knowledge, spawnKnowledge, INDEXED_ARTIFACTS };
