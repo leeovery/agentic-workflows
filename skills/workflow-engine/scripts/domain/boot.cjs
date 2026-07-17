@@ -18,11 +18,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, commitScoped } = require('../kernel/git.cjs');
 const { KB_DIR } = require('./commit.cjs');
+const { spawnKnowledge } = require('./kb.cjs');
 
-// Resolved against this file so they work wherever the skill tree is installed.
-const SKILLS_ROOT = path.resolve(__dirname, '..', '..', '..');
-const MIGRATE_SH = path.join(SKILLS_ROOT, 'workflow-migrate', 'scripts', 'migrate.sh');
-const KNOWLEDGE_CLI = path.join(SKILLS_ROOT, 'workflow-knowledge', 'scripts', 'knowledge.cjs');
+// Resolved against this file so it works wherever the skill tree is installed.
+const MIGRATE_SH = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.sh');
 
 // migrate.sh prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
@@ -73,14 +72,14 @@ function boot(cwd) {
 
   /** @type {string[]} */
   const warnings = [];
-  const check = spawnSync('node', [KNOWLEDGE_CLI, 'check'], { cwd, encoding: 'utf8' });
+  const check = spawnKnowledge(cwd, ['check']);
   const ready = !check.error && check.status === 0 && (check.stdout || '').trim() === 'ready';
 
   const knowledge = ready ? 'ready' : 'not-ready';
 
   let compacted = false;
   if (ready) {
-    const compact = spawnSync('node', [KNOWLEDGE_CLI, 'compact'], { cwd, encoding: 'utf8' });
+    const compact = spawnKnowledge(cwd, ['compact']);
     if (compact.error || compact.status !== 0) {
       const detail = compact.error
         ? compact.error.message
