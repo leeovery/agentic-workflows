@@ -1,9 +1,10 @@
 'use strict';
 
 // The ensure-discovery-item reference is markdown — it instructs Claude to
-// invoke the manifest CLI with a specific sequence of commands. These tests
-// exercise the same CLI sequence the reference prescribes, so we lock in the
-// observable manifest state and the back-compat shape:
+// invoke the engine CLI (`discovery-map add`) plus the manifest CLI's
+// existence check. These tests exercise the same CLI sequence the reference
+// prescribes, so we lock in the observable manifest state and the
+// back-compat shape:
 //
 // - No summary / no description supplied → item carries routing + source only.
 // - Summary only → summary present, description absent.
@@ -22,6 +23,9 @@ const { spawnSync } = require('child_process');
 const MANIFEST_CLI = path.resolve(
   __dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'
 );
+const ENGINE_CLI = path.resolve(
+  __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
+);
 
 let dir;
 
@@ -37,6 +41,11 @@ function cleanup() {
 
 function runCli(...args) {
   const r = spawnSync('node', [MANIFEST_CLI, ...args], { cwd: dir, encoding: 'utf8' });
+  return { stdout: r.stdout, stderr: r.stderr, status: r.status };
+}
+
+function runEngine(...args) {
+  const r = spawnSync('node', [ENGINE_CLI, ...args], { cwd: dir, encoding: 'utf8' });
   return { stdout: r.stdout, stderr: r.stderr, status: r.status };
 }
 
@@ -68,29 +77,17 @@ function seedEpic(workUnit) {
   fs.writeFileSync(projPath, JSON.stringify(proj, null, 2));
 }
 
-// Re-creates the CLI sequence in D. Create Discovery Item. Summary and
-// description are only written when supplied + non-empty (back-compat: existing
-// callers pass neither and the item carries routing + source only).
+// Re-creates the CLI call in C. Create Discovery Item. Summary and
+// description are only passed when supplied + non-empty; with neither, the
+// item lands via --backfill (routing + source only).
 function ensureCreate(workUnit, topic, routing, { summary, description } = {}) {
-  assert.strictEqual(
-    runCli('init-phase', `${workUnit}.discovery.${topic}`).status, 0,
-  );
-  assert.strictEqual(
-    runCli('set', `${workUnit}.discovery.${topic}`, 'routing', routing).status, 0,
-  );
-  assert.strictEqual(
-    runCli('set', `${workUnit}.discovery.${topic}`, 'source', 'direct-start').status, 0,
-  );
-  if (summary) {
-    assert.strictEqual(
-      runCli('set', `${workUnit}.discovery.${topic}`, 'summary', summary).status, 0,
-    );
-  }
-  if (description) {
-    assert.strictEqual(
-      runCli('set', `${workUnit}.discovery.${topic}`, 'description', description).status, 0,
-    );
-  }
+  const args = ['discovery-map', 'add', workUnit, topic, '--routing', routing, '--source', 'direct-start'];
+  if (summary) args.push('--summary', summary);
+  if (description) args.push('--description', description);
+  if (!summary && !description) args.push('--backfill');
+  args.push('--force-dismissed');
+  const r = runEngine(...args);
+  assert.strictEqual(r.status, 0, r.stderr);
 }
 
 describe('ensure-discovery-item: create without summary or description', () => {
@@ -148,7 +145,7 @@ describe('ensure-discovery-item: idempotency on existing item', () => {
   afterEach(cleanup);
 
   // Section B. Check Existence: when the item already exists, the reference
-  // returns to caller before D. Create — so caller-supplied summary/description
+  // returns to caller before C. Create — so caller-supplied summary/description
   // never reach the CLI. This test exercises the existence check directly: if
   // exists returns true, ensureCreate must NOT run.
   it('returns existence=true and does not overwrite existing summary or description', () => {

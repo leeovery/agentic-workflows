@@ -19,7 +19,12 @@ const VALID_PHASES = [
 ];
 
 const VALID_PHASE_STATUSES = {
-  discovery:      ['in-progress'],
+  // Empty on purpose, never removed: discovery items are map items with NO
+  // status field (lifecycle is computed at render time), and an empty
+  // vocabulary makes every status write refusable. Deleting the key instead
+  // would turn validators' `VALID_PHASE_STATUSES[phase]` lookups into
+  // undefined — the silent permissive path this table exists to prevent.
+  discovery:      [],
   research:       ['in-progress', 'completed', 'superseded', 'cancelled'],
   discussion:     ['in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],
