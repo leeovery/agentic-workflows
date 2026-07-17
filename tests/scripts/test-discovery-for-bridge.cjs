@@ -213,38 +213,62 @@ describe('workflow-bridge format', () => {
     assert.ok(out.startsWith('Error: '));
   });
 
-  it('includes header with work_unit, work_type and status', () => {
+  it('fresh feature pins the full dump byte-exactly', () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
     const out = format(discover(dir, 'auth'));
-    assert.ok(out.includes('=== auth (feature, in-progress) ==='));
+    assert.strictEqual(out, [
+      '=== auth (feature) ===',
+      'next_phase: discussion',
+      'completed_phases: (none)',
+      '',
+    ].join('\n'));
   });
 
-  it('includes next_phase', () => {
+  it('mid-pipeline feature pins the full dump byte-exactly', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        research: { items: { auth: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed' } } },
+        planning: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    const out = format(discover(dir, 'auth'));
+    assert.strictEqual(out, [
+      '=== auth (feature) ===',
+      'next_phase: planning',
+      'completed_phases: research, discussion, specification',
+      '',
+    ].join('\n'));
+  });
+
+  it('completed pipeline reports next_phase done', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
+      phases: {
+        scoping: { items: { 'rename-api': { status: 'completed' } } },
+        implementation: { items: { 'rename-api': { status: 'completed' } } },
+        review: { items: { 'rename-api': { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir, 'rename-api'));
+    assert.strictEqual(out, [
+      '=== rename-api (quick-fix) ===',
+      'next_phase: done',
+      'completed_phases: scoping, implementation, review',
+      '',
+    ].join('\n'));
+  });
+
+  it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     const out = format(discover(dir, 'auth'));
-    assert.ok(out.includes('next_phase: specification'));
-  });
-
-  it('includes phase statuses with file existence', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Discussion');
-    const out = format(discover(dir, 'auth'));
-    assert.ok(out.includes('  discussion: completed'));
-    assert.ok(!out.includes('discussion: completed (no files)'));
-  });
-
-  it('marks phases without files', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    const out = format(discover(dir, 'auth'));
-    assert.ok(out.includes('specification: none (no files)'));
+    assert.ok(!out.includes('(no files)'));
+    assert.ok(!out.includes('  discussion:'));
+    assert.ok(!out.includes(': none'));
   });
 });

@@ -96,7 +96,7 @@ Feature Completed
 
 ## C. Check for Earlier Phases
 
-Check if there are completed phases earlier in the pipeline that the user could revisit. Look at the discovery output's `phases` data — any phase with status `completed` that comes before `next_phase` in the pipeline order.
+Check if there are completed phases earlier in the pipeline that the user could revisit. Read the discovery output's `completed_phases` — any phase listed before `next_phase` in the pipeline order.
 
 #### If no earlier completed phases exist
 
