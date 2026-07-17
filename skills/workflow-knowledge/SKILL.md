@@ -152,7 +152,7 @@ Exit code is always `0` (unless the filesystem itself is unreadable). Output on 
 - `ready` — knowledge base is initialised and the store is loadable
 - `not-ready` — missing directory, missing config, missing store, or unloadable store
 
-Skills branch on the stdout string, not the exit code. `engine boot` runs it in Step 0 of `workflow-start` and, on `not-ready`, self-serves via `knowledge init --keyword-only`.
+Skills branch on the stdout string, not the exit code. Used in Step 0 of entry-point skills to detect an uninitialised knowledge base and direct the user to `knowledge setup`.
 
 ---
 
@@ -212,19 +212,9 @@ Skills do not call these directly during normal operation. Users run them manual
 
 ---
 
-## `init` — non-interactive project init
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs init --keyword-only
-```
-
-Creates `.workflows/.knowledge/` with an empty project config, an empty store, and keyword-only metadata (provider `null` — BM25 mode). No prompts, no system-config writes — `knowledge setup` is the upgrade path to embeddings. Idempotent: fully-initialised prints `already-initialised` and exits `0`; partial states create only the missing files; a store present without metadata is refused (run `knowledge rebuild`). `--keyword-only` is required. Invoked by `engine boot` when `check` reports `not-ready`.
-
----
-
 ## `setup` — interactive wizard
 
-Optional upgrade from keyword-only mode, and one-shot full setup. Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts in a single guided flow. **Human-only** — prompts throughout via readline. Non-TTY invocations (including Claude or piped input) abort with `knowledge setup requires an interactive terminal`. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
+One-shot first-time setup. Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts in a single guided flow. **Human-only** — prompts throughout via readline. Non-TTY invocations (including Claude or piped input) abort with `knowledge setup requires an interactive terminal`. If `knowledge check` returns `not-ready`, direct the user to run `knowledge setup` rather than trying to fix it programmatically. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
 
 The provider menu offers `openai` (cloud, requires an API key), `openai-compatible` (any local/self-hosted OpenAI-compatible `/v1/embeddings` endpoint — LM Studio, Ollama, vLLM, LiteLLM), or `skip` (keyword-only). For `openai-compatible`, the wizard collects `base_url` (required), `model`, and `dimensions`; the API key is **optional** (press Enter to omit for open servers) and is stored only in `credentials.json` — there is no env-var override. `base_url` is consumed only under the `openai-compatible` provider and ignored under `openai`. Configured dimensions must match the local model's native output; the validation embed fails loudly on a mismatch.
 

@@ -165,7 +165,6 @@ Commands:
   remove    Remove indexed content
   compact   Compact the knowledge base
   rebuild   Rebuild the knowledge base from scratch
-  init      Non-interactive project init (requires --keyword-only)
   setup     Interactive setup wizard
 
 Filter options (hard filters — non-matching chunks excluded):
@@ -2315,7 +2314,6 @@ async function main() {
     case 'remove':  await cmdRemove(commandArgs, options, cfg, provider); break;
     case 'compact': await cmdCompact(commandArgs, options, cfg, provider); break;
     case 'rebuild': await cmdRebuild(commandArgs, options, cfg, provider); break;
-    case 'init':    await setup.cmdInit(flags); break;
     case 'setup':   await setup.cmdSetup(cmdIndexBulk, commandArgs, options); break;
     default:
       process.stderr.write(`Unknown command "${command}".\n\n${USAGE}\n`);

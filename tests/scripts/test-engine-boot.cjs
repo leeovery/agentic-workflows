@@ -78,20 +78,6 @@ if (cmd === 'check') {
   process.stdout.write((process.env.STUB_CHECK || 'not-ready') + '\\n');
   process.exit(0);
 }
-if (cmd === 'init') {
-  if (process.env.STUB_INIT_EXIT) {
-    process.stderr.write('init blew up\\n');
-    process.exit(parseInt(process.env.STUB_INIT_EXIT, 10));
-  }
-  if (process.env.STUB_INIT_ALREADY) {
-    process.stdout.write('already-initialised\\n');
-    process.exit(0);
-  }
-  fs.mkdirSync('.workflows/.knowledge', { recursive: true });
-  fs.writeFileSync('.workflows/.knowledge/store.msp', 'stub-store\\n');
-  process.stdout.write('initialised keyword-only\\n');
-  process.exit(0);
-}
 if (cmd === 'compact') {
   if (process.env.STUB_COMPACT_EXIT) {
     process.stderr.write('compact blew up\\n');
@@ -184,20 +170,28 @@ describe('engine boot', () => {
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
   });
 
-  it('knowledge not-ready: boot initialises keyword-only, commits the store, continues', () => {
+  it('knowledge not-ready is terminal: no init, no commit, setup stays a human choice', () => {
     const res = runEngine(fix.engine, fix.project, ['boot']);
 
-    assert.strictEqual(res.knowledge, 'initialised-keyword-only');
-    assert.match(res.note, /initialised keyword-only/);
-    assert.match(res.note, /knowledge setup/);
+    assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.compacted, false);
+    assert.strictEqual(res.kb_committed, null);
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'init --keyword-only']);
-    // The store the init created is committed by boot itself.
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check']);
+  });
+
+  it('the post-setup first boot commits the untracked store as initialise', () => {
+    // knowledge setup ran outside the session and left untracked store files.
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+    writeFile(fix.project, '.workflows/.knowledge/config.json', '{}\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+
+    assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
-    const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim();
-    assert.strictEqual(show, '.workflows/.knowledge/store.msp');
+    const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.deepStrictEqual(show, ['.workflows/.knowledge/config.json', '.workflows/.knowledge/store.msp']);
   });
 
   it('finds compact dirt on the ready path and commits it', () => {
@@ -214,35 +208,13 @@ describe('engine boot', () => {
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): compact store');
   });
 
-  it('a crashing knowledge check still self-serves via init', () => {
+  it('a crashing knowledge check is not-ready — never a crash', () => {
     const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
 
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.knowledge, 'initialised-keyword-only');
-    assert.strictEqual(res.compacted, false);
-  });
-
-  it('a failing init is the genuine not-ready: warning carries the detail', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_INIT_EXIT: '1' });
-
-    assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'not-ready');
-    assert.strictEqual(res.note, undefined);
     assert.strictEqual(res.compacted, false);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /knowledge init failed: init blew up/);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'init --keyword-only']);
-    // The failure path never commits.
     assert.strictEqual(res.kb_committed, null);
-  });
-
-  it('not-ready with nothing missing (broken store) stays not-ready — points at rebuild', () => {
-    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_INIT_ALREADY: '1' });
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.knowledge, 'not-ready');
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /not loadable — run `knowledge rebuild`/);
   });
 
   it('a failing compact is a warning, never a block', () => {
@@ -278,35 +250,44 @@ describe('engine boot (real scripts)', () => {
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 
-  it('runs the real migrate.sh and knowledge CLI against an isolated project', () => {
+  it('runs the real migrate.sh and knowledge CLI against an isolated project', async () => {
     const first = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
     assert.strictEqual(typeof first.migrations.output, 'string');
     // The trimmed report never leaks the prose stop-gate lines.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
-    // No knowledge store in the fixture — the real init self-serves.
-    assert.strictEqual(first.knowledge, 'initialised-keyword-only');
-    assert.match(first.note, /knowledge setup/);
+    // No knowledge store in the fixture — the hard stop: nothing is created.
+    assert.strictEqual(first.knowledge, 'not-ready');
     assert.strictEqual(first.compacted, false);
-    for (const rel of ['config.json', 'store.msp', 'metadata.json']) {
-      assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge', rel)), `missing ${rel}`);
-    }
-    // …and boot committed the store it created.
-    assert.strictEqual(first.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
+    assert.strictEqual(first.kb_committed, null);
+    assert.ok(!fs.existsSync(path.join(project, '.workflows/.knowledge')));
     // The tracking file landed in the fixture, not the repo.
     assert.ok(fs.existsSync(path.join(project, '.workflows/.state/migrations')));
 
-    // Second run: every migration is recorded, the store is ready — compact runs.
+    // The user runs knowledge setup outside the session — simulated here by
+    // writing what setup writes: a keyword-only config and a real store file
+    // (created by the same store module the CLI bundles, so the real `check`
+    // loads it).
+    writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
+    writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
+    const store = require('../../src/knowledge/store.js');
+    await store.createStore(3).then((db) => store.saveStore(db, path.join(project, '.workflows/.knowledge/store.msp')));
+
+    // …and the restart's boot finds the store ready and commits it: the
+    // untracked setup output rides `chore(knowledge): initialise store`.
     const second = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
-    assert.strictEqual(second.migrations.output, '[SKIP] No changes needed');
     assert.strictEqual(second.knowledge, 'ready');
     assert.strictEqual(second.compacted, true);
-    // Nothing changed in the store on the second pass — no commit.
-    assert.strictEqual(second.kb_committed, null);
+    assert.strictEqual(second.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
+
+    // Third boot: nothing new to commit.
+    const third = runEngine(REAL_ENGINE, project, ['boot']);
+    assert.strictEqual(third.knowledge, 'ready');
+    assert.strictEqual(third.kb_committed, null);
   });
 });
 

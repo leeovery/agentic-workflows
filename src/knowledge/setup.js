@@ -567,77 +567,6 @@ async function runProjectInitStep(rl) {
 }
 
 // ---------------------------------------------------------------------------
-// Non-interactive init — keyword-only
-// ---------------------------------------------------------------------------
-
-/**
- * `knowledge init --keyword-only`: initialise the project store without any
- * prompts. Creates .workflows/.knowledge/ with an empty project config, an
- * empty store, and keyword-only metadata (provider null — BM25 mode
- * regardless of any system config; `knowledge setup` / `knowledge rebuild`
- * upgrade to embeddings later). The system config is never touched: stub
- * mode there records an explicit user choice, which this path is not.
- *
- * Idempotent: fully-initialised → "already-initialised" no-op; partial
- * states create only the missing files. The one refusal mirrors setup's:
- * store.msp present with metadata.json missing is unrecoverable here —
- * `knowledge rebuild` is the escape hatch.
- */
-async function cmdInit(flags) {
-  if (!flags || flags['keyword-only'] !== true) {
-    process.stderr.write('Usage: knowledge init --keyword-only\n');
-    process.exit(1);
-  }
-
-  const projectDir = path.resolve(config.findProjectRoot(), '.workflows', '.knowledge');
-  const projectConfigFile = path.join(projectDir, 'config.json');
-  const storeFile = path.join(projectDir, 'store.msp');
-  const metadataFile = path.join(projectDir, 'metadata.json');
-
-  const detected = detectProjectInit(projectDir);
-
-  if (detected.storeExists && !detected.metadataExists) {
-    process.stderr.write(
-      `Project knowledge base at ${projectDir} is in an inconsistent state:\n` +
-      '  store.msp is present but metadata.json is missing.\n' +
-      '  Run `knowledge rebuild` to recover.\n'
-    );
-    process.exit(1);
-  }
-
-  if (detected.fullyInitialised) {
-    process.stdout.write('already-initialised\n');
-    return;
-  }
-
-  fs.mkdirSync(projectDir, { recursive: true });
-
-  if (!detected.configExists) {
-    config.writeConfigFile(projectConfigFile, buildProjectConfigEmpty());
-  }
-
-  const wroteStore = !detected.storeExists;
-  if (wroteStore) {
-    const db = await store.createStore(KEYWORD_ONLY_DIMENSIONS);
-    await store.saveStore(db, storeFile);
-  }
-
-  // Rewrite metadata whenever a new store was just created — stale metadata
-  // over a fresh empty store misreports a provider change on the next index.
-  if (!detected.metadataExists || wroteStore) {
-    store.writeMetadata(metadataFile, {
-      provider: null,
-      model: null,
-      dimensions: null,
-      last_indexed: null,
-      pending: [],
-    });
-  }
-
-  process.stdout.write(`initialised keyword-only at ${projectDir}\n`);
-}
-
-// ---------------------------------------------------------------------------
 // Orchestrator
 // ---------------------------------------------------------------------------
 
@@ -708,7 +637,6 @@ async function cmdSetup(cmdIndexBulk, args, options) {
 
 module.exports = {
   cmdSetup,
-  cmdInit,
   requireTTY,
   createPrompter,
   ask,
