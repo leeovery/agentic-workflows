@@ -247,28 +247,24 @@ mv .workflows/{selected.name}/discussion/{selected.name}.md .workflows/{target_e
 Register the discussion topic in the epic manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {target_epic} discussion {topic}
 ```
 
 #### If `discussion_status` is `completed`
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.discussion.{topic} status completed
-```
-
-Index the discussion at its new location in the knowledge base:
+Complete the item — one command sets `status: completed` and indexes the discussion at its new location in the knowledge base:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/discussion/{topic}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {target_epic} discussion {topic}
 ```
 
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the JSON response's `warnings` is non-empty, display them — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
 ```
 ⚑ Knowledge indexing warning
-  {error details}
+  {warning}
   The artifact is saved. Indexing can be retried later.
 ```
 
@@ -294,28 +290,24 @@ mv .workflows/{selected.name}/research/{original_name}.md .workflows/{target_epi
 Register in the epic manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {target_epic}.research.{target_name}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {target_epic} research {target_name}
 ```
 
 **If the original item status was `completed`:**
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {target_epic}.research.{target_name} status completed
-```
-
-Index the research at its new location in the knowledge base:
+Complete the item — one command sets `status: completed` and indexes the research at its new location in the knowledge base:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{target_epic}/research/{target_name}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {target_epic} research {target_name}
 ```
 
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the JSON response's `warnings` is non-empty, display them — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
 ```
 ⚑ Knowledge indexing warning
-  {error details}
+  {warning}
   The artifact is saved. Indexing can be retried later.
 ```
 
@@ -389,14 +381,14 @@ The feature has nothing to move.
 
 The absorbed topic must exist in the target epic's discovery map. The map is built from `phases.discovery.items` — without an discovery entry, the topic is invisible to the workflow-continue-epic display, subsequent discovery sessions, map-summary counts, and the dismissed-list flow.
 
-Routing reflects the work already done on the feature. `source` is set to `discovery`; `summary` and `description` are left unset — the next `/workflow-continue-epic` entry detects the missing fields and routes to `summary-backfill.md` so the user can review derived values.
+Routing reflects the work already done on the feature. `--backfill` leaves `summary` and `description` unset — the next `/workflow-continue-epic` entry detects the missing fields and routes to `summary-backfill.md` so the user can review derived values.
 
 #### If `has_research` is `true`
 
 Set `routing` to `research`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {target_epic}.{topic} --routing research --source discovery
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {target_epic} {topic} --routing research --backfill
 ```
 
 → Proceed to **K. Cleanup**.
@@ -406,7 +398,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topi
 Set `routing` to `discussion`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {target_epic}.{topic} --routing discussion --source discovery
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {target_epic} {topic} --routing discussion --backfill
 ```
 
 → Proceed to **K. Cleanup**.
@@ -443,7 +435,12 @@ Remove the feature directory:
 rm -rf .workflows/{selected.name}/
 ```
 
-Commit: `workflow({selected.name}): absorb into {target_epic}`
+The absorption spans two work units plus the project manifest, so the scoped commit helper cannot cover it — stage all three directly:
+
+```bash
+git add -- .workflows/{selected.name} .workflows/{target_epic} .workflows/manifest.json
+git commit -m "workflow({selected.name}): absorb into {target_epic}"
+```
 
 → Proceed to **L. Post-Absorption**.
 

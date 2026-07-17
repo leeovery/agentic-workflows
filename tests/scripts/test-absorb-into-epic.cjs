@@ -1,14 +1,15 @@
 'use strict';
 
 // The absorb-into-epic reference is markdown — it instructs Claude to invoke
-// the manifest CLI with a specific sequence of commands. These tests exercise
-// the same CLI sequence the reference prescribes for J. Register Discovery
-// Item, locking in the observable manifest state:
+// the engine with a specific command for J. Register Discovery Item. These
+// tests exercise the same command the reference prescribes, locking in the
+// observable manifest state:
 //
 // - has_research = true  → discovery item with routing = research
 // - has_research = false → discovery item with routing = discussion
-// - summary/description left unset (summary-backfill catches them later)
-// - source field left unset (defaults to "discovery" at render time)
+// - summary/description left unset via --backfill (summary-backfill catches
+//   them later)
+// - never a status field — map-item lifecycle is computed at render time
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
@@ -17,8 +18,8 @@ const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
 
-const MANIFEST_CLI = path.resolve(
-  __dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'
+const ENGINE = path.resolve(
+  __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
 );
 
 let dir;
@@ -33,8 +34,8 @@ function cleanup() {
   dir = null;
 }
 
-function runCli(...args) {
-  const r = spawnSync('node', [MANIFEST_CLI, ...args], { cwd: dir, encoding: 'utf8' });
+function runEngine(...args) {
+  const r = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
   return { stdout: r.stdout, stderr: r.stderr, status: r.status };
 }
 
@@ -64,14 +65,10 @@ function seedEpic(workUnit) {
   fs.writeFileSync(projPath, JSON.stringify(proj, null, 2));
 }
 
-// Re-creates the CLI sequence in J. Register Discovery Item.
+// Re-creates the engine command in J. Register Discovery Item.
 function registerDiscoveryItem(targetEpic, topic, routing) {
-  assert.strictEqual(
-    runCli('init-phase', `${targetEpic}.discovery.${topic}`).status, 0,
-  );
-  assert.strictEqual(
-    runCli('set', `${targetEpic}.discovery.${topic}`, 'routing', routing).status, 0,
-  );
+  const r = runEngine('discovery-map', 'add', targetEpic, topic, '--routing', routing, '--backfill');
+  assert.strictEqual(r.status, 0, r.stderr);
 }
 
 describe('absorb-into-epic: J. Register Discovery Item', () => {
@@ -103,12 +100,12 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
     assert.ok(!('description' in item), 'description should be absent — left for summary-backfill');
   });
 
-  it('leaves source unset — discovery renders it as discovery by default', () => {
+  it('writes source = discovery and never a status field', () => {
     seedEpic('payments-overhaul');
     registerDiscoveryItem('payments-overhaul', 'auth-flow', 'discussion');
 
     const item = readManifest('payments-overhaul').phases.discovery.items['auth-flow'];
-    assert.ok(!('source' in item), 'source should be absent — discovery defaults to "discovery"');
+    assert.deepStrictEqual(item, { routing: 'discussion', source: 'discovery' });
   });
 
   it('makes the absorbed topic visible to the discovery discovery script', () => {
@@ -127,8 +124,7 @@ describe('absorb-into-epic: J. Register Discovery Item', () => {
   it('coexists with other discovery items in the target epic', () => {
     seedEpic('payments-overhaul');
     // Pre-existing topic from earlier discovery or refinement.
-    runCli('init-phase', 'payments-overhaul.discovery.existing-topic');
-    runCli('set', 'payments-overhaul.discovery.existing-topic', 'routing', 'discussion');
+    registerDiscoveryItem('payments-overhaul', 'existing-topic', 'discussion');
 
     // Absorption registers a new topic.
     registerDiscoveryItem('payments-overhaul', 'auth-flow', 'research');
