@@ -4,7 +4,7 @@
 
 ---
 
-Validates a proposed topic name, clears any matching dismissed entry, then writes the discovery item and — when a `phase` is given — its initial phase item in one atomic CLI call. The caller owns the user-facing framing around the new topic (seed file creation, map markers, the commit); this reference owns only the validate → create sequence and reports back through `result`.
+Validates a proposed topic name, then writes the discovery item and — when a `phase` is given — its initial phase item via the engine's topic commands. The caller owns the user-facing framing around the new topic (seed file creation, map markers, the commit); this reference owns only the validate → create sequence and reports back through `result`.
 
 ## Parameters
 
@@ -60,35 +60,31 @@ Set `proposed_name` to the new name.
 
 Set `created_topic` to the validated `proposed_name`.
 
-→ Proceed to **B. Clear Dismissed**.
+→ Proceed to **B. Create the Topic**.
 
-## B. Clear Dismissed
+## B. Create the Topic
 
-Pull the name from the dismissed list — a no-op when it is absent, so it always runs:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs pull {work_unit}.discovery dismissed "{created_topic}"
-```
-
-→ Proceed to **C. Create the Topic**.
-
-## C. Create the Topic
-
-Create the discovery item and, when `phase` is set, its phase item in one atomic call:
+Create the discovery item — `--force-dismissed` clears any matching dismissed entry (the user has confirmed this topic by name, so a prior dismissal never blocks it):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs create-discovery-topic {work_unit}.{created_topic} --routing {routing} --source "{source}" --phase {phase} --summary "{summary}" --description "{description}"
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {created_topic} --routing {routing} --source "{source}" --summary "{summary}" --description "{description}" --force-dismissed
 ```
 
 Assemble the flags as follows:
 
-- `--routing {routing}` and `--source "{source}"` — always included.
-- `--phase {phase}` — included only when `phase` is set.
+- `--routing {routing}`, `--source "{source}"`, and `--force-dismissed` — always included.
 - `--summary "{summary}"` — included only when `summary` is present and non-empty.
 - `--description "{description}"` — included only when `description` is present and non-empty.
+- When `summary` is absent, pass `--backfill` in place of both fields — the next epic entry's summary-backfill drafts them.
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.
 
-Set `result = created`. No commit here — the caller folds this write into its own commit.
+**If `phase` is set**, create the phase item:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} {phase} {created_topic}
+```
+
+Set `result = created`. No commit here — the caller folds these writes into its own commit.
 
 → Return to caller.
