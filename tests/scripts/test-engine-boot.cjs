@@ -67,15 +67,29 @@ esac
 `;
 
 // Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; check/compact behaviour is env-driven.
+// project cwd; check/init/compact behaviour is env-driven.
 const STUB_KNOWLEDGE = `#!/usr/bin/env node
 'use strict';
 const fs = require('fs');
 const cmd = process.argv[2] || '';
-fs.appendFileSync('knowledge-calls.log', cmd + '\\n');
+fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
 if (cmd === 'check') {
   if (process.env.STUB_CHECK_EXIT) process.exit(parseInt(process.env.STUB_CHECK_EXIT, 10));
   process.stdout.write((process.env.STUB_CHECK || 'not-ready') + '\\n');
+  process.exit(0);
+}
+if (cmd === 'init') {
+  if (process.env.STUB_INIT_EXIT) {
+    process.stderr.write('init blew up\\n');
+    process.exit(parseInt(process.env.STUB_INIT_EXIT, 10));
+  }
+  if (process.env.STUB_INIT_ALREADY) {
+    process.stdout.write('already-initialised\\n');
+    process.exit(0);
+  }
+  fs.mkdirSync('.workflows/.knowledge', { recursive: true });
+  fs.writeFileSync('.workflows/.knowledge/store.msp', 'stub-store\\n');
+  process.stdout.write('initialised keyword-only\\n');
   process.exit(0);
 }
 if (cmd === 'compact') {
@@ -169,21 +183,44 @@ describe('engine boot', () => {
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
   });
 
-  it('knowledge not-ready: reported, compact never invoked', () => {
+  it('knowledge not-ready: boot initialises keyword-only and continues', () => {
     const res = runEngine(fix.engine, fix.project, ['boot']);
 
-    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.knowledge, 'initialised-keyword-only');
+    assert.match(res.note, /initialised keyword-only/);
+    assert.match(res.note, /knowledge setup/);
     assert.strictEqual(res.compacted, false);
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check']);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'init --keyword-only']);
   });
 
-  it('a crashing knowledge check reports not-ready — boot still succeeds', () => {
+  it('a crashing knowledge check still self-serves via init', () => {
     const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
 
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.knowledge, 'initialised-keyword-only');
     assert.strictEqual(res.compacted, false);
+  });
+
+  it('a failing init is the genuine not-ready: warning carries the detail', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_INIT_EXIT: '1' });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.note, undefined);
+    assert.strictEqual(res.compacted, false);
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /knowledge init failed: init blew up/);
+    assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'init --keyword-only']);
+  });
+
+  it('not-ready with nothing missing (broken store) stays not-ready — points at rebuild', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_INIT_ALREADY: '1' });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.strictEqual(res.warnings.length, 1);
+    assert.match(res.warnings[0], /not loadable — run `knowledge rebuild`/);
   });
 
   it('a failing compact is a warning, never a block', () => {
@@ -226,17 +263,23 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(typeof first.migrations.output, 'string');
     // The trimmed report never leaks the prose stop-gate lines.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
-    // No knowledge store in the fixture.
-    assert.strictEqual(first.knowledge, 'not-ready');
+    // No knowledge store in the fixture — the real init self-serves.
+    assert.strictEqual(first.knowledge, 'initialised-keyword-only');
+    assert.match(first.note, /knowledge setup/);
     assert.strictEqual(first.compacted, false);
+    for (const rel of ['config.json', 'store.msp', 'metadata.json']) {
+      assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge', rel)), `missing ${rel}`);
+    }
     // The tracking file landed in the fixture, not the repo.
     assert.ok(fs.existsSync(path.join(project, '.workflows/.state/migrations')));
 
-    // Second run: every migration is recorded — nothing to apply.
+    // Second run: every migration is recorded, the store is ready — compact runs.
     const second = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
     assert.strictEqual(second.migrations.output, '[SKIP] No changes needed');
+    assert.strictEqual(second.knowledge, 'ready');
+    assert.strictEqual(second.compacted, true);
   });
 });
 

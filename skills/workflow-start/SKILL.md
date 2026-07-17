@@ -146,9 +146,27 @@ All documents up to date.
 
 ### Step 0.3: Knowledge Gate
 
-Branch on the boot response — run no further commands (`compact` already ran inside boot when the knowledge base was ready).
+Branch on the boot response — run no further commands (`compact` already ran inside boot when the store was ready, and a missing store was initialised inside boot).
+
+#### If `knowledge` is `ready`
+
+→ Proceed to **Step 1**.
+
+#### If `knowledge` is `initialised-keyword-only`
+
+Boot created the store in keyword-only mode. Surface the response's `note`:
+
+> *Output the next fenced block as a code block:*
+
+```
+{note}
+```
+
+→ Proceed to **Step 1**.
 
 #### If `knowledge` is `not-ready`
+
+Boot could not initialise the store — the failure detail is in `warnings`.
 
 > *Output the next fenced block as a code block:*
 
@@ -162,27 +180,23 @@ Branch on the boot response — run no further commands (`compact` already ran i
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The knowledge base is required infrastructure for workflows.
-> It must be initialised before any workflow can proceed.
+> The knowledge base is required infrastructure for workflows, and
+> automatic initialisation failed.
 ```
 
 > *Output the next fenced block as a code block:*
 
 ```
-To set up the knowledge base, run:
+Initialisation failed:
+
+  {warnings, one per line}
+
+Fix the reported problem, or run the interactive setup:
 
   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
-
-Setup configures system defaults, initialises the project store,
-and runs the initial indexing pass. If no API key is available,
-stub mode is offered as an alternative.
 ```
 
 **STOP.** Do not proceed — terminal condition.
-
-#### If `knowledge` is `ready`
-
-→ Proceed to **Step 1**.
 
 ---
 

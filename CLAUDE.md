@@ -190,7 +190,7 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 **Allowed tools**: Skills that invoke the CLI must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in their frontmatter. SKILL.md is the authoritative API reference — read it before adding a new call site.
 
-**Mandatory boot gate**: `engine boot` (Step 0 of `workflow-start`) runs `knowledge check` and, when ready, `knowledge compact` (TTL-based decay). A `not-ready` response is a terminal stop directing the user to `knowledge setup`. Setup is human-only (interactive readline) — Claude cannot run it.
+**Mandatory boot gate**: `engine boot` (Step 0 of `workflow-start`) runs `knowledge check` and, when ready, `knowledge compact` (TTL-based decay). A `not-ready` check triggers `knowledge init --keyword-only` — boot initialises the store and continues; only a failed init is a terminal stop. `knowledge setup` is the optional embeddings upgrade, human-only (interactive readline) — Claude cannot run it.
 
 **Phase-completion indexing**: Processing skills invoke `knowledge index <path>` at phase completion to add the new artifact. Spec promotion and work-unit cancellation invoke `knowledge remove --work-unit ... [--phase ...] [--topic ...]` to clean up. Pending queue handles transient failures with retry on next `index` call.
 
