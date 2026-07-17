@@ -45,7 +45,7 @@ Run the discovery script with the work unit:
 node .claude/skills/workflow-bridge/scripts/discovery.cjs {work_unit}
 ```
 
-The output contains: `work_type`, `phases` (per-phase status), and `next_phase`.
+The output contains `next_phase` and `completed_phases` (in pipeline order).
 
 → Proceed to **Step 2**.
 
