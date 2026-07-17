@@ -110,17 +110,44 @@ describe('workflow-continue-cross-cutting format', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes header with count', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== CROSS-CUTTING (0) ==='));
+    assert.strictEqual(out, [
+      '=== CROSS-CUTTING (0) ===',
+      '=== COMPLETED (0) ===',
+      '=== CANCELLED (0) ===',
+      '',
+    ].join('\n'));
   });
 
-  it('includes summary', () => {
+  it('active, completed, and cancelled concerns pin the full dump byte-exactly', () => {
+    createManifest(dir, 'caching', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { caching: { status: 'completed' } } },
+        specification: { items: { caching: { status: 'in-progress' } } },
+      },
+    });
+    createManifest(dir, 'error-handling', {
+      work_type: 'cross-cutting',
+      phases: { discussion: { items: { 'error-handling': { status: 'in-progress' } } } },
+    });
+    createManifest(dir, 'logging', { work_type: 'cross-cutting', status: 'completed', phases: { specification: { items: { logging: { status: 'completed' } } } } });
+    createManifest(dir, 'naming', { work_type: 'cross-cutting', status: 'cancelled' });
     const out = format(discover(dir));
-    assert.ok(out.includes('summary: no active cross-cutting concerns'));
+    assert.strictEqual(out, [
+      '=== CROSS-CUTTING (2) ===',
+      '  caching: specification (in-progress)',
+      '  error-handling: discussion (in-progress)',
+      '=== COMPLETED (1) ===',
+      '  logging (last phase: specification)',
+      '=== CANCELLED (1) ===',
+      '  naming (last phase: none)',
+      '',
+    ].join('\n'));
   });
 
-  it('includes cross-cutting concern with phase_label and completed_phases', () => {
+  it('carries no completed_phases clause — the view verb owns it', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
@@ -129,15 +156,7 @@ describe('workflow-continue-cross-cutting format', () => {
       },
     });
     const out = format(discover(dir));
-    assert.ok(out.includes('  caching: specification (in-progress) [completed: discussion]'));
-  });
-
-  it('shows none for empty completed_phases', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: { discussion: { items: { caching: { status: 'in-progress' } } } },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('[completed: none]'));
+    assert.ok(!out.includes('[completed:'));
+    assert.ok(!out.includes('summary:'));
   });
 });

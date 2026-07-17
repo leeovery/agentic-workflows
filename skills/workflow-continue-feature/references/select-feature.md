@@ -24,7 +24,7 @@ Display active features and let the user select one.
 @endif
 ```
 
-Build from the discovery output's `features` array. Each feature shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
+Build from the discovery output's `=== FEATURES ===` section. Each feature shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
 
 > *Output the next fenced block as markdown (not a code block):*
 

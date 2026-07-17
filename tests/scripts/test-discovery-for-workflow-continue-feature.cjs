@@ -204,7 +204,7 @@ describe('workflow-continue-feature discovery', () => {
       assert.strictEqual(r.features[0].seeds_count, 1);
     });
 
-    it('format output shows a seeds clause when non-zero', () => {
+    it('format output carries no seeds clause — seeds are not a dump concern', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
@@ -213,7 +213,7 @@ describe('workflow-continue-feature discovery', () => {
         ],
       });
       const out = format(discover(dir));
-      assert.ok(out.includes('(1 seed)'));
+      assert.ok(!out.includes('seed'));
     });
   });
 });
@@ -223,17 +223,17 @@ describe('workflow-continue-feature format', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes header with count', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== FEATURES (0) ==='));
+    assert.strictEqual(out, [
+      '=== FEATURES (0) ===',
+      '=== COMPLETED (0) ===',
+      '=== CANCELLED (0) ===',
+      '',
+    ].join('\n'));
   });
 
-  it('includes summary', () => {
-    const out = format(discover(dir));
-    assert.ok(out.includes('summary: no active features'));
-  });
-
-  it('includes feature with phase_label and completed_phases', () => {
+  it('active, completed, and cancelled features pin the full dump byte-exactly', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -241,48 +241,45 @@ describe('workflow-continue-feature format', () => {
         specification: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  auth: specification (in-progress) [completed: discussion]'));
-  });
-
-  it('shows none for empty completed_phases', () => {
-    createManifest(dir, 'auth', {
+    createManifest(dir, 'dark-mode', {
       work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      phases: { discussion: { items: { 'dark-mode': { status: 'in-progress' } } } },
     });
+    createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
+    createManifest(dir, 'stopped', { work_type: 'feature', status: 'cancelled', phases: { specification: { items: { stopped: { status: 'completed' } } } } });
     const out = format(discover(dir));
-    assert.ok(out.includes('[completed: none]'));
+    assert.strictEqual(out, [
+      '=== FEATURES (2) ===',
+      '  auth: specification (in-progress)',
+      '  dark-mode: discussion (in-progress)',
+      '=== COMPLETED (1) ===',
+      '  done-feat (last phase: review)',
+      '=== CANCELLED (1) ===',
+      '  stopped (last phase: specification)',
+      '',
+    ].join('\n'));
   });
 
-  it('lists multiple completed phases', () => {
+  it('shows (last phase: none) for a closed feature with nothing completed', () => {
+    createManifest(dir, 'never-started', { work_type: 'feature', status: 'cancelled' });
+    const out = format(discover(dir));
+    assert.ok(out.includes('  never-started (last phase: none)'));
+  });
+
+  it('carries no completed_phases, seeds, or imports clauses — the view verb owns those', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'completed' } } },
-        planning: { items: { auth: { status: 'in-progress' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
       },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('[completed: discussion, specification]'));
-  });
-
-  it('format output shows imports count when non-zero', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
       imports: [{ path: 'imports/seed.md', imported_at: '2026-05-10T10:00:00Z' }],
+      seeds: [{ path: 'seeds/2026-03-18-x.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' }],
     });
     const out = format(discover(dir));
-    assert.ok(out.includes('(1 imports)'));
-  });
-
-  it('format output omits imports clause when zero', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-    });
-    const out = format(discover(dir));
-    assert.ok(!out.includes('imports)'));
+    assert.ok(!out.includes('[completed:'));
+    assert.ok(!out.includes('imports'));
+    assert.ok(!out.includes('seed'));
+    assert.ok(!out.includes('summary:'));
   });
 });
