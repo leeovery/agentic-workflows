@@ -7,7 +7,7 @@
 The caller passes:
 
 - `work_unit` — the selected epic
-- `items_to_recover` — list of discovery items missing summary, description, or both. Each item has at minimum `name`, `routing`, `summary_present`, `description_present`, plus the current value of `summary` (null when `summary_present` is false)
+- `items_to_recover` — list of discovery-map rows missing summary, description, or both. Each row carries `name`, `routing`, `summary=present|absent`, `description=present|absent`, and — after `—` — the current summary text when present
 
 ## A. Read Source Files
 
@@ -33,7 +33,7 @@ For each item in `items_to_recover`:
 
 For each readable file:
 
-- Set `item.needs_summary = !item.summary_present` and `item.needs_description = !item.description_present` so section **D** writes only the newly-drafted fields.
+- Set `item.needs_summary` from the row's `summary=absent` and `item.needs_description` from `description=absent` so section **D** writes only the newly-drafted fields.
 - If `item.needs_summary`, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the file's headings and opening paragraphs as the primary signal. Attach as `item.derived_summary`.
 - If `item.needs_description`, derive a paragraph or two of richer context — what the topic covers, why it surfaced, key dimensions. Use the file's body content (not just headings). Attach as `item.derived_description`.
 - If a field is already populated, leave its current value in place and skip derivation for that field.
