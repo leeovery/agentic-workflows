@@ -246,6 +246,24 @@ describe('engine CLI: discovery-map operations', () => {
       assert.strictEqual('undismissed' in res, false);
     });
 
+    it('--backfill lands the item without summary/description — keys absent for summary-backfill', () => {
+      const res = runOk(dir, ['add', 'payments', 'absorbed-topic', '--routing', 'discussion', '--backfill']);
+      assert.strictEqual(res.backfill, true);
+      assert.strictEqual('summary' in res, false);
+      assert.deepStrictEqual(readManifest(dir).phases.discovery.items['absorbed-topic'], {
+        routing: 'discussion', source: 'discovery',
+      });
+    });
+
+    it('--backfill is mutually exclusive with --summary/--description', () => {
+      assert.match(
+        runFail(dir, ['add', 'payments', 'x', '--routing', 'research', '--summary', 's', '--backfill']).error,
+        /--backfill lands the item without summary\/description/);
+      assert.match(
+        runFail(dir, ['add', 'payments', 'x', '--routing', 'research', '--description', 'd', '--backfill']).error,
+        /--backfill lands the item without summary\/description/);
+    });
+
     it('refuses names that break manifest addressing', () => {
       assert.match(runFail(dir, ['add', 'payments', 'a.b', '--routing', 'research', '--summary', 's']).error, /not a legal topic name/);
       assert.match(runFail(dir, ['add', 'payments', 'a/b', '--routing', 'research', '--summary', 's']).error, /not a legal topic name/);
