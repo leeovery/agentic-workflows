@@ -66,8 +66,11 @@ describe('render core: fillTo', () => {
     assert.strictEqual(fillTo('exactly-ten', '─', 5), 'exactly-ten');
   });
 
-  it('never produces a negative repeat', () => {
-    assert.doesNotThrow(() => fillTo('x'.repeat(60), '─', 49));
+  it('never produces a negative repeat — the over-long head is returned unchanged', () => {
+    const head = 'x'.repeat(60);
+    let out;
+    assert.doesNotThrow(() => { out = fillTo(head, '─', 49); });
+    assert.strictEqual(out, head);
   });
 });
 
