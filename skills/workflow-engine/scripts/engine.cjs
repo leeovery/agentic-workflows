@@ -149,22 +149,9 @@ Commands:
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
-// Retired manifest commands point at their engine successors — a targeted
-// migration hint beats the generic usage when an old call form surfaces.
-const RETIRED_MANIFEST_COMMANDS = {
-  'init': 'retired — use `engine workunit create <work-unit> <work-type> --description … --session-log-file <path>|--no-session-log`',
-  'init-phase': 'retired — phase items: `engine topic start <work-unit> <phase> <topic>`; discovery map items: `engine discovery-map add`',
-  'create-discovery-topic': 'retired — use `engine discovery-map add <work-unit> <name> --routing … --summary …`',
-  'project': 'retired — use `engine manifest list [--work-type <t>]` or `engine manifest get project.<field.path>`',
-};
-
 /** @param {string[]} argv */
 function runManifest(argv) {
   const [command, ...rest] = argv;
-  if (command !== undefined && command in RETIRED_MANIFEST_COMMANDS) {
-    process.stderr.write(JSON.stringify({ ok: false, error: `\`${command}\` is ${RETIRED_MANIFEST_COMMANDS[/** @type {keyof typeof RETIRED_MANIFEST_COMMANDS} */ (command)]}` }) + '\n');
-    process.exit(1);
-  }
   if (command !== undefined && isRead(command)) {
     try {
       runFieldCommand(process.cwd(), command, rest);

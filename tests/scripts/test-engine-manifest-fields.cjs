@@ -249,23 +249,11 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.strictEqual(run(dir, ['exists', 'project.defaults.plan_format']).stdout, 'false\n');
   });
 
-  it('retired CLI commands refuse with a targeted migration pointer', () => {
-    const pointers = {
-      'init': /engine workunit create/,
-      'init-phase': /engine topic start.*engine discovery-map add/,
-      'project': /engine manifest list.*engine manifest get project\./,
-      'create-discovery-topic': /engine discovery-map add/,
-    };
-    for (const [retired, pointer] of Object.entries(pointers)) {
-      const err = runFails(dir, [retired]);
-      assert.match(err.error, /retired/);
-      assert.match(err.error, pointer);
+  it('retired CLI commands and unknown sub-verbs refuse with the generic usage', () => {
+    for (const verb of ['init', 'init-phase', 'project', 'create-discovery-topic', 'frobnicate']) {
+      const err = runFails(dir, [verb]);
+      assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|exists\|list\|key-of\|resolve>/);
     }
-  });
-
-  it('a genuinely unknown sub-verb still gets the generic usage', () => {
-    const err = runFails(dir, ['frobnicate']);
-    assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|exists\|list\|key-of\|resolve>/);
   });
 });
 
