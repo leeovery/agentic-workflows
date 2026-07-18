@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync, spawnSync, spawn } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -249,10 +249,54 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.strictEqual(run(dir, ['exists', 'project.defaults.plan_format']).stdout, 'false\n');
   });
 
-  it('unknown sub-verbs refuse with usage — retired CLI commands are not ported', () => {
-    for (const retired of ['init', 'init-phase', 'project', 'create-discovery-topic']) {
+  it('retired CLI commands refuse with a targeted migration pointer', () => {
+    const pointers = {
+      'init': /engine workunit create/,
+      'init-phase': /engine topic start.*engine discovery-map add/,
+      'project': /engine manifest list.*engine manifest get project\./,
+      'create-discovery-topic': /engine discovery-map add/,
+    };
+    for (const [retired, pointer] of Object.entries(pointers)) {
       const err = runFails(dir, [retired]);
-      assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|exists\|list\|key-of\|resolve>/);
+      assert.match(err.error, /retired/);
+      assert.match(err.error, pointer);
     }
+  });
+
+  it('a genuinely unknown sub-verb still gets the generic usage', () => {
+    const err = runFails(dir, ['frobnicate']);
+    assert.match(err.error, /Usage: engine manifest <get\|set\|push\|pull\|delete\|exists\|list\|key-of\|resolve>/);
+  });
+});
+
+describe('engine manifest — the batched set holds the work-unit lock', () => {
+  let dir;
+  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  it('a fresh .lock blocks a batched set until released — nothing lands early, everything lands together', async () => {
+    writeWorkUnit(dir, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
+    const lock = path.join(dir, '.workflows/auth/.lock');
+    fs.writeFileSync(lock, '12345');
+
+    const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle', '2', 'date=2026-07-18'], { cwd: dir });
+    let stdout = '';
+    child.stdout.on('data', (c) => { stdout += c; });
+    const exit = new Promise((resolve) => child.on('exit', resolve));
+
+    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
+    assert.strictEqual(raced, 'waiting', 'batched set must wait on a live lock');
+    const before = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth/manifest.json'), 'utf8'));
+    assert.strictEqual(before.phases.discussion.items.auth.review_cycle, undefined, 'no field lands while the lock is held');
+
+    fs.unlinkSync(lock);
+    assert.strictEqual(await exit, 0);
+    assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
+    const after = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth/manifest.json'), 'utf8'));
+    assert.strictEqual(after.phases.discussion.items.auth.review_cycle, 2);
+    assert.strictEqual(after.phases.discussion.items.auth.date, '2026-07-18');
+    assert.ok(!fs.existsSync(lock), 'lock released after the batch');
   });
 });

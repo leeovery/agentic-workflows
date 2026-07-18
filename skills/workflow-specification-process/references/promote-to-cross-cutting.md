@@ -31,7 +31,7 @@ Choose a descriptive alternative name that captures the cross-cutting concern (e
 Create the new cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry), then mark it as completed (the pipeline is terminal after spec, and spec is already complete) with origin provenance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {cc_work_unit} cross-cutting --description "{one-line summary from spec}"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {cc_work_unit} cross-cutting --description "{one-line summary from spec}" --no-session-log
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {cc_work_unit} status completed completed_at=$(date +%Y-%m-%d) source_work_unit={work_unit} source_topic={topic}
 ```
 

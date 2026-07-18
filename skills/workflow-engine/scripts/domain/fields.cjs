@@ -185,7 +185,7 @@ function validateGateMode(value) {
 function validatePhaseStatus(phase, value) {
   const valid = VALID_PHASE_STATUSES[phase];
   if (valid && valid.length === 0) {
-    fail(`Phase "${phase}" items carry no status field — lifecycle is computed at render time`);
+    fail(`Phase "${phase}" items carry no status field — lifecycle is computed at render time; create map items with \`engine discovery-map add\``);
   }
   if (valid && !valid.includes(value)) {
     fail(`Invalid status "${value}" for phase "${phase}". Must be one of: ${valid.join(', ')}`);

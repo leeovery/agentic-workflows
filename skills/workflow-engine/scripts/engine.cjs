@@ -97,7 +97,7 @@ Commands:
   manifest list   [--status <s>] [--work-type <t>]
   manifest key-of <dotpath> <field.path> <value>
   manifest resolve <work-unit>.<phase>[.<topic>]
-  workunit create <work-unit> <work-type> --description <text> [--session-log-file <path>]
+  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
                   [--import <path> …] [--seed <path> …]
   workunit complete <work-unit> -m <message>
   workunit cancel <work-unit>
@@ -149,8 +149,22 @@ Commands:
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
+// Retired manifest commands point at their engine successors — a targeted
+// migration hint beats the generic usage when an old call form surfaces.
+const RETIRED_MANIFEST_COMMANDS = {
+  'init': 'retired — use `engine workunit create <work-unit> <work-type> --description … --session-log-file <path>|--no-session-log`',
+  'init-phase': 'retired — phase items: `engine topic start <work-unit> <phase> <topic>`; discovery map items: `engine discovery-map add`',
+  'create-discovery-topic': 'retired — use `engine discovery-map add <work-unit> <name> --routing … --summary …`',
+  'project': 'retired — use `engine manifest list [--work-type <t>]` or `engine manifest get project.<field.path>`',
+};
+
+/** @param {string[]} argv */
 function runManifest(argv) {
   const [command, ...rest] = argv;
+  if (command !== undefined && command in RETIRED_MANIFEST_COMMANDS) {
+    process.stderr.write(JSON.stringify({ ok: false, error: `\`${command}\` is ${RETIRED_MANIFEST_COMMANDS[/** @type {keyof typeof RETIRED_MANIFEST_COMMANDS} */ (command)]}` }) + '\n');
+    process.exit(1);
+  }
   if (command !== undefined && isRead(command)) {
     try {
       runFieldCommand(process.cwd(), command, rest);
@@ -189,10 +203,14 @@ function runWorkunit(argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'create') {
-      const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
+      const { opts, flags, lists, positional } = parseArgs(rest, ['no-session-log'], ['import', 'seed']);
       const [workUnit, workType] = positional;
       if (!workUnit || !workType || !opts.description) {
-        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> [--session-log-file <path>] [--import <path> …] [--seed <path> …]');
+        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log [--import <path> …] [--seed <path> …]');
+      }
+      // Log-less creation must be explicit — accidental omission is an error.
+      if (flags.has('no-session-log') ? opts['session-log-file'] !== undefined : opts['session-log-file'] === undefined) {
+        throw new Error('exactly one of --session-log-file <path> or --no-session-log is required');
       }
       respond(createWorkUnit(process.cwd(), workUnit, workType, {
         description: opts.description,
