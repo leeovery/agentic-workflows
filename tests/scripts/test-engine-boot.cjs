@@ -239,6 +239,80 @@ describe('engine boot', () => {
   });
 });
 
+describe('engine boot system-config detection', () => {
+  let fix;
+  let home;
+  beforeEach(() => {
+    fix = setupSkillsFixture();
+    // Hermetic home: system-config detection resolves ~ via $HOME, so the
+    // developer's real ~/.config/workflows never leaks into assertions.
+    home = path.join(fix.root, 'home');
+    fs.mkdirSync(home, { recursive: true });
+  });
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+
+  function writeSystemConfig(content) {
+    writeFile(home, '.config/workflows/config.json', content);
+  }
+
+  it('not-ready with no system config reports absent', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.deepStrictEqual(res.system_config, { status: 'absent', provider: null, model: null });
+  });
+
+  it('not-ready with a valid provider config reports provider and model — never key material', () => {
+    writeSystemConfig(JSON.stringify({
+      knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 },
+    }));
+    // Both key sources present on disk/env — neither may reach the response.
+    writeFile(home, '.config/workflows/credentials.json', JSON.stringify({
+      credentials: { openai: { api_key: 'sk-STORED-SECRET' } },
+    }));
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], {
+      HOME: home,
+      OPENAI_API_KEY: 'sk-ENV-SECRET',
+    });
+
+    assert.strictEqual(res.knowledge, 'not-ready');
+    assert.deepStrictEqual(res.system_config, {
+      status: 'valid',
+      provider: 'openai',
+      model: 'text-embedding-3-small',
+    });
+    assert.ok(!JSON.stringify(res).includes('SECRET'));
+  });
+
+  it('not-ready with a valid providerless config reports valid with nulls (keyword-only)', () => {
+    writeSystemConfig(JSON.stringify({ knowledge: {} }));
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+
+    assert.deepStrictEqual(res.system_config, { status: 'valid', provider: null, model: null });
+  });
+
+  it('not-ready with an unparseable or wrongly-shaped config reports invalid', () => {
+    writeSystemConfig('not json at all');
+    const res1 = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    assert.deepStrictEqual(res1.system_config, { status: 'invalid', provider: null, model: null });
+
+    writeSystemConfig(JSON.stringify({ nothing: 'here' }));
+    const res2 = runEngine(fix.engine, fix.project, ['boot'], { HOME: home });
+    assert.deepStrictEqual(res2.system_config, { status: 'invalid', provider: null, model: null });
+  });
+
+  it('ready responses carry no system_config field', () => {
+    writeSystemConfig(JSON.stringify({ knowledge: { provider: 'openai', model: 'm' } }));
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { HOME: home, STUB_CHECK: 'ready' });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.ok(!('system_config' in res));
+  });
+});
+
 describe('engine boot (real scripts)', () => {
   let root;
   let project;
