@@ -14,7 +14,7 @@
 #
 # Idempotent: logs already under sessions/ are untouched, and a file whose
 # destination already exists is left alone — a re-run finds nothing to move.
-# No manifest rewrite: active_session holds only the NNN and discovery.cjs
+# No manifest rewrite: active_session holds only the NNN and gateway.cjs
 # reconstructs the path.
 #
 # Direct node for fs — never uses manifest CLI.

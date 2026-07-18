@@ -5,8 +5,8 @@
 // in the engine's domain ring; this script selects which engine answers the
 // skill's flow needs and sections the output.
 //
-//   discovery.cjs        → labelled dump, all work + inbox (head insert)
-//   discovery.cjs view   → DATA + DISPLAY + MENU snapshot (Step 3)
+//   gateway.cjs        → labelled dump, all work + inbox (head insert)
+//   gateway.cjs view   → DATA + DISPLAY + MENU snapshot (Step 3)
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');

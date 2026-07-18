@@ -7,10 +7,10 @@ const fs = require('fs');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-discovery/scripts/discovery.cjs');
-const { discoveryMapView, discoverySynthesisView } = require('../../skills/workflow-engine/scripts/domain/projections/discovery.cjs');
+const { discover, format } = require('../../skills/workflow-discovery/scripts/gateway.cjs');
+const { discoveryMapView, discoverySynthesisView } = require('../../skills/workflow-engine/scripts/domain/projections/discovery-map.cjs');
 
-const ADAPTER = path.resolve(__dirname, '../../skills/workflow-discovery/scripts/discovery.cjs');
+const ADAPTER = path.resolve(__dirname, '../../skills/workflow-discovery/scripts/gateway.cjs');
 
 // Golden tests: byte-exact expected strings for the discovery-session map
 // renders. Fixtures go through real manifests in temp dirs and the adapter's
@@ -203,7 +203,7 @@ describe('discoverySynthesisView', () => {
 // Adapter: the map-view gateway verb and the byte-stable positional form.
 // ---------------------------------------------------------------------------
 
-describe('discovery.cjs adapter: map-view', () => {
+describe('gateway.cjs adapter: map-view', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -271,7 +271,7 @@ describe('discovery.cjs adapter: map-view', () => {
   it('fails loudly on a missing work unit, unknown flags, and a bad work-unit name', () => {
     const noWu = run(['map-view']);
     assert.strictEqual(noWu.status, 1);
-    assert.match(noWu.stderr, /Usage: discovery.cjs map-view/);
+    assert.match(noWu.stderr, /Usage: gateway.cjs map-view/);
 
     richFixture(dir);
     const badFlag = run(['map-view', 'payments', '--frobnicate']);

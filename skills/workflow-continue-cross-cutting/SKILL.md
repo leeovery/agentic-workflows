@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-cross-cutting
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-cross-cutting/scripts/discovery.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-continue-cross-cutting/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 Continue an in-progress cross-cutting concern. Determines current phase and routes to the appropriate phase skill.
@@ -62,12 +62,12 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 > Scanning for active cross-cutting concerns and their progress.
 ```
 
-!`node .claude/skills/workflow-continue-cross-cutting/scripts/discovery.cjs`
+!`node .claude/skills/workflow-continue-cross-cutting/scripts/gateway.cjs`
 
 If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
-node .claude/skills/workflow-continue-cross-cutting/scripts/discovery.cjs
+node .claude/skills/workflow-continue-cross-cutting/scripts/gateway.cjs
 ```
 
 If discovery output is already displayed, it has been run on your behalf.

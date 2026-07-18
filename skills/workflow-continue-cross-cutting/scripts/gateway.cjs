@@ -6,8 +6,8 @@
 // this script selects which engine answers the skill's flow needs and sections
 // the output.
 //
-//   discovery.cjs               → labelled dump, all active concerns (head insert)
-//   discovery.cjs view {work_unit}
+//   gateway.cjs               → labelled dump, all active concerns (head insert)
+//   gateway.cjs view {work_unit}
 //                               → DATA + DISPLAY + MENU snapshot (Step 5)
 // ---------------------------------------------------------------------------
 

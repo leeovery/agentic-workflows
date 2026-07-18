@@ -8,7 +8,7 @@ Per-operation handling for **edits to existing map items**. Loaded by [session-l
 
 New topics are not added here — they are synthesised at the harvest from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
 
-State for validation comes from `skills/workflow-discovery/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
+State for validation comes from `skills/workflow-discovery/scripts/gateway.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
 After all of the user's operations have been processed, return to caller.
 
@@ -17,7 +17,7 @@ After all of the user's operations have been processed, return to caller.
 Re-run discovery to pick up state changes since the last invocation (operations applied earlier in the session, or the parent's initial discovery):
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.

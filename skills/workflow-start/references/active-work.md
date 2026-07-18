@@ -11,7 +11,7 @@ Display all active work and present a unified menu for continuing or starting wo
 Render the workflow overview snapshot:
 
 ```bash
-node .claude/skills/workflow-start/scripts/discovery.cjs view
+node .claude/skills/workflow-start/scripts/gateway.cjs view
 ```
 
 The output is one snapshot in three demarcated sections:

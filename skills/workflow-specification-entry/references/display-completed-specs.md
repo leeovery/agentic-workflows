@@ -7,7 +7,7 @@
 Loaded from the primary spec menu when the user picks `c`/`completed`. Render the concluded-specs sub-view:
 
 ```bash
-node .claude/skills/workflow-specification-entry/scripts/discovery.cjs completed-menu {work_unit}
+node .claude/skills/workflow-specification-entry/scripts/gateway.cjs completed-menu {work_unit}
 ```
 
 Emit the DISPLAY section verbatim as a code block, then the MENU section verbatim as markdown (not a code block).

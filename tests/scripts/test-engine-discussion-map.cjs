@@ -12,7 +12,7 @@ const { discussionMap } = require('../../skills/workflow-engine/scripts/domain/p
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../../skills/workflow-engine/scripts/kernel/manifest.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
-const ADAPTER = path.join(__dirname, '../../skills/workflow-discussion-process/scripts/discovery.cjs');
+const ADAPTER = path.join(__dirname, '../../skills/workflow-discussion-process/scripts/gateway.cjs');
 
 /** A manifest with one in-progress discussion item, optionally pre-seeded subtopics. */
 function manifestWith(subtopics) {

@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-specification-entry/scripts/discovery.cjs');
+const { discover, format } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
 
 describe('workflow-specification-entry discovery', () => {
   let dir;

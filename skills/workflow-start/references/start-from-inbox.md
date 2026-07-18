@@ -11,7 +11,7 @@ Select inbox items to work on, or manage what's been archived. Selecting one or 
 Run discovery for the current inbox state — re-run on every entry so archive and unarchive changes are reflected:
 
 ```bash
-node .claude/skills/workflow-start/scripts/discovery.cjs
+node .claude/skills/workflow-start/scripts/gateway.cjs
 ```
 
 Read the `=== INBOX ===` and `=== STATE ===` sections.

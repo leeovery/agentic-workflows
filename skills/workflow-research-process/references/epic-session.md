@@ -44,7 +44,7 @@ When a concern surfaces that belongs to a *different* topic — raised in conver
 1. Identify the topic the concern belongs to. Read the live map:
 
    ```bash
-   node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+   node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
    ```
 
    Resolve the target. If one topic clearly matches, propose it and confirm with the user. If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:

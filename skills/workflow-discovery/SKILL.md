@@ -1,7 +1,7 @@
 ---
 name: workflow-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git status), Bash(git add), Bash(git commit), Bash(mkdir -p .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git status), Bash(git add), Bash(git commit), Bash(mkdir -p .workflows/)
 ---
 
 # Discovery
@@ -212,7 +212,7 @@ Load **[resume-detection.md](references/resume-detection.md)** and follow its in
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Hold the output in conversation context as **the most recent discovery output**. Downstream steps and references read from it:
