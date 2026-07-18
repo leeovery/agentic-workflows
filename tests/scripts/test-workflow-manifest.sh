@@ -215,13 +215,13 @@ echo ""
 echo -e "${YELLOW}Test: retired CLI commands are not ported${NC}"
 setup_fixture
 output=$(run_cli init dark-mode --work-type feature --description "x" || true)
-assert_contains "$output" "engine workunit create" "init refusal points at workunit create"
+assert_contains "$output" "Usage: engine manifest" "init refused — not ported"
 output=$(run_cli init-phase dark-mode.discussion.dark-mode || true)
-assert_contains "$output" "engine topic start" "init-phase refusal points at topic start"
+assert_contains "$output" "Usage: engine manifest" "init-phase refused — not ported"
 output=$(run_cli project list || true)
-assert_contains "$output" "engine manifest list" "project refusal points at list"
+assert_contains "$output" "Usage: engine manifest" "project refused — not ported"
 output=$(run_cli create-discovery-topic dark-mode foo || true)
-assert_contains "$output" "engine discovery-map add" "create-discovery-topic refusal points at discovery-map add"
+assert_contains "$output" "Usage: engine manifest" "create-discovery-topic refused — not ported"
 
 echo ""
 
