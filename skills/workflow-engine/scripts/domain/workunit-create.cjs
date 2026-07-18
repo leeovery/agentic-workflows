@@ -26,6 +26,7 @@ const {
   readProjectManifest,
   writeProjectManifestAtomic,
   withProjectLock,
+  ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
@@ -256,9 +257,8 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
       // Epic is the sole work type with a resumable discovery session loop.
       if (workType === 'epic') {
-        if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-        if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
-        manifest.phases.discovery.active_session = '001';
+        const phases = ensureContainer(manifest, 'phases', 'phases');
+        ensureContainer(phases, 'discovery', 'phases.discovery').active_session = '001';
       }
     }
 
@@ -270,8 +270,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   if (created) {
     withProjectLock(cwd, () => {
       const projectManifest = readProjectManifest(cwd);
-      if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
-      projectManifest.work_units[workUnit] = { work_type: workType };
+      ensureContainer(projectManifest, 'work_units', 'work_units')[workUnit] = { work_type: workType };
       writeProjectManifestAtomic(cwd, projectManifest);
     });
   }

@@ -20,7 +20,7 @@
 // manifest lock (the same lock every manifest writer honours).
 // ---------------------------------------------------------------------------
 
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { computeTopicLifecycle } = require('./discovery-utils.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
@@ -181,10 +181,9 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
 
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-    if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
-    const discovery = manifest.phases.discovery;
-    if (!discovery.items || typeof discovery.items !== 'object') discovery.items = {};
+    const phases = ensureContainer(manifest, 'phases', 'phases');
+    const discovery = ensureContainer(phases, 'discovery', 'phases.discovery');
+    ensureContainer(discovery, 'items', 'phases.discovery.items');
 
     if (discovery.items[name]) {
       throw new Error(`"${name}" is already on the map — edit it, or pick a different name`);

@@ -26,6 +26,7 @@ const {
   readProjectManifest,
   writeProjectManifestAtomic,
   withProjectLock,
+  ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
@@ -289,11 +290,8 @@ function pivotWorkUnit(cwd, workUnit) {
   // registered rather than skipped.
   withProjectLock(cwd, () => {
     const projectManifest = readProjectManifest(cwd);
-    if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
-    if (!projectManifest.work_units[workUnit] || typeof projectManifest.work_units[workUnit] !== 'object') {
-      projectManifest.work_units[workUnit] = {};
-    }
-    projectManifest.work_units[workUnit].work_type = 'epic';
+    const workUnits = ensureContainer(projectManifest, 'work_units', 'work_units');
+    ensureContainer(workUnits, workUnit, `work_units.${workUnit}`).work_type = 'epic';
     writeProjectManifestAtomic(cwd, projectManifest);
   });
 

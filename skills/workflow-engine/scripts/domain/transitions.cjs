@@ -20,7 +20,7 @@
 // release — the lock protects the manifest read-modify-write, nothing else.
 // ---------------------------------------------------------------------------
 
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
@@ -106,15 +106,14 @@ function startTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-    if (!manifest.phases[phase] || typeof manifest.phases[phase] !== 'object') manifest.phases[phase] = {};
-    const ph = manifest.phases[phase];
-    if (!ph.items || typeof ph.items !== 'object') ph.items = {};
+    const phases = ensureContainer(manifest, 'phases', 'phases');
+    const ph = ensureContainer(phases, phase, `phases.${phase}`);
+    const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
 
-    const existing = ph.items[topic];
+    const existing = items[topic];
     let created = false;
     if (!existing || typeof existing !== 'object') {
-      ph.items[topic] = { status: 'in-progress' };
+      items[topic] = { status: 'in-progress' };
       created = true;
     } else if (existing.status === 'completed') {
       throw new Error(`${phase} item "${topic}" is already completed — start cannot resume it`);
