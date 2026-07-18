@@ -7,9 +7,10 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUNDLE="$REPO_DIR/skills/workflow-knowledge/scripts/knowledge.cjs"
-MAX_BUNDLE_BYTES=179200  # 175 KB — current is 154 KB after ESM-resolution build;
-                         # threshold gives ~20 KB headroom for dependency drift.
-                         # Exists to catch regressions, not to hit an absolute target.
+MAX_BUNDLE_BYTES=204800  # 200 KB — current is 177 KB with the non-interactive
+                         # setup forms; threshold gives ~23 KB headroom for
+                         # dependency drift. Exists to catch regressions, not
+                         # to hit an absolute target.
 LOG_DIR="${TMPDIR:-/tmp}"
 
 PASS=0
