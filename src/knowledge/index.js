@@ -14,6 +14,7 @@ const { StubProvider } = require('./embeddings');
 const { OpenAIProvider, AuthError } = require('./providers/openai');
 const config = require('./config');
 const setup = require('./setup');
+const setupForms = require('./setup-forms');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -166,7 +167,14 @@ Commands:
   remove    Remove indexed content
   compact   Compact the knowledge base
   rebuild   Rebuild the knowledge base from scratch
-  setup     Interactive setup wizard
+  setup     Interactive setup wizard; non-interactive forms:
+              setup --from-system
+              setup --keyword-only
+              setup --provider openai --model <m> [--dimensions <d>]
+              setup --provider openai-compatible --base-url <u> --model <m> --dimensions <d>
+              setup --key-only [--provider <id>]
+            The API key is never a flag — it resolves from the provider env
+            var or ~/.config/workflows/credentials.json (see --key-only)
 
 Filter options (hard filters — non-matching chunks excluded):
   --work-type <type>        Filter by work type
@@ -2315,7 +2323,7 @@ async function main() {
     case 'remove':  await cmdRemove(commandArgs, options, cfg, provider); break;
     case 'compact': await cmdCompact(commandArgs, options, cfg, provider); break;
     case 'rebuild': await cmdRebuild(commandArgs, options, cfg, provider); break;
-    case 'setup':   await setup.cmdSetup(cmdIndexBulk, commandArgs, options); break;
+    case 'setup':   await setupForms.cmdSetup(cmdIndexBulk, setup.cmdSetup, commandArgs, flags, options); break;
     default:
       process.stderr.write(`Unknown command "${command}".\n\n${USAGE}\n`);
       process.exit(1);
@@ -2338,6 +2346,7 @@ module.exports = {
   chunker,
   config,
   setup,
+  setupForms,
   knowledgeDir,
   storePath,
   metadataPath,
