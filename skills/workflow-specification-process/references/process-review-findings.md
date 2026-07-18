@@ -114,7 +114,7 @@ Present the changes as a diff. Read Current and Proposed Addition from the track
 
 ### Check Gate Mode
 
-Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} finding_gate_mode`).
+Check `finding_gate_mode` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode`).
 
 #### If `finding_gate_mode: auto`
 
@@ -180,7 +180,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 
 1. Log the content (same as "If approved" above)
 2. Update the tracking file: set resolution to "Approved"
-3. Update `finding_gate_mode` to `auto` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} finding_gate_mode auto`)
+3. Update `finding_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto`)
 4. Commit
 5. Process all remaining findings using the auto-mode flow above
 

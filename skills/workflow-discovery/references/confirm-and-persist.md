@@ -24,7 +24,7 @@ For each topic on the working list, in synthesised order:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} --routing {research|discussion} --summary "{one-line summary}" --description "{paragraphs}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} brief_path "discovery/briefs/{topic}.md"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{topic} brief_path "discovery/briefs/{topic}.md"
 ```
 
 Append `--force-dismissed` for a name the synthesis DATA flagged `matches_dismissed=true` — the user's confirmation at the synthesis gate is the re-add decision; the engine clears the dismissed entry as part of the add.
@@ -71,7 +71,7 @@ Leave **Topics Identified** as `(none)`.
 Clear the active-session marker so resume detection on the next entry sees a closed session. Skip if the log file does not exist (browse-only session — the marker was never set):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery active_session
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery active_session
 ```
 
 Replace the **Conclusion** `(none)` placeholder. Skip if no log file exists.

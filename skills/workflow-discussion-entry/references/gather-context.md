@@ -35,7 +35,7 @@ The user named the topic in Step 1's no-topic-epic prompt; Step 2 confirmed no e
 Read research item statuses for this work unit:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{work_unit}.research.*' status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.research.*' status
 ```
 
 #### If output is empty (no research items)

@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-cross-cutting
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-cross-cutting/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-continue-cross-cutting/scripts/discovery.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
 ---
 
 Continue an in-progress cross-cutting concern. Determines current phase and routes to the appropriate phase skill.

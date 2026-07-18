@@ -48,7 +48,7 @@ Domain commands (state transitions, queries) land here as they are built.
 engine boot
 ```
 
-**`manifest`** — the field surface: read and write work-unit manifest fields by dot-path. The absorbed manifest CLI — same dot-path grammar, same schema validation, same locking — living in `domain/fields.cjs`.
+**`manifest`** — the field surface: read and write work-unit manifest fields by dot-path. Thin dispatch in `engine.cjs`, logic in `domain/fields.cjs`, schema validation and locking from the kernel modules.
 
 **Dot-path addressing.** Every command takes `command <dotpath> [field] [value]`. The path joins work unit, phase, and topic with dots; segment count determines the access level:
 

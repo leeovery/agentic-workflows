@@ -1,7 +1,7 @@
 ---
 name: workflow-review-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest), Bash(ls .workflows/)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.

@@ -6,11 +6,11 @@
 
 ## Reset Gate Modes
 
-Reset `finding_gate_mode` and `construction_gate_mode` to `gated` via manifest CLI:
+Reset `finding_gate_mode` and `construction_gate_mode` to `gated` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} finding_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} construction_gate_mode gated
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode gated
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode gated
 ```
 
 ## Register Consult References
@@ -18,13 +18,13 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 For each consult reference named in the handoff's `Consult references` block, register it as `pending` if it is not already tracked. Check first:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} consult_references.{ref}.status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references.{ref}.status
 ```
 
 If the result is empty (not yet registered), set it to `pending`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} consult_references.{ref}.status pending
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} consult_references.{ref}.status pending
 ```
 
 **Never overwrite an existing status** — an already-`addressed` reference must stay `addressed`. This runs every session, so references newly declared on a continue are picked up while prior progress is preserved.

@@ -122,13 +122,13 @@ For each item, write only the newly-drafted fields:
 - If `item.needs_summary` is true and `item.derived_summary` is non-null:
 
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{item.name} summary "{summary}"
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{item.name} summary "{summary}"
   ```
 
 - If `item.needs_description` is true and `item.derived_description` is non-null:
 
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{item.name} description "{description}"
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{item.name} description "{description}"
   ```
 
 Skip items where the relevant derived field is null (source file was missing) — they remain unset and will trigger this flow again on the next workflow-continue-epic invocation, giving the user another chance.

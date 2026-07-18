@@ -7,7 +7,7 @@
 Read `work_type` from the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If work_type is `feature` or `cross-cutting`

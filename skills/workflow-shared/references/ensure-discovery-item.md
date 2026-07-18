@@ -34,7 +34,7 @@ The discovery *map* is epic-only — a multi-topic map only makes sense when the
 ## B. Check Existence
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic}
 ```
 
 #### If output is non-empty (item exists)

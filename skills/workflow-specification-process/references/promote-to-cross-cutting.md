@@ -13,7 +13,7 @@ Derive the new work unit name: `cc_work_unit = {topic}`. All work-unit-level ope
 Check if a work unit with this name already exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {cc_work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {cc_work_unit}
 ```
 
 #### If `true`
@@ -28,19 +28,11 @@ Choose a descriptive alternative name that captures the cross-cutting concern (e
 
 ## B. Create Cross-Cutting Work Unit
 
-Create the new cross-cutting work unit and mark it as completed (the pipeline is terminal after spec, and spec is already complete):
+Create the new cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry), then mark it as completed (the pipeline is terminal after spec, and spec is already complete) with origin provenance:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init {cc_work_unit} --work-type cross-cutting --description "{one-line summary from spec}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} completed_at $(date +%Y-%m-%d)
-```
-
-Set provenance to track the origin:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} source_work_unit {work_unit}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} source_topic {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {cc_work_unit} cross-cutting --description "{one-line summary from spec}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {cc_work_unit} status completed completed_at=$(date +%Y-%m-%d) source_work_unit={work_unit} source_topic={topic}
 ```
 
 → Proceed to **C. Move Discussion Files**.
@@ -50,7 +42,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit} so
 Read sources from the epic spec manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} sources
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
 For each source that is a discussion file (check if `.workflows/{work_unit}/discussion/{source}.md` exists), move it to the new work unit:
@@ -94,7 +86,7 @@ Register the specification in the new manifest — the `complete` call indexes i
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic start {cc_work_unit} specification {cc_work_unit}
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {cc_work_unit} specification {cc_work_unit}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {cc_work_unit}.specification.{cc_work_unit} date $(date +%Y-%m-%d)
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {cc_work_unit}.specification.{cc_work_unit} date $(date +%Y-%m-%d)
 ```
 
 If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
@@ -114,8 +106,8 @@ If the `complete` response carries `warnings`, display them but do not block —
 Mark the topic as promoted in the epic manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status promoted
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} promoted_to {cc_work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} status promoted
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} promoted_to {cc_work_unit}
 ```
 
 Remove the promoted spec's chunks from the original work unit (already re-indexed under the new cc work unit in section D):

@@ -85,7 +85,7 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 Also confirm every consult reference is addressed:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} consult_references
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references
 ```
 
 If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Read Consult References Narrowly — read the sibling slice, apply or cite the correction, record it in Working Notes, then mark `addressed`.
@@ -129,7 +129,7 @@ Mark the specification completed — the engine sets the status and indexes the 
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
 Specification is complete when:

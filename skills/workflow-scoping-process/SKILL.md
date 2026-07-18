@@ -1,7 +1,7 @@
 ---
 name: workflow-scoping-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 # Scoping Process
@@ -82,7 +82,7 @@ ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && 
 Check if a plan also exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic}
 ```
 
 **If plan exists and is completed:**
@@ -96,7 +96,7 @@ Scoping already completed for "{topic:(titlecase)}". Spec and plan are in place.
 Mark scoping as completed if not already, then invoke the bridge:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.scoping.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.scoping.{topic}
 ```
 
 If scoping doesn't exist, init and complete it:

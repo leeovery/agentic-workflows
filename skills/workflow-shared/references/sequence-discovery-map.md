@@ -19,7 +19,7 @@ The caller provides this via context before loading:
 A discovery map only exists for epics.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If the work type is `epic`
@@ -37,8 +37,8 @@ Take the live topic names from the caller's most recent discovery output — eve
 For richer context, read each live topic's `summary` and `description` from the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} summary
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} summary
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} description
 ```
 
 → Proceed to **C. Assign and Write Order**.

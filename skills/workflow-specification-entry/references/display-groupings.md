@@ -48,8 +48,8 @@ Reconcile the manifest to a single proposed grouping immediately, so it never la
 1. Delete every existing proposed item (reconcile step 5 — none survive into the target set).
 2. Upsert `unified` as a proposed item with every completed discussion as a `pending` source (reconcile step 7):
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.unified status proposed
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.unified sources.{discussion}.status pending
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.unified status proposed
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.unified sources.{discussion}.status pending
    ```
 
 Then rewrite `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` with a single "Unified" grouping containing all completed discussions. Keep the same checksum, update the generated timestamp. Add note: `Custom groupings confirmed by user (unified).`

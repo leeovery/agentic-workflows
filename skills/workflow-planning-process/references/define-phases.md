@@ -34,7 +34,7 @@ independently testable stages.
 
 Read `work_type` from the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 Invoke `workflow-planning-phase-designer` with these file paths:
@@ -50,8 +50,8 @@ The agent returns phases only — goals, ordering rationale, and acceptance crit
 
 Update the manifest planning position:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} phase 1
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase 1
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task '~'
 ```
 
 Commit:

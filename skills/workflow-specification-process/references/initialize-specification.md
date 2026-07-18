@@ -31,7 +31,7 @@ Branch on the response's `created` flag:
 The item is genuinely new (feature/bugfix, or a fresh single-discussion create). Add every source with `status: pending`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status pending
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status pending
 ```
 
 → Proceed to **C. Set Review State**.
@@ -41,7 +41,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 The item already existed (a proposed grouping, or a restart) and already carries its sources. For any source in this session not already present, add it — never overwrite an existing row:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status pending
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status pending
 ```
 
 → Proceed to **C. Set Review State**.
@@ -53,10 +53,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 Set review state and gate modes (both branches):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} review_cycle 0
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} finding_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} construction_gate_mode gated
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle 0
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode gated
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode gated
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
 Commit:

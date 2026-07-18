@@ -13,7 +13,7 @@
 Check whether external dependencies exist in the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{topic} external_dependencies
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic} external_dependencies
 ```
 
 **If `false`:**

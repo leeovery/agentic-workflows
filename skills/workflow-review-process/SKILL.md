@@ -1,7 +1,7 @@
 ---
 name: workflow-review-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/.inbox/*)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/.inbox/*)
 ---
 
 # Review Process
@@ -88,19 +88,19 @@ Check if a review file exists at `.workflows/{work_unit}/review/{topic}/report.m
 Gather coverage state. Read `completed_tasks` from the implementation manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} completed_tasks
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} completed_tasks
 ```
 
 Check if `reviewed_tasks` exists in the review manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.review.{topic} reviewed_tasks
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} reviewed_tasks
 ```
 
 If `true`, read it:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.review.{topic} reviewed_tasks
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
 ```
 
 Compare `completed_tasks` against `reviewed_tasks`. Let {C} = total completed, {R} = reviewed, {U} = unreviewed ({C} − {R}).
@@ -158,11 +158,11 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 1. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
 2. Clear review tracking (if it exists):
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.review.{topic} reviewed_tasks
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} reviewed_tasks
    ```
    If `true`:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.review.{topic} reviewed_tasks
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
    ```
 3. Commit:
    ```bash
@@ -190,7 +190,7 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 Check if review phase is registered in manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.review.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic}
 ```
 
 #### If `false`
