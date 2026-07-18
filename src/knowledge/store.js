@@ -345,9 +345,9 @@ async function searchHybrid(
  * alongside the raw Orama data so loadStore can reconstruct a fresh
  * store with matching dimensionality before calling Orama's load().
  *
- * Atomic write: write to `<path>.tmp`, then rename — same pattern as
- * manifest.cjs writeManifestAtomic so a crash mid-save never leaves a
- * truncated .msp file where the real one used to be.
+ * Atomic write: write to `<path>.tmp`, then rename — same pattern as the
+ * engine's atomic manifest writes (kernel/manifest-io.cjs) so a crash
+ * mid-save never leaves a truncated .msp file where the real one used to be.
  */
 async function saveStore(db, storePath) {
   if (!storePath) throw new Error('saveStore: storePath is required');

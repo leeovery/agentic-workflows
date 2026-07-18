@@ -99,6 +99,6 @@ Index the finalised session log into the knowledge base so this epic's discovery
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
 ```
 
-Idempotent — re-indexing the same session replaces that session's chunks; distinct sessions coexist under their own identity. No commit — the store lives outside git, like every other indexing call site.
+Idempotent — re-indexing the same session replaces that session's chunks; distinct sessions coexist under their own identity. No commit here — every engine-made commit stages `.workflows/.knowledge`, so the store dirt rides the next one.
 
 → Return to caller.

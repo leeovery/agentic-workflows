@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine manifest` — the absorbed manifest CLI's field surface.
+// `engine manifest` — the manifest field surface.
 //
-// Pins the ruled output split: reads (get/exists/list/key-of/resolve) keep
-// the old CLI's bare stdout byte-for-byte, including its exit-code
-// convention (2 = expected miss); mutations (set/push/pull/delete) answer
+// Pins the ruled output split: reads (get/exists/list/key-of/resolve) print
+// bare stdout with the `Error: …` stderr exit-code convention (2 = expected
+// miss); mutations (set/push/pull/delete) answer
 // with the engine's one-line JSON response and fail as {ok:false} stderr
 // exit 1. The full behavioural matrix lives in the contract suite
-// (tests/scripts/test-workflow-manifest.sh); this file pins the namespace
+// (tests/scripts/test-engine-manifest.sh); this file pins the namespace
 // dispatch, the JSON shapes, and set batching.
 // ---------------------------------------------------------------------------
 
