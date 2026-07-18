@@ -6,7 +6,7 @@
 // perspective: manifest write, knowledge-base sync, scoped git commit.
 //
 // The status vocabulary comes from the shared schema
-// (workflow-shared/scripts/manifest-schema.cjs) — the same table the manifest
+// (kernel/manifest-schema.cjs) — the same table the manifest
 // CLI validates against, so the engine can never be the permissive path.
 //
 // The manifest write is the source of truth and lands first; the knowledge
@@ -31,7 +31,7 @@ const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
 
-const { VALID_WORK_UNIT_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
 // Refuse any status write the manifest CLI would refuse — the two enforcers
 // share one schema table.

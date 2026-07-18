@@ -13,7 +13,7 @@
 // Judgment decides, code records: the conversation proposes every move; these
 // ops validate and write it. Lifecycle gates are enforced here with the SAME
 // render-time join the epic detail builder uses (computeTopicLifecycle in
-// workflow-shared/discovery-utils) — one computation, two consumers, no
+// domain/discovery-utils) — one computation, two consumers, no
 // drift, and the engine can never be the permissive path around the prose's
 // conversational pre-validation. All errors throw loud and specific, before
 // anything is written. Every load→mutate→save runs under the work unit's
@@ -22,8 +22,8 @@
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
-const { computeTopicLifecycle } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
-const { VALID_ROUTINGS } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+const { computeTopicLifecycle } = require('./discovery-utils.cjs');
+const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
 // conversational rejection phrasing in map-operations.md section B.

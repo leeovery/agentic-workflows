@@ -8,7 +8,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { stampAnalysisCache } = require('../../skills/workflow-engine/scripts/domain/cache.cjs');
-const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
+const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../skills/workflow-engine/scripts/domain/discovery-utils.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 

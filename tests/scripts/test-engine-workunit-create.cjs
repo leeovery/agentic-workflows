@@ -58,8 +58,7 @@ process.exit(0);
 `;
 
 /**
- * A hermetic skills layout: the real engine scripts (plus the workflow-shared
- * scripts the domain ring requires) copied into a temp skills root, with a
+ * A hermetic skills layout: the real engine scripts copied into a temp skills root, with a
  * stub knowledge.cjs sibling — exercising the engine's __dirname-relative
  * resolution exactly as installed.
  */
@@ -67,7 +66,6 @@ function setupFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-create-'));
   const skills = path.join(root, 'skills');
   fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  fs.cpSync(path.join(__dirname, '../../skills/workflow-shared/scripts'), path.join(skills, 'workflow-shared/scripts'), { recursive: true });
   writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
   return {
     root,
@@ -514,7 +512,7 @@ describe('engine workunit create — validation', () => {
 describe('engine workunit create — schema sharing', () => {
   it('validates work types through the shared schema module, never a local literal', () => {
     const src = fs.readFileSync(path.join(REAL_SCRIPTS, 'domain/workunit-create.cjs'), 'utf8');
-    assert.ok(src.includes("require('../../../workflow-shared/scripts/manifest-schema.cjs')"),
+    assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'workunit-create must require the shared schema');
     assert.ok(!/VALID_WORK_TYPES\s*=\s*\[/.test(src), 'no local copy of the work-type vocabulary');
   });

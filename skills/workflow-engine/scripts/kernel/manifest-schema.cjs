@@ -4,10 +4,10 @@
 // Manifest schema vocabulary — the single source of the legal work types,
 // phases, and per-phase status sets.
 //
-// Consumed by BOTH write paths (the manifest CLI's validators and the
+// Consumed by BOTH write paths (the field commands' validators and the
 // engine's transitions), so the two enforcers can never drift: a status the
-// CLI refuses is refused by the engine identically. Pure constants — no IO,
-// no side effects, safe to require from anywhere.
+// field surface refuses is refused by the transitions identically. Pure
+// constants — no IO, no side effects, safe to require from anywhere.
 // ---------------------------------------------------------------------------
 
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];

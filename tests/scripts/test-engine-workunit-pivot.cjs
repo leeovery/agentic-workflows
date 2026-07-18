@@ -59,14 +59,13 @@ function featureManifest(overrides = {}) {
 }
 
 /**
- * A hermetic skills layout (real engine + workflow-shared scripts, stub
+ * A hermetic skills layout (real engine scripts, stub
  * knowledge CLI) beside a git-repo project carrying the feature.
  */
 function setupFixture(manifest = featureManifest()) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-pivot-'));
   const skills = path.join(root, 'skills');
   fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  fs.cpSync(path.join(__dirname, '../../skills/workflow-shared/scripts'), path.join(skills, 'workflow-shared/scripts'), { recursive: true });
   writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
 
   const project = path.join(root, 'project');

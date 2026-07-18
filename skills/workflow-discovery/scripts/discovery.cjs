@@ -24,7 +24,7 @@ const {
   computeAnalysisCacheStatus,
   compareMapRows,
   computeNeedsSequencing,
-} = require('../../workflow-shared/scripts/discovery-utils.cjs');
+} = require('../../workflow-engine/scripts/domain/discovery-utils.cjs');
 
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');

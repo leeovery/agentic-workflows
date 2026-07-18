@@ -8,7 +8,7 @@ const {
   loadManifest,
   phaseItems,
   fileExists,
-} = require('../../workflow-shared/scripts/discovery-utils.cjs');
+} = require('../../workflow-engine/scripts/domain/discovery-utils.cjs');
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);

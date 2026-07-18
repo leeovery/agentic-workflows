@@ -11,7 +11,7 @@ const MANIFEST_CLI = path.resolve(
   __dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'
 );
 const { computeTopicLifecycle } = require(
-  path.resolve(__dirname, '..', '..', 'skills', 'workflow-shared', 'scripts', 'discovery-utils.cjs')
+  path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'domain', 'discovery-utils.cjs')
 );
 
 let dir;

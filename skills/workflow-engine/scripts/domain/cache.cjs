@@ -14,7 +14,7 @@
 
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
-const { collectAnalysisInputs, filesChecksum } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
+const { collectAnalysisInputs, filesChecksum } = require('./discovery-utils.cjs');
 const { knowledge } = require('./kb.cjs');
 
 const KINDS = ['research-analysis', 'gap-analysis'];
