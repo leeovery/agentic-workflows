@@ -18,13 +18,13 @@ const {
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   RESERVED_WORK_UNIT_NAMES: RESERVED_NAMES,
-} = require('../../workflow-shared/scripts/manifest-schema.cjs');
+} = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
 
 // Shared manifest IO (read/parse, locked atomic writes, lock discipline) —
 // one implementation for this CLI and the engine, so the two writers can
 // never drift. This CLI translates its thrown errors to the die/exit-code
 // convention.
-const io = require('../../workflow-shared/scripts/manifest-io.cjs');
+const io = require('../../workflow-engine/scripts/kernel/manifest-io.cjs');
 
 // ---------------------------------------------------------------------------
 // Helpers

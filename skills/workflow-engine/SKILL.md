@@ -10,8 +10,8 @@ The shared engine behind the workflow skills: deterministic state, derivation, a
 
 Internally layered as rings:
 
-- **Kernel** (`scripts/kernel/`) — mechanism with no workflow vocabulary: render primitives, the wrap/width core. The wrap budget (`width − prefix`) lives here once, so gutter-overflow bugs can exist in only one place. Manifest IO is a façade over the shared `workflow-shared/scripts/manifest-io.cjs` — the same module the manifest CLI consumes, so both writers share one read/parse, one atomic-write serialisation, and one lock protocol. Every engine load→mutate→save holds the manifest's lock; KB syncs and commits run after release.
-- **Domain** (`scripts/domain/`) — the workflow ontology: glyph vocabulary, `[tag]` and `↳` composition conventions. Grows queries, projections, and transitions as call sites migrate.
+- **Kernel** (`scripts/kernel/`) — mechanism plus the manifest's on-disk contract: render primitives, the wrap/width core, `manifest-io.cjs` (one read/parse, one atomic-write serialisation, one lock protocol — every manifest writer flows through it via the `manifest.cjs` façade), and `manifest-schema.cjs` (the single vocabulary of legal work types, phases, and per-phase statuses). The wrap budget (`width − prefix`) lives here once, so gutter-overflow bugs can exist in only one place. Every engine load→mutate→save holds the manifest's lock; KB syncs and commits run after release.
+- **Domain** (`scripts/domain/`) — the workflow ontology: glyph vocabulary, `[tag]` and `↳` composition conventions, the shared derivations in `discovery-utils.cjs` (lifecycle joins, next-phase computation, analysis-cache status — consumed by the domain ring and every per-skill read adapter). Grows queries, projections, and transitions as call sites migrate.
 - **Gateway harness** (`scripts/gateway.cjs`) — the uniform verb dispatch every skill's adapter script uses, plus the demarcated output sections.
 
 Two ways in:
@@ -123,7 +123,7 @@ engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
 engine inbox delete <path> [<path> …]    # git rm archived items
 ```
 
-**`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in workflow-shared/discovery-utils) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis` — then indexes the kind's `.state/` cache file (`research-analysis.md` / `discovery-gap-analysis.md`) into the knowledge base (warn-don't-block). Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N, "warnings": []}`. No git commit — the calling flow's commit cadence picks the manifest change up.
+**`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in domain/discovery-utils) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis` — then indexes the kind's `.state/` cache file (`research-analysis.md` / `discovery-gap-analysis.md`) into the knowledge base (warn-don't-block). Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N, "warnings": []}`. No git commit — the calling flow's commit cadence picks the manifest change up.
 
 ```bash
 engine cache stamp <work-unit> (research-analysis|gap-analysis)
@@ -152,7 +152,7 @@ engine.render.wrapWithPrefix(text, { width, prefix }) // → string[] (prefixed 
 engine.render.wrap(text, budget)                  // → string[] (segments ≤ budget)
 engine.render.fillTo(head, fillChar, width)       // → string (padded)
 
-// kernel: manifest IO (façade over workflow-shared/scripts/manifest-io.cjs)
+// kernel: manifest IO (façade over kernel/manifest-io.cjs)
 engine.manifest.loadWorkUnitManifest(cwd, wu)     // → parsed manifest (loud on missing/invalid)
 engine.manifest.saveWorkUnitManifest(cwd, wu, m)  // atomic write (temp file + rename)
 engine.manifest.withWorkUnitLock(cwd, wu, fn)     // → fn() under the work unit's manifest lock

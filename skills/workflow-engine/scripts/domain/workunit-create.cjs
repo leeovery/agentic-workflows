@@ -34,7 +34,7 @@ const {
   VALID_WORK_TYPES,
   VALID_PHASES,
   RESERVED_WORK_UNIT_NAMES,
-} = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+} = require('../kernel/manifest-schema.cjs');
 
 /** Seed provenance tag per inbox folder. */
 const SEED_SOURCES = { ideas: 'inbox:idea', bugs: 'inbox:bug', quickfixes: 'inbox:quickfix' };

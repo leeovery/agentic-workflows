@@ -1,19 +1,18 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: manifest IO — the engine's façade over the shared manifest-io
-// module (workflow-shared/scripts/manifest-io.cjs), which the manifest CLI
-// consumes too: one read/parse, one atomic-write serialisation, one lock
-// protocol — the two writers can never drift.
+// Kernel: manifest IO — the engine's façade over the sibling manifest-io
+// module: one read/parse, one atomic-write serialisation, one lock protocol
+// for every manifest writer.
 //
 // Mechanism only: it knows nothing about what the manifest contains. The
 // façade translates the engine's `cwd` convention (project root) to the
-// shared module's `workflowsDir` and keeps the engine ring's import surface
+// io module's `workflowsDir` and keeps the engine ring's import surface
 // stable.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const io = require('../../../workflow-shared/scripts/manifest-io.cjs');
+const io = require('./manifest-io.cjs');
 
 /** @param {string} cwd project root (the directory containing `.workflows/`) */
 function workflowsDir(cwd) {
