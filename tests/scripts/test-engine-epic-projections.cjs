@@ -6,13 +6,13 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover } = require('../../skills/workflow-continue-epic/scripts/discovery.cjs');
+const { discover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 const {
   epicDashboard, epicKey, epicMenu, epicCompletedMenu, epicCancelMenu, epicReactivateMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
 
-const ADAPTER = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/discovery.cjs');
+const ADAPTER = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
 // Golden tests: byte-exact expected strings for the epic dashboard, key, and
 // menu projections. Fixtures go through real manifests in temp dirs (the same

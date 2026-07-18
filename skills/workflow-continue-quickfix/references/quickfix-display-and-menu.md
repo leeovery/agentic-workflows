@@ -15,7 +15,7 @@ This reference stores the selected `ACTIONS` entry's `action` and `route` and re
 Render the quick-fix snapshot:
 
 ```bash
-node .claude/skills/workflow-continue-quickfix/scripts/discovery.cjs view {work_unit}
+node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs view {work_unit}
 ```
 
 The output is one snapshot in three demarcated sections:

@@ -5,7 +5,7 @@
 // map state and rendering live in the engine; this script selects the
 // answers the session flow needs and sections the output.
 //
-//   discovery.cjs map {work_unit} {topic}
+//   gateway.cjs map {work_unit} {topic}
 //     → DATA (counts, all_decided, unresolved, review_cycles)
 //       + DISPLAY (the Discussion Map block)
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ function reviewCycles(cwd, workUnit, topic) {
 
 function map(workUnit, topic) {
   if (!workUnit || !topic) {
-    throw new Error('Usage: discovery.cjs map {work_unit} {topic}');
+    throw new Error('Usage: gateway.cjs map {work_unit} {topic}');
   }
   const cwd = process.cwd();
   const manifest = engine.manifest.loadWorkUnitManifest(cwd, workUnit);

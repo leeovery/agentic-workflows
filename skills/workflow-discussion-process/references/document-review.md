@@ -29,7 +29,7 @@ Read the discussion file in full: `.workflows/{work_unit}/discussion/{topic}.md`
 Pull the current Discussion Map state fresh as well:
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/discovery.cjs map {work_unit} {topic}
+node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 Don't rely on your memory of what you wrote earlier. Pay particular attention to:

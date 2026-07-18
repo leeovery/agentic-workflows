@@ -7,10 +7,10 @@
 // shared verb vocabulary and calls runGateway(). The .md's prescribed call
 // names the verb, so the script never guesses what a call is for:
 //
-//   discovery.cjs                → index()        head-of-skill `!` insert
-//   discovery.cjs data <wu>      → data(wu)       reasoning-only flags
-//   discovery.cjs view <wu>      → view(wu)       DATA + DISPLAY + MENU snapshot
-//   discovery.cjs <verb> <args…> → handlers[verb] skill-specific sub-views
+//   gateway.cjs                → index()        head-of-skill `!` insert
+//   gateway.cjs data <wu>      → data(wu)       reasoning-only flags
+//   gateway.cjs view <wu>      → view(wu)       DATA + DISPLAY + MENU snapshot
+//   gateway.cjs <verb> <args…> → handlers[verb] skill-specific sub-views
 //
 // Output sections are demarcated so the two surfaces can't be confused:
 // DATA is for reasoning (never displayed); DISPLAY and MENU are emitted to

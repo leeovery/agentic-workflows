@@ -13,7 +13,7 @@ Epic is phase-centric — all artifacts in a phase complete before moving to the
 The bridge's own discovery provides minimal epic data. Run the workflow-continue-epic discovery scoped to this work unit for the epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, the discovery map):
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 Hold the output as **the most recent discovery output** — sections B–D read from it.
@@ -39,7 +39,7 @@ A new topic may have arrived without a suggested execution order — from sectio
 On return, re-run discovery so section E sees the new order:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 Hold the refreshed output as the most recent discovery output for the remaining sections.

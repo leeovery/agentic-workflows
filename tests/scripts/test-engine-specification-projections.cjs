@@ -6,13 +6,13 @@ const { spawnSync } = require('child_process');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover } = require('../../skills/workflow-specification-entry/scripts/discovery.cjs');
+const { discover } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
 const { specificationDetail } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
 const {
   specificationDisplay, specificationMenu, specificationCompletedMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/specification.cjs');
 
-const ADAPTER = path.resolve(__dirname, '../../skills/workflow-specification-entry/scripts/discovery.cjs');
+const ADAPTER = path.resolve(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
 
 // Golden tests: byte-exact expected strings for the specification-entry
 // scenario displays and menus. Fixtures go through real manifests in temp

@@ -42,7 +42,7 @@ Carry **everything** worked out about the concern — as many paragraphs as it t
 Resolution is computed against the **live** map at landing time, never cached — a target created earlier in the same session must resolve correctly:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Find the row whose name is `{target}`.

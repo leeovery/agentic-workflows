@@ -98,7 +98,7 @@ If a subtopic was partially explored and the conversation moved on, remember it 
 At natural breaks — after a decision, when transitioning between subtopics, or when the user asks — render the current Discussion Map. This gives the user visibility into where the discussion stands.
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/discovery.cjs map {work_unit} {topic}
+node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 The output is one snapshot in two demarcated sections:
@@ -193,7 +193,7 @@ Note the concern in the Summary section for the user to consider separately, and
 1. Identify the topic the concern belongs to. Read the live map:
 
    ```bash
-   node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+   node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
    ```
 
    Resolve the target. If one topic clearly matches, propose it and confirm with the user. If nothing fits, propose a new kebab-case name and confirm. If several plausible candidates exist — or a near-match you're unsure of — present them and let the user choose:
@@ -245,7 +245,7 @@ Convergence is the natural end state — not a forced conclusion. The discussion
 **Before rendering the convergence menu**, run the map call:
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/discovery.cjs map {work_unit} {topic}
+node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 Its DATA section carries the convergence facts: `all_decided` and `review_cycles`.
@@ -306,7 +306,7 @@ When the user indicates they want to conclude the discussion (e.g., "that covers
 **First**, run the map call:
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/discovery.cjs map {work_unit} {topic}
+node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 Its DATA section carries everything this flow needs: `all_decided`, `unresolved`, `review_cycles`.

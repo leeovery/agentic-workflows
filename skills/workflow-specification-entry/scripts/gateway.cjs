@@ -6,10 +6,10 @@
 // script builds the discovery result, parses the consult-hint doc (its one
 // piece of file IO the engine stays blind to), and sections the output.
 //
-//   discovery.cjs                        → minimal state line, all work units
-//   discovery.cjs {work_unit}            → minimal state line, one work unit
-//   discovery.cjs view {work_unit}       → DATA (+ DISPLAY + MENU) snapshot
-//   discovery.cjs completed-menu {work_unit} → concluded-specs sub-view
+//   gateway.cjs                        → minimal state line, all work units
+//   gateway.cjs {work_unit}            → minimal state line, one work unit
+//   gateway.cjs view {work_unit}       → DATA (+ DISPLAY + MENU) snapshot
+//   gateway.cjs completed-menu {work_unit} → concluded-specs sub-view
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -235,7 +235,7 @@ function consultHints(cwd, workUnit) {
 }
 
 function buildDetail(workUnit) {
-  if (!workUnit) throw new Error('Usage: discovery.cjs <view|completed-menu> {work_unit}');
+  if (!workUnit) throw new Error('Usage: gateway.cjs <view|completed-menu> {work_unit}');
   const cwd = process.cwd();
   const result = discover(cwd, workUnit);
   return { result, detail: engine.detail.specificationDetail(workUnit, result, { consultHints: consultHints(cwd, workUnit) }) };

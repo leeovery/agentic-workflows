@@ -93,7 +93,7 @@ Answer from the set items' content. Keep it short. Do not act on the set — the
 Run discovery for the current inbox state:
 
 ```bash
-node .claude/skills/workflow-start/scripts/discovery.cjs
+node .claude/skills/workflow-start/scripts/gateway.cjs
 ```
 
 Build a numbered list of inbox items **not already in the working set**, sorted by date.

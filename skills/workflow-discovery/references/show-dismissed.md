@@ -6,14 +6,14 @@
 
 Surfaces topic names previously removed from the map and offers re-add. Loaded by [session-loop.md](session-loop.md) when the user asks to see dismissed items.
 
-State comes from `skills/workflow-discovery/scripts/discovery.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
+State comes from `skills/workflow-discovery/scripts/gateway.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
 ## A. Read Dismissed List
 
 Re-run discovery to pick up any state changes since the parent's initial discovery (a Remove earlier in the session may have added a new entry):
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Read the `dismissed` array from the output.

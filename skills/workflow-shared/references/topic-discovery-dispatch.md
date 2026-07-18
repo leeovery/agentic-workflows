@@ -11,7 +11,7 @@ Wraps the cache-status check and conditional dispatch around [topic-discovery.md
 The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
-- `analysis_caches` — the `analysis_caches` line from the caller's prior `workflow-continue-epic/scripts/discovery.cjs` invocation: `research_analysis=<status>, gap_analysis=<status>`.
+- `analysis_caches` — the `analysis_caches` line from the caller's prior `workflow-continue-epic/scripts/gateway.cjs` invocation: `research_analysis=<status>, gap_analysis=<status>`.
 
 The caller is also responsible for surfacing `new_arrivals` afterwards (e.g. as a callout above the discovery map).
 
@@ -53,7 +53,7 @@ On return, `topic-discovery.md` has populated `new_arrivals` with any items adde
 Re-run discovery so the caller sees fresh state including any auto-added items:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 → Return to caller.

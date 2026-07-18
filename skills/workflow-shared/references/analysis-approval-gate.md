@@ -178,7 +178,7 @@ The offer for this parent already ran this session. Skip it (dedup).
 Re-run discovery to read the parent's current lifecycle:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Find the `parent` row in `discovery_map`.
