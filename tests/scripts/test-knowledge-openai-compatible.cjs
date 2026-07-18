@@ -36,6 +36,48 @@ function mockFetchNetworkError(message) {
 }
 
 // ---------------------------------------------------------------------------
+// Error-body sanitisation — upstream bodies are untrusted and may reflect the
+// Authorization header; nothing credential-shaped may survive into an error
+// ---------------------------------------------------------------------------
+
+describe('OpenAICompatibleProvider error-body sanitisation (mocked)', () => {
+  let originalFetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  const CANARY = 'sk-canaryLEAK1234567890';
+
+  it('redacts a reflected Authorization bearer from HTTP error detail', async () => {
+    globalThis.fetch = mockFetchError(400, `bad request; got header Authorization: Bearer ${CANARY}`);
+    const p = new OpenAICompatibleProvider({ baseUrl: 'http://localhost:1234/v1', model: 'm', dimensions: 3 });
+    await assert.rejects(() => p.embed('x'), (err) => {
+      assert.ok(!err.message.includes(CANARY), 'key must not survive into the error message');
+      assert.match(err.message, /Bearer \[redacted\]/);
+      return true;
+    });
+  });
+
+  it('redacts bare sk- tokens even without a Bearer prefix', async () => {
+    globalThis.fetch = mockFetchError(422, `{"error":"invalid key ${CANARY}"}`);
+    const p = new OpenAICompatibleProvider({ baseUrl: 'http://localhost:1234/v1', model: 'm', dimensions: 3 });
+    await assert.rejects(() => p.embed('x'), (err) => {
+      assert.ok(!err.message.includes(CANARY));
+      assert.match(err.message, /\[redacted-key\]/);
+      return true;
+    });
+  });
+
+  it('caps error detail at 300 characters', async () => {
+    globalThis.fetch = mockFetchError(500, 'x'.repeat(5000));
+    const p = new OpenAICompatibleProvider({ baseUrl: 'http://localhost:1234/v1', model: 'm', dimensions: 3 });
+    await assert.rejects(() => p.embed('x'), (err) => {
+      assert.ok(err.message.length < 500, `message unexpectedly long: ${err.message.length}`);
+      return true;
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
 

@@ -5,6 +5,7 @@
 ---
 
 The knowledge base is required infrastructure — no workflow proceeds without it. Initialise it here, conversationally. The API key is the one thing that must NEVER pass through this chat: every path below keeps it in the user's terminal or shell environment, and you never ask for it, accept it, or echo it.
+If a key appears in the conversation anyway, do not repeat, quote, or store any part of it — acknowledge without echoing, note that a key pasted into chat should be treated as exposed and rotated, and direct entry through `knowledge setup --key-only`.
 
 Read the boot response's `system_config` object: `status` (`valid`, `absent`, or `invalid`), `provider`, and `model`.
 
@@ -219,7 +220,7 @@ chat — run ONE of these in your terminal, then come back:
       Private prompt, input hidden. Stored at
       ~/.config/workflows/credentials.json (mode 0600).
 
-  export OPENAI_API_KEY=<your key>
+  export OPENAI_API_KEY=<your key>   # note: inline export lands in shell history — --key-only avoids that
       Shell environment — takes precedence over the stored key.
 @else
 The endpoint requires an API key. Store one without it touching
