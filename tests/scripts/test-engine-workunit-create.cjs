@@ -504,8 +504,21 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'create']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic', '--description', 'x']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb>/);
+  });
+
+  it('creates without a session log — no sessions dir, no active_session, session_log null', () => {
+    const res = engine(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.created, true);
+    assert.strictEqual(res.session_log, null);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy/discovery')),
+      'no discovery/sessions tree without a log');
+    const manifest = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/promoted-policy/manifest.json'), 'utf8'));
+    assert.strictEqual(manifest.work_type, 'cross-cutting');
+    assert.strictEqual(manifest.phases.discovery, undefined, 'no active_session marker without a log');
+    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
+    assert.deepStrictEqual(project.work_units['promoted-policy'], { work_type: 'cross-cutting' });
   });
 });
 
