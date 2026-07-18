@@ -8,7 +8,6 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const MANIFEST_CLI = path.join(__dirname, '../../skills/workflow-manifest/scripts/manifest.cjs');
 
 // Hermetic git: no user/system config leaks into fixtures or the engine's
 // spawned git subprocesses.
@@ -182,7 +181,7 @@ describe('engine workunit create — happy path', () => {
     assert.strictEqual(m.seeds[0].source, 'inbox:idea');
     assert.match(m.seeds[0].seeded_at, ISO_SECONDS);
 
-    // Registered in the project manifest, exactly as manifest.cjs init does.
+    // Registered in the project manifest.
     const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, { payments: { work_type: 'epic' } });
 
@@ -246,29 +245,28 @@ describe('engine workunit create — happy path', () => {
   });
 });
 
-describe('engine workunit create — manifest equivalence with manifest.cjs init', () => {
+describe('engine workunit create — the canonical on-disk documents', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
 
-  it('writes byte-identical manifest and project-manifest documents', () => {
-    // Reference: the manifest CLI in a sibling project dir.
-    const reference = path.join(fix.root, 'reference');
-    fs.mkdirSync(reference, { recursive: true });
-    execFileSync('node', [MANIFEST_CLI, 'init', 'payments', '--work-type', 'feature', '--description', 'Payments overhaul'], {
-      cwd: reference,
-      encoding: 'utf8',
-    });
-
+  it('writes byte-exact manifest and project-manifest documents', () => {
     engine(fix, createArgs('payments', 'feature'));
 
-    const cliManifest = fs.readFileSync(path.join(reference, '.workflows/payments/manifest.json'), 'utf8');
     const engineManifest = fs.readFileSync(path.join(fix.project, '.workflows/payments/manifest.json'), 'utf8');
-    assert.strictEqual(engineManifest, cliManifest);
+    assert.strictEqual(engineManifest, JSON.stringify({
+      name: 'payments',
+      work_type: 'feature',
+      status: 'in-progress',
+      created: new Date().toISOString().slice(0, 10),
+      description: 'Payments overhaul',
+      phases: {},
+    }, null, 2) + '\n');
 
-    const cliProject = fs.readFileSync(path.join(reference, '.workflows/manifest.json'), 'utf8');
     const engineProject = fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8');
-    assert.strictEqual(engineProject, cliProject);
+    assert.strictEqual(engineProject, JSON.stringify({
+      work_units: { payments: { work_type: 'feature' } },
+    }, null, 2) + '\n');
   });
 });
 

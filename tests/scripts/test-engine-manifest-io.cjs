@@ -6,7 +6,7 @@
 // serialisation, one lock protocol for every manifest writer.
 //
 // Proves the concurrency contract the island-absorption wave closed: engine
-// writes take the same .lock the CLI honours — a fresh lock blocks the engine
+// writes take the same .lock as every manifest writer — a fresh lock blocks the engine
 // until released, a stale lock is broken per the shared constants, and no
 // lock file ever leaks into a transaction's commit.
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-io-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
 
-  it('carries the manifest CLI lock discipline: 30s stale, 50ms retry, 10s timeout', () => {
+  it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout', () => {
     assert.strictEqual(io.LOCK_STALE_MS, 30000);
     assert.strictEqual(io.LOCK_RETRY_MS, 50);
     assert.strictEqual(io.LOCK_TIMEOUT_MS, 10000);
@@ -256,13 +256,13 @@ describe('engine project-manifest writes take the project lock', () => {
   });
 });
 
-describe('CLI and engine stay one implementation', () => {
-  it('the manifest CLI requires the kernel manifest-io module — no local lock or write copies', () => {
-    const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-manifest/scripts/manifest.cjs'), 'utf8');
-    assert.ok(src.includes("require('../../workflow-engine/scripts/kernel/manifest-io.cjs')"),
-      'manifest CLI must consume the kernel manifest IO');
-    assert.ok(!src.includes('openSync'), 'no local lock implementation in the CLI');
-    assert.ok(!src.includes('renameSync'), 'no local atomic-write implementation in the CLI');
+describe('field surface and transactions stay one implementation', () => {
+  it('the field surface requires the kernel manifest-io module — no local lock or write copies', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/fields.cjs'), 'utf8');
+    assert.ok(src.includes("require('../kernel/manifest-io.cjs')"),
+      'fields must consume the kernel manifest IO');
+    assert.ok(!src.includes('openSync'), 'no local lock implementation in the field surface');
+    assert.ok(!src.includes('renameSync'), 'no local atomic-write implementation in the field surface');
     assert.ok(!/LOCK_STALE_MS\s*=/.test(src), 'no local copy of the lock constants');
   });
 

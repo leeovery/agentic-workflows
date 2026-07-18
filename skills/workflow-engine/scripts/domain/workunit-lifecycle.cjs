@@ -13,7 +13,7 @@
 // base is a derived index, so its failures are recorded as warnings, never
 // blocks. Validation throws loud and specific before anything is touched.
 // Every load→mutate→save runs under the owning manifest's lock (work-unit or
-// project — the same locks the manifest CLI honours), taken one at a time and
+// project — the manifest locks every writer honours), taken one at a time and
 // never nested, so multi-manifest transactions cannot deadlock.
 // ---------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@ const { addItem } = require('./discovery-map.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
-// Refuse any status write the manifest CLI would refuse — the two enforcers
+// Refuse any status write the field surface would refuse — the two enforcers
 // share one schema table.
 /** @param {string} status */
 function assertLegalStatus(status) {

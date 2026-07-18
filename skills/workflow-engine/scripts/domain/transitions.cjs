@@ -16,7 +16,7 @@
 // base is a derived index, so its failures are recorded as warnings, never
 // blocks. Validation throws loud and specific before anything is touched.
 // Every load→mutate→save runs under the work unit's manifest lock (the same
-// lock the manifest CLI honours); the KB sync and the commit run after
+// lock every manifest writer honours); the KB sync and the commit run after
 // release — the lock protects the manifest read-modify-write, nothing else.
 // ---------------------------------------------------------------------------
 
@@ -31,7 +31,7 @@ const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schem
 // edited by the discovery tooling, never by topic commands.
 const LIFECYCLE_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 
-// Refuse any status write the manifest CLI would refuse — the two enforcers
+// Refuse any status write the field surface would refuse — the two enforcers
 // share one schema (kernel/manifest-schema.cjs), so the
 // engine can never be the permissive path around a validation refusal.
 /** @param {string} phase @param {string} status */

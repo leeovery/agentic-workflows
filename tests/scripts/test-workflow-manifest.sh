@@ -1,14 +1,19 @@
 #!/bin/bash
 #
-# Tests for the workflow manifest CLI (manifest.cjs)
-# Validates init, get, set, list, init-phase, push, pull, exists commands.
+# Contract suite for the engine's manifest field surface (`engine manifest …`,
+# skills/workflow-engine/scripts/domain/fields.cjs).
+# Validates get, set, list, push, pull, delete, exists, key-of, resolve.
 # Uses dot-path syntax: <work-unit>[.<phase>[.<topic>]]
+#
+# Output contract: reads print bare stdout (byte-compatible with the absorbed
+# manifest CLI); mutations answer with the engine's one-line JSON response
+# ({"ok":true,…} on stdout; {"ok":false,…} on stderr, exit 1).
 #
 
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MANIFEST_JS="$SCRIPT_DIR/../../skills/workflow-manifest/scripts/manifest.cjs"
+ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,19 +42,45 @@ setup_fixture() {
     mkdir -p "$TEST_DIR/.workflows"
 }
 
+# Fixture: create a work unit on disk — the same document `engine workunit
+# create` writes (identity fields, in-progress, empty phases) plus the
+# project-manifest registration. Work-unit creation is the engine's workunit
+# verb, not a field op — the fixture writes directly so this suite exercises
+# only the field surface.
+create_wu() {
+    local name="$1" type="$2" desc="${3:-}"
+    cd "$TEST_DIR"
+    node -e '
+      const fs = require("fs"), path = require("path");
+      const [name, type, desc] = process.argv.slice(1);
+      const dir = path.join(".workflows", name);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
+        name, work_type: type, status: "in-progress",
+        created: new Date().toISOString().slice(0, 10),
+        description: desc, phases: {},
+      }, null, 2) + "\n");
+      const projPath = path.join(".workflows", "manifest.json");
+      const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
+      proj.work_units = proj.work_units || {};
+      proj.work_units[name] = { work_type: type };
+      fs.writeFileSync(projPath, JSON.stringify(proj, null, 2) + "\n");
+    ' "$name" "$type" "$desc"
+}
+
 run_cli() {
     cd "$TEST_DIR"
-    node "$MANIFEST_JS" "$@" 2>&1
+    node "$ENGINE_JS" manifest "$@" 2>&1
 }
 
 run_cli_stdout() {
     cd "$TEST_DIR"
-    node "$MANIFEST_JS" "$@" 2>/dev/null
+    node "$ENGINE_JS" manifest "$@" 2>/dev/null
 }
 
 run_cli_exit_code() {
     cd "$TEST_DIR"
-    node "$MANIFEST_JS" "$@" >/dev/null 2>&1
+    node "$ENGINE_JS" manifest "$@" >/dev/null 2>&1
     echo $?
 }
 
@@ -130,42 +161,6 @@ assert_file_exists() {
     fi
 }
 
-assert_dir_exists() {
-    local dirpath="$1"
-    local description="$2"
-
-    TESTS_RUN=$((TESTS_RUN + 1))
-
-    if [ -d "$dirpath" ]; then
-        echo -e "  ${GREEN}✓${NC} $description"
-        TESTS_PASSED=$((TESTS_PASSED + 1))
-        return 0
-    else
-        echo -e "  ${RED}✗${NC} $description"
-        echo -e "    Directory not found: $dirpath"
-        TESTS_FAILED=$((TESTS_FAILED + 1))
-        return 1
-    fi
-}
-
-assert_dir_not_exists() {
-    local dirpath="$1"
-    local description="$2"
-
-    TESTS_RUN=$((TESTS_RUN + 1))
-
-    if [ ! -d "$dirpath" ]; then
-        echo -e "  ${GREEN}✓${NC} $description"
-        TESTS_PASSES=$((TESTS_PASSED + 1))
-        return 0
-    else
-        echo -e "  ${RED}✗${NC} $description"
-        echo -e "    Directory should not exist: $dirpath"
-        TESTS_FAILED=$((TESTS_FAILED + 1))
-        return 1
-    fi
-}
-
 assert_exit_nonzero() {
     local description="$1"
     shift
@@ -173,7 +168,7 @@ assert_exit_nonzero() {
     TESTS_RUN=$((TESTS_RUN + 1))
 
     cd "$TEST_DIR"
-    if node "$MANIFEST_JS" "$@" >/dev/null 2>&1; then
+    if node "$ENGINE_JS" manifest "$@" >/dev/null 2>&1; then
         echo -e "  ${RED}✗${NC} $description"
         echo -e "    Expected non-zero exit code but got 0"
         TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -186,12 +181,12 @@ assert_exit_nonzero() {
 }
 
 # ============================================================================
-# INIT TESTS
+# WORK-UNIT DOCUMENT + RETIRED VERBS
 # ============================================================================
 
-echo -e "${YELLOW}Test: init creates valid manifest${NC}"
+echo -e "${YELLOW}Test: work-unit document shape (fixture matches the engine-created manifest)${NC}"
 setup_fixture
-output=$(run_cli init dark-mode --work-type feature --description "Add dark mode")
+create_wu dark-mode feature "Add dark mode"
 
 assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json created"
 content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
@@ -206,45 +201,27 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init rejects duplicate names${NC}"
+echo -e "${YELLOW}Test: retired CLI commands are not ported${NC}"
 setup_fixture
-run_cli init my-feature --work-type feature --description "First" >/dev/null 2>&1
-output=$(run_cli init my-feature --work-type feature --description "Second" || true)
-
-assert_contains "$output" "already exists" "Duplicate name rejected"
+output=$(run_cli init dark-mode --work-type feature --description "x" || true)
+assert_contains "$output" "Usage: engine manifest" "init refused with usage"
+output=$(run_cli init-phase dark-mode.discussion.dark-mode || true)
+assert_contains "$output" "Usage: engine manifest" "init-phase refused with usage"
+output=$(run_cli project list || true)
+assert_contains "$output" "Usage: engine manifest" "project refused with usage"
+output=$(run_cli create-discovery-topic dark-mode foo || true)
+assert_contains "$output" "Usage: engine manifest" "create-discovery-topic refused with usage"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init rejects invalid work_type${NC}"
+echo -e "${YELLOW}Test: mutation failures are the engine JSON contract${NC}"
 setup_fixture
-assert_exit_nonzero "Invalid work_type rejected" init bad-type --work-type invalid --description "Bad"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: init rejects missing work_type${NC}"
-setup_fixture
-assert_exit_nonzero "Missing work_type rejected" init no-type --description "No type"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: init rejects dots in work unit name${NC}"
-setup_fixture
-assert_exit_nonzero "Dot in name rejected" init foo.bar --work-type feature --description "Bad name"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: init rejects phase name as work unit name${NC}"
-setup_fixture
-assert_exit_nonzero "Phase name as work unit rejected" init discussion --work-type feature --description "Bad name"
-assert_exit_nonzero "Phase name as work unit rejected (research)" init research --work-type feature --description "Bad name"
+exit_code=$(run_cli_exit_code set ghost status completed)
+assert_equals "$exit_code" "1" "failed mutation exits 1"
+output=$(run_cli set ghost status completed || true)
+assert_contains "$output" '"ok":false' "failed mutation emits ok:false JSON on stderr"
 
 echo ""
 
@@ -254,7 +231,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get full manifest${NC}"
 setup_fixture
-run_cli init test-get --work-type feature --description "Test get" >/dev/null 2>&1
+create_wu test-get feature "Test get"
 output=$(run_cli_stdout get test-get)
 
 assert_contains "$output" '"name": "test-get"' "Full manifest contains name"
@@ -266,7 +243,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get scalar value at work-unit level (raw output)${NC}"
 setup_fixture
-run_cli init scalar-test --work-type bugfix --description "Scalar" >/dev/null 2>&1
+create_wu scalar-test bugfix "Scalar"
 output=$(run_cli_stdout get scalar-test status)
 
 assert_equals "$output" "in-progress" "Scalar value output raw"
@@ -277,8 +254,8 @@ echo ""
 
 echo -e "${YELLOW}Test: get subtree at phase level (2-segment path)${NC}"
 setup_fixture
-run_cli init subtree-test --work-type feature --description "Subtree" >/dev/null 2>&1
-run_cli init-phase subtree-test.discussion.subtree-test >/dev/null 2>&1
+create_wu subtree-test feature "Subtree"
+run_cli set subtree-test.discussion.subtree-test status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get subtree-test.discussion)
 
 assert_contains "$output" '"status": "in-progress"' "Subtree output as JSON"
@@ -289,8 +266,8 @@ echo ""
 
 echo -e "${YELLOW}Test: get topic-level value for feature${NC}"
 setup_fixture
-run_cli init feat-get --work-type feature --description "Get test" >/dev/null 2>&1
-run_cli init-phase feat-get.discussion.feat-get >/dev/null 2>&1
+create_wu feat-get feature "Get test"
+run_cli set feat-get.discussion.feat-get status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get feat-get.discussion.feat-get status)
 
 assert_equals "$output" "in-progress" "Feature topic-level get returns status"
@@ -301,8 +278,8 @@ echo ""
 
 echo -e "${YELLOW}Test: get topic-level value for epic${NC}"
 setup_fixture
-run_cli init epic-get --work-type epic --description "Get test" >/dev/null 2>&1
-run_cli init-phase epic-get.discussion.my-topic >/dev/null 2>&1
+create_wu epic-get epic "Get test"
+run_cli set epic-get.discussion.my-topic status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get epic-get.discussion.my-topic status)
 
 assert_equals "$output" "in-progress" "Epic topic-level get routes through items"
@@ -313,7 +290,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get returns empty on missing path${NC}"
 setup_fixture
-run_cli init missing-path --work-type feature --description "Missing" >/dev/null 2>&1
+create_wu missing-path feature "Missing"
 output=$(run_cli_stdout get missing-path nonexistent.deep.path)
 assert_equals "$output" "" "Missing field returns empty stdout"
 run_cli_stdout get missing-path nonexistent.deep.path >/dev/null
@@ -336,7 +313,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get wildcard returns empty when no items${NC}"
 setup_fixture
-run_cli init empty-wc --work-type epic --description "Empty wildcard" >/dev/null 2>&1
+create_wu empty-wc epic "Empty wildcard"
 output=$(run_cli_stdout get 'empty-wc.discussion.*' status)
 assert_equals "$output" "" "Wildcard with no items returns empty stdout"
 run_cli_stdout get 'empty-wc.discussion.*' status >/dev/null
@@ -348,7 +325,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get distinguishes present-null from missing via exists${NC}"
 setup_fixture
-run_cli init null-test --work-type feature --description "Null test" >/dev/null 2>&1
+create_wu null-test feature "Null test"
 run_cli set null-test some_field 'null' >/dev/null 2>&1
 present_output=$(run_cli_stdout get null-test some_field)
 missing_output=$(run_cli_stdout get null-test no_such_field)
@@ -367,7 +344,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set work-unit-level value${NC}"
 setup_fixture
-run_cli init set-test --work-type feature --description "Set test" >/dev/null 2>&1
+create_wu set-test feature "Set test"
 run_cli set set-test description "Updated description" >/dev/null 2>&1
 output=$(run_cli_stdout get set-test description)
 
@@ -379,8 +356,8 @@ echo ""
 
 echo -e "${YELLOW}Test: set topic-level value for feature${NC}"
 setup_fixture
-run_cli init feat-set --work-type feature --description "Set" >/dev/null 2>&1
-run_cli init-phase feat-set.discussion.feat-set >/dev/null 2>&1
+create_wu feat-set feature "Set"
+run_cli set feat-set.discussion.feat-set status in-progress >/dev/null 2>&1
 run_cli set feat-set.discussion.feat-set status completed >/dev/null 2>&1
 output=$(run_cli_stdout get feat-set.discussion.feat-set status)
 
@@ -392,8 +369,8 @@ echo ""
 
 echo -e "${YELLOW}Test: set topic-level value for epic${NC}"
 setup_fixture
-run_cli init epic-set --work-type epic --description "Set" >/dev/null 2>&1
-run_cli init-phase epic-set.discussion.my-topic >/dev/null 2>&1
+create_wu epic-set epic "Set"
+run_cli set epic-set.discussion.my-topic status in-progress >/dev/null 2>&1
 run_cli set epic-set.discussion.my-topic status completed >/dev/null 2>&1
 output=$(run_cli_stdout get epic-set.discussion.my-topic status)
 
@@ -405,7 +382,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set auto-creates intermediate keys${NC}"
 setup_fixture
-run_cli init intermediate --work-type feature --description "Intermediate" >/dev/null 2>&1
+create_wu intermediate feature "Intermediate"
 run_cli set intermediate.discussion.intermediate status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get intermediate.discussion.intermediate status)
 
@@ -417,7 +394,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set topic-level research with topic works${NC}"
 setup_fixture
-run_cli init topicful --work-type feature --description "Topic research" >/dev/null 2>&1
+create_wu topicful feature "Topic research"
 run_cli set topicful.research.exploration status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get topicful.research.exploration status)
 
@@ -429,8 +406,8 @@ echo ""
 
 echo -e "${YELLOW}Test: set topic-level research for epic uses items${NC}"
 setup_fixture
-run_cli init topicful2 --work-type epic --description "Topic research epic" >/dev/null 2>&1
-run_cli init-phase topicful2.research.exploration >/dev/null 2>&1
+create_wu topicful2 epic "Topic research epic"
+run_cli set topicful2.research.exploration status in-progress >/dev/null 2>&1
 run_cli set topicful2.research.exploration status completed >/dev/null 2>&1
 output=$(run_cli_stdout get topicful2.research.exploration status)
 
@@ -442,7 +419,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get phase-level (2-segment) returns whole phase object${NC}"
 setup_fixture
-run_cli init topicful3 --work-type feature --description "Topic get" >/dev/null 2>&1
+create_wu topicful3 feature "Topic get"
 run_cli set topicful3.research.exploration status completed >/dev/null 2>&1
 output=$(run_cli_stdout get topicful3.research)
 
@@ -454,7 +431,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set phase-level field (2-segment path)${NC}"
 setup_fixture
-run_cli init phase-set --work-type feature --description "Phase set" >/dev/null 2>&1
+create_wu phase-set feature "Phase set"
 run_cli set phase-set.planning format local-markdown >/dev/null 2>&1
 output=$(run_cli_stdout get phase-set.planning format)
 
@@ -466,7 +443,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set rejects invalid phase names${NC}"
 setup_fixture
-run_cli init phase-check --work-type feature --description "Phase" >/dev/null 2>&1
+create_wu phase-check feature "Phase"
 assert_exit_nonzero "Invalid phase rejected" set phase-check.cooking.phase-check status in-progress
 
 echo ""
@@ -475,7 +452,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set rejects invalid phase status${NC}"
 setup_fixture
-run_cli init status-check --work-type feature --description "Status" >/dev/null 2>&1
+create_wu status-check feature "Status"
 assert_exit_nonzero "Invalid status for discussion rejected" set status-check.discussion.status-check status concluded
 assert_exit_nonzero "Invalid status for implementation rejected" set status-check.implementation.status-check status concluded
 
@@ -485,7 +462,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set validates correct phase statuses${NC}"
 setup_fixture
-run_cli init valid-status --work-type feature --description "Valid" >/dev/null 2>&1
+create_wu valid-status feature "Valid"
 run_cli set valid-status.discussion.valid-status status completed >/dev/null 2>&1
 run_cli set valid-status.implementation.valid-status status completed >/dev/null 2>&1
 
@@ -501,7 +478,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set rejects invalid gate modes${NC}"
 setup_fixture
-run_cli init gate-check --work-type feature --description "Gate" >/dev/null 2>&1
+create_wu gate-check feature "Gate"
 assert_exit_nonzero "Invalid gate mode rejected" set gate-check.planning.gate-check task_gate_mode manual
 
 echo ""
@@ -510,7 +487,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set accepts valid gate modes${NC}"
 setup_fixture
-run_cli init gate-valid --work-type feature --description "Gate" >/dev/null 2>&1
+create_wu gate-valid feature "Gate"
 run_cli set gate-valid.planning.gate-valid task_gate_mode auto >/dev/null 2>&1
 output=$(run_cli_stdout get gate-valid.planning.gate-valid task_gate_mode)
 
@@ -522,7 +499,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set rejects invalid work_type${NC}"
 setup_fixture
-run_cli init wt-check --work-type feature --description "WT" >/dev/null 2>&1
+create_wu wt-check feature "WT"
 assert_exit_nonzero "Invalid work_type on set rejected" set wt-check work_type project
 
 echo ""
@@ -531,7 +508,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set rejects invalid work unit status${NC}"
 setup_fixture
-run_cli init ws-check --work-type feature --description "WS" >/dev/null 2>&1
+create_wu ws-check feature "WS"
 assert_exit_nonzero "Invalid work unit status rejected" set ws-check status deleted
 
 echo ""
@@ -540,7 +517,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set parses JSON values${NC}"
 setup_fixture
-run_cli init json-parse --work-type feature --description "JSON" >/dev/null 2>&1
+create_wu json-parse feature "JSON"
 run_cli set json-parse.specification.json-parse sources '[{"name":"auth","status":"pending"}]' >/dev/null 2>&1
 output=$(run_cli_stdout get json-parse.specification.json-parse sources)
 
@@ -552,7 +529,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set nested field path with dots${NC}"
 setup_fixture
-run_cli init dotpath --work-type feature --description "Dots" >/dev/null 2>&1
+create_wu dotpath feature "Dots"
 run_cli set dotpath.specification.dotpath sources.auth-api.status incorporated >/dev/null 2>&1
 output=$(run_cli_stdout get dotpath.specification.dotpath sources.auth-api.status)
 
@@ -564,13 +541,27 @@ echo ""
 
 echo -e "${YELLOW}Test: consult_references round-trips like sources${NC}"
 setup_fixture
-run_cli init consult --work-type epic --description "Consult" >/dev/null 2>&1
+create_wu consult epic "Consult"
 run_cli set consult.specification.release-engine consult_references.cli-presentation.status pending >/dev/null 2>&1
 output=$(run_cli_stdout get consult.specification.release-engine consult_references.cli-presentation.status)
 assert_equals "$output" "pending" "consult reference status set and get works"
 run_cli set consult.specification.release-engine consult_references.cli-presentation.status addressed >/dev/null 2>&1
 output=$(run_cli_stdout get consult.specification.release-engine consult_references.cli-presentation.status)
 assert_equals "$output" "addressed" "consult reference status updates to addressed"
+
+echo ""
+
+# ============================================================================
+# MUTATION JSON RESPONSES + SET BATCHING
+# ============================================================================
+
+echo -e "${YELLOW}Test: mutation responses are one-line JSON; set batches field=value pairs${NC}"
+setup_fixture
+create_wu json-resp feature "JSON contract"
+output=$(run_cli_stdout set json-resp description "updated" note=hello)
+assert_contains "$output" '"ok":true' "set responds with an ok:true JSON line"
+landed=$(run_cli_stdout get json-resp note)
+assert_equals "$landed" "hello" "batched field=value pair landed in the same write"
 
 echo ""
 
@@ -590,9 +581,9 @@ echo ""
 
 echo -e "${YELLOW}Test: list returns all work units${NC}"
 setup_fixture
-run_cli init alpha --work-type feature --description "Alpha" >/dev/null 2>&1
-run_cli init beta --work-type bugfix --description "Beta" >/dev/null 2>&1
-run_cli init gamma --work-type epic --description "Gamma" >/dev/null 2>&1
+create_wu alpha feature "Alpha"
+create_wu beta bugfix "Beta"
+create_wu gamma epic "Gamma"
 output=$(run_cli_stdout list)
 
 assert_contains "$output" '"name": "alpha"' "Lists alpha"
@@ -605,8 +596,8 @@ echo ""
 
 echo -e "${YELLOW}Test: list filters by status${NC}"
 setup_fixture
-run_cli init active-one --work-type feature --description "Active" >/dev/null 2>&1
-run_cli init completed-one --work-type feature --description "Completed" >/dev/null 2>&1
+create_wu active-one feature "Active"
+create_wu completed-one feature "Completed"
 run_cli set completed-one status completed >/dev/null 2>&1
 output=$(run_cli_stdout list --status in-progress)
 
@@ -619,8 +610,8 @@ echo ""
 
 echo -e "${YELLOW}Test: list filters by work-type${NC}"
 setup_fixture
-run_cli init feat --work-type feature --description "Feature" >/dev/null 2>&1
-run_cli init bug --work-type bugfix --description "Bugfix" >/dev/null 2>&1
+create_wu feat feature "Feature"
+create_wu bug bugfix "Bugfix"
 output=$(run_cli_stdout list --work-type feature)
 
 assert_contains "$output" '"name": "feat"' "Feature listed"
@@ -632,7 +623,7 @@ echo ""
 
 echo -e "${YELLOW}Test: list skips dot-prefixed directories${NC}"
 setup_fixture
-run_cli init visible --work-type feature --description "Visible" >/dev/null 2>&1
+create_wu visible feature "Visible"
 # Create dot-prefixed directories that should be skipped
 mkdir -p "$TEST_DIR/.workflows/.archive/old-thing"
 cat > "$TEST_DIR/.workflows/.archive/old-thing/manifest.json" << 'EOF'
@@ -648,13 +639,13 @@ assert_not_contains "$output" '"name": "old-thing"' "Dot-prefixed directory skip
 echo ""
 
 # ============================================================================
-# INIT-PHASE TESTS
+# TOPIC ITEM CREATION (set auto-creates phase items)
 # ============================================================================
 
-echo -e "${YELLOW}Test: init-phase for epic creates item with in-progress status${NC}"
+echo -e "${YELLOW}Test: set creates epic item with in-progress status${NC}"
 setup_fixture
-run_cli init my-epic --work-type epic --description "My Epic" >/dev/null 2>&1
-run_cli init-phase my-epic.discussion.payment-processing >/dev/null 2>&1
+create_wu my-epic epic "My Epic"
+run_cli set my-epic.discussion.payment-processing status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get my-epic.discussion.payment-processing status)
 
 assert_equals "$output" "in-progress" "Epic item created with in-progress status"
@@ -663,10 +654,10 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase for feature creates items structure${NC}"
+echo -e "${YELLOW}Test: set creates feature items structure${NC}"
 setup_fixture
-run_cli init my-feat --work-type feature --description "My Feature" >/dev/null 2>&1
-run_cli init-phase my-feat.discussion.my-feat >/dev/null 2>&1
+create_wu my-feat feature "My Feature"
+run_cli set my-feat.discussion.my-feat status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get my-feat.discussion.my-feat status)
 
 assert_equals "$output" "in-progress" "Feature phase created with in-progress status"
@@ -680,10 +671,10 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase for bugfix creates items structure${NC}"
+echo -e "${YELLOW}Test: set creates bugfix items structure${NC}"
 setup_fixture
-run_cli init my-bug --work-type bugfix --description "My Bug" >/dev/null 2>&1
-run_cli init-phase my-bug.investigation.my-bug >/dev/null 2>&1
+create_wu my-bug bugfix "My Bug"
+run_cli set my-bug.investigation.my-bug status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get my-bug.investigation.my-bug status)
 
 assert_equals "$output" "in-progress" "Bugfix phase created with in-progress status"
@@ -692,34 +683,10 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase rejects duplicate epic items${NC}"
+echo -e "${YELLOW}Test: item creation rejects invalid phase${NC}"
 setup_fixture
-run_cli init dup-epic --work-type epic --description "Dup" >/dev/null 2>&1
-run_cli init-phase dup-epic.discussion.my-item >/dev/null 2>&1
-output=$(run_cli init-phase dup-epic.discussion.my-item || true)
-
-assert_contains "$output" "already exists" "Duplicate epic item rejected"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: init-phase rejects duplicate feature phase${NC}"
-setup_fixture
-run_cli init dup-feat --work-type feature --description "Dup" >/dev/null 2>&1
-run_cli init-phase dup-feat.discussion.dup-feat >/dev/null 2>&1
-output=$(run_cli init-phase dup-feat.discussion.dup-feat || true)
-
-assert_contains "$output" "already exists" "Duplicate feature phase rejected"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: init-phase rejects invalid phase${NC}"
-setup_fixture
-run_cli init bad-phase-epic --work-type epic --description "Bad" >/dev/null 2>&1
-assert_exit_nonzero "Invalid phase in init-phase rejected" init-phase bad-phase-epic.cooking.soup
+create_wu bad-phase-epic epic "Bad"
+assert_exit_nonzero "Invalid phase in item creation rejected" set bad-phase-epic.cooking.soup status in-progress
 
 echo ""
 
@@ -729,8 +696,8 @@ echo ""
 
 echo -e "${YELLOW}Test: push to non-existent field creates array${NC}"
 setup_fixture
-run_cli init push-new --work-type feature --description "Push new" >/dev/null 2>&1
-run_cli init-phase push-new.implementation.push-new >/dev/null 2>&1
+create_wu push-new feature "Push new"
+run_cli set push-new.implementation.push-new status in-progress >/dev/null 2>&1
 run_cli push push-new.implementation.push-new completed_tasks "task-1" >/dev/null 2>&1
 output=$(run_cli_stdout get push-new.implementation.push-new completed_tasks)
 
@@ -742,8 +709,8 @@ echo ""
 
 echo -e "${YELLOW}Test: push to existing array appends${NC}"
 setup_fixture
-run_cli init push-append --work-type feature --description "Push append" >/dev/null 2>&1
-run_cli init-phase push-append.implementation.push-append >/dev/null 2>&1
+create_wu push-append feature "Push append"
+run_cli set push-append.implementation.push-append status in-progress >/dev/null 2>&1
 run_cli push push-append.implementation.push-append completed_tasks "task-1" >/dev/null 2>&1
 run_cli push push-append.implementation.push-append completed_tasks "task-2" >/dev/null 2>&1
 output=$(run_cli_stdout get push-append.implementation.push-append completed_tasks)
@@ -757,8 +724,8 @@ echo ""
 
 echo -e "${YELLOW}Test: push to non-array field errors${NC}"
 setup_fixture
-run_cli init push-bad --work-type feature --description "Push bad" >/dev/null 2>&1
-run_cli init-phase push-bad.implementation.push-bad >/dev/null 2>&1
+create_wu push-bad feature "Push bad"
+run_cli set push-bad.implementation.push-bad status in-progress >/dev/null 2>&1
 output=$(run_cli push push-bad.implementation.push-bad status "value" || true)
 
 assert_contains "$output" "not an array" "Push to non-array errors"
@@ -769,8 +736,8 @@ echo ""
 
 echo -e "${YELLOW}Test: push topic-level for feature${NC}"
 setup_fixture
-run_cli init push-feat --work-type feature --description "Push feat" >/dev/null 2>&1
-run_cli init-phase push-feat.implementation.push-feat >/dev/null 2>&1
+create_wu push-feat feature "Push feat"
+run_cli set push-feat.implementation.push-feat status in-progress >/dev/null 2>&1
 run_cli push push-feat.implementation.push-feat completed_phases 1 >/dev/null 2>&1
 output=$(run_cli_stdout get push-feat.implementation.push-feat completed_phases)
 
@@ -782,8 +749,8 @@ echo ""
 
 echo -e "${YELLOW}Test: push topic-level for epic${NC}"
 setup_fixture
-run_cli init push-epic --work-type epic --description "Push epic" >/dev/null 2>&1
-run_cli init-phase push-epic.implementation.my-topic >/dev/null 2>&1
+create_wu push-epic epic "Push epic"
+run_cli set push-epic.implementation.my-topic status in-progress >/dev/null 2>&1
 run_cli push push-epic.implementation.my-topic completed_tasks "task-a" >/dev/null 2>&1
 output=$(run_cli_stdout get push-epic.implementation.my-topic completed_tasks)
 
@@ -795,7 +762,7 @@ echo ""
 
 echo -e "${YELLOW}Test: push at work-unit level${NC}"
 setup_fixture
-run_cli init push-wu --work-type feature --description "Push WU" >/dev/null 2>&1
+create_wu push-wu feature "Push WU"
 run_cli push push-wu tags "v1" >/dev/null 2>&1
 run_cli push push-wu tags "v2" >/dev/null 2>&1
 output=$(run_cli_stdout get push-wu tags)
@@ -811,8 +778,8 @@ echo ""
 
 echo -e "${YELLOW}Test: feature get/set routes through items (unified)${NC}"
 setup_fixture
-run_cli init routing-feat --work-type feature --description "Routing" >/dev/null 2>&1
-run_cli init-phase routing-feat.discussion.routing-feat >/dev/null 2>&1
+create_wu routing-feat feature "Routing"
+run_cli set routing-feat.discussion.routing-feat status in-progress >/dev/null 2>&1
 run_cli set routing-feat.discussion.routing-feat status completed >/dev/null 2>&1
 
 # Verify internal structure uses items (same as epic)
@@ -828,9 +795,9 @@ echo ""
 
 echo -e "${YELLOW}Test: epic get/set routes through items${NC}"
 setup_fixture
-run_cli init routing-epic --work-type epic --description "Routing" >/dev/null 2>&1
-run_cli init-phase routing-epic.discussion.topic-a >/dev/null 2>&1
-run_cli init-phase routing-epic.discussion.topic-b >/dev/null 2>&1
+create_wu routing-epic epic "Routing"
+run_cli set routing-epic.discussion.topic-a status in-progress >/dev/null 2>&1
+run_cli set routing-epic.discussion.topic-b status in-progress >/dev/null 2>&1
 run_cli set routing-epic.discussion.topic-a status completed >/dev/null 2>&1
 
 # Verify internal structure has items
@@ -851,8 +818,8 @@ echo ""
 
 echo -e "${YELLOW}Test: get phase-level returns whole phase object${NC}"
 setup_fixture
-run_cli init phase-obj --work-type epic --description "Phase obj" >/dev/null 2>&1
-run_cli init-phase phase-obj.discussion.topic-x >/dev/null 2>&1
+create_wu phase-obj epic "Phase obj"
+run_cli set phase-obj.discussion.topic-x status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout get phase-obj.discussion)
 
 assert_contains "$output" '"items"' "Phase object contains items"
@@ -891,8 +858,8 @@ echo ""
 
 echo -e "${YELLOW}Test: epic item-level status validation${NC}"
 setup_fixture
-run_cli init epic-validation --work-type epic --description "Validate items" >/dev/null 2>&1
-run_cli init-phase epic-validation.discussion.my-topic >/dev/null 2>&1
+create_wu epic-validation epic "Validate items"
+run_cli set epic-validation.discussion.my-topic status in-progress >/dev/null 2>&1
 assert_exit_nonzero "Invalid item status rejected" set epic-validation.discussion.my-topic status concluded
 
 # Valid item status should work
@@ -908,7 +875,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists returns true for existing work unit${NC}"
 setup_fixture
-run_cli init exists-test --work-type feature --description "Exists" >/dev/null 2>&1
+create_wu exists-test feature "Exists"
 output=$(run_cli_stdout exists exists-test)
 exit_code=$(run_cli_exit_code exists exists-test)
 
@@ -933,7 +900,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with field that exists${NC}"
 setup_fixture
-run_cli init exists-field --work-type feature --description "Field" >/dev/null 2>&1
+create_wu exists-field feature "Field"
 output=$(run_cli_stdout exists exists-field work_type)
 exit_code=$(run_cli_exit_code exists exists-field work_type)
 
@@ -946,7 +913,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with field that does not exist${NC}"
 setup_fixture
-run_cli init exists-nofield --work-type feature --description "No field" >/dev/null 2>&1
+create_wu exists-nofield feature "No field"
 output=$(run_cli_stdout exists exists-nofield nonexistent.deep.path)
 exit_code=$(run_cli_exit_code exists exists-nofield nonexistent.deep.path)
 
@@ -959,8 +926,8 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with topic-level path that exists${NC}"
 setup_fixture
-run_cli init exists-phase --work-type epic --description "Phase" >/dev/null 2>&1
-run_cli init-phase exists-phase.discussion.my-topic >/dev/null 2>&1
+create_wu exists-phase epic "Phase"
+run_cli set exists-phase.discussion.my-topic status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout exists exists-phase.discussion.my-topic)
 exit_code=$(run_cli_exit_code exists exists-phase.discussion.my-topic)
 
@@ -973,7 +940,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with topic-level path that does not exist${NC}"
 setup_fixture
-run_cli init exists-nophase --work-type epic --description "No phase" >/dev/null 2>&1
+create_wu exists-nophase epic "No phase"
 output=$(run_cli_stdout exists exists-nophase.discussion.missing-topic)
 exit_code=$(run_cli_exit_code exists exists-nophase.discussion.missing-topic)
 
@@ -1008,9 +975,9 @@ echo ""
 
 echo -e "${YELLOW}Test: get with wildcard topic on epic returns all items${NC}"
 setup_fixture
-run_cli init wc-epic --work-type epic --description "Wildcard" >/dev/null 2>&1
-run_cli init-phase wc-epic.implementation.auth-flow >/dev/null 2>&1
-run_cli init-phase wc-epic.implementation.billing >/dev/null 2>&1
+create_wu wc-epic epic "Wildcard"
+run_cli set wc-epic.implementation.auth-flow status in-progress >/dev/null 2>&1
+run_cli set wc-epic.implementation.billing status in-progress >/dev/null 2>&1
 run_cli set wc-epic.implementation.auth-flow status completed >/dev/null 2>&1
 output=$(run_cli_stdout get wc-epic.implementation.* status)
 assert_contains "$output" '"topic": "auth-flow"' "Wildcard get includes auth-flow"
@@ -1024,8 +991,8 @@ echo ""
 
 echo -e "${YELLOW}Test: get with wildcard topic on feature returns single item${NC}"
 setup_fixture
-run_cli init wc-feat --work-type feature --description "Wildcard" >/dev/null 2>&1
-run_cli init-phase wc-feat.implementation.wc-feat >/dev/null 2>&1
+create_wu wc-feat feature "Wildcard"
+run_cli set wc-feat.implementation.wc-feat status in-progress >/dev/null 2>&1
 run_cli set wc-feat.implementation.wc-feat status completed >/dev/null 2>&1
 output=$(run_cli_stdout get wc-feat.implementation.* status)
 assert_contains "$output" '"topic": "wc-feat"' "Wildcard get on feature includes topic"
@@ -1037,7 +1004,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get with wildcard topic on empty phase returns empty${NC}"
 setup_fixture
-run_cli init wc-empty --work-type epic --description "Empty" >/dev/null 2>&1
+create_wu wc-empty epic "Empty"
 run_cli set wc-empty phases.implementation '{}' >/dev/null 2>&1
 output=$(run_cli_stdout get wc-empty.implementation.* status)
 assert_equals "$output" "" "Wildcard on empty phase returns empty stdout"
@@ -1050,8 +1017,8 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with wildcard topic returns true when items exist${NC}"
 setup_fixture
-run_cli init wc-exists --work-type epic --description "Exists" >/dev/null 2>&1
-run_cli init-phase wc-exists.implementation.topic-a >/dev/null 2>&1
+create_wu wc-exists epic "Exists"
+run_cli set wc-exists.implementation.topic-a status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout exists wc-exists.implementation.* status)
 exit_code=$?
 assert_equals "$output" "true" "Wildcard exists returns true when items have field"
@@ -1063,7 +1030,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with wildcard topic returns false when no items${NC}"
 setup_fixture
-run_cli init wc-noitems --work-type epic --description "No items" >/dev/null 2>&1
+create_wu wc-noitems epic "No items"
 output=$(run_cli_stdout exists wc-noitems.implementation.* status)
 exit_code=$?
 assert_equals "$output" "false" "Wildcard exists returns false when no items"
@@ -1077,7 +1044,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete work-unit-level field${NC}"
 setup_fixture
-run_cli init del-wu --work-type feature --description "Delete WU" >/dev/null 2>&1
+create_wu del-wu feature "Delete WU"
 run_cli set del-wu.research analysis_cache '{"checksum":"abc","generated":"2026-01-01"}' >/dev/null 2>&1
 run_cli delete del-wu.research analysis_cache >/dev/null 2>&1
 output=$(run_cli_stdout exists del-wu.research analysis_cache)
@@ -1100,8 +1067,8 @@ echo ""
 
 echo -e "${YELLOW}Test: delete topic-level field for feature${NC}"
 setup_fixture
-run_cli init del-feat --work-type feature --description "Delete feat" >/dev/null 2>&1
-run_cli init-phase del-feat.planning.del-feat >/dev/null 2>&1
+create_wu del-feat feature "Delete feat"
+run_cli set del-feat.planning.del-feat status in-progress >/dev/null 2>&1
 run_cli set del-feat.planning.del-feat task_gate_mode auto >/dev/null 2>&1
 run_cli delete del-feat.planning.del-feat task_gate_mode >/dev/null 2>&1
 output=$(run_cli_stdout exists del-feat.planning.del-feat task_gate_mode)
@@ -1118,8 +1085,8 @@ echo ""
 
 echo -e "${YELLOW}Test: delete topic-level field for epic${NC}"
 setup_fixture
-run_cli init del-epic --work-type epic --description "Delete epic" >/dev/null 2>&1
-run_cli init-phase del-epic.implementation.auth >/dev/null 2>&1
+create_wu del-epic epic "Delete epic"
+run_cli set del-epic.implementation.auth status in-progress >/dev/null 2>&1
 run_cli push del-epic.implementation.auth completed_tasks "task-1" >/dev/null 2>&1
 run_cli delete del-epic.implementation.auth completed_tasks >/dev/null 2>&1
 output=$(run_cli_stdout exists del-epic.implementation.auth completed_tasks)
@@ -1136,7 +1103,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete nested dot-path field${NC}"
 setup_fixture
-run_cli init del-nested --work-type feature --description "Nested" >/dev/null 2>&1
+create_wu del-nested feature "Nested"
 run_cli set del-nested.research analysis_cache.checksum "abc123" >/dev/null 2>&1
 run_cli set del-nested.research analysis_cache.generated "2026-01-01" >/dev/null 2>&1
 run_cli delete del-nested.research analysis_cache.checksum >/dev/null 2>&1
@@ -1153,7 +1120,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete entire subtree${NC}"
 setup_fixture
-run_cli init del-tree --work-type feature --description "Tree" >/dev/null 2>&1
+create_wu del-tree feature "Tree"
 run_cli set del-tree.research analysis_cache '{"checksum":"abc","generated":"2026-01-01","files":["a.md","b.md"]}' >/dev/null 2>&1
 run_cli delete del-tree.research analysis_cache >/dev/null 2>&1
 
@@ -1169,7 +1136,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete errors on missing path${NC}"
 setup_fixture
-run_cli init del-missing --work-type feature --description "Missing" >/dev/null 2>&1
+create_wu del-missing feature "Missing"
 assert_exit_nonzero "Delete missing path errors" delete del-missing nonexistent.deep.path
 
 echo ""
@@ -1186,7 +1153,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete phase-level field (2-segment path)${NC}"
 setup_fixture
-run_cli init del-phase --work-type feature --description "Phase del" >/dev/null 2>&1
+create_wu del-phase feature "Phase del"
 run_cli set del-phase.research analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
 run_cli delete del-phase.research analysis_cache >/dev/null 2>&1
 output=$(run_cli_stdout exists del-phase.research analysis_cache)
@@ -1199,7 +1166,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete rejects invalid phase${NC}"
 setup_fixture
-run_cli init del-badphase --work-type feature --description "Bad phase" >/dev/null 2>&1
+create_wu del-badphase feature "Bad phase"
 assert_exit_nonzero "Delete invalid phase errors" delete del-badphase.cooking.del-badphase status
 
 echo ""
@@ -1208,7 +1175,7 @@ echo ""
 
 echo -e "${YELLOW}Test: push phase-level (2-segment path)${NC}"
 setup_fixture
-run_cli init push-phase --work-type feature --description "Phase push" >/dev/null 2>&1
+create_wu push-phase feature "Phase push"
 run_cli push push-phase.research analysis_cache.files "a.md" >/dev/null 2>&1
 output=$(run_cli_stdout get push-phase.research analysis_cache.files)
 
@@ -1222,8 +1189,7 @@ echo ""
 
 echo -e "${YELLOW}Test: key-of finds key by value${NC}"
 setup_fixture
-run_cli init key-of-test --work-type feature --description "Key-of test" >/dev/null 2>&1
-run_cli init-phase key-of-test.planning.key-of-test >/dev/null 2>&1
+create_wu key-of-test feature "Key-of test"
 run_cli set key-of-test.planning.key-of-test task_map.portal-1-1 tick-abc >/dev/null 2>&1
 run_cli set key-of-test.planning.key-of-test task_map.portal-1-2 tick-def >/dev/null 2>&1
 
@@ -1239,8 +1205,7 @@ echo ""
 
 echo -e "${YELLOW}Test: key-of errors on missing value${NC}"
 setup_fixture
-run_cli init key-of-miss --work-type feature --description "Key-of miss" >/dev/null 2>&1
-run_cli init-phase key-of-miss.planning.key-of-miss >/dev/null 2>&1
+create_wu key-of-miss feature "Key-of miss"
 run_cli set key-of-miss.planning.key-of-miss task_map.t-1 ext-1 >/dev/null 2>&1
 
 exit_code=$(run_cli_exit_code key-of key-of-miss.planning.key-of-miss task_map ext-notfound)
@@ -1252,8 +1217,7 @@ echo ""
 
 echo -e "${YELLOW}Test: key-of errors on non-object path${NC}"
 setup_fixture
-run_cli init key-of-scalar --work-type feature --description "Key-of scalar" >/dev/null 2>&1
-run_cli init-phase key-of-scalar.planning.key-of-scalar >/dev/null 2>&1
+create_wu key-of-scalar feature "Key-of scalar"
 run_cli set key-of-scalar.planning.key-of-scalar format tick >/dev/null 2>&1
 
 exit_code=$(run_cli_exit_code key-of key-of-scalar.planning.key-of-scalar format tick)
@@ -1265,7 +1229,7 @@ echo ""
 
 echo -e "${YELLOW}Test: key-of works at work-unit level${NC}"
 setup_fixture
-run_cli init key-of-wu --work-type feature --description "Key-of work unit" >/dev/null 2>&1
+create_wu key-of-wu feature "Key-of work unit"
 run_cli set key-of-wu custom_map '{"a":"x","b":"y"}' >/dev/null 2>&1
 
 output=$(run_cli_stdout key-of key-of-wu custom_map y)
@@ -1277,10 +1241,10 @@ echo ""
 # PROJECT DOT-PATH TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: init rejects reserved name 'project'${NC}"
+echo -e "${YELLOW}Test: bare 'project' path refuses a set (reserved prefix routes to the project manifest)${NC}"
 setup_fixture
-output=$(run_cli init project --work-type feature --description "Bad name" 2>&1 || true)
-assert_contains "$output" "reserved" "Reserved name rejected"
+output=$(run_cli set project 2>&1 || true)
+assert_contains "$output" "Usage" "set project without a field path shows usage"
 
 echo ""
 
@@ -1288,7 +1252,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set and get project.defaults.plan_format${NC}"
 setup_fixture
-run_cli init my-proj --work-type feature --description "Setup" >/dev/null 2>&1
+create_wu my-proj feature "Setup"
 run_cli set project.defaults.plan_format local-markdown >/dev/null 2>&1
 
 output=$(run_cli_stdout get project.defaults.plan_format)
@@ -1300,7 +1264,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists project.defaults.plan_format${NC}"
 setup_fixture
-run_cli init ex-proj --work-type feature --description "Setup" >/dev/null 2>&1
+create_wu ex-proj feature "Setup"
 run_cli set project.defaults.plan_format tick >/dev/null 2>&1
 
 output=$(run_cli_stdout exists project.defaults.plan_format)
@@ -1315,7 +1279,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete project.defaults.plan_format${NC}"
 setup_fixture
-run_cli init del-proj --work-type feature --description "Setup" >/dev/null 2>&1
+create_wu del-proj feature "Setup"
 run_cli set project.defaults.plan_format linear >/dev/null 2>&1
 run_cli delete project.defaults.plan_format >/dev/null 2>&1
 
@@ -1328,7 +1292,7 @@ echo ""
 
 echo -e "${YELLOW}Test: push project.defaults.project_skills${NC}"
 setup_fixture
-run_cli init push-proj --work-type feature --description "Setup" >/dev/null 2>&1
+create_wu push-proj feature "Setup"
 run_cli push project.defaults.project_skills ".claude/skills/golang-pro" >/dev/null 2>&1
 run_cli push project.defaults.project_skills ".claude/skills/react-patterns" >/dev/null 2>&1
 
@@ -1342,7 +1306,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get project returns full project manifest${NC}"
 setup_fixture
-run_cli init full-proj --work-type epic --description "Full test" >/dev/null 2>&1
+create_wu full-proj epic "Full test"
 
 output=$(run_cli_stdout get project)
 assert_contains "$output" "work_units" "Full project manifest has work_units"
@@ -1354,7 +1318,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get project.work_units returns work_units object${NC}"
 setup_fixture
-run_cli init wu-proj --work-type feature --description "WU test" >/dev/null 2>&1
+create_wu wu-proj feature "WU test"
 
 output=$(run_cli_stdout get project.work_units)
 assert_contains "$output" "wu-proj" "Work units object has expected entry"
@@ -1366,7 +1330,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists project returns true when manifest exists${NC}"
 setup_fixture
-run_cli init exists-proj --work-type feature --description "Exists test" >/dev/null 2>&1
+create_wu exists-proj feature "Exists test"
 
 output=$(run_cli_stdout exists project)
 assert_equals "$output" "true" "Exists project returns true with content"
@@ -1377,7 +1341,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get project.defaults returns empty when not set${NC}"
 setup_fixture
-run_cli init err-proj --work-type feature --description "Error test" >/dev/null 2>&1
+create_wu err-proj feature "Error test"
 
 output=$(run_cli_stdout get project.defaults.plan_format)
 assert_equals "$output" "" "Missing project default returns empty stdout"
@@ -1411,8 +1375,8 @@ echo ""
 
 echo -e "${YELLOW}Test: pull removes value from array${NC}"
 setup_fixture
-run_cli init pull-basic --work-type feature --description "Pull basic" >/dev/null 2>&1
-run_cli init-phase pull-basic.implementation.pull-basic >/dev/null 2>&1
+create_wu pull-basic feature "Pull basic"
+run_cli set pull-basic.implementation.pull-basic status in-progress >/dev/null 2>&1
 run_cli push pull-basic.implementation.pull-basic completed_tasks "task-1" >/dev/null 2>&1
 run_cli push pull-basic.implementation.pull-basic completed_tasks "task-2" >/dev/null 2>&1
 run_cli pull pull-basic.implementation.pull-basic completed_tasks "task-1" >/dev/null 2>&1
@@ -1427,8 +1391,8 @@ echo ""
 
 echo -e "${YELLOW}Test: pull is no-op when value not in array${NC}"
 setup_fixture
-run_cli init pull-miss --work-type feature --description "Pull miss" >/dev/null 2>&1
-run_cli init-phase pull-miss.implementation.pull-miss >/dev/null 2>&1
+create_wu pull-miss feature "Pull miss"
+run_cli set pull-miss.implementation.pull-miss status in-progress >/dev/null 2>&1
 run_cli push pull-miss.implementation.pull-miss completed_tasks "task-1" >/dev/null 2>&1
 run_cli pull pull-miss.implementation.pull-miss completed_tasks "task-99" >/dev/null 2>&1
 output=$(run_cli_stdout get pull-miss.implementation.pull-miss completed_tasks)
@@ -1441,8 +1405,8 @@ echo ""
 
 echo -e "${YELLOW}Test: pull is no-op when field is not an array${NC}"
 setup_fixture
-run_cli init pull-noarr --work-type feature --description "Pull noarr" >/dev/null 2>&1
-run_cli init-phase pull-noarr.implementation.pull-noarr >/dev/null 2>&1
+create_wu pull-noarr feature "Pull noarr"
+run_cli set pull-noarr.implementation.pull-noarr status in-progress >/dev/null 2>&1
 exit_code=$(run_cli_exit_code pull pull-noarr.implementation.pull-noarr status "in-progress")
 
 assert_equals "$exit_code" "0" "Pull on non-array exits cleanly"
@@ -1453,8 +1417,8 @@ echo ""
 
 echo -e "${YELLOW}Test: pull is no-op when field does not exist${NC}"
 setup_fixture
-run_cli init pull-nofld --work-type feature --description "Pull nofld" >/dev/null 2>&1
-run_cli init-phase pull-nofld.implementation.pull-nofld >/dev/null 2>&1
+create_wu pull-nofld feature "Pull nofld"
+run_cli set pull-nofld.implementation.pull-nofld status in-progress >/dev/null 2>&1
 exit_code=$(run_cli_exit_code pull pull-nofld.implementation.pull-nofld nonexistent "value")
 
 assert_equals "$exit_code" "0" "Pull on missing field exits cleanly"
@@ -1465,7 +1429,7 @@ echo ""
 
 echo -e "${YELLOW}Test: pull at phase level${NC}"
 setup_fixture
-run_cli init pull-phase --work-type epic --description "Pull phase" >/dev/null 2>&1
+create_wu pull-phase epic "Pull phase"
 run_cli set pull-phase.research surfaced_topics '["topic-a","topic-b","topic-c"]' >/dev/null 2>&1
 run_cli pull pull-phase.research surfaced_topics "topic-b" >/dev/null 2>&1
 output=$(run_cli_stdout get pull-phase.research surfaced_topics)
@@ -1480,7 +1444,7 @@ echo ""
 
 echo -e "${YELLOW}Test: pull at work-unit level${NC}"
 setup_fixture
-run_cli init pull-wu --work-type feature --description "Pull WU" >/dev/null 2>&1
+create_wu pull-wu feature "Pull WU"
 run_cli push pull-wu tags "v1" >/dev/null 2>&1
 run_cli push pull-wu tags "v2" >/dev/null 2>&1
 run_cli pull pull-wu tags "v1" >/dev/null 2>&1
@@ -1495,7 +1459,7 @@ echo ""
 
 echo -e "${YELLOW}Test: pull from project manifest${NC}"
 setup_fixture
-run_cli init pull-proj --work-type feature --description "Pull proj" >/dev/null 2>&1
+create_wu pull-proj feature "Pull proj"
 run_cli push project.defaults.project_skills "skill-a" >/dev/null 2>&1
 run_cli push project.defaults.project_skills "skill-b" >/dev/null 2>&1
 run_cli pull project.defaults.project_skills "skill-a" >/dev/null 2>&1
@@ -1510,8 +1474,8 @@ assert_contains "$output" "skill-b" "Project-level pull kept skill-b"
 
 echo -e "${YELLOW}Test: cancelled accepted as valid status for discussion${NC}"
 setup_fixture
-run_cli init cancel-disc --work-type epic --description "Cancel disc" >/dev/null 2>&1
-run_cli init-phase cancel-disc.discussion.my-topic >/dev/null 2>&1
+create_wu cancel-disc epic "Cancel disc"
+run_cli set cancel-disc.discussion.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-disc.discussion.my-topic status cancelled >/dev/null 2>&1
 output=$(run_cli_stdout get cancel-disc.discussion.my-topic status)
 
@@ -1523,8 +1487,8 @@ echo ""
 
 echo -e "${YELLOW}Test: superseded accepted as valid status for research${NC}"
 setup_fixture
-run_cli init supersede-research --work-type epic --description "Supersede research" >/dev/null 2>&1
-run_cli init-phase supersede-research.research.broad-topic >/dev/null 2>&1
+create_wu supersede-research epic "Supersede research"
+run_cli set supersede-research.research.broad-topic status in-progress >/dev/null 2>&1
 run_cli set supersede-research.research.broad-topic status superseded >/dev/null 2>&1
 output=$(run_cli_stdout get supersede-research.research.broad-topic status)
 
@@ -1536,8 +1500,8 @@ echo ""
 
 echo -e "${YELLOW}Test: cancelled accepted as valid status for specification${NC}"
 setup_fixture
-run_cli init cancel-spec --work-type epic --description "Cancel spec" >/dev/null 2>&1
-run_cli init-phase cancel-spec.specification.my-topic >/dev/null 2>&1
+create_wu cancel-spec epic "Cancel spec"
+run_cli set cancel-spec.specification.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-spec.specification.my-topic status cancelled >/dev/null 2>&1
 output=$(run_cli_stdout get cancel-spec.specification.my-topic status)
 
@@ -1549,8 +1513,8 @@ echo ""
 
 echo -e "${YELLOW}Test: cancelled accepted as valid status for planning${NC}"
 setup_fixture
-run_cli init cancel-plan --work-type epic --description "Cancel plan" >/dev/null 2>&1
-run_cli init-phase cancel-plan.planning.my-topic >/dev/null 2>&1
+create_wu cancel-plan epic "Cancel plan"
+run_cli set cancel-plan.planning.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-plan.planning.my-topic status cancelled >/dev/null 2>&1
 output=$(run_cli_stdout get cancel-plan.planning.my-topic status)
 
@@ -1562,8 +1526,8 @@ echo ""
 
 echo -e "${YELLOW}Test: cancelled accepted as valid status for implementation${NC}"
 setup_fixture
-run_cli init cancel-impl --work-type epic --description "Cancel impl" >/dev/null 2>&1
-run_cli init-phase cancel-impl.implementation.my-topic >/dev/null 2>&1
+create_wu cancel-impl epic "Cancel impl"
+run_cli set cancel-impl.implementation.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-impl.implementation.my-topic status cancelled >/dev/null 2>&1
 output=$(run_cli_stdout get cancel-impl.implementation.my-topic status)
 
@@ -1575,8 +1539,8 @@ echo ""
 
 echo -e "${YELLOW}Test: previous_status field set alongside cancelled${NC}"
 setup_fixture
-run_cli init cancel-prev --work-type epic --description "Cancel prev" >/dev/null 2>&1
-run_cli init-phase cancel-prev.discussion.my-topic >/dev/null 2>&1
+create_wu cancel-prev epic "Cancel prev"
+run_cli set cancel-prev.discussion.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-prev.discussion.my-topic previous_status in-progress >/dev/null 2>&1
 run_cli set cancel-prev.discussion.my-topic status cancelled >/dev/null 2>&1
 prev=$(run_cli_stdout get cancel-prev.discussion.my-topic previous_status)
@@ -1591,8 +1555,8 @@ echo ""
 
 echo -e "${YELLOW}Test: previous_status deleted on reactivation${NC}"
 setup_fixture
-run_cli init cancel-react --work-type epic --description "Cancel react" >/dev/null 2>&1
-run_cli init-phase cancel-react.discussion.my-topic >/dev/null 2>&1
+create_wu cancel-react epic "Cancel react"
+run_cli set cancel-react.discussion.my-topic status in-progress >/dev/null 2>&1
 run_cli set cancel-react.discussion.my-topic previous_status in-progress >/dev/null 2>&1
 run_cli set cancel-react.discussion.my-topic status cancelled >/dev/null 2>&1
 
@@ -1613,7 +1577,7 @@ echo ""
 
 echo -e "${YELLOW}Test: proposed accepted as valid status for specification${NC}"
 setup_fixture
-run_cli init prop-spec --work-type epic --description "Proposed spec" >/dev/null 2>&1
+create_wu prop-spec epic "Proposed spec"
 run_cli set prop-spec.specification.auth-flow status proposed >/dev/null 2>&1
 output=$(run_cli_stdout get prop-spec.specification.auth-flow status)
 
@@ -1625,7 +1589,7 @@ echo ""
 
 echo -e "${YELLOW}Test: bogus specification status rejected${NC}"
 setup_fixture
-run_cli init bogus-spec --work-type epic --description "Bogus" >/dev/null 2>&1
+create_wu bogus-spec epic "Bogus"
 assert_exit_nonzero "Invalid specification status rejected" \
     set bogus-spec.specification.auth-flow status bogus
 
@@ -1633,12 +1597,13 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase fails on an existing item (flip contract)${NC}"
+echo -e "${YELLOW}Test: re-upserting proposed status is idempotent${NC}"
 setup_fixture
-run_cli init flip-spec --work-type epic --description "Flip" >/dev/null 2>&1
+create_wu flip-spec epic "Flip"
 run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
-assert_exit_nonzero "init-phase rejects an existing proposed item" \
-    init-phase flip-spec.specification.auth-flow
+run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
+output=$(run_cli_stdout get flip-spec.specification.auth-flow status)
+assert_equals "$output" "proposed" "Second proposed write leaves the item proposed"
 
 echo ""
 
@@ -1646,7 +1611,7 @@ echo ""
 
 echo -e "${YELLOW}Test: upsert proposed item builds the exact shape${NC}"
 setup_fixture
-run_cli init upsert-spec --work-type epic --description "Upsert" >/dev/null 2>&1
+create_wu upsert-spec epic "Upsert"
 run_cli set upsert-spec.specification.auth-flow status proposed >/dev/null 2>&1
 run_cli set upsert-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
 run_cli set upsert-spec.specification.auth-flow sources.session-mgmt.status pending >/dev/null 2>&1
@@ -1666,7 +1631,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete whole proposed spec item${NC}"
 setup_fixture
-run_cli init del-spec --work-type epic --description "Delete" >/dev/null 2>&1
+create_wu del-spec epic "Delete"
 run_cli set del-spec.specification.auth-flow status proposed >/dev/null 2>&1
 run_cli set del-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
 run_cli delete del-spec.specification items.auth-flow >/dev/null 2>&1
@@ -1680,7 +1645,7 @@ echo ""
 
 echo -e "${YELLOW}Test: flip proposed to in-progress preserves sources${NC}"
 setup_fixture
-run_cli init flip2-spec --work-type epic --description "Flip2" >/dev/null 2>&1
+create_wu flip2-spec epic "Flip2"
 run_cli set flip2-spec.specification.auth-flow status proposed >/dev/null 2>&1
 run_cli set flip2-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
 run_cli set flip2-spec.specification.auth-flow status in-progress >/dev/null 2>&1
@@ -1696,15 +1661,15 @@ echo ""
 # DISCOVERY PHASE TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: init-phase refuses discovery (map items carry no status)${NC}"
+echo -e "${YELLOW}Test: discovery status writes are refused with the map-item explanation${NC}"
 setup_fixture
-run_cli init incept-init --work-type epic --description "Discovery init" >/dev/null 2>&1
-exit_code=$(run_cli_exit_code init-phase incept-init.discovery.foo)
-output=$(run_cli init-phase incept-init.discovery.foo 2>&1 || true)
+create_wu incept-init epic "Discovery init"
+exit_code=$(run_cli_exit_code set incept-init.discovery.foo status in-progress)
+output=$(run_cli set incept-init.discovery.foo status in-progress 2>&1 || true)
 
-assert_equals "$exit_code" "1" "init-phase discovery exits non-zero"
+assert_equals "$exit_code" "1" "Discovery status write exits non-zero"
 assert_contains "$output" "carry no status field" "Error explains map items carry no status"
-assert_contains "$output" "discovery-map add" "Error points at engine discovery-map add"
+assert_contains "$output" "computed at render time" "Error explains lifecycle is computed at render time"
 
 echo ""
 
@@ -1712,7 +1677,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery refuses every status write (empty vocabulary)${NC}"
 setup_fixture
-run_cli init incept-status --work-type epic --description "Discovery status" >/dev/null 2>&1
+create_wu incept-status epic "Discovery status"
 run_cli set incept-status.discovery.foo routing research >/dev/null 2>&1
 
 for status in in-progress completed cancelled; do
@@ -1728,7 +1693,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery accepts free-form routing field${NC}"
 setup_fixture
-run_cli init incept-route --work-type epic --description "Discovery routing" >/dev/null 2>&1
+create_wu incept-route epic "Discovery routing"
 run_cli set incept-route.discovery.foo routing research >/dev/null 2>&1
 output=$(run_cli_stdout get incept-route.discovery.foo routing)
 
@@ -1745,7 +1710,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery accepts summary field${NC}"
 setup_fixture
-run_cli init incept-sum --work-type epic --description "Discovery summary" >/dev/null 2>&1
+create_wu incept-sum epic "Discovery summary"
 run_cli set incept-sum.discovery.foo summary "A short summary of the topic" >/dev/null 2>&1
 output=$(run_cli_stdout get incept-sum.discovery.foo summary)
 
@@ -1757,7 +1722,7 @@ echo ""
 
 echo -e "${YELLOW}Test: get returns full discovery item${NC}"
 setup_fixture
-run_cli init incept-get --work-type epic --description "Discovery get" >/dev/null 2>&1
+create_wu incept-get epic "Discovery get"
 run_cli set incept-get.discovery.foo summary "A topic" >/dev/null 2>&1
 run_cli set incept-get.discovery.foo routing research >/dev/null 2>&1
 output=$(run_cli_stdout get incept-get.discovery.foo)
@@ -1772,7 +1737,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete hard-removes discovery item${NC}"
 setup_fixture
-run_cli init incept-del --work-type epic --description "Discovery delete" >/dev/null 2>&1
+create_wu incept-del epic "Discovery delete"
 run_cli set incept-del.discovery.foo summary "to be deleted" >/dev/null 2>&1
 # Hard-delete the entire item via the items.<topic> field path (existing convention)
 run_cli delete incept-del.discovery items.foo >/dev/null 2>&1
@@ -1786,7 +1751,7 @@ echo ""
 
 echo -e "${YELLOW}Test: wildcard get on discovery phase${NC}"
 setup_fixture
-run_cli init incept-wild --work-type epic --description "Discovery wildcard" >/dev/null 2>&1
+create_wu incept-wild epic "Discovery wildcard"
 run_cli set incept-wild.discovery.alpha routing research >/dev/null 2>&1
 run_cli set incept-wild.discovery.beta routing discussion >/dev/null 2>&1
 output=$(run_cli_stdout get 'incept-wild.discovery.*' routing)
@@ -1803,7 +1768,7 @@ echo ""
 
 echo -e "${YELLOW}Test: push creates imports[] array on first call${NC}"
 setup_fixture
-run_cli init imp-create --work-type epic --description "Imports create" >/dev/null 2>&1
+create_wu imp-create epic "Imports create"
 run_cli push imp-create imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
 output=$(run_cli_stdout get imp-create imports)
 
@@ -1816,7 +1781,7 @@ echo ""
 
 echo -e "${YELLOW}Test: push appends subsequent entries to imports[]${NC}"
 setup_fixture
-run_cli init imp-append --work-type epic --description "Imports append" >/dev/null 2>&1
+create_wu imp-append epic "Imports append"
 run_cli push imp-append imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
 run_cli push imp-append imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
 output=$(run_cli_stdout get imp-append imports)
@@ -1834,7 +1799,7 @@ echo ""
 
 echo -e "${YELLOW}Test: pull removes a single imports[] entry by deep equality${NC}"
 setup_fixture
-run_cli init imp-pull --work-type epic --description "Imports pull" >/dev/null 2>&1
+create_wu imp-pull epic "Imports pull"
 run_cli push imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
 run_cli push imp-pull imports '{"path":"imports/notes.md","imported_at":"2026-05-09T11:00:00Z"}' >/dev/null 2>&1
 run_cli pull imp-pull imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
@@ -1852,7 +1817,7 @@ echo ""
 
 echo -e "${YELLOW}Test: pull is no-op when entry shape does not match${NC}"
 setup_fixture
-run_cli init imp-pull-miss --work-type epic --description "Imports pull miss" >/dev/null 2>&1
+create_wu imp-pull-miss epic "Imports pull miss"
 run_cli push imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
 run_cli pull imp-pull-miss imports '{"path":"imports/seed.md","imported_at":"2026-05-09T99:99:99Z"}' >/dev/null 2>&1
 output=$(run_cli_stdout get imp-pull-miss imports)
@@ -1865,12 +1830,10 @@ echo ""
 
 echo -e "${YELLOW}Test: push onto non-array imports field fails${NC}"
 setup_fixture
-run_cli init imp-bad --work-type epic --description "Imports bad" >/dev/null 2>&1
+create_wu imp-bad epic "Imports bad"
 # Set imports to a non-array value first
 run_cli set imp-bad imports '"not-an-array"' >/dev/null 2>&1
-# Single invocation: capture both output and exit code (the failing call holds
-# the work-unit lock past die() since process.exit skips finally blocks).
-combined=$(cd "$TEST_DIR" && node "$MANIFEST_JS" push imp-bad imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' 2>&1; echo "__EXIT__=$?")
+combined=$(cd "$TEST_DIR" && node "$ENGINE_JS" manifest push imp-bad imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' 2>&1; echo "__EXIT__=$?")
 exit_code=$(echo "$combined" | grep -o '__EXIT__=[0-9]*' | tail -1 | cut -d= -f2)
 output=$(echo "$combined" | grep -v '__EXIT__=')
 
@@ -1883,7 +1846,7 @@ echo ""
 
 echo -e "${YELLOW}Test: imports[] round-trip preserves entry shape${NC}"
 setup_fixture
-run_cli init imp-roundtrip --work-type epic --description "Imports round-trip" >/dev/null 2>&1
+create_wu imp-roundtrip epic "Imports round-trip"
 run_cli push imp-roundtrip imports '{"path":"imports/seed.md","imported_at":"2026-05-09T10:00:00Z"}' >/dev/null 2>&1
 output=$(run_cli_stdout get imp-roundtrip imports)
 
@@ -1913,7 +1876,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve discussion file path${NC}"
 setup_fixture
-run_cli init auth-flow --work-type feature --description "Auth" >/dev/null 2>&1
+create_wu auth-flow feature "Auth"
 output=$(run_cli_stdout resolve auth-flow.discussion.auth-flow)
 
 assert_contains "$output" "auth-flow/discussion/auth-flow.md" "Resolves discussion path"
@@ -1924,7 +1887,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve specification file path${NC}"
 setup_fixture
-run_cli init auth-flow --work-type feature --description "Auth" >/dev/null 2>&1
+create_wu auth-flow feature "Auth"
 output=$(run_cli_stdout resolve auth-flow.specification.auth-flow)
 
 assert_contains "$output" "auth-flow/specification/auth-flow/specification.md" "Resolves spec path with nested topic dir"
@@ -1935,7 +1898,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve investigation file path${NC}"
 setup_fixture
-run_cli init auth-flow --work-type bugfix --description "Bug" >/dev/null 2>&1
+create_wu auth-flow bugfix "Bug"
 output=$(run_cli_stdout resolve auth-flow.investigation.auth-flow)
 
 assert_contains "$output" "auth-flow/investigation/auth-flow.md" "Resolves investigation path"
@@ -1946,7 +1909,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve single research file path (3-segment)${NC}"
 setup_fixture
-run_cli init payments --work-type epic --description "Payments" >/dev/null 2>&1
+create_wu payments epic "Payments"
 run_cli set payments.research.exploration status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout resolve payments.research.exploration)
 
@@ -1958,7 +1921,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve all research files (2-segment, from manifest items)${NC}"
 setup_fixture
-run_cli init payments --work-type epic --description "Payments" >/dev/null 2>&1
+create_wu payments epic "Payments"
 run_cli set payments.research.exploration status in-progress >/dev/null 2>&1
 run_cli set payments.research.networking status in-progress >/dev/null 2>&1
 output=$(run_cli_stdout resolve payments.research)
@@ -1972,7 +1935,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve does NOT include unlisted research files${NC}"
 setup_fixture
-run_cli init payments --work-type epic --description "Payments" >/dev/null 2>&1
+create_wu payments epic "Payments"
 run_cli set payments.research.tracked status in-progress >/dev/null 2>&1
 # Create an untracked file on disk that is NOT in the manifest
 mkdir -p "$TEST_DIR/.workflows/payments/research"
@@ -1998,7 +1961,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve errors for non-indexed phase${NC}"
 setup_fixture
-run_cli init auth-flow --work-type feature --description "Auth" >/dev/null 2>&1
+create_wu auth-flow feature "Auth"
 exit_code=$(run_cli_exit_code resolve auth-flow.planning.auth-flow)
 output=$(run_cli resolve auth-flow.planning.auth-flow 2>&1 || true)
 
@@ -2011,7 +1974,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve errors for insufficient segments${NC}"
 setup_fixture
-run_cli init auth-flow --work-type feature --description "Auth" >/dev/null 2>&1
+create_wu auth-flow feature "Auth"
 exit_code=$(run_cli_exit_code resolve auth-flow)
 output=$(run_cli resolve auth-flow 2>&1 || true)
 
@@ -2023,7 +1986,7 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve outputs correct path even when file does not exist on disk${NC}"
 setup_fixture
-run_cli init auth-flow --work-type feature --description "Auth" >/dev/null 2>&1
+create_wu auth-flow feature "Auth"
 # Don't create the file on disk — resolve should still output the path
 output=$(run_cli_stdout resolve auth-flow.discussion.auth-flow)
 
@@ -2047,10 +2010,7 @@ cat > "$TEST_DIR/.workflows/manifest.json" <<'BADJSON'
 }
 BADJSON
 
-# Single invocation: capture both exit code and output. init creates the
-# work-unit directory before touching the project manifest, so a second
-# invocation would fail with "already exists" and mask the real error.
-combined=$(cd "$TEST_DIR" && node "$MANIFEST_JS" init new-unit --work-type bugfix --description "x" 2>&1; echo "__EXIT__=$?")
+combined=$(cd "$TEST_DIR" && node "$ENGINE_JS" manifest set project.defaults.plan_format tick 2>&1; echo "__EXIT__=$?")
 exit_code=$(echo "$combined" | grep -o '__EXIT__=[0-9]*' | tail -1 | cut -d= -f2)
 output=$(echo "$combined" | grep -v '__EXIT__=')
 
@@ -2069,11 +2029,11 @@ echo ""
 
 echo -e "${YELLOW}Test: missing project manifest is treated as first-write (not an error)${NC}"
 setup_fixture
-# No manifest.json on disk — init should create it fresh.
-exit_code=$(run_cli_exit_code init first-unit --work-type feature --description "x")
-assert_equals "$exit_code" "0" "First init succeeds without existing manifest"
-registered=$(node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/manifest.json', 'utf8')).work_units).join(','))" 2>/dev/null)
-assert_equals "$registered" "first-unit" "Manifest registers the first work unit"
+# No manifest.json on disk — a project write should create it fresh.
+exit_code=$(run_cli_exit_code set project.defaults.plan_format tick)
+assert_equals "$exit_code" "0" "First project write succeeds without existing manifest"
+written=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/manifest.json', 'utf8')).defaults.plan_format)" 2>/dev/null)
+assert_equals "$written" "tick" "Manifest created with the written default"
 
 echo ""
 
@@ -2085,13 +2045,13 @@ setup_fixture
 exit_code=$(run_cli_exit_code get nonexistent status)
 assert_equals "$exit_code" "0" "Missing work unit → exit 0"
 
-run_cli init real --work-type feature --description "Real" >/dev/null 2>&1
+create_wu real feature "Real"
 # Missing path inside existing manifest → empty + exit 0.
 exit_code=$(run_cli_exit_code get real nonexistent_field)
 assert_equals "$exit_code" "0" "Missing path in existing manifest → exit 0"
 
 # Invalid work_type → validation error → exit 1.
-exit_code=$(run_cli_exit_code init bad --work-type bogus --description "x")
+exit_code=$(run_cli_exit_code set real work_type bogus)
 assert_equals "$exit_code" "1" "Invalid work-type → exit 1"
 
 # Corrupt manifest JSON → real error → exit 1.
@@ -2106,15 +2066,15 @@ echo ""
 # DISCOVERY PHASE CROSS-WORK-TYPE TESTS
 # ============================================================================
 #
-# Phase 17 (universal Discovery entry) requires that phases.discovery is
-# writable for every work type, not just epic. These tests pin that contract
-# so a future schema tightening can't silently regress it.
+# Universal Discovery entry requires that phases.discovery is writable for
+# every work type, not just epic. These tests pin that contract so a future
+# schema tightening can't silently regress it.
 
 echo -e "${YELLOW}Test: phases.discovery accepts writes for every work type${NC}"
 setup_fixture
 for wt in epic feature bugfix quick-fix cross-cutting; do
     name="${wt//-/_}-disc"
-    run_cli init "$name" --work-type "$wt" --description "Discovery cross-type $wt" >/dev/null 2>&1
+    create_wu "$name" "$wt" "Discovery cross-type $wt"
     run_cli set "$name.discovery" active_session 1 >/dev/null 2>&1
     run_cli set "$name.discovery" session_number 1 >/dev/null 2>&1
     run_cli set "$name.discovery" next_session_number 2 >/dev/null 2>&1
@@ -2132,13 +2092,13 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: init-phase refuses discovery for every work type${NC}"
+echo -e "${YELLOW}Test: discovery status refusal names the map contract for every work type${NC}"
 setup_fixture
 for wt in epic feature bugfix quick-fix cross-cutting; do
     name="${wt//-/_}-disc-item"
-    run_cli init "$name" --work-type "$wt" --description "Discovery item $wt" >/dev/null 2>&1
-    output=$(run_cli init-phase "$name.discovery.topic-one" 2>&1 || true)
-    assert_contains "$output" "carry no status field" "$wt: init-phase discovery refused"
+    create_wu "$name" "$wt" "Discovery item $wt"
+    output=$(run_cli set "$name.discovery.topic-one" status in-progress 2>&1 || true)
+    assert_contains "$output" "carry no status field" "$wt: discovery status write refused with the map explanation"
 done
 
 echo ""
@@ -2149,7 +2109,7 @@ echo -e "${YELLOW}Test: discovery item status writes refused for every work type
 setup_fixture
 for wt in epic feature bugfix quick-fix cross-cutting; do
     name="${wt//-/_}-disc-guard"
-    run_cli init "$name" --work-type "$wt" --description "Guard $wt" >/dev/null 2>&1
+    create_wu "$name" "$wt" "Guard $wt"
     assert_exit_nonzero "$wt: discovery item status completed rejected" \
         set "$name.discovery.topic-one" status completed
     assert_exit_nonzero "$wt: discovery item status in-progress rejected" \
