@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-bugfix
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-bugfix/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-continue-bugfix/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 Continue an in-progress bugfix. Determines current phase and routes to the appropriate phase skill.

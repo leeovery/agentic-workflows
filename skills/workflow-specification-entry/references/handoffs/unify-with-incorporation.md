@@ -24,7 +24,7 @@ Context: This consolidates all discussions into a single unified specification. 
 
 After the unified specification is complete, mark the incorporated specs as superseded via the engine — only specs whose status is not `proposed`:
 
-    engine topic supersede {work_unit} specification {source-topic} --by unified
+    node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {source-topic} --by unified
 
 ---
 Invoke the workflow-specification-process skill.

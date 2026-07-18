@@ -49,7 +49,7 @@ Commit them to share with your team or to use them in Claude Code for Web. Later
 /workflow-start
 ```
 
-That's the whole interface. On a fresh project it walks you through a one-time knowledge-base setup: a single guided command where you pick a search provider (or skip it for keyword-only). After that, `/workflow-start` is where you start new work, pick up where you left off, and get guided through every phase automatically. No config files to write, no phases to memorise; it drives everything.
+That's the whole interface. On a fresh project it sets up the knowledge base right in the chat: reuse your machine's existing configuration with one keypress, or pick a search mode — OpenAI embeddings (recommended), a local OpenAI-compatible endpoint, or keyword-only as the no-key backstop. The only step that touches your terminal is storing an API key the first time; the key itself never passes through the chat. After that, `/workflow-start` is where you start new work, pick up where you left off, and get guided through every phase automatically. No config files to write, no phases to memorise; it drives everything.
 
 Want to jot something down without starting a pipeline? Log it and pick it up later from `/workflow-start`:
 
@@ -64,21 +64,21 @@ Want to jot something down without starting a pipeline? Log it and pick it up la
 
 **Requirements:** Node.js 18+, plus (optionally) an OpenAI API key for semantic search across your workflow history. Keyword-only stub mode works without one.
 
-Workflows require an initialised knowledge base. New installs are prompted to run setup once before any workflow command can execute:
+Workflows require an initialised knowledge base. On a fresh project, `/workflow-start` initialises it in the chat — no separate setup command to run first:
+
+- **Reuse or choose.** If your machine already has a system-wide configuration (`~/.config/workflows/config.json`), one keypress reuses it for this project. Otherwise pick a mode in the chat: `openai` (recommended — full semantic search), `openai-compatible` (local/self-hosted), or keyword-only (no key needed; upgrade anytime).
+- **API key** (if `openai`, or a keyed endpoint): the key never passes through the chat. Store it from your terminal — `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only` prompts privately (input hidden) and saves to `~/.config/workflows/credentials.json` (mode 0600) — or set `$OPENAI_API_KEY` in your shell, then tell the chat you're done. Keys are validated with a test embed before saving.
+- **Project init**: creates `.workflows/.knowledge/` and runs the initial indexing pass over any existing artifacts.
+
+If you pick keyword-only, search falls back to BM25 keyword matching. Re-run setup later to switch.
+
+The interactive wizard remains for reconfiguring the system-wide defaults (provider, model, key) outside any project gate:
 
 ```bash
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 ```
 
-The interactive wizard walks through:
-- **Embedding provider**: `openai` (cloud), `openai-compatible` (local/self-hosted), or `skip` (keyword-only).
-- **OpenAI API key** (if `openai`): from `$OPENAI_API_KEY` or `~/.config/workflows/credentials.json` (mode 0600), validated with a test embed before saving.
-- **Base URL + model + dimensions** (if `openai-compatible`): the endpoint, model, and vector size. The API key is optional — press Enter to skip it for servers that don't need one.
-- **Project init**: creates `.workflows/.knowledge/` and runs the initial indexing pass over any existing artifacts.
-
-If you skip the provider, search falls back to BM25 keyword matching. Re-run setup later to switch.
-
-**Local / self-hosted embeddings (`openai-compatible`).** Any server exposing an OpenAI-compatible `/v1/embeddings` endpoint works: LM Studio, Ollama (OpenAI-compat shim), vLLM, LiteLLM, etc. Pick `openai-compatible` in setup, or write `~/.config/workflows/config.json` directly:
+**Local / self-hosted embeddings (`openai-compatible`).** Any server exposing an OpenAI-compatible `/v1/embeddings` endpoint works: LM Studio, Ollama (OpenAI-compat shim), vLLM, LiteLLM, etc. Pick `openai-compatible` in the chat gate or the wizard, or write `~/.config/workflows/config.json` directly:
 
 ```json
 {
@@ -91,7 +91,7 @@ If you skip the provider, search falls back to BM25 keyword matching. Re-run set
 }
 ```
 
-Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), vLLM (`http://localhost:8000/v1`). `dimensions` **must match the local model's native output** — the wizard's test embed checks this and fails loudly on a mismatch.
+Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), vLLM (`http://localhost:8000/v1`). `dimensions` **must match the local model's native output** — setup's test embed checks this and fails loudly on a mismatch.
 
 </details>
 
