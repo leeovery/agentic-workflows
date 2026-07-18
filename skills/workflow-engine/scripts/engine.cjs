@@ -30,6 +30,8 @@ const { boot } = require('./domain/boot.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
+const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
+const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 
 /** @param {string} msg @returns {never} */
@@ -104,6 +106,7 @@ Commands:
   workunit reactivate <work-unit>
   workunit pivot <work-unit>
   workunit absorb <feature> --into <epic> --topic <name>
+  workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
@@ -116,6 +119,7 @@ Commands:
   discovery-map reroute <work-unit> <name> <research|discussion>
   discovery-map handle <work-unit> <name>
   discovery-map reactivate <work-unit> <name>
+  discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -183,6 +187,9 @@ function runManifest(argv) {
 // re-index — as one transaction with an engine-owned message. absorb merges
 // a feature into an epic as a new topic and deletes the feature — validated
 // completely before anything moves, one multi-pathspec commit at the end.
+// promote moves a completed epic specification (and its source discussions)
+// to a new, already-completed cross-cutting work unit — same shape: validated
+// completely before anything moves, one multi-pathspec commit at the end.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -232,8 +239,15 @@ function runWorkunit(argv) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
       respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
+    } else if (command === 'promote') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, topic] = positional;
+      if (!workUnit || !topic || positional.length !== 2 || !opts.to || !opts.description) {
+        throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
+      }
+      respond(promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description }));
     } else {
-      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb> …');
+      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb|promote> …');
     }
   } catch (err) {
     failJson(err);
@@ -374,6 +388,38 @@ function runDiscoveryMap(argv) {
     } else {
       throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|reroute|handle|reactivate> …');
     }
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// discovery-session — epic discovery-session finalisation. close is one
+// transaction: clear the active-session marker, index the finalised log
+// (warn-don't-block), commit scoped to the work unit with the caller's
+// message. The log's content is model-authored before the call — the engine
+// never writes prose.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runDiscoverySession(argv) {
+  const [command, ...rest] = argv;
+  try {
+    if (command !== 'close') {
+      throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
+    }
+    /** @type {string|null} */ let workUnit = null;
+    /** @type {string|null} */ let message = null;
+    for (let i = 0; i < rest.length; i++) {
+      const a = rest[i];
+      if (a === '-m' || a === '--message') message = rest[++i];
+      else if (workUnit === null) workUnit = a;
+      else throw new Error(`unexpected argument "${a}"`);
+    }
+    if (!workUnit || !message) {
+      throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
+    }
+    respond(closeDiscoverySession(process.cwd(), workUnit, { message }));
   } catch (err) {
     failJson(err);
   }
@@ -624,6 +670,9 @@ function runCli(argv) {
       break;
     case 'discovery-map':
       runDiscoveryMap(rest);
+      break;
+    case 'discovery-session':
+      runDiscoverySession(rest);
       break;
     case 'topic':
       runTopic(rest);
