@@ -188,8 +188,8 @@ Plan for {current_source}.md:
 
 @foreach(theme in plan.themes)
 {N}. {theme.kebab_name}
-   └─ Summary: {theme.summary}
-   └─ Content: {paragraph_count} para(s) — "{content_preview}..."
+   ├─ Summary: {theme.summary}
+   ├─ Content: {paragraph_count} para(s) — "{content_preview}..."
    └─ Cache: .workflows/.cache/{work_unit}/legacy-split/{current_source}/{theme.kebab_name}.md
 @endforeach
 

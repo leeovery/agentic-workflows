@@ -11,7 +11,7 @@ Discussion is higher-stakes than research for this check. The Context → Option
 > *Output the next fenced block as a code block:*
 
 ```
-·· Document Review ·······························
+·· Document Review ······························
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

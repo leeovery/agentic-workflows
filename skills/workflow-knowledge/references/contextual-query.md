@@ -60,7 +60,8 @@ Briefly acknowledge surfaced context to the user before the main session starts:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Surfaced prior context from the knowledge base — incorporating into this phase.
+> Surfaced prior context from the knowledge base — incorporating
+> into this phase.
 > {One short line naming the most relevant piece, e.g. "auth-flow decided on UUID identity (spec, 2026-03-15)."}
 ```
 
