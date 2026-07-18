@@ -423,3 +423,19 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
     assert.match(engineFails(fix, ['workunit', 'promote']).error, /Usage: engine workunit promote/);
   });
 });
+
+describe('engine workunit promote — source shape guard', () => {
+  it('refuses array-shaped sources — silent no-move is never an option', () => {
+    const epic = epicManifest();
+    epic.phases.specification.items['caching-strategy'].sources =
+      [{ topic: 'cache-invalidation', status: 'incorporated' }];
+    const fix = setupFixture({ epic });
+    try {
+      const err = engineFails(fix, ['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'caching-policy', '--description', 'x']);
+      assert.match(err.error, /array-shaped sources/);
+      assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching-policy')), 'nothing created on refusal');
+    } finally {
+      fs.rmSync(fix.root, { recursive: true, force: true });
+    }
+  });
+});

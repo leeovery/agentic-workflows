@@ -241,6 +241,9 @@ describe('engine workunit create — happy path', () => {
     assert.strictEqual(res.ok, true);
     const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!show.includes('.inbox'), `inbox leaked into the commit:\n${show}`);
+    // A fresh creation's project-manifest registration lands in the same commit.
+    assert.ok(show.split('\n').includes('.workflows/manifest.json'),
+      `project-manifest registration missing from the creation commit:\n${show}`);
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? \.workflows\/\.inbox\/ideas\/2026-06-09--unrelated\.md/);
   });
 });

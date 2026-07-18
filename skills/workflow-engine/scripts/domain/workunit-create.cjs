@@ -285,9 +285,11 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     knowledge(cwd, ['index', `.workflows/${workUnit}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
   }
 
-  // Seed removals ride along in the same commit as their new home.
+  // Seed removals ride along in the same commit as their new home, and a
+  // fresh creation's project-manifest registration lands with it too.
   const pathspecs = [`.workflows/${workUnit}`];
   if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
+  if (created) pathspecs.push('.workflows/manifest.json');
   const committed = commitScopedWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`);
 
   /** @type {WorkUnitCreateResult} */
