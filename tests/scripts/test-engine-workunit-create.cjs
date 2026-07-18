@@ -505,8 +505,14 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb>/);
   });
 
+  it('omitting the session log without --no-session-log refuses — log-less creation must be explicit', () => {
+    const err = engineFails(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec']);
+    assert.match(err.error, /exactly one of --session-log-file <path> or --no-session-log/);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy')), 'nothing created on refusal');
+  });
+
   it('creates without a session log — no sessions dir, no active_session, session_log null', () => {
-    const res = engine(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec']);
+    const res = engine(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec', '--no-session-log']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.created, true);
     assert.strictEqual(res.session_log, null);

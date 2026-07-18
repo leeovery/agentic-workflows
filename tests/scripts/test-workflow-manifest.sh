@@ -184,18 +184,29 @@ assert_exit_nonzero() {
 # WORK-UNIT DOCUMENT + RETIRED VERBS
 # ============================================================================
 
-echo -e "${YELLOW}Test: work-unit document shape (fixture matches the engine-created manifest)${NC}"
+echo -e "${YELLOW}Test: work-unit document shape (asserted against the ENGINE-created manifest)${NC}"
 setup_fixture
-create_wu dark-mode feature "Add dark mode"
+# Real contract: the engine writes the document; the assertions read what it
+# wrote. A git repo is required — workunit create commits.
+cd "$TEST_DIR"
+git init -q -b main . >/dev/null 2>&1
+git config user.email test@example.com && git config user.name Test && git config commit.gpgsign false
+node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --no-session-log >/dev/null
 
-assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json created"
+assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json created by the engine"
 content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
 assert_contains "$content" '"name": "dark-mode"' "name field set"
 assert_contains "$content" '"work_type": "feature"' "work_type field set"
 assert_contains "$content" '"status": "in-progress"' "status defaults to in-progress"
 assert_contains "$content" '"description": "Add dark mode"' "description set"
 assert_contains "$content" '"phases": {}' "phases initialized empty"
-assert_contains "$content" '"created":' "created date set"
+# Fixture↔engine equivalence, enforced: create_wu's document must match the
+# engine's byte-for-byte (modulo nothing — both stamp today's date).
+create_wu dark-mode-fixture feature "Add dark mode"
+engine_doc=$(sed 's/dark-mode/UNIT/g' "$TEST_DIR/.workflows/dark-mode/manifest.json")
+fixture_doc=$(sed 's/dark-mode-fixture/UNIT/g' "$TEST_DIR/.workflows/dark-mode-fixture/manifest.json")
+assert_equals "$engine_doc" "$fixture_doc" "create_wu fixture matches the engine-created document byte-for-byte"
+rm -rf "$TEST_DIR/.git"
 
 echo ""
 
@@ -204,13 +215,13 @@ echo ""
 echo -e "${YELLOW}Test: retired CLI commands are not ported${NC}"
 setup_fixture
 output=$(run_cli init dark-mode --work-type feature --description "x" || true)
-assert_contains "$output" "Usage: engine manifest" "init refused with usage"
+assert_contains "$output" "engine workunit create" "init refusal points at workunit create"
 output=$(run_cli init-phase dark-mode.discussion.dark-mode || true)
-assert_contains "$output" "Usage: engine manifest" "init-phase refused with usage"
+assert_contains "$output" "engine topic start" "init-phase refusal points at topic start"
 output=$(run_cli project list || true)
-assert_contains "$output" "Usage: engine manifest" "project refused with usage"
+assert_contains "$output" "engine manifest list" "project refusal points at list"
 output=$(run_cli create-discovery-topic dark-mode foo || true)
-assert_contains "$output" "Usage: engine manifest" "create-discovery-topic refused with usage"
+assert_contains "$output" "engine discovery-map add" "create-discovery-topic refusal points at discovery-map add"
 
 echo ""
 

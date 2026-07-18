@@ -401,7 +401,7 @@ async function loadStore(storePath) {
 }
 
 // ---------------------------------------------------------------------------
-// File locking — adapted from manifest.cjs (lines 80-127).
+// File locking — same discipline as the engine kernel's manifest-io.
 //
 // WRITE operations (saveStore) must be wrapped in withLock. READ
 // operations (loadStore, all searches) do NOT lock — stale reads are
