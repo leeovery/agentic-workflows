@@ -193,6 +193,13 @@ class OpenAIEmbeddingsEngine {
       } catch (_) {
         // ignore body read failures
       }
+      // Upstream bodies are untrusted and may reflect request headers —
+      // including the Authorization bearer. Redact any credential-shaped
+      // material and cap the length before it can reach an error message.
+      detail = detail
+        .replace(/Bearer\s+[^\s"'\\]+/gi, 'Bearer [redacted]')
+        .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[redacted-key]')
+        .slice(0, 300);
 
       if (res.status === 401) {
         throw new AuthError(`${ctx.label} request was rejected (HTTP 401). ${ctx.authHint}`.trim());
