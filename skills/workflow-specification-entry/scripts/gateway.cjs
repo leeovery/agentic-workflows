@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
-const { loadActiveManifests, phaseItems, phaseData, listFiles, filesChecksum, fileExists } = require('../../workflow-engine/scripts/domain/discovery-utils.cjs');
+const { loadActiveManifests, phaseItems, phaseData, listFiles, filesChecksum, fileExists } = engine.discovery;
 
 // Actionable-first ordering rank for the spec menu. Lower sorts earlier:
 // proposed → in-progress → completed-with-pending → concluded → other/promoted.
