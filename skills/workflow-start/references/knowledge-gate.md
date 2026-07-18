@@ -50,7 +50,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
 
 → Proceed to **E. Confirm and Continue**.
 
-**If the command failed with "no OpenAI API key found":**
+**If the command failed with "no OpenAI API key found" or an authentication error (HTTP 401/403 — the stored key is missing, revoked, or wrong for this endpoint):**
 
 → Proceed to **D. Store the API Key**.
 
@@ -62,7 +62,30 @@ Surface the reported error verbatim. The knowledge base could not be initialised
 
 #### If `different`
 
-→ Proceed to **C. Choose a Mode**.
+A per-project deviation never touches the system-wide configuration. Keyword-only is the per-project mode; a different *provider* is a system-wide decision — the wizard's job.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+How should this project deviate?
+
+- **`k`/`keyword`** — Keyword-only for this project (the system
+  configuration stays untouched for every other project)
+- **`t`/`terminal`** — Run the interactive wizard to change the
+  system-wide configuration
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `keyword`:**
+
+→ Proceed to **C. Choose a Mode** for the `keyword` branch.
+
+**If `terminal`:**
+
+→ Proceed to **F. Terminal Wizard**.
 
 #### If `terminal`
 
@@ -111,7 +134,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider op
 
 → Proceed to **E. Confirm and Continue**.
 
-**If the command failed with "no OpenAI API key found":**
+**If the command failed with "no OpenAI API key found" or an authentication error (HTTP 401/403):**
 
 → Proceed to **D. Store the API Key**.
 
@@ -229,6 +252,8 @@ Ready to retry?
 
 Re-run the setup command that routed here and handle its result exactly as that branch prescribes (including routing back here if the key is still unresolvable).
 
+→ Return to **B. Use Existing Configuration** when routed from **B**; otherwise → Return to **C. Choose a Mode**.
+
 #### If `keyword`
 
 Run:
@@ -249,7 +274,7 @@ Surface the reported error verbatim. The knowledge base could not be initialised
 
 ## E. Confirm and Continue
 
-The fresh store is uncommitted. Commit it — the same commit boot makes after a terminal-wizard restart:
+The fresh store is uncommitted. Commit it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore(knowledge): initialise store"
@@ -291,8 +316,34 @@ Run the wizard in your terminal:
   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
 
 It configures system defaults, initialises the project store, and
-runs the initial indexing pass. Start the workflow again once it
+runs the initial indexing pass. Say `d`/`done` here when it
 completes.
 ```
 
-**STOP.** Do not proceed — terminal condition.
+**STOP.** Wait for user response.
+
+#### If `done`
+
+Re-run the boot check:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs boot
+```
+
+**If `knowledge` is `ready`:**
+
+Boot committed any store dirt the wizard left. Confirm with the active settings from the wizard's summary:
+
+> *Output the next fenced block as a code block:*
+
+```
+Knowledge base ready — {provider} · {model}.
+```
+
+→ Return to **[the skill](../SKILL.md)** for **Step 1**.
+
+**If `knowledge` is still `not-ready`:**
+
+The wizard did not complete. Surface the boot response's detail.
+
+→ Return to **A. Route**.
