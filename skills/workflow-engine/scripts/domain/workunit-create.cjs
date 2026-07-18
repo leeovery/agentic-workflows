@@ -14,7 +14,7 @@
 // index (warn-don't-block); the scoped commit comes last.
 //
 // The created manifest and its project-manifest registration reproduce the
-// manifest CLI's `init` field-for-field — one on-disk shape, two writers.
+// canonical work-unit document field-for-field — one on-disk shape.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -100,7 +100,7 @@ function dedupe(name, destDir, taken) {
 
 /**
  * Push onto a top-level manifest array field, creating it when absent — loud
- * when the field exists but is not an array (mirrors manifest.cjs `push`).
+ * when the field exists but is not an array (mirrors `engine manifest push`).
  * @param {Record<string, any>} manifest @param {string} field @param {unknown} value
  */
 function pushEntry(manifest, field, value) {
@@ -111,8 +111,8 @@ function pushEntry(manifest, field, value) {
 
 /**
  * The work-type commit: create the work unit (manifest + project-manifest
- * registration, exactly as `manifest.cjs init` writes them — reused as-is
- * when it already exists), copy imports into `imports/`, move inbox seeds
+ * registration; an existing manifest is reused as-is), copy imports into
+ * `imports/`, move inbox seeds
  * into `seeds/` (both manifest-tracked and KB-indexed, warn-don't-block),
  * install the session log verbatim as `session-001.md` (epic also gets the
  * `active_session` marker), and commit scoped to the work unit plus the

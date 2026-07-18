@@ -8,7 +8,7 @@ const os = require('os');
 const { spawnSync } = require('child_process');
 
 const MANIFEST_CLI = path.resolve(
-  __dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'
+  __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
 );
 const { computeTopicLifecycle } = require(
   path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'domain', 'discovery-utils.cjs')
@@ -27,7 +27,7 @@ function cleanupFixture() {
 }
 
 function runCli(...args) {
-  const result = spawnSync('node', [MANIFEST_CLI, ...args], { cwd: dir, encoding: 'utf8' });
+  const result = spawnSync('node', [MANIFEST_CLI, 'manifest', ...args], { cwd: dir, encoding: 'utf8' });
   return {
     stdout: result.stdout,
     stderr: result.stderr,
@@ -87,13 +87,14 @@ describe('discovery map operations: hard-delete on remove', () => {
     assert.ok('tax-handling' in m.phases.discovery.items, 'tax-handling was removed');
   });
 
-  it('returns expected-miss exit code when the topic does not exist', () => {
+  it('fails the mutation contract way when the topic does not exist', () => {
     seedEpic('payments', {
       'auth-flow': { status: 'in-progress', routing: 'research', source: 'discovery' },
     });
 
     const r = runCli('delete', 'payments.discovery', 'items.nonexistent');
-    assert.strictEqual(r.status, 2, `unexpected exit code: ${r.stderr}`);
+    assert.strictEqual(r.status, 1, `unexpected exit code: ${r.stderr}`);
+    assert.strictEqual(JSON.parse(r.stderr.trim()).ok, false);
   });
 });
 
