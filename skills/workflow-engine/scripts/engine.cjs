@@ -153,7 +153,6 @@ Commands:
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
-/** @param {string[]} argv */
 function runManifest(argv) {
   const [command, ...rest] = argv;
   if (command !== undefined && isRead(command)) {
