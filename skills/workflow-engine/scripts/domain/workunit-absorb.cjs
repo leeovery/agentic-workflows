@@ -26,6 +26,7 @@ const {
   readProjectManifest,
   writeProjectManifestAtomic,
   withProjectLock,
+  ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
@@ -234,15 +235,14 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // Epic manifest: phase items mirror the feature's statuses; tracked
     // entries carry their original timestamps (and seed provenance) with new
     // paths.
-    if (!epicManifest.phases || typeof epicManifest.phases !== 'object') epicManifest.phases = {};
-    if (!epicManifest.phases.discussion || typeof epicManifest.phases.discussion !== 'object') epicManifest.phases.discussion = {};
-    if (!epicManifest.phases.discussion.items || typeof epicManifest.phases.discussion.items !== 'object') epicManifest.phases.discussion.items = {};
-    epicManifest.phases.discussion.items[topic] = { status: discussionItem.status };
+    const epicPhases = ensureContainer(epicManifest, 'phases', 'phases');
+    const discussion = ensureContainer(epicPhases, 'discussion', 'phases.discussion');
+    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = { status: discussionItem.status };
     if (researchPlan.length > 0) {
-      if (!epicManifest.phases.research || typeof epicManifest.phases.research !== 'object') epicManifest.phases.research = {};
-      if (!epicManifest.phases.research.items || typeof epicManifest.phases.research.items !== 'object') epicManifest.phases.research.items = {};
+      const research = ensureContainer(epicPhases, 'research', 'phases.research');
+      const researchItems = ensureContainer(research, 'items', 'phases.research.items');
       for (const move of researchPlan) {
-        epicManifest.phases.research.items[move.target] = { status: move.status };
+        researchItems[move.target] = { status: move.status };
       }
     }
     for (const move of importPlan) {

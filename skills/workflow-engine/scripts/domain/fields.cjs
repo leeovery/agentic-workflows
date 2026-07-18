@@ -241,17 +241,32 @@ function getByPath(obj, segments) {
   return current;
 }
 
+// A named field assigned into an array is silently dropped by
+// JSON.stringify — the write would falsely succeed. Numeric indexes are fine.
+/** @param {any} container @param {string} seg @param {string} pathSoFar */
+function refuseNamedArrayWrite(container, seg, pathSoFar) {
+  if (Array.isArray(container) && !/^(0|[1-9][0-9]*)$/.test(seg)) {
+    fail(`Path "${pathSoFar}" is an array — cannot set field "${seg}" in it`);
+  }
+}
+
 /** @param {any} obj @param {string[]} segments @param {*} value */
 function setByPath(obj, segments, value) {
   let current = obj;
   for (let i = 0; i < segments.length - 1; i++) {
     const seg = segments[i];
-    if (current[seg] == null || typeof current[seg] !== 'object') {
+    refuseNamedArrayWrite(current, seg, segments.slice(0, i).join('.') || '(root)');
+    if (current[seg] == null) {
       current[seg] = {};
+    } else if (typeof current[seg] !== 'object') {
+      // Descending through a scalar would silently destroy it — refuse.
+      fail(`Path "${segments.slice(0, i + 1).join('.')}" is not an object — refusing to overwrite it with a container`);
     }
     current = current[seg];
   }
-  current[segments[segments.length - 1]] = value;
+  const last = segments[segments.length - 1];
+  refuseNamedArrayWrite(current, last, segments.slice(0, -1).join('.') || '(root)');
+  current[last] = value;
 }
 
 /** @param {any} obj @param {string[]} segments */

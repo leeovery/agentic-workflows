@@ -30,6 +30,10 @@ const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;
 const LOCK_TIMEOUT_MS = 10000;
 
+// A temp file older than this is an orphan from a crashed writer — a live
+// writer's temp file exists only for the instant between write and rename.
+const TMP_STALE_MS = 60000;
+
 /** @param {string} workflowsDir @param {string} workUnit */
 function workUnitManifestPath(workflowsDir, workUnit) {
   return path.join(workflowsDir, workUnit, 'manifest.json');
@@ -51,6 +55,87 @@ function projectLockPath(workflowsDir) {
 }
 
 /**
+ * The root every manifest writer requires: a plain object. JSON.stringify
+ * silently drops named properties assigned to an array, and a null/scalar
+ * root cannot hold fields at all — a write against such a root would falsely
+ * succeed, so it must refuse before any mutation runs.
+ * @param {any} root @param {string} file
+ */
+function assertObjectRoot(root, file) {
+  if (root === null || typeof root !== 'object' || Array.isArray(root)) {
+    throw new Error(`manifest root is not an object in ${file} — fix it by hand; fields written to it would be silently discarded`);
+  }
+}
+
+/**
+ * Pre-write guard, run under the lock before the writer's `fn`: a manifest
+ * already on disk must have an object root before anything may mutate it.
+ * Missing and unparseable files pass through — the writer's own read owns
+ * those semantics (create writes fresh; corrupt JSON throws its established
+ * loud error).
+ * @param {string} file
+ */
+function assertWritableManifest(file) {
+  let raw;
+  try {
+    raw = fs.readFileSync(file, 'utf8');
+  } catch {
+    return;
+  }
+  let root;
+  try {
+    root = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  assertObjectRoot(root, file);
+}
+
+/**
+ * Descend into `parent[key]` as a structural container, creating a plain
+ * object when the slot is empty. A slot holding anything else (string,
+ * number, array, …) is refused loudly — replacing it would destroy data, and
+ * fields assigned into an array are silently dropped by JSON.stringify.
+ * @param {Record<string, any>} parent @param {string} key
+ * @param {string} label the container's dot-path, for the diagnostic
+ * @returns {Record<string, any>}
+ */
+function ensureContainer(parent, key, label) {
+  const existing = parent[key];
+  if (existing == null) {
+    parent[key] = {};
+  } else if (typeof existing !== 'object' || Array.isArray(existing)) {
+    throw new Error(`manifest field "${label}" is not an object (found ${Array.isArray(existing) ? 'array' : typeof existing}) — fix the manifest by hand`);
+  }
+  return parent[key];
+}
+
+/**
+ * Remove orphaned temp files a crashed writer left beside `file` — the next
+ * scoped `git add` would commit them. Only files past TMP_STALE_MS go; a
+ * younger one belongs to a live concurrent writer. Best-effort: a file
+ * vanishing mid-sweep means another process finished the same job.
+ * @param {string} file
+ */
+function sweepOrphanedTmpFiles(file) {
+  const dir = path.dirname(file);
+  const prefix = `.${path.basename(file)}.`;
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (!name.startsWith(prefix) || !name.endsWith('.tmp')) continue;
+    const orphan = path.join(dir, name);
+    try {
+      if (Date.now() - fs.statSync(orphan).mtimeMs > TMP_STALE_MS) fs.unlinkSync(orphan);
+    } catch { /* vanished mid-sweep */ }
+  }
+}
+
+/**
  * Atomic JSON write: serialise, write a hidden pid-suffixed temp file in the
  * same directory, rename over the target — a crash mid-write can never leave
  * a truncated manifest behind. One serialisation for every writer:
@@ -58,6 +143,8 @@ function projectLockPath(workflowsDir) {
  * @param {string} file @param {object} data
  */
 function writeJsonAtomic(file, data) {
+  assertObjectRoot(data, file);
+  sweepOrphanedTmpFiles(file);
   const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
   fs.renameSync(tmp, file);
@@ -134,12 +221,53 @@ function writeProjectManifestAtomic(workflowsDir, data) {
 }
 
 /**
+ * Break a stale lock, at most one contender at a time. The `.breaking` guard
+ * (O_EXCL, pid recorded) admits a single breaker, which re-checks the lock's
+ * mtime INSIDE the guarded section before unlinking. A naive stat-then-unlink
+ * lets a contender act on a pre-break observation: after the true break and a
+ * re-acquire it would remove the new holder's fresh lock — two writers at
+ * once. Inside the guard a stale mtime is decisive: the holder is dead
+ * (nothing can release-race the unlink) and creations need the absence the
+ * unlink is about to produce. Losers return false and fall back to the
+ * acquire loop's wait/retry cadence. A dead breaker's guard heals by the
+ * same staleness rule.
+ * @param {string} lockFile
+ * @returns {boolean} true when this process performed the break
+ */
+function breakStaleLockFile(lockFile) {
+  const guard = `${lockFile}.breaking`;
+  let fd;
+  try {
+    fd = fs.openSync(guard, 'wx');
+  } catch {
+    try {
+      if (Date.now() - fs.statSync(guard).mtimeMs > LOCK_STALE_MS) fs.unlinkSync(guard);
+    } catch { /* guard already gone */ }
+    return false;
+  }
+  try {
+    fs.writeSync(fd, String(process.pid));
+    if (Date.now() - fs.statSync(lockFile).mtimeMs > LOCK_STALE_MS) {
+      fs.unlinkSync(lockFile);
+      return true;
+    }
+    return false;
+  } catch {
+    return false; // lock vanished — already broken, not yet re-acquired
+  } finally {
+    fs.closeSync(fd);
+    try { fs.unlinkSync(guard); } catch { /* healed from under us */ }
+  }
+}
+
+/**
  * Acquire `lockFile` (O_EXCL create, pid recorded), breaking a stale holder
  * and spinning on a live one up to the timeout.
  * @param {string} lockFile @param {string} timeoutMessage
+ * @param {number} [timeoutMs]
  */
-function acquireLockFile(lockFile, timeoutMessage) {
-  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
 
   while (true) {
     try {
@@ -155,7 +283,7 @@ function acquireLockFile(lockFile, timeoutMessage) {
     try {
       const stat = fs.statSync(lockFile);
       if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-        fs.unlinkSync(lockFile);
+        breakStaleLockFile(lockFile);
         continue;
       }
     } catch {
@@ -164,7 +292,10 @@ function acquireLockFile(lockFile, timeoutMessage) {
     }
 
     if (Date.now() >= deadline) {
-      throw new Error(timeoutMessage);
+      throw new Error(
+        `${timeoutMessage} (lock file: ${lockFile}). A stale lock from a crashed process clears automatically after ` +
+        `${LOCK_STALE_MS / 1000} seconds — retry; if it persists, delete the lock file.`
+      );
     }
 
     // Busy wait (short)
@@ -194,6 +325,7 @@ function withWorkUnitLock(workflowsDir, workUnit, fn) {
   const lockFile = workUnitLockPath(workflowsDir, workUnit);
   acquireLockFile(lockFile, `Timed out waiting for lock on "${workUnit}"`);
   try {
+    assertWritableManifest(workUnitManifestPath(workflowsDir, workUnit));
     return fn();
   } finally {
     releaseLockFile(lockFile);
@@ -212,6 +344,7 @@ function withProjectLock(workflowsDir, fn) {
   const lockFile = projectLockPath(workflowsDir);
   acquireLockFile(lockFile, 'Timed out waiting for project manifest lock');
   try {
+    assertWritableManifest(projectManifestPath(workflowsDir));
     return fn();
   } finally {
     releaseLockFile(lockFile);
@@ -222,10 +355,14 @@ module.exports = {
   LOCK_STALE_MS,
   LOCK_RETRY_MS,
   LOCK_TIMEOUT_MS,
+  TMP_STALE_MS,
   workUnitManifestPath,
   workUnitLockPath,
   projectManifestPath,
   projectLockPath,
+  breakStaleLockFile,
+  acquireLockFile,
+  ensureContainer,
   readWorkUnitManifest,
   writeWorkUnitManifestAtomic,
   readProjectManifest,

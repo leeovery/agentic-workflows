@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 
 const FIX_THRESHOLD = 3;
 const SESSION_CYCLE_LIMIT = 3;
@@ -118,11 +118,9 @@ function counterOf(item, field) {
 function initTasks(cwd, workUnit, topic) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-    const phases = manifest.phases;
-    if (!phases.implementation || typeof phases.implementation !== 'object') phases.implementation = {};
-    if (!phases.implementation.items || typeof phases.implementation.items !== 'object') phases.implementation.items = {};
-    const items = phases.implementation.items;
+    const phases = ensureContainer(manifest, 'phases', 'phases');
+    const implementation = ensureContainer(phases, 'implementation', 'phases.implementation');
+    const items = ensureContainer(implementation, 'items', 'phases.implementation.items');
 
     /** @type {'created'|'resumed'} */
     let mode;
