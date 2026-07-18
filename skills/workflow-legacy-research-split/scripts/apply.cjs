@@ -7,7 +7,7 @@ const { spawnSync } = require('child_process');
 
 const { validate } = require('./validate.cjs');
 
-const MANIFEST_CLI = path.resolve(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 function die(msg, code = 1) {
@@ -16,9 +16,9 @@ function die(msg, code = 1) {
 }
 
 function runCli(cwd, args) {
-  const r = spawnSync('node', [MANIFEST_CLI, ...args], { cwd, encoding: 'utf8' });
+  const r = spawnSync('node', [ENGINE_CLI, 'manifest', ...args], { cwd, encoding: 'utf8' });
   if (r.status !== 0) {
-    throw new Error(`manifest cli failed (${args.join(' ')}): ${r.stderr || r.stdout}`);
+    throw new Error(`engine manifest failed (${args.join(' ')}): ${r.stderr || r.stdout}`);
   }
   return r.stdout;
 }
@@ -114,14 +114,14 @@ function apply(cwd, workUnit, currentSource) {
       stage: 'rename_source_file',
       error: e.message,
       recovery_hint:
-        `source file rename failed. Clear sentinel manually: manifest.cjs delete ${workUnit}.discovery.${currentSource} legacy_split_state`,
+        `source file rename failed. Clear sentinel manually: engine manifest delete ${workUnit}.discovery.${currentSource} legacy_split_state`,
     };
   }
 
-  // Stage 3: rename source research manifest item.
+  // Stage 3: rename source research manifest item (set auto-creates the
+  // renamed item — no separate init step).
   try {
     runCli(cwd, ['delete', `${workUnit}.research`, `items.${currentSource}`]);
-    runCli(cwd, ['init-phase', `${workUnit}.research.${supersededName}`]);
     runCli(cwd, ['set', `${workUnit}.research.${supersededName}`, 'status', 'superseded']);
   } catch (e) {
     return {
@@ -131,7 +131,7 @@ function apply(cwd, workUnit, currentSource) {
       recovery_hint:
         `manifest mutation failed partway through research-item rename. Source file is at ${supersededFile}; ` +
         `original research item may or may not still exist. Inspect manifest, restore manually, ` +
-        `then clear sentinel: manifest.cjs delete ${workUnit}.discovery.${currentSource} legacy_split_state`,
+        `then clear sentinel: engine manifest delete ${workUnit}.discovery.${currentSource} legacy_split_state`,
     };
   }
 
@@ -149,7 +149,7 @@ function apply(cwd, workUnit, currentSource) {
       error: e.message,
       recovery_hint:
         `delete source discovery item failed. Source file/research renamed; ` +
-        `manually delete: manifest.cjs delete ${workUnit}.discovery items.${currentSource}`,
+        `manually delete: engine manifest delete ${workUnit}.discovery items.${currentSource}`,
     };
   }
 
@@ -187,8 +187,8 @@ function apply(cwd, workUnit, currentSource) {
         runCli(cwd, ['pull', `${workUnit}.discovery`, 'dismissed', theme.kebab_name]);
       }
 
-      runCli(cwd, ['init-phase', `${workUnit}.research.${theme.kebab_name}`]);
-      runCli(cwd, ['init-phase', `${workUnit}.discovery.${theme.kebab_name}`]);
+      // set auto-creates each item; discovery map items carry no status field.
+      runCli(cwd, ['set', `${workUnit}.research.${theme.kebab_name}`, 'status', 'in-progress']);
       runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'routing', 'research']);
       runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'summary', theme.summary]);
       runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'description', theme.description]);

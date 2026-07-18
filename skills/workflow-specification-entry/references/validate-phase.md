@@ -7,7 +7,7 @@
 Read the specification item's status from the manifest — not the file on disk. A `proposed` grouping has no file yet but is a real item:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
 ```
 
 #### If the output is empty
@@ -39,7 +39,7 @@ Set verb = "Continuing".
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

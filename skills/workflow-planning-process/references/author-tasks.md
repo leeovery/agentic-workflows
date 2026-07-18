@@ -56,9 +56,9 @@ Read the task detail file and count tasks. Verify task count matches the task ta
 
 ## D. Check Gate Mode
 
-Check `author_gate_mode` via manifest CLI:
+Check `author_gate_mode` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} author_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} author_gate_mode
 ```
 
 #### If `author_gate_mode` is `auto`
@@ -124,7 +124,7 @@ Mark the task `approved` in the task detail file.
 
 Mark the task `approved` in the task detail file. Set all remaining `pending` tasks to `approved`. Update `author_gate_mode` in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} author_gate_mode auto
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} author_gate_mode auto
 ```
 
 → Proceed to **G. Write to Plan**.
@@ -184,19 +184,19 @@ For each approved task in the task detail file, in order:
 2. Write to the output format (format-specific — see the format's **[authoring.md](output-formats/{format}/authoring.md)**)
 3. Record the internal ID → external ID mapping in the manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
    ```
 4. If the manifest's `external_id` is empty, set it to the external identifier for the plan as exposed by the output format:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_id {external_id}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_id {external_id}
    ```
 5. Record the phase's internal ID → external ID mapping in the manifest (the external identifier is declared in the format's **[authoring.md](output-formats/{format}/authoring.md)** Phase Structure section):
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
    ```
 6. Advance the manifest planning position to the next pending task (or next phase if this was the last task):
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task {next_task_id}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task {next_task_id}
    ```
 7. Commit with raw git — the format's task storage may live outside the work unit, so the scoped helper cannot cover it. Stage the format's storage and the work unit, then commit:
    ```bash

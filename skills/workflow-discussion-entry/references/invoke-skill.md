@@ -17,13 +17,13 @@ For every source branch except `continue`, read the `description` discovery left
 - **Epic** — the discovery map item carries it:
 
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} description
   ```
 
 - **Feature / cross-cutting** — the work-unit manifest carries it (single-phase types have no discovery map item):
 
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
   ```
 
 When the read returns non-empty, append the Description block shown in each source branch below. When it returns empty, omit the Description block entirely — no header, no empty body.

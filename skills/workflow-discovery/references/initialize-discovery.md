@@ -8,9 +8,9 @@
 2. Read the work-unit `description`, `seeds` list, and `imports` list from the manifest — they are not carried in the discovery output, and the session loop's opener and seed/import-launchpad branch read them:
 
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} seeds
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} imports
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} seeds
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} imports
    ```
 
    `get` returns empty on an absent field — treat an empty `seeds`/`imports` as "none".

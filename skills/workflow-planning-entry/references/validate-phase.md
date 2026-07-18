@@ -7,7 +7,7 @@
 Check whether a plan already exists for this topic.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
 ```
 
 #### If output is empty (plan doesn't exist — fresh start)
@@ -34,7 +34,7 @@ Set source="fresh".
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

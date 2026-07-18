@@ -30,21 +30,22 @@ const ANALYSIS_CACHE_FILES = {
   'discovery-gap-analysis': 'gap-analysis',
 };
 
-// Resolve manifest CLI path. In the bundled form, __dirname is
-// skills/workflow-knowledge/scripts/. In source, __dirname is
-// src/knowledge/. Both need to resolve to skills/workflow-manifest/scripts/manifest.cjs.
-const MANIFEST_JS = (() => {
-  const srcCandidate = path.join(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs');
-  const bundledCandidate = path.join(__dirname, '..', '..', 'workflow-manifest', 'scripts', 'manifest.cjs');
+// Resolve the engine CLI path (manifest reads go through `engine manifest`).
+// In the bundled form, __dirname is skills/workflow-knowledge/scripts/. In
+// source, __dirname is src/knowledge/. Both need to resolve to
+// skills/workflow-engine/scripts/engine.cjs.
+const ENGINE_JS = (() => {
+  const srcCandidate = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs');
+  const bundledCandidate = path.join(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
   if (fs.existsSync(srcCandidate)) return srcCandidate;
   if (fs.existsSync(bundledCandidate)) return bundledCandidate;
-  // Fail loud at load time — a missing manifest CLI would otherwise turn
-  // every manifest-dependent command into a silent no-op (deferred-issue #5).
+  // Fail loud at load time — a missing engine would otherwise turn every
+  // manifest-dependent command into a silent no-op (deferred-issue #5).
   throw new Error(
-    'Could not locate manifest.cjs. Tried:\n' +
+    'Could not locate engine.cjs. Tried:\n' +
       `  ${srcCandidate}\n` +
       `  ${bundledCandidate}\n` +
-      'This is an installation problem — the knowledge CLI cannot work without the manifest CLI.'
+      'This is an installation problem — the knowledge CLI cannot work without the workflow engine.'
   );
 })();
 
@@ -681,14 +682,14 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
 // ---------------------------------------------------------------------------
 
 /**
- * Run the manifest CLI and return stdout.
+ * Run an `engine manifest` read and return stdout.
  */
 function runManifest(args) {
   const { execFileSync } = require('child_process');
-  // Spawn with cwd anchored at the project root so the manifest CLI's
-  // own cwd-relative resolution lands at the right place even when KB
+  // Spawn with cwd anchored at the project root so the engine's own
+  // cwd-relative resolution lands at the right place even when KB
   // commands are invoked from a subdirectory.
-  return execFileSync('node', [MANIFEST_JS, ...args], {
+  return execFileSync('node', [ENGINE_JS, 'manifest', ...args], {
     cwd: config.findProjectRoot(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -696,13 +697,13 @@ function runManifest(args) {
 }
 
 /**
- * Surface real manifest CLI failures (corrupt JSON, broken paths, etc.).
+ * Surface real manifest-read failures (corrupt JSON, broken paths, etc.).
  * Expected misses are no longer thrown — `get` returns empty stdout + exit 0
  * for missing work units / fields, so callers detect them by checking output.
  */
 function reportUnexpectedManifestError(context, err) {
   const msg = err && err.stderr ? String(err.stderr).trim() : err.message;
-  process.stderr.write(`Warning: manifest CLI failed in ${context}: ${msg}\n`);
+  process.stderr.write(`Warning: manifest read failed in ${context}: ${msg}\n`);
 }
 
 /**
@@ -722,7 +723,7 @@ async function isIndexed(db, workUnit, phase, topic) {
 }
 
 /**
- * Discover all completed artifacts across all work units using the manifest CLI.
+ * Discover all completed artifacts across all work units via engine manifest reads.
  * Returns an array of { file, workUnit, phase, topic }.
  */
 function discoverArtifacts() {
@@ -763,7 +764,7 @@ function discoverArtifacts() {
       for (const [topicName, topicData] of Object.entries(phaseData.items)) {
         if (!topicData || topicData.status !== 'completed') continue;
 
-        // Resolve file path via manifest CLI.
+        // Resolve file path via engine manifest resolve.
         try {
           const raw = runManifest(['resolve', `${wuName}.${phase}.${topicName}`]);
           const filePath = raw.trim();
@@ -2085,7 +2086,7 @@ async function cmdRemove(_args, options) {
   // chunks for this WU we treat it as an orphan cleanup and proceed; if
   // not, surface the typo error.
   let isOrphanCleanup = false;
-  const projectEntry = runManifest(['project', 'get', options.workUnit]).trim();
+  const projectEntry = runManifest(['get', `project.work_units.${options.workUnit}`]).trim();
   if (projectEntry === '') {
     const sp = storePath();
     let storeMatch = 0;

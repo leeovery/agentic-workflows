@@ -107,7 +107,7 @@ Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phas
 After all verifiers complete, push each verified task's internal ID to the review manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
 ```
 
 This enables incremental review detection on subsequent review sessions.

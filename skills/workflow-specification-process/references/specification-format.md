@@ -14,17 +14,17 @@ The specification is a single file per topic. Structure is **flexible** — orga
 
 ## Metadata (Manifest CLI)
 
-Specification metadata is stored in the work-unit manifest, not in file frontmatter. Access via the manifest CLI:
+Specification metadata is stored in the work-unit manifest, not in file frontmatter. Access via `engine manifest`:
 
 ```bash
 # Read fields
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} status
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} review_cycle
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} sources.{source-name}.status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_cycle
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.{source-name}.status
 
 # Write fields
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
 ```
 
 Lifecycle `status` transitions go through the engine, not `set` — `engine topic start` on creation, `engine topic complete` (which also indexes the artifact) at conclusion.
@@ -63,13 +63,13 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 
 **All specifications must track their sources**, even when built from a single source. This enables proper tracking when additional material is later added.
 
-Track each source with its incorporation status via the manifest CLI:
+Track each source with its incorporation status via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} sources.auth-flow.status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.auth-flow.status
 # → incorporated
 
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} sources.api-design.status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.api-design.status
 # → pending
 ```
 
@@ -79,8 +79,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.speci
 
 **When to update source status:**
 
-1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status pending`
-2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`
+1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status pending`
+2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`
 3. **When adding a new source to an existing spec**: Add it with `status: pending` via the same command
 
 **How to determine if a source is incorporated:**

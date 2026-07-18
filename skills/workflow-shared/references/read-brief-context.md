@@ -21,7 +21,7 @@ Nothing to read here — briefs exist only for epics (the inverse of `seed-conte
 Read the topic's brief pointer:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} brief_path
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} brief_path
 ```
 
 **If `brief_path` is present and the brief file exists:**
@@ -35,7 +35,7 @@ Read `.workflows/{work_unit}/discovery/briefs/{topic}.md` in full — the *disco
 No brief — an un-harvested, migration-seeded, or legacy topic. Fall back to the discovery item `description` and seed this phase from it (it may be empty, in which case the session gathers context naturally):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} description
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} description
 ```
 
 → Proceed to **B. Track the Read**.
@@ -45,7 +45,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.disco
 Record that the brief (or its fallback) has been read:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} brief_incorporated true
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{topic} brief_incorporated true
 ```
 
 No commit — this folds into the calling phase's next commit.

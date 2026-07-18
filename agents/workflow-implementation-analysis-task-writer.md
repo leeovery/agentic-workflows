@@ -50,21 +50,21 @@ After creating task files, record all ID mappings in the manifest via the CLI:
 
 For the phase:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
 ```
 
 For each task:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
 ```
 
-Check the planning `external_id` via the manifest CLI:
+Check the planning `external_id` in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
 ```
 If the command errors (field doesn't exist) or returns empty, set it to the external identifier for the plan from the output format:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_id "{external_id_value}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_id "{external_id_value}"
 ```
 
 ## Hard Rules

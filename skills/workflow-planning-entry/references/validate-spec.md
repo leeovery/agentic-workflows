@@ -4,10 +4,10 @@
 
 ---
 
-Check if specification exists and is ready using the manifest CLI.
+Check if specification exists and is ready using `engine manifest`.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic}
 ```
 
 #### If specification phase doesn't exist or has no status

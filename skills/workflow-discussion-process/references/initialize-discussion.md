@@ -11,7 +11,7 @@
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Register the discussion in the manifest (the map commands below require the item to exist):
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.discussion.{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} discussion {topic}
    ```
 3. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`. Include the terminal `## Triage` section seeded as `(none)`.
 4. Populate the Context section and derive the initial subtopics:

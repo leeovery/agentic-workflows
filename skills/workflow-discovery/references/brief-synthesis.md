@@ -42,21 +42,21 @@ When the harvest restructured topics that were already on the map, keep brief fi
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{parent} brief_path
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{parent} brief_path
 ```
 
 **Merge** — two or more topics were absorbed into one merged topic. The merged topic's brief is written in **A**; for each absorbed topic, remove its brief:
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{absorbed}.md
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{absorbed} brief_path
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{absorbed} brief_path
 ```
 
 **Drop** — a topic was removed from the set:
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{topic}.md
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{topic} brief_path
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{topic} brief_path
 ```
 
 New topics with no prior brief need no cleanup. `delete` fails loudly when the field is absent — run it only for a topic that actually carried a `brief_path` (a committed map topic with a prior brief); skip it otherwise. The `rm -f` is safe to run unconditionally.
@@ -68,14 +68,14 @@ New topics with no prior brief need no cleanup. `delete` fails loudly when the f
 Flag downstream work, never overwrite it. For each brief **regenerated** in **A** (the topic already had a brief before this harvest), check whether downstream research or discussion work exists for that topic:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.research.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic}
 ```
 
 A topic routes to one of the two. If either returns a non-empty item, flag it to reconcile:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{research|discussion}.{topic} reconcile_needed true
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.{research|discussion}.{topic} reconcile_needed true
 ```
 
 This is a signal, not a rewrite — it never touches the downstream artifact's content. Soft can prompt re-examination; it can never overwrite hard. The downstream phase surfaces the flag when it next runs. First-write briefs have no prior downstream work — skip them.

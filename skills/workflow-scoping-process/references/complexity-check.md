@@ -56,7 +56,7 @@ How would you like to proceed?
 Update the work type in the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} work_type feature
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit} work_type feature
 ```
 
 Commit:
@@ -74,7 +74,7 @@ Invoke `/workflow-discussion-entry feature {work_unit}`.
 Update the work type in the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} work_type bugfix
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit} work_type bugfix
 ```
 
 Commit:

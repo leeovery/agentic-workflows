@@ -14,7 +14,7 @@ Invoke `workflow-implementation-task-reviewer` with:
 
 1. **Specification path**: same path given to the executor
 2. **Task content**: same normalised task content the executor received
-3. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} project_skills`)
+3. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 
 ---
 

@@ -71,10 +71,10 @@ Blocking dependencies:
 
 **If user chose `unblock`:**
 
-Ask which dependency to mark as satisfied. Update via manifest CLI:
+Ask which dependency to mark as satisfied. Update via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state satisfied_externally
 ```
 
 Commit the change.

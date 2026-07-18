@@ -8,10 +8,10 @@ Select the plan output format using the same project-default logic as the planni
 
 ## A. Check Format Recommendation
 
-Read the project default `plan_format` via manifest CLI:
+Read the project default `plan_format` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get project.defaults.plan_format
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.plan_format
 ```
 
 #### If output is empty (no project default)

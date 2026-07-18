@@ -28,11 +28,11 @@ Dispatch **all three in parallel** via the Task tool. Each agent receives the sa
 
 1. **Implementation files** — the file list from scope identification
 2. **Specification path** — from the specification (if available)
-3. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} project_skills`)
+3. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 4. **code-quality.md path** — `code-quality.md`
 5. **Work unit** — the work unit name (for path construction)
 6. **Topic name** — the implementation topic
-7. **Cycle number** — from `analysis_cycle_total` in the manifest: `node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} analysis_cycle_total`
+7. **Cycle number** — from `analysis_cycle_total` in the manifest: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} analysis_cycle_total`
 
 Each agent knows its own output path convention and writes findings independently.
 

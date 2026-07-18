@@ -1,7 +1,7 @@
 ---
 name: workflow-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git status), Bash(git add), Bash(git commit), Bash(mkdir -p .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git status), Bash(git add), Bash(git commit), Bash(mkdir -p .workflows/)
 ---
 
 # Discovery
@@ -223,7 +223,7 @@ Hold the output in conversation context as **the most recent discovery output**.
 - `session_logs` — every session log's number + path (ascending); read from this rather than re-globbing (used by continuity-load.md)
 - `next_session_number` — used to set `session_number` for fresh entries
 
-The authoritative resume signal (`active_session`) is a manifest field, read via the manifest CLI at Step 6 — not carried in this dump.
+The authoritative resume signal (`active_session`) is a manifest field, read via `engine manifest` at Step 6 — not carried in this dump.
 
 If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5), set it now: `session_number` = `next_session_number`. When `macro_continuation` is set, the confirm-trigger already created `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
 

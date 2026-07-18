@@ -16,11 +16,11 @@ Load **[review-tracking-format.md](review-tracking-format.md)** — internalize 
 
 ## A. Cycle Initialization
 
-Check the `review_cycle` field via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} review_cycle`).
+Check the `review_cycle` field via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_cycle`).
 
 #### If `review_cycle` is 0 or not set
 
-Set `review_cycle` to 1 via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} review_cycle 1`).
+Set `review_cycle` to 1 via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle 1`).
 
 Record the current cycle number — used for tracking file naming (`c{N}`).
 
@@ -30,7 +30,7 @@ Commit the updated manifest.
 
 #### If `review_cycle` is already set
 
-Increment `review_cycle` by 1 via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} review_cycle {N}`).
+Increment `review_cycle` by 1 via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle {N}`).
 
 Record the current cycle number — used for tracking file naming (`c{N}`).
 
@@ -42,7 +42,7 @@ Commit the updated manifest.
 
 ## B. Cycle Gate
 
-Check `finding_gate_mode` via manifest CLI (`node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} finding_gate_mode`).
+Check `finding_gate_mode` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode`).
 
 #### If `review_cycle` <= 3
 
@@ -93,8 +93,8 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
 - **Specification path**: the specification file path
 - **Source material paths**: resolve source names to file paths. Read source names and work type from the manifest:
   ```bash
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} sources
-  node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} work_type
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
   ```
   Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). For each source name, construct the source file path based on work type:
   - Bugfix: `.workflows/{work_unit}/investigation/{source-name}.md`
@@ -149,10 +149,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 ## E. Re-Loop Prompt
 
-Check `finding_gate_mode` and `review_cycle` via manifest CLI:
+Check `finding_gate_mode` and `review_cycle` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} review_cycle
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_cycle
 ```
 
 #### If `phase_1_status` is `clean` and `phase_2_status` is `clean`

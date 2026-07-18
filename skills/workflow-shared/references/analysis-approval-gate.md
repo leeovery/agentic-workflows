@@ -130,7 +130,7 @@ Set `gate_mode: auto` in the staging frontmatter so subsequent candidates approv
 Set this block's `status: skipped` in the staging file and add the name to the dismissed list:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs push {work_unit}.discovery dismissed "{name}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.discovery dismissed "{name}"
 ```
 
 → Return to **B. Gate Each Candidate**.
@@ -208,7 +208,7 @@ handled — fanned out, keep on the map but stop prompting to discuss it?
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{parent} handled true
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{parent} handled true
 ```
 
 Set `fanout_offer: marked` on every block sharing this `parent`.

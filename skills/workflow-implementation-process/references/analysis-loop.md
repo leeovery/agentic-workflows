@@ -261,7 +261,7 @@ Update `status: approved` in the staging file.
 Update `status: approved` in the staging file.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} analysis_gate_mode auto
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} analysis_gate_mode auto
 ```
 
 → Return to **F. Process Task**.

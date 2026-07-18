@@ -152,9 +152,9 @@ Migrations keep workflow files in sync with current system design (run via `engi
 
 Migration `038-add-inception-phase.sh` seeds the phase for existing in-progress epics (`040-rename-inception-to-discovery.sh` then renames it to `discovery`) so legacy work units pick up the discovery map without manual intervention.
 
-**Critical: Migration scripts must not use the manifest CLI**
+**Critical: Migration scripts must not use `engine manifest`**
 
-Migration scripts are point-in-time snapshots. The manifest CLI validates against the current schema, which changes over time — a migration using it today may break silently later. Always read/write `manifest.json` directly with `node` or `jq`.
+Migration scripts are point-in-time snapshots. The engine's field surface validates against the current schema, which changes over time — a migration using it today may break silently later. Always read/write `manifest.json` directly with `node` or `jq`.
 
 **Bash 3.2 compatibility** (macOS default): Avoid `mapfile`/`readarray`, `declare -A`, `local -n` (all bash 4+).
 
@@ -172,9 +172,9 @@ Every migration must have a corresponding test file at `tests/scripts/test-migra
 - **Summary**: `echo "Results: $PASS passed, $FAIL failed"` then `[ "$FAIL" -eq 0 ] || exit 1`.
 - **Coverage**: Every migration test must cover at minimum: happy path, skip/no-op conditions, idempotency (run twice, same result), and content preservation where applicable.
 
-## Manifest CLI
+## Manifest Field Surface
 
-Manifest CLI at `skills/workflow-manifest/scripts/manifest.cjs` is the single source of truth for all workflow state. Dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). Reserved prefix `project` routes to project manifest — e.g., `get project.defaults.plan_format`.
+`engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest <command> …`, implemented in `skills/workflow-engine/scripts/domain/fields.cjs`) is the single source of truth for all workflow state. Dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). Reserved prefix `project` routes to project manifest — e.g., `get project.defaults.plan_format`. Reads (`get`, `exists`, `list`, `key-of`, `resolve`) print bare stdout; mutations (`set`, `push`, `pull`, `delete`) answer with the engine's one-line JSON response, and `set` batches extra `<field>=<value>` pairs into one locked write. The engine `SKILL.md` is the authoritative API reference. Contract suite: `tests/scripts/test-workflow-manifest.sh`.
 
 **Project defaults cascade**: `project.defaults` → topic level. Project defaults are suggestions (user confirms or overrides). Topic level records the actual value in use. No phase-level storage for settings like `plan_format`, `project_skills`, or `linters`.
 
@@ -206,4 +206,4 @@ Skill authoring rules — prose economy, display/output conventions, structural 
 
 **MANDATORY**: Read [CONVENTIONS.md](CONVENTIONS.md) in full **before** creating or editing any file matching `skills/**/SKILL.md`, `skills/**/references/**/*.md`, or any new skill scaffold. Do not rely on memory or pattern-matching from sibling files — the conventions are dense, exact, and frequently updated. Skipping this step has produced silently non-compliant skills in the past.
 
-Not needed for general project work (scripts, tests, manifest CLI, knowledge base, docs).
+Not needed for general project work (scripts, tests, engine internals, knowledge base, docs).

@@ -1,7 +1,7 @@
 ---
 name: workflow-discussion-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -66,7 +66,7 @@ Store work_unit for the handoff.
 Check if discussion phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.discussion.{topic}
 ```
 
 **If exists (`true`):**
@@ -141,7 +141,7 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 Single-phase work (feature, cross-cutting) shaped in discovery. The carrier has two halves — read both. First the manifest `description`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
 Then the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/sessions/session-001.md`. A legacy work unit may have no log, or a placeholder log whose **Exploration** is absent or `(none)`.
@@ -165,7 +165,7 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{topic} source
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
 ```
 
 **If `source` is exactly `direct-start`:**
