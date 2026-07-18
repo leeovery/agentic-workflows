@@ -272,7 +272,8 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
     const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle', '2', 'date=2026-07-18'], { cwd: dir });
     let stdout = '';
     child.stdout.on('data', (c) => { stdout += c; });
-    const exit = new Promise((resolve) => child.on('exit', resolve));
+    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
+    const exit = new Promise((resolve) => child.on('close', resolve));
 
     const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
     assert.strictEqual(raced, 'waiting', 'batched set must wait on a live lock');
