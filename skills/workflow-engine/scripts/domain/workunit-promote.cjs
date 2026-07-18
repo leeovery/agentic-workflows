@@ -119,6 +119,9 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     // moves with the spec. Source names are manifest dict keys — a name that
     // breaks path addressing signals a tampered manifest, refused before
     // anything renames.
+    if (Array.isArray(item.sources)) {
+      throw new Error(`specification "${topic}" has array-shaped sources — the manifest's canonical shape is a name-keyed map; fix the manifest before promoting`);
+    }
     const sourceNames = item.sources && typeof item.sources === 'object' ? Object.keys(item.sources) : [];
     /** @type {string[]} */
     const plan = [];
