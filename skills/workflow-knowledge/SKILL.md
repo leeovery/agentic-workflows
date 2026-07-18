@@ -20,7 +20,8 @@ A local semantic-search index over every completed research, discussion, investi
 - `discussion` (low-medium — conversational, may contain corrected assumptions)
 - `investigation` (medium — diagnostic, tied to specific symptoms)
 - `specification` (high — validated decisions, "what we decided to build")
-- `imports` (low — seed material, often loose, may contain multiple topics)
+- `imports` (low — user-shared reference material, often loose, may contain multiple topics)
+- `seeds` (low — the work unit's origin: the promoted inbox item(s), verbatim capture)
 - `analysis` (low — research-analysis and gap-analysis caches, meta-summaries derived from low-confidence material)
 - `discovery` (low — epic exploration logs: the running record, not validated decisions; topic = session, so a work unit's whole discovery is `--phase discovery --work-unit {wu}`)
 
@@ -120,7 +121,7 @@ Confidence is intrinsic to the source phase. It tells you how much weight to giv
 | `high` | Specification — a decision that was validated and written down. Trust the *what*, verify the *why* against the source if it matters |
 | `medium` | Investigation — diagnostic work tied to specific symptoms. Trust the diagnosis, but check whether the symptom is still current |
 | `low-medium` | Discussion — conversational, may contain assumptions that were corrected later in the same file. Read for context, not conclusions |
-| `low` | Research, Imports, or Analysis — research is exploratory (may be a dead end, rejected path, or unvalidated idea); imports are user-supplied seed material (often loose, may cover multiple topics surface-level); analysis caches are meta-summaries derived from research/discussion (themes and gaps surfaced, not validated decisions). Disambiguate via the provenance line's phase field |
+| `low` | Research, Imports, Seeds, or Analysis — research is exploratory (may be a dead end, rejected path, or unvalidated idea); imports are user-supplied reference material (often loose, may cover multiple topics surface-level); seeds are raw inbox captures (the work unit's origin, unrefined); analysis caches are meta-summaries derived from research/discussion (themes and gaps surfaced, not validated decisions). Disambiguate via the provenance line's phase field |
 
 **Low confidence is not low value.** A research chunk that rejected an approach prevents the next work unit from re-exploring the same dead end. A discussion chunk showing a corrected assumption explains *why* the spec says what it says. Don't filter out low-confidence results — weigh them.
 

@@ -42,7 +42,7 @@ Skills organised in tiers:
 
 **Capture skills** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`): model-invocable, lightweight, outside the pipeline. Capture ideas, bugs, or quick-fixes as markdown files in the inbox (`.workflows/.inbox/`). No manifest, no migrations, no step/reference structure — just natural-language instructions with capture-only constraints.
 
-**Shared references** (`skills/workflow-shared/references/`): loaded by multiple skills across phases. Define protocols and checks that apply uniformly regardless of the calling skill. Current: compliance self-check, convergence analysis, background agent surfacing protocol, natural break detection.
+**Shared references** (`skills/workflow-shared/references/`): loaded by multiple skills across phases. Define protocols and checks that apply uniformly regardless of the calling skill — casing conventions, compliance self-check, topic discovery and dispatch, analysis approval gates, convergence analysis, background agent surfacing, natural break detection, and more; the directory is the authoritative list.
 
 ### Phase Entry Skill Routing
 
@@ -62,10 +62,10 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 **Work types and work units**: *Work type* = one of five pipeline shapes: epic, feature, bugfix, quick-fix, cross-cutting. *Work unit* = named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
 - **Epic**: Multi-topic, multi-session, phase-centric (Discovery → Research → Discussion → Specification → Planning → Implementation → Review)
-- **Feature**: Single-topic, single-session, linear (Discussion → Specification → Planning → Implementation → Review)
-- **Bugfix**: Single-topic, investigation-centric (Investigation → Specification → Planning → Implementation → Review)
-- **Quick-fix**: Single-topic, scoping-centric (Scoping → Implementation → Review)
-- **Cross-cutting**: Single-topic, project-level (Research (opt.) → Discussion → Specification — terminal)
+- **Feature**: Single-topic, single-session, linear (Discovery → Research (opt.) → Discussion → Specification → Planning → Implementation → Review)
+- **Bugfix**: Single-topic, investigation-centric (Discovery → Investigation → Specification → Planning → Implementation → Review)
+- **Quick-fix**: Single-topic, scoping-centric (Discovery → Scoping → Implementation → Review)
+- **Cross-cutting**: Single-topic, project-level (Discovery → Research (opt.) → Discussion → Specification — terminal)
 
 **Topics**: *Topic* = the item within a phase. For feature/bugfix/quick-fix, topic name equals work unit name. For epic, topics are distinct from the work unit name. All work types use per-topic manifest items (unified structure).
 
@@ -174,11 +174,20 @@ Every migration must have a corresponding test file at `tests/scripts/test-migra
 
 ## Manifest Field Surface
 
-`engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest <command> …`, implemented in `skills/workflow-engine/scripts/domain/fields.cjs`) is the single source of truth for all workflow state. Dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). Reserved prefix `project` routes to project manifest — e.g., `get project.defaults.plan_format`. Reads (`get`, `exists`, `list`, `key-of`, `resolve`) print bare stdout; mutations (`set`, `push`, `pull`, `delete`) answer with the engine's one-line JSON response, and `set` batches extra `<field>=<value>` pairs into one locked write. The engine `SKILL.md` is the authoritative API reference. Contract suite: `tests/scripts/test-workflow-manifest.sh`.
+`engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest <command> …`, implemented in `skills/workflow-engine/scripts/domain/fields.cjs`) is the single source of truth for all workflow state. Dot-path syntax: `command <work-unit>[.<phase>[.<topic>]] [field] [value]`. Segment count determines access level (1 = work unit, 2 = phase, 3 = topic). Reserved prefix `project` routes to project manifest — e.g., `get project.defaults.plan_format`. Reads (`get`, `exists`, `list`, `key-of`, `resolve`) print bare stdout; mutations (`set`, `push`, `pull`, `delete`) answer with the engine's one-line JSON response, and `set` batches extra `<field>=<value>` pairs into one locked write. The engine `SKILL.md` is the authoritative API reference. Contract suite: `tests/scripts/test-engine-manifest.sh`.
 
 **Project defaults cascade**: `project.defaults` → topic level. Project defaults are suggestions (user confirms or overrides). Topic level records the actual value in use. No phase-level storage for settings like `plan_format`, `project_skills`, or `linters`.
 
 **Shell quoting**: Always single-quote values that zsh would interpret — `'[]'`, `'[...]'`, `'{}'`, `'~'`. Bare `[]` is a glob pattern (causes `no matches found` errors) and bare `~` expands to the home directory.
+
+## Test Gates
+
+- `npm test` — node suites (`node --test`): engine, gateway adapters, knowledge subsystem. `package.json` is the authoritative list.
+- `npm run test:cli` — shell contract suites: manifest field surface, inbox promotion, knowledge CLI and build.
+- `npm run test:migrations` — every `tests/scripts/test-migration-*.sh`.
+- `npm run typecheck` — JSDoc type contracts (`tsc --noEmit`).
+
+Add or update a test alongside any change to engine scripts, adapters, migrations, or `src/knowledge/`.
 
 ## Knowledge Base Subsystem
 
@@ -190,13 +199,13 @@ Retrieval-augmented store of completed workflow artifacts (research, discussion,
 
 **Allowed tools**: Skills that invoke the CLI must declare `Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)` in their frontmatter. SKILL.md is the authoritative API reference — read it before adding a new call site.
 
-**Mandatory boot gate**: `engine boot` (Step 0 of `workflow-start`) runs `knowledge check` and, when ready, `knowledge compact` (TTL-based decay). A `not-ready` response is a terminal stop directing the user to `knowledge setup`. Setup is human-only (interactive readline) — Claude cannot run it.
+**Mandatory boot gate**: `engine boot` (Step 0 of `workflow-start`) runs `knowledge check` and, when ready, `knowledge compact` (TTL-based decay). A `not-ready` response is a hard terminal stop directing the user to `knowledge setup`. Setup is human-only (interactive readline) — Claude cannot run it. When the store is ready, boot commits any store dirt scoped to `.workflows/.knowledge` — `chore(knowledge): initialise store` on the first boot after setup, `chore(knowledge): compact store` otherwise.
 
 **Phase-completion indexing**: Processing skills invoke `knowledge index <path>` at phase completion to add the new artifact. Spec promotion and work-unit cancellation invoke `knowledge remove --work-unit ... [--phase ...] [--topic ...]` to clean up. Pending queue handles transient failures with retry on next `index` call.
 
 **Stub mode**: When no embedding provider is configured, CLI runs in keyword-only mode (BM25). Treat as supported degraded mode, not broken state. `query` output prepends `[keyword-only mode — ...]` note.
 
-**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Run via the same harness as migration tests. Add a test alongside any `src/knowledge/` change.
+**Tests**: `tests/scripts/test-knowledge-*.{cjs,sh}` cover the subsystem — store, chunker, embeddings, config, OpenAI provider, integration, retry, build, CLI surface. Node suites run under `npm test`, shell suites under `npm run test:cli`. Add a test alongside any `src/knowledge/` change.
 
 **Project layout**: `.workflows/.knowledge/` (per-project store + metadata + config), `~/.config/workflows/config.json` (system defaults), `~/.config/workflows/credentials.json` (mode 0600, optional API key store).
 

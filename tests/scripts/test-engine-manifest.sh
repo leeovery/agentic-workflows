@@ -5,9 +5,9 @@
 # Validates get, set, list, push, pull, delete, exists, key-of, resolve.
 # Uses dot-path syntax: <work-unit>[.<phase>[.<topic>]]
 #
-# Output contract: reads print bare stdout (byte-compatible with the absorbed
-# manifest CLI); mutations answer with the engine's one-line JSON response
-# ({"ok":true,…} on stdout; {"ok":false,…} on stderr, exit 1).
+# Output contract: reads print bare stdout; mutations answer with the
+# engine's one-line JSON response ({"ok":true,…} on stdout; {"ok":false,…}
+# on stderr, exit 1).
 #
 
 set -eo pipefail
