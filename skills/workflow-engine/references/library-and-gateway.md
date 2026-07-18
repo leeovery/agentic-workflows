@@ -35,6 +35,25 @@ engine.conventions.discoveryGlyph('researching')  // → "◐"
 engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
+// domain: shared discovery derivations (discovery-utils)
+engine.discovery.listFiles(dir, ext)              // → sorted filenames with ext ([] on missing dir)
+engine.discovery.listDirs(dir)                    // → sorted subdirectory names ([] on missing dir)
+engine.discovery.phaseData(manifest, phase)       // → phases.{phase} ({} when absent)
+engine.discovery.fileExists(p)                    // → boolean
+engine.discovery.phaseItems(manifest, phase)      // → [{name, …fields}] from phases.{phase}.items
+engine.discovery.phaseStatus(manifest, phase)     // → aggregated item status, or null
+engine.discovery.loadManifest(cwd, wu)            // → parsed manifest, or null (quiet on missing)
+engine.discovery.filesChecksum(paths)             // → md5 hex over the files' bytes, or null
+engine.discovery.computeNextPhase(manifest)       // → { next_phase, phase_label }
+engine.discovery.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, generated, files[, reason] }
+engine.discovery.loadActiveManifests(cwd)         // → in-progress work-unit manifests
+engine.discovery.loadAllManifests(cwd)            // → every readable work-unit manifest
+engine.discovery.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase }
+engine.discovery.computeMapSummary(items)         // → tier counts over map rows
+engine.discovery.computeSourceProvenance(source)  // → "from …" label, or null
+engine.discovery.compareMapRows(a, b)             // map-row sort comparator (tier, order, name)
+engine.discovery.computeNeedsSequencing(items)    // → true when a live row lacks an order
+
 // domain: discussion-map transitions + queries
 engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
 engine.discussionMap.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
