@@ -147,9 +147,15 @@ Keyless endpoints are fine — a key stored in the credentials file is picked up
 
 → Proceed to **E. Confirm and Continue**.
 
-**If the command failed:**
+**If the command failed with an authentication error (HTTP 401/403):**
 
-Surface the reported error verbatim. If the error is an authentication failure (HTTP 401/403), the endpoint wants a key: tell the user to run `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only --provider openai-compatible` in their terminal — never paste the key into this chat — then, on their word, re-run the command above and handle the result as prescribed here. For any other failure the workflow cannot proceed.
+The endpoint wants a key.
+
+→ Proceed to **D. Store the API Key**.
+
+**If the command failed for any other reason:**
+
+Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -177,11 +183,12 @@ Surface the reported error verbatim. The knowledge base could not be initialised
 
 ## D. Store the API Key
 
-The setup command refused because no OpenAI API key could be resolved. The key goes straight from the user's terminal into a private store — it never touches this chat.
+The setup command refused or was rejected because no working API key is available for the provider it targeted. The key goes straight from the user's terminal into a private store — it never touches this chat.
 
 > *Output the next fenced block as a code block:*
 
 ```
+@if(provider is openai)
 No OpenAI API key was found. Store one without it touching this
 chat — run ONE of these in your terminal, then come back:
 
@@ -191,6 +198,14 @@ chat — run ONE of these in your terminal, then come back:
 
   export OPENAI_API_KEY=<your key>
       Shell environment — takes precedence over the stored key.
+@else
+The endpoint requires an API key. Store one without it touching
+this chat — run this in your terminal, then come back:
+
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only --provider openai-compatible
+      Private prompt, input hidden. Stored at
+      ~/.config/workflows/credentials.json (mode 0600).
+@endif
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
