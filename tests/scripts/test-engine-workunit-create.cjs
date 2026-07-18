@@ -502,7 +502,7 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'create']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb>/);
+    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
   });
 
   it('omitting the session log without --no-session-log refuses — log-less creation must be explicit', () => {
