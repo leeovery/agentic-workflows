@@ -20,8 +20,9 @@
 /**
  * @typedef {Record<string, (...args: string[]) => string>} GatewayHandlers
  *   Verb → handler. Each handler returns the full stdout for that call.
- *   Reserved verbs: `index` (no-args call), `fallback` (unmatched argv,
- *   for back-compat positional forms during migration).
+ *   Reserved verbs: `index` (no-args call), `fallback` (unmatched argv —
+ *   the bare positional forms some skills' prescribed calls use, e.g.
+ *   `gateway.cjs {work_unit}`).
  */
 
 const SECTION = {
