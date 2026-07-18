@@ -5,7 +5,7 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk } = require('../../src/knowledge/chunker.js');
+const { chunk, MAX_TOKEN_LENGTH } = require('../../src/knowledge/chunker.js');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
 const CHUNKING_DIR = path.resolve(
@@ -1057,6 +1057,81 @@ describe('knowledge chunker — real fixtures', () => {
         md.includes(c.content),
         true,
         'chunk must be a verbatim substring of the source'
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Token-length cap — pathological whitespace-free runs
+// ---------------------------------------------------------------------------
+
+describe('knowledge chunker — token-length cap', () => {
+  function capConfig(overrides = {}) {
+    return {
+      strategy: 'split-on-heading',
+      primary_level: 2,
+      fallback_level: 3,
+      max_lines: 200,
+      keep_whole_below: 0,
+      special_sections: {},
+      strip_frontmatter: true,
+      skip_empty_sections: true,
+      ...overrides,
+    };
+  }
+
+  function longestToken(chunks) {
+    let max = 0;
+    for (const c of chunks) {
+      for (const t of c.content.match(/\S+/g) || []) {
+        if (t.length > max) max = t.length;
+      }
+    }
+    return max;
+  }
+
+  it('splits a ~200k-char unbroken run so no token exceeds MAX_TOKEN_LENGTH', () => {
+    // Un-capped, a run this long overflows the call stack inside Orama's
+    // tokenizer (String.fromCharCode spreads one argument per character).
+    const run = 'a'.repeat(200000);
+    const md = `## Section\n\nBefore blob.\n\n${run}\n\nAfter blob.`;
+    const chunks = chunk(md, capConfig());
+    assert.ok(chunks.length >= 1);
+    assert.ok(longestToken(chunks) <= MAX_TOKEN_LENGTH);
+    // Every byte of the run survives — split, not truncated.
+    const joined = chunks.map((c) => c.content).join('\n');
+    const runChars = (joined.match(/a/g) || []).length;
+    assert.strictEqual(runChars, 200000);
+    assert.match(joined, /Before blob\./);
+    assert.match(joined, /After blob\./);
+  });
+
+  it('caps runs on every return path, including the whole-file gate', () => {
+    const run = 'b'.repeat(MAX_TOKEN_LENGTH * 3);
+    const md = `# Tiny\n\n${run}`;
+    // keep_whole_below high — whole file returned as a single chunk.
+    const chunks = chunk(md, capConfig({ keep_whole_below: 50 }));
+    assert.strictEqual(chunks.length, 1);
+    assert.ok(longestToken(chunks) <= MAX_TOKEN_LENGTH);
+  });
+
+  it('leaves content without over-long runs byte-for-byte untouched', () => {
+    const md = [
+      '## Alpha',
+      '',
+      'Normal prose with `code` and a ' + 'c'.repeat(MAX_TOKEN_LENGTH) + ' at-limit run.',
+      '',
+      '## Beta',
+      '',
+      'More prose.',
+    ].join('\n');
+    const chunks = chunk(md, capConfig());
+    for (const c of chunks) {
+      assert.strictEqual(
+        md.includes(c.content),
+        true,
+        'chunk must be a verbatim substring when no run exceeds the cap'
       );
     }
   });

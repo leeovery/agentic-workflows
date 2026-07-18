@@ -2826,6 +2826,110 @@ assert_eq "refusal names the supported providers" "true" \
 clean_system_config
 teardown_project
 
+# ============================================================================
+# ROBUSTNESS TESTS
+# ============================================================================
+
+echo ""
+echo "=== Robustness Tests ==="
+
+# --- Test R1: A ~200k-char unbroken token indexes cleanly (no stack overflow) ---
+# Orama's tokenizer normalises each token via String.fromCharCode(...codes),
+# spreading one argument per character — pre-fix, a single 200k-char token
+# (base64 blob, minified JS) crashed indexing with an uncaught RangeError
+# and a full stack trace. The chunker now splits whitespace-free runs at
+# 2048 chars, and the CLI's top-level catch never prints raw stacks.
+echo "Test R1: 200k unbroken token indexes cleanly"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
+node -e "
+  const fs = require('fs');
+  const blob = 'x'.repeat(200000);
+  fs.writeFileSync(process.argv[1],
+    '# Discussion\n\n## Pathological Blob\n\nIntro before the blob.\n\n' + blob + '\n\nOutro after the blob.\n');
+" "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+exit_code=0
+output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+assert_eq "index exits 0" "0" "$exit_code"
+assert_eq "artifact indexed" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
+assert_eq "no RangeError in output" "false" "$(echo "$output" | grep -q 'RangeError' && echo true || echo false)"
+assert_eq "no stack frames in output" "false" "$(echo "$output" | grep -qE '^    at ' && echo true || echo false)"
+# Store remains intact and queryable after the pathological index. Grep a
+# file, not a pipe: the ~200KB result would SIGPIPE `echo | grep -q` under
+# pipefail even on a match.
+run_kb query "Outro" > "$TEST_ROOT/r1-query.txt" 2>&1
+assert_eq "store queryable after pathological index" "true" \
+  "$(grep -q 'discussion | auth-flow/auth-flow' "$TEST_ROOT/r1-query.txt" && echo true || echo false)"
+teardown_project
+
+# --- Test R2: control characters never pass through query output ---
+# Indexed artifacts are user-authored: one carrying ANSI escapes or a raw
+# NUL previously reached the terminal verbatim via `knowledge query`.
+# C0 controls (except \n and \t) are stripped at output composition;
+# stored content is untouched.
+echo "Test R2: ANSI escapes and NUL stripped from query output"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
+printf '# Discussion\n\n## Styled Section\n\nBefore \033[31mpainted\033[0m after and a nul\000byte survives storage.\n' \
+  > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+# Query a clean token — "painted" itself is fused into "31mpainted" by the
+# adjacent escape sequence at tokenisation time, so it would not match.
+# Inspect the raw bytes on disk — command substitution would drop NULs.
+run_kb query "survives" > "$TEST_ROOT/query-out.txt" 2>&1
+has_ctrl=$(node -e "
+  const s = require('fs').readFileSync(process.argv[1], 'latin1');
+  process.stdout.write(/[\\x00\\x1b]/.test(s) ? 'true' : 'false');
+" "$TEST_ROOT/query-out.txt")
+assert_eq "no ESC or NUL bytes in query output" "false" "$has_ctrl"
+assert_eq "escape payload text remains" "true" \
+  "$(grep -qF '[31mpainted[0m' "$TEST_ROOT/query-out.txt" && echo true || echo false)"
+assert_eq "text around the NUL remains" "true" \
+  "$(grep -qF 'nulbyte survives storage' "$TEST_ROOT/query-out.txt" && echo true || echo false)"
+teardown_project
+
+# --- Test R3: engine resolution is lazy — keyless commands work without it ---
+# Pre-fix, index.js resolved engine.cjs at module load and threw when
+# absent, so even `check` and `setup --keyword-only` (which never read a
+# manifest) died with a stack trace. Resolution now happens at first
+# manifest use, with the same clear installation error.
+echo "Test R3: knowledge CLI works without the engine for keyless commands"
+setup_project
+# Copy the bundle to a standalone location where neither engine candidate
+# path (../../skills/workflow-engine/... or ../../workflow-engine/...) exists.
+STANDALONE=$(mktemp -d)
+mkdir -p "$STANDALONE/scripts"
+cp "$BUNDLE" "$STANDALONE/scripts/knowledge.cjs"
+cd "$TEST_ROOT"
+# check: never touches the engine.
+exit_code=0
+output=$(node "$STANDALONE/scripts/knowledge.cjs" check 2>&1) || exit_code=$?
+assert_eq "check exits 0 without engine" "0" "$exit_code"
+assert_eq "check answers ready/not-ready" "true" \
+  "$(echo "$output" | grep -qE 'ready|not-ready' && echo true || echo false)"
+# setup --keyword-only: initialises the store; the bulk-index step degrades
+# to zero discovered artifacts (manifest-list warning), not a crash.
+exit_code=0
+output=$(node "$STANDALONE/scripts/knowledge.cjs" setup --keyword-only 2>&1) || exit_code=$?
+assert_eq "setup --keyword-only exits 0 without engine" "0" "$exit_code"
+assert_eq "keyword-only store initialised" "true" \
+  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.msp" ] && echo true || echo false)"
+# A command that needs manifest reads still fails with the clear use-time error.
+exit_code=0
+output=$(node "$STANDALONE/scripts/knowledge.cjs" remove --work-unit ghost 2>&1) || exit_code=$?
+assert_eq "manifest-dependent command exits non-zero" "true" \
+  "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "clear engine error surfaces" "true" \
+  "$(echo "$output" | grep -q 'Could not locate engine.cjs' && echo true || echo false)"
+assert_eq "no stack frames in error" "false" \
+  "$(echo "$output" | grep -qE '^    at ' && echo true || echo false)"
+rm -rf "$STANDALONE"
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

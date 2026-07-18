@@ -35,20 +35,32 @@ const ANALYSIS_CACHE_FILES = {
 // In the bundled form, __dirname is skills/workflow-knowledge/scripts/. In
 // source, __dirname is src/knowledge/. Both need to resolve to
 // skills/workflow-engine/scripts/engine.cjs.
-const ENGINE_JS = (() => {
+//
+// Resolution is LAZY — at first manifest use, not module load. Keyless
+// commands (`setup --keyword-only`, `check`) never touch the engine and
+// must work without it; a load-time throw would kill them too. The
+// fail-loud guarantee is preserved at use-time — a missing engine would
+// otherwise turn every manifest-dependent command into a silent no-op
+// (deferred-issue #5).
+let ENGINE_JS = null;
+function resolveEngineJs() {
+  if (ENGINE_JS) return ENGINE_JS;
   const srcCandidate = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs');
   const bundledCandidate = path.join(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
-  if (fs.existsSync(srcCandidate)) return srcCandidate;
-  if (fs.existsSync(bundledCandidate)) return bundledCandidate;
-  // Fail loud at load time — a missing engine would otherwise turn every
-  // manifest-dependent command into a silent no-op (deferred-issue #5).
-  throw new Error(
-    'Could not locate engine.cjs. Tried:\n' +
-      `  ${srcCandidate}\n` +
-      `  ${bundledCandidate}\n` +
-      'This is an installation problem — the knowledge CLI cannot work without the workflow engine.'
-  );
-})();
+  if (fs.existsSync(srcCandidate)) {
+    ENGINE_JS = srcCandidate;
+  } else if (fs.existsSync(bundledCandidate)) {
+    ENGINE_JS = bundledCandidate;
+  } else {
+    throw new Error(
+      'Could not locate engine.cjs. Tried:\n' +
+        `  ${srcCandidate}\n` +
+        `  ${bundledCandidate}\n` +
+        'This is an installation problem — the knowledge CLI cannot work without the workflow engine.'
+    );
+  }
+  return ENGINE_JS;
+}
 
 const DEFAULT_RETRY_BACKOFF = [1000, 2000, 4000];
 const PENDING_CATCHUP_LIMIT = 5;
@@ -697,7 +709,7 @@ function runManifest(args) {
   // Spawn with cwd anchored at the project root so the engine's own
   // cwd-relative resolution lands at the right place even when KB
   // commands are invoked from a subdirectory.
-  return execFileSync('node', [ENGINE_JS, 'manifest', ...args], {
+  return execFileSync('node', [resolveEngineJs(), 'manifest', ...args], {
     cwd: config.findProjectRoot(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -1223,6 +1235,21 @@ function parseLocalDate(str) {
   return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
 }
 
+// C0 control characters except \t (0x09) and \n (0x0A). Indexed artifacts
+// are user-authored files — one carrying ANSI escapes (\x1b[...m) or a raw
+// NUL would otherwise pass through `query` output verbatim and be
+// interpreted by the reader's terminal.
+const CONTROL_CHARS_RE = /[\x00-\x08\x0b-\x1f]/g;
+
+/**
+ * Strip C0 control characters (except \n and \t) from chunk-derived text.
+ * Applied at query-output composition time only — stored content is never
+ * mutated.
+ */
+function stripControlChars(s) {
+  return String(s).replace(CONTROL_CHARS_RE, '');
+}
+
 /**
  * Format a timestamp (epoch ms) as YYYY-MM-DD.
  */
@@ -1648,7 +1675,9 @@ async function cmdQuery(args, options, cfg, provider) {
     out.push(`Source: ${r.source_file}`);
   }
 
-  process.stdout.write(out.join('\n') + '\n');
+  // Sanitise the whole composed output (content, headers, source lines) at
+  // the boundary — \n is exempt from the strip, so joins survive.
+  process.stdout.write(stripControlChars(out.join('\n')) + '\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -2361,13 +2390,11 @@ module.exports = {
 
 if (require.main === module) {
   main().catch((err) => {
-    // UserError: validation failure — show the message alone, no stack.
-    // Anything else: full stack (likely a bug worth investigating).
-    if (err instanceof UserError) {
-      process.stderr.write('Error: ' + err.message + '\n');
-    } else {
-      process.stderr.write(String(err && err.stack ? err.stack : err) + '\n');
-    }
+    // No code path may ever dump a raw stack trace on the user — the CLI's
+    // output is read (and re-displayed) by agents, so an unexpected error
+    // surfaces as a single clean message line, same as UserError.
+    const msg = err && err.message ? err.message : String(err);
+    process.stderr.write('Error: ' + msg + '\n');
     process.exit(1);
   });
 }

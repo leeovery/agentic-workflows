@@ -448,12 +448,27 @@ describe('knowledge store — vector and hybrid search', () => {
 
   it('applies the similarity threshold to vector search', async () => {
     const { db, provider } = await seedStore();
-    const query = provider.embed('completely unrelated query string');
-    // StubProvider vectors are random-looking; setting similarity to 0.999
-    // should filter out every (or nearly every) hit.
-    const strict = await searchVector(db, { vector: query, similarity: 0.999, limit: 10 });
-    const loose = await searchVector(db, { vector: query, similarity: 0, limit: 10 });
-    assert.ok(loose.length >= strict.length);
+    // StubProvider is deterministic: embedding the exact text of the
+    // 'alpha' doc reproduces its stored vector (cosine 1.0), while
+    // vectors for different texts are effectively uncorrelated. A 0.999
+    // threshold must therefore admit exactly the exact-match doc — and
+    // nothing for an unrelated query. (The previous form of this test
+    // asserted loose.length >= strict.length, which also passes when the
+    // similarity parameter is ignored entirely.)
+    const exact = await searchVector(db, {
+      vector: provider.embed('alpha rate limiting bucket algorithm'),
+      similarity: 0.999,
+      limit: 10,
+    });
+    assert.strictEqual(exact.length, 1, 'threshold admits only the cosine-1.0 doc');
+    assert.strictEqual(exact[0].id, 'alpha');
+
+    const unrelated = await searchVector(db, {
+      vector: provider.embed('completely unrelated query string'),
+      similarity: 0.999,
+      limit: 10,
+    });
+    assert.strictEqual(unrelated.length, 0, 'unrelated query passes nothing at 0.999');
   });
 
   it('applies where clause filtering to vector search', async () => {
