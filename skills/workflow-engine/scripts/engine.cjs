@@ -21,7 +21,7 @@ const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
-const { startTopic, completeTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -401,16 +401,17 @@ function runDiscoverySession(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/complete/supersede are manifest-side
-// lifecycle bookkeeping (KB sync where the phase is indexed: index on
-// complete, remove on supersede — warn-don't-block) with no git commit — the
-// calling session's commit cadence picks the change up. cancel/reactivate are
+// topic — phase-item transitions. start/complete/reopen/supersede are
+// manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
+// index on complete, remove on supersede; reopen syncs nothing —
+// warn-don't-block) with no git commit — the calling session's commit
+// cadence picks the change up. cancel/reactivate are
 // one transaction per call: manifest write, knowledge-base sync
 // (warn-don't-block), scoped git commit. The JSON response reports what
 // happened — no follow-up read needed.
 // ---------------------------------------------------------------------------
 
-const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, cancel: cancelTopic, reactivate: reactivateTopic };
+const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 /** @param {string[]} argv */
 function runTopic(argv) {
@@ -426,7 +427,7 @@ function runTopic(argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|complete|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|complete|reopen|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
