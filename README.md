@@ -96,7 +96,7 @@ Every part of the system, in depth, in [docs/](docs/README.md):
 
 | | |
 |---|---|
-| [Introduction](docs/introduction.md) | The ideas behind the design, and why process beats autonomy |
+| [Introduction](docs/introduction.md) | The ideas behind the design |
 | [How it fits together](docs/how-it-fits-together.md) | Work units, phases, and what a session actually does |
 | [The five work types](docs/work-types.md) | Epic to quick-fix, each pipeline in full |
 | [Implementation](docs/implementation.md) | The TDD loop, gates, and the fix threshold |
@@ -108,10 +108,6 @@ Every part of the system, in depth, in [docs/](docs/README.md):
 **Setup:** Node 18+. There is no setup procedure; the first run configures itself in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
 
 **Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
-
----
-
-The premise, in one line: agents don't need more autonomy, they need more process. The [introduction](docs/introduction.md) makes the full argument.
 
 ## License
 
