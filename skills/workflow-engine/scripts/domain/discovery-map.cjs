@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
-const { computeTopicLifecycle } = require('./derivations.cjs');
+const { computeTopicLifecycle, phaseItems } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
@@ -75,7 +75,7 @@ function lifecyclePhrase(lifecycle, researchState) {
  * @property {boolean} [handled]          handle/unhandle: the marker after the op
  * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
  * @property {boolean} [backfill]         add: item landed without summary/description for summary-backfill
- * @property {number} [map_total]         add: items on the map after the add
+ * @property {number} map_total           items on the map after the op — no follow-up read needed
  */
 
 /**
@@ -108,12 +108,24 @@ function mapItem(manifest, name) {
 
 /**
  * Gate a destructive op (remove/rename/reroute) on the fresh lifecycle. The
- * error names the blocking lifecycle and points at the recovery path.
+ * derived lifecycle alone is not enough: status combinations outside the
+ * lifecycle join (e.g. superseded research beside a cancelled discussion)
+ * derive `fresh`, yet the per-phase items are on record and the map item is
+ * their historical anchor — so ANY per-phase item for the topic refuses too.
+ * The error names the blocker and points at the recovery path.
  * @param {object} manifest @param {string} name @param {string} verbPhrase  "removed" | "renamed" | "re-routed"
  */
 function assertFresh(manifest, name, verbPhrase) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
-  if (lifecycle === 'fresh') return;
+  const hasPhaseWork = ['research', 'discussion'].some(
+    (phase) => phaseItems(manifest, phase).some((it) => it.name === name),
+  );
+  if (lifecycle === 'fresh' && !hasPhaseWork) return;
+  if (lifecycle === 'fresh') {
+    throw new Error(
+      `"${name}" can't be ${verbPhrase} — per-phase work exists on record and it stays on the map as historical anchor`,
+    );
+  }
   const recovery = lifecycle === 'handled'
     ? 'unhandle it to make it actionable again'
     : 'cancel from the epic menu instead';
@@ -254,7 +266,7 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
 
     const { lifecycle } = computeTopicLifecycle(manifest, name);
     /** @type {MapOpResult} */
-    const result = { work_unit: workUnit, name, op: 'edit', lifecycle };
+    const result = { work_unit: workUnit, name, op: 'edit', lifecycle, map_total: Object.keys(discoveryItems(manifest)).length };
     if (summary !== undefined) result.summary = summary;
     if (description !== undefined) result.description = description;
     return result;
@@ -283,7 +295,7 @@ function removeItem(cwd, workUnit, name) {
     if (!discovery.dismissed.includes(name)) discovery.dismissed.push(name);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh' };
+    return { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: Object.keys(items).length };
   });
 }
 
@@ -324,7 +336,10 @@ function renameItem(cwd, workUnit, oldName, newName) {
     const oldBrief = path.join(briefsDir, `${oldName}.md`);
     const newBrief = path.join(briefsDir, `${newName}.md`);
     const briefOnDisk = fs.existsSync(oldBrief);
-    if (briefOnDisk && fs.existsSync(newBrief)) {
+    // Checked regardless of whether the old brief exists: renaming onto an
+    // occupied brief name would either clobber the file or silently adopt an
+    // unrelated brief as this topic's.
+    if (fs.existsSync(newBrief)) {
       throw new Error(`a brief already exists at discovery/briefs/${newName}.md — resolve the collision before renaming`);
     }
     const dismissed = manifest.phases.discovery.dismissed;
@@ -339,7 +354,10 @@ function renameItem(cwd, workUnit, oldName, newName) {
       rebuilt[key === oldName ? newName : key] = value;
     }
     manifest.phases.discovery.items = rebuilt;
-    if (typeof (/** @type {Record<string, unknown>} */ (item).brief_path) === 'string') {
+    // Rewrite the pointer only when it points at the canonical brief location
+    // for the old name — a brief_path aimed anywhere else is not this rename's
+    // to re-aim (rewriting it would dangle the pointer).
+    if (/** @type {Record<string, unknown>} */ (item).brief_path === `discovery/briefs/${oldName}.md`) {
       /** @type {Record<string, unknown>} */ (item).brief_path = `discovery/briefs/${newName}.md`;
     }
 
@@ -354,6 +372,7 @@ function renameItem(cwd, workUnit, oldName, newName) {
       preserved_fields: Object.keys(item),
       matches_dismissed: matchesDismissed,
       lifecycle: 'fresh',
+      map_total: Object.keys(rebuilt).length,
     };
     if (briefOnDisk) result.brief_moved = true;
     return result;
@@ -380,7 +399,7 @@ function rerouteItem(cwd, workUnit, name, routing) {
     item.routing = routing;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { work_unit: workUnit, name, op: 'reroute', routing, lifecycle: 'fresh' };
+    return { work_unit: workUnit, name, op: 'reroute', routing, lifecycle: 'fresh', map_total: Object.keys(discoveryItems(manifest)).length };
   });
 }
 
@@ -408,7 +427,7 @@ function handleItem(cwd, workUnit, name) {
     item.handled = true;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { work_unit: workUnit, name, op: 'handle', handled: true, lifecycle: 'handled' };
+    return { work_unit: workUnit, name, op: 'handle', handled: true, lifecycle: 'handled', map_total: Object.keys(discoveryItems(manifest)).length };
   });
 }
 
@@ -433,7 +452,7 @@ function unhandleItem(cwd, workUnit, name) {
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
     const after = computeTopicLifecycle(manifest, name);
-    return { work_unit: workUnit, name, op: 'unhandle', handled: false, lifecycle: after.lifecycle };
+    return { work_unit: workUnit, name, op: 'unhandle', handled: false, lifecycle: after.lifecycle, map_total: Object.keys(discoveryItems(manifest)).length };
   });
 }
 

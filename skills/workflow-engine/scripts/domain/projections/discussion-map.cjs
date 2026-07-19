@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, title, discussionGlyph } = require('../conventions.cjs');
+const { TREE_WIDTH, treeHeader, titlecase, title, discussionGlyph } = require('../conventions.cjs');
 const { mapState, subtopicsOf } = require('../discussion-map.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
@@ -39,8 +39,8 @@ function discussionMap(topic, manifest) {
   const state = mapState(manifest, topic);
   const subtopics = subtopicsOf(manifest, topic);
 
-  const header = `  Discussion Map — ${titlecase(topic)} `
-    + `(${state.total} subtopic${state.total === 1 ? '' : 's'}${breakdown(state.counts)})`;
+  const header = treeHeader(`Discussion Map — ${titlecase(topic)} `
+    + `(${state.total} subtopic${state.total === 1 ? '' : 's'}${breakdown(state.counts)})`);
   if (state.total === 0) return header + '\n';
 
   /** @type {TreeNode[]} */

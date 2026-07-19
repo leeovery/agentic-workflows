@@ -74,12 +74,17 @@ function implementationItem(manifest, topic) {
   return item;
 }
 
+/** True when a name is safe to land in a filesystem path. @param {unknown} value */
+function isSafeName(value) {
+  return !!value && typeof value === 'string' && !value.includes('/') && !value.includes('..');
+}
+
 /**
  * Guard a name that lands in a filesystem path.
  * @param {string} value @param {string} label
  */
 function safeName(value, label) {
-  if (!value || typeof value !== 'string' || value.includes('/') || value.includes('..')) {
+  if (!isSafeName(value)) {
     throw new Error(`invalid ${label} "${value}"`);
   }
 }
@@ -87,6 +92,18 @@ function safeName(value, label) {
 /** @param {string} cwd @param {string} workUnit @param {string} topic @param {string} internalId */
 function fixTrackingPath(cwd, workUnit, topic, internalId) {
   return path.join(cwd, '.workflows', '.cache', workUnit, 'implementation', topic, `fix-tracking-${internalId}.md`);
+}
+
+/**
+ * True when the item's `current_task` has a live fix-tracking file — the
+ * in-flight counter/file pair the lockstep invariant protects. `fix_attempts`
+ * and the tracking file always describe the in-flight work of `current_task`;
+ * init, start, and complete keep them in lockstep.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {Record<string, any>} item
+ */
+function hasInFlightPair(cwd, workUnit, topic, item) {
+  return isSafeName(item.current_task)
+    && fs.existsSync(fixTrackingPath(cwd, workUnit, topic, /** @type {string} */ (item.current_task)));
 }
 
 /**
@@ -106,10 +123,13 @@ function counterOf(item, field) {
 /**
  * Create-or-resume the implementation item. Absent → init-phase semantics
  * (`{status: 'in-progress'}`) plus session defaults. Present → session reset
- * only: the three gate modes back to `gated`, `fix_attempts` and
- * `analysis_cycle_session` to 0 — `analysis_cycle_total`, `linters`,
- * `project_skills`, `current_phase`, `current_task`, `completed_tasks`, and
- * `completed_phases` are never touched.
+ * only: the three gate modes back to `gated`, `analysis_cycle_session` to 0 —
+ * `analysis_cycle_total`, `linters`, `project_skills`, `current_phase`,
+ * `current_task`, `completed_tasks`, and `completed_phases` are never touched.
+ * `fix_attempts` resets to 0 UNLESS `current_task` has a live fix-tracking
+ * file (a crash-resume mid-task): the counter and file are that task's
+ * convergence history and stay in lockstep — zeroing one without the other
+ * would leave non-monotonic `## Attempt` sections.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -130,7 +150,7 @@ function initTasks(cwd, workUnit, topic) {
       item.task_gate_mode = 'gated';
       item.fix_gate_mode = 'gated';
       item.analysis_gate_mode = 'gated';
-      item.fix_attempts = 0;
+      if (!hasInFlightPair(cwd, workUnit, topic, item)) item.fix_attempts = 0;
       item.analysis_cycle_session = 0;
     } else {
       mode = 'created';
@@ -168,13 +188,16 @@ function initTasks(cwd, workUnit, topic) {
 }
 
 /**
- * Start a task: reset `fix_attempts` and drop the task's fix-tracking cache
- * file (clean slate per task), report the gate modes the task loop branches
- * on. When the internal id IS the manifest's `current_task` — a resumed
- * session restarting the task in flight — both survive untouched: the attempt
+ * Start a task: record it as the manifest's `current_task`, reset
+ * `fix_attempts` and drop the task's fix-tracking cache file (clean slate per
+ * task), report the gate modes the task loop branches on. When the internal
+ * id IS already `current_task` AND its tracking file exists — a true resume:
+ * a crash-resumed session restarting the task in flight, or a post-compaction
+ * re-run to re-fetch the gate sections — both survive untouched: the attempt
  * count and the tracking file are that task's convergence history, and wiping
- * them on resume would evade the fix threshold. Only a genuine fresh start (a
- * different task) resets.
+ * them would evade the fix threshold. Anything else (a different task, or the
+ * same id with no tracking file — e.g. freshly handed over by `complete
+ * --next-task`) is a fresh start and resets both.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -183,21 +206,18 @@ function initTasks(cwd, workUnit, topic) {
  */
 function startTask(cwd, workUnit, topic, internalId) {
   safeName(internalId, 'internal id');
+  const file = fixTrackingPath(cwd, workUnit, topic, internalId);
   const { item, restarting } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const found = implementationItem(manifest, topic);
-    const resumed = found.current_task === internalId;
-    if (!resumed) {
-      found.fix_attempts = 0;
-      saveWorkUnitManifest(cwd, workUnit, manifest);
-    }
+    const resumed = found.current_task === internalId && fs.existsSync(file);
+    if (!resumed) found.fix_attempts = 0;
+    found.current_task = internalId;
+    saveWorkUnitManifest(cwd, workUnit, manifest);
     return { item: found, restarting: resumed };
   });
 
-  if (!restarting) {
-    const file = fixTrackingPath(cwd, workUnit, topic, internalId);
-    if (fs.existsSync(file)) fs.unlinkSync(file);
-  }
+  if (!restarting && fs.existsSync(file)) fs.unlinkSync(file);
 
   return {
     task: internalId,
@@ -292,12 +312,14 @@ function pushTo(item, field, value) {
 
 /**
  * Record a completed (or skipped) task: push its internal id to
- * `completed_tasks`, optionally set `current_phase` / `current_task`, and
- * push the phase to `completed_phases` when the caller reports the phase
- * complete. Skipped tasks are recorded in `completed_tasks` too — the plan
- * (the session's side) carries the skip distinction. Re-recording an id (or
- * phase) already present leaves the array as-is — same response, no
- * double-count.
+ * `completed_tasks`, zero `fix_attempts` (the finished task's in-flight
+ * counter must not leak into the next task — its tracking file stays on disk
+ * as history; `start` clears it if that id is ever started fresh again),
+ * optionally set `current_phase` / `current_task`, and push the phase to
+ * `completed_phases` when the caller reports the phase complete. Skipped
+ * tasks are recorded in `completed_tasks` too — the plan (the session's side)
+ * carries the skip distinction. Re-recording an id (or phase) already present
+ * leaves the array as-is — same response, no double-count.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -324,6 +346,7 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
     const recorded = { completed_task: id };
     if (skipped) recorded.skipped = true;
     pushTo(item, 'completed_tasks', id);
+    item.fix_attempts = 0;
     if (phase !== undefined) {
       item.current_phase = phase;
       recorded.current_phase = phase;

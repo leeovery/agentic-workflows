@@ -279,9 +279,9 @@ describe('engine CLI: discovery-map operations', () => {
   });
 
   describe('edit', () => {
-    it('sets summary, echoes it with the lifecycle', () => {
+    it('sets summary, echoes it with the lifecycle and map_total', () => {
       const res = runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'new blurb']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'edit', lifecycle: 'fresh', summary: 'new blurb' });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'edit', lifecycle: 'fresh', summary: 'new blurb', map_total: 8 });
       assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].summary, 'new blurb');
     });
 
@@ -317,7 +317,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('remove', () => {
     it('hard-deletes a fresh item and pushes its name onto the dismissed list', () => {
       const res = runOk(dir, ['remove', 'payments', 'fresh-topic']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'remove', dismissed: true, lifecycle: 'fresh' });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: 7 });
       const discovery = readManifest(dir).phases.discovery;
       assert.strictEqual(discovery.items['fresh-topic'], undefined);
       assert.deepStrictEqual(discovery.dismissed, ['dismissed-name', 'fresh-topic']);
@@ -338,6 +338,7 @@ describe('engine CLI: discovery-map operations', () => {
       assert.strictEqual(res.renamed_from, 'rich-fresh');
       assert.strictEqual(res.lifecycle, 'fresh');
       assert.strictEqual(res.matches_dismissed, false);
+      assert.strictEqual(res.map_total, 8);
       // No brief file on disk — nothing moved, no marker.
       assert.ok(!('brief_moved' in res));
       assert.deepStrictEqual(res.preserved_fields.sort(), Object.keys(RICH_FRESH).sort());
@@ -382,6 +383,35 @@ describe('engine CLI: discovery-map operations', () => {
       assert.strictEqual(fs.readFileSync(path.join(briefsDir, 'menu-admin.md'), 'utf8'), 'an unrelated brief\n');
     });
 
+    it('refuses when a brief exists at the new name even with no old brief on disk', () => {
+      // The hijack variant: rich-fresh has no brief file, but one exists at
+      // the target name — renaming would silently adopt the unrelated brief.
+      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      fs.mkdirSync(briefsDir, { recursive: true });
+      fs.writeFileSync(path.join(briefsDir, 'menu-admin.md'), 'an unrelated brief\n');
+      const before = JSON.stringify(readManifest(dir));
+
+      const err = runFail(dir, ['rename', 'payments', 'rich-fresh', 'menu-admin']);
+      assert.match(err.error, /a brief already exists at discovery\/briefs\/menu-admin\.md/);
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+      assert.strictEqual(fs.readFileSync(path.join(briefsDir, 'menu-admin.md'), 'utf8'), 'an unrelated brief\n');
+    });
+
+    it('leaves a non-canonical brief_path alone — no dangling pointer', () => {
+      // The dangling-pointer variant: brief_path aimed anywhere other than
+      // discovery/briefs/{old}.md is not this rename's to re-aim.
+      const file = path.join(dir, '.workflows', 'payments', 'manifest.json');
+      const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+      m.phases.discovery.items['rich-fresh'].brief_path = 'discovery/briefs/shared-brief.md';
+      fs.writeFileSync(file, JSON.stringify(m, null, 2) + '\n');
+
+      const res = runOk(dir, ['rename', 'payments', 'rich-fresh', 'menu-admin']);
+      assert.strictEqual(res.op, 'rename');
+      assert.strictEqual(
+        readManifest(dir).phases.discovery.items['menu-admin'].brief_path,
+        'discovery/briefs/shared-brief.md');
+    });
+
     it('refuses a collision with an active map item', () => {
       const before = JSON.stringify(readManifest(dir));
       const err = runFail(dir, ['rename', 'payments', 'fresh-topic', 'decided-topic']);
@@ -407,7 +437,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('reroute', () => {
     it('records the new routing', () => {
       const res = runOk(dir, ['reroute', 'payments', 'fresh-topic', 'research']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'reroute', routing: 'research', lifecycle: 'fresh' });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'reroute', routing: 'research', lifecycle: 'fresh', map_total: 8 });
       assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].routing, 'research');
     });
 
@@ -456,6 +486,23 @@ describe('engine CLI: discovery-map operations', () => {
       }
     });
 
+    it('refuses when per-phase items exist even though the lifecycle join derives fresh', () => {
+      // Superseded research beside a cancelled discussion falls through every
+      // lifecycle branch to `fresh` — but the per-phase items are on record
+      // and the map item is their historical anchor: never hard-deletable.
+      const m = readManifest(dir);
+      m.phases.research.items['fresh-topic'] = { status: 'superseded' };
+      m.phases.discussion.items['fresh-topic'] = { status: 'cancelled' };
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      const before = JSON.stringify(readManifest(dir));
+
+      for (const args of [['remove', 'payments', 'fresh-topic'], ['rename', 'payments', 'fresh-topic', 'anything-else'], ['reroute', 'payments', 'fresh-topic', 'research']]) {
+        const err = runFail(dir, args);
+        assert.match(err.error, /per-phase work exists on record and it stays on the map as historical anchor/, args[0]);
+      }
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+    });
+
     it('names superseded research honestly in the refusal — never as completed', () => {
       const m = readManifest(dir);
       m.phases.research.items['ready-topic'].status = 'superseded';
@@ -480,7 +527,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('marks an item handled from any actionable lifecycle', () => {
       for (const topic of ['fresh-topic', 'researching-topic', 'ready-topic', 'discussing-topic', 'decided-topic']) {
         const res = runOk(dir, ['handle', 'payments', topic]);
-        assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: topic, op: 'handle', handled: true, lifecycle: 'handled' }, topic);
+        assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: topic, op: 'handle', handled: true, lifecycle: 'handled', map_total: 8 }, topic);
         assert.strictEqual(readManifest(dir).phases.discovery.items[topic].handled, true, topic);
       }
     });
@@ -499,7 +546,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('unhandle', () => {
     it('clears the marker and reports the name-matched lifecycle', () => {
       const res = runOk(dir, ['unhandle', 'payments', 'handled-topic']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'unhandle', handled: false, lifecycle: 'fresh' });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'unhandle', handled: false, lifecycle: 'fresh', map_total: 8 });
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['handled-topic'], false);
     });
 

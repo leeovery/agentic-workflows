@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
+const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -144,7 +144,7 @@ function phaseNodes(phase, items) {
 
 /** Sub-header + item tree for one phase. @param {string} phase @param {PhaseEntry[]} items */
 function phaseBlock(phase, items) {
-  return `  ${phase.toUpperCase()} (${countSummary(items)})\n`
+  return treeHeader(`${phase.toUpperCase()} (${countSummary(items)})`) + '\n'
     + renderTree(phaseNodes(phase, items), { width: TREE_WIDTH });
 }
 
@@ -285,7 +285,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     const callouts = stageMetaCallouts(detail, newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
     const total = detail.map_summary ? detail.map_summary.total : detail.discovery_map.length;
-    block += `  RESEARCH & DISCUSSION (${total} topics${mapStatusSuffix(detail)})\n`;
+    block += treeHeader(`RESEARCH & DISCUSSION (${total} topics${mapStatusSuffix(detail)})`) + '\n';
     block += renderTree(mapNodes(detail), { width: TREE_WIDTH });
     stages.push(block);
   }

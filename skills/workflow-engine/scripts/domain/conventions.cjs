@@ -12,11 +12,22 @@
 // This layer grows as call sites are wired; only add what a real consumer needs.
 // ---------------------------------------------------------------------------
 
+const { wrapWithPrefix } = require('../kernel/render.cjs');
+
 // Tree content width: total rendered width INCLUDING the gutter — the
 // deliberate narrow-wrap choice (narrow reads well on mobile / split panes,
 // and pre-empts terminal soft-wrap orphaning the │ gutter). Dividers, boxes,
 // and markers stay at the kernel's canonical 49; trees wrap to this.
 const TREE_WIDTH = 65;
+
+// Composed sub-header (`  LABEL (count summary)`) clamped to the tree width
+// budget: 2-space indent on every line, wrapped like tree body so a long
+// breakdown can never overflow the rows hanging beneath it. Returns the
+// wrapped lines joined, no trailing newline.
+/** @param {string} text */
+function treeHeader(text) {
+  return wrapWithPrefix(text, { width: TREE_WIDTH, prefix: '  ' }).join('\n');
+}
 
 // Upper-case the first character (the rest is left untouched).
 /** @param {string} s */
@@ -145,7 +156,7 @@ const SPEC_LEGEND = {
 };
 
 module.exports = {
-  TREE_WIDTH, capitalise, titlecase, kebabcase, tag, derivedFrom, title,
+  TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, title,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
   discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
 };

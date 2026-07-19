@@ -20,10 +20,25 @@ const {
   computeNextPhase,
   computeInProgressPhases,
 } = require('./derivations.cjs');
+const { WORK_UNIT_TYPES } = require('./workunit-detail.cjs');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
 const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+
+/**
+ * The type's pipeline phases — the same per-type list the work-unit detail
+ * builders derive from, so the two surfaces can never disagree. Epic uses its
+ * own phase list; an unknown type (grouped with features) falls back to every
+ * phase.
+ * @param {string} workType
+ * @returns {string[]}
+ */
+function pipelineOf(workType) {
+  if (workType === 'epic') return EPIC_PHASES;
+  const cfg = WORK_UNIT_TYPES[workType];
+  return cfg ? cfg.pipeline : ALL_PHASES;
+}
 
 /**
  * @typedef {object} WorkUnitEntry
@@ -222,12 +237,11 @@ function startDetail(cwd) {
     // hidden: the unit sat between the last topic completion and `workunit
     // complete` when the flow stopped, and finalising is its only way out.
     // But a reopened earlier phase means the unit is mid-revisit, not
-    // finalising — the phase in flight is the next action. (ALL_PHASES is
-    // safe across types: phases outside a type's pipeline have no items.)
+    // finalising — the phase in flight is the next action.
     let nextPhase = state.next_phase;
     let phaseLabel = state.phase_label;
     if (nextPhase === 'done') {
-      const inProgress = computeInProgressPhases(m, ALL_PHASES);
+      const inProgress = computeInProgressPhases(m, pipelineOf(m.work_type));
       if (inProgress.length > 0) {
         nextPhase = inProgress[0];
         phaseLabel = `${inProgress[0]} (in-progress)`;

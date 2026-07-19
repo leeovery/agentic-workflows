@@ -71,7 +71,7 @@ Take the first blocked task and → Proceed to **H. Update Progress and Commit**
 #### If a task is available
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-2. Start the task via the engine (a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; restarting the task recorded as `current_task` preserves both):
+2. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
