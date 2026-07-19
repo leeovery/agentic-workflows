@@ -6,6 +6,8 @@
 
 No active work found. Offer to start something new, with option to view completed/cancelled work if any exist.
 
+## A. Display and Menu
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -48,11 +50,17 @@ Select an option:
 
 **STOP.** Wait for user response.
 
+→ Proceed to **B. Handle Selection**.
+
+---
+
+## B. Handle Selection
+
 #### If user chose `i`/`inbox`
 
-→ Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.
+Load **[start-from-inbox.md](start-from-inbox.md)** and follow its instructions as written.
 
-→ Return to caller.
+→ Return to **A. Display and Menu**.
 
 #### If user chose a start-new option (`s`, `f`, `e`, `b`, `q`, or `c`)
 
@@ -62,7 +70,7 @@ Set the work-type pre-seed from the pick — `s` → `none`, otherwise the match
 
 #### If user chose `v`/`view`
 
-→ Load **[view-completed.md](view-completed.md)** and follow its instructions as written.
+Load **[view-completed.md](view-completed.md)** and follow its instructions as written.
 
 Re-run discovery to refresh state after potential changes.
 
