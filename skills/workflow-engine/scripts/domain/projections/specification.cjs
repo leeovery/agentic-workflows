@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const { box, renderTree, wrap } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, SPEC_LEGEND } = require('../conventions.cjs');
+const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -375,7 +375,10 @@ function specificationCompletedMenu(detail) {
   }
   lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
 
-  return { keys, display: 'Completed Specifications\n', rendered: lines.join('\n') };
+  const display = 'Completed Specifications\n'
+    + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name), tag: 'completed' }) })), { width: TREE_WIDTH });
+
+  return { keys, display, rendered: lines.join('\n') };
 }
 
 module.exports = { specificationDisplay, specificationMenu, specificationCompletedMenu };
