@@ -20,9 +20,21 @@ Find the most recent review file in `.workflows/.cache/{work_unit}/research/{top
 
 #### If the most recent review has `status: incorporated`
 
-The prior review was fully drained. Dispatch a fresh one to catch anything that emerged since.
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (its frontmatter `created` date, and — same session — your memory of when it drained):
+
+```bash
+git log --oneline -- .workflows/{work_unit}/research/{topic}.md
+```
+
+**If a meaningful research commit landed after the prior review was dispatched** (new findings, folded threads — not typo fixes):
 
 → Proceed to **B. Dispatch Final Review**.
+
+**Otherwise:**
+
+Nothing new for a fresh review to see — the final-review gate is satisfied.
+
+→ Return to caller.
 
 #### If the most recent review has `status: pending`
 

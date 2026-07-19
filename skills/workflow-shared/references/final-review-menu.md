@@ -4,7 +4,7 @@
 
 ---
 
-This reference is loaded at phase conclusion when a final-review agent has produced a cache file. It renders a three-option menu (review / skip / back) and delegates the raise-one-finding loop to the shared surfacing protocol.
+This reference is loaded at phase conclusion when a final-review agent has produced a cache file. It renders a two-option menu (review / skip) and delegates the raise-one-finding loop to the shared surfacing protocol.
 
 **Parameters** (provided by caller via Load directive):
 
@@ -56,15 +56,9 @@ Transition `status: acknowledged` → `status: incorporated`.
 
 → Return to caller.
 
-#### If `surfaced:` is non-empty
+#### If the unsurfaced set is non-empty
 
-The user opted in via the `review` option on a prior iteration. Continue raising findings via the shared protocol — its state machine sees `surfaced:` non-empty and routes directly to its raise-one-finding step.
-
-→ Load **[background-agent-surfacing.md](background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `{cache_dir}`, cache_glob = `{cache_glob}`, findings_key = `{findings_key}`.
-
-→ Return to caller.
-
-#### If `surfaced:` is empty
+Conclusion is a decision point every time — whether the drain started mid-session or at a prior conclusion attempt, the user chooses between continuing the walk-through and concluding with the rest on record.
 
 → Proceed to **C. Render Menu**.
 
@@ -74,7 +68,7 @@ The user opted in via the `review` option on a prior iteration. Continue raising
 
 ```
 · · · · · · · · · · · ·
-Final review returned — flagged {N} area(s).
+Final review: {N} area(s) still unreviewed.
 
 - **`r`/`review`** — Walk through them one at a time
 - **`s`/`skip`** — Acknowledge and conclude the topic
