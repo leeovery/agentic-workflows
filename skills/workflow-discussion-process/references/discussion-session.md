@@ -289,7 +289,7 @@ Discussion complete. Ready to conclude?
 
 **If `yes`:**
 
-→ Return to caller.
+→ Proceed to **I. In-Flight Agent Check**.
 
 **If keep going:**
 
@@ -358,7 +358,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_
 
 Note them in the Summary → Open Threads section of the discussion file. Commit.
 
-→ Return to caller.
+→ Proceed to **I. In-Flight Agent Check**.
 
 **If `no`:**
 
@@ -366,7 +366,19 @@ Note them in the Summary → Open Threads section of the discussion file. Commit
 
 #### If `all_decided` is true
 
-Check for in-flight agents. If agents are still running:
+→ Proceed to **I. In-Flight Agent Check**.
+
+---
+
+## I. In-Flight Agent Check
+
+The last gate before conclusion, whichever path led here. Scan `.workflows/.cache/{work_unit}/discussion/{topic}/` for files with `status: in-flight` in their frontmatter — dispatch-time skeletons whose agents haven't returned yet.
+
+#### If no agents are in flight
+
+→ Return to caller.
+
+#### If agents are still running
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -383,14 +395,10 @@ There are still {N} background agents working.
 
 **If `wait`:**
 
-Check for agent completion. When all agents have returned, delegate surfacing to the shared protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+Watch for each in-flight file to flip to `status: pending`. When none remain in-flight, delegate surfacing to the shared protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
 
 → Return to **B. Session Loop**.
 
 **If `proceed`:**
-
-→ Return to caller.
-
-**If no agents are in flight:**
 
 → Return to caller.

@@ -12,6 +12,16 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 
 ## A. Check Review State
 
+**Synthesis findings drain first.** Scan `.workflows/.cache/{work_unit}/discussion/{topic}/` for `synthesis-*.md` files with `status: pending` or `status: acknowledged` — perspective-council tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
+
+**If any such file exists:**
+
+Surface one tension via **D. Check and Surface** in [perspective-agents.md](perspective-agents.md), then bounce back to the session so the user can engage.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+
+**Otherwise:**
+
 Find the most recent review file in `.workflows/.cache/{work_unit}/discussion/{topic}/` by set number.
 
 #### If no review files exist
