@@ -385,8 +385,11 @@ function discoveryEntryLabel(action, name) {
 function continueLabel(phase, item) {
   const t = titlecase(item.name);
   if (phase === 'implementation' && item.current_phase != null) {
+    if (item.current_task) {
+      return `Continue "${t}" — implementation (Phase ${item.current_phase}, Task ${item.current_task})`;
+    }
     const tasks = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
-    return `Continue "${t}" — implementation (Phase ${item.current_phase}, Task ${tasks})`;
+    return `Continue "${t}" — implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)`;
   }
   return `Continue "${t}" — ${phase} [in-progress]`;
 }
