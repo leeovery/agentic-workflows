@@ -8,13 +8,25 @@ Build and act on a set of inbox items. The caller holds the **working set** — 
 
 ## A. Render the Working Set
 
-For each item in the set, read its file and synthesise a short summary of what it describes (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug). The set is **type-uniform** when every item shares one folder, **mixed** otherwise — this gates the `w`/`work` option below.
+Fetch the working-set snapshot — pass every held item's inbox path, in set order:
+
+```bash
+node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path} …]
+```
+
+The response carries demarcated sections:
+
+- **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
+- **MENU** — the set menu. Emit verbatim as markdown (not a code block) at this section's gate below. The `w`/`work` option renders only for a type-uniform set.
+- **Labelled sections** (`DISPLAY: add candidates`, `MENU: add gate`, `DISPLAY: drop candidates`, `MENU: drop gate`) — deferred: each is emitted only at the gate its marker names (**B** / **C**), never here.
+
+For each item in the set, read its file and synthesise a short summary of what it describes (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug).
 
 > *Output the next fenced block as a code block:*
 
 ```
   Working Set ({count} item{s}) — actions apply to all of them
-@if(set is mixed)
+@if(set_uniform is false)
 
   ⚑ Work is unavailable while the set mixes types — drop to a single
     type to enable it.
@@ -35,28 +47,11 @@ For each item in the set, read its file and synthesise a short summary of what i
 - **Summary sub-lines**: hard-wrap at 65 characters, capped at **3 lines** — if it would run longer, truncate the third line with `…` (`v`/`view` shows the full text). Each line is indented **two columns past the title text** so the description reads as subordinate, not aligned directly under the title.
   - **`{gutter}`** (the template's 2-space lead precedes it): non-last item → `│` then 6 spaces; last item → 7 spaces (no `│`); single item → 4 spaces. The `│` sits under the branch character and runs continuously through every sub-line of non-last items so the tree never breaks.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-What would you like to do? Type a shortcut, or just tell me in
-your own words — e.g. "add 2 and 4", "drop the bug", "archive these".
-
-@if(set is type-uniform)
-- **`w`/`work`** — Proceed to discovery with this set
-@endif
-- **`a`/`add`** — Add another inbox item to the set
-- **`d`/`drop`** — Drop item(s) from the set (keeps them in the inbox)
-- **`r`/`archive`** — Archive the whole set out of the inbox
-- **`v`/`view`** — View full content of the set
-- **`b`/`back`** — Return to the inbox list
-- **Ask** — Ask about the set
-· · · · · · · · · · · ·
-```
+Emit the MENU section.
 
 **STOP.** Wait for user response.
 
-The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting.
+The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting. `w`/`work` can only be chosen when the menu offered it (`set_uniform` is `true`).
 
 #### If user chose `w`/`work`
 
@@ -90,15 +85,9 @@ Answer from the set items' content. Keep it short. Do not act on the set — the
 
 ## B. Add Items
 
-Run discovery for the current inbox state:
+The `ADDABLE` table in the working-set DATA lists the inbox items not already in the set.
 
-```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs
-```
-
-Build a numbered list of inbox items **not already in the working set**, sorted by date.
-
-#### If no items remain to add
+#### If `addable_count` is 0
 
 > *Output the next fenced block as a code block:*
 
@@ -110,27 +99,13 @@ Build a numbered list of inbox items **not already in the working set**, sorted 
 
 #### If the triggering message already named the item(s) to add
 
-Match each named item against the list — by title, or by the number if the user referenced one. If any reference is ambiguous or unmatched, → Proceed to **Otherwise**. Otherwise append the matched items to the working set.
+Match each named item against the `ADDABLE` table — by title, or by the number if the user referenced one. If any reference is ambiguous or unmatched, → Proceed to **Otherwise**. Otherwise append the matched items' paths to the working set.
 
 → Return to **A. Render the Working Set**.
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
-
-```
-@foreach(item in available_items sorted by date)
-  {N}. {item.title} ({item.type}, {item.date})
-@endforeach
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Add which? (enter number(s), comma-separated, or **`b`/`back`**)
-· · · · · · · · · · · ·
-```
+Emit the `DISPLAY: add candidates` section verbatim as a code block, then the `MENU: add gate` section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 
@@ -140,7 +115,7 @@ Add which? (enter number(s), comma-separated, or **`b`/`back`**)
 
 **If user chose one or more numbers:**
 
-Resolve each chosen item's inbox path and append it to the working set.
+Resolve each chosen number to its `ADDABLE` row and append the row's path to the working set.
 
 → Return to **A. Render the Working Set**.
 
@@ -160,21 +135,7 @@ Resolve each named item against the working set by title or description. If any 
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
-
-```
-@foreach(item in working_set)
-  {N}. {item.title} ({item.type})
-@endforeach
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Drop which? (enter number(s), comma-separated, or **`b`/`back`**)
-· · · · · · · · · · · ·
-```
+Emit the `DISPLAY: drop candidates` section verbatim as a code block, then the `MENU: drop gate` section verbatim as markdown (not a code block).
 
 **STOP.** Wait for user response.
 
@@ -184,7 +145,7 @@ Drop which? (enter number(s), comma-separated, or **`b`/`back`**)
 
 **If user chose one or more numbers:**
 
-Remove the chosen items from the working set; they stay in the inbox. If the set is now empty, → Return to caller; otherwise → Return to **A. Render the Working Set**.
+Resolve each chosen number to its `SET` row and remove that item from the working set; it stays in the inbox. If the set is now empty, → Return to caller; otherwise → Return to **A. Render the Working Set**.
 
 ## D. Archive the Set
 
@@ -223,14 +184,8 @@ Read each item in the set and render its full content.
 
 ## F. Work the Set
 
-Reached only for a type-uniform set — `w`/`work` is offered solely when every item shares one folder (**A**). Map the work-type pre-seed from that shared folder:
+Reached only for a type-uniform set — `w`/`work` is offered solely when `set_uniform` is `true`. The DATA `set_type` is the work-type pre-seed (all bugs → `bugfix`, all quick-fixes → `quick-fix`, all ideas → `none`).
 
-| Set composition | work_type |
-|---|---|
-| All bugs | `bugfix` |
-| All quick-fixes | `quick-fix` |
-| All ideas | `none` |
+Build `inbox_seeds` — the set items' inbox paths, comma-joined.
 
-Build `inbox_seeds` — the chosen items' inbox paths, comma-joined.
-
-→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{work_type}`, inbox_seeds = `{inbox_seeds}`.
+→ Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{set_type}`, inbox_seeds = `{inbox_seeds}`.

@@ -45,9 +45,11 @@ function discover(cwd, workUnit) {
   };
 }
 
-// The thin scoped dump: the two fields the continuation references branch
-// on — the derived next phase, and the completed set (in pipeline order) that
-// feeds the revisit menu.
+// The thin scoped dump: the fields the continuation references branch on —
+// the derived next phase, the completed set (in pipeline order), and the
+// revisit candidates (completed phases before next_phase, filtered to the
+// type's pipeline). When candidates exist, the labelled revisit-phase menu
+// follows the dump — emitted only at the gate its marker names.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
 
@@ -59,7 +61,17 @@ function format(result) {
   lines.push(`=== ${result.work_unit} (${result.work_type}) ===`);
   lines.push(`next_phase: ${result.next_phase}`);
   lines.push(`completed_phases: ${completed.join(', ') || '(none)'}`);
-  return lines.join('\n') + '\n';
+
+  let section = '';
+  if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
+    const revisitable = result.next_phase === 'done'
+      ? []
+      : engine.project.revisitablePhases(result.work_type, { next_phase: result.next_phase, completed_phases: completed });
+    lines.push(`revisitable_phases: ${revisitable.join(', ') || '(none)'}`);
+    section = engine.project.revisitPhasesSection(revisitable);
+  }
+
+  return lines.join('\n') + '\n' + (section ? section : '');
 }
 
 if (require.main === module) {

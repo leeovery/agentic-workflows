@@ -8,45 +8,31 @@ Select inbox items to work on, or manage what's been archived. Selecting one or 
 
 ## A. Display and Menu
 
-Run discovery for the current inbox state — re-run on every entry so archive and unarchive changes are reflected:
+Render the inbox pickup snapshot — re-run on every entry so archive and unarchive changes are reflected:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs
+node .claude/skills/workflow-start/scripts/gateway.cjs inbox
 ```
 
-Read the `=== INBOX ===` and `=== STATE ===` sections.
+The output is one snapshot in three demarcated sections:
 
-> *Output the next fenced block as a code block:*
+- **DATA** — reasoning surface: `inbox_count`, `has_archived`, and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
+- **DISPLAY** — the numbered inbox list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **MENU** — the pickup menu. Emit verbatim as markdown (not a code block). The `a`/`archived` option renders only when the archived store has items.
 
-```
-●───────────────────────────────────────────────●
-  Inbox
-●───────────────────────────────────────────────●
+Emit the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
-@foreach(item in inbox_items sorted by date)
-  {N}. {item.title} ({item.type}, {item.date})
-@endforeach
-```
+#### If `inbox_count` is 0
 
-Build a numbered list combining all ideas, bugs, and quick-fixes, sorted by date (oldest first). Hold the number → item mapping (each item's type, slug, and date) for the selection.
+→ Return to caller.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-What would you like to do?
-
-- **`1`–`{N}`** — Select item(s) to work on (comma-separated for several)
-@if(has_archived)
-- **`a`/`archived`** — View archived items (restore or delete)
-@endif
-- **`b`/`back`** — Return
-· · · · · · · · · · · ·
-```
-
-`{N}` is the inbox item count (`state.inbox_count`). Show the `a`/`archived` option only when `state.has_archived` is true.
+#### Otherwise
 
 **STOP.** Wait for user response.
+
+→ Proceed to **B. Handle Selection**.
+
+## B. Handle Selection
 
 #### If user chose `b`/`back`
 
@@ -60,7 +46,7 @@ What would you like to do?
 
 #### If user chose one or more numbers
 
-Build the **working set** from the chosen numbers. For each, resolve the inbox path `.workflows/.inbox/{folder}/{date}--{slug}.md` — `{folder}` is `ideas` / `bugs` / `quickfixes` by type — and hold its type and path.
+Build the **working set** from the chosen numbers — resolve each number to its `ITEMS` row and hold the row's type and path.
 
 → Load **[inbox-working-set.md](inbox-working-set.md)** and follow its instructions as written.
 

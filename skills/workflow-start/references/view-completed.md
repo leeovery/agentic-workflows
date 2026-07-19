@@ -4,65 +4,35 @@
 
 ---
 
-Display completed and cancelled work units from discovery output.
+Display completed and cancelled work units.
 
 ## A. Display List
 
-#### If no completed or cancelled work units exist
+Render the completed & cancelled snapshot — append the work-type filter when the caller set one:
 
-> *Output the next fenced block as a code block:*
+```bash
+node .claude/skills/workflow-start/scripts/gateway.cjs completed [{work_type_filter}]
+```
 
-```
-No completed or cancelled work units found.
-```
+The output is one snapshot in three demarcated sections:
+
+- **DATA** — reasoning surface: the filter, counts, and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled lists. Reason from it; never display or restate it.
+- **DISPLAY** — the completed & cancelled list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **MENU** — the selection prompt. Emit verbatim as markdown (not a code block). Empty when nothing matches.
+
+Emit the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
+
+#### If `completed_count` and `cancelled_count` are both 0
 
 → Return to caller.
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Completed & Cancelled
-●───────────────────────────────────────────────●
-
-@if(work_type_filter) Showing: {work_type_filter:(titlecase)}s @endif
-
-@if(completed.length > 0)
-Completed:
-@foreach(item in completed)
-  {N}. {item.name:(titlecase)}
-     └─ Completed after: {item.last_phase}
-
-@endforeach
-@endif
-
-@if(cancelled.length > 0)
-Cancelled:
-@foreach(item in cancelled)
-  {N}. {item.name:(titlecase)}
-     └─ Cancelled during: {item.last_phase}
-
-@endforeach
-@endif
-```
-
-Build from the completed and cancelled sections in the discovery output. Numbering is continuous across both sections. Blank line between each numbered item.
-
 → Proceed to **B. Select**.
 
 ## B. Select
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Select a work unit for details, or **`b`/`back`** to return.
-
-Select an option (enter number):
-· · · · · · · · · · · ·
-```
+Emit the MENU section.
 
 **STOP.** Wait for user response.
 
@@ -72,7 +42,7 @@ Select an option (enter number):
 
 #### If user chose a number
 
-Store the selected item.
+Store the selected work unit's `UNITS` row — its name and status.
 
 → Proceed to **C. Action Menu**.
 

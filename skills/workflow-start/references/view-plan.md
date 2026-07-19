@@ -8,7 +8,7 @@ Display a readable summary of a plan's phases, tasks, and status.
 
 ## A. Determine Topic
 
-#### If work_type is `feature` or `bugfix`
+#### If work_type is not `epic`
 
 Set `topic` = `selected.name`.
 
@@ -16,11 +16,7 @@ Set `topic` = `selected.name`.
 
 #### If work_type is `epic`
 
-Query manifest for all planning topics:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{selected.name}.planning.*' status
-```
+Read `planning_topics` from the caller's `manage {selected.name}` snapshot DATA.
 
 **If only one topic exists:**
 
@@ -36,21 +32,11 @@ Set `topic` to that topic.
 
 **If multiple topics exist:**
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which plan would you like to view?
-
-@foreach(topic in planning_topics)
-{N}. **{topic.name:(titlecase)}** ({topic.status})
-@endforeach
-· · · · · · · · · · · ·
-```
+Emit the `MENU: plan topics` section from the same snapshot verbatim as markdown (not a code block). Its numbering follows `planning_topics` order.
 
 **STOP.** Wait for user response.
 
-Set `topic` to the selected topic.
+Resolve the number against `planning_topics` and set `topic` to the selected topic.
 
 → Proceed to **B. Read Plan**.
 

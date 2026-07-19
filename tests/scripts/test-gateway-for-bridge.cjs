@@ -211,13 +211,14 @@ describe('workflow-bridge format', () => {
     assert.ok(out.startsWith('Error: '));
   });
 
-  it('fresh feature pins the full dump byte-exactly', () => {
+  it('fresh feature pins the full dump byte-exactly — no revisit section', () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
     const out = format(discover(dir, 'auth'));
     assert.strictEqual(out, [
       '=== auth (feature) ===',
       'next_phase: discussion',
       'completed_phases: (none)',
+      'revisitable_phases: (none)',
       '',
     ].join('\n'));
   });
@@ -237,11 +238,23 @@ describe('workflow-bridge format', () => {
       '=== auth (feature) ===',
       'next_phase: planning',
       'completed_phases: research, discussion, specification',
+      'revisitable_phases: research, discussion, specification',
+      '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
+      '· · · · · · · · · · · ·',
+      'Which phase would you like to revisit?',
+      '',
+      '- **`1`** — Research — completed',
+      '- **`2`** — Discussion — completed',
+      '- **`3`** — Specification — completed',
+      '- **`b`/`back`** — Return to the previous menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
       '',
     ].join('\n'));
   });
 
-  it('completed pipeline reports next_phase done', () => {
+  it('completed pipeline reports next_phase done — nothing revisitable, no section', () => {
     createManifest(dir, 'rename-api', {
       work_type: 'quick-fix',
       phases: {
@@ -255,8 +268,49 @@ describe('workflow-bridge format', () => {
       '=== rename-api (quick-fix) ===',
       'next_phase: done',
       'completed_phases: scoping, implementation, review',
+      'revisitable_phases: (none)',
       '',
     ].join('\n'));
+  });
+
+  it('quick-fix filters specification and planning out of the revisit candidates', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
+      phases: {
+        scoping: { items: { 'rename-api': { status: 'completed' } } },
+        specification: { items: { 'rename-api': { status: 'completed' } } },
+        planning: { items: { 'rename-api': { status: 'completed' } } },
+        implementation: { items: { 'rename-api': { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir, 'rename-api'));
+    assert.strictEqual(out, [
+      '=== rename-api (quick-fix) ===',
+      'next_phase: review',
+      'completed_phases: scoping, specification, planning, implementation',
+      'revisitable_phases: scoping, implementation',
+      '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
+      '· · · · · · · · · · · ·',
+      'Which phase would you like to revisit?',
+      '',
+      '- **`1`** — Scoping — completed',
+      '- **`2`** — Implementation — completed',
+      '- **`b`/`back`** — Return to the previous menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+      '',
+    ].join('\n'));
+  });
+
+  it('epic dump carries no revisitable line and no section', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { 'auth-design': { status: 'completed' } } } },
+    });
+    const out = format(discover(dir, 'v1'));
+    assert.ok(!out.includes('revisitable_phases'));
+    assert.ok(!out.includes('MENU: revisit phases'));
   });
 
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {
