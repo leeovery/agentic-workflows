@@ -31,7 +31,50 @@ Follow the format's **reading.md** instructions to determine the next available 
 
 #### If no available tasks remain
 
+"No available tasks" is not the same as "all tasks complete". Using the format's **reading.md**, list all tasks and check for tasks still open or in-progress — these are blocked: excluded from "next available" because a dependency was skipped, cancelled, or otherwise never reached the format's completed status.
+
+**If no open or in-progress tasks remain:**
+
 → Proceed to **I. All Tasks Complete**.
+
+**If open or in-progress tasks remain (blocked):**
+
+> *Output the next fenced block as a code block:*
+
+```
+No ready tasks remain, but {N} task(s) are still open — blocked:
+
+  {internal_id}: {Task Name}
+  └─ Blocked by {blocker_id} [{blocker status}]
+
+  ...
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+How would you like to proceed?
+
+- **`p`/`proceed`** — Continue with the first blocked task anyway (its blocker will not be completed)
+- **`s`/`skip`** — Skip the blocked tasks and conclude the loop
+- **`t`/`stop`** — Stop implementation entirely
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `proceed`:**
+
+Treat the first blocked task as the available task — continue with the *If a task is available* flow below.
+
+**If `skip`:**
+
+Take the first blocked task and → Proceed to **H. Update Progress and Commit** (mark task as skipped). Stage A re-detects any remaining blocked tasks on the loop back.
+
+**If `stop`:**
+
+→ Return to **[the skill](../SKILL.md)** for **Step 8**.
 
 #### If a task is available
 
