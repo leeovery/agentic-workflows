@@ -1,7 +1,7 @@
 ---
 name: workflow-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git status), Bash(git add), Bash(git commit), Bash(mkdir -p .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(git status), Bash(mkdir -p .workflows/)
 ---
 
 # Discovery

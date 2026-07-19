@@ -96,7 +96,7 @@ The research file is your memory. Context compaction is lossy — what's not on 
 
 These are natural pauses, not every exchange. Capture the substance — not a verbatim transcript.
 
-**After writing, git commit.** Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
+**After writing, commit** (`engine commit {work_unit} -m "research({work_unit}/{topic}): {what changed}"`). Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
 
 **Create the file early.** After understanding the starting point, create the research file with initial context. Don't wait for findings.
 

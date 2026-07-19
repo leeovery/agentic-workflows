@@ -100,7 +100,7 @@ When a tangential concern surfaces that doesn't fit the current shape, offer to 
 
 > *"You mentioned X — that feels separate from what we're shaping. Surface to inbox for later?"*
 
-If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`git add` the new `.workflows/.inbox/` file and commit) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
+If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"`) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
 
 ## H. Anchor and return — shape, don't dive
 
