@@ -141,17 +141,15 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `deep-dive`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `deep-dive-*.md`, findings_key = `findings`.
 
-**Promoting to a research file** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own research file — and agrees or requests it — promote them:
+**Promoting to a research file** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own research file — and agrees or requests it — promote them through the shared topic-creation core, so the new topic lands on the discovery map with validated naming and provenance:
 
-1. Create a new research file at `.workflows/{work_unit}/research/{thread}.md`
-2. Synthesise the deep-dive findings into the file (don't copy the cache file verbatim — organise for the research document context)
-3. Register in the manifest:
+1. Derive a one-line `summary` and a paragraph or two of `description` from the deep-dive findings.
+
+2. → Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{thread}`, phase = `research`, routing = `research`, source = `research-split:{topic}`, summary = `{summary}`, description = `{description}`.
+
+3. **If `result` is `cancelled`:** the promotion was dropped — the findings stay in the cache file. Otherwise create the research file at `.workflows/{work_unit}/research/{created_topic}.md` and synthesise the deep-dive findings into it (don't copy the cache file verbatim — organise for the research document context), then commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {thread}
-   ```
-4. Commit:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): add {thread} research from deep dive"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): add {created_topic} research from deep dive"
    ```
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
