@@ -20,9 +20,11 @@ Then in Claude Code:
 
 That's the whole interface. Describe what you want to build and the right pipeline picks you up: a discussion that pushes back, a specification you approve, a plan broken into tasks, then implementation running hands-off in a gated TDD loop while you do something else. Every decision lands in a versioned document in your repo. Kill the session whenever; the next one resumes from disk.
 
-**Why it works when other loops don't:** by the time code gets written, there's nothing left to improvise. The thinking happened in discussion and specification, with review agents challenging gaps in the background. The loop executes decisions that are already written down.
+**Real memory.** Not a scratchpad: everything the process produces is indexed locally with provenance. "Why did we rule out email as an identity field?" has a citable answer months later, and dead ends are remembered so no future session re-explores them.
 
-**And it remembers.** Everything the process produces is indexed locally. "Why did we rule out email as an identity field?" has a citable answer months later. Dead ends are indexed too, so the next piece of work doesn't re-explore them.
+**A loop you can leave alone.** Agentic loops fail when the agent improvises. Here the thinking is front-loaded into discussion and specification, so implementation runs task by task, test-first, gated or fully auto, executing decisions that are already written down.
+
+**Spec-driven by enforcement, not convention.** A deterministic engine owns every state transition. Phases can't be skipped, status displays are computed from disk rather than remembered, and a half-finished session resumes exactly where it stopped.
 
 Work comes in five shapes: epic, feature, bugfix, quick-fix, cross-cutting. Each has a pipeline suited to its size, from months of multi-topic discovery down to a one-file fix. Mid-conversation capture too: say "log that as an idea" and keep working.
 
@@ -57,7 +59,7 @@ Every display is computed by the engine from state on disk and emitted byte-for-
 
 ## The hands-off loop
 
-Implementation runs task by task: an executor writes the code test-first, a reviewer checks it against the plan's acceptance criteria, and failures loop back with findings, capped at three attempts before you're consulted. Each gate can be approved by hand or set to auto. Front-load your attention on the discussion and the spec; the loop handles the rest, and every task lands as its own commit.
+Implementation runs task by task: an executor writes the code test-first, a reviewer checks it against the plan's acceptance criteria, and failures loop back with findings, capped at three attempts before you're consulted. Each gate can be approved by hand or set to auto. Front-load your attention on the discussion and the spec; the loop handles the rest, and every task lands as its own commit. The context each agent sees is engineered by the process: briefs, read-in-full contracts, and scoped handoffs instead of a dumped transcript.
 
 ## The knowledge base
 
@@ -65,7 +67,7 @@ Every completed artifact is indexed: research, discussions, investigations, spec
 
 ## An expert in the room
 
-Twenty-three specialised agents work alongside the pipeline: background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.
+This is multi-agent by design. Twenty-three specialised agents work alongside the pipeline: background reviewers that challenge gaps while you talk, document reviews that catch what the session forgot to write down, perspective panels that argue both sides of a decision, task verifiers that check the built thing against what was specified. Findings are surfaced, never silently applied.
 
 ## Your task tracker
 
@@ -73,7 +75,7 @@ Plans write tasks to the format you choose behind one adapter contract: **Tick**
 
 ## When work changes shape
 
-A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document.
+A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan.
 
 ---
 
