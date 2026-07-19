@@ -8,7 +8,7 @@ Everything since has been the same idea deepened and hardened: **documents drive
 
 Through December the `technical-*` family filled out: review (Dec 8), specification (Dec 14), research (Dec 17). Everything lived in prose. Skills described state in sentences, Claude derived progress by reading directories, and every dashboard was hand-drawn ASCII re-derived from instructions each session.
 
-January and February were structural: commands took the `workflow:` prefix (Jan 14), cross-topic dependencies, multi-source specs, and progress tracking arrived, and February landed the unified entry point with the work-type architecture: one front door, five pipeline shapes. Install moved to the agntc CLI (Feb 24). The system already had its philosophy; it was carrying it entirely in Claude's head.
+January and February were structural: commands took the `workflow:` prefix (Jan 14), cross-topic dependencies, multi-source specs, and progress tracking arrived, and February landed the unified entry point with the work-type architecture: one entry point, five pipeline shapes. Install moved to the agntc CLI (Feb 24). The system already had its philosophy; it was carrying it entirely in Claude's head.
 
 ## State finds a home (Mar – Apr 2026)
 

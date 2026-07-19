@@ -74,7 +74,7 @@ Conclusion then marks the phase item complete (`engine topic complete`), which i
 
 ## Self-healing the map
 
-Two analyses keep an epic's discovery map honest, running not inside any session but at the epic's front doors: the [dashboard's](how-it-fits-together.md#the-epic-dashboard) boot housekeeping and the [bridge's](how-it-fits-together.md#the-bridge) between-phase enrichment.
+Two analyses keep an epic's discovery map honest, running not inside any session but at the epic's entry points: the [dashboard's](how-it-fits-together.md#the-epic-dashboard) boot housekeeping and the [bridge's](how-it-fits-together.md#the-bridge) between-phase enrichment.
 
 - **Research analysis** reads all completed research files, cross-references themes across them, and stages follow-up topics with `source: research-analysis:{parent}` provenance.
 - **Discovery gap analysis** reads completed research *and* completed discussions holistically, hunting four gap types: cross-artifact themes no artifact owns, research themes no discussion addressed, emergent topics from deferred threads, and integration gaps where separate decisions interact but nothing covers the seam.
