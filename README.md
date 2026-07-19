@@ -114,7 +114,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## Documentation
 
-Every part of the system, in depth, in [docs/](docs/README.md):
+The [full documentation](docs/README.md) covers every phase in detail, the engine, the knowledge base, all twenty-three agents, and the history of the project. Start with these:
 
 | Page | Contents |
 |---|---|
