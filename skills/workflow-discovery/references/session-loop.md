@@ -143,7 +143,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
 
 5. **Keep the running record.** The **Exploration** section is a constant running record of the conversation — not verbatim, but **not summarised away; nothing of substance is lost.** Write to it at natural pauses (a thread worked through, the conversation about to branch, detail accumulating, context-compaction risk). Capture the journey: the ideas, the objections, the pivots, the route taken, the **false paths and failed designs** (with why they were dropped), the soft decisions reached, and the **answers to any research or investigation done in-session**. Append-forward — add depth by **layering down**, never by editing earlier entries back. Prose, not transcript; the log survives context refresh, in-context memory does not. Lossiness defeats the point: if the detail of the discovery is lost, the session was wasted.
 
-   The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*, which sets the active-session marker on first creation. After writing, commit:
+   The lazy-creation rule applies: this may create the session log file if it doesn't exist yet — see [template.md](template.md) → *Lazy creation and finalisation*, which opens the session via `engine discovery-session open` (installing the log and setting the active-session marker). After writing, commit:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"

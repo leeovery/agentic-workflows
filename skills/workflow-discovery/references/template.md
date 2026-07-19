@@ -94,15 +94,13 @@ The log file is **not created at session start**. It is conjured on the **first 
 
 Browse-and-bail produces no file.
 
-When the file is first created, populate the header, **Description (as of session)**, **Seed**, **Imports**, and **Map State at Start** at the same write that adds the first content. Other sections start as `(none)`.
-
-At that same first-creation write, set the active-session marker so it always pairs with an existing log:
+To create it, draft the complete log at the staging path `.workflows/.cache/{work_unit}/discovery/session-draft.md`: populate the header, **Description (as of session)**, **Seed**, **Imports**, and **Map State at Start**, plus the first content. Other sections start as `(none)`. Then open the session:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery active_session "{session_number:03d}"
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session open {work_unit} --session-log-file .workflows/.cache/{work_unit}/discovery/session-draft.md
 ```
 
-The caller's own commit step stages and commits this alongside the log.
+The engine allocates the session number, installs the draft as `discovery/sessions/session-{NNN}.md`, and sets the active-session marker so it always pairs with an existing log. The response's `session` is authoritative — set `session_number` from it. Later writes this session edit the installed file directly. The caller's own commit step stages and commits the log and marker.
 
 The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](resume-detection.md)). Always replace it at finalisation so the next entry sees a closed state.
 
