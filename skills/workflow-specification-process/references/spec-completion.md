@@ -82,6 +82,16 @@ If any tracking file still shows `status: in-progress`, mark it complete now.
 
 > **CHECKPOINT**: Do not proceed to sign-off if any tracking files still show `status: in-progress`. They indicate incomplete review work.
 
+Also confirm every source is incorporated:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+```
+
+If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Exhaustive Extraction — extract the source's relevant content into the specification through the construction cycle, then mark it `incorporated`.
+
+> **CHECKPOINT**: Do not proceed to sign-off while any source is `pending`. Its material has not been extracted into the specification.
+
 Also confirm every consult reference is addressed:
 
 ```bash
