@@ -9,6 +9,10 @@
 //   gateway.cjs               → labelled dump, all active bugfixes (head insert)
 //   gateway.cjs view {work_unit}
 //                               → DATA + DISPLAY + MENU snapshot (Step 5)
+//
+// Those two calls are the whole legal surface: an unknown verb, a bare
+// positional, or excess arguments is a usage error (stderr, exit 1) — never
+// a silent index render.
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
@@ -39,11 +43,24 @@ function view(workUnit) {
   ].join('\n');
 }
 
+const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}';
+
+/** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
+function usageError(message) {
+  process.stderr.write(`gateway: ${message}\n${USAGE}\n`);
+  process.exit(1);
+  return ''; // unreachable; keeps the handler's return type uniform
+}
+
 if (require.main === module) {
   engine.gateway.runGateway({
-    index: () => format(discover(process.cwd())),
-    view,
-    fallback: () => format(discover(process.cwd())),
+    index: (...rest) => (rest.length > 0
+      ? usageError('index takes no arguments')
+      : format(discover(process.cwd()))),
+    view: (workUnit, ...rest) => (!workUnit || rest.length > 0
+      ? usageError('view takes exactly one work unit')
+      : view(workUnit)),
+    fallback: (verb) => usageError(`unknown verb "${verb}"`),
   });
 }
 
