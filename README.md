@@ -193,50 +193,11 @@ Dead ends count too. A rejected approach is indexed alongside the specs that shi
 
 ## Setup
 
-The first `/workflow-start` in a project walks through everything below in the chat. The details are here for reference.
+**Requirements:** Node.js 18+. Optionally, an OpenAI API key (or any OpenAI-compatible embeddings endpoint, local or hosted) for semantic search across your workflow history; keyword-only mode needs nothing.
 
-<details>
-<summary><strong>Knowledge base setup, requirements, and self-hosting</strong></summary>
-
-**Requirements:** Node.js 18+, plus (optionally) an OpenAI API key for semantic search across your workflow history. Keyword-only mode works without one.
-
-Workflows require an initialised knowledge base. On a fresh project, `/workflow-start` initialises it in the chat; there is no separate setup command to run first:
-
-- **Reuse or choose.** If your machine already has a system-wide configuration (`~/.config/workflows/config.json`), one keypress reuses it for this project. Otherwise pick a mode in the chat: `openai` (recommended, full semantic search), `openai-compatible` (local or self-hosted), or keyword-only (no key needed; upgrade anytime).
-- **API key** (for `openai`, or a keyed endpoint): the key never passes through the chat. Store it from your terminal: `node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only` prompts privately (input hidden) and saves to `~/.config/workflows/credentials.json` (mode 0600). Or set `$OPENAI_API_KEY` in your shell, then tell the chat you are done. Keys are validated with a test embed before saving.
-- **Project init** creates `.workflows/.knowledge/` and runs the initial indexing pass over any existing artifacts.
-
-If you pick keyword-only, search falls back to BM25 keyword matching. Re-run setup later to switch.
-
-The interactive wizard remains for reconfiguring the system-wide defaults (provider, model, key) outside any project gate:
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
-```
-
-**Local / self-hosted embeddings (`openai-compatible`).** Any server exposing an OpenAI-compatible `/v1/embeddings` endpoint works: LM Studio, Ollama (OpenAI-compat shim), vLLM, LiteLLM, etc. Pick `openai-compatible` in the chat gate or the wizard, or write `~/.config/workflows/config.json` directly:
-
-```json
-{
-  "knowledge": {
-    "provider": "openai-compatible",
-    "base_url": "http://localhost:1234/v1",
-    "model": "nomic-embed-text-v1.5",
-    "dimensions": 768
-  }
-}
-```
-
-Examples: LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), vLLM (`http://localhost:8000/v1`). `dimensions` must match the local model's native output; setup's test embed checks this and fails loudly on a mismatch.
-
-</details>
-
-<details>
-<summary><strong>Managing the install</strong></summary>
+There is no setup procedure. The first `/workflow-start` in a project configures everything in the chat, and keys are only ever entered in your terminal, never the chat.
 
 Commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
-
-</details>
 
 ## Documentation
 
