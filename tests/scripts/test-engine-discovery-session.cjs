@@ -252,7 +252,151 @@ describe('engine discovery-session close — guards refuse loudly, everything pr
     assert.match(engineFails(fix, ['discovery-session', 'close', 'payments']).error, /Usage: engine discovery-session close/);
     assert.match(engineFails(fix, ['discovery-session', 'close', '-m', 'msg']).error, /Usage: engine discovery-session close/);
     assert.match(engineFails(fix, ['discovery-session', 'close', 'payments', 'extra', '-m', 'msg']).error, /unexpected argument "extra"/);
-    assert.match(engineFails(fix, ['discovery-session', 'open', 'payments', '-m', 'msg']).error, /Usage: engine discovery-session close/);
-    assert.match(engineFails(fix, ['discovery-session']).error, /Usage: engine discovery-session close/);
+    assert.match(engineFails(fix, ['discovery-session', 'finalise', 'payments']).error, /Usage: engine discovery-session <open\|close>/);
+    assert.match(engineFails(fix, ['discovery-session']).error, /Usage: engine discovery-session <open\|close>/);
+  });
+});
+
+const DRAFT_REL = '.workflows/.cache/payments/discovery/session-draft.md';
+const DRAFT_CONTENT = '# Discovery Session 003\n\nDate: 2026-07-19\nWork unit: payments\n\n## Exploration\n\nFirst pause of the session.\n';
+const OPEN = ['discovery-session', 'open', 'payments', '--session-log-file', DRAFT_REL];
+
+/** An epic between sessions: logs 001–002 closed on disk, no marker. */
+function closedEpicManifest() {
+  const epic = epicManifest();
+  delete epic.phases.discovery.active_session;
+  return epic;
+}
+
+describe('engine discovery-session open — happy path', () => {
+  let fix;
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+
+  it('allocates past the highest on-disk log, moves the draft into place, sets the marker, and does NOT commit', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    const res = engine(fix, OPEN);
+
+    assert.deepStrictEqual(res, {
+      ok: true,
+      work_unit: 'payments',
+      session: '003',
+      path: '.workflows/payments/discovery/sessions/session-003.md',
+    });
+
+    // Moved, not copied: installed verbatim, the draft is gone.
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discovery/sessions/session-003.md'), 'utf8'), DRAFT_CONTENT);
+    assert.strictEqual(fs.existsSync(path.join(fix.project, DRAFT_REL)), false);
+
+    // Marker set, the rest of the discovery phase intact.
+    const m = readManifest(fix, 'payments');
+    assert.deepStrictEqual(m.phases.discovery, {
+      items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
+      dismissed: ['dead-idea'],
+      active_session: '003',
+    });
+
+    // No commit, no KB call — the session is live; the calling flow's
+    // commit cadence picks up the log and marker.
+    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    const status = git(fix.project, ['status', '--porcelain']);
+    assert.match(status, /\.workflows\/payments\/manifest\.json/);
+    assert.match(status, /\.workflows\/payments\/discovery\/sessions\/session-003\.md/);
+    assert.deepStrictEqual(knowledgeCalls(fix), []);
+
+    // Lock released.
+    assert.strictEqual(fs.existsSync(path.join(fix.project, '.workflows/payments/.lock')), false);
+  });
+
+  it('a legacy manifest with no discovery phase and no logs opens session 001', () => {
+    const epic = closedEpicManifest();
+    epic.phases = {};
+    fix = setupFixture({ epic });
+    fs.rmSync(path.join(fix.project, '.workflows/payments/discovery'), { recursive: true });
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    const res = engine(fix, OPEN);
+
+    assert.strictEqual(res.session, '001');
+    assert.strictEqual(res.path, '.workflows/payments/discovery/sessions/session-001.md');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, res.path), 'utf8'), DRAFT_CONTENT);
+    assert.deepStrictEqual(readManifest(fix, 'payments').phases, { discovery: { active_session: '001' } });
+  });
+
+  it('the response is one JSON line on stdout', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    const out = execFileSync('node', [fix.engine, ...OPEN], { cwd: fix.project, encoding: 'utf8' });
+    assert.strictEqual(out, JSON.stringify({
+      ok: true,
+      work_unit: 'payments',
+      session: '003',
+      path: '.workflows/payments/discovery/sessions/session-003.md',
+    }) + '\n');
+  });
+
+  it('open then close roundtrips — the marker pairs with the installed log', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    engine(fix, OPEN);
+    const res = engine(fix, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): finalise session log']);
+    assert.strictEqual(res.session, '003');
+    assert.strictEqual(res.committed, shortHead(fix));
+    assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
+  });
+});
+
+describe('engine discovery-session open — guards refuse loudly, everything pristine', () => {
+  let fix;
+  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
+
+  /** Assert the refusal leaves every `.workflows/` byte identical (the draft included), no commit, no KB call. */
+  function refusedPristine(args, pattern) {
+    const before = treeSnapshot(fix);
+    const err = engineFails(fix, args);
+    assert.match(err.error, pattern);
+    assert.deepStrictEqual(treeSnapshot(fix), before);
+    assert.deepStrictEqual(knowledgeCalls(fix), []);
+    return err;
+  }
+
+  it('refuses an unknown work unit', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    refusedPristine(['discovery-session', 'open', 'ghost', '--session-log-file', DRAFT_REL], /manifest not found/);
+  });
+
+  it('refuses a non-epic — single-phase work gets its log at workunit create', () => {
+    const feature = closedEpicManifest();
+    feature.work_type = 'feature';
+    fix = setupFixture({ epic: feature });
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    refusedPristine(OPEN, /discovery-session open is epic-only — "payments" is work_type "feature"/);
+  });
+
+  it('refuses a second open while a session is active', () => {
+    fix = setupFixture();
+    writeFile(fix.project, DRAFT_REL, DRAFT_CONTENT);
+    refusedPristine(OPEN, /a discovery session \("002"\) is already open for "payments"/);
+  });
+
+  it('refuses a missing draft file', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    refusedPristine(OPEN, /session log draft not found: \.workflows\/\.cache\/payments\/discovery\/session-draft\.md/);
+  });
+
+  it('refuses an empty draft file — whitespace-only included', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    writeFile(fix.project, DRAFT_REL, '');
+    refusedPristine(OPEN, /session log draft is empty/);
+    fs.writeFileSync(path.join(fix.project, DRAFT_REL), '  \n\n\t\n');
+    refusedPristine(OPEN, /session log draft is empty/);
+  });
+
+  it('rejects a missing work unit, a missing draft flag, and extra positionals', () => {
+    fix = setupFixture({ epic: closedEpicManifest() });
+    assert.match(engineFails(fix, ['discovery-session', 'open']).error, /Usage: engine discovery-session open/);
+    assert.match(engineFails(fix, ['discovery-session', 'open', 'payments']).error, /Usage: engine discovery-session open/);
+    assert.match(engineFails(fix, ['discovery-session', 'open', '--session-log-file', DRAFT_REL]).error, /Usage: engine discovery-session open/);
+    assert.match(engineFails(fix, ['discovery-session', 'open', 'payments', 'extra', '--session-log-file', DRAFT_REL]).error, /unexpected argument "extra"/);
   });
 });
