@@ -37,6 +37,3 @@ Background:
 17. [History](history.md): from two prose skills to the engine
 18. [Timeline](timeline.md): the dated arc, with PR numbers and the review campaigns
 
-## Ground rules for these docs
-
-Every claim is written against the tree at this revision: skill files, engine source, and reference files are the source of truth, and the rendered output shown on these pages was captured from a live engine run in a scratch project. Where history could not be verified from git alone (the stacked engine PRs), the sourcing is stated inline on the [timeline](timeline.md).
