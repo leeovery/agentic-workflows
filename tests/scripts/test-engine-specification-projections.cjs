@@ -664,7 +664,12 @@ describe('specification projections: menu goldens', () => {
     createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# A');
     createFile(dir, '.workflows/v1/specification/data-model/specification.md', '# D');
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
-    assert.strictEqual(sub.display, 'Completed Specifications\n');
+    assert.strictEqual(sub.display, [
+      'Completed Specifications',
+      '  ├─ Auth Flow [completed]',
+      '  └─ Data Model [completed]',
+      '',
+    ].join('\n'));
     assert.strictEqual(sub.rendered, [
       '· · · · · · · · · · · ·',
       'Which completed specification would you like to refine?',
