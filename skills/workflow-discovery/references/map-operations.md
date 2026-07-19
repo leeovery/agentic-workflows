@@ -79,13 +79,13 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 {lifecycle_phrase}. {recovery_pointer}
 ```
 
-`{lifecycle_phrase}` examples:
+`{lifecycle_phrase}` examples (derive from the topic's actual research state — superseded research is named as such, never as completed):
 
 - `researching` — `research is in flight on it`
 - `discussing` — `discussion is in flight on it`
-- `ready_for_discussion` — `research has completed and discussion is queued`
+- `ready_for_discussion` — `research has completed and discussion is queued` (superseded research: `its research was superseded and discussion is queued`)
 - `decided` — `discussion has concluded`
-- `handled` — `it has fanned out into discussions and stays on the map as historical anchor`
+- `handled` — `it has fanned out into discussions and stays on the map as historical anchor` (only when research completed or was superseded; otherwise `it is marked handled and stays on the map as historical anchor`)
 - `cancelled` — `it has phase work in cancelled state and stays on the map as historical record`
 
 `{recovery_pointer}`: for a `handled` target, `Say "unhandle {topic}" to make it actionable again.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead.`
