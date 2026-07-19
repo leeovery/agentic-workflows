@@ -2,7 +2,7 @@
 
 The arc, dated from `git log` (author dates) and the engine design log. Headline numbers at this head: **3,454 commits**, **310 merged pull requests** in commit subjects, **68 release tags** (`v0.1.0` 2026-03-22 → `v0.5.13` 2026-07-16), first commit 2025-11-23.
 
-A sourcing note, stated rather than papered over: everything through PR #347 (2026-06-05) is verifiable from merge commits in git. The engine re-platforming that follows was built as a *stacked* series, rebased rather than merged, so its PR numbers (#380, #383–#435, #442–#460) come from the design log (`ideas/deterministic-tree-and-menu-renderer.md` on `feat/renderer`), cross-checked against author dates and branch names in git. No "Merge pull request" commit exists for any of them at this head; the last merge commit in the tree is #347.
+Everything through PR #347 (2026-06-05) is verifiable from merge commits in git. The engine re-platforming that follows was built as a stacked series, rebased rather than merged, so its PR numbers come from the project design log, cross-checked against author dates and branch names.
 
 ## The prose era
 
