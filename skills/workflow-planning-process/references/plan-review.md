@@ -215,6 +215,8 @@ Run another review round?
 
 > **CHECKPOINT**: Do not confirm completion if any tracking files still show `status: in-progress`. They indicate incomplete review work.
 
+If any tracking file still shows `status: in-progress`, its findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
+
 2. **Commit** all review tracking files:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})"
