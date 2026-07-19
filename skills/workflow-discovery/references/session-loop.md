@@ -70,7 +70,7 @@ Then frame the opener:
 You can open a fresh thread — a new area of the work you want
 to sketch out — and we'll explore it the same way we did first
 time, then synthesise topics at the end. Or you can name changes
-to existing items: add, remove, rename, re-route, edit summary,
+to existing items: remove, rename, re-route, edit summary,
 edit description, mark handled. Both in one go is fine.
 
 Say "show map" anytime to pull the map back up.

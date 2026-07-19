@@ -150,6 +150,14 @@ Then the discovery session log. Single-phase work has exactly one, at a fixed pa
 
 Seed the discussion from the `description` and that **Exploration**. Do not re-ask; live conversation context, when present, supplements the carrier.
 
+Then, when `source` is `topic-provided`, read the research item statuses:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.research.*' status
+```
+
+When any item is `completed`, list the research files via `ls .workflows/{work_unit}/research/*.md` and set `source = "topic-provided-with-research"` so the handoff carries them.
+
 → Proceed to **Step 4**.
 
 **Otherwise:**

@@ -12,6 +12,12 @@ Use `engine manifest` to check discussion phase state:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic}
 ```
 
+#### If output is empty (discussion doesn't exist — fresh start)
+
+Nothing to validate — `source` keeps the value set in Step 1.
+
+→ Return to caller.
+
 #### If discussion exists and status is `in-progress`
 
 > *Output the next fenced block as a code block:*
