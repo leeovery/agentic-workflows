@@ -21,6 +21,7 @@ const { TREE_WIDTH, titlecase, title, discoveryGlyph, discoveryLifecycleLabel } 
  * @property {string} name
  * @property {string} lifecycle   fresh|researching|ready_for_discussion|discussing|decided|handled|cancelled
  * @property {string|null} [routing]
+ * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {string|null} [summary]
  */
 
@@ -66,7 +67,7 @@ function mapNodes(rows) {
     title: title({
       glyph: discoveryGlyph(row.lifecycle),
       label: titlecase(row.name),
-      tag: discoveryLifecycleLabel(row.lifecycle, row.routing ?? null),
+      tag: discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null),
     }),
   }));
 }

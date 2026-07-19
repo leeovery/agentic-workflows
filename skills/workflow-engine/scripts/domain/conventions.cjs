@@ -86,15 +86,21 @@ function discoveryGlyph(tier) {
 
 // Discovery-map row `[tag]` vocabulary — the lifecycle label each map row
 // carries. One phrasing, every map render (epic dashboard, discovery session
-// map view).
-/** @param {string} lifecycle @param {string|null} [routing] */
-function discoveryLifecycleLabel(lifecycle, routing) {
+// map view). `researchState` is the topic's actual research-item status (null
+// when none exists — see computeTopicLifecycle's research_state): a handled
+// topic claims a research fan-out only when research exists, and superseded
+// research is named as such, never as complete.
+/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] */
+function discoveryLifecycleLabel(lifecycle, routing, researchState) {
   switch (lifecycle) {
-    case 'ready_for_discussion': return 'research complete · ready for discussion';
+    case 'ready_for_discussion':
+      return researchState === 'superseded'
+        ? 'research superseded · ready for discussion'
+        : 'research complete · ready for discussion';
     case 'researching': return 'researching';
     case 'discussing': return 'discussing';
     case 'decided': return 'decided';
-    case 'handled': return 'handled · research fanned out';
+    case 'handled': return researchState ? 'handled · research fanned out' : 'handled';
     case 'cancelled': return 'cancelled';
     default: return routing ? `fresh · routed to ${routing}` : 'fresh';
   }

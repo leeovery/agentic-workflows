@@ -82,6 +82,7 @@ const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'pl
  * @property {string} lifecycle  `fresh` | `researching` | `ready_for_discussion` | `discussing` | `decided` | `handled` | `cancelled`
  * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘`
  * @property {string|null} current_phase
+ * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} next_action
  */
 
@@ -328,7 +329,7 @@ function epicDetail(cwd, manifest) {
   let mapSummary = null;
   if (discoveryItems.length > 0) {
     discoveryMap = discoveryItems.map(item => {
-      const { lifecycle, tier, current_phase } = computeTopicLifecycle(manifest, item.name);
+      const { lifecycle, tier, current_phase, research_state } = computeTopicLifecycle(manifest, item.name);
       const next_action = computeNextAction(item.routing, lifecycle);
       const source_provenance = computeSourceProvenance(item.source);
       const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
@@ -345,6 +346,7 @@ function epicDetail(cwd, manifest) {
         lifecycle,
         tier,
         current_phase,
+        research_state,
         next_action,
       };
     });
