@@ -58,8 +58,9 @@ Instructions for modifying tasks.
 
 Must include:
 
-- **Status Transitions** — how to change task status. Document all supported statuses (e.g., complete, skipped, cancelled) and how to set each one.
+- **Status Transitions** — how to change task status. Document all supported statuses (e.g., complete, skipped, cancelled, in progress) and how to set each one.
 - **Updating Task Content** — how to modify a task's title, description, or other properties after creation.
+- **Phase Completion** — what to do when all tasks in a phase are complete or skipped. Formats with no phase entity (or with automatic cascading) declare an explicit no-op — consumers follow this section at every phase boundary.
 
 ### graph.md
 
