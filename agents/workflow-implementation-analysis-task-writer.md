@@ -1,7 +1,7 @@
 ---
 name: workflow-implementation-analysis-task-writer
 description: Creates plan tasks from approved analysis findings. Reads the staging file, extracts approved tasks, and creates them in the plan using the format's authoring adapter. Invoked by workflow-implementation-process skill after user approves analysis tasks.
-tools: Read, Write, Edit, Glob, Grep, Bash
+tools: Read, Write, Edit, Glob, Grep, Bash, mcp__linear__list_issues, mcp__linear__get_issue, mcp__linear__create_issue, mcp__linear__create_issue_label
 model: opus
 ---
 
@@ -39,9 +39,9 @@ When creating any new `.md` file with the Write tool, write it to the same path 
 
 Append the new phase and task table to the planning file (path provided in inputs):
 
-- Phase heading: `### Phase {N}: {phase_label}`
+- Phase heading: `### Phase {N}: {phase_label}`, followed by `status: approved` and `approved_at: YYYY-MM-DD` (today's date) — the staging-file gate already approved these tasks
 - Phase goal: `Address findings from {phase_label}.`
-- Task table with Internal ID, Name, and Edge Cases columns
+- Task table under a `#### Tasks` heading with `status: approved`, columns Internal ID, Name, and Edge Cases
 - Internal IDs must match the IDs used in the created task files
 
 ## Update task_map

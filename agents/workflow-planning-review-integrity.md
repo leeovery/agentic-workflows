@@ -1,7 +1,7 @@
 ---
 name: workflow-planning-review-integrity
 description: Reviews plan structural quality, implementation readiness, and standards adherence. Invoked by workflow-planning-process skill during plan review.
-tools: Read, Glob, Grep, Write, Bash
+tools: Read, Glob, Grep, Write, Bash, mcp__linear__list_issues, mcp__linear__get_issue
 model: opus
 ---
 
