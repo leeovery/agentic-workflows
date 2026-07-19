@@ -42,15 +42,49 @@ The agent writes all tasks to the task detail file and returns.
 
 ## C. Validate Task Detail File
 
-Read the task detail file and count tasks. Verify task count matches the task table in the planning file for this phase.
-
-#### If `mismatch`
-
-→ Return to **B. Invoke the Agent**.
+Read the task detail file and count tasks. Verify task count matches the task table in the planning file for this phase. Track the number of agent invocations for this phase in-conversation.
 
 #### If `valid`
 
 → Proceed to **D. Check Gate Mode**.
+
+#### If `mismatch` and fewer than 2 agent invocations have been made
+
+→ Return to **B. Invoke the Agent**.
+
+#### If `mismatch` after 2 agent invocations
+
+> *Output the next fenced block as a code block:*
+
+```
+Task count mismatch persists after 2 authoring attempts.
+
+Planning file task table: {N} tasks — {internal IDs from the table}
+Task detail file:         {M} tasks — {internal IDs found in the file}
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+How would you like to proceed?
+
+- **`r`/`retry`** — Re-invoke the author agent once more
+- **Adjust** — Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `retry`:**
+
+→ Return to **B. Invoke the Agent**.
+
+**If adjust:**
+
+Apply the user's correction.
+
+→ Return to **C. Validate Task Detail File**.
 
 ---
 
@@ -62,6 +96,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 ```
 
 #### If `author_gate_mode` is `auto`
+
+Set every `pending` task in the task detail file to `approved`.
 
 > *Output the next fenced block as a code block:*
 
@@ -127,7 +163,7 @@ Mark the task `approved` in the task detail file. Set all remaining `pending` ta
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} author_gate_mode auto
 ```
 
-→ Proceed to **G. Write to Plan**.
+→ Proceed to **F. Revision Check** (earlier `rejected` tasks still need revision before writing).
 
 **If the user provides feedback:**
 
@@ -145,6 +181,8 @@ Mark the task `rejected` in the task detail file and add the feedback as a block
 → Return to **E. Approval Loop**.
 
 **If the user navigates:**
+
+Authoring for this phase is **incomplete** — report that to the caller.
 
 → Return to caller.
 
@@ -176,7 +214,7 @@ Check for rejected tasks in the task detail file.
 
 ## G. Write to Plan
 
-> **CHECKPOINT**: If `author_gate_mode: gated`, verify all tasks in the task detail file are marked `approved` before writing.
+> **CHECKPOINT**: Verify all tasks in the task detail file are marked `approved` before writing — both gate modes approve every task before reaching this section.
 
 For each approved task in the task detail file, in order:
 
@@ -211,5 +249,7 @@ Task {M} of {total}: {Task Name} — authored.
 ```
 
 Repeat for each task.
+
+Authoring for this phase is **complete** — report that to the caller.
 
 → Return to caller.

@@ -128,7 +128,15 @@ Phase {N}: {Phase Name} — all tasks already authored.
 
 → Load **[author-tasks.md](author-tasks.md)** and follow its instructions as written.
 
+**If authoring reported complete** (every task written to the plan):
+
 → Proceed to **D. Advance Phase**.
+
+**If authoring reported incomplete** (the user navigated away):
+
+Do not advance the manifest position — the phase is unauthored and remains the leading edge.
+
+→ Return to **B. Process Current Phase** for the phase the user navigated to.
 
 ---
 
