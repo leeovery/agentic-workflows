@@ -39,45 +39,15 @@ That's the whole interface. Describe what you want to build and the right pipeli
 
 Work comes in five shapes, each with a pipeline suited to its size, from months of multi-topic discovery down to a one-file fix. Mid-conversation capture too: say "log that as an idea" and keep working.
 
-```mermaid
-flowchart LR
-    subgraph epic
-        direction LR
-        A1[Discovery] --> A2[Research] --> A3[Discussion] --> A4[Specification] --> A5[Planning] --> A6[Implementation] --> A7[Review]
-    end
 ```
-```mermaid
-flowchart LR
-    subgraph feature
-        direction LR
-        B1[Discovery] -.-> B2[Research] --> B3[Discussion] --> B4[Specification] --> B5[Planning] --> B6[Implementation] --> B7[Review]
-        B1 --> B3
-    end
-```
-```mermaid
-flowchart LR
-    subgraph bugfix
-        direction LR
-        C1[Discovery] --> C2[Investigation] --> C3[Specification] --> C4[Planning] --> C5[Implementation] --> C6[Review]
-    end
-```
-```mermaid
-flowchart LR
-    subgraph quick-fix
-        direction LR
-        D1[Discovery] --> D2[Scoping] --> D3[Implementation] --> D4[Review]
-    end
-```
-```mermaid
-flowchart LR
-    subgraph cross-cutting
-        direction LR
-        E1[Discovery] -.-> E2[Research] --> E3[Discussion] --> E4[Specification]
-        E1 --> E3
-    end
+epic           Discovery → Research → Discussion → Specification → Planning → Implementation → Review
+feature        Discovery → (Research) → Discussion → Specification → Planning → Implementation → Review
+bugfix         Discovery → Investigation → Specification → Planning → Implementation → Review
+quick-fix      Discovery → Scoping → Implementation → Review
+cross-cutting  Discovery → (Research) → Discussion → Specification
 ```
 
-Dashed steps are optional.
+Parenthesised phases are optional.
 
 ## What it looks like
 
