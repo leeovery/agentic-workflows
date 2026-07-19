@@ -86,9 +86,19 @@ function writeFindings(dir, content) {
   return '.workflows/.cache/auth/implementation/auth-flow/attempt-findings.md';
 }
 
+/**
+ * Run the engine expecting success; returns the first-line JSON response and
+ * everything after it (the rendered gate sections, '' when none).
+ */
+function engineRaw(dir, args) {
+  const stdout = execFileSync('node', [ENGINE, 'task', ...args], { cwd: dir, encoding: 'utf8' });
+  const nl = stdout.indexOf('\n');
+  return { res: JSON.parse(stdout.slice(0, nl)), sections: stdout.slice(nl + 1) };
+}
+
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(dir, args) {
-  return JSON.parse(execFileSync('node', [ENGINE, 'task', ...args], { cwd: dir, encoding: 'utf8' }).trim());
+  return engineRaw(dir, args).res;
 }
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
@@ -433,6 +443,180 @@ describe('engine task analysis-cycle', () => {
     seed(0, 0);
     assert.match(engineFails(dir, ['analysis-cycle', 'ghost', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['analysis-cycle', 'auth', 'ghost']).error, /no implementation item "ghost"/);
+  });
+});
+
+describe('engine task gate sections', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  // Byte-pinned renders: every gate-mode × counter state that changes the
+  // section output. The JSON line is covered by the suites above — these
+  // assert everything after it.
+
+  const BLOCKED_MENU = [
+    "=== MENU: blocked tasks (emit verbatim as markdown only at the task loop's blocked-tasks stop) ===",
+    '· · · · · · · · · · · ·',
+    'How would you like to proceed?',
+    '',
+    '- **`p`/`proceed`** — Continue with the first blocked task anyway (its blocker will not be completed)',
+    '- **`s`/`skip`** — Skip the blocked tasks and conclude the loop',
+    '- **`t`/`stop`** — Stop implementation entirely',
+    '· · · · · · · · · · · ·',
+    '',
+  ].join('\n');
+
+  /** @param {string} id */
+  function taskGateMenu(id) {
+    return [
+      '=== MENU: task gate (emit verbatim as markdown at the task gate — never before) ===',
+      '· · · · · · · · · · · ·',
+      `Approve task ${id}?`,
+      '',
+      '- **`y`/`yes`** — Commit and continue to next task',
+      '- **`a`/`auto`** — Approve this and all future tasks automatically',
+      "- **Ask** — Ask questions about the implementation (doesn't approve or reject)",
+      '- **Comment** — Request changes (triggers a fix round)',
+      '· · · · · · · · · · · ·',
+      '',
+    ].join('\n');
+  }
+
+  /** @param {string} id @param {{auto?: boolean}} [opts] */
+  function fixGateMenu(id, { auto = false } = {}) {
+    return [
+      '=== MENU: fix gate (emit verbatim as markdown at the fix approval gate) ===',
+      '· · · · · · · · · · · ·',
+      `Accept the reviewer's fix analysis for task ${id}?`,
+      '',
+      '- **`y`/`yes`** — Pass to executor',
+      ...(auto ? [] : ['- **`a`/`auto`** — Accept and auto-approve future fix analyses']),
+      '- **`s`/`skip`** — Override the reviewer and proceed as-is',
+      "- **Ask** — Ask questions about the review (doesn't accept or reject)",
+      '- **Comment** — Accept with adjustments — pass your own direction alongside the review',
+      '· · · · · · · · · · · ·',
+      '',
+    ].join('\n');
+  }
+
+  /** @param {number} n @param {string} id */
+  function fixThresholdDisplay(n, id) {
+    return [
+      '=== DISPLAY: fix threshold (emit verbatim as a code block) ===',
+      `⚑ Fix attempt ${n} for task ${id} — escalation threshold reached.`,
+      '',
+    ].join('\n');
+  }
+
+  /** @param {string} mode @param {number} [attempts] */
+  function seedGates(mode, attempts = 0) {
+    const phases = planPhases();
+    phases.implementation = {
+      items: {
+        'auth-flow': {
+          status: 'in-progress',
+          task_gate_mode: mode,
+          fix_gate_mode: mode,
+          analysis_gate_mode: mode,
+          fix_attempts: attempts,
+          current_task: null,
+        },
+      },
+    };
+    createManifest(dir, 'auth', { phases });
+  }
+
+  it('init and complete always carry the blocked-tasks menu — byte-identical', () => {
+    createManifest(dir, 'auth', { phases: planPhases() });
+    assert.strictEqual(engineRaw(dir, ['init', 'auth', 'auth-flow']).sections, BLOCKED_MENU);
+    assert.strictEqual(engineRaw(dir, ['init', 'auth', 'auth-flow']).sections, BLOCKED_MENU); // resumed
+    assert.strictEqual(
+      engineRaw(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--next-task', '~']).sections,
+      BLOCKED_MENU);
+    assert.strictEqual(
+      engineRaw(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-2', '--skipped']).sections,
+      BLOCKED_MENU);
+  });
+
+  it('start under a gated task gate renders the approval menu named for the task', () => {
+    seedGates('gated');
+    assert.strictEqual(
+      engineRaw(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']).sections,
+      taskGateMenu('auth-flow-1-1'));
+  });
+
+  it('start under an auto task gate renders no sections', () => {
+    seedGates('auto');
+    assert.strictEqual(engineRaw(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']).sections, '');
+  });
+
+  it('fix-attempt below the threshold: gated renders the fix menu, auto renders nothing', () => {
+    seedGates('gated');
+    assert.strictEqual(
+      engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
+        '--findings-file', writeFindings(dir, 'ISSUES:\n- one\n')]).sections,
+      fixGateMenu('auth-flow-1-1'));
+
+    cleanupFixture(dir);
+    dir = setupFixture();
+    seedGates('auto', 1);
+    assert.strictEqual(
+      engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
+        '--findings-file', writeFindings(dir, 'ISSUES:\n- two\n')]).sections,
+      '');
+  });
+
+  it('fix-attempt at the threshold in gated mode renders the callout and the full menu', () => {
+    seedGates('gated', 2);
+    assert.strictEqual(
+      engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
+        '--findings-file', writeFindings(dir, 'ISSUES:\n- three\n')]).sections,
+      fixThresholdDisplay(3, 'auth-flow-1-1') + '\n' + fixGateMenu('auth-flow-1-1'));
+  });
+
+  it('fix-attempt at the threshold in auto mode omits the auto option', () => {
+    seedGates('auto', 2);
+    assert.strictEqual(
+      engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
+        '--findings-file', writeFindings(dir, 'ISSUES:\n- three\n')]).sections,
+      fixThresholdDisplay(3, 'auth-flow-1-1') + '\n' + fixGateMenu('auth-flow-1-1', { auto: true }));
+  });
+
+  it('fix-attempt beyond the threshold parameterises the attempt count', () => {
+    seedGates('gated', 3);
+    assert.strictEqual(
+      engineRaw(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1',
+        '--findings-file', writeFindings(dir, 'ISSUES:\n- four\n')]).sections,
+      fixThresholdDisplay(4, 'auth-flow-1-1') + '\n' + fixGateMenu('auth-flow-1-1'));
+  });
+
+  it('analysis-cycle within the session limit renders no sections', () => {
+    seedGates('gated');
+    assert.strictEqual(engineRaw(dir, ['analysis-cycle', 'auth', 'auth-flow']).sections, '');
+  });
+
+  it('analysis-cycle over the limit renders the callout and cycle menu regardless of gate mode', () => {
+    const expected = [
+      '=== DISPLAY: cycle limit (emit verbatim as a code block) ===',
+      '⚑ Analysis cycle 4 this session — over the session limit of 3.',
+      '',
+      '=== MENU: cycle gate (emit verbatim as markdown at the cycle gate) ===',
+      '· · · · · · · · · · · ·',
+      'Continue with analysis?',
+      '',
+      '- **`p`/`proceed`** — Continue analysis',
+      '- **`s`/`skip`** — Skip analysis, proceed to completion',
+      '· · · · · · · · · · · ·',
+      '',
+    ].join('\n');
+
+    const phases = planPhases();
+    phases.implementation = {
+      items: { 'auth-flow': { status: 'in-progress', analysis_cycle_session: 3, analysis_gate_mode: 'auto' } },
+    };
+    createManifest(dir, 'auth', { phases });
+    assert.strictEqual(engineRaw(dir, ['analysis-cycle', 'auth', 'auth-flow']).sections, expected);
   });
 });
 

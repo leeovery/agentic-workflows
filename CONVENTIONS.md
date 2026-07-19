@@ -54,6 +54,8 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 A section is everything beneath its marker up to the next marker; the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, trimmed, or re-derived. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
+Engine transaction verbs (e.g. `engine task …`) may append labelled DISPLAY/MENU sections after their one-line JSON response — the state-derived gates of the calling flow. The label names the gate (`=== MENU: fix gate … ===`) and the marker's instruction names the emission moment: the section is emitted only where the flow's prose prescribes it, which may be a later gate than the call — never at the call itself. The same verbatim rules apply.
+
 ### Phase Titles
 
 Bullet-bordered box. One per skill invocation. Serves as the top-level anchor telling the user where they are. Always followed by a blank line before any subsequent content.
