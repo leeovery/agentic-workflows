@@ -90,11 +90,28 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ---
 
-**[Full documentation →](docs/README.md)** — every phase, the engine, the knowledge base, the 23 review agents, task formats, and the history.
+## Documentation
+
+The README is the front door; the [documentation](docs/README.md) is the house.
+
+| | |
+|---|---|
+| [Introduction](docs/introduction.md) | The ideas behind the design, and why process beats autonomy |
+| [How it fits together](docs/how-it-fits-together.md) | Work units, phases, and what a session actually does |
+| [The five work types](docs/work-types.md) | Epic to quick-fix, each pipeline in full |
+| [Implementation](docs/implementation.md) | The TDD loop, gates, and the fix threshold |
+| [The engine](docs/engine.md) | Transactions, refusals, byte-stable renders |
+| [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
+| [The agents](docs/agents.md) | All twenty-three, organised by when they act |
+| [History](docs/history.md) · [Timeline](docs/timeline.md) | Where this came from and how it evolved |
 
 **Setup:** Node 18+. There is no setup procedure; the first run configures itself in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
 
 **Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
+
+---
+
+The premise, in one line: agents don't need more autonomy, they need more process. The [introduction](docs/introduction.md) makes the full argument.
 
 ## License
 
