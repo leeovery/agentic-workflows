@@ -4,7 +4,7 @@
 
 ---
 
-Caller passes `downstream_phase` = `research` | `discussion` — the phase whose downstream item may carry the flag.
+Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` = `research` | `discussion` — the phase whose downstream item may carry the flag.
 
 Read the reconcile flag on the downstream item:
 

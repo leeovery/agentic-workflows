@@ -66,6 +66,8 @@ existing map. Format:}
 - Edited summary: {name} — {short note}
 - Edited description: {name} — {short note}
 - Changed routing: {name} → {new routing} — {short reason}
+- Marked handled: {name} — {short reason}
+- Unhandled: {name} — {short reason}
 
 ## Topics Identified
 

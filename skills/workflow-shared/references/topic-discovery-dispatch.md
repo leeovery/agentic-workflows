@@ -20,10 +20,10 @@ The caller is also responsible for surfacing `new_arrivals` afterwards (e.g. as 
 Initialise an in-conversation tracker:
 
 ```
-new_arrivals = {}
+new_arrivals = { research_analysis: [], gap_analysis: [] }
 ```
 
-This tracker is populated by `topic-discovery.md` when analyses fire below. The caller reads it after this reference returns.
+This tracker is populated by `topic-discovery.md` when analyses fire below. The caller reads it after this reference returns — the keys exist even when no analysis fires.
 
 → Proceed to **B. Cache Status Check**.
 

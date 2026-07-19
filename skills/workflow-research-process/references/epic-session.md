@@ -97,7 +97,7 @@ The current file is drifting — multiple exchanges have been adding material th
 
 → Return to **B. Session Loop**.
 
-#### If the current topic is converging (tradeoffs clear, approaching decision territory)
+#### If the current topic is converging (tradeoffs clear, approaching decision territory) or the user indicates they're done
 
 → Proceed to **E. In-Flight Agent Handling**.
 

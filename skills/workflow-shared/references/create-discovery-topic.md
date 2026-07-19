@@ -73,9 +73,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_u
 Assemble the call as follows:
 
 - Positional `{routing}`, `--source "{source}"`, and `--force-dismissed` — always included.
-- `--summary "{summary}"` — included only when `summary` is present and non-empty.
-- `--description "{description}"` — included only when `description` is present and non-empty.
-- When `summary` is absent, pass `--backfill` in place of both fields — the next epic entry's summary-backfill drafts them.
+- When `summary` is present and non-empty: include `--summary "{summary}"`, plus `--description "{description}"` when `description` is present and non-empty.
+- When `summary` is absent: pass `--backfill` in place of both fields — the engine refuses `--backfill` combined with either — and the next epic entry's summary-backfill drafts them.
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.
 

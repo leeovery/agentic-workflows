@@ -13,7 +13,7 @@ These instructions are loaded into context at the start of the discussion sessio
 - □ Not the first commit? (the discussion needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
 
-**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check and dispatch a fresh review, so no trigger is lost. If the session ends before drainage completes, the final review in Step 4 picks up the outstanding findings via the shared surfacing protocol.
+**Why block on undrained reviews**: two reasons, both important. First, dispatching a fresh review while the prior review's findings are still being discussed produces stale analysis — the document will look different once those findings land, and the new review would be critiquing a version the user is already fixing. Second, the block is self-healing: the next meaningful commit after the current review drains to `incorporated` will naturally re-fire the trigger check and dispatch a fresh review, so no trigger is lost. If the session ends before drainage completes, the final review in Step 6 picks up the outstanding findings via the shared surfacing protocol.
 
 **If all checked:**
 

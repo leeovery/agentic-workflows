@@ -36,17 +36,33 @@ Nothing new for a fresh review to see — the final-review gate is satisfied.
 
 → Return to caller.
 
+#### If the most recent review has `status: in-flight`
+
+A dispatch-time skeleton whose agent hasn't returned.
+
+**If it was dispatched this session** (the agent may still be running):
+
+Watch for the file to flip to `status: pending`.
+
+→ Proceed to **C. Surface via Final Review Menu**.
+
+**Otherwise** (an interrupted earlier session — no agent can still be running):
+
+Delete the skeleton file.
+
+→ Proceed to **B. Dispatch Final Review**.
+
 #### If the most recent review has `status: pending`
 
-A review is in flight or just returned unread.
+A review returned but hasn't been read.
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 #### If the most recent review has `status: acknowledged`
 
 Findings from the current review are still being drained.
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 ---
 
@@ -104,7 +120,7 @@ The review agent receives:
 
 When the agent returns:
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 ---
 
