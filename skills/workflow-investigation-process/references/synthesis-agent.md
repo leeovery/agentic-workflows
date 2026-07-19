@@ -149,4 +149,29 @@ Synthesis: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
 Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md
 ```
 
+The gaps live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+How should these gaps be handled?
+
+- **`a`/`address`** — Work through them and fold the answers into the investigation
+- **`d`/`dismiss`** — Note them as considered-and-dismissed and proceed
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `address`:**
+
+Work through each gap with the user — re-trace code where needed — and update the investigation file's affected sections (Analysis, Root Cause, Blast Radius) with what the answers change or confirm. Commit the updated file.
+
+→ Return to caller.
+
+**If `dismiss`:**
+
+Record the gaps under a short "Synthesis gaps (dismissed)" note in the investigation file's Analysis section so the record shows they were considered. Commit.
+
 → Return to caller.
