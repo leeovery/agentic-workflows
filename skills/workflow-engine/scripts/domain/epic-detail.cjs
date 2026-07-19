@@ -48,6 +48,7 @@ const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'pl
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
  * @property {string|number} [current_phase]   implementation items
+ * @property {string} [current_task]           implementation items — the task in flight
  * @property {string[]} [completed_phases]     implementation items
  * @property {string[]} [completed_tasks]      implementation items
  */
@@ -234,6 +235,7 @@ function epicDetail(cwd, manifest) {
       // Enrich implementation items with progress data
       if (phase === 'implementation') {
         if (item.current_phase != null && item.current_phase !== '~') entry.current_phase = item.current_phase;
+        if (typeof item.current_task === 'string' && item.current_task) entry.current_task = item.current_task;
         if (Array.isArray(item.completed_phases) && item.completed_phases.length > 0) entry.completed_phases = item.completed_phases;
         if (Array.isArray(item.completed_tasks) && item.completed_tasks.length > 0) entry.completed_tasks = item.completed_tasks;
       }
