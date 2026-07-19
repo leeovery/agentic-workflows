@@ -68,7 +68,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ```
 > Checking for existing scoping work. If a spec and plan
-> already exist, we can skip ahead.
+> already exist, you can adjust them, rescope from scratch,
+> or skip ahead.
 ```
 
 Check if a specification already exists:
@@ -77,15 +78,35 @@ Check if a specification already exists:
 ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && echo "exists" || echo "none"
 ```
 
+#### If specification does not exist
+
+→ Proceed to **Step 1**.
+
 #### If specification exists
 
-Check if a plan also exists:
+Read the plan and scoping statuses:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.scoping.{topic} status
 ```
 
-**If plan exists and is completed:**
+**If plan status is `completed` and scoping status is `in-progress`** (reopened for revisit):
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+Found completed scoping for **{topic:(titlecase)}** — spec and plan are in place.
+
+· · · · · · · · · · · ·
+- **`c`/`continue`** — Adjust the existing spec and plan
+- **`r`/`restart`** — Erase the spec, plan, and task files, then rescope from scratch
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If plan status is `completed` and scoping status is not `in-progress`:**
 
 > *Output the next fenced block as a code block:*
 
@@ -93,13 +114,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_uni
 Scoping already completed for "{topic:(titlecase)}". Spec and plan are in place.
 ```
 
-Mark scoping as completed if not already, then invoke the bridge:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.scoping.{topic}
-```
-
-If scoping doesn't exist, init and complete it:
+If the scoping status read was empty (item missing), register and complete it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} scoping {topic}
@@ -108,11 +123,69 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 
 → Proceed to **Step 8**.
 
-**Otherwise:**
+**If plan status is not `completed`** (empty or `in-progress`):
 
 → Proceed to **Step 6** (spec exists but plan is incomplete — resume from format selection).
 
-#### If specification does not exist
+#### If `continue`
+
+Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the `format` from the manifest and locate and read the task files via the format's **[reading.md](../workflow-planning-process/references/output-formats/{format}/reading.md)**:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+Revisiting scoping for "{topic:(titlecase)}".
+
+What should change in the spec or plan?
+```
+
+**STOP.** Wait for user response.
+
+Apply the requested edits — the spec and `planning.md` directly, task file content per the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**. Hard rules still hold: maximum 2 tasks, no acceptance criteria. Then:
+
+1. If the spec changed, re-index it (re-completion re-indexes over the same identity):
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
+   ```
+2. Re-complete scoping:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
+   ```
+3. Commit with raw git — the format's task storage may live outside the work unit, so the scoped helper cannot cover it:
+   ```bash
+   git add -- .workflows/{work_unit} .workflows/.knowledge {format task storage paths touched}
+   git commit -m "scoping({work_unit}): adjust specification and plan"
+   ```
+
+→ Proceed to **Step 8**.
+
+#### If `restart`
+
+1. Read the `format` from the manifest:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+   ```
+2. Load the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**
+3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic
+4. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
+5. Remove the spec's knowledge-base entry:
+   ```bash
+   node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {topic}
+   ```
+6. Delete the specification and planning manifest entries — the scoping item stays `in-progress`; the fresh run re-completes it at Write Tasks:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
+   ```
+7. Commit with raw git — the format's cleanup may remove task storage outside the work unit, so the scoped helper cannot cover it. Stage the work unit, the knowledge store, and every path the cleanup touched, then commit:
+   ```bash
+   git add -- .workflows/{work_unit} .workflows/.knowledge {paths the format cleanup touched}
+   git commit -m "scoping({work_unit}): restart scoping"
+   ```
 
 → Proceed to **Step 1**.
 
