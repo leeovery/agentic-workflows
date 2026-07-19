@@ -12,6 +12,10 @@
 //   gateway.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
 //   gateway.cjs cancel-menu {work_unit}      → Cancel Topic sub-view (E)
 //   gateway.cjs reactivate-menu {work_unit}  → Reactivate Topic sub-view (F)
+//
+// Those calls are the whole legal surface: a verb without its work unit, an
+// unknown verb, or excess arguments is a usage error (stderr, exit 1) — never
+// a silent first-epic render.
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
@@ -234,16 +238,36 @@ function subView(workUnit, projection) {
   ].join('\n');
 }
 
+const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu) {work_unit}';
+
+/** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
+function usageError(message) {
+  process.stderr.write(`gateway: ${message}\n${USAGE}\n`);
+  process.exit(1);
+  return ''; // unreachable; keeps the handler's return type uniform
+}
+
+/** @param {string} verb @param {(name: string, detail: object) => {keys: object[], display: string, rendered: string}} projection */
+function subViewHandler(verb, projection) {
+  return (/** @type {string} */ workUnit, /** @type {string[]} */ ...rest) => (!workUnit || rest.length > 0
+    ? usageError(`${verb} takes exactly one work unit`)
+    : subView(workUnit, projection));
+}
+
 if (require.main === module) {
   engine.gateway.runGateway({
-    index: () => format(discover(process.cwd())),
-    view,
-    'completed-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicCompletedMenu(name, d)),
-    'cancel-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicCancelMenu(d)),
-    'reactivate-menu': (workUnit) => subView(workUnit, (name, d) => engine.project.epicReactivateMenu(d)),
-    fallback: (workUnit) => (workUnit
-      ? formatScoped(workUnit, discover(process.cwd(), workUnit))
+    index: (...rest) => (rest.length > 0
+      ? usageError('index takes no arguments')
       : format(discover(process.cwd()))),
+    view: (workUnit, newArrivalsJson, ...rest) => (!workUnit || rest.length > 0
+      ? usageError('view takes a work unit and an optional new-arrivals JSON')
+      : view(workUnit, newArrivalsJson)),
+    'completed-menu': subViewHandler('completed-menu', (name, d) => engine.project.epicCompletedMenu(name, d)),
+    'cancel-menu': subViewHandler('cancel-menu', (name, d) => engine.project.epicCancelMenu(d)),
+    'reactivate-menu': subViewHandler('reactivate-menu', (name, d) => engine.project.epicReactivateMenu(d)),
+    fallback: (workUnit, ...rest) => (rest.length > 0
+      ? usageError(`unknown verb "${workUnit}"`)
+      : formatScoped(workUnit, discover(process.cwd(), workUnit))),
   });
 }
 
