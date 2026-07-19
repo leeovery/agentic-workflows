@@ -365,6 +365,31 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: set parses a bare tilde as null${NC}"
+setup_fixture
+create_wu tilde-test feature "Tilde test"
+response=$(run_cli set tilde-test.planning.tilde-test task '~' 2>/dev/null)
+stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.planning.items['tilde-test'].task))" "$TEST_DIR/.workflows/tilde-test/manifest.json")
+
+assert_equals "$response" '{"ok":true,"path":"tilde-test.planning.tilde-test","set":{"task":null}}' "Response reports null for a bare tilde"
+assert_equals "$stored" "null" "Manifest stores JSON null, not the literal string"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: batch pair parses a bare tilde as null${NC}"
+setup_fixture
+create_wu tilde-batch feature "Tilde batch"
+run_cli set tilde-batch.planning.tilde-batch task '~' plan_format=local-markdown current='~' >/dev/null 2>&1
+stored=$(node -e "const i=require(process.argv[1]).phases.planning.items['tilde-batch']; console.log(JSON.stringify([i.task, i.plan_format, i.current]))" "$TEST_DIR/.workflows/tilde-batch/manifest.json")
+
+assert_equals "$stored" '[null,"local-markdown",null]' "Positional and batch tildes both land as null"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: set topic-level value for feature${NC}"
 setup_fixture
 create_wu feat-set feature "Set"
