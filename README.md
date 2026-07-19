@@ -94,7 +94,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 Every part of the system, in depth, in [docs/](docs/README.md):
 
-| | |
+| Page | Contents |
 |---|---|
 | [Introduction](docs/introduction.md) | The ideas behind the design |
 | [How it fits together](docs/how-it-fits-together.md) | Work units, phases, and what a session actually does |
