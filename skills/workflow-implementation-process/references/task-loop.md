@@ -112,7 +112,7 @@ Task {internal_id}: {Task Name} — {blocked/failed}
 
 ```
 · · · · · · · · · · · ·
-Task failed. How would you like to proceed?
+Task {status:[blocked|failed]}. How would you like to proceed?
 
 - **`r`/`retry`** — Re-invoke the executor with your comments (provide below)
 - **`s`/`skip`** — Skip this task and move to the next
@@ -304,7 +304,7 @@ Include the user's feedback when re-invoking.
 
 ## H. Update Progress and Commit
 
-**Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete.
+**Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete — or, when this stage was reached via a skip path (stage C `skip`, or the blocked-tasks `skip`), its skip transition instead.
 
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
 

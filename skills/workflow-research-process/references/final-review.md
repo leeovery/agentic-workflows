@@ -12,6 +12,16 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 
 ## A. Check Review State
 
+**Deep-dive findings drain first.** Scan `.workflows/.cache/{work_unit}/research/{topic}/` for `deep-dive-*.md` files with `status: pending` or `status: acknowledged` — thread findings that never finished surfacing during the session would otherwise be dropped at conclusion.
+
+**If any such file exists:**
+
+Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+**Otherwise:**
+
 Find the most recent review file in `.workflows/.cache/{work_unit}/research/{topic}/` by set number.
 
 #### If no review files exist
@@ -40,7 +50,13 @@ Nothing new for a fresh review to see — the final-review gate is satisfied.
 
 A dispatch-time skeleton whose agent hasn't returned.
 
-**If it was dispatched this session** (the agent may still be running):
+**If it was dispatched this session and the user chose `p`/`proceed` at the session's in-flight gate:**
+
+The wait was already declined for this file — do not watch it. Its results persist in cache for a later session; the final-review gate proceeds without it.
+
+→ Return to caller.
+
+**If it was dispatched this session and the wait was not declined** (the agent may still be running):
 
 Watch for the file to flip to `status: pending`.
 

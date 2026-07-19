@@ -55,7 +55,7 @@ The target is not on the map yet.
 
 #### If the row's lifecycle is `handled` or `cancelled`
 
-The topic is closed — no future session will drain its Triage, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle` and its `routing=` value as `routing`.
+The topic is closed — no future session will drain its Triage, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
 
 → Proceed to **E. Closed Target**.
 
@@ -192,10 +192,10 @@ Reopen the topic — for `handled`:
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
 ```
 
-For `cancelled` (an engine transaction — it commits itself):
+For `cancelled` (an engine transaction — it commits itself) — reactivate the phase item that is actually cancelled, never the map `routing` (the initial intent may name a phase, or be absent, while the cancelled work sits elsewhere). Read both phase item statuses (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.{discussion|research}.{target} status`) and set `{cancelled_phase}` to the phase whose item is `cancelled` — when both are, `discussion` (the later phase):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {routing} {target}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {cancelled_phase} {target}
 ```
 
 If the response is `ok: false`, surface the engine's error verbatim and re-render this menu — the concern is still unlanded. Otherwise re-classify against the fresh state:

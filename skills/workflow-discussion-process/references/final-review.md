@@ -50,7 +50,13 @@ Nothing new for a fresh review to see — the final-review gate is satisfied.
 
 A dispatch-time skeleton whose agent hasn't returned.
 
-**If it was dispatched this session** (the agent may still be running):
+**If it was dispatched this session and the user chose `p`/`proceed` at the session's in-flight gate:**
+
+The wait was already declined for this file — do not watch it. Its results persist in cache for a later session; the final-review gate proceeds without it.
+
+→ Return to caller.
+
+**If it was dispatched this session and the wait was not declined** (the agent may still be running):
 
 Watch for the file to flip to `status: pending`.
 

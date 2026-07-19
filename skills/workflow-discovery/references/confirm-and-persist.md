@@ -72,8 +72,9 @@ Replace the **Conclusion** `(none)` placeholder. Skip if no log file exists (bro
 
 - New topics + (optional) edits: `{N_new} topic(s) added{ and M edit(s) applied | }. Map now has {T} topics.`
 - Edits only, no new topics: `{M} edit(s) applied. Map has {T} topics.`
+- No new topics and no edits: `No map changes — exploration captured in the session log. Map has {T} topics.`
 
-`{T}` is the `map_total` carried by every map-operation response — take it from the session's last one.
+`{T}` is the `map_total` carried by every map-operation response — take it from the session's last one. A session with no map operations takes `{T}` from Step 7's discovery output (the map is unchanged).
 
 Pick the commit message:
 

@@ -31,7 +31,9 @@ function setupGitFixture() {
 }
 
 function cleanupFixture(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
+  // Retries absorb the macOS teardown race (ENOTEMPTY while a just-exited
+  // child's writes settle).
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 function writeFile(dir, rel, content) {

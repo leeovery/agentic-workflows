@@ -18,9 +18,9 @@ Read `{file}`.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+· · · · · · · · · · · ·
 Found existing {artifact} for **{topic:(titlecase)}**.
 
-· · · · · · · · · · · ·
 - **`c`/`continue`** — Pick up where you left off
 - **`r`/`restart`** — Delete the {artifact} and start fresh
 · · · · · · · · · · · ·
@@ -35,6 +35,7 @@ Found existing {artifact} for **{topic:(titlecase)}**.
 #### If `restart`
 
 1. Delete {restart_targets}
-2. Commit: `{commit}`
+2. Reset {restart_resets} — only when the caller passed `restart_resets`; skip otherwise. Deleting artifacts while their manifest tracking rows stay satisfied would leave the fresh run believing that work already happened.
+3. Commit: `{commit}`
 
 → Return to caller for **Step 1**.

@@ -21,6 +21,7 @@ You receive:
 7. **Topic**: The plan topic name (used for output directory)
 8. **Task suffix**: The `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
 9. **Work type**: `quick-fix` tasks are deliberately authored without acceptance criteria — verify them by the quick-fix branches in Steps 3 and 4, never report the missing criteria as a finding
+10. **Implementation files**: the files the plan's task commits touched — your starting set for locating this task's code (search wider when the task's implementation isn't among them)
 
 ## Your Task
 

@@ -40,6 +40,8 @@ For continuing sessions, also check: does any new candidate overlap with an exis
 
 Every candidate folded into an existing map item, or the exploration surfaced none — there is no proposal to render and nothing to confirm. Tell the user briefly (the exploration itself is captured in the session log). Synthesis outcome: `confirmed`, with an **empty working list** — Step 12 confirm-and-persist finalises and closes the session without new topics.
 
+→ Load **[brief-synthesis.md](brief-synthesis.md)** and follow its instructions as written — with the empty working list, its pass covers the existing map topics this session's exploration materially deepened: their briefs regenerate and in-flight downstream work gets `reconcile_needed`.
+
 → Return to caller.
 
 #### Otherwise

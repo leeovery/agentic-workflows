@@ -76,6 +76,8 @@ Set `gate_outcome` to `processed`.
 
 → Return to caller.
 
+#### Otherwise
+
 Render the candidate. `{provenance}` is `derived from research "{parent}"` when `analysis` is `research-analysis` (read `parent` from the block), or `surfaced by gap analysis` when `discovery-gap-analysis`.
 
 > *Output the next fenced block as a code block:*

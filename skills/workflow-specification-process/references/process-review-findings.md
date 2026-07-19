@@ -162,7 +162,7 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 
 → Return to **B. Process One Item at a Time**.
 
-#### If `approved`
+#### If `yes`
 
 1. Log the content to the specification verbatim
 2. Update the tracking file: set resolution to "Approved", add any discussion notes
@@ -178,7 +178,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 
 #### If `auto`
 
-1. Log the content (same as "If approved" above)
+1. Log the content (same as "If `yes`" above)
 2. Update the tracking file: set resolution to "Approved"
 3. Update `finding_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto`)
 4. Commit
@@ -186,7 +186,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 
 → After all processed, proceed to **C. After All Findings Processed**.
 
-#### If `skipped`
+#### If `skip`
 
 1. Update the tracking file: set resolution to "Skipped", note the reason
 2. Commit — ensures progress survives context refresh

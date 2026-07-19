@@ -92,6 +92,7 @@ Each verifier receives:
 7. **Topic** — the plan topic name (used for output directory)
 8. **Task suffix** — the `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
 9. **Work type** — from the manifest (`quick-fix` switches the verifier to completeness-based criteria)
+10. **Implementation files** — the plan's file list from **A. Identify Scope** (the verifier's starting set for locating the task's code)
 
 If any verifier fails (error, timeout), record the failure and continue — aggregate what's available.
 

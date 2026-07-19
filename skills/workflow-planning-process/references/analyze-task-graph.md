@@ -77,7 +77,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 → Return to **B. Review and Approve**.
 
-**If `approved`:**
+**If `yes`:**
 
 Commit with raw git — the graph data lands in the format's task storage, which may live outside the work unit, so the scoped helper cannot cover it:
 
@@ -149,7 +149,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 → Return to **B. Review and Approve**.
 
-**If `approved`:**
+**If `yes`:**
 
 Commit with raw git — the graph data lands in the format's task storage, which may live outside the work unit, so the scoped helper cannot cover it:
 

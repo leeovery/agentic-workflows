@@ -57,7 +57,7 @@ To find the next task to implement:
    tick list --parent <phase-tick-id> --status in_progress
    ```
 
-   Exclude results that are parents of other results — `tick start` cascades `in_progress` up the hierarchy, so only a leaf (no `in_progress` or `open` children) is resumable. If a task remains, it is the next task: it is already started, so skip the start transition and implement it.
+   `tick start` cascades `in_progress` up the hierarchy, so containers appear alongside the task actually in flight. Exclude any result that has an `open` or `in_progress` child — check each result's children (`tick show <tick-id>`); the open children of a cascaded container are not themselves in this result set, so comparing results against each other is not enough. Only a childless-or-all-done result is resumable. If a task remains, it is the next task: it is already `in_progress` in tick, so skip the format's mark-in-progress transition — the engine `task start` still runs (its task record and gate bookkeeping are separate from tick status).
 
 2. **Otherwise, take the next ready task:**
 

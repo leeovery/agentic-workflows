@@ -99,6 +99,12 @@ Approve this task list?
 
 → Proceed to **C. Author Phase Tasks**.
 
+**If the user navigates:**
+
+Resolve the destination per **Navigation** above — the user's position moves, the leading edge does not.
+
+→ Return to **B. Process Current Phase** for the phase navigated to.
+
 **If confirmed:**
 
 → Proceed to **C. Author Phase Tasks**.

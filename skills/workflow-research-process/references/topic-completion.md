@@ -25,11 +25,11 @@ The current topic is converging — tradeoffs are clear, it's approaching decisi
 
 **STOP.** Wait for user response.
 
-#### If the user concludes
+#### If `conclude`
 
 → Load **[conclude-research.md](conclude-research.md)** and follow its instructions as written.
 
-#### If the user keeps digging
+#### If `keep`
 
 Continue exploring. The convergence signal isn't a stop sign — it's an awareness check. The user might want to stress-test the emerging conclusion, explore edge cases, or understand the problem more deeply before moving on.
 
