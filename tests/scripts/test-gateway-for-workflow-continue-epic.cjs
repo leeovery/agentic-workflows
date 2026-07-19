@@ -1681,3 +1681,110 @@ describe('workflow-continue-epic detail counts (imports/seeds)', () => {
     assert.strictEqual(d.seeds_count, 0);
   });
 });
+
+describe('workflow-continue-epic CLI dispatch', () => {
+  const path = require('path');
+  const { spawnSync } = require('child_process');
+  const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu) {work_unit}\n';
+
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function epicFixture() {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+    });
+  }
+
+  /** @param {string[]} args */
+  function run(args) {
+    return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
+  }
+
+  it('bare call still renders the index byte-identically', () => {
+    epicFixture();
+    const res = run([]);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stderr, '');
+    assert.strictEqual(res.stdout, format(discover(dir)));
+  });
+
+  it('bare positional still renders the scoped dump byte-identically', () => {
+    epicFixture();
+    const res = run(['v1']);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stderr, '');
+    assert.strictEqual(res.stdout, formatScoped('v1', discover(dir, 'v1')));
+  });
+
+  it('bare positional for an unknown epic keeps the in-band error dump', () => {
+    const res = run(['ghost']);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stdout, '=== EPIC: ghost ===\nerror: no active epic with this name\n');
+  });
+
+  it('view {work_unit} still answers the sectioned snapshot, with and without new arrivals', () => {
+    epicFixture();
+    for (const args of [['view', 'v1'], ['view', 'v1', '{"research_analysis":[],"gap_analysis":[]}']]) {
+      const res = run(args);
+      assert.strictEqual(res.status, 0, res.stderr);
+      assert.ok(res.stdout.includes('=== DATA'));
+      assert.ok(res.stdout.includes('=== DISPLAY'));
+      assert.ok(res.stdout.includes('=== MENU'));
+    }
+  });
+
+  it('view without a work unit errors instead of rendering the first epic', () => {
+    epicFixture();
+    const res = run(['view']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: view takes a work unit and an optional new-arrivals JSON\n' + USAGE);
+  });
+
+  it('view with excess positionals errors with usage', () => {
+    epicFixture();
+    const res = run(['view', 'v1', '{}', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: view takes a work unit and an optional new-arrivals JSON\n' + USAGE);
+  });
+
+  it('each sub-view verb errors without its work unit instead of rendering the first epic', () => {
+    epicFixture();
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu']) {
+      const res = run([verb]);
+      assert.strictEqual(res.status, 1, verb);
+      assert.strictEqual(res.stdout, '', verb);
+      assert.strictEqual(res.stderr, `gateway: ${verb} takes exactly one work unit\n` + USAGE, verb);
+    }
+  });
+
+  it('each sub-view verb errors on excess positionals', () => {
+    epicFixture();
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu']) {
+      const res = run([verb, 'v1', 'extra']);
+      assert.strictEqual(res.status, 1, verb);
+      assert.strictEqual(res.stdout, '', verb);
+      assert.strictEqual(res.stderr, `gateway: ${verb} takes exactly one work unit\n` + USAGE, verb);
+    }
+  });
+
+  it('an unknown verb with arguments errors instead of falling to the scoped dump', () => {
+    epicFixture();
+    const res = run(['veiw', 'v1']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: unknown verb "veiw"\n' + USAGE);
+  });
+
+  it('index with excess positionals errors with usage', () => {
+    const res = run(['index', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: index takes no arguments\n' + USAGE);
+  });
+});
