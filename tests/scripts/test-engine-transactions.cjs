@@ -550,6 +550,7 @@ describe('engine workunit complete', () => {
     assert.match(engineFails(dir, ['workunit', 'complete', 'ghost', '-m', 'msg']).error, /manifest not found/);
     assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
   });
+
 });
 
 describe('engine workunit cancel', () => {
@@ -889,5 +890,22 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
     assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'transitions must require the shared schema, not mirror it');
     assert.ok(!/VALID_PHASE_STATUSES\s*=\s*{/.test(src), 'no local copy of the status table');
+  });
+});
+
+describe('engine usage banner', () => {
+  it('lists every topic transition, reopen included', () => {
+    const res = spawnSync('node', [ENGINE, 'bogus-command'], { encoding: 'utf8' });
+    assert.strictEqual(res.status, 1);
+    for (const line of [
+      'topic start <work-unit> <phase> <topic>',
+      'topic complete <work-unit> <phase> <topic>',
+      'topic reopen <work-unit> <phase> <topic>',
+      'topic supersede <work-unit> <phase> <topic> --by <topic>',
+      'topic cancel <work-unit> <phase> <topic>',
+      'topic reactivate <work-unit> <phase> <topic>',
+    ]) {
+      assert.ok(res.stderr.includes(`  ${line}\n`), `usage banner missing "${line}"`);
+    }
   });
 });
