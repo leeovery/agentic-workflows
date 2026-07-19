@@ -120,6 +120,16 @@ Every part of the system, in depth, in [docs/](docs/README.md):
 
 **Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
 
+## Contributing
+
+Contributions are welcome! Whether it's bug fixes, workflow improvements, or new ideas — please open an issue first to discuss significant changes.
+
+## Related Packages
+
+- [**agntc**](https://github.com/leeovery/agntc) — The CLI that powers skill, agent, and hook installation
+- [**@leeovery/claude-laravel**](https://github.com/leeovery/claude-laravel) — Laravel development skills for Claude Code
+- [**@leeovery/claude-nuxt**](https://github.com/leeovery/claude-nuxt) — Nuxt.js development skills for Claude Code
+
 ## License
 
 MIT
