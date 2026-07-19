@@ -100,6 +100,18 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ---
 
+## More features
+
+- **Graduated autonomy.** Every approval gate accepts auto mode; hand over as much or as little of the loop as you trust, per work unit, reversibly.
+- **Durable by construction.** State transitions are transactions: validated first, refused cleanly, committed atomically. A crash mid-anything leaves files byte-identical.
+- **Full audit trail.** Every phase, decision, and review finding lands in git through engine-owned commits; the manifest is versioned alongside your code.
+- **Self-healing epics.** Background analyses re-read completed research and discussions to surface emergent topics, gaps between artifacts, and work that should exist but doesn't.
+- **Provenance everywhere.** Every topic records how it landed on the map, every knowledge answer cites its source, every review finding carries a confidence level and a recommended fix.
+- **Nothing falls on the floor.** Off-topic concerns raised mid-session are triaged into the right topic's queue and block that topic's conclusion until drained.
+- **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
+- **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
+- **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
+
 ## Documentation
 
 Every part of the system, in depth, in [docs/](docs/README.md):
