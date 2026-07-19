@@ -117,6 +117,32 @@ Update the in-memory summary for that item with the user's response. Re-render t
 
 ## D. Write and Commit
 
+**If any item's needed field is still null** (source file missing, nothing provided via the edit loop), give it an exit — otherwise it re-triggers this flow on every epic entry forever:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+{K} topic(s) have no source file to draft from:
+
+@foreach(item in items_to_recover where derived field is null)
+- {item.name:(titlecase)}
+@endforeach
+
+- **`p`/`provide`** — Tell me the summary for each and I'll write it
+- **`d`/`dismiss`** — Write a minimal name-derived summary noting the missing source, so this stops re-prompting
+- **`l`/`leave`** — Leave them unset; this flow re-offers next time
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `provide`:** set each item's derived field from the user's text and include it in the writes below.
+
+**If `dismiss`:** for each such item, set the null field(s) to a minimal value derived from the topic name and routing, ending `(source artifact missing)`, and include them in the writes below.
+
+**If `leave`:** the items stay out of the writes below and re-qualify on the next epic entry.
+
 For each item, write only the newly-drafted fields:
 
 - If `item.needs_summary` is true and `item.derived_summary` is non-null:
@@ -130,8 +156,6 @@ For each item, write only the newly-drafted fields:
   ```bash
   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{item.name} description "{description}"
   ```
-
-Skip items where the relevant derived field is null (source file was missing) — they remain unset and will trigger this flow again on the next workflow-continue-epic invocation, giving the user another chance.
 
 Single commit covering all writes:
 

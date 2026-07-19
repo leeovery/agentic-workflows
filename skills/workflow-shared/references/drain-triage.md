@@ -4,7 +4,7 @@
 
 ---
 
-Folds the current topic's `## Triage` entries — concerns rerouted here from other topics — into its working content, then resets the section to `(none)`. Runs once per session, before the loop. A fresh `(none)` artefact is a no-op; a resume or reopen folds whatever landed since the topic last ran.
+Folds the current topic's `## Triage` entries — concerns rerouted here from other topics — into its working content, then resets the section to `(none)`. Runs at every entry to the session step — the first pass of a session, and again when the conclusion gate bounces back because an entry landed mid-session. A `(none)` artefact is a no-op; a resume or reopen folds whatever landed since the topic last ran.
 
 The fold preserves the **full** rerouted context — each entry becomes real working material the session explores, not a bare map row. The conclusion gate backstops this: a topic cannot conclude while its `## Triage` ≠ `(none)`.
 
@@ -43,6 +43,8 @@ For each `### {title}` subsection under `## Triage`, carry its **full body** (ev
   ```bash
   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
   ```
+
+  If the add refuses because the subtopic already exists, the concern names ground this discussion already covers — skip the map write and fold the entry body into that existing subtopic's section instead of creating a new one.
 - Create a `## {title}` subtopic section with the entry body written in as its `### Context`, so the session explores it from there.
 
 **If `phase` is `research`:**
