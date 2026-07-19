@@ -61,10 +61,10 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 ### Step 0.2: Boot
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
-> Running migrations and the knowledge base check.
+Running migrations and the knowledge base check.
 ```
 
 **Run the boot pipeline — this is mandatory. You must complete it before proceeding.**
