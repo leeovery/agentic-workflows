@@ -980,49 +980,49 @@ describe('reads + derivations', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null });
     });
 
     it('returns researching when research item is in-progress', () => {
       const m = loadWithPhases('auth', { research: 'in-progress' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research' });
+      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress' });
     });
 
     it('returns ready_for_discussion when research is completed and no discussion item yet', () => {
       const m = loadWithPhases('auth', { research: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' });
+      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: 'completed' });
     });
 
     it('returns discussing when discussion item is in-progress', () => {
       const m = loadWithPhases('auth', { discussion: 'in-progress' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion' });
+      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: null });
     });
 
     it('returns decided when discussion item is completed', () => {
       const m = loadWithPhases('auth', { discussion: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion' });
+      assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null });
     });
 
     it('returns cancelled only when BOTH research and discussion items are cancelled', () => {
       const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null });
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled' });
     });
 
     it('falls through to fresh when only research is cancelled (discussion path still open)', () => {
       const m = loadWithPhases('auth', { research: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: 'cancelled' });
     });
 
     it('falls through to fresh when only discussion is cancelled (research path still open)', () => {
       const m = loadWithPhases('auth', { discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null });
     });
 
     it('renders ready_for_discussion when research is superseded and no discussion exists', () => {
@@ -1032,7 +1032,7 @@ describe('reads + derivations', () => {
       // remains open and the lifecycle should reflect that.
       const m = loadWithPhases('auth', { research: 'superseded' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' });
+      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: 'superseded' });
     });
 
     it('discussion status wins over research status — decided overrides ready_for_discussion', () => {
@@ -1061,7 +1061,7 @@ describe('reads + derivations', () => {
     it('handled marker beats ready_for_discussion (research completed, no discussion)', () => {
       const m = loadWithHandled('umbrella', true, { research: 'completed' });
       const r = computeTopicLifecycle(m, 'umbrella');
-      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null });
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: 'completed' });
     });
 
     it('handled marker beats decided (same-named discussion completed)', () => {
@@ -1099,6 +1099,18 @@ describe('reads + derivations', () => {
       const m = loadManifest(dir, 'alpha');
       assert.strictEqual(computeTopicLifecycle(m, 'umbrella').lifecycle, 'handled');
       assert.strictEqual(computeTopicLifecycle(m, 'sibling').lifecycle, 'ready_for_discussion');
+    });
+
+    it('handled without a research item reports research_state null', () => {
+      const m = loadWithHandled('umbrella', true, {});
+      const r = computeTopicLifecycle(m, 'umbrella');
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: null });
+    });
+
+    it('handled with superseded research reports the superseded state', () => {
+      const m = loadWithHandled('umbrella', true, { research: 'superseded' });
+      const r = computeTopicLifecycle(m, 'umbrella');
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: 'superseded' });
     });
   });
 
