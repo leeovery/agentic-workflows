@@ -105,7 +105,7 @@ function discover(cwd, workUnit) {
 
       if (item.sources && typeof item.sources === 'object') {
         spec.sources = Object.entries(item.sources).map(([srcName, srcData]) => {
-          const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'incorporated') : 'incorporated';
+          const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'pending') : 'pending';
           const match = discItemsList.find(i => i.name === srcName);
           const discStatus = match ? (match.status || 'unknown') : 'unknown';
           return { name: srcName, status: srcStatus, discussion_status: discStatus };

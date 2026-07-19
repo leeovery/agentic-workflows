@@ -294,6 +294,29 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(commit.status, 'addressed');
   });
 
+  it('defaults source status to pending when object-shaped without status', () => {
+    createManifest(dir, 'auth', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: {
+              status: 'completed',
+              sources: { auth: {}, design: 'not-an-object' },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+    const r = discover(dir);
+    const spec = r.specifications[0];
+    assert.strictEqual(spec.sources.find(s => s.name === 'auth').status, 'pending');
+    assert.strictEqual(spec.sources.find(s => s.name === 'design').status, 'pending');
+    assert.strictEqual(spec.has_pending_sources, true);
+  });
+
   it('defaults consult reference status to pending when object-shaped without status', () => {
     createManifest(dir, 'mint', {
       work_type: 'epic',
