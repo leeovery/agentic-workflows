@@ -54,29 +54,29 @@ Epics:
 Inbox: 2 ideas, 1 bug
 
 2 completed, 0 cancelled.
-```
 
-> · · · · · · · · · · · ·
->
-> What would you like to do?
->
-> - **`1`** — Continue "Api Rate Limiting" — feature, specification (in-progress)
-> - **`2`** — Continue "Checkout Double Charge" — bugfix, investigation (in-progress)
-> - **`3`** — Continue "Payments Overhaul" — epic
->
-> - **`s`/`start`** — Start something new (not sure what kind yet)
-> - **`f`/`feature`** — Start new feature
-> - **`e`/`epic`** — Start new epic
-> - **`b`/`bugfix`** — Start new bugfix
-> - **`q`/`quick-fix`** — Start new quick-fix
-> - **`c`/`cross-cutting`** — Start new cross-cutting concern
-> - **`i`/`inbox`** — View the inbox and start from an item
-> - **`v`/`view`** — View completed & cancelled work units
-> - **`m`/`manage`** — Manage a work unit's lifecycle
->
-> Select an option:
->
-> · · · · · · · · · · · ·
+· · · · · · · · · · · ·
+
+What would you like to do?
+
+- 1 — Continue "Api Rate Limiting" — feature, specification (in-progress)
+- 2 — Continue "Checkout Double Charge" — bugfix, investigation (in-progress)
+- 3 — Continue "Payments Overhaul" — epic
+
+- s/start — Start something new (not sure what kind yet)
+- f/feature — Start new feature
+- e/epic — Start new epic
+- b/bugfix — Start new bugfix
+- q/quick-fix — Start new quick-fix
+- c/cross-cutting — Start new cross-cutting concern
+- i/inbox — View the inbox and start from an item
+- v/view — View completed & cancelled work units
+- m/manage — Manage a work unit's lifecycle
+
+Select an option:
+
+· · · · · · · · · · · ·
+```
 
 Numbered items resume existing work exactly where it stopped, in a fresh session, days later. Letters start something new. There are no phases to memorise and no state to manage by hand.
 
@@ -157,18 +157,18 @@ Task provider-abstraction-1-3: Add gateway interface — approved
 Phase: 1 — Provider Interface
 Extracted a PaymentGateway interface over the Stripe client and
 added contract tests covering both implementations. 14 tests green.
-```
 
-> · · · · · · · · · · · ·
->
-> Approve task provider-abstraction-1-3?
->
-> - **`y`/`yes`** — Commit and continue to next task
-> - **`a`/`auto`** — Approve this and all future tasks automatically
-> - **Ask** — Ask questions about the implementation (doesn't approve or reject)
-> - **Comment** — Request changes (triggers a fix round)
->
-> · · · · · · · · · · · ·
+· · · · · · · · · · · ·
+
+Approve task provider-abstraction-1-3?
+
+- y/yes — Commit and continue to next task
+- a/auto — Approve this and all future tasks automatically
+- Ask — Ask questions about the implementation (doesn't approve or reject)
+- Comment — Request changes (triggers a fix round)
+
+· · · · · · · · · · · ·
+```
 
 ## Features
 
