@@ -82,6 +82,8 @@ Initialize or resume implementation tracking (idempotent — creates the manifes
 node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
 ```
 
+The response's `MENU: blocked tasks` section serves the task loop's blocked-tasks stop — never emit it at this step.
+
 #### If the response's `mode` is `created`
 
 Commit: `impl({work_unit}): start implementation`
