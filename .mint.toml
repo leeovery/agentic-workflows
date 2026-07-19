@@ -26,6 +26,12 @@ diff_exclude = [
     "tests/"
 ]
 
+[release]
+# The workflow-start banner byline carries the shipped version; mint mirrors the
+# new version onto that line at release time.
+version_file = "skills/workflow-start/SKILL.md"
+version_pattern = "Agentic Engineering Workflows (v{version})"
+
 [release.hooks]
 # Rebuild and commit the knowledge CLI bundle before the tag so every release ships
 # a fresh skills/workflow-knowledge/scripts/knowledge.cjs (AGNTC installs from tags
