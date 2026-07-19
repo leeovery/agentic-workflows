@@ -52,7 +52,7 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'investigation (in-progress)');
   });
 
-  it('filters out done work units', () => {
+  it('surfaces a finished pipeline still in-progress as finalising work', () => {
     createManifest(dir, 'done-feature', {
       work_type: 'feature',
       phases: {
@@ -64,8 +64,10 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, false);
-    assert.strictEqual(r.features.count, 0);
+    assert.strictEqual(r.state.has_any_work, true);
+    assert.strictEqual(r.features.count, 1);
+    assert.strictEqual(r.features.work_units[0].next_phase, 'done');
+    assert.strictEqual(r.features.work_units[0].finalising, true);
   });
 
   it('epic stays active when one topic completes review with others mid-pipeline', () => {
@@ -148,7 +150,7 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'ready for specification');
   });
 
-  it('mixed active and done in same type only shows active', () => {
+  it('mixed active and finalising in same type lists both', () => {
     createManifest(dir, 'active-feat', {
       work_type: 'feature',
       phases: { discussion: { items: { 'active-feat': { status: 'in-progress' } } } },
@@ -164,11 +166,14 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.features.count, 1);
-    assert.strictEqual(r.features.work_units[0].name, 'active-feat');
+    assert.strictEqual(r.features.count, 2);
+    assert.deepStrictEqual(r.features.work_units.map((u) => [u.name, u.finalising]), [
+      ['active-feat', false],
+      ['done-feat', true],
+    ]);
   });
 
-  it('has_any_work is false when only completed and done exist', () => {
+  it('has_any_work counts a finalising unit — only closed units leave it false', () => {
     createManifest(dir, 'archived', { work_type: 'feature', status: 'completed' });
     createManifest(dir, 'done', {
       work_type: 'bugfix',
@@ -181,7 +186,8 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, false);
+    assert.strictEqual(r.state.has_any_work, true);
+    assert.strictEqual(r.bugfixes.work_units[0].finalising, true);
   });
 
   it('groups quick-fix work units separately', () => {
@@ -203,7 +209,7 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.quick_fixes.work_units[0].phase_label, 'scoping (in-progress)');
   });
 
-  it('quick-fix done is excluded from active', () => {
+  it('quick-fix done is surfaced as finalising', () => {
     createManifest(dir, 'done-qf', {
       work_type: 'quick-fix',
       phases: {
@@ -213,7 +219,8 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.quick_fixes.count, 0);
+    assert.strictEqual(r.quick_fixes.count, 1);
+    assert.strictEqual(r.quick_fixes.work_units[0].finalising, true);
   });
 
   it('discovers inbox quickfixes', () => {
@@ -252,7 +259,7 @@ describe('workflow-start discovery', () => {
     assert.strictEqual(r.cross_cutting.work_units[0].phase_label, 'discussion (in-progress)');
   });
 
-  it('cross-cutting done is excluded from active', () => {
+  it('cross-cutting done is surfaced as finalising', () => {
     createManifest(dir, 'done-cc', {
       work_type: 'cross-cutting',
       phases: {
@@ -261,7 +268,8 @@ describe('workflow-start discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.cross_cutting.count, 0);
+    assert.strictEqual(r.cross_cutting.count, 1);
+    assert.strictEqual(r.cross_cutting.work_units[0].finalising, true);
   });
 
   it('cross-cutting completed shows in completed array', () => {

@@ -34,7 +34,7 @@ describe('workflow-continue-quickfix discovery', () => {
     assert.strictEqual(r.count, 1);
   });
 
-  it('excludes done quick-fixes', () => {
+  it('surfaces a finished pipeline still in-progress as finalising', () => {
     createManifest(dir, 'done', {
       work_type: 'quick-fix',
       phases: {
@@ -44,7 +44,10 @@ describe('workflow-continue-quickfix discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.count, 0);
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.quick_fixes[0].next_phase, 'done');
+    assert.strictEqual(r.quick_fixes[0].finalising, true);
+    assert.ok(format(r).includes('  done: finalising — pipeline complete\n'));
   });
 
   it('includes completed_phases', () => {
