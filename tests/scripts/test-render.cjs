@@ -278,6 +278,17 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(title({ label: 'Bare' }), 'Bare');
   });
 
+  it('clamps over-long labels with an ellipsis — glyph and tag survive', () => {
+    const long = 'x'.repeat(100);
+    const out = title({ glyph: '◐', label: long, tag: 'researching' });
+    assert.strictEqual(out, `◐ ${'x'.repeat(39)}… [researching]`);
+  });
+
+  it('leaves a 40-char label unclamped', () => {
+    const exact = 'y'.repeat(40);
+    assert.strictEqual(title({ label: exact }), exact);
+  });
+
   it('discoveryGlyph maps tiers to the canonical symbol set', () => {
     assert.strictEqual(discoveryGlyph('decided'), '✓');
     assert.strictEqual(discoveryGlyph('fresh'), '○');
