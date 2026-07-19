@@ -17,8 +17,6 @@ function phaseFileExists(cwd, workUnit, phase, manifest) {
     case 'specification':  return listDirs(dir).some(d => fileExists(path.join(dir, d, 'specification.md')));
     case 'planning':       return phaseStatus(manifest, phase) !== null;
     case 'implementation': return phaseStatus(manifest, phase) !== null;
-    case 'review':         return listDirs(dir).some(d =>
-      listDirs(path.join(dir, d)).some(r => r.startsWith('r') && fileExists(path.join(dir, d, r, 'review.md'))));
     default: return false;
   }
 }

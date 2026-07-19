@@ -89,13 +89,11 @@ describe('workflow-bridge discovery', () => {
     });
     createFile(dir, '.workflows/full/discussion/full.md', '');
     createFile(dir, '.workflows/full/specification/full/specification.md', '');
-    createFile(dir, '.workflows/full/review/full/r1/review.md', '');
     const r = discover(dir, 'full');
     assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.phases.specification.exists, true);
     assert.strictEqual(r.phases.planning.exists, true);
     assert.strictEqual(r.phases.implementation.exists, true);
-    assert.strictEqual(r.phases.review.exists, true);
   });
 
   it('detects planning existence from manifest not files', () => {
