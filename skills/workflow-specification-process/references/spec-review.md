@@ -30,7 +30,7 @@ Commit the updated manifest.
 
 #### If `review_cycle` is already set
 
-Increment `review_cycle` by 1 via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle {N}`).
+Increment `review_cycle` by 1 via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle {N+1}`).
 
 Record the current cycle number — used for tracking file naming (`c{N}`).
 
@@ -96,9 +96,11 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
   ```
-  Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). For each source name, construct the source file path based on work type:
-  - Bugfix: `.workflows/{work_unit}/investigation/{source-name}.md`
-  - Otherwise: `.workflows/{work_unit}/discussion/{source-name}.md`
+  Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). Resolve each source name to its artifact — sources can be incorporated specifications or research files, not only discussions:
+  - If a specification item named `{source-name}` exists in the manifest (an incorporated source spec): `.workflows/{work_unit}/specification/{source-name}/specification.md`
+  - Else if `.workflows/{work_unit}/research/{source-name}.md` exists: that research file
+  - Else, when work type is `bugfix`: `.workflows/{work_unit}/investigation/{source-name}.md`
+  - Else: `.workflows/{work_unit}/discussion/{source-name}.md`
 
   Pass all resolved paths to the agent.
 - **Topic name**: the current topic
@@ -226,6 +228,8 @@ Run another review cycle?
 1. **Verify tracking files are marked complete** — All input review and gap analysis tracking files across all cycles must have `status: complete`.
 
 > **CHECKPOINT**: Do not confirm completion if any tracking files still show `status: in-progress`. They indicate incomplete review work.
+
+If any tracking file still shows `status: in-progress`, its findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
 
 2. **Commit** all review tracking files:
 
