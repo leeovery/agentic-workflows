@@ -80,13 +80,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
 ```
 
-Register the task_map entries. For each task, map internal_id to external_id:
+Register the task_map entries. Map the phase's internal ID (`{topic}-1`) to its external ID, then each task's internal_id to external_id:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{topic}-1 {phase_external_id}
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
 ```
 
-Both the plan-level `external_id` and per-task external IDs are determined by the format's authoring instructions (see the Plan Structure and Task Storage sections).
+The plan-level `external_id`, the phase external ID, and per-task external IDs are all determined by the format's authoring instructions (see the Plan Structure, Phase Structure, and Task Storage sections).
 
 ## D. Mark Scoping Complete
 
