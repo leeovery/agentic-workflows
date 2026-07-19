@@ -116,21 +116,22 @@ Epic Completed
 
 ## F. Enter Plan Mode
 
-Map the selection to a skill invocation using this routing table:
+Section E returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. The routes resolve as follows:
 
-| Selection | Skill | Work Type | Work Unit | Topic |
-|-----------|-------|-----------|-----------|-------|
-| Continue discussion | `/workflow-discussion-entry` | epic | {work_unit} | {topic} |
-| Continue specification | `/workflow-specification-entry` | epic | {work_unit} | {topic} |
-| Continue plan | `/workflow-planning-entry` | epic | {work_unit} | {topic} |
-| Continue implementation | `/workflow-implementation-entry` | epic | {work_unit} | {topic} |
-| Continue research | `/workflow-research-entry` | epic | {work_unit} | {topic} |
-| Start specification | `/workflow-specification-entry` | epic | {work_unit} | — |
-| Start planning for {topic} | `/workflow-planning-entry` | epic | {work_unit} | {topic} |
-| Start implementation of {topic} | `/workflow-implementation-entry` | epic | {work_unit} | {topic} |
-| Start review for {topic} | `/workflow-review-entry` | epic | {work_unit} | {topic} |
-| Start new research | `/workflow-research-entry` | epic | {work_unit} | — |
-| Start new discussion | `/workflow-discussion-entry` | epic | {work_unit} | — |
+| Selection | Route |
+|-----------|-------|
+| Continue discussion | `/workflow-discussion-entry epic {work_unit} {topic}` |
+| Continue specification | `/workflow-specification-entry epic {work_unit} {topic}` |
+| Continue plan | `/workflow-planning-entry epic {work_unit} {topic}` |
+| Continue implementation | `/workflow-implementation-entry epic {work_unit} {topic}` |
+| Continue research | `/workflow-research-entry epic {work_unit} {topic}` |
+| Continue discovery | `/workflow-discovery epic {work_unit}` |
+| Start specification | `/workflow-specification-entry epic {work_unit}` |
+| Start planning for {topic} | `/workflow-planning-entry epic {work_unit} {topic}` |
+| Start implementation of {topic} | `/workflow-implementation-entry epic {work_unit} {topic}` |
+| Start review for {topic} | `/workflow-review-entry epic {work_unit} {topic}` |
+| Start new research | `/workflow-research-entry epic {work_unit}` |
+| Start new discussion | `/workflow-discussion-entry epic {work_unit}` |
 
 Skills receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional).
 
@@ -145,7 +146,7 @@ Continue {selected_phase} for "{topic}" in "{work_unit}".
 
 ## Next Step
 
-Invoke `/workflow-{selected_phase}-entry epic {work_unit} {topic}`
+Invoke `{route}`
 
 Arguments: work_type = epic, work_unit = {work_unit}, topic = {topic}
 The skill will skip discovery and proceed directly to validation.
@@ -164,14 +165,14 @@ Call the `EnterPlanMode` tool to enter plan mode. Then write the following conte
 ```
 # Continue Epic: {selected_phase:(titlecase)}
 
-Start {selected_phase} phase for "{work_unit}".
+@if(action == continue_discovery) Continue discovery for "{work_unit}" — re-shape the topic map. @else Start {selected_phase} phase for "{work_unit}". @endif
 
 ## Next Step
 
-Invoke `/workflow-{selected_phase}-entry epic {work_unit}`
+Invoke `{route}`
 
 Arguments: work_type = epic, work_unit = {work_unit}
-The skill will run discovery with epic context.
+@if(action == continue_discovery) The discovery skill detects the existing work unit and re-shapes the map. @else The skill will run discovery with epic context. @endif
 
 ## How to proceed
 
