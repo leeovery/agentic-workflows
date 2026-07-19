@@ -284,8 +284,14 @@ function deleteByPath(obj, segments) {
   return true;
 }
 
-/** JSON first (arrays, objects, numbers, booleans), string fallback. @param {string} raw */
+/**
+ * JSON first (arrays, objects, numbers, booleans), string fallback. A bare
+ * `~` is null (YAML convention), matching `task complete --next-task '~'` —
+ * one sentinel spelling across the whole surface.
+ * @param {string} raw
+ */
 function parseValue(raw) {
+  if (raw === '~') return null;
   try {
     return JSON.parse(raw);
   } catch (_) {
