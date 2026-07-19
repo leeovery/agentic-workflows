@@ -181,4 +181,40 @@ function workUnitData(type, unit, menu) {
   return lines.join('\n');
 }
 
-module.exports = { workUnitStatus, workUnitMenu, workUnitData };
+/**
+ * The revisit candidates for one unit — completed phases before `next_phase`
+ * in the type's pipeline (every completed phase when `next_phase` sits outside
+ * it, the finalising case). The same set workUnitMenu numbers its
+ * `revisit_phase` keys from.
+ * @param {string} type  a WORK_UNIT_TYPES key
+ * @param {{next_phase: string, completed_phases: string[]}} unit
+ * @returns {string[]}
+ */
+function revisitablePhases(type, unit) {
+  return earlierCompleted(typeConfig(type), /** @type {WorkUnitEntry} */ (unit));
+}
+
+/**
+ * The labelled deferred revisit-phase menu — one numbered option per phase,
+ * numbering matching the `revisit_phase` keys. Empty string when there is
+ * nothing to revisit.
+ * @param {string[]} phases  revisitablePhases order
+ * @returns {string}
+ */
+function revisitPhasesSection(phases) {
+  if (phases.length === 0) return '';
+  const body = [
+    '· · · · · · · · · · · ·',
+    'Which phase would you like to revisit?',
+    '',
+    ...phases.map((phase, i) => `- **\`${i + 1}\`** — ${titlecase(phase)} — completed`),
+    '- **`b`/`back`** — Return to the previous menu',
+    '',
+    'Select an option:',
+    '· · · · · · · · · · · ·',
+  ].join('\n');
+  const marker = '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===';
+  return `${marker}\n${body}\n`;
+}
+
+module.exports = { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection };

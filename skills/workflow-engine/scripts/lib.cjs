@@ -28,7 +28,9 @@ const derivations = require('./domain/derivations.cjs');
 const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic-detail.cjs');
 const start = require('./domain/start.cjs');
+const inboxSet = require('./domain/inbox-set.cjs');
 const workunit = require('./domain/workunit-detail.cjs');
+const workunitManage = require('./domain/workunit-manage.cjs');
 const specification = require('./domain/specification.cjs');
 const discussionMap = require('./domain/discussion-map.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
@@ -74,6 +76,9 @@ module.exports = {
     epicDetail: epic.epicDetail,
     EPIC_PHASES: epic.EPIC_PHASES,
     startDetail: start.startDetail,
+    combinedInbox: inboxSet.combinedInbox,
+    workingSetDetail: inboxSet.workingSetDetail,
+    manageDetail: workunitManage.manageDetail,
     workUnitDetail: workunit.workUnitDetail,
     workUnitIndex: workunit.workUnitIndex,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
@@ -91,9 +96,19 @@ module.exports = {
     discussionMap: discussionProjections.discussionMap,
     startOverview: startProjections.startOverview,
     startMenu: startProjections.startMenu,
+    emptyOverview: startProjections.emptyOverview,
+    emptyMenu: startProjections.emptyMenu,
+    inboxPickupView: startProjections.inboxPickupView,
+    archivedView: startProjections.archivedView,
+    workingSetView: startProjections.workingSetView,
+    manageListView: startProjections.manageListView,
+    manageUnitView: startProjections.manageUnitView,
+    completedView: startProjections.completedView,
     workUnitStatus: workunitProjections.workUnitStatus,
     workUnitMenu: workunitProjections.workUnitMenu,
     workUnitData: workunitProjections.workUnitData,
+    revisitablePhases: workunitProjections.revisitablePhases,
+    revisitPhasesSection: workunitProjections.revisitPhasesSection,
     specificationDisplay: specificationProjections.specificationDisplay,
     specificationMenu: specificationProjections.specificationMenu,
     specificationCompletedMenu: specificationProjections.specificationCompletedMenu,
