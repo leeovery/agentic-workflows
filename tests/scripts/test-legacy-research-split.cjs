@@ -29,7 +29,9 @@ function setup() {
 }
 
 function cleanup() {
-  if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  // maxRetries: teardown races concurrent suites' fs activity under parallel
+  // load — a bare rm intermittently dies ENOTEMPTY.
+  if (dir) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   dir = null;
 }
 
