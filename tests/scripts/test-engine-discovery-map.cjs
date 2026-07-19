@@ -174,7 +174,7 @@ describe('engine CLI: discovery-map operations', () => {
 
   describe('add', () => {
     it('creates the item as {routing, source, summary} — no status field — and reports map_total', () => {
-      const res = runOk(dir, ['add', 'payments', 'menu-management', '--routing', 'research', '--summary', 'owner-managed menus']);
+      const res = runOk(dir, ['add', 'payments', 'menu-management', 'research', '--summary', 'owner-managed menus']);
       assert.deepStrictEqual(res, {
         ok: true, work_unit: 'payments', name: 'menu-management', op: 'add',
         routing: 'research', source: 'discovery', summary: 'owner-managed menus',
@@ -188,7 +188,7 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('writes description when given, and honours an explicit --source tag', () => {
-      const res = runOk(dir, ['add', 'payments', 'menu-management', '--routing', 'discussion', '--summary', 's', '--description', 'two paragraphs', '--source', 'gap-analysis']);
+      const res = runOk(dir, ['add', 'payments', 'menu-management', 'discussion', '--summary', 's', '--description', 'two paragraphs', '--source', 'gap-analysis']);
       assert.strictEqual(res.description, 'two paragraphs');
       assert.strictEqual(res.source, 'gap-analysis');
       assert.deepStrictEqual(readManifest(dir).phases.discovery.items['menu-management'], {
@@ -198,7 +198,7 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('creates the discovery scaffolding on a manifest with no discovery phase', () => {
       createManifest(dir, 'bare', { work_type: 'epic', phases: {} });
-      const res = runOk(dir, ['add', 'bare', 'first-topic', '--routing', 'research', '--summary', 's']);
+      const res = runOk(dir, ['add', 'bare', 'first-topic', 'research', '--summary', 's']);
       assert.strictEqual(res.map_total, 1);
       const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'bare', 'manifest.json'), 'utf8'));
       assert.deepStrictEqual(manifest.phases.discovery.items['first-topic'], {
@@ -213,26 +213,26 @@ describe('engine CLI: discovery-map operations', () => {
       const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
       manifest.phases.research.items['orphan-topic'] = { status: 'in-progress' };
       fs.writeFileSync(file, JSON.stringify(manifest, null, 2));
-      const res = runOk(dir, ['add', 'payments', 'orphan-topic', '--routing', 'research', '--summary', 's']);
+      const res = runOk(dir, ['add', 'payments', 'orphan-topic', 'research', '--summary', 's']);
       assert.strictEqual(res.lifecycle, 'researching');
     });
 
     it('refuses an active duplicate, leaving the manifest untouched', () => {
       const before = JSON.stringify(readManifest(dir));
-      const err = runFail(dir, ['add', 'payments', 'fresh-topic', '--routing', 'research', '--summary', 's']);
+      const err = runFail(dir, ['add', 'payments', 'fresh-topic', 'research', '--summary', 's']);
       assert.match(err.error, /"fresh-topic" is already on the map/);
       assert.strictEqual(JSON.stringify(readManifest(dir)), before);
     });
 
     it('refuses a dismissed name without --force-dismissed, naming the recovery', () => {
       const before = JSON.stringify(readManifest(dir));
-      const err = runFail(dir, ['add', 'payments', 'dismissed-name', '--routing', 'research', '--summary', 's']);
+      const err = runFail(dir, ['add', 'payments', 'dismissed-name', 'research', '--summary', 's']);
       assert.match(err.error, /"dismissed-name" was previously dismissed.*--force-dismissed/);
       assert.strictEqual(JSON.stringify(readManifest(dir)), before);
     });
 
     it('--force-dismissed adds the item and pulls the name off the dismissed list', () => {
-      const res = runOk(dir, ['add', 'payments', 'dismissed-name', '--routing', 'discussion', '--summary', 'back again', '--force-dismissed']);
+      const res = runOk(dir, ['add', 'payments', 'dismissed-name', 'discussion', '--summary', 'back again', '--force-dismissed']);
       assert.strictEqual(res.undismissed, true);
       const discovery = readManifest(dir).phases.discovery;
       assert.deepStrictEqual(discovery.items['dismissed-name'], {
@@ -242,12 +242,12 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('--force-dismissed on a non-dismissed name is a plain add — no undismissed flag', () => {
-      const res = runOk(dir, ['add', 'payments', 'brand-new', '--routing', 'research', '--summary', 's', '--force-dismissed']);
+      const res = runOk(dir, ['add', 'payments', 'brand-new', 'research', '--summary', 's', '--force-dismissed']);
       assert.strictEqual('undismissed' in res, false);
     });
 
     it('--backfill lands the item without summary/description — keys absent for summary-backfill', () => {
-      const res = runOk(dir, ['add', 'payments', 'absorbed-topic', '--routing', 'discussion', '--backfill']);
+      const res = runOk(dir, ['add', 'payments', 'absorbed-topic', 'discussion', '--backfill']);
       assert.strictEqual(res.backfill, true);
       assert.strictEqual('summary' in res, false);
       assert.deepStrictEqual(readManifest(dir).phases.discovery.items['absorbed-topic'], {
@@ -257,24 +257,24 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('--backfill is mutually exclusive with --summary/--description', () => {
       assert.match(
-        runFail(dir, ['add', 'payments', 'x', '--routing', 'research', '--summary', 's', '--backfill']).error,
+        runFail(dir, ['add', 'payments', 'x', 'research', '--summary', 's', '--backfill']).error,
         /--backfill lands the item without summary\/description/);
       assert.match(
-        runFail(dir, ['add', 'payments', 'x', '--routing', 'research', '--description', 'd', '--backfill']).error,
+        runFail(dir, ['add', 'payments', 'x', 'research', '--description', 'd', '--backfill']).error,
         /--backfill lands the item without summary\/description/);
     });
 
     it('refuses names that break manifest addressing', () => {
-      assert.match(runFail(dir, ['add', 'payments', 'a.b', '--routing', 'research', '--summary', 's']).error, /not a legal topic name/);
-      assert.match(runFail(dir, ['add', 'payments', 'a/b', '--routing', 'research', '--summary', 's']).error, /not a legal topic name/);
+      assert.match(runFail(dir, ['add', 'payments', 'a.b', 'research', '--summary', 's']).error, /not a legal topic name/);
+      assert.match(runFail(dir, ['add', 'payments', 'a/b', 'research', '--summary', 's']).error, /not a legal topic name/);
     });
 
-    it('rejects a routing outside the enum, and missing required flags with usage', () => {
-      assert.match(runFail(dir, ['add', 'payments', 'x', '--routing', 'planning', '--summary', 's']).error, /unknown routing "planning" \(research\|discussion\)/);
+    it('rejects a routing outside the enum, and missing required args with usage', () => {
+      assert.match(runFail(dir, ['add', 'payments', 'x', 'planning', '--summary', 's']).error, /unknown routing "planning" \(research\|discussion\)/);
       assert.match(runFail(dir, ['add', 'payments', 'x', '--summary', 's']).error, /Usage: engine discovery-map add/);
-      assert.match(runFail(dir, ['add', 'payments', 'x', '--routing', 'research']).error, /Usage: engine discovery-map add/);
+      assert.match(runFail(dir, ['add', 'payments', 'x', 'research']).error, /Usage: engine discovery-map add/);
       // An unquoted payload spills into positionals — refused, not truncated.
-      assert.match(runFail(dir, ['add', 'payments', 'x', '--routing', 'research', '--summary', 'two', 'words']).error, /Usage: engine discovery-map add/);
+      assert.match(runFail(dir, ['add', 'payments', 'x', 'research', '--summary', 'two', 'words']).error, /Usage: engine discovery-map add/);
     });
   });
 
@@ -485,7 +485,7 @@ describe('engine CLI: discovery-map operations', () => {
       execFileSync('git', ['add', '-A'], { cwd: dir });
       execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: dir });
 
-      runOk(dir, ['add', 'payments', 'brand-new', '--routing', 'research', '--summary', 'no commit']);
+      runOk(dir, ['add', 'payments', 'brand-new', 'research', '--summary', 'no commit']);
       runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'no commit']);
       runOk(dir, ['remove', 'payments', 'fresh-topic']);
       runOk(dir, ['rename', 'payments', 'rich-fresh', 'renamed-rich']);

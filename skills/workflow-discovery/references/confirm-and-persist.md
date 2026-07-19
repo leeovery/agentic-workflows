@@ -23,7 +23,7 @@ No new topics — this is an edits-only or browse-only session.
 For each topic on the working list, in synthesised order:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} --routing {research|discussion} --summary "{one-line summary}" --description "{paragraphs}"
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} {research|discussion} --summary "{one-line summary}" --description "{paragraphs}"
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{topic} brief_path "discovery/briefs/{topic}.md"
 ```
 
