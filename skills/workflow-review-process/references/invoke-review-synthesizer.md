@@ -10,10 +10,10 @@ This step dispatches a `workflow-review-findings-synthesizer` agent to read revi
 
 ## Determine Cycle Number
 
-Count existing `review-tasks-c*.md` files in `.workflows/{work_unit}/implementation/{topic}/` and add 1.
+Count existing `review-report-c*.md` files in `.workflows/{work_unit}/implementation/{topic}/` and add 1. The report is written every cycle — staging files are only written when tasks are proposed, so counting them would reuse a cycle number after a `clean` cycle.
 
 ```bash
-ls .workflows/{work_unit}/implementation/{topic}/review-tasks-c*.md 2>/dev/null | wc -l
+ls .workflows/{work_unit}/implementation/{topic}/review-report-c*.md 2>/dev/null | wc -l
 ```
 
 ---
