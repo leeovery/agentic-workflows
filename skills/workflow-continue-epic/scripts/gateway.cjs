@@ -15,7 +15,8 @@
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
-const { loadActiveManifests, loadAllManifests, phaseItems } = engine.discovery;
+const { loadActiveManifests, loadAllManifests } = engine.reads;
+const { phaseItems } = engine.derivations;
 
 const EPIC_PHASES = engine.detail.EPIC_PHASES;
 

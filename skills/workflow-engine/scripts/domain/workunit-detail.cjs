@@ -8,16 +8,15 @@
 // WORK_UNIT_TYPES, never a copied code path.
 //
 // Pure over the project's `.workflows/` tree: same files, same answer. Shared
-// manifest semantics come from domain/discovery-utils — never
+// manifest semantics come from domain/reads and domain/derivations — never
 // duplicated here.
 // ---------------------------------------------------------------------------
 
+const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
-  loadActiveManifests,
-  loadAllManifests,
   phaseStatus,
   computeNextPhase,
-} = require('./discovery-utils.cjs');
+} = require('./derivations.cjs');
 
 /**
  * @typedef {object} WorkUnitTypeConfig

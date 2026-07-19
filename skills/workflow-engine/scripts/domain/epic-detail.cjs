@@ -7,7 +7,7 @@
 // Reads the work unit's manifest (already loaded by the caller) and computes
 // per-phase items, lifecycle joins, gating, next-phase readiness, and the
 // discovery map. Pure over its inputs: same manifest, same answer. Shared
-// manifest semantics come from domain/discovery-utils — never
+// manifest semantics come from domain/derivations — never
 // duplicated here.
 // ---------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ const {
   computeAnalysisCacheStatus,
   compareMapRows,
   computeNeedsSequencing,
-} = require('./discovery-utils.cjs');
+} = require('./derivations.cjs');
 
 const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 

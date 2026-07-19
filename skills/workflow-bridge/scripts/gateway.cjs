@@ -1,7 +1,9 @@
 'use strict';
 
 const path = require('path');
-const { loadManifest, phaseStatus, fileExists, listFiles, listDirs, computeNextPhase } = require('../../workflow-engine/scripts/lib.cjs').discovery;
+const engine = require('../../workflow-engine/scripts/lib.cjs');
+const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
+const { phaseStatus, computeNextPhase } = engine.derivations;
 
 const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 

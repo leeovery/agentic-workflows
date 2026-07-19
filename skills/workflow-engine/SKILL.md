@@ -15,7 +15,7 @@ This skill is a reference, not a flow. In normal use the workflow prose prescrib
 Three rings under `scripts/`:
 
 - **Kernel** (`kernel/`) — mechanism plus the manifest's on-disk contract: render primitives (the wrap budget `width − prefix` lives here once, so gutter-overflow bugs can exist in only one place), `manifest-io.cjs` (one read/parse, one atomic-write serialisation, one lock protocol — every manifest writer flows through it), and `manifest-schema.cjs` (the single vocabulary of legal work types, phases, and statuses). Every engine load→mutate→save holds the manifest lock; KB syncs and commits run after release.
-- **Domain** (`domain/`) — the workflow ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, and the shared derivations in `discovery-utils.cjs` (lifecycle joins, next-phase computation, cache status) consumed by the domain ring and — via `lib.cjs`'s `engine.discovery` namespace — every per-skill read adapter.
+- **Domain** (`domain/`) — the workflow ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, plus the shared read side: `reads.cjs` (generic manifest/file loads, no phase semantics) and `derivations.cjs` (lifecycle joins, next-phase computation, cache status), consumed by the domain ring and — via `lib.cjs`'s `engine.reads`/`engine.derivations` namespaces — every per-skill read adapter. Derivations may require reads; never the reverse.
 - **Gateway** (`gateway.cjs`) — the uniform verb-dispatch harness every per-skill adapter (`skills/*/scripts/gateway.cjs`) runs on, plus the demarcated output sections.
 
 Two doors:
