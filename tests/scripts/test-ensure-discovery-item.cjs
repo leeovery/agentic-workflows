@@ -81,7 +81,7 @@ function seedEpic(workUnit) {
 // description are only passed when supplied + non-empty; with neither, the
 // item lands via --backfill (routing + source only).
 function ensureCreate(workUnit, topic, routing, { summary, description } = {}) {
-  const args = ['discovery-map', 'add', workUnit, topic, '--routing', routing, '--source', 'direct-start'];
+  const args = ['discovery-map', 'add', workUnit, topic, routing, '--source', 'direct-start'];
   if (summary) args.push('--summary', summary);
   if (description) args.push('--description', description);
   if (!summary && !description) args.push('--backfill');

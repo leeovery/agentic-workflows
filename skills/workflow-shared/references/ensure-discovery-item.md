@@ -52,12 +52,12 @@ The topic is already on the map. Nothing to do — fall through to the caller's 
 Create the item with its routing and `source: direct-start` — `--force-dismissed` clears any matching dismissed entry (user-explicit spawns bypass dismissal):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} --routing {routing} --source direct-start --summary "{summary}" --description "{description}" --force-dismissed
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} {routing} --source direct-start --summary "{summary}" --description "{description}" --force-dismissed
 ```
 
-Assemble the flags as follows:
+Assemble the call as follows:
 
-- `--routing {routing}`, `--source direct-start`, and `--force-dismissed` — always included.
+- Positional `{routing}`, `--source direct-start`, and `--force-dismissed` — always included.
 - `--summary "{summary}"` — included only when `summary` was supplied and is non-empty.
 - `--description "{description}"` — included only when `description` was supplied and is non-empty (multi-paragraph values are fine).
 - When `summary` was not supplied, pass `--backfill` in place of both fields — the item lands without them and a later discovery session backfills.

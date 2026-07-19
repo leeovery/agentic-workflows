@@ -109,7 +109,7 @@ Commands:
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map add <work-unit> <name> --routing <research|discussion>
+  discovery-map add <work-unit> <name> <research|discussion>
                 (--summary <text> [--description <text>] | --backfill)
                 [--source <tag>] [--force-dismissed]
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
@@ -325,11 +325,11 @@ function runDiscoveryMap(argv) {
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
       // positionals and silently truncate the text — refuse instead.
-      if (!workUnit || positional.length !== 2 || !opts.routing || (opts.summary === undefined && !flags.has('backfill'))) {
-        throw new Error('Usage: engine discovery-map add <work-unit> <name> --routing <research|discussion> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]');
+      if (!workUnit || positional.length !== 3 || (opts.summary === undefined && !flags.has('backfill'))) {
+        throw new Error(`Usage: engine discovery-map add <work-unit> <name> <${VALID_ROUTINGS.join('|')}> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]`);
       }
       respond(addItem(cwd, workUnit, positional[1], {
-        routing: opts.routing,
+        routing: positional[2],
         source: opts.source,
         summary: opts.summary,
         description: opts.description,
