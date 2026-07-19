@@ -170,9 +170,14 @@ Approve task provider-abstraction-1-3?
 · · · · · · · · · · · ·
 ```
 
+## The knowledge base
+
+Every completed artifact is indexed: research, discussions, investigations, specifications, the discovery record, and the material a work unit was seeded from. Later phases query it in plain language and get answers with provenance, so "why did we rule out email as an identity field?" has a citable answer months later.
+
+Dead ends count too. A rejected approach is indexed alongside the specs that shipped, and it stops the next work unit exploring the same ground again. Relevance decays with shipped work rather than wall-clock time, and specifications never decay.
+
 ## Features
 
-- **Knowledge that compounds.** The knowledge base answers plain-language queries with provenance ("why did we rule out email as an identity field?") across every completed artifact. Works with an embedding provider or in keyword-only mode.
 - **Change detection.** Phase outputs are checksummed. Edit a research file and the system offers re-analysis; edit a spec after planning and it asks whether to replan. Unchanged analyses are served from cache.
 - **Environment awareness.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
 - **Structured review findings.** Reviewers flag problems rather than silently fixing them: each finding carries a recommended fix, an alternative, and a confidence level. Non-blocking findings can be sent to the inbox.
