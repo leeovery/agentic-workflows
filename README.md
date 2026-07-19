@@ -172,12 +172,12 @@ Approve task provider-abstraction-1-3?
 
 ## Features
 
-- **Capture without starting.** `/workflow-log-idea`, `/workflow-log-bug`, and `/workflow-log-quickfix` drop items into an inbox mid-conversation. Promote them into a pipeline later and they travel with the work as its seed.
 - **Knowledge that compounds.** The knowledge base answers plain-language queries with provenance ("why did we rule out email as an identity field?") across every completed artifact. Works with an embedding provider or in keyword-only mode.
 - **Change detection.** Phase outputs are checksummed. Edit a research file and the system offers re-analysis; edit a spec after planning and it asks whether to replan. Unchanged analyses are served from cache.
 - **Environment awareness.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
 - **Structured review findings.** Reviewers flag problems rather than silently fixing them: each finding carries a recommended fix, an alternative, and a confidence level. Non-blocking findings can be sent to the inbox.
 - **Work that bends.** Pivot a feature into an epic when it outgrows its scope, absorb a feature into an epic as a topic, cancel and reactivate topics or whole work units.
+- **Capture without ceremony.** Mid-conversation, say "log that as an idea" (or a bug, or a quick fix). It lands in an inbox without derailing what you were doing, and can be promoted into a pipeline later as the seed of the work.
 - **Your task tracker.** Plans write tasks to the format you choose, behind one adapter contract:
 
 | Format | Best for | Setup |
