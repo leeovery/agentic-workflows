@@ -103,6 +103,7 @@ Every part of the system, in depth, in [docs/](docs/README.md):
 | [The engine](docs/engine.md) | Transactions, refusals, byte-stable renders |
 | [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
 | [The agents](docs/agents.md) | All twenty-three, organised by when they act |
+| [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) · [Timeline](docs/timeline.md) | Where this came from and how it evolved |
 
 **Setup:** Node 18+. There is no setup procedure; the first run configures itself in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
