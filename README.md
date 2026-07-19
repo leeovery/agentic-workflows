@@ -139,8 +139,8 @@ Contributions are welcome! Whether it's bug fixes, workflow improvements, or new
 ## Related Packages
 
 - [**agntc**](https://github.com/leeovery/agntc) — The CLI that powers skill, agent, and hook installation
-- [**@leeovery/claude-laravel**](https://github.com/leeovery/claude-laravel) — Laravel development skills for Claude Code
-- [**@leeovery/claude-nuxt**](https://github.com/leeovery/claude-nuxt) — Nuxt.js development skills for Claude Code
+- [**claude-laravel**](https://github.com/leeovery/claude-laravel) — Laravel development skills for Claude Code
+- [**claude-nuxt**](https://github.com/leeovery/claude-nuxt) — Nuxt.js development skills for Claude Code
 - [**tick**](https://github.com/leeovery/tick) — Lightweight task management CLI designed for AI coding agents; deterministic, with zero-friction git integration
 - [**portal**](https://github.com/leeovery/portal) — Interactive tmux session manager with project memory and a keyboard-driven TUI
 
