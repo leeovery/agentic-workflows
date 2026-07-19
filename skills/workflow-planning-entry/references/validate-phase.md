@@ -31,10 +31,10 @@ Set source="fresh".
 
 #### If status is `completed`
 
-Reset to in-progress:
+Reopen it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} planning {topic}
 ```
 
 > *Output the next fenced block as a code block:*
