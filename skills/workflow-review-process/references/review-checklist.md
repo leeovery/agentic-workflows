@@ -46,6 +46,22 @@ Review as a senior architect would:
 - **Security**: No obvious vulnerabilities (injection, exposure, etc.)
 - **Performance**: No obvious inefficiencies (N+1 queries, unnecessary loops, etc.)
 
+## Quick-Fix Variant
+
+Quick-fix tasks are deliberately authored without acceptance criteria or micro acceptance — never flag their absence. Substitute:
+
+**Implementation** — verify completeness against the task's Verification section:
+- Are all target files updated?
+- Do any occurrences of the old pattern remain in scope?
+- Were exclusions respected?
+
+**Test adequacy** — verify the existing suite still holds instead of new coverage:
+- Do all previously passing tests still pass?
+- If tests were updated (e.g., to reference a new API), are the updates correct?
+- Do not expect new tests — mechanical changes are verified by test baselines.
+
+Code quality criteria apply unchanged.
+
 ## Plan Completion Check
 
 After task-level verification, check overall plan completion:

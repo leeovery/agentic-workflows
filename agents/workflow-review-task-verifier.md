@@ -20,6 +20,7 @@ You receive:
 6. **Work unit**: The work unit name (for path construction)
 7. **Topic**: The plan topic name (used for output directory)
 8. **Task suffix**: The `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
+9. **Work type**: `quick-fix` tasks are deliberately authored without acceptance criteria — verify them by the quick-fix branches in Steps 3 and 4, never report the missing criteria as a finding
 
 ## Your Task
 
@@ -61,6 +62,11 @@ Search the codebase:
 - Does it align with the spec's expected behavior?
 - Any drift from what was planned?
 
+**For quick-fix work**: Instead of acceptance criteria, verify completeness against the task's Verification section:
+- Are all target files updated?
+- Do any occurrences of the old pattern remain in scope?
+- Were exclusions respected?
+
 ### Step 4: Verify Tests
 
 You assess tests by **reading** them — running tests is not your job; your only shell use is the output-file rename. Do not attempt to execute the suite.
@@ -71,6 +77,11 @@ Evaluate test coverage critically:
 - **Not under-tested**: Are edge cases from the spec covered?
 - **Not over-tested**: Are tests focused and necessary, or bloated with redundant checks?
 - Would the test fail if the feature broke?
+
+**For quick-fix work**: Instead of new test coverage, verify the existing suite still holds:
+- Do all previously passing tests still pass (judge by reading — did the change break any assertion)?
+- If tests were updated (e.g., to reference a new API), are the updates correct?
+- Do not flag the absence of new tests — mechanical changes are verified by test baselines, not new coverage.
 
 ### Step 5: Check Code Quality
 
