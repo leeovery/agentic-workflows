@@ -2,6 +2,8 @@
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
+const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { discover, format } = require('../../skills/workflow-continue-bugfix/scripts/gateway.cjs');
 
@@ -183,5 +185,73 @@ describe('workflow-continue-bugfix format', () => {
     const out = format(discover(dir));
     assert.ok(!out.includes('[completed:'));
     assert.ok(!out.includes('summary:'));
+  });
+});
+
+describe('workflow-continue-bugfix CLI dispatch', () => {
+  const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-bugfix/scripts/gateway.cjs');
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}\n';
+
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function run(args) {
+    return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
+  }
+
+  it('bare call still renders the index byte-identically', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    const res = run([]);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stderr, '');
+    assert.strictEqual(res.stdout, format(discover(dir)));
+  });
+
+  it('view {work_unit} still answers the sectioned snapshot', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    const res = run(['view', 'crash']);
+    assert.strictEqual(res.status, 0);
+    assert.strictEqual(res.stderr, '');
+    assert.ok(res.stdout.includes('=== DATA'));
+    assert.ok(res.stdout.includes('=== DISPLAY'));
+    assert.ok(res.stdout.includes('=== MENU'));
+  });
+
+  it('a bare positional errors instead of rendering the index', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    const res = run(['crash']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: unknown verb "crash"\n' + USAGE);
+  });
+
+  it('an unknown verb errors with usage', () => {
+    const res = run(['veiw', 'crash']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: unknown verb "veiw"\n' + USAGE);
+  });
+
+  it('view with excess positionals errors with usage', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    const res = run(['view', 'crash', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: view takes exactly one work unit\n' + USAGE);
+  });
+
+  it('view without a work unit errors with usage', () => {
+    const res = run(['view']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: view takes exactly one work unit\n' + USAGE);
+  });
+
+  it('index with excess positionals errors with usage', () => {
+    const res = run(['index', 'extra']);
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.strictEqual(res.stderr, 'gateway: index takes no arguments\n' + USAGE);
   });
 });
