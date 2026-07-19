@@ -16,7 +16,7 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 
 **If any such file exists:**
 
-Surface one tension via **D. Check and Surface** in [perspective-agents.md](perspective-agents.md), then bounce back to the session so the user can engage.
+Surface one tension via **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session so the user can engage.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 

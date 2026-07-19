@@ -98,6 +98,7 @@ Each perspective agent receives:
 2. **Decision topic** — the decision being explored
 3. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
 4. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{lens:(kebabcase)}.md` (its skeleton is already on disk there; the agent's rewrite flips `status` to `pending`)
+
 Each perspective agent restates the decision through its lens before arguing (Problem Restate Gate) and returns:
 
 ```

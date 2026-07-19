@@ -51,10 +51,8 @@ Proposed summaries for {N} topic(s):
 
 @foreach(item in items_to_recover)
   {N}. {item.name:(titlecase)}  ({item.routing})
-@if(item.needs_summary and item.derived_summary)
-       {item.derived_summary}
-@elseif(item.needs_summary)
-       (source file missing — please provide)
+@if(item.needs_summary)
+       @if(item.derived_summary) {item.derived_summary} @else (source file missing — please provide) @endif
 @else
        {item.summary}  (already populated)
 @endif
