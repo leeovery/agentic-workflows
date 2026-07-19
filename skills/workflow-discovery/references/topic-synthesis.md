@@ -36,6 +36,14 @@ Apply the independence test and anti-patterns. Two surfaces that share a domain,
 
 For continuing sessions, also check: does any new candidate overlap with an existing map item? If so, the exploration likely belongs *inside* that item's future discussion or research, not as a new sibling.
 
+#### If no candidates remain
+
+Every candidate folded into an existing map item, or the exploration surfaced none — there is no proposal to render and nothing to confirm. Tell the user briefly (the exploration itself is captured in the session log). Synthesis outcome: `confirmed`, with an **empty working list** — Step 12 confirm-and-persist finalises and closes the session without new topics.
+
+→ Return to caller.
+
+#### Otherwise
+
 → Proceed to **D. Infer Routing**.
 
 ## D. Infer Routing
