@@ -51,3 +51,29 @@ Reopening specification: {work_unit:(titlecase)}
 Set verb = "Continuing".
 
 → Return to caller.
+
+#### If the status is `superseded`
+
+> *Output the next fenced block as a code block:*
+
+```
+Specification Superseded
+
+The specification for "{topic:(titlecase)}" was consolidated into
+"{superseded_by:(titlecase)}". Work on that specification instead.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If the status is `promoted`
+
+> *Output the next fenced block as a code block:*
+
+```
+Specification Promoted
+
+"{topic:(titlecase)}" was promoted to the cross-cutting work unit
+"{promoted_to}". Continue it from that work unit.
+```
+
+**STOP.** Do not proceed — terminal condition.
