@@ -4,6 +4,18 @@
   <strong>A phased engineering process for Claude Code. Discuss, specify, plan; then let it build.</strong>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/github/v/tag/leeovery/agentic-workflows?label=release" alt="release">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="license">
+</p>
+
+<p align="center">
+  <a href="#what-it-looks-like">What it looks like</a> •
+  <a href="docs/README.md">Documentation</a> •
+  <a href="https://github.com/leeovery/agentic-workflows/issues">Issues</a> •
+  <a href="#license">License</a>
+</p>
+
 ---
 
 > Claude Code is a capable engineer with no memory and no process. This adds both.
