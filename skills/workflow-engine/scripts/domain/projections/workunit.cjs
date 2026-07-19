@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: work-unit projections — the status display, proceed/revisit
-// menu, and DATA body over one WorkUnitEntry (see ../workunit.cjs). One
+// menu, and DATA body over one WorkUnitEntry (see ../workunit-detail.cjs). One
 // projection family serves all four single-topic navigation skills; per-type
 // variation (pipeline, work_type route argument) comes from WORK_UNIT_TYPES.
 //
@@ -13,10 +13,10 @@
 
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title } = require('../conventions.cjs');
-const { typeConfig } = require('../workunit.cjs');
+const { typeConfig } = require('../workunit-detail.cjs');
 
-/** @typedef {import('../workunit.cjs').WorkUnitEntry} WorkUnitEntry */
-/** @typedef {import('../workunit.cjs').WorkUnitTypeConfig} WorkUnitTypeConfig */
+/** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
+/** @typedef {import('../workunit-detail.cjs').WorkUnitTypeConfig} WorkUnitTypeConfig */
 
 /**
  * @typedef {object} WorkUnitMenuKey

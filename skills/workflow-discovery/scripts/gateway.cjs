@@ -15,8 +15,8 @@
 const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
+const { loadManifest } = engine.reads;
 const {
-  loadManifest,
   phaseItems,
   computeTopicLifecycle,
   computeMapSummary,
@@ -24,7 +24,7 @@ const {
   computeAnalysisCacheStatus,
   compareMapRows,
   computeNeedsSequencing,
-} = engine.discovery;
+} = engine.derivations;
 
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');

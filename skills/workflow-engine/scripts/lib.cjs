@@ -9,7 +9,8 @@
 //   engine.render         kernel — pure layout (no workflow vocabulary)
 //   engine.manifest       kernel — work-unit manifest IO (load / atomic save)
 //   engine.conventions    domain — workflow glyphs, tags, title composition
-//   engine.discovery      domain — shared discovery derivations (manifest loads, phase joins, lifecycle, cache status)
+//   engine.reads          domain — generic manifest/file reads (no phase semantics)
+//   engine.derivations    domain — shared derivations (phase joins, lifecycle, cache status)
 //   engine.discussionMap  domain — discussion-map transitions + queries
 //   engine.detail         domain — detail builders (the one structured object per work unit)
 //   engine.project        domain — projections (dashboard / key / menu / map views)
@@ -22,16 +23,17 @@
 const render = require('./kernel/render.cjs');
 const manifest = require('./kernel/manifest.cjs');
 const conventions = require('./domain/conventions.cjs');
-const discoveryUtils = require('./domain/discovery-utils.cjs');
+const reads = require('./domain/reads.cjs');
+const derivations = require('./domain/derivations.cjs');
 const gateway = require('./gateway.cjs');
-const epic = require('./domain/epic.cjs');
+const epic = require('./domain/epic-detail.cjs');
 const start = require('./domain/start.cjs');
-const workunit = require('./domain/workunit.cjs');
+const workunit = require('./domain/workunit-detail.cjs');
 const specification = require('./domain/specification.cjs');
 const discussionMap = require('./domain/discussion-map.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const discoveryProjections = require('./domain/projections/discovery-map.cjs');
-const discussionProjections = require('./domain/projections/discussion.cjs');
+const discussionProjections = require('./domain/projections/discussion-map.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
 const specificationProjections = require('./domain/projections/specification.cjs');
@@ -41,24 +43,26 @@ module.exports = {
   manifest,
   conventions,
   gateway,
-  discovery: {
-    listFiles: discoveryUtils.listFiles,
-    listDirs: discoveryUtils.listDirs,
-    phaseData: discoveryUtils.phaseData,
-    fileExists: discoveryUtils.fileExists,
-    phaseItems: discoveryUtils.phaseItems,
-    phaseStatus: discoveryUtils.phaseStatus,
-    loadManifest: discoveryUtils.loadManifest,
-    filesChecksum: discoveryUtils.filesChecksum,
-    computeNextPhase: discoveryUtils.computeNextPhase,
-    computeAnalysisCacheStatus: discoveryUtils.computeAnalysisCacheStatus,
-    loadActiveManifests: discoveryUtils.loadActiveManifests,
-    loadAllManifests: discoveryUtils.loadAllManifests,
-    computeTopicLifecycle: discoveryUtils.computeTopicLifecycle,
-    computeMapSummary: discoveryUtils.computeMapSummary,
-    computeSourceProvenance: discoveryUtils.computeSourceProvenance,
-    compareMapRows: discoveryUtils.compareMapRows,
-    computeNeedsSequencing: discoveryUtils.computeNeedsSequencing,
+  reads: {
+    listFiles: reads.listFiles,
+    listDirs: reads.listDirs,
+    fileExists: reads.fileExists,
+    loadManifest: reads.loadManifest,
+    filesChecksum: reads.filesChecksum,
+    loadActiveManifests: reads.loadActiveManifests,
+    loadAllManifests: reads.loadAllManifests,
+  },
+  derivations: {
+    phaseData: derivations.phaseData,
+    phaseItems: derivations.phaseItems,
+    phaseStatus: derivations.phaseStatus,
+    computeNextPhase: derivations.computeNextPhase,
+    computeAnalysisCacheStatus: derivations.computeAnalysisCacheStatus,
+    computeTopicLifecycle: derivations.computeTopicLifecycle,
+    computeMapSummary: derivations.computeMapSummary,
+    computeSourceProvenance: derivations.computeSourceProvenance,
+    compareMapRows: derivations.compareMapRows,
+    computeNeedsSequencing: derivations.computeNeedsSequencing,
   },
   discussionMap: {
     addSubtopic: discussionMap.addSubtopic,
