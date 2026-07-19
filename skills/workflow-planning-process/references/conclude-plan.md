@@ -25,15 +25,19 @@ Ready to conclude?
 
 #### If `yes`
 
-1. **Mark the plan completed** — the engine sets the status:
+1. **Re-baseline `spec_commit`** — the plan now reflects the specification as of this point; stamp the baseline spec-change detection will diff against on any later resume:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} spec_commit $(git rev-parse HEAD)
+   ```
+2. **Mark the plan completed** — the engine sets the status:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
    ```
-2. **Final commit** — Commit the completed plan:
+3. **Final commit** — Commit the completed plan:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan"
    ```
-3. **Present completion summary**:
+4. **Present completion summary**:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -45,7 +49,7 @@ The plan contains **{N} phases** with **{M} tasks** total, reviewed for traceabi
 Status has been marked as `completed`. The plan is ready for implementation.
 ```
 
-4. **Pipeline continuation**:
+5. **Pipeline continuation**:
 
 > *Output the next fenced block as markdown (not a code block):*
 

@@ -15,9 +15,7 @@
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} author_gate_mode gated
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode gated
    ```
-4. Update `spec_commit` to current HEAD:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} spec_commit $(git rev-parse HEAD)
-   ```
+
+Never touch `spec_commit` here — it is the baseline spec-change detection diffs against, stamped at plan initialization and re-stamped only when the plan concludes.
 
 → Return to caller.

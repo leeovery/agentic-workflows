@@ -140,6 +140,8 @@ Found existing plan for **{topic:(titlecase)}** (previously reached phase {N}, t
 
 #### If `continue`
 
+If spec-change-detection reported changes, carry them into the walkthrough: reconcile the changed spec content into the affected phases and tasks before concluding. The `spec_commit` baseline is re-stamped only at conclusion.
+
 → Proceed to **Step 2**.
 
 #### If `restart`
