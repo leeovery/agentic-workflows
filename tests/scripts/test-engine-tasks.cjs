@@ -164,9 +164,27 @@ describe('engine task start', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('resets fix_attempts, deletes the fix-tracking cache file, reports the gates', () => {
+  it('fresh start on a different task resets fix_attempts and deletes its fix-tracking cache file', () => {
+    // current_task is auth-flow-2-1 — starting auth-flow-1-2 is a genuine
+    // fresh start: clean slate for the new task.
+    fs.mkdirSync(path.dirname(trackingPath(dir, 'auth-flow-1-2')), { recursive: true });
+    fs.writeFileSync(trackingPath(dir, 'auth-flow-1-2'), '## Attempt 1\n\nstale\n');
+
+    const res = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-2']);
+    assert.deepStrictEqual(res, {
+      ok: true,
+      task: 'auth-flow-1-2',
+      gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
+    });
+    assert.strictEqual(implItem(dir).fix_attempts, 0);
+    assert.ok(!fs.existsSync(trackingPath(dir, 'auth-flow-1-2')));
+  });
+
+  it('restarting the manifest\'s current_task preserves fix_attempts and the fix-tracking file', () => {
+    // A resumed session restarting the task in flight must not evade the fix
+    // threshold or wipe the task's convergence history.
     fs.mkdirSync(path.dirname(trackingPath(dir, 'auth-flow-2-1')), { recursive: true });
-    fs.writeFileSync(trackingPath(dir, 'auth-flow-2-1'), '## Attempt 1\n\nstale\n');
+    fs.writeFileSync(trackingPath(dir, 'auth-flow-2-1'), '## Attempt 1\n\nconvergence history\n');
 
     const res = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-2-1']);
     assert.deepStrictEqual(res, {
@@ -174,12 +192,12 @@ describe('engine task start', () => {
       task: 'auth-flow-2-1',
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
     });
-    assert.strictEqual(implItem(dir).fix_attempts, 0);
-    assert.ok(!fs.existsSync(trackingPath(dir, 'auth-flow-2-1')));
+    assert.strictEqual(implItem(dir).fix_attempts, 2);
+    assert.strictEqual(fs.readFileSync(trackingPath(dir, 'auth-flow-2-1'), 'utf8'), '## Attempt 1\n\nconvergence history\n');
   });
 
   it('succeeds when no cache file exists', () => {
-    const res = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-2-1']);
+    const res = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-2']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(implItem(dir).fix_attempts, 0);
   });
@@ -319,6 +337,15 @@ describe('engine task complete', () => {
     const item = implItem(dir);
     assert.deepStrictEqual(item.completed_tasks, ['auth-flow-1-1', 'auth-flow-1-2']);
     assert.deepStrictEqual(item.completed_phases, [1]);
+  });
+
+  it('re-recording a completion is idempotent — no double-count, same response', () => {
+    const first = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-2-1', '--phase-complete']);
+    const second = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-2-1', '--phase-complete']);
+    assert.deepStrictEqual(second, first);
+    const item = implItem(dir);
+    assert.deepStrictEqual(item.completed_tasks, ['auth-flow-2-1']);
+    assert.deepStrictEqual(item.completed_phases, [2]);
   });
 
   it('is loud on unresolvable ids and malformed calls, manifest untouched', () => {

@@ -168,8 +168,13 @@ function initTasks(cwd, workUnit, topic) {
 }
 
 /**
- * Start a task: reset `fix_attempts`, drop the task's fix-tracking cache file
- * (clean slate per task), report the gate modes the task loop branches on.
+ * Start a task: reset `fix_attempts` and drop the task's fix-tracking cache
+ * file (clean slate per task), report the gate modes the task loop branches
+ * on. When the internal id IS the manifest's `current_task` — a resumed
+ * session restarting the task in flight — both survive untouched: the attempt
+ * count and the tracking file are that task's convergence history, and wiping
+ * them on resume would evade the fix threshold. Only a genuine fresh start (a
+ * different task) resets.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -178,16 +183,21 @@ function initTasks(cwd, workUnit, topic) {
  */
 function startTask(cwd, workUnit, topic, internalId) {
   safeName(internalId, 'internal id');
-  const item = withWorkUnitLock(cwd, workUnit, () => {
+  const { item, restarting } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const found = implementationItem(manifest, topic);
-    found.fix_attempts = 0;
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return found;
+    const resumed = found.current_task === internalId;
+    if (!resumed) {
+      found.fix_attempts = 0;
+      saveWorkUnitManifest(cwd, workUnit, manifest);
+    }
+    return { item: found, restarting: resumed };
   });
 
-  const file = fixTrackingPath(cwd, workUnit, topic, internalId);
-  if (fs.existsSync(file)) fs.unlinkSync(file);
+  if (!restarting) {
+    const file = fixTrackingPath(cwd, workUnit, topic, internalId);
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  }
 
   return {
     task: internalId,
@@ -269,12 +279,14 @@ function phaseOfInternalId(internalId) {
 
 /**
  * Push onto an array field, creating it when absent — loud when the field
- * exists but is not an array.
+ * exists but is not an array. A value already present is a no-op: recording
+ * the same completion twice must not double-count.
  * @param {Record<string, any>} item @param {string} field @param {unknown} value
  */
 function pushTo(item, field, value) {
   if (item[field] === undefined) item[field] = [];
   if (!Array.isArray(item[field])) throw new Error(`"${field}" is not an array`);
+  if (item[field].includes(value)) return;
   item[field].push(value);
 }
 
@@ -283,7 +295,9 @@ function pushTo(item, field, value) {
  * `completed_tasks`, optionally set `current_phase` / `current_task`, and
  * push the phase to `completed_phases` when the caller reports the phase
  * complete. Skipped tasks are recorded in `completed_tasks` too — the plan
- * (the session's side) carries the skip distinction.
+ * (the session's side) carries the skip distinction. Re-recording an id (or
+ * phase) already present leaves the array as-is — same response, no
+ * double-count.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic

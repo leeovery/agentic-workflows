@@ -36,7 +36,7 @@ Follow the format's **reading.md** instructions to determine the next available 
 #### If a task is available
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-2. Start the task via the engine (resets `fix_attempts`, clears the task's fix tracking cache file — clean slate per task):
+2. Start the task via the engine (a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; restarting the task recorded as `current_task` preserves both):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
