@@ -28,7 +28,13 @@ Completion is a status, not a lock, and reopening is a first-class transition ra
 
 The work-unit-level lifecycle, all single transactions:
 
-- **Finalise.** When every phase is done but the unit is still `in-progress` (a reactivated finished pipeline, or a pipeline whose last phase completed without closing out), the continue view flags it: `⚑ All phases complete — ready to finalise`, with a `y`/finalise action that runs `workunit complete`.
+- **Finalise.** When every phase is done but the unit is still `in-progress` (a reactivated finished pipeline, or a pipeline whose last phase completed without closing out), the continue view flags it with the engine-rendered callout
+
+  ```
+  ⚑ All phases complete — ready to finalise.
+  ```
+
+  and a `y`/finalise action that runs `workunit complete`.
 - **Complete** (`d`/done in manage, or automatic at pipeline end via the bridge) stamps `completed_at` and commits. Completed units keep their knowledge-base chunks: finished work is exactly what future retrieval wants.
 - **Cancel** marks the unit `cancelled` and removes its chunks from the knowledge base, so abandoned reasoning stops surfacing in queries.
 - **Reactivate** (from the completed/cancelled view) restores `in-progress`, clears the stale `completed_at`, and, only for previously cancelled units, re-indexes everything cancellation removed: completed artifacts, imports, seeds, analysis caches, and epic session logs. Illegal transitions refuse loudly; the engine routes each closed state through the right verb rather than permitting a raw status write.

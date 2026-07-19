@@ -41,7 +41,7 @@ Just as deliberate is where querying is banned. **Not while authoring a spec** (
 Two search modes, auto-selected from config:
 
 - **Hybrid**, when an embedding provider is configured: keyword plus vector search, re-ranked by boosts plus always-on confidence and recency signals.
-- **Keyword-only** (BM25), when none is: a supported degraded mode, not a broken state. Exact-term queries still work; output prepends a `[keyword-only mode — …]` note.
+- **Keyword-only** (BM25), when none is: a supported degraded mode, not a broken state. Exact-term queries still work; query output opens with a note flagging keyword-only mode.
 
 `knowledge compact` is the storage backstop, run automatically at boot. Decay is **progress-based, not wall-clock**: a work unit's non-spec chunks are pruned only once enough later work has completed (weighted by work type) that they've become effectively unreachable in ranking. Specifications never decay. The threshold is configurable, and `false` disables pruning entirely.
 

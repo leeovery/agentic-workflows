@@ -48,7 +48,7 @@ A sourcing note, stated rather than papered over: everything through PR #347 (20
 | 2026-07-07/09 | #399 | Rebase onto main; navigation read paths normalised (four 50-line adapters) |
 | 2026-07-10/11 | #401–#403 | `engine task` verbs (format-blind by ruling); **engine API locked**: noun taxonomy, six grammar rules, response contract |
 | 2026-07-12/13 | #404–#406 | Waves 4–5: investigation/scoping/research, then specification and planning migrated |
-| 2026-07-14/15 | — | Wave-5 live campaign: zero findings, renders byte-identical |
+| 2026-07-14/15 | (none) | Wave-5 live campaign: zero findings, renders byte-identical |
 | 2026-07-15/16 | #407–#409, #411 | Review wave; `workunit create` (the work-type commit as one transaction); discovery-map operations; discovery session loop |
 | 2026-07-17 | #412–#416 | Workunit lifecycle + bridge; closing transactions (supersede, pivot, absorb); hardening sweep closes the deferred ledger; reasoning surfaces thinned (~21 lines/epic → 4); island absorption (one manifest IO, lock coverage) |
 | 2026-07-18 | #417–#420 | **Manifest CLI absorbed into the engine** (379 call sites re-pointed; 470 orphaned tests rescued); gateway rename + docs pass; `promote` + `discovery-session close`; conversational KB setup (and a review-found credential-leak fix: bearer redaction on error paths) |

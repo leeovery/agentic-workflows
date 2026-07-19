@@ -49,7 +49,7 @@ The task gate after reviewer approval is the per-task checkpoint, with the stand
 engine task complete {wu} {topic} {internal-id} --phase {N} --next-task {id} [--skipped] [--phase-complete]
 ```
 
-then one raw-git commit per approved task (`impl({wu}): T{id} — …`) staging code, tests, plan storage, and manifest together. Blocked tasks (dependency skipped or cancelled) are surfaced, never silently dropped: proceed anyway, skip, or stop, through an engine-rendered menu.
+then one raw-git commit per approved task (subject `impl({wu}): T{id}` plus a brief description) staging code, tests, plan storage, and manifest together. Blocked tasks (dependency skipped or cancelled) are surfaced, never silently dropped: proceed anyway, skip, or stop, through an engine-rendered menu.
 
 ## The analysis loop
 

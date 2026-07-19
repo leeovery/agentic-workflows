@@ -23,7 +23,7 @@ The approval gates carry the same `a`/auto option as [spec construction](specifi
 
 Once all tasks are authored, a **dependency-grapher agent** analyzes the whole plan: it clears existing graph data, establishes inter-task dependencies, assigns priorities, and detects cycles, writing through the format's `graph.md` so the same analysis lands correctly in any backend. Implementation later consumes this as "next available task": what is unblocked, in priority order.
 
-Epic plans add a second layer: **external dependencies** on other topics' plans. A task here can wait on a task in a sibling plan; those cross-plan edges live in the manifest and surface on the [epic dashboard](how-it-fits-together.md#the-epic-dashboard) as `(blocked: dep-topic:task — reason)` markers, with an unblock flow for dependencies satisfied outside the workflow.
+Epic plans add a second layer: **external dependencies** on other topics' plans. A task here can wait on a task in a sibling plan; those cross-plan edges live in the manifest and surface on the [epic dashboard](how-it-fits-together.md#the-epic-dashboard) as `(blocked: …)` markers naming the blocking task and reason, with an unblock flow for dependencies satisfied outside the workflow.
 
 ## Review
 
