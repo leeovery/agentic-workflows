@@ -224,9 +224,9 @@ describe('engine topic start', () => {
     assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'in-progress', note: 'keep me' });
   });
 
-  it('rejects starting a completed item — resuming is not starting', () => {
+  it('rejects starting a completed item — reopen owns that path', () => {
     const err = engineFails(dir, ['topic', 'start', 'payments', 'research', 'fee-model']);
-    assert.match(err.error, /already completed — start cannot resume it/);
+    assert.match(err.error, /already completed — reopen it instead/);
   });
 
   it('rejects starting a cancelled item — reactivate owns that path', () => {
@@ -239,7 +239,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|complete\|supersede\|cancel\|reactivate>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|complete\|reopen\|supersede\|cancel\|reactivate>/);
   });
 });
 
@@ -299,13 +299,70 @@ describe('engine topic complete', () => {
     assert.match(engineFails(dir, ['topic', 'complete', 'payments']).error, /Usage: engine topic complete/);
   });
 
-  it('round-trips with start: start → complete → reopen via start is still rejected', () => {
+  it('round-trips with start: start → complete → resuming via start is still rejected', () => {
     engine(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
     const res = engine(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']);
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.warnings.length, 1);
     const err = engineFails(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
     assert.match(err.error, /already completed/);
+  });
+});
+
+describe('engine topic reopen', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('sets a completed item back to in-progress — no KB attempt, no commit', () => {
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'fee-model', phase: 'research', status: 'in-progress' });
+
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(m.phases.research.items, {
+      'auth-flow': { status: 'in-progress' },
+      'fee-model': { status: 'in-progress' },
+    });
+    // No commit inside — the manifest change is left for the session's cadence.
+    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+  });
+
+  it('round-trips with complete: reopen → complete → reopen again', () => {
+    engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
+    engine(dir, ['topic', 'complete', 'payments', 'discussion', 'session-model']);
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
+    assert.strictEqual(res.status, 'in-progress');
+  });
+
+  it('refuses an in-progress item — nothing touched', () => {
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'auth-flow']);
+    assert.match(err.error, /is not completed \(status: in-progress\) — only a completed item can be reopened/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+  });
+
+  it('refuses a superseded item — supersession stays its own flow', () => {
+    engine(dir, ['topic', 'supersede', 'payments', 'research', 'auth-flow', '--by', 'fee-model']);
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'auth-flow']);
+    assert.match(err.error, /is not completed \(status: superseded\)/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+  });
+
+  it('refuses a cancelled item — reactivate owns that path', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'discussion', 'session-model']);
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
+    assert.match(err.error, /is cancelled — reactivate it instead/);
+  });
+
+  it('rejects unknown work unit, phase, missing item, and missing args — loud and specific', () => {
+    assert.match(engineFails(dir, ['topic', 'reopen', 'ghost', 'research', 'fee-model']).error, /manifest not found/);
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'nonsense', 'fee-model']).error, /unknown or non-lifecycle phase "nonsense"/);
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']).error, /no planning items/);
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'ghost']).error, /no research item "ghost"/);
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'research']).error, /Usage: engine topic reopen/);
   });
 });
 
@@ -807,13 +864,13 @@ describe('knowledge store rides along on every engine commit', () => {
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
   const { VALID_PHASE_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 
-  it('discovery is not a lifecycle phase — start/complete/cancel all refuse', () => {
+  it('discovery is not a lifecycle phase — start/complete/reopen/cancel all refuse', () => {
     const dir = setupGitFixture();
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2));
-    for (const verb of ['start', 'complete', 'cancel']) {
+    for (const verb of ['start', 'complete', 'reopen', 'cancel']) {
       assert.match(
         engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
         /non-lifecycle phase "discovery"[\s\S]*discovery tooling/

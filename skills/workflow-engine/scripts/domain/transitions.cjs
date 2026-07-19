@@ -1,16 +1,18 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: topic transitions — start, complete, supersede, cancel, and
-// reactivate, each a single transaction from the caller's perspective.
+// Domain ring: topic transitions — start, complete, reopen, supersede,
+// cancel, and reactivate, each a single transaction from the caller's
+// perspective.
 //
-// start/complete/supersede are phase-item lifecycle bookkeeping: manifest
-// write plus a knowledge-base sync where the phase is indexed (index on
-// complete, remove on supersede). No git commit — the calling session's
-// commit cadence picks the manifest change up (supersession is
-// batch-oriented: spec completion supersedes several sources, then commits
-// once). cancel/reactivate are the epic transactions: manifest write,
-// knowledge-base sync, scoped git commit.
+// start/complete/reopen/supersede are phase-item lifecycle bookkeeping:
+// manifest write plus a knowledge-base sync where the phase is indexed
+// (index on complete, remove on supersede; reopen syncs nothing —
+// re-completion re-indexes over the same identity). No git commit — the
+// calling session's commit cadence picks the manifest change up
+// (supersession is batch-oriented: spec completion supersedes several
+// sources, then commits once). cancel/reactivate are the epic transactions:
+// manifest write, knowledge-base sync, scoped git commit.
 //
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
@@ -94,8 +96,8 @@ function phaseItem(manifest, phase, topic) {
 /**
  * Start a phase item: create it with `status: in-progress` when absent
  * (init-phase semantics), or set an existing item back to `in-progress`.
- * A completed item is not startable — resuming is not starting — and a
- * cancelled item must go through reactivate. No git commit.
+ * A completed item must go through reopen — resuming is not starting — and
+ * a cancelled item through reactivate. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -116,7 +118,7 @@ function startTopic(cwd, workUnit, phase, topic) {
       items[topic] = { status: 'in-progress' };
       created = true;
     } else if (existing.status === 'completed') {
-      throw new Error(`${phase} item "${topic}" is already completed — start cannot resume it`);
+      throw new Error(`${phase} item "${topic}" is already completed — reopen it instead`);
     } else if (existing.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     } else {
@@ -160,6 +162,42 @@ function completeTopic(cwd, workUnit, phase, topic) {
   }
 
   return { topic, phase, status: 'completed', warnings };
+}
+
+/**
+ * @typedef {object} TopicReopenResult
+ * @property {string} topic
+ * @property {string} phase
+ * @property {string} status   always `in-progress`
+ */
+
+/**
+ * Reopen a completed phase item: set `status: in-progress`. Only a completed
+ * item reopens — anything else keeps its own flow (a cancelled item must go
+ * through reactivate). No knowledge-base sync — the item's chunks stay live
+ * until re-completion re-indexes over the same identity. No git commit.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase
+ * @param {string} topic
+ * @returns {TopicReopenResult}
+ */
+function reopenTopic(cwd, workUnit, phase, topic) {
+  assertLegalWrite(phase, 'in-progress');
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const item = phaseItem(manifest, phase, topic);
+    if (item.status === 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    }
+    if (item.status !== 'completed') {
+      throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
+    }
+    item.status = 'in-progress';
+
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+    return { topic, phase, status: 'in-progress' };
+  });
 }
 
 /**
@@ -305,4 +343,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, completeTopic, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
