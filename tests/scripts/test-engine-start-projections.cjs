@@ -138,6 +138,23 @@ describe('start projections: overview', () => {
       '',
     ].join('\n'));
   });
+
+  it('finalising unit renders the Finalising sub-row', () => {
+    createManifest(dir, 'caching', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { caching: { status: 'completed' } } },
+        specification: { items: { caching: { status: 'completed' } } },
+      },
+    });
+    assert.strictEqual(startOverview(startDetail(dir)), [
+      ...BOX,
+      'Cross-Cutting:',
+      '  1. Caching',
+      '     └─ Finalising — Pipeline Complete',
+      '',
+    ].join('\n'));
+  });
 });
 
 describe('start projections: menu', () => {
@@ -193,6 +210,21 @@ describe('start projections: menu', () => {
       'Select an option:',
       '· · · · · · · · · · · ·',
     ].join('\n'));
+  });
+
+  it('finalising unit gets a Finalise entry that still routes to its continue skill', () => {
+    createManifest(dir, 'caching', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { caching: { status: 'completed' } } },
+        specification: { items: { caching: { status: 'completed' } } },
+      },
+    });
+    const menu = startMenu(startDetail(dir));
+    assert.ok(menu.rendered.includes('- **`1`** — Finalise "Caching" — cross-cutting, pipeline complete'));
+    const entry = menu.keys.find((k) => k.key === '1');
+    assert.strictEqual(entry.action, 'continue_work_unit');
+    assert.strictEqual(entry.route, '/workflow-continue-cross-cutting caching');
   });
 
   it('shows v with cancelled-only work units', () => {

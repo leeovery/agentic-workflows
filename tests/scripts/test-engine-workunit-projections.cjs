@@ -114,6 +114,25 @@ describe('workunit projections: status display', () => {
       '',
     ].join('\n'));
   });
+
+  it('cross-cutting: finalising unit renders all-completed rows and the finalise callout', () => {
+    createManifest(dir, 'caching', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { caching: { status: 'completed' } } },
+        specification: { items: { caching: { status: 'completed' } } },
+      },
+    });
+    assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
+      ...boxOf('Caching'),
+      '  PIPELINE (cross-cutting)',
+      '  ├─ ✓ Discussion [completed]',
+      '  └─ ✓ Specification [completed]',
+      '',
+      '  ⚑ All phases complete — ready to finalise.',
+      '',
+    ].join('\n'));
+  });
 });
 
 describe('workunit projections: menu', () => {
@@ -221,6 +240,39 @@ describe('workunit projections: menu', () => {
     );
   });
 
+  it('feature: finalising unit gates on finalise, with every completed phase revisitable', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+        implementation: { items: { 'auth-flow': { status: 'completed' } } },
+        review: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
+    assert.strictEqual(menu.rendered, [
+      '· · · · · · · · · · · ·',
+      'Finalising "Auth Flow" — pipeline complete.',
+      '',
+      '- **`y`/`yes`** — Mark the work unit completed',
+      '- **`r`/`revisit`** — Revisit an earlier phase',
+      '· · · · · · · · · · · ·',
+    ].join('\n'));
+    assert.deepStrictEqual(
+      menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
+      [
+        ['y', 'finalise', null, null],
+        ['r', 'revisit', null, null],
+        ['1', 'revisit_phase', 'discussion', '/workflow-discussion-entry feature auth-flow'],
+        ['2', 'revisit_phase', 'specification', '/workflow-specification-entry feature auth-flow'],
+        ['3', 'revisit_phase', 'planning', '/workflow-planning-entry feature auth-flow'],
+        ['4', 'revisit_phase', 'implementation', '/workflow-implementation-entry feature auth-flow'],
+        ['5', 'revisit_phase', 'review', '/workflow-review-entry feature auth-flow'],
+      ]
+    );
+  });
+
   it('cross-cutting: numbers one revisit_phase entry per completed phase in pipeline order', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
@@ -270,6 +322,7 @@ describe('workunit projections: data body', () => {
       'work_type: feature',
       'next_phase: specification',
       'phase_label: specification (in-progress)',
+      'finalising: false',
       'completed_phases: discussion',
       'revisit_available: true',
       'seeds_count: 1',
@@ -290,10 +343,39 @@ describe('workunit projections: data body', () => {
       'work_type: bugfix',
       'next_phase: investigation',
       'phase_label: ready for investigation',
+      'finalising: false',
       'completed_phases: (none)',
       'revisit_available: false',
       'ACTIONS (key  action  topic  → route):',
       '  y  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
+    ].join('\n'));
+  });
+
+  it('quick-fix: finalising unit flags true and the finalise entry is internal', () => {
+    createManifest(dir, 'hotfix-logs', {
+      work_type: 'quick-fix',
+      phases: {
+        scoping: { items: { 'hotfix-logs': { status: 'completed' } } },
+        implementation: { items: { 'hotfix-logs': { status: 'completed' } } },
+        review: { items: { 'hotfix-logs': { status: 'completed' } } },
+      },
+    });
+    const unit = unitOf(dir, 'quick-fix', 'hotfix-logs');
+    const menu = workUnitMenu('quick-fix', unit);
+    assert.strictEqual(workUnitData('quick-fix', unit, menu), [
+      'work_unit: hotfix-logs',
+      'work_type: quick-fix',
+      'next_phase: done',
+      'phase_label: pipeline complete',
+      'finalising: true',
+      'completed_phases: scoping, implementation, review',
+      'revisit_available: true',
+      'ACTIONS (key  action  topic  → route):',
+      '  y  finalise  hotfix-logs  → (internal)',
+      '  r  revisit  hotfix-logs  → (internal)',
+      '  1  revisit_phase  hotfix-logs  → /workflow-scoping-entry quick-fix hotfix-logs',
+      '  2  revisit_phase  hotfix-logs  → /workflow-implementation-entry quick-fix hotfix-logs',
+      '  3  revisit_phase  hotfix-logs  → /workflow-review-entry quick-fix hotfix-logs',
     ].join('\n'));
   });
 });

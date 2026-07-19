@@ -37,7 +37,7 @@ describe('workflow-continue-cross-cutting discovery', () => {
     assert.strictEqual(r.cross_cutting[0].name, 'caching');
   });
 
-  it('excludes done cross-cutting concerns', () => {
+  it('surfaces a finished pipeline still in-progress as finalising', () => {
     createManifest(dir, 'done-cc', {
       work_type: 'cross-cutting',
       phases: {
@@ -46,7 +46,10 @@ describe('workflow-continue-cross-cutting discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.count, 0);
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.cross_cutting[0].next_phase, 'done');
+    assert.strictEqual(r.cross_cutting[0].finalising, true);
+    assert.ok(format(r).includes('  done-cc: finalising — pipeline complete\n'));
   });
 
   it('includes phase_label and completed_phases', () => {

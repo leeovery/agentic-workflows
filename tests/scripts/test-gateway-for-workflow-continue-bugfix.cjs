@@ -34,7 +34,7 @@ describe('workflow-continue-bugfix discovery', () => {
     assert.strictEqual(r.count, 1);
   });
 
-  it('excludes done bugfixes', () => {
+  it('surfaces a finished pipeline still in-progress as finalising', () => {
     createManifest(dir, 'done', {
       work_type: 'bugfix',
       phases: {
@@ -46,7 +46,10 @@ describe('workflow-continue-bugfix discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.count, 0);
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.bugfixes[0].next_phase, 'done');
+    assert.strictEqual(r.bugfixes[0].finalising, true);
+    assert.ok(format(r).includes('  done: finalising — pipeline complete\n'));
   });
 
   it('includes completed_phases', () => {
