@@ -17,7 +17,7 @@ The caller provides these via context before loading:
 
 ## Threshold Check
 
-Cross-cycle analysis requires at least 2 data points. Determine the number of available cycles by checking which tracking files exist for this loop type.
+Cross-cycle analysis requires at least 2 data points. Determine the number of available cycles from how the loop type stores them: the `fix` loop appends every cycle as an `## Attempt {N}` section inside its single tracking file — count those sections; the other three loop types write one numbered `-c{N}` file per cycle — count the files.
 
 #### If fewer than 2 cycles of data exist
 
@@ -87,7 +87,7 @@ For each cycle, extract:
 - Each finding's title
 - Affects field (which specification section)
 - Category
-- Resolution (Approved/Skipped)
+- Resolution (Approved/Adjusted/Skipped)
 
 → Proceed to **B. Classify Findings**.
 
@@ -121,7 +121,7 @@ Compute:
 > *Output the next fenced block as a code block:*
 
 ```
-{loop_type_label:(titlecase)} — {latest_cycle} cycle diagnostic
+{loop_type_label:(titlecase)} — cycle {latest_cycle} diagnostic
 
   Trend: {trend:[converging|stable|diverging]}
   Latest cycle: {finding_count} findings ({new_count} new, {recurring_count} recurring)
