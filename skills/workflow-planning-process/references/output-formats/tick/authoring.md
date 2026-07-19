@@ -136,7 +136,7 @@ tick create "[NEEDS INFO] Rate limiting strategy" \
 
 ## Cleanup (Restart)
 
-Remove the topic task and all its descendants:
+Remove the topic task and all its descendants. `<topic-tick-id>` is the plan's `external_id` in the manifest:
 
 ```bash
 tick remove <topic-tick-id> --force

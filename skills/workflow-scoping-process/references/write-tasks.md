@@ -35,7 +35,7 @@ If a second task is needed (e.g., separate pass for config files, test file upda
 
 ## B. Write Task Files
 
-Load the chosen format's **authoring.md** from `skills/workflow-planning-process/references/output-formats/{format}/authoring.md` and follow its task storage instructions.
+Load the chosen format's **[authoring.md](../../workflow-planning-process/references/output-formats/{format}/authoring.md)** and follow its task storage instructions.
 
 **Task content** — each task file includes:
 

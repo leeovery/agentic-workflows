@@ -146,12 +146,13 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
 
 #### If `restart`
 
-1. Read the `format` from the manifest:
+1. Read the `format` and the plan's `external_id` from the manifest:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
    ```
 2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
-3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic
+3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
 4. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
 5. Delete the planning manifest entry:
    ```bash

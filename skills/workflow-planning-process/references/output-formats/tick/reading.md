@@ -1,5 +1,16 @@
 # Tick: Reading
 
+## Identifiers
+
+`<topic-tick-id>` is the plan's `external_id` in the manifest; phase and task tick IDs are recorded in `task_map` (internal ID → tick ID):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
+```
+
+`tick list` output does not include refs — correlate internal IDs through `task_map`, or use `tick show <tick-id>` to see a single task's refs.
+
 ## Listing Tasks
 
 To retrieve all tasks for a topic:

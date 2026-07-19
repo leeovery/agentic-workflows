@@ -47,4 +47,6 @@ Project default format is **{format}**. Use the same format?
 
 → Load **[../../workflow-planning-process/references/output-formats.md](../../workflow-planning-process/references/output-formats.md)** and follow its instructions as written.
 
+Load the chosen format's **[about.md](../../workflow-planning-process/references/output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
+
 → Return to caller.

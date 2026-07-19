@@ -28,15 +28,15 @@ Add the blocking task's ID to the `depends_on` field in the dependent task's fro
 
 ```yaml
 depends_on:
-  - {work_unit}-1-2
+  - {topic}-1-2
 ```
 
 A task can depend on multiple tasks:
 
 ```yaml
 depends_on:
-  - {work_unit}-1-2
-  - {work_unit}-1-3
+  - {topic}-1-2
+  - {topic}-1-3
 ```
 
 ### Removing a Dependency

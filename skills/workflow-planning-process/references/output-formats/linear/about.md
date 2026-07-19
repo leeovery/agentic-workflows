@@ -20,7 +20,11 @@ Requires the Linear MCP server to be configured.
 
 Check if Linear MCP is available by looking for Linear tools. If not configured, inform the user that Linear MCP is required for this format.
 
-Ask the user: **Which team should own this project?**
+Ask the user: **Which team should own this project?** Resolve the team's ID via the Linear MCP (`list_teams`), then persist it as a project default so every later phase can reach it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linear_team_id {team_id}
+```
 
 ## Structure Mapping
 
