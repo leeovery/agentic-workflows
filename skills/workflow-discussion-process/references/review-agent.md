@@ -45,6 +45,20 @@ ls .workflows/.cache/{work_unit}/discussion/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record: it makes the running agent visible to the in-flight scans until the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: review
+status: in-flight
+created: {date}
+set: {NNN}
+findings: []
+surfaced: []
+announced: false
+---
+```
+
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -52,21 +66,9 @@ Dispatch **one agent** via the Task tool with `run_in_background: true`.
 The review agent receives:
 
 1. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md`
-3. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: review
-   status: pending
-   created: {date}
-   set: {NNN}
-   findings: []   # sub-agent populates with F1/F2/... IDs
-   surfaced: []
-   announced: false
-   ---
-   ```
+2. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md` (the skeleton above is already on disk there)
 
-The sub-agent writes finding entries with stable IDs (`F1`, `F2`, …) into the `findings:` list. See `agents/workflow-discussion-review.md` for the schema.
+The sub-agent rewrites the file at completion — populating `findings:` with stable IDs (`F1`, `F2`, …) and flipping `status` to `pending`. See `agents/workflow-discussion-review.md` for the schema.
 
 > *Output the next fenced block as a code block:*
 

@@ -24,7 +24,7 @@ Find the most recent file in `{cache_dir}` matching `{cache_glob}` by set number
 
 #### If status is `pending`
 
-Read the file completely. Count findings in the frontmatter `{findings_key}` list. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were set by the orchestrator at dispatch time.
+Read the file completely. Count findings in the frontmatter `{findings_key}` list. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were written with the dispatch-time skeleton.
 
 **If the finding count is 0:**
 

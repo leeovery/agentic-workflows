@@ -14,8 +14,7 @@ You are an independent reviewer assessing the breadth, depth, and rigour of a re
 You receive via the orchestrator's prompt:
 
 1. **Research file path(s)** — the research document(s) to review
-2. **Output file path** — where to write your analysis
-3. **Frontmatter** — the frontmatter block to use in the output file (includes type, status, set number, date)
+2. **Output file path** — where to write your analysis. A skeleton file with `status: in-flight` frontmatter is already on disk there; your rewrite replaces it
 
 ## Your Process
 
@@ -43,7 +42,7 @@ You receive via the orchestrator's prompt:
 
 Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Bash is for this rename only.
 
-The orchestrator passes skeleton frontmatter (`type`, `status`, `created`, `set`, `surfaced: []`, `announced: false`). You must add a `findings:` list containing one entry per unexplored area, shallow-coverage item, or unvalidated assumption with its stable ID, kind, and a short label. The body mirrors the same IDs as section headings so the orchestrator can look up full content for any ID.
+The orchestrator wrote skeleton frontmatter at the output path when it dispatched you (`type`, `status: in-flight`, `created`, `set`, empty `findings:`, `surfaced: []`, `announced: false`). Your rewrite replaces the whole file — the `.txt`-then-rename lands atomically over the skeleton. Keep the skeleton's fields, set `status: pending` (results ready for the orchestrator), and populate `findings:` with one entry per unexplored area, shallow-coverage item, or unvalidated assumption — stable ID, kind, and a short label. The body mirrors the same IDs as section headings so the orchestrator can look up full content for any ID.
 
 ```markdown
 ---

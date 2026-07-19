@@ -55,7 +55,7 @@ The target is not on the map yet.
 
 #### If the row's lifecycle is `handled` or `cancelled`
 
-The topic is closed — no future session will drain its Triage, and concluded artefacts may exist beneath it.
+The topic is closed — no future session will drain its Triage, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle` and its `routing=` value as `routing`.
 
 → Proceed to **E. Closed Target**.
 

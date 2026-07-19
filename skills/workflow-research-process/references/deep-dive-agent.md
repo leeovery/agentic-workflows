@@ -86,6 +86,21 @@ Compose a research brief for the agent. The brief must be self-contained — the
 - Specific questions to answer if applicable
 - Boundaries — what's in scope and what isn't
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-{NNN}-{thread}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record: it makes the running agent visible to the in-flight scans and the concurrency count until the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: deep-dive
+status: in-flight
+created: {date}
+set: {NNN}
+thread: {thread name}
+findings: []
+surfaced: []
+announced: false
+---
+```
+
 **Agent path**: `../../../agents/workflow-research-deep-dive.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -94,22 +109,9 @@ The deep-dive agent receives:
 
 1. **Research brief** — the self-contained investigation brief
 2. **Research file path** — `.workflows/{work_unit}/research/{topic}.md` (for background context)
-3. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-{NNN}-{thread}.md`
-4. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: deep-dive
-   status: pending
-   created: {date}
-   set: {NNN}
-   thread: {thread name}
-   findings: []   # sub-agent populates with F1/F2/... IDs
-   surfaced: []
-   announced: false
-   ---
-   ```
+3. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-{NNN}-{thread}.md` (the skeleton above is already on disk there)
 
-The sub-agent writes finding entries with stable IDs (`F1`, `F2`, …) into the `findings:` list. See `agents/workflow-research-deep-dive.md` for the schema.
+The sub-agent rewrites the file at completion — populating `findings:` with stable IDs (`F1`, `F2`, …) and flipping `status` to `pending`. See `agents/workflow-research-deep-dive.md` for the schema.
 
 > *Output the next fenced block as a code block:*
 
@@ -129,7 +131,7 @@ SUMMARY: {1-2 sentences}
 
 The research session continues — do not wait for the agent to return.
 
-**Concurrency**: Before dispatching, count files matching `deep-dive-*.md` with `status: pending` in their frontmatter in the cache directory. Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
+**Concurrency**: Before dispatching, count files matching `deep-dive-*.md` with `status: in-flight` in their frontmatter in the cache directory — the skeletons of agents still running. Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
 
 ---
 

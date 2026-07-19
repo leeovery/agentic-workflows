@@ -67,6 +67,20 @@ ls .workflows/.cache/{work_unit}/research/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: review
+status: in-flight
+created: {date}
+set: {NNN}
+findings: []
+surfaced: []
+announced: false
+---
+```
+
 **Agent path**: `../../../agents/workflow-research-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
@@ -74,19 +88,7 @@ Dispatch **one agent** as a foreground task (omit `run_in_background` — result
 The review agent receives:
 
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
-2. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md`
-3. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: review
-   status: pending
-   created: {date}
-   set: {NNN}
-   findings: []   # sub-agent populates with F1/F2/... IDs
-   surfaced: []
-   announced: false
-   ---
-   ```
+2. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md` (the skeleton above is already on disk there)
 
 When the agent returns:
 

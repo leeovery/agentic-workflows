@@ -78,6 +78,16 @@ ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: synthesis
+status: in-flight
+created: {date}
+---
+```
+
 **Agent path**: `../../../agents/workflow-investigation-synthesis.md`
 
 > *Output the next fenced block as a code block:*
@@ -91,15 +101,7 @@ Dispatch **one agent** via the Task tool (**synchronous** — do not use `run_in
 The synthesis agent receives:
 
 1. **Investigation file path** — `.workflows/{work_unit}/investigation/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md`
-3. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: synthesis
-   status: pending
-   created: {date}
-   ---
-   ```
+2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` (the skeleton above is already on disk there)
 
 The synthesis agent returns:
 

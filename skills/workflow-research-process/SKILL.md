@@ -44,7 +44,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
 2. **Read all research files** in `.workflows/{work_unit}/research/`. These are the working documents this skill creates. Their content is your source of truth for progress.
-3. **Check agent cache.** Scan `.workflows/.cache/{work_unit}/research/` for any files with `status: pending` or `status: read` in their frontmatter. These are background agent results that may need surfacing or have been partially processed.
+3. **Check agent cache.** Scan `.workflows/.cache/{work_unit}/research/` for any files whose `status` is anything other than `incorporated` — `in-flight` agents still running, `pending` results unread, `acknowledged` results partially surfaced.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 5. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
 
