@@ -114,3 +114,39 @@ Run /workflow-start to continue an in-progress discussion.
 **If at least one completed discussion exists:**
 
 → Return to caller.
+
+#### If `work_type` is `cross-cutting`
+
+Check if discussion exists and is completed. Read status via `engine manifest`: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status`.
+
+**If discussion doesn't exist:**
+
+> *Output the next fenced block as a code block:*
+
+```
+Source Material Missing
+
+No discussion found for "{work_unit:(titlecase)}".
+
+A completed discussion is required before specification can begin.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**If discussion exists but status is "in-progress":**
+
+> *Output the next fenced block as a code block:*
+
+```
+Discussion In Progress
+
+The discussion for "{work_unit:(titlecase)}" is not yet completed.
+
+The discussion must be completed before specification can begin.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**If discussion exists and status is "completed":**
+
+→ Return to caller.

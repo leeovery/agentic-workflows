@@ -62,3 +62,22 @@ Invoke the workflow-specification-process skill.
 ```
 
 Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
+
+#### If `work_type` is `cross-cutting`
+
+Check for completed research: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status`. Include the `Research:` line only when the status is `completed`; omit it otherwise.
+
+```
+Specification session for: {work_unit}
+
+Source material:
+- Discussion: .workflows/{work_unit}/discussion/{topic}.md
+- Research: .workflows/{work_unit}/research/{topic}.md
+
+Work unit: {work_unit}
+Action: {verb} specification
+
+Invoke the workflow-specification-process skill.
+```
+
+Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
