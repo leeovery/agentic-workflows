@@ -172,7 +172,7 @@ Overwrite with the topic list:
 - **Sources**: {filename1}.md, {filename2}.md
 ```
 
-List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **B** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
+List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **B** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead — that file holds only the genuinely-new candidates, so the rebuilt cache is narrower than a fresh pass; the filtered topics' outcomes are already recorded on the map and the dismissed list, and the next content change re-runs the full analysis.
 
 Stamp the manifest's analysis_cache — one command checksums the completed research files, writes `checksum`, `generated`, and `files`, and indexes the cache file into the knowledge base so its content surfaces in future contextual queries:
 

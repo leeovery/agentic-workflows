@@ -151,13 +151,31 @@ node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_u
 
 `source` is the block's stored value verbatim — `research-analysis:{parent}` for research-analysis (provenance renders as `from {parent}`), `gap-analysis` for gap-analysis.
 
+#### If the response is `ok: false`
+
+Deferred-reuse boots only — the map can change between staging and this write. Route on the refusal:
+
+**If refused as an active duplicate** (the topic landed on the map via another path since staging):
+
+Merge provenance instead, following the already-on-map branch of the analysis's **D. Filter and Stage** — read the item's `source` and, unless it already includes this analysis, extend it comma-joined. Set this block's `status: resolved`; nothing is added to `tracker`.
+
+→ Return to **B. Gate Each Candidate**.
+
+**If refused as dismissed** (the user dismissed this name since staging):
+
+Honour the dismissal. Set this block's `status: skipped` — the name is already on the dismissed list, no push needed.
+
+→ Return to **B. Gate Each Candidate**.
+
+#### Otherwise
+
 Append `{name}` to the caller's `tracker`.
 
-#### If `analysis` is `research-analysis`
+**If `analysis` is `research-analysis`:**
 
 → Proceed to **D. Fan-Out Parent-Handled Offer**.
 
-#### Otherwise
+**Otherwise:**
 
 → Return to **B. Gate Each Candidate**.
 
