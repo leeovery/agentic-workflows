@@ -369,15 +369,19 @@ function topicRoute(action, workUnit, topic) {
   return `/${PHASE_ENTRY_SKILL[/** @type {keyof typeof ACTION_PHASE} */ (ACTION_PHASE[action])]} epic ${workUnit} ${topic}`;
 }
 
-/** @param {string} action @param {string} name */
-function discoveryEntryLabel(action, name) {
+/** @param {string} action @param {string} name @param {string|null} [researchState] */
+function discoveryEntryLabel(action, name, researchState) {
   const t = titlecase(name);
   switch (action) {
     case 'start_research': return `Start research for "${t}"`;
     case 'start_discussion': return `Start discussion for "${t}"`;
     case 'continue_research': return `Continue "${t}" — research`;
     case 'continue_discussion': return `Continue "${t}" — discussion`;
-    default: return `Start discussion for "${t}" — research completed`; // start_discussion_after_research
+    // start_discussion_after_research — superseded research is named as such,
+    // never as completed (same rule as discoveryLifecycleLabel).
+    default: return researchState === 'superseded'
+      ? `Start discussion for "${t}" — research superseded`
+      : `Start discussion for "${t}" — research completed`;
   }
 }
 
@@ -568,7 +572,7 @@ function epicMenu(workUnit, detail) {
         action: row.next_action,
         topic: row.name,
         route: topicRoute(row.next_action, workUnit, row.name),
-        label: discoveryEntryLabel(row.next_action, row.name),
+        label: discoveryEntryLabel(row.next_action, row.name, row.research_state ?? null),
       });
     }
     // Build-phase entries by pipeline position — continues, then gated starts.

@@ -412,6 +412,25 @@ describe('epic projections: menu', () => {
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
   });
 
+  it('superseded research renders as superseded in the discussion entry label, never as completed', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            handoff: { routing: 'research', source: 'discovery', order: 1 },
+          },
+        },
+        research: { items: { handoff: { status: 'superseded', superseded_by: 'split-child' } } },
+      },
+    });
+    const { keys, rendered } = epicMenu('v1', d);
+    const entry = keys.find((k) => k.action === 'start_discussion_after_research');
+    assert.ok(entry, 'superseded research with no discussion still offers the discussion path');
+    assert.strictEqual(entry.label, 'Start discussion for "Handoff" — research superseded');
+    assert.ok(!rendered.includes('research completed'), 'superseded research must not be named completed');
+  });
+
   it('implementation continue label names the task in flight, not the completed count', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
