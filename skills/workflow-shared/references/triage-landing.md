@@ -116,7 +116,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 **If the status is `completed`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.{current_phase}.{target} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} {current_phase} {target}
 ```
 
 Set `landed_topic = {target}` and `result = landed`.

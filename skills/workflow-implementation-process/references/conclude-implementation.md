@@ -23,9 +23,9 @@ Ready to mark implementation as completed?
 
 #### If `yes`
 
-Update implementation status via `engine manifest`:
+Complete the phase item:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} implementation {topic}
 ```
 
 Commit: `impl({work_unit}): complete implementation`

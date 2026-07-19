@@ -365,7 +365,7 @@ git commit -m "review({work_unit}): add review remediation ({K} tasks)"
 For each plan that received new tasks:
 
 1. Update the manifest via CLI:
-   - `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} status in-progress`
+   - `node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}`
    - `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} updated {today's date}`
 2. Commit tracking changes:
 
