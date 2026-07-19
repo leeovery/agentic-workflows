@@ -31,6 +31,7 @@ const {
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
+const { computeNextPhase } = require('./derivations.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -63,8 +64,11 @@ function todayStamp() {
  * Complete a work unit: `status: completed`, `completed_at` stamped today
  * (engine-stamped, UTC), commit scoped to the work unit with the caller's
  * message. No knowledge-base action — completed units retain their chunks.
- * Refuses an already-completed unit; a cancelled unit must go through
- * reactivate first.
+ * Refuses an already-completed unit. A cancelled unit must go through
+ * reactivate first — unless its pipeline is finished (derived next phase
+ * `done`): reactivate refuses that state, so complete is its only terminal
+ * transition, and cancellation removed the unit's chunks, so this path
+ * re-indexes them (warn-don't-block).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {{message: string}} opts  commit message — varies by caller (manual
@@ -73,25 +77,32 @@ function todayStamp() {
  */
 function completeWorkUnit(cwd, workUnit, { message }) {
   assertLegalStatus('completed');
-  const completedAt = withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    if (manifest.status === 'completed') {
+  const { completedAt, previous, manifest } = withWorkUnitLock(cwd, workUnit, () => {
+    const loaded = loadWorkUnitManifest(cwd, workUnit);
+    if (loaded.status === 'completed') {
       throw new Error(`work unit "${workUnit}" is already completed`);
     }
-    if (manifest.status === 'cancelled') {
+    if (loaded.status === 'cancelled' && computeNextPhase(loaded).next_phase !== 'done') {
       throw new Error(`work unit "${workUnit}" is cancelled — reactivate it first`);
     }
-    manifest.status = 'completed';
+    const from = loaded.status;
+    loaded.status = 'completed';
     const stamped = todayStamp();
-    manifest.completed_at = stamped;
+    loaded.completed_at = stamped;
 
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return stamped;
+    saveWorkUnitManifest(cwd, workUnit, loaded);
+    return { completedAt: stamped, previous: from, manifest: loaded };
   });
+
+  /** @type {string[]} */
+  const warnings = [];
+  if (previous === 'cancelled') {
+    reindexWorkUnit(cwd, workUnit, manifest, warnings);
+  }
 
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, status: 'completed', completed_at: completedAt, committed, warnings: [] };
+  const result = { work_unit: workUnit, status: 'completed', completed_at: completedAt, committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
   return result;
 }
@@ -191,10 +202,13 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
 
 /**
  * Reactivate a completed or cancelled work unit: `status: in-progress`, a
- * stale `completed_at` cleared, commit scoped to the work unit. Cancellation
- * removed the unit's knowledge-base chunks, so reactivating from `cancelled`
- * re-indexes them (warn-don't-block); completed units retained their chunks —
- * no knowledge-base action.
+ * stale `completed_at` cleared, commit scoped to the work unit. Refuses a
+ * unit whose pipeline is finished (derived next phase `done`) — reactivating
+ * it would strand the unit with no next phase; `workunit complete` is the
+ * terminal transition for that state. Cancellation removed the unit's
+ * knowledge-base chunks, so reactivating from `cancelled` re-indexes them
+ * (warn-don't-block); completed units retained their chunks — no
+ * knowledge-base action.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitLifecycleResult}
@@ -208,6 +222,9 @@ function reactivateWorkUnit(cwd, workUnit) {
     }
     if (loaded.status !== 'completed' && loaded.status !== 'cancelled') {
       throw new Error(`work unit "${workUnit}" is not completed or cancelled (status: ${loaded.status ?? 'none'})`);
+    }
+    if (computeNextPhase(loaded).next_phase === 'done') {
+      throw new Error(`work unit "${workUnit}" has a finished pipeline — reactivating would strand it with no next phase; use \`workunit complete\` instead`);
     }
     const from = loaded.status;
     loaded.status = 'in-progress';

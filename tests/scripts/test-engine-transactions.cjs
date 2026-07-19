@@ -505,6 +505,24 @@ function setupFeatureFixture() {
   return dir;
 }
 
+/** A cross-cutting unit whose pipeline is finished (derived next phase `done`). */
+function setupFinishedCrossCuttingFixture() {
+  const dir = setupGitFixture();
+  writeFile(dir, '.workflows/caching/manifest.json', JSON.stringify({
+    name: 'caching',
+    work_type: 'cross-cutting',
+    status: 'in-progress',
+    phases: {
+      discussion: { items: { caching: { status: 'completed' } } },
+      specification: { items: { caching: { status: 'completed' } } },
+    },
+  }, null, 2) + '\n');
+  // Deterministic KB failure: a plain file where the store directory belongs.
+  writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
+  commitAll(dir, 'init');
+  return dir;
+}
+
 describe('engine workunit complete', () => {
   let dir;
   beforeEach(() => { dir = setupFeatureFixture(); });
@@ -551,6 +569,29 @@ describe('engine workunit complete', () => {
     assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
   });
 
+  it('completes a cancelled unit with a finished pipeline directly, restoring its chunks', () => {
+    // Reactivate refuses a finished pipeline, so complete is the only
+    // terminal transition left for this state — and cancellation removed the
+    // unit's chunks, so the transition re-indexes them (warn-don't-block).
+    const ccDir = setupFinishedCrossCuttingFixture();
+    engine(ccDir, ['workunit', 'cancel', 'caching']);
+    const res = engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete cross-cutting pipeline']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.status, 'completed');
+    assert.strictEqual(res.committed, shortHead(ccDir));
+    // No KB configured in the fixture — one warning per completed indexed
+    // artifact (discussion/caching, specification/caching).
+    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index \(discussion\/caching\)/);
+    assert.match(res.warnings[1], /knowledge index \(specification\/caching\)/);
+
+    const m = readManifest(ccDir, 'caching');
+    assert.strictEqual(m.status, 'completed');
+    assert.strictEqual(m.completed_at, new Date().toISOString().slice(0, 10));
+    assert.strictEqual(lastMessage(ccDir), 'workflow(caching): complete cross-cutting pipeline');
+    cleanupFixture(ccDir);
+  });
 });
 
 describe('engine workunit cancel', () => {
@@ -663,6 +704,24 @@ describe('engine workunit reactivate', () => {
     assert.match(res.warnings[1], /knowledge index \(discovery\/sessions\/session-001\.md\)/);
     assert.match(res.warnings[2], /knowledge index \(discovery\/sessions\/session-002\.md\)/);
     cleanupFixture(epicDir);
+  });
+
+  it('refuses a completed unit whose pipeline is finished — nothing remains to continue', () => {
+    const ccDir = setupFinishedCrossCuttingFixture();
+    engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete cross-cutting pipeline']);
+    const err = engineFails(ccDir, ['workunit', 'reactivate', 'caching']);
+    assert.match(err.error, /has a finished pipeline — reactivating would strand it with no next phase; use `workunit complete` instead/);
+    assert.strictEqual(readManifest(ccDir, 'caching').status, 'completed');
+    cleanupFixture(ccDir);
+  });
+
+  it('refuses a cancelled unit whose pipeline is finished, pointing at workunit complete', () => {
+    const ccDir = setupFinishedCrossCuttingFixture();
+    engine(ccDir, ['workunit', 'cancel', 'caching']);
+    const err = engineFails(ccDir, ['workunit', 'reactivate', 'caching']);
+    assert.match(err.error, /use `workunit complete` instead/);
+    assert.strictEqual(readManifest(ccDir, 'caching').status, 'cancelled');
+    cleanupFixture(ccDir);
   });
 
   it('rejects an in-progress unit and a status outside the shared vocabulary', () => {
