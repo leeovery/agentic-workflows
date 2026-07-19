@@ -16,6 +16,7 @@ const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
   phaseStatus,
   computeNextPhase,
+  computeInProgressPhases,
 } = require('./derivations.cjs');
 
 /**
@@ -74,9 +75,11 @@ const WORK_UNIT_TYPES = {
  * @property {string} name
  * @property {string} next_phase
  * @property {string} phase_label
- * @property {boolean} finalising      pipeline finished (`next_phase: done`) but the unit is
- *                                     still in-progress — `workunit complete` never ran
+ * @property {boolean} finalising      pipeline finished (`next_phase: done`), no phase in
+ *                                     flight, but the unit is still in-progress — `workunit
+ *                                     complete` never ran
  * @property {string[]} completed_phases
+ * @property {string[]} in_progress_phases  pipeline phases in flight (a reopened phase mid-revisit)
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
@@ -147,16 +150,27 @@ function workUnitDetail(cwd, type) {
   for (const m of loadActiveManifests(cwd)) {
     if (m.work_type !== cfg.workType) continue;
     const state = computeNextPhase(m);
+    const inProgress = computeInProgressPhases(m, cfg.pipeline);
     // A finished pipeline on a still-in-progress unit is surfaced, never
     // hidden: the unit sat between the last topic completion and `workunit
     // complete` when the flow stopped, and finalising is its only way out.
+    // But a reopened earlier phase means the unit is mid-revisit, not
+    // finalising — the phase in flight is the next action, and completing the
+    // unit now would abandon the revisit.
+    let nextPhase = state.next_phase;
+    let phaseLabel = state.phase_label;
+    if (nextPhase === 'done' && inProgress.length > 0) {
+      nextPhase = inProgress[0];
+      phaseLabel = `${inProgress[0]} (in-progress)`;
+    }
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
-      next_phase: state.next_phase,
-      phase_label: state.phase_label,
-      finalising: state.next_phase === 'done',
+      next_phase: nextPhase,
+      phase_label: phaseLabel,
+      finalising: nextPhase === 'done',
       completed_phases: completedPhases(cfg, m),
+      in_progress_phases: inProgress,
     };
     if (cfg.surfacesSeeds) {
       unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;

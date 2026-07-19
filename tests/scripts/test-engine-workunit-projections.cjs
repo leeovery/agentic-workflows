@@ -133,6 +133,56 @@ describe('workunit projections: status display', () => {
       '',
     ].join('\n'));
   });
+
+  it('feature: a reopened phase behind a completed review is in-progress, never finalising', () => {
+    // Review completed but discussion reopened: the unit is mid-revisit — the
+    // discussion row renders in flight and the finalise callout stays away.
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+        implementation: { items: { 'auth-flow': { status: 'completed' } } },
+        review: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.strictEqual(unit.finalising, false);
+    assert.strictEqual(unit.next_phase, 'discussion');
+    assert.strictEqual(unit.phase_label, 'discussion (in-progress)');
+    assert.strictEqual(workUnitStatus('feature', unit), [
+      ...boxOf('Auth Flow'),
+      '  PIPELINE (feature)',
+      '  ├─ ◐ Discussion [in-progress]',
+      '  ├─ ✓ Specification [completed]',
+      '  ├─ ✓ Planning [completed]',
+      '  ├─ ✓ Implementation [completed]',
+      '  └─ ✓ Review [completed]',
+      '',
+    ].join('\n'));
+  });
+
+  it('feature: every in-flight phase row renders, even beside the next one', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
+        implementation: { items: { 'auth-flow': { status: 'completed' } } },
+        review: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    assert.strictEqual(workUnitStatus('feature', unitOf(dir, 'feature', 'auth-flow')), [
+      ...boxOf('Auth Flow'),
+      '  PIPELINE (feature)',
+      '  ├─ ◐ Discussion [in-progress]',
+      '  ├─ ✓ Specification [completed]',
+      '  ├─ ◐ Planning [in-progress]',
+      '  ├─ ✓ Implementation [completed]',
+      '  └─ ✓ Review [completed]',
+      '',
+    ].join('\n'));
+  });
 });
 
 describe('workunit projections: menu', () => {
@@ -271,6 +321,27 @@ describe('workunit projections: menu', () => {
         ['5', 'revisit_phase', 'review', '/workflow-review-entry feature auth-flow'],
       ]
     );
+  });
+
+  it('feature: a reopened phase behind a completed review continues into that phase, never finalise', () => {
+    // `y` must resume the reopened discussion — a finalise entry here would
+    // abandon the revisit.
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+        implementation: { items: { 'auth-flow': { status: 'completed' } } },
+        review: { items: { 'auth-flow': { status: 'completed' } } },
+      },
+    });
+    const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
+    assert.ok(!menu.keys.some((k) => k.action === 'finalise'), 'no finalise entry mid-revisit');
+    assert.deepStrictEqual(
+      menu.keys.map((k) => [k.key, k.action, k.route]),
+      [['y', 'continue', '/workflow-discussion-entry feature auth-flow']]
+    );
+    assert.strictEqual(menu.rendered, '');
   });
 
   it('cross-cutting: numbers one revisit_phase entry per completed phase in pipeline order', () => {

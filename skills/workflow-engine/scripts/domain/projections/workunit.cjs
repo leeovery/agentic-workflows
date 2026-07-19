@@ -53,7 +53,7 @@ function nextPhaseStarted(unit) {
   return unit.phase_label.endsWith('(in-progress)');
 }
 
-/** Pipeline rows: completed phases, then the next phase (in flight or ready). @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
+/** Pipeline rows: completed phases, the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped). @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
 function pipelineNodes(cfg, unit) {
   const nodes = [];
   for (const phase of cfg.pipeline) {
@@ -68,6 +68,8 @@ function pipelineNodes(cfg, unit) {
           tag: started ? 'in-progress' : 'ready',
         }),
       });
+    } else if ((unit.in_progress_phases || []).includes(phase)) {
+      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase), tag: 'in-progress' }) });
     }
   }
   return nodes;

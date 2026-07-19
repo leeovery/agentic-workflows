@@ -66,9 +66,9 @@ function todayStamp() {
  * message. No knowledge-base action — completed units retain their chunks.
  * Refuses an already-completed unit. A cancelled unit must go through
  * reactivate first — unless its pipeline is finished (derived next phase
- * `done`): reactivate refuses that state, so complete is its only terminal
- * transition, and cancellation removed the unit's chunks, so this path
- * re-indexes them (warn-don't-block).
+ * `done`): that state completes directly (reactivate remains open too), and
+ * cancellation removed the unit's chunks, so this path re-indexes them
+ * (warn-don't-block).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {{message: string}} opts  commit message — varies by caller (manual
@@ -202,13 +202,13 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
 
 /**
  * Reactivate a completed or cancelled work unit: `status: in-progress`, a
- * stale `completed_at` cleared, commit scoped to the work unit. Refuses a
- * unit whose pipeline is finished (derived next phase `done`) — reactivating
- * it would strand the unit with no next phase; `workunit complete` is the
- * terminal transition for that state. Cancellation removed the unit's
- * knowledge-base chunks, so reactivating from `cancelled` re-indexes them
- * (warn-don't-block); completed units retained their chunks — no
- * knowledge-base action.
+ * stale `completed_at` cleared, commit scoped to the work unit. A finished
+ * pipeline (derived next phase `done`) is no bar — the reactivated unit
+ * surfaces as finalising until a phase is reopened, which is exactly the
+ * revisit path the navigation skills route through here. Cancellation removed
+ * the unit's knowledge-base chunks, so reactivating from `cancelled`
+ * re-indexes them (warn-don't-block); completed units retained their chunks —
+ * no knowledge-base action.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitLifecycleResult}
@@ -222,9 +222,6 @@ function reactivateWorkUnit(cwd, workUnit) {
     }
     if (loaded.status !== 'completed' && loaded.status !== 'cancelled') {
       throw new Error(`work unit "${workUnit}" is not completed or cancelled (status: ${loaded.status ?? 'none'})`);
-    }
-    if (computeNextPhase(loaded).next_phase === 'done') {
-      throw new Error(`work unit "${workUnit}" has a finished pipeline — reactivating would strand it with no next phase; use \`workunit complete\` instead`);
     }
     const from = loaded.status;
     loaded.status = 'in-progress';

@@ -18,6 +18,7 @@ const {
   phaseStatus,
   phaseItems,
   computeNextPhase,
+  computeInProgressPhases,
 } = require('./derivations.cjs');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
@@ -29,8 +30,9 @@ const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'speci
  * @property {string} name
  * @property {string} next_phase
  * @property {string} phase_label
- * @property {boolean} finalising        pipeline finished (`next_phase: done`) but the unit is
- *                                       still in-progress — `workunit complete` never ran
+ * @property {boolean} finalising        pipeline finished (`next_phase: done`), no phase in
+ *                                       flight, but the unit is still in-progress — `workunit
+ *                                       complete` never ran
  * @property {string[]} [active_phases]  epics only — phases that have items
  */
 
@@ -219,12 +221,24 @@ function startDetail(cwd) {
     // A finished pipeline on a still-in-progress unit is surfaced, never
     // hidden: the unit sat between the last topic completion and `workunit
     // complete` when the flow stopped, and finalising is its only way out.
+    // But a reopened earlier phase means the unit is mid-revisit, not
+    // finalising — the phase in flight is the next action. (ALL_PHASES is
+    // safe across types: phases outside a type's pipeline have no items.)
+    let nextPhase = state.next_phase;
+    let phaseLabel = state.phase_label;
+    if (nextPhase === 'done') {
+      const inProgress = computeInProgressPhases(m, ALL_PHASES);
+      if (inProgress.length > 0) {
+        nextPhase = inProgress[0];
+        phaseLabel = `${inProgress[0]} (in-progress)`;
+      }
+    }
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
-      next_phase: state.next_phase,
-      phase_label: state.phase_label,
-      finalising: state.next_phase === 'done',
+      next_phase: nextPhase,
+      phase_label: phaseLabel,
+      finalising: nextPhase === 'done',
     };
 
     if (m.work_type === 'epic') {

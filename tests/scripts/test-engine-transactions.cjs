@@ -570,9 +570,9 @@ describe('engine workunit complete', () => {
   });
 
   it('completes a cancelled unit with a finished pipeline directly, restoring its chunks', () => {
-    // Reactivate refuses a finished pipeline, so complete is the only
-    // terminal transition left for this state — and cancellation removed the
-    // unit's chunks, so the transition re-indexes them (warn-don't-block).
+    // A cancelled finished pipeline completes directly (reactivate stays open
+    // as the revisit path) — and cancellation removed the unit's chunks, so
+    // the transition re-indexes them (warn-don't-block).
     const ccDir = setupFinishedCrossCuttingFixture();
     engine(ccDir, ['workunit', 'cancel', 'caching']);
     const res = engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete cross-cutting pipeline']);
@@ -706,21 +706,40 @@ describe('engine workunit reactivate', () => {
     cleanupFixture(epicDir);
   });
 
-  it('refuses a completed unit whose pipeline is finished — nothing remains to continue', () => {
+  it('reactivates a completed unit whose pipeline is finished — the revisit path stays open', () => {
+    // The unit surfaces as finalising (or in-progress once a topic is
+    // reopened) — reactivate must not deadlock the reopen path.
     const ccDir = setupFinishedCrossCuttingFixture();
     engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete cross-cutting pipeline']);
-    const err = engineFails(ccDir, ['workunit', 'reactivate', 'caching']);
-    assert.match(err.error, /has a finished pipeline — reactivating would strand it with no next phase; use `workunit complete` instead/);
-    assert.strictEqual(readManifest(ccDir, 'caching').status, 'completed');
+    const res = engine(ccDir, ['workunit', 'reactivate', 'caching']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.status, 'in-progress');
+    assert.strictEqual(res.previous_status, 'completed');
+    // Completed units retained their chunks — no re-indexing, no warnings.
+    assert.deepStrictEqual(res.warnings, []);
+    const m = readManifest(ccDir, 'caching');
+    assert.strictEqual(m.status, 'in-progress');
+    assert.ok(!('completed_at' in m), 'stale completed_at must be cleared');
+    assert.strictEqual(lastMessage(ccDir), 'workflow(caching): reactivate work unit');
     cleanupFixture(ccDir);
   });
 
-  it('refuses a cancelled unit whose pipeline is finished, pointing at workunit complete', () => {
+  it('reactivates a cancelled unit whose pipeline is finished — complete stays open as the other path', () => {
     const ccDir = setupFinishedCrossCuttingFixture();
     engine(ccDir, ['workunit', 'cancel', 'caching']);
-    const err = engineFails(ccDir, ['workunit', 'reactivate', 'caching']);
-    assert.match(err.error, /use `workunit complete` instead/);
-    assert.strictEqual(readManifest(ccDir, 'caching').status, 'cancelled');
+    const res = engine(ccDir, ['workunit', 'reactivate', 'caching']);
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.status, 'in-progress');
+    assert.strictEqual(res.previous_status, 'cancelled');
+    // Cancellation removed the unit's chunks — the normal cancelled
+    // reactivation re-index runs (no KB in the fixture: one warning per
+    // completed indexed artifact).
+    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index \(discussion\/caching\)/);
+    assert.match(res.warnings[1], /knowledge index \(specification\/caching\)/);
+    assert.strictEqual(readManifest(ccDir, 'caching').status, 'in-progress');
     cleanupFixture(ccDir);
   });
 

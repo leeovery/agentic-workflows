@@ -130,6 +130,14 @@ function computeNextPhase(manifest) {
   return { next_phase: 'discussion', phase_label: 'ready for discussion' };
 }
 
+// Pipeline phases whose aggregate status is in-progress, in pipeline order.
+// Feeds the finalising derivation: computeNextPhase short-circuits on a
+// completed review, so a reopened earlier phase (mid-revisit) would otherwise
+// masquerade as a finished pipeline.
+function computeInProgressPhases(manifest, pipeline) {
+  return pipeline.filter((phase) => phaseStatus(manifest, phase) === 'in-progress');
+}
+
 /**
  * The sorted set of existing completed input files for one analysis kind —
  * completed research files for `research-analysis`, completed research plus
@@ -326,6 +334,7 @@ module.exports = {
   phaseItems,
   phaseStatus,
   computeNextPhase,
+  computeInProgressPhases,
   collectAnalysisInputs,
   computeAnalysisCacheStatus,
   computeTopicLifecycle,
