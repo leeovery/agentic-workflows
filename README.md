@@ -12,7 +12,6 @@
 <p align="center">
   <a href="#what-it-looks-like">What it looks like</a> •
   <a href="docs/README.md">Documentation</a> •
-  <a href="https://github.com/leeovery/agentic-workflows/issues">Issues</a> •
   <a href="#license">License</a>
 </p>
 
