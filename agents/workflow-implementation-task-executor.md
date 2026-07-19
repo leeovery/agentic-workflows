@@ -74,12 +74,12 @@ Return a structured completion report:
 ```
 STATUS: complete | blocked | failed
 TASK: {task name}
-SUMMARY: {what was done}
-FILES_CHANGED: {list of files created/modified}
-TESTS_WRITTEN: {list of test files/methods}
-TEST_RESULTS: {all passing | failures — details}
-ISSUES: {any concerns, blockers, or deviations discovered}
+SUMMARY: {2-5 lines — commentary, decisions made, anything off-script}
+TEST_RESULTS: {all passing | failures — details only if failures}
+ISSUES: {blockers or deviations — omit if none}
 ```
 
 - If STATUS is `blocked` or `failed`, ISSUES **must** explain why and what decision is needed.
 - If STATUS is `complete`, all acceptance criteria must be met and all tests passing.
+
+Keep the report minimal. "All passing" is sufficient for TEST_RESULTS when nothing failed. ISSUES can be omitted entirely on a clean run.

@@ -33,6 +33,7 @@ topic: [Topic Name]
 
 **Source**: [Where this came from — file/section reference, or "Specification analysis" for Gap Analysis]
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity
+**Priority**: [Gap Analysis only — Critical | Important | Minor. Omit for Input Review.]
 **Affects**: [Which section(s) of the specification]
 
 **Details**:

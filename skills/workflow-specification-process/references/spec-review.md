@@ -90,6 +90,7 @@ You MUST NOT choose on the user's behalf.
 Dispatch the `workflow-specification-review-input` agent via the Task tool:
 
 - **Agent file**: `../../../agents/workflow-specification-review-input.md`
+- **Work unit**: the current work unit
 - **Specification path**: the specification file path
 - **Source material paths**: resolve source names to file paths. Read source names and work type from the manifest:
   ```bash
@@ -128,6 +129,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 Dispatch the `workflow-specification-review-gap-analysis` agent via the Task tool:
 
 - **Agent file**: `../../../agents/workflow-specification-review-gap-analysis.md`
+- **Work unit**: the current work unit
 - **Specification path**: the specification file path
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
