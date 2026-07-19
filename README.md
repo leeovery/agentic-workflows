@@ -92,7 +92,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## Documentation
 
-The README is the front door; the [documentation](docs/README.md) is the house.
+Every part of the system, in depth, in [docs/](docs/README.md):
 
 | | |
 |---|---|
