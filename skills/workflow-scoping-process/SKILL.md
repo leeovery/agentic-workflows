@@ -125,7 +125,21 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 
 **If plan status is not `completed`** (empty or `in-progress`):
 
-→ Proceed to **Step 6** (spec exists but plan is incomplete — resume from format selection).
+The spec exists but the plan is incomplete — an interrupted prior run. Rebuild the context the interrupted run had:
+
+1. Read `.workflows/{work_unit}/specification/{topic}/specification.md` in full — it is the gathered context Step 7 authors tasks from.
+2. Read the specification item's status:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+   ```
+   If the output is empty (the run crashed between writing the spec file and registering it), register and index it now:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} specification {topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
+   ```
+   If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved.
+
+→ Proceed to **Step 6** (resume from format selection).
 
 #### If `continue`
 
