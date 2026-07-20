@@ -115,22 +115,7 @@ Epic Completed
 
 ## F. Enter Plan Mode
 
-Section E returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. The routes resolve as follows:
-
-| Selection | Route |
-|-----------|-------|
-| Continue discussion | `/workflow-discussion-entry epic {work_unit} {topic}` |
-| Continue specification | `/workflow-specification-entry epic {work_unit} {topic}` |
-| Continue plan | `/workflow-planning-entry epic {work_unit} {topic}` |
-| Continue implementation | `/workflow-implementation-entry epic {work_unit} {topic}` |
-| Continue research | `/workflow-research-entry epic {work_unit} {topic}` |
-| Continue discovery | `/workflow-discovery epic {work_unit}` |
-| Start specification | `/workflow-specification-entry epic {work_unit}` |
-| Start planning for {topic} | `/workflow-planning-entry epic {work_unit} {topic}` |
-| Start implementation of {topic} | `/workflow-implementation-entry epic {work_unit} {topic}` |
-| Start review for {topic} | `/workflow-review-entry epic {work_unit} {topic}` |
-| Start new research | `/workflow-research-entry epic {work_unit}` |
-| Start new discussion | `/workflow-discussion-entry epic {work_unit}` |
+Section E returned the selected entry's `action`, `topic`, and `route` (stored by epic-display-and-menu.md **C. Route Selection**). The stored `route` is the authoritative skill invocation — the plan file carries it verbatim. Never reconstruct an invocation from the phase name; not every selection maps to a `workflow-{phase}-entry` skill. Continue discovery → `/workflow-discovery epic {work_unit}` — the only selection that doesn't route to an entry skill; every other route comes from the stored `route` verbatim.
 
 Skills receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional).
 

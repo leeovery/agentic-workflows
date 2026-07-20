@@ -8,19 +8,6 @@ Route a bugfix to its next pipeline phase, with an option to revisit earlier pha
 
 Bugfix pipeline: Investigation → Specification → Planning → Implementation → Review
 
-## Phase Routing
-
-Use `next_phase` from discovery output to determine the target skill:
-
-| next_phase | Target Skill |
-|------------|--------------|
-| investigation | workflow-investigation-entry |
-| specification | workflow-specification-entry |
-| planning | workflow-planning-entry |
-| implementation | workflow-implementation-entry |
-| review | workflow-review-entry |
-| done | (terminal) |
-
 ## A. Check Terminal
 
 #### If `next_phase` is `done`

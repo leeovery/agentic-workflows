@@ -8,17 +8,6 @@ Route a cross-cutting concern to its next pipeline phase, with an option to revi
 
 Cross-cutting pipeline: (Research) → Discussion → Specification (terminal)
 
-## Phase Routing
-
-Use `next_phase` from discovery output to determine the target skill:
-
-| next_phase | Target Skill |
-|------------|--------------|
-| research | workflow-research-entry |
-| discussion | workflow-discussion-entry |
-| specification | workflow-specification-entry |
-| done | (terminal) |
-
 ## A. Check Terminal
 
 #### If `next_phase` is `done`
