@@ -146,7 +146,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 Finding {N} of {total}: {Brief Title} — approved. Applied to plan.
 ```
 
-→ Present the next pending finding, or proceed to **C. After All Findings Processed**.
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 #### If `finding_gate_mode: gated`
 
@@ -192,7 +198,13 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
    Finding {N} of {total}: {Brief Title} — fixed.
    ```
 
-→ Present the next pending finding, or proceed to **C. After All Findings Processed**.
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 #### If `auto`
 
@@ -205,7 +217,7 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 4. Commit
 5. Process all remaining findings using the auto-mode flow above
 
-→ After all processed, proceed to **C. After All Findings Processed**.
+→ Proceed to **C. After All Findings Processed**.
 
 #### If `skip`
 
@@ -217,7 +229,13 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
    Finding {N} of {total}: {Brief Title} — skipped.
    ```
 
-→ Present the next pending finding, or proceed to **C. After All Findings Processed**.
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 ---
 
