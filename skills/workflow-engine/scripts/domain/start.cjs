@@ -17,8 +17,7 @@ const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
   phaseStatus,
   phaseItems,
-  computeNextPhase,
-  computeInProgressPhases,
+  computeUnitPhaseState,
 } = require('./derivations.cjs');
 const { WORK_UNIT_TYPES } = require('./workunit-detail.cjs');
 
@@ -231,28 +230,13 @@ function startDetail(cwd) {
   const cross_cutting = [];
 
   for (const m of manifests) {
-    const state = computeNextPhase(m);
-
-    // A finished pipeline on a still-in-progress unit is surfaced, never
-    // hidden: the unit sat between the last topic completion and `workunit
-    // complete` when the flow stopped, and finalising is its only way out.
-    // But a reopened earlier phase means the unit is mid-revisit, not
-    // finalising — the phase in flight is the next action.
-    let nextPhase = state.next_phase;
-    let phaseLabel = state.phase_label;
-    if (nextPhase === 'done') {
-      const inProgress = computeInProgressPhases(m, pipelineOf(m.work_type));
-      if (inProgress.length > 0) {
-        nextPhase = inProgress[0];
-        phaseLabel = `${inProgress[0]} (in-progress)`;
-      }
-    }
+    const state = computeUnitPhaseState(m, pipelineOf(m.work_type));
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
-      next_phase: nextPhase,
-      phase_label: phaseLabel,
-      finalising: nextPhase === 'done',
+      next_phase: state.next_phase,
+      phase_label: state.phase_label,
+      finalising: state.finalising,
     };
 
     if (m.work_type === 'epic') {
