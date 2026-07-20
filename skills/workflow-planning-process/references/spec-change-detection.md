@@ -22,7 +22,11 @@ Also check for new cross-cutting specification files that didn't exist at that c
 
 #### If no changes detected
 
-> "Specification unchanged since planning started."
+> *Output the next fenced block as a code block:*
+
+```
+Specification unchanged since planning started.
+```
 
 → Return to caller.
 

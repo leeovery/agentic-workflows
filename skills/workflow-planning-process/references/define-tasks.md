@@ -94,8 +94,8 @@ Approve this task list?
 
 - **`y`/`yes`** — Proceed to authoring
 - **`a`/`auto`** — Approve this and all remaining task list gates automatically
-- **Tell me what to change** — reorder, split, merge, add, edit, or remove tasks
-- **Navigate** — a different phase or task, or the leading edge
+- **Tell me what to change** — which tasks to reorder, split, merge, add, edit, or remove
+- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 
@@ -119,7 +119,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Proceed to **C. Finalize Approval**.
 
-#### If approved (`y`/`yes`)
+#### If navigate
+
+Resolve the destination per the caller's **Navigation** section — the user's position moves, the leading edge does not.
+
+→ Return to caller for **B. Process Current Phase**.
+
+#### If `yes`
 
 → Proceed to **C. Finalize Approval**.
 

@@ -27,3 +27,5 @@ For each topic or subtopic, perform exhaustive extraction:
    - Include only what the user has decided to build
 
 **Why this matters:** The specification is the single source of truth for planning. Planning will not reference prior source material — only this document. Missing a detail here means that detail doesn't get implemented.
+
+→ Return to caller.

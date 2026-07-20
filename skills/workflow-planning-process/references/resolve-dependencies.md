@@ -136,7 +136,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### If output is empty (no external dependencies for this topic)
 
-Continue to the next topic.
+Nothing to reverse-check for this topic.
+
+→ Return to **E. Reverse Check** for the next topic.
 
 #### Otherwise
 
@@ -152,9 +154,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 - **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference), re-resolve by finding the correct task and updating the `internal_id`.
 - **`state: satisfied_externally`** — skip.
 
-Continue to the next topic.
+→ Return to **E. Reverse Check** for the next topic.
 
-After all topics have been checked:
+When all topics have been checked:
 
 → Proceed to **F. Summary and Commit**.
 
@@ -208,7 +210,7 @@ Reverse resolutions:
 Approve the dependency resolution?
 
 - **`y`/`yes`** — Proceed
-- **Tell me what to change** — Adjust resolutions or add missing links
+- **Tell me what to change** — which resolutions to adjust or links to add
 · · · · · · · · · · · ·
 ```
 

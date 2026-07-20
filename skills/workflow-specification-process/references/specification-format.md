@@ -12,7 +12,7 @@ The specification is a single file per topic. Structure is **flexible** — orga
 
 ---
 
-## Metadata (Manifest CLI)
+## Metadata
 
 Specification metadata is stored in the work-unit manifest, not in file frontmatter. Access via `engine manifest`:
 
@@ -90,7 +90,7 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**Important**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
+**IMPORTANT**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
 - All sources are marked as `incorporated`
 - Both review phases are complete
 - User has signed off
@@ -104,3 +104,5 @@ If a new source is added to a completed specification (via grouping analysis), t
 Cross-cutting concerns (caching strategies, rate-limiting policies, work conventions) are a separate work type with their own pipeline: Research (optional) → Discussion → Specification (terminal). They are created via `/workflow-start` or promoted from epic specifications at completion time.
 
 During planning for any work type, the planning entry skill surfaces completed cross-cutting specifications as context, ensuring features and bugfixes incorporate validated architectural decisions.
+
+→ Return to caller.

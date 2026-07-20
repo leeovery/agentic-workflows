@@ -105,6 +105,7 @@ function discover(cwd, workUnit) {
 
       if (item.sources && typeof item.sources === 'object') {
         spec.sources = Object.entries(item.sources).map(([srcName, srcData]) => {
+          // A status-less source row defaults to `pending`, not `incorporated` — deliberate fail-safe so an unmarked source never reads as already done.
           const srcStatus = (typeof srcData === 'object') ? (srcData.status || 'pending') : 'pending';
           const match = discItemsList.find(i => i.name === srcName);
           const discStatus = match ? (match.status || 'unknown') : 'unknown';

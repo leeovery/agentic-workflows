@@ -74,8 +74,8 @@ Present the phase structure to the user as rendered markdown (not in a code bloc
 Approve this phase structure?
 
 - **`y`/`yes`** — Proceed to task breakdown
-- **Tell me what to change** — reorder, split, merge, add, edit, or remove phases
-- **Navigate** — a different phase or task, or the leading edge
+- **Tell me what to change** — which phases to reorder, split, merge, add, edit, or remove
+- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 
@@ -91,7 +91,13 @@ Update the planning file with the revised output.
 
 → Return to **B. Review and Approve**.
 
-#### If `approved`
+#### If navigate
+
+Resolve the destination per the caller's **Navigation** section — the user's position moves, the leading edge does not.
+
+→ Return to caller for **B. Process Current Phase**.
+
+#### If `yes`
 
 **If the phase structure is new or was amended:**
 

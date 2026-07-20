@@ -133,24 +133,22 @@ Present the full task content:
 {task detail from task detail file}
 ```
 
-**Task {M} of {total}: {Task Name}**
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Approve this task?
+**Task {M} of {total}: {Task Name}**
 
 - **`y`/`yes`** — Write it to the plan
 - **`a`/`auto`** — Approve this and all remaining tasks automatically
-- **Tell me what to change** — Revise this task's detail
-- **Navigate** — a different phase or task, or the leading edge
+- **Tell me what to change** — what to revise in this task
+- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-**If `approved` (`y`/`yes`):**
+**If `yes`:**
 
 Mark the task `approved` in the task detail file.
 

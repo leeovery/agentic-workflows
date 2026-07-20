@@ -42,9 +42,9 @@ When uncertain whether the user approved, ask: "Ready to proceed, or do you want
 
 Before logging any task to the plan, ask yourself:
 
-1. **Did I present this specific content to the user?** If no → STOP. Present it first.
-2. **Did the user explicitly approve it?** If no → STOP. Wait for approval.
-3. **Am I writing exactly what was approved?** If adding or changing anything → STOP. Present the changes first.
+1. **Did I present this specific content to the user?** If no, present it first.
+2. **Did the user explicitly approve it?** If no, wait for approval.
+3. **Am I writing exactly what was approved?** If adding or changing anything, present the changes first.
 
 ### Collaboration and Judgment
 

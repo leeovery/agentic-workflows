@@ -61,7 +61,7 @@ I've analyzed all {M} tasks and the natural execution order is already correct �
 Approve the dependency graph?
 
 - **`y`/`yes`** — Proceed
-- **Tell me what to change** — Adjust priorities or dependencies
+- **Tell me what to change** — which priorities or dependencies to adjust
 · · · · · · · · · · · ·
 ```
 
@@ -133,7 +133,7 @@ I've analyzed and applied dependencies and priorities across all {M} tasks:
 Approve the updated graph?
 
 - **`y`/`yes`** — Proceed
-- **Tell me what to change** — Adjust priorities or dependencies
+- **Tell me what to change** — which priorities or dependencies to adjust
 · · · · · · · · · · · ·
 ```
 
