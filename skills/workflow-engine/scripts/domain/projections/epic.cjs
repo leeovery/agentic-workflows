@@ -18,6 +18,7 @@ const { TREE_WIDTH, titlecase, title, derivedFrom, discoveryGlyph } = require('.
 /** @typedef {import('../epic.cjs').PhaseEntry} PhaseEntry */
 /** @typedef {import('../epic.cjs').NextPhaseEntry} NextPhaseEntry */
 /** @typedef {import('../epic.cjs').DepBlocking} DepBlocking */
+/** @typedef {import('../epic.cjs').ItemRef} ItemRef */
 
 /**
  * @typedef {object} NewArrivals
@@ -615,4 +616,142 @@ function epicMenu(workUnit, detail) {
   return { keys: [...numbered, ...options], rendered: lines.join('\n') };
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu };
+// ---------------------------------------------------------------------------
+// Selection sub-views — the grouped pick lists behind the menu's internal
+// flows (resume completed / cancel / reactivate). Each returns the keys table,
+// the grouped DISPLAY list, and the pick-menu markdown.
+// ---------------------------------------------------------------------------
+
+/**
+ * @typedef {object} SubViewKey
+ * @property {string} key             what the user types (`1`, `2`, …, `b`)
+ * @property {string} [word]          long form of a command option (`back`)
+ * @property {string} action          machine action key — skills route on this, never the label
+ * @property {string|null} topic
+ * @property {string|null} phase
+ * @property {string|null} route      skill invocation, or null when the flow continues internally
+ * @property {string} label
+ */
+
+/**
+ * @typedef {object} SubViewRow
+ * @property {string} phase
+ * @property {string} topic
+ * @property {string} row     display line (unindented; numbered rows get `{key}. ` prefixed)
+ * @property {string} label   pick-menu option label
+ * @property {string|null} route
+ */
+
+/** The back option every sub-view menu closes with. @returns {SubViewKey} */
+function backKey() {
+  return { key: 'b', word: 'back', action: 'back', topic: null, phase: null, route: null, label: 'Return to menu' };
+}
+
+/**
+ * Compose one selection sub-view from its rows: sequential numbering across
+ * phase groups, blank line between groups, dotted pick menu with `b`/`back`.
+ * @param {string} heading   the display block's first line
+ * @param {string} question  the pick menu's first line
+ * @param {string} action    the numbered entries' action key
+ * @param {SubViewRow[]} rows  display order; grouped by contiguous `phase` runs
+ * @param {{numberedRows?: boolean}} [opts]  prefix `{key}. ` to each row (vs `└─ `)
+ * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ */
+function selectionSubView(heading, question, action, rows, opts = {}) {
+  /** @type {SubViewKey[]} */
+  const keys = [];
+  const displayLines = [heading];
+  let phase = null;
+  rows.forEach((r, i) => {
+    const key = String(i + 1);
+    keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label });
+    if (r.phase !== phase) {
+      displayLines.push('', `  ${titlecase(r.phase)}`);
+      phase = r.phase;
+    }
+    const lastInGroup = i === rows.length - 1 || rows[i + 1].phase !== r.phase;
+    displayLines.push(`    ${opts.numberedRows ? `${key}. ` : (lastInGroup ? '└─ ' : '├─ ')}${r.row}`);
+  });
+  keys.push(backKey());
+
+  const menuLines = ['· · · · · · · · · · · ·', question, ''];
+  for (const k of keys) {
+    menuLines.push(k.word
+      ? `- **\`${k.key}\`/\`${k.word}\`** — ${k.label}`
+      : `- **\`${k.key}\`** — ${k.label}`);
+  }
+  menuLines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+
+  return { keys, display: displayLines.join('\n') + '\n', rendered: menuLines.join('\n') };
+}
+
+/** Group ItemRefs by phase in pipeline order. @param {ItemRef[]} items @returns {ItemRef[]} */
+function pipelineOrdered(items) {
+  const order = Object.keys(PHASE_ENTRY_SKILL);
+  return [...items].sort((a, b) => order.indexOf(a.phase) - order.indexOf(b.phase));
+}
+
+/**
+ * Section D — the Completed Topics list and pick menu. Numbered entries route
+ * to the topic's phase entry skill.
+ * @param {string} workUnit
+ * @param {EpicDetail} detail
+ * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ */
+function epicCompletedMenu(workUnit, detail) {
+  const rows = pipelineOrdered(detail.completed).map((item) => ({
+    phase: item.phase,
+    topic: item.name,
+    row: title({ label: titlecase(item.name), tag: 'completed' }),
+    label: `Resume "${titlecase(item.name)}" — ${item.phase}`,
+    route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
+  }));
+  return selectionSubView('Completed Topics', 'Which topic would you like to resume?', 'resume', rows);
+}
+
+/**
+ * Section E — the Cancellable Topics list and pick menu (non-cancelled,
+ * non-promoted items). No routes — the flow continues to its confirmation gate.
+ * @param {EpicDetail} detail
+ * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ */
+function epicCancelMenu(detail) {
+  /** @type {SubViewRow[]} */
+  const rows = [];
+  for (const [phase, items] of Object.entries(detail.phases)) {
+    for (const item of items) {
+      if (item.status === 'cancelled' || item.status === 'promoted') continue;
+      rows.push({
+        phase,
+        topic: item.name,
+        row: title({ label: titlecase(item.name), tag: item.status }),
+        label: `Cancel "${titlecase(item.name)}" — ${phase} [${item.status}]`,
+        route: null,
+      });
+    }
+  }
+  return selectionSubView('Cancellable Topics', 'Which topic would you like to cancel?', 'cancel', rows, { numberedRows: true });
+}
+
+/**
+ * Section F — the Cancelled Topics list and pick menu, each row carrying the
+ * stashed `previous_status`. No routes — the flow runs the reactivate
+ * transaction.
+ * @param {EpicDetail} detail
+ * @returns {{keys: SubViewKey[], display: string, rendered: string}}
+ */
+function epicReactivateMenu(detail) {
+  const rows = pipelineOrdered(detail.cancelled).map((item) => {
+    const was = `(was: ${item.previous_status || 'unknown'})`;
+    return {
+      phase: item.phase,
+      topic: item.name,
+      row: `${title({ label: titlecase(item.name), tag: 'cancelled' })} ${was}`,
+      label: `Reactivate "${titlecase(item.name)}" — ${item.phase} ${was}`,
+      route: null,
+    };
+  });
+  return selectionSubView('Cancelled Topics', 'Which topic would you like to reactivate?', 'reactivate', rows, { numberedRows: true });
+}
+
+module.exports = { epicDashboard, epicKey, epicMenu, epicCompletedMenu, epicCancelMenu, epicReactivateMenu };

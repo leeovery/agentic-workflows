@@ -47,19 +47,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.disco
 
 Analyse the live set holistically and decide a suggested execution order — which topic to start with, which to do next, and so on. Weigh what is foundational versus dependent, what de-risks the rest of the work, and what the user signalled as a starting point. This is a judgement call across the whole set, not a per-topic rule.
 
-Assign contiguous integers `1..N` over the live topics — `1` is the suggested first topic. Full renumber every time: close any gaps, ignore any prior `order` values. Write each one:
+Assign contiguous integers `1..N` over the live topics — `1` is the suggested first topic. Full renumber every time: close any gaps, ignore any prior `order` values. Record the whole assignment in one call — it sets each topic's `order` and commits:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{topic} order {N}
-```
-
-→ Proceed to **D. Commit**.
-
-## D. Commit
-
-```bash
-git add -- .workflows/{work_unit}/
-git commit -m "discovery({work_unit}): sequence topic map"
+node .claude/skills/workflow-engine/scripts/engine.cjs map sequence {work_unit} {topic}={N} {topic}={N}
 ```
 
 → Return to caller.

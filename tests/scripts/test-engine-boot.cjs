@@ -89,14 +89,16 @@ process.exit(1);
 `;
 
 /**
- * A hermetic skills layout: the real engine scripts copied into a temp skills
- * root, with stub migrate.sh / knowledge.cjs siblings — exercising the
- * engine's own __dirname-relative resolution exactly as installed.
+ * A hermetic skills layout: the real engine scripts (plus the workflow-shared
+ * scripts the domain ring requires) copied into a temp skills root, with stub
+ * migrate.sh / knowledge.cjs siblings — exercising the engine's own
+ * __dirname-relative resolution exactly as installed.
  */
 function setupSkillsFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-'));
   const skills = path.join(root, 'skills');
   fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
+  fs.cpSync(path.join(__dirname, '../../skills/workflow-shared/scripts'), path.join(skills, 'workflow-shared/scripts'), { recursive: true });
   writeFile(skills, 'workflow-migrate/scripts/migrate.sh', STUB_MIGRATE);
   writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
   return {

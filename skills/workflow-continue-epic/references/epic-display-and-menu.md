@@ -8,7 +8,7 @@ Display the full phase-by-phase breakdown for the selected epic, then present an
 - `work_unit` — the epic's work unit name
 - `new_arrivals` (optional) — tracker from `topic-discovery.md` listing topic names added during this boot-up, per analysis. Drives the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 
-This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.). Sections D–F additionally read per-item state (statuses, completed, cancelled) from the most recent labelled discovery output in context.
+This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.).
 
 ---
 
@@ -152,43 +152,13 @@ Store the selected entry's `action`, `topic`, and `route`. The route is the exac
 
 ## D. Resume Completed
 
-Display all completed items across all phases and let the user select one to resume.
+Render the completed-topics list and pick menu:
 
-Using the `completed` items from discovery output, group by phase:
-
-> *Output the next fenced block as a code block:*
-
-```
-Completed Topics
-
-@foreach(phase in phases)
-@if(phase.completed_items)
-  {phase:(titlecase)}
-@foreach(item in completed where item.phase == phase)
-    └─ {item.name:(titlecase)} [completed]
-@endforeach
-@endif
-
-@endforeach
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs completed-menu {work_unit}
 ```
 
-Only show phases with completed items. Blank line between phase sections.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which topic would you like to resume?
-
-- **`1`** — Resume "{item.name:(titlecase)}" — {item.phase}
-- **`2`** — ...
-- **`b`/`back`** — Return to menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-List all completed items across all phases.
+Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -198,7 +168,7 @@ List all completed items across all phases.
 
 #### If user chose a topic
 
-Store the selected phase and topic. The route is `/workflow-{phase}-entry epic {work_unit} {topic}`.
+Store the selected entry's `phase`, `topic`, and `route`.
 
 → Return to caller.
 
@@ -206,41 +176,13 @@ Store the selected phase and topic. The route is `/workflow-{phase}-entry epic {
 
 ## E. Cancel Topic
 
-Display all non-cancelled, non-promoted items across all phases, grouped by phase.
+Render the cancellable-topics list and pick menu:
 
-> *Output the next fenced block as a code block:*
-
-```
-Cancellable Topics
-
-@foreach(phase in phases)
-@if(phase has non-cancelled, non-promoted items)
-  {phase:(titlecase)}
-@foreach(item in phase.items where status != cancelled and status != promoted)
-    {N}. {item.name:(titlecase)} [{item.status}]
-@endforeach
-@endif
-
-@endforeach
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs cancel-menu {work_unit}
 ```
 
-Number all items sequentially across all phases. Only show phases with cancellable items. Blank line between phase sections.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which topic would you like to cancel?
-
-- **`1`** — Cancel "{item_1.name:(titlecase)}" — {item_1.phase} [{item_1.status}]
-- **`2`** — ...
-- **`b`/`back`** — Return to menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-Recreate with actual items from discovery.
+Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -250,7 +192,7 @@ Recreate with actual items from discovery.
 
 #### If user chose a numbered topic
 
-Confirm with the user:
+Store the selected entry's `phase` and `topic`. Confirm with the user:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -300,41 +242,13 @@ Cancelled "{topic:(titlecase)}" in {phase}.
 
 ## F. Reactivate Topic
 
-Display all cancelled items across all phases, grouped by phase.
+Render the cancelled-topics list and pick menu:
 
-> *Output the next fenced block as a code block:*
-
-```
-Cancelled Topics
-
-@foreach(phase in phases)
-@if(phase has cancelled items)
-  {phase:(titlecase)}
-@foreach(item in phase.items where status == cancelled)
-    {N}. {item.name:(titlecase)} [cancelled] (was: {item.previous_status})
-@endforeach
-@endif
-
-@endforeach
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs reactivate-menu {work_unit}
 ```
 
-Number all items sequentially across all phases. Only show phases with cancelled items. Blank line between phase sections.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which topic would you like to reactivate?
-
-- **`1`** — Reactivate "{item_1.name:(titlecase)}" — {item_1.phase} (was: {item_1.previous_status})
-- **`2`** — ...
-- **`b`/`back`** — Return to menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-Recreate with actual items from discovery.
+Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
 
 **STOP.** Wait for user response.
 
@@ -344,7 +258,7 @@ Recreate with actual items from discovery.
 
 #### If user chose a numbered topic
 
-Run the reactivate transaction — one command restores the stashed status, removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
+Store the selected entry's `phase` and `topic`. Run the reactivate transaction — one command restores the stashed status, removes `previous_status`, re-indexes the artifact into the knowledge base when the restored status is `completed` in an indexed phase (research / discussion / investigation / specification), and commits:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}

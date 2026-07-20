@@ -35,11 +35,12 @@ Domain commands (state transitions, queries) land here as they are built.
 engine boot
 ```
 
-**`map`** — discussion-map transitions. Both commands load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1. No git commit — the calling session's commit cadence picks the manifest change up.
+**`map`** — map transitions. `add` and `set` are discussion-map subtopic writes: each loads the work unit's manifest, applies the transition, saves atomically, and prints one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up). `sequence` records a discovery-map ordering as one transaction: validates every topic exists under `phases.discovery.items` and every order is a positive integer, sets each topic's `order`, and commits scoped to the work unit (`discovery({wu}): sequence topic map`); response `{"ok": true, "ordered": {"{topic}": N, …}, "committed": "<short-sha>"}` (`committed: null` plus a note when nothing was staged). Choosing the order is the caller's judgment — the command only records it. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1.
 
 ```bash
 engine map add <work-unit> <topic> <subtopic> [--parent <subtopic>]   # new subtopic, starts pending
 engine map set <work-unit> <topic> <subtopic> <state>                 # pending|exploring|converging|decided|deferred
+engine map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # discovery-map ordering, scoped commit
 ```
 
 Subtopic names are kebab-case slugs; `--parent` nests under an existing top-level subtopic (two levels max).
@@ -69,6 +70,12 @@ engine task analysis-cycle <work-unit> <topic>             # increment both anal
 engine inbox archive <path> [<path> …]   # live → .archived/{folder}/
 engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
 engine inbox delete <path> [<path> …]    # git rm archived items
+```
+
+**`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in workflow-shared/discovery-utils) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis`. Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N}`. No git commit — the calling flow's commit cadence picks the manifest change up.
+
+```bash
+engine cache stamp <work-unit> (research-analysis|gap-analysis)
 ```
 
 **`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (`.workflows/.inbox` with `--inbox`, or the whole `.workflows` tree with `--workflows` — migrations touch many work units plus `.workflows/.state`) plus commit. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
@@ -152,4 +159,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.

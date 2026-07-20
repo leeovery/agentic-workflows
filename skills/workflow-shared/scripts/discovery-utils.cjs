@@ -217,19 +217,37 @@ function computeNextPhase(manifest) {
   return { next_phase: 'discussion', phase_label: 'ready for discussion' };
 }
 
+/**
+ * The sorted set of existing completed input files for one analysis kind —
+ * completed research files for `research-analysis`, completed research plus
+ * completed discussion files for `gap-analysis`. The one collection both
+ * cache sides use: the read (computeAnalysisCacheStatus) and the write
+ * (engine cache stamp) checksum the same list, so they can never drift.
+ * Returns absolute paths, sorted.
+ */
+function collectAnalysisInputs(manifest, workflowsDir, kind) {
+  if (!manifest || !manifest.name) return [];
+  const wuDir = path.join(workflowsDir, manifest.name);
+  const completedFiles = (phase) => phaseItems(manifest, phase)
+    .filter(it => it.status === 'completed')
+    .map(it => path.join(wuDir, phase, `${it.name}.md`))
+    .filter(p => fileExists(p));
+
+  if (kind === 'research-analysis') {
+    return completedFiles('research').sort();
+  }
+  if (kind === 'gap-analysis') {
+    return [...completedFiles('research'), ...completedFiles('discussion')].sort();
+  }
+  return [];
+}
+
 function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   if (!manifest || !manifest.name) return { status: 'absent', generated: null, files: [] };
-  const wuDir = path.join(workflowsDir, manifest.name);
 
   if (kind === 'research-analysis') {
     const cache = ((manifest.phases || {}).research || {}).analysis_cache;
-    const researchDir = path.join(wuDir, 'research');
-    const researchItems = phaseItems(manifest, 'research');
-    const completedFiles = researchItems
-      .filter(it => it.status === 'completed')
-      .map(it => path.join(researchDir, `${it.name}.md`))
-      .filter(p => fileExists(p))
-      .sort();  // analyses sort before checksumming; cache reads must match
+    const completedFiles = collectAnalysisInputs(manifest, workflowsDir, kind);
 
     if (!cache || !cache.checksum) {
       return completedFiles.length > 0
@@ -253,23 +271,7 @@ function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
 
   if (kind === 'gap-analysis') {
     const cache = ((manifest.phases || {}).discovery || {}).gap_analysis_cache;
-    const researchDir = path.join(wuDir, 'research');
-    const discussionDir = path.join(wuDir, 'discussion');
-    const researchItems = phaseItems(manifest, 'research');
-    const discussionItems = phaseItems(manifest, 'discussion');
-
-    const completedResearchFiles = researchItems
-      .filter(it => it.status === 'completed')
-      .map(it => path.join(researchDir, `${it.name}.md`))
-      .filter(p => fileExists(p));
-    const completedDiscussionFiles = discussionItems
-      .filter(it => it.status === 'completed')
-      .map(it => path.join(discussionDir, `${it.name}.md`))
-      .filter(p => fileExists(p));
-
-    // Sort so the read-side checksum matches discovery-gap-analysis.md's
-    // write-side, which also sorts before hashing.
-    const inputPaths = [...completedResearchFiles, ...completedDiscussionFiles].sort();
+    const inputPaths = collectAnalysisInputs(manifest, workflowsDir, kind);
 
     if (!cache || !cache.checksum) {
       return inputPaths.length > 0
@@ -413,6 +415,7 @@ module.exports = {
   loadManifest,
   filesChecksum,
   computeNextPhase,
+  collectAnalysisInputs,
   computeAnalysisCacheStatus,
   loadActiveManifests,
   loadAllManifests,

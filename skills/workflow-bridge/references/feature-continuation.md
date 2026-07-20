@@ -122,7 +122,6 @@ Check if there are completed phases earlier in the pipeline that the user could 
 
 - **`y`/`yes`** — Proceed to {next_phase}
 - **`r`/`revisit`** — Revisit an earlier phase
-
 · · · · · · · · · · · ·
 ```
 
