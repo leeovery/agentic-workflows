@@ -45,7 +45,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
 ```
 
-Commit: `planning({work_unit}): draft Phase {N} task list`
+Commit:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft Phase {N} task list"
+```
 
 Present the task list to the user using the overview returned by the agent:
 
@@ -131,7 +134,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task {first_task_id}
    ```
-3. Commit: `planning({work_unit}): approve Phase {N} task list`
+3. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve Phase {N} task list"
+   ```
 
 If the task list was already approved and unchanged, no updates are needed.
 

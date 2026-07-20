@@ -53,9 +53,12 @@ Project default format is **{format}**. Use the same format?
 
 1. Capture the current git commit hash: `git rev-parse HEAD`
 2. Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md` with the title `# Plan: {Topic Name}`.
-3. Register planning and set metadata in the manifest:
+3. Start the planning item — the engine creates it with `status: in-progress`:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.planning.{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
+   ```
+4. Set metadata in the manifest:
+   ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} format {chosen-format}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.plan_format {chosen-format}
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} spec_commit {commit-hash}
@@ -68,6 +71,10 @@ Project default format is **{format}**. Use the same format?
    node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map '{}'
    ```
 
-4. Commit: `planning({work_unit}): initialize plan`
+5. Commit with raw git — the project default lands in `.workflows/manifest.json`, outside the work unit, so the scoped helper cannot cover it. Stage both directly:
+   ```bash
+   git add -- .workflows/manifest.json .workflows/{work_unit}
+   git commit -m "planning({work_unit}): initialize plan"
+   ```
 
 → Return to caller.

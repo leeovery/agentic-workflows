@@ -124,4 +124,8 @@ topic: {Topic Name}
 ...
 ```
 
-Commit the tracking file after creation: `planning({work_unit}): integrity review cycle {N}`
+Commit the tracking file after creation:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}"
+```

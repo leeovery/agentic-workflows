@@ -1,7 +1,7 @@
 ---
 name: workflow-planning-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 # Planning Process
@@ -55,6 +55,16 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
    - `node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} finding_gate_mode`
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
+
+---
+
+## Hard Rules
+
+1. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Work-unit commits go through the scoped helper:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}"
+   ```
+2. **Raw git when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with raw git, staging explicitly (`git add -- .workflows/{work_unit} {format task storage paths}`) — never the scoped helper.
 
 ---
 
@@ -145,7 +155,11 @@ Found existing plan for **{topic:(titlecase)}** (previously reached phase {N}, t
    ```bash
    node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.planning items.{topic}
    ```
-6. Commit: `planning({work_unit}): restart planning`
+6. Commit with raw git — the format's cleanup may remove task storage outside the work unit, so the scoped helper cannot cover it. Stage the work unit and every path the cleanup touched, then commit:
+   ```bash
+   git add -- .workflows/{work_unit} {paths the format cleanup touched}
+   git commit -m "planning({work_unit}): restart planning"
+   ```
 
 → Proceed to **Step 1**.
 

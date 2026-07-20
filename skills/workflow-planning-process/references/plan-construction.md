@@ -137,10 +137,13 @@ Phase {N}: {Phase Name} — all tasks already authored.
 Advance the manifest planning position to the next phase:
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} phase {N+1}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task ~
+node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
 ```
 
-Commit: `planning({work_unit}): complete Phase {N} tasks`
+Commit:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete Phase {N} tasks"
+```
 
 > *Output the next fenced block as a code block:*
 

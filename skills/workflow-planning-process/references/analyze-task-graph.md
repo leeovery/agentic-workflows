@@ -75,7 +75,12 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `approved`:**
 
-Commit: `planning({work_unit}): analyze task dependencies and priorities`
+Commit with raw git — the graph data lands in the format's task storage, which may live outside the work unit, so the scoped helper cannot cover it:
+
+```bash
+git add -- .workflows/{work_unit} {format task storage paths}
+git commit -m "planning({work_unit}): analyze task dependencies and priorities"
+```
 
 → Return to caller.
 
@@ -142,6 +147,11 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `approved`:**
 
-Commit: `planning({work_unit}): analyze task dependencies and priorities`
+Commit with raw git — the graph data lands in the format's task storage, which may live outside the work unit, so the scoped helper cannot cover it:
+
+```bash
+git add -- .workflows/{work_unit} {format task storage paths}
+git commit -m "planning({work_unit}): analyze task dependencies and priorities"
+```
 
 → Return to caller.
