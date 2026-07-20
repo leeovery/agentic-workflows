@@ -10,7 +10,7 @@ Prompted when multiple completed discussions exist, no specifications or propose
 
 Emit the DISPLAY section from the Step 1 snapshot verbatim as a code block.
 
-### Cache-Aware Message
+**Cache-Aware Message**
 
 #### If `cache_status` is `none`
 

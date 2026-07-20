@@ -48,7 +48,7 @@ Group discussions into specifications where each grouping represents a **coheren
 - **Don't group too narrowly** — if a grouping is too thin, it may not warrant its own specification cycle
 - **Flag cross-cutting discussions** — discussions about patterns or policies should become cross-cutting specifications rather than being grouped with feature discussions
 
-### Preserve Anchored Names
+**Preserve Anchored Names**
 
 **Anchors** are existing specification items whose status is anything other than `proposed` — `in-progress`, `completed`, `superseded`, or `promoted` — from the discovery `specifications` array. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated.
 
@@ -57,7 +57,7 @@ When forming groupings:
 - Only create new names for genuinely new groupings with no overlap
 - If an anchor's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
 
-### Identify Cross-Grouping Hand-offs
+**Identify Cross-Grouping Hand-offs**
 
 A discussion can belong wholly in one grouping yet still impose corrections on a **sibling** grouping (or on an anchored existing spec) — e.g. a decision redesigned in discussion A that supersedes what another grouping's spec documents. Carry these in as **consult references**, not sources: the receiving spec reads only the named slice for the correction and cites it; it does not extract the discussion wholesale.
 
@@ -67,7 +67,7 @@ While grouping, for each discussion check whether it hands work to another group
 
 Record each as a consult reference on the **receiving** grouping (never as a source), capturing which slice/decisions and why.
 
-### Knowledge-Base Advisory Query
+**Knowledge-Base Advisory Query**
 
 Before finalizing groupings, run one query per grouping to surface sibling discussions that may owe it corrections you missed:
 
