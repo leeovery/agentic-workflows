@@ -20,21 +20,49 @@ Find the most recent review file in `.workflows/.cache/{work_unit}/research/{top
 
 #### If the most recent review has `status: incorporated`
 
-The prior review was fully drained. Dispatch a fresh one to catch anything that emerged since.
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (its frontmatter `created` date, and — same session — your memory of when it drained):
+
+```bash
+git log --oneline -- .workflows/{work_unit}/research/{topic}.md
+```
+
+**If a meaningful research commit landed after the prior review was dispatched** (new findings, folded threads — not typo fixes):
+
+→ Proceed to **B. Dispatch Final Review**.
+
+**Otherwise:**
+
+Nothing new for a fresh review to see — the final-review gate is satisfied.
+
+→ Return to caller.
+
+#### If the most recent review has `status: in-flight`
+
+A dispatch-time skeleton whose agent hasn't returned.
+
+**If it was dispatched this session** (the agent may still be running):
+
+Watch for the file to flip to `status: pending`.
+
+→ Proceed to **C. Surface via Final Review Menu**.
+
+**Otherwise** (an interrupted earlier session — no agent can still be running):
+
+Delete the skeleton file.
 
 → Proceed to **B. Dispatch Final Review**.
 
 #### If the most recent review has `status: pending`
 
-A review is in flight or just returned unread.
+A review returned but hasn't been read.
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 #### If the most recent review has `status: acknowledged`
 
 Findings from the current review are still being drained.
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 ---
 
@@ -67,6 +95,20 @@ ls .workflows/.cache/{work_unit}/research/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: review
+status: in-flight
+created: {date}
+set: {NNN}
+findings: []
+surfaced: []
+announced: false
+---
+```
+
 **Agent path**: `../../../agents/workflow-research-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
@@ -74,23 +116,11 @@ Dispatch **one agent** as a foreground task (omit `run_in_background` — result
 The review agent receives:
 
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
-2. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md`
-3. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: review
-   status: pending
-   created: {date}
-   set: {NNN}
-   findings: []   # sub-agent populates with F1/F2/... IDs
-   surfaced: []
-   announced: false
-   ---
-   ```
+2. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md` (the skeleton above is already on disk there)
 
 When the agent returns:
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 ---
 

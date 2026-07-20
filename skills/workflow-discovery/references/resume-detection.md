@@ -29,7 +29,7 @@ The output is the in-progress session number string (e.g. `002`) — the prior s
 Found an in-progress discovery session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
 
 - **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the draft and start a new session
+- **`r`/`restart`** — Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)
 · · · · · · · · · · · ·
 ```
 

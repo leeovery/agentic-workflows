@@ -12,6 +12,16 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 
 ## A. Check Review State
 
+**Synthesis findings drain first.** Scan `.workflows/.cache/{work_unit}/discussion/{topic}/` for `synthesis-*.md` files with `status: pending` or `status: acknowledged` — perspective-council tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
+
+**If any such file exists:**
+
+Surface one tension via **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session so the user can engage.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 5**.
+
+**Otherwise:**
+
 Find the most recent review file in `.workflows/.cache/{work_unit}/discussion/{topic}/` by set number.
 
 #### If no review files exist
@@ -20,21 +30,49 @@ Find the most recent review file in `.workflows/.cache/{work_unit}/discussion/{t
 
 #### If the most recent review has `status: incorporated`
 
-The prior review was fully drained. Dispatch a fresh one to catch anything that emerged since.
+The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (its frontmatter `created` date, and — same session — your memory of when it drained):
+
+```bash
+git log --oneline -- .workflows/{work_unit}/discussion/{topic}.md
+```
+
+**If a meaningful discussion commit landed after the prior review was dispatched** (a decision documented, a subtopic explored — not typo fixes):
+
+→ Proceed to **B. Dispatch Final Review**.
+
+**Otherwise:**
+
+Nothing new for a fresh review to see — the final-review gate is satisfied.
+
+→ Return to caller.
+
+#### If the most recent review has `status: in-flight`
+
+A dispatch-time skeleton whose agent hasn't returned.
+
+**If it was dispatched this session** (the agent may still be running):
+
+Watch for the file to flip to `status: pending`.
+
+→ Proceed to **C. Surface via Final Review Menu**.
+
+**Otherwise** (an interrupted earlier session — no agent can still be running):
+
+Delete the skeleton file.
 
 → Proceed to **B. Dispatch Final Review**.
 
 #### If the most recent review has `status: pending`
 
-A review is in flight or just returned unread.
+A review returned but hasn't been read.
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 #### If the most recent review has `status: acknowledged`
 
 Findings from the current review are still being drained.
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 ---
 
@@ -67,6 +105,20 @@ ls .workflows/.cache/{work_unit}/discussion/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: review
+status: in-flight
+created: {date}
+set: {NNN}
+findings: []
+surfaced: []
+announced: false
+---
+```
+
 **Agent path**: `../../../agents/workflow-discussion-review.md`
 
 Dispatch **one agent** as a foreground task (omit `run_in_background` — results are needed before continuing).
@@ -74,23 +126,11 @@ Dispatch **one agent** as a foreground task (omit `run_in_background` — result
 The review agent receives:
 
 1. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md`
-3. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: review
-   status: pending
-   created: {date}
-   set: {NNN}
-   findings: []   # sub-agent populates with F1/F2/... IDs
-   surfaced: []
-   announced: false
-   ---
-   ```
+2. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md` (the skeleton above is already on disk there)
 
 When the agent returns:
 
-→ Proceed to **C. Surface via Shared Protocol**.
+→ Proceed to **C. Surface via Final Review Menu**.
 
 ---
 

@@ -78,6 +78,16 @@ ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: synthesis
+status: in-flight
+created: {date}
+---
+```
+
 **Agent path**: `../../../agents/workflow-investigation-synthesis.md`
 
 > *Output the next fenced block as a code block:*
@@ -91,15 +101,7 @@ Dispatch **one agent** via the Task tool (**synchronous** — do not use `run_in
 The synthesis agent receives:
 
 1. **Investigation file path** — `.workflows/{work_unit}/investigation/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md`
-3. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: synthesis
-   status: pending
-   created: {date}
-   ---
-   ```
+2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` (the skeleton above is already on disk there)
 
 The synthesis agent returns:
 
@@ -146,5 +148,30 @@ Synthesis: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
 
 Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md
 ```
+
+The gaps live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+How should these gaps be handled?
+
+- **`a`/`address`** — Work through them and fold the answers into the investigation
+- **`d`/`dismiss`** — Note them as considered-and-dismissed and proceed
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `address`:**
+
+Work through each gap with the user — re-trace code where needed — and update the investigation file's affected sections (Analysis, Root Cause, Blast Radius) with what the answers change or confirm. Commit the updated file.
+
+→ Return to caller.
+
+**If `dismiss`:**
+
+Record the gaps under a short "Synthesis gaps (dismissed)" note in the investigation file's Analysis section so the record shows they were considered. Commit.
 
 → Return to caller.

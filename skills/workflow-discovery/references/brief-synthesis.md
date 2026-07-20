@@ -36,7 +36,7 @@ Drawn from discovery session(s) {coarse session range}.
 
 ## B. Lifecycle
 
-When the harvest restructured topics that were already on the map, keep brief files and `brief_path` pointers in step with the confirmed set. Apply whichever operations occurred — split, merge, and drop are independent, and more than one may apply in a single harvest. This section removes only what the restructuring orphaned.
+This section applies only to restructures **within the session's working list** — the set the harvest shaped and the user confirmed. Committed map items outside the working list are never restructured by a harvest (map edits go through map-operations, which owns its own log entries); their briefs are untouched here. When the confirmed working list restructured a topic that already carried a brief, keep brief files and `brief_path` pointers in step with the confirmed set. Apply whichever operations occurred — split, merge, and drop are independent, and more than one may apply in a single harvest. This section removes only what the restructuring orphaned.
 
 **Split** — a parent topic became two or more children. The children's briefs are written in **A**; remove the parent's:
 

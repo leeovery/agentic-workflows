@@ -26,7 +26,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 **If `brief_path` is present and the brief file exists:**
 
-Read `.workflows/{work_unit}/discovery/briefs/{topic}.md` in full — the *discovery brief* — and use it as the starting context for this phase. Don't dump it back to the user verbatim. It is soft by location: treat it as provisional, to be ratified by this phase, not as settled fact.
+Read the file at `brief_path` in full — the *discovery brief* — and use it as the starting context for this phase. Don't dump it back to the user verbatim. It is soft by location: treat it as provisional, to be ratified by this phase, not as settled fact.
 
 → Proceed to **B. Track the Read**.
 

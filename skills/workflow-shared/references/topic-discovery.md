@@ -51,7 +51,7 @@ This tracker captures topic names **approved and written** during this run, per 
 
 ## B. Run Research Analysis if Stale
 
-Research-analysis runs first because gap-analysis reads its cache file as a secondary input.
+Research-analysis runs first so that a theme both analyses surface is already on the map when gap-analysis stages — its already-on-map branch then merges provenance instead of staging a duplicate (see **D. Dedupe Sources**).
 
 #### If `analysis_caches.research_analysis.status` is `stale`
 

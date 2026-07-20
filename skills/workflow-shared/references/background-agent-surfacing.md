@@ -41,6 +41,8 @@ Once you raise a finding, control belongs to the conversation. The user engages 
 
 Cache files move through these states:
 
+**`in-flight`** → Skeleton written by the orchestrator at dispatch. The sub-agent is still running — there is nothing to surface, and the scans below ignore it. The agent's completed rewrite flips it to `pending`.
+
 **`pending`** → Sub-agent wrote the file. You haven't read it yet.
 
 **`acknowledged`** → You have read the file. Two frontmatter flags track sub-state:
@@ -77,7 +79,7 @@ The file was first-read on an earlier iteration. C. Decide Action will read its 
 
 1. Read the cache file completely.
 2. Count findings in the frontmatter `{findings_key}` list.
-3. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were set by the orchestrator at dispatch time and are already present.
+3. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were written with the dispatch-time skeleton and are already present.
 
 #### If the finding count is 0 (zero-gap case)
 

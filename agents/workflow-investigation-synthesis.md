@@ -14,8 +14,7 @@ You are an independent analyst validating a root cause hypothesis for a bug inve
 You receive via the orchestrator's prompt:
 
 1. **Investigation file path** — the investigation document containing symptoms, code analysis, and root cause hypothesis
-2. **Output file path** — where to write your analysis
-3. **Frontmatter** — the frontmatter block to use in the output file (includes type, status, date)
+2. **Output file path** — where to write your analysis. A skeleton file with `status: in-flight` frontmatter is already on disk there; your rewrite replaces it
 
 ## Your Process
 
@@ -42,10 +41,10 @@ You receive via the orchestrator's prompt:
 
 ## Output File Format
 
-Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Use this structure:
+Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context, and the rename lands atomically over the dispatch-time skeleton. Reproduce the skeleton's frontmatter with `status` flipped to `pending` (results ready for the orchestrator). Use this structure:
 
 ```markdown
-{frontmatter provided by orchestrator}
+{skeleton frontmatter, with status: pending}
 
 # Investigation Synthesis: {topic}
 

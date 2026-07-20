@@ -86,6 +86,21 @@ Compose a research brief for the agent. The brief must be self-contained — the
 - Specific questions to answer if applicable
 - Boundaries — what's in scope and what isn't
 
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-{NNN}-{thread}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record: it makes the running agent visible to the in-flight scans and the concurrency count until the agent's rewrite flips it to `pending`:
+
+```yaml
+---
+type: deep-dive
+status: in-flight
+created: {date}
+set: {NNN}
+thread: {thread name}
+findings: []
+surfaced: []
+announced: false
+---
+```
+
 **Agent path**: `../../../agents/workflow-research-deep-dive.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
@@ -94,22 +109,9 @@ The deep-dive agent receives:
 
 1. **Research brief** — the self-contained investigation brief
 2. **Research file path** — `.workflows/{work_unit}/research/{topic}.md` (for background context)
-3. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-{NNN}-{thread}.md`
-4. **Frontmatter** — the frontmatter block to write:
-   ```yaml
-   ---
-   type: deep-dive
-   status: pending
-   created: {date}
-   set: {NNN}
-   thread: {thread name}
-   findings: []   # sub-agent populates with F1/F2/... IDs
-   surfaced: []
-   announced: false
-   ---
-   ```
+3. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-{NNN}-{thread}.md` (the skeleton above is already on disk there)
 
-The sub-agent writes finding entries with stable IDs (`F1`, `F2`, …) into the `findings:` list. See `agents/workflow-research-deep-dive.md` for the schema.
+The sub-agent rewrites the file at completion — populating `findings:` with stable IDs (`F1`, `F2`, …) and flipping `status` to `pending`. See `agents/workflow-research-deep-dive.md` for the schema.
 
 > *Output the next fenced block as a code block:*
 
@@ -129,7 +131,7 @@ SUMMARY: {1-2 sentences}
 
 The research session continues — do not wait for the agent to return.
 
-**Concurrency**: Before dispatching, count files matching `deep-dive-*.md` with `status: pending` in their frontmatter in the cache directory. Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
+**Concurrency**: Before dispatching, count files matching `deep-dive-*.md` with `status: in-flight` in their frontmatter in the cache directory — the skeletons of agents still running. Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
 
 ---
 
@@ -139,17 +141,15 @@ Delegate all check-for-results and presentation behaviour to the shared surfacin
 
 → Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `deep-dive`, cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `deep-dive-*.md`, findings_key = `findings`.
 
-**Promoting to a research file** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own research file — and agrees or requests it — promote them:
+**Promoting to a research file** (epic work type only): If during presentation the user engages with findings substantial enough to warrant their own research file — and agrees or requests it — promote them through the shared topic-creation core, so the new topic lands on the discovery map with validated naming and provenance:
 
-1. Create a new research file at `.workflows/{work_unit}/research/{thread}.md`
-2. Synthesise the deep-dive findings into the file (don't copy the cache file verbatim — organise for the research document context)
-3. Register in the manifest:
+1. Derive a one-line `summary` and a paragraph or two of `description` from the deep-dive findings.
+
+2. → Load **[create-discovery-topic.md](../../workflow-shared/references/create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{thread}`, phase = `research`, routing = `research`, source = `research-split:{topic}`, summary = `{summary}`, description = `{description}`.
+
+3. **If `result` is `cancelled`:** the promotion was dropped — the findings stay in the cache file. Otherwise create the research file at `.workflows/{work_unit}/research/{created_topic}.md` and synthesise the deep-dive findings into it (don't copy the cache file verbatim — organise for the research document context), then commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {thread}
-   ```
-4. Commit:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): add {thread} research from deep dive"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): add {created_topic} research from deep dive"
    ```
 
 For feature work types, deep-dive findings fold into the existing research file — there is only one research topic per feature.
