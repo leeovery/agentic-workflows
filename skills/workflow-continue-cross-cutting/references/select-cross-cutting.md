@@ -24,7 +24,7 @@ Display active cross-cutting concerns and let the user select one.
 @endif
 ```
 
-Build from the discovery output's `cross_cutting` array. Each shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
+Build from the discovery output's `=== CROSS-CUTTING ===` section. Each shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
 
 > *Output the next fenced block as markdown (not a code block):*
 

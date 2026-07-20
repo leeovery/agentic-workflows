@@ -45,18 +45,20 @@ function discover(cwd, workUnit) {
   };
 }
 
+// The thin scoped dump: the two fields the continuation references branch
+// on — the derived next phase, and the completed set (in pipeline order) that
+// feeds the revisit menu.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
 
+  const completed = Object.entries(result.phases)
+    .filter(([, data]) => data.status === 'completed')
+    .map(([phase]) => phase);
+
   const lines = [];
-  lines.push(`=== ${result.work_unit} (${result.work_type}, ${result.status}) ===`);
+  lines.push(`=== ${result.work_unit} (${result.work_type}) ===`);
   lines.push(`next_phase: ${result.next_phase}`);
-  lines.push('');
-
-  for (const [phase, data] of Object.entries(result.phases)) {
-    lines.push(`  ${phase}: ${data.status}${data.exists ? '' : ' (no files)'}`);
-  }
-
+  lines.push(`completed_phases: ${completed.join(', ') || '(none)'}`);
   return lines.join('\n') + '\n';
 }
 

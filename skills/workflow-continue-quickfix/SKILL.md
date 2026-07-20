@@ -74,17 +74,15 @@ If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
-**From `quick_fixes` array:**
-- `name` - the work unit name
-- `next_phase` - the phase to route to
-- `phase_label` - human-readable phase status
-- `completed_phases` - list of completed phases (drives the revisit options)
+**From the `=== QUICK-FIXES ===` section:**
+- one line per active quick-fix — `{name}: {phase_label}`
+- `count` — the header count of active quick-fixes
 
-**From top-level fields:**
-- `count` - number of active quick-fixes
-- `summary` - human-readable state summary
-- `completed` / `cancelled` - arrays of non-active quick-fixes with name, status, last_phase
-- `completed_count` / `cancelled_count` - counts for each
+**From the `=== COMPLETED ===` / `=== CANCELLED ===` sections:**
+- one line per closed quick-fix — `{name} (last phase: {phase})`
+- `completed_count` / `cancelled_count` — the header counts
+
+Anything richer (next phase, completed phases, revisit routes) comes from the `view` snapshot at Step 5 — this dump is the index, not the state surface.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

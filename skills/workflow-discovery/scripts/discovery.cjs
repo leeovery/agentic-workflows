@@ -4,7 +4,7 @@
 // Adapter (read gateway) for workflow-discovery. Thin by design: the scoped
 // discovery dump plus the map-view projection over one epic's discovery map.
 //
-//   discovery.cjs {work_unit}            → labelled dump (byte-stable legacy format)
+//   discovery.cjs {work_unit}            → labelled dump (thin reasoning surface)
 //   discovery.cjs map-view {work_unit}   → DATA + DISPLAY map snapshot
 //   discovery.cjs map-view {work_unit} --proposed-file {path}
 //                                        → synthesis overlay: the harvest's
@@ -98,17 +98,19 @@ function discover(cwd, workUnit) {
   };
 }
 
+// The thin scoped dump: the map (rows + counts), the dismissed list, the
+// session-log index, analysis-cache statuses, and the next session number —
+// exactly what the session loop, map operations, continuity load, and the
+// shared topic-discovery dispatch read. Rendering is map-view's concern.
 function format(result) {
   if (result.error) {
     return `error: ${result.error}\n`;
   }
   const lines = [];
-  lines.push(`=== DISCOVERY DISCOVERY: ${result.work_unit} ===`);
+  lines.push(`=== DISCOVERY: ${result.work_unit} ===`);
 
   const s = result.map_summary;
   lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled`);
-  lines.push(`needs_sequencing: ${result.needs_sequencing}`);
-  lines.push('');
 
   lines.push(`discovery_map (${result.discovery_map.length}):`);
   if (result.discovery_map.length === 0) {
@@ -123,7 +125,6 @@ function format(result) {
       lines.push(line);
     }
   }
-  lines.push('');
 
   lines.push(`dismissed (${result.dismissed.length}):`);
   if (result.dismissed.length === 0) {
@@ -133,10 +134,6 @@ function format(result) {
       lines.push(`  - ${name}`);
     }
   }
-  lines.push('');
-
-  lines.push(`active_session: ${result.active_session || '(none)'}`);
-  lines.push('');
 
   const sessionLogs = result.session_logs || [];
   lines.push(`session_logs (${sessionLogs.length}):`);
@@ -147,18 +144,10 @@ function format(result) {
       lines.push(`  - ${String(log.number).padStart(3, '0')} ${log.path}`);
     }
   }
-  lines.push('');
 
-  lines.push('analysis_caches:');
   const caches = result.analysis_caches || {};
-  for (const kind of ['research_analysis', 'gap_analysis']) {
-    const c = caches[kind] || { status: 'absent' };
-    let line = `  ${kind}: ${c.status}`;
-    if (c.generated) line += ` (generated ${c.generated})`;
-    if (c.reason) line += ` — ${c.reason}`;
-    lines.push(line);
-  }
-  lines.push('');
+  const cacheStatus = (kind) => ((caches[kind] || { status: 'absent' }).status);
+  lines.push(`analysis_caches: research_analysis=${cacheStatus('research_analysis')}, gap_analysis=${cacheStatus('gap_analysis')}`);
 
   lines.push(`next_session_number: ${String(result.next_session_number).padStart(3, '0')}`);
 
@@ -261,8 +250,8 @@ if (require.main === module) {
         return ''; // unreachable
       }
     },
-    // Byte-stable legacy form: `discovery.cjs {work_unit}` — same stdout and
-    // exit codes as before the gateway wrapped it.
+    // Scoped dump form: `discovery.cjs {work_unit}` — exit 2 on an unknown
+    // work unit so calling flows fail loudly.
     fallback: (workUnit) => {
       const result = discover(process.cwd(), workUnit);
       if (result.error) {

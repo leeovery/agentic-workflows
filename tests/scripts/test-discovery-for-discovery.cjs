@@ -477,12 +477,10 @@ describe('workflow-discovery discovery', () => {
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'stale');
     });
 
-    it('format() renders analysis_caches statuses', () => {
+    it('format() renders analysis_caches statuses on one line', () => {
       createManifest(dir, 'payments', { work_type: 'epic' });
       const out = format(discover(dir, 'payments'));
-      assert.match(out, /analysis_caches:/);
-      assert.match(out, /research_analysis: absent/);
-      assert.match(out, /gap_analysis: absent/);
+      assert.match(out, /analysis_caches: research_analysis=absent, gap_analysis=absent/);
     });
   });
 
@@ -576,7 +574,7 @@ describe('workflow-discovery format', () => {
   it('header line includes the work_unit name', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     const out = format(discover(dir, 'payments'));
-    assert.match(out, /=== DISCOVERY DISCOVERY: payments ===/);
+    assert.match(out, /=== DISCOVERY: payments ===/);
   });
 
   // --- map_summary line ---
@@ -712,19 +710,13 @@ describe('workflow-discovery format', () => {
       assert.strictEqual(r.active_session, '002');
     });
 
-    it('format() renders active_session value when set', () => {
+    it('format() carries no active_session line — the manifest CLI owns the resume signal', () => {
       createManifest(dir, 'payments', {
         work_type: 'epic',
         phases: { discovery: { active_session: '003' } },
       });
       const out = format(discover(dir, 'payments'));
-      assert.match(out, /active_session: 003/);
-    });
-
-    it('format() renders "(none)" when active_session is unset', () => {
-      createManifest(dir, 'payments', { work_type: 'epic' });
-      const out = format(discover(dir, 'payments'));
-      assert.match(out, /active_session: \(none\)/);
+      assert.ok(!out.includes('active_session'));
     });
   });
 
@@ -770,21 +762,61 @@ describe('workflow-discovery format', () => {
     assert.ok(out.endsWith('\n'));
   });
 
-  it('renders all named sections in order', () => {
+  it('empty epic pins the full dump byte-exactly', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     const out = format(discover(dir, 'payments'));
-    const order = [
-      out.indexOf('=== DISCOVERY DISCOVERY:'),
-      out.indexOf('map_summary:'),
-      out.indexOf('discovery_map ('),
-      out.indexOf('dismissed ('),
-      out.indexOf('active_session:'),
-      out.indexOf('session_logs ('),
-      out.indexOf('analysis_caches:'),
-      out.indexOf('next_session_number:'),
-    ];
-    for (let i = 1; i < order.length; i++) {
-      assert.ok(order[i] > order[i - 1], `section ${i} must follow section ${i - 1}; got ${order}`);
-    }
+    assert.strictEqual(out, [
+      '=== DISCOVERY: payments ===',
+      'map_summary: 0 topics — 0 decided, 0 in-flight, 0 ready, 0 fresh, 0 handled, 0 cancelled',
+      'discovery_map (0):',
+      '  (empty)',
+      'dismissed (0):',
+      '  (none)',
+      'session_logs (0):',
+      '  (none)',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'next_session_number: 001',
+      '',
+    ].join('\n'));
+  });
+
+  it('populated epic pins the full dump byte-exactly', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            'auth-flow': { status: 'in-progress', routing: 'research', source: 'discovery', summary: 'OAuth vs sessions', order: 1 },
+            'billing': { status: 'in-progress', routing: 'discussion', source: 'gap-analysis' },
+          },
+          dismissed: ['old-thing'],
+        },
+        research: { items: { 'auth-flow': { status: 'in-progress' } } },
+      },
+    });
+    writeSessionLog(dir, 'payments', 1, 'concluded');
+    writeSessionLog(dir, 'payments', 2, '(none)');
+    const out = format(discover(dir, 'payments'));
+    assert.strictEqual(out, [
+      '=== DISCOVERY: payments ===',
+      'map_summary: 2 topics — 0 decided, 1 in-flight, 0 ready, 1 fresh, 0 handled, 0 cancelled',
+      'discovery_map (2):',
+      '  - ◐ auth-flow [researching] routing=research phase=research — OAuth vs sessions',
+      '  - ○ billing [fresh] routing=discussion source=gap-analysis',
+      'dismissed (1):',
+      '  - old-thing',
+      'session_logs (2):',
+      '  - 001 .workflows/payments/discovery/sessions/session-001.md',
+      '  - 002 .workflows/payments/discovery/sessions/session-002.md',
+      'analysis_caches: research_analysis=absent, gap_analysis=absent',
+      'next_session_number: 003',
+      '',
+    ].join('\n'));
+  });
+
+  it('carries no needs_sequencing line — sequencing is the epic dump\'s concern', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    const out = format(discover(dir, 'payments'));
+    assert.ok(!out.includes('needs_sequencing'));
   });
 });

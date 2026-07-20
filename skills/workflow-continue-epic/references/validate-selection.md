@@ -4,9 +4,9 @@
 
 ---
 
-Validate the selected work unit against the discovery output and store its data.
+Validate the selected work unit against the discovery output, then load its state surface.
 
-#### If `work_unit` not found in epics array
+#### If `work_unit` not found in the `=== EPICS ===` section
 
 > *Output the next fenced block as a code block:*
 
@@ -20,6 +20,10 @@ Run /workflow-start to see available epics or begin a new one.
 
 #### Otherwise
 
-Store the matched epic's data (name, active_phases, detail) for use in subsequent steps.
+Run the scoped discovery for the selected epic and hold its output as **the most recent discovery output** — Steps 5–7 read `discovery_map`, `analysis_caches`, and `needs_sequencing` from it:
+
+```bash
+node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+```
 
 → Return to caller.

@@ -24,7 +24,7 @@ Display active quick-fixes and let the user select one.
 @endif
 ```
 
-Build from the discovery output's `quick_fixes` array. Each quick-fix shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
+Build from the discovery output's `=== QUICK-FIXES ===` section. Each quick-fix shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
 
 > *Output the next fenced block as markdown (not a code block):*
 

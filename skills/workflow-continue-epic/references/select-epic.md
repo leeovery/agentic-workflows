@@ -24,7 +24,7 @@ Display active epics and let the user select one.
 @endif
 ```
 
-Build from the discovery output's `epics` array. Each epic shows `name` (titlecased) and a comma-separated list of `active_phases` (titlecased). Blank line between each numbered item.
+Build from the discovery output's `=== EPICS ===` section. Each epic shows `name` (titlecased) and a comma-separated list of `active_phases` (titlecased). Blank line between each numbered item.
 
 > *Output the next fenced block as markdown (not a code block):*
 

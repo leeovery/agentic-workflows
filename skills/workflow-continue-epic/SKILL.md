@@ -74,26 +74,15 @@ If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
-**From `epics` array:** Each epic has:
-- `name` - the work unit name
-- `active_phases` - list of phase names that have artifacts
-- `detail` - full phase-by-phase breakdown containing:
-  - `phases` - per-phase items with statuses and spec sources
-  - `in_progress` - items currently in-progress (name + phase)
-  - `completed` - items that are completed (name + phase)
-  - `next_phase_ready` - items ready for the next phase (name + action + label)
-  - `unaccounted_discussions` - completed discussions not grouped into any spec item (proposed or materialized)
-  - `reopened_discussions` - in-progress discussions that are sourced in a spec
-  - `discovery_map` - per-topic lifecycle for the discovery/research/discussion span (tier-sorted; empty when no discovery items exist)
-  - `convergence_state` - `'in-progress'` | `'settled'` | `null` (when no map)
-  - `map_summary` - count totals for the map (`total`, `decided`, `in_flight`, `ready`, `fresh`, `cancelled`)
-  - `gating` - boolean flags for phase-forward gating
+**From the `=== EPICS ===` section:**
+- one line per active epic — `{name}: {active_phases}` (phases with items; `(no phases)` when none)
+- `count` — the header count of active epics
 
-**From top-level fields:**
-- `count` - number of active epics
-- `summary` - human-readable state summary
-- `completed` / `cancelled` - arrays of non-active epics with name, status, last_phase (list mode only)
-- `completed_count` / `cancelled_count` - counts for each
+**From the `=== COMPLETED ===` / `=== CANCELLED ===` sections:**
+- one line per closed epic — `{name} (last phase: {phase})`
+- `completed_count` / `cancelled_count` — the header counts
+
+The per-epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, the discovery map) is the scoped dump Step 4 runs after validation; display and routing come from the `view` snapshot at Step 8.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 
@@ -189,7 +178,7 @@ node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit
 
 Parse `qualifying_sources` from the JSON output.
 
-Then read `discovery_map` from the most recent discovery `detail` and filter for items where `summary_present` is false or `description_present` is false — regardless of `source`. Store the filtered list as `items_to_recover`.
+Then read `discovery_map` from the most recent discovery output and filter for rows where `summary=absent` or `description=absent`. Store the filtered list as `items_to_recover`.
 
 #### If `qualifying_sources` is empty and `items_to_recover` is empty
 
@@ -218,7 +207,7 @@ backfill-checks is terminal when it fires — it commits the recovery work and s
 > to surface onto the discovery map.
 ```
 
-Read `analysis_caches` from the most recent discovery `detail`. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
+Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
 On return, `new_arrivals` is populated for Step 8 to render the callout.
 
@@ -240,7 +229,7 @@ On return, `new_arrivals` is populated for Step 8 to render the callout.
 > Assigning a suggested execution order to the discovery map's topics.
 ```
 
-Read `needs_sequencing` from the most recent discovery `detail`.
+Read `needs_sequencing` from the most recent discovery output.
 
 #### If `needs_sequencing` is true
 

@@ -10,7 +10,7 @@ The caller provides via context:
 
 - `work_unit` — the epic's work unit name
 - `qualifying_sources` — legacy-bridge detector output (parsed from `detect.cjs`)
-- `items_to_recover` — list of map items where `summary_present` is false or `description_present` is false
+- `items_to_recover` — list of map rows where `summary=absent` or `description=absent`
 
 ## A. Legacy-Bridge Gate
 
@@ -24,7 +24,7 @@ On return, re-run discovery so **B** sees the post-split map state:
 node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
 ```
 
-Re-filter `discovery_map` for items where `summary_present` is false or `description_present` is false. Overwrite `items_to_recover` with this fresh list — legacy-split creates themes with full metadata and removes the source's discovery item, so the caller's pre-split filter is stale.
+Re-filter `discovery_map` for rows where `summary=absent` or `description=absent`. Overwrite `items_to_recover` with this fresh list — legacy-split creates themes with full metadata and removes the source's discovery item, so the caller's pre-split filter is stale.
 
 → Proceed to **B. Summary-Backfill Gate**.
 

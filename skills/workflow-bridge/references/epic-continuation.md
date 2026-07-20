@@ -10,19 +10,19 @@ Epic is phase-centric — all artifacts in a phase complete before moving to the
 
 ## A. Run Epic Discovery
 
-The bridge's own discovery provides minimal epic data. Run the workflow-continue-epic discovery scoped to this work unit for enriched state (dependencies, implementation progress, format):
+The bridge's own discovery provides minimal epic data. Run the workflow-continue-epic discovery scoped to this work unit for the epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, the discovery map):
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
 ```
 
-Parse the output. Use the epic's `detail` object as the discovery data for the display.
+Hold the output as **the most recent discovery output** — sections B–D read from it.
 
 → Proceed to **B. Topic Discovery**.
 
 ## B. Topic Discovery
 
-A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the `detail` object parsed in A, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
+A research or discussion conclusion may have changed source files since the last analysis. Read `analysis_caches` from the most recent discovery output, then load **[topic-discovery-dispatch.md](../../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
 On return, `new_arrivals` is populated — section E reads it to render the callout above the discovery map.
 
@@ -30,7 +30,7 @@ On return, `new_arrivals` is populated — section E reads it to render the call
 
 ## C. Sequence Map
 
-A new topic may have arrived without a suggested execution order — from section B's analyses, or from a prior edit. Read `needs_sequencing` from the most recent discovery `detail` (section B re-runs discovery when its analyses add topics, so it may be newer than A's).
+A new topic may have arrived without a suggested execution order — from section B's analyses, or from a prior edit. Read `needs_sequencing` from the most recent discovery output (section B re-runs discovery when its analyses add topics, so it may be newer than A's).
 
 #### If `needs_sequencing` is true
 
@@ -42,7 +42,7 @@ On return, re-run discovery so section E sees the new order:
 node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
 ```
 
-Use the refreshed `detail` object for the remaining sections.
+Hold the refreshed output as the most recent discovery output for the remaining sections.
 
 → Proceed to **D. Check All-Done**.
 
@@ -54,15 +54,9 @@ The map is already sequenced.
 
 ## D. Check All-Done
 
-Phase statuses aggregate only the topics present in each phase, so a completed review phase alone does not mean the epic is finished — topics may not have reached review yet. Using the enriched discovery `detail`, the epic is all-done only when every condition holds:
+The scoped discovery derives `all_done` — true only when at least one non-cancelled review item exists and every non-cancelled one is completed, nothing is in progress or awaiting its next phase, no completed discussion is unaccounted, and the discovery map has settled (or the epic has none). Read it from the most recent discovery output.
 
-- review items exist and every non-cancelled one has `status: completed`
-- `next_phase_ready` is empty (no topic is awaiting its next phase)
-- `in_progress` is empty
-- `unaccounted_discussions` is empty
-- `convergence_state` is `settled` (or `null` when the epic has no discovery map)
-
-#### If all conditions hold
+#### If `all_done` is `true`
 
 > *Output the next fenced block as markdown (not a code block):*
 

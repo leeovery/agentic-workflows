@@ -362,21 +362,16 @@ describe('workflow-specification-entry format', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('includes all section headers', () => {
+  it('empty project pins the full dump byte-exactly', () => {
     const out = format(discover(dir));
-    assert.ok(out.includes('=== DISCUSSIONS ==='));
-    assert.ok(out.includes('=== SPECIFICATIONS ==='));
-    assert.ok(out.includes('=== CACHE ==='));
-    assert.ok(out.includes('=== STATE ==='));
+    assert.strictEqual(out, [
+      '=== STATE ===',
+      'counts: discussions=0 completed=0 in_progress=0 specs=0 proposed=0 concluded=0',
+      '',
+    ].join('\n'));
   });
 
-  it('shows (none) for empty sections', () => {
-    const out = format(discover(dir));
-    const noneCount = (out.match(/\(none\)/g) || []).length;
-    assert.strictEqual(noneCount, 3);
-  });
-
-  it('includes discussion with spec status', () => {
+  it('populated project pins the full dump byte-exactly', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -391,40 +386,30 @@ describe('workflow-specification-entry format', () => {
         },
       },
     });
-    const out = format(discover(dir));
-    assert.ok(out.includes('  auth/auth (feature): completed, spec: in-progress'));
-  });
-
-  it('includes specification with sources', () => {
-    createManifest(dir, 'auth', {
+    createManifest(dir, 'billing', {
       work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: {
-          items: {
-            auth: {
-              status: 'completed',
-              type: 'feature',
-              sources: { auth: { status: 'incorporated' } },
-            },
-          },
-        },
-      },
+      phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
     });
     createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
+    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
     const out = format(discover(dir));
-    assert.ok(out.includes('  auth: completed, type=feature'));
-    assert.ok(out.includes('    source: auth (incorporated, discussion: completed)'));
+    assert.strictEqual(out, [
+      '=== STATE ===',
+      'counts: discussions=2 completed=1 in_progress=1 specs=1 proposed=0 concluded=0',
+      '',
+    ].join('\n'));
   });
 
-  it('includes specification with consult references', () => {
+  it('carries no discussion, spec, cache, or checksum detail — the view verb owns it', () => {
     createManifest(dir, 'mint', {
       work_type: 'epic',
       phases: {
+        discussion: { items: { 'cli-presentation': { status: 'completed' } } },
         specification: {
           items: {
             'release-engine': {
               status: 'in-progress',
+              sources: { 'cli-presentation': { status: 'incorporated' } },
               consult_references: { 'cli-presentation': { status: 'pending' } },
             },
           },
@@ -432,27 +417,14 @@ describe('workflow-specification-entry format', () => {
       },
     });
     createFile(dir, '.workflows/mint/specification/release-engine/specification.md', '# Spec');
+    createFile(dir, '.workflows/mint/discussion/cli-presentation.md', '# D');
     const out = format(discover(dir));
-    assert.ok(out.includes('    consult: cli-presentation (pending)'));
-  });
-
-  it('includes state with counts', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    const out = format(discover(dir));
-    assert.ok(out.includes('discussions: 1 (1 completed, 0 in-progress)'));
-  });
-
-  it('includes checksum when discussions have files', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
-    const out = format(discover(dir));
-    assert.ok(out.includes('checksum: '));
+    assert.ok(!out.includes('=== DISCUSSIONS ==='));
+    assert.ok(!out.includes('=== SPECIFICATIONS ==='));
+    assert.ok(!out.includes('=== CACHE ==='));
+    assert.ok(!out.includes('source:'));
+    assert.ok(!out.includes('consult:'));
+    assert.ok(!out.includes('checksum'));
   });
 
   describe('spec menu reorder', () => {
@@ -567,27 +539,14 @@ describe('workflow-specification-entry format', () => {
       assert.strictEqual(r.current_state.concluded_count, 0);
     });
 
-    it('format STATE block shows concluded count', () => {
+    it('format counts line reflects the reorder fixture byte-exactly', () => {
       reorderFixture();
       const out = format(discover(dir));
-      assert.ok(out.includes('concluded: 1'));
-    });
-
-    it('format spec lines carry has_pending_sources', () => {
-      reorderFixture();
-      const out = format(discover(dir));
-      assert.ok(out.includes('concluded-spec: completed, type=epic, has_pending_sources=false'));
-      assert.ok(out.includes('pending-spec: completed, type=epic, has_pending_sources=true'));
-    });
-
-    it('format prints specs in sorted order', () => {
-      reorderFixture();
-      const out = format(discover(dir));
-      const iProposed = out.indexOf('proposed-grp:');
-      const iWip = out.indexOf('wip-spec:');
-      const iPending = out.indexOf('pending-spec:');
-      const iConcluded = out.indexOf('concluded-spec:');
-      assert.ok(iProposed < iWip && iWip < iPending && iPending < iConcluded);
+      assert.strictEqual(out, [
+        '=== STATE ===',
+        'counts: discussions=5 completed=5 in_progress=0 specs=3 proposed=1 concluded=1',
+        '',
+      ].join('\n'));
     });
   });
 
