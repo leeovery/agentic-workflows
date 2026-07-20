@@ -89,7 +89,7 @@ The map lives in the epic's manifest at `phases.discovery.items.{topic}` and dri
         Live operational view for venue staff
 ```
 
-Map items carry `routing`, `summary`, `description`, a suggested execution `order`, a `brief_path`, and a `source` provenance field recording how the topic arrived: `discovery` (user-surfaced), `research-analysis`, `gap-analysis`, `research-split:{parent}`, `direct-start`, `migration-seeded`, `legacy-split:{parent}`, or `reroute:{origin}`. Multi-source items comma-accumulate.
+Map items carry `routing`, `summary`, `description`, a suggested execution `order`, a `brief_path`, and a `source` provenance field recording how the topic arrived: `discovery` (user-surfaced), `research-analysis:{parent}`, `gap-analysis`, `research-split:{parent}`, `direct-start`, `migration-seeded`, `legacy-split:{parent}`, or `reroute:{origin}`. Multi-source items comma-accumulate.
 
 Deliberately, a map item has **no status field**. Lifecycle (`fresh`, `researching`, `ready for discussion`, `discussing`, `decided`, `handled`, `cancelled`) is computed at render time by joining the map item against the per-phase items that actually exist. State that can be derived is never stored.
 
