@@ -354,7 +354,13 @@ function resolveProvider(config) {
     );
   }
 
-  // OpenAI cloud provider — requires a key. Missing key → keyword-only mode.
+  // OpenAI cloud provider — requires a key. Missing key → null (the caller
+  // degrades to keyword-only for THIS command). This null is intentionally
+  // indistinguishable here from "no provider configured"; the two are told
+  // apart at the call sites via cfg.provider (see providerKeyUnresolved in
+  // index.js) so a missing key surfaces "set your key", not the store-
+  // destroying "provider changed — rebuild". Do NOT throw here: many callers
+  // (setup, status) rely on null meaning "run keyword-only".
   if (providerName === 'openai') {
     if (!config._api_key) {
       return null;

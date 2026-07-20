@@ -543,6 +543,12 @@ async function runProjectInitStep(rl) {
 
   // Load merged config to resolve dimensions for the store.
   const cfg = config.loadConfig();
+  // Use the provider NAME from config, NOT config.resolveProvider(cfg). The
+  // resolved provider is null for a keyed provider whose key hasn't been set
+  // yet — recording that null here would write metadata claiming keyword-only
+  // and then mis-fire "provider changed — rebuild" once the key arrives. The
+  // name records declared intent; it matches cleanly when the key resolves,
+  // and index/query surface the key-unresolved remedy in the meantime.
   const provider = cfg.provider || null;
   const dims = Number.isInteger(cfg.dimensions) && cfg.dimensions > 0
     ? cfg.dimensions
