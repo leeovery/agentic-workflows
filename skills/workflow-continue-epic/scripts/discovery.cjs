@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
-const { loadActiveManifests, loadAllManifests, phaseItems } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+const { loadActiveManifests, loadAllManifests, phaseItems } = require('../../workflow-engine/scripts/domain/discovery-utils.cjs');
 
 const EPIC_PHASES = engine.detail.EPIC_PHASES;
 

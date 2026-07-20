@@ -32,7 +32,7 @@ This topic has no external dependencies. Other topics may still have unresolved 
 Read existing `external_dependencies` from the manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} external_dependencies
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_dependencies
 ```
 
 #### If output is empty (no existing entries)
@@ -58,7 +58,7 @@ Read the specification's Dependencies section. For each dependency, derive the m
 Preserve the existing state — only update the description:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
 ```
 
 → Proceed to **C. Remove Stale Entries**.
@@ -68,8 +68,8 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 Set as unresolved:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state unresolved
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state unresolved
 ```
 
 → Proceed to **C. Remove Stale Entries**.
@@ -85,7 +85,7 @@ Compare the manifest's dependency topics against the specification's Dependencie
 Delete each one:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
 ```
 
 → Proceed to **D. Resolve Current Plan's Dependencies**.
@@ -102,7 +102,7 @@ Nothing to remove.
 
 For each unresolved dependency, check if the planning entry exists in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{dep_topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{dep_topic}
 ```
 
 #### If the plan does not exist
@@ -118,8 +118,8 @@ Read the plan's task table and find the task that best satisfies the dependency 
 Update the dependency:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state resolved
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.internal_id {internal_id}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state resolved
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.internal_id {internal_id}
 ```
 
 → Proceed to **E. Reverse Check**.
@@ -131,7 +131,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 For each other topic with a planning phase in the same work unit, read their external dependencies:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{other_topic} external_dependencies
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{other_topic} external_dependencies
 ```
 
 #### If output is empty (no external dependencies for this topic)
@@ -145,8 +145,8 @@ For each dependency in the other topic's `external_dependencies`, route on state
 - **`state: unresolved` matching current topic** — find the best matching task in the current plan by name against the dependency description. Resolve using the task's Internal ID:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{other_topic} external_dependencies.{topic}.state resolved
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{other_topic} external_dependencies.{topic}.internal_id {internal_id}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{other_topic} external_dependencies.{topic}.state resolved
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{other_topic} external_dependencies.{topic}.internal_id {internal_id}
 ```
 
 - **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference), re-resolve by finding the correct task and updating the `internal_id`.

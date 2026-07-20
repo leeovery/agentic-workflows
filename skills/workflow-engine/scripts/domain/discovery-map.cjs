@@ -13,17 +13,17 @@
 // Judgment decides, code records: the conversation proposes every move; these
 // ops validate and write it. Lifecycle gates are enforced here with the SAME
 // render-time join the epic detail builder uses (computeTopicLifecycle in
-// workflow-shared/discovery-utils) — one computation, two consumers, no
+// domain/discovery-utils) — one computation, two consumers, no
 // drift, and the engine can never be the permissive path around the prose's
 // conversational pre-validation. All errors throw loud and specific, before
 // anything is written. Every load→mutate→save runs under the work unit's
-// manifest lock (the same lock the manifest CLI honours).
+// manifest lock (the same lock every manifest writer honours).
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
-const { computeTopicLifecycle } = require('../../../workflow-shared/scripts/discovery-utils.cjs');
-const { VALID_ROUTINGS } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+const { computeTopicLifecycle } = require('./discovery-utils.cjs');
+const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
 // conversational rejection phrasing in map-operations.md section B.
@@ -173,7 +173,7 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
   if (!backfill && summary === undefined) {
     throw new Error('--summary is required (or --backfill to leave it for summary-backfill)');
   }
-  // Same structural rule rename enforces: dots break the manifest CLI's
+  // Same structural rule rename enforces: dots break the field surface's
   // dot-path addressing, slashes break paths.
   if (!name || /[./]/.test(name)) {
     throw new Error(`"${name}" is not a legal topic name — dots and slashes break manifest addressing`);
@@ -295,7 +295,7 @@ function renameItem(cwd, workUnit, oldName, newName) {
     if (!newName || newName === oldName) {
       throw new Error(`new name must differ from "${oldName}"`);
     }
-    // Dots break the manifest CLI's dot-path addressing, slashes break paths —
+    // Dots break the field surface's dot-path addressing, slashes break paths —
     // the same structural rule work-unit and topic names live under. Name-shape
     // conventions beyond that (kebab-case) are the calling flow's job.
     if (/[./]/.test(newName)) {

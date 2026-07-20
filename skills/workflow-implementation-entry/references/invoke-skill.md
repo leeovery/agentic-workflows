@@ -13,14 +13,14 @@ This skill's purpose is now fulfilled. Construct the handoff and invoke the proc
 Query format and external_id from manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} format
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
 ```
 
 Check if implementation already exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.implementation.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.implementation.{topic}
 ```
 
 ```

@@ -4,10 +4,10 @@
 
 ---
 
-Read `project_skills` via manifest CLI:
+Read `project_skills` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} project_skills
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills
 ```
 
 → Return to caller.

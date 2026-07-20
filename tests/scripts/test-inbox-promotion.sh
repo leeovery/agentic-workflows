@@ -23,7 +23,7 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLE="$SCRIPT_DIR/../../skills/workflow-knowledge/scripts/knowledge.cjs"
-MANIFEST_JS="$SCRIPT_DIR/../../skills/workflow-manifest/scripts/manifest.cjs"
+ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
 
 PASS=0
 FAIL=0
@@ -102,16 +102,31 @@ promote_and_assert() {
   mkdir -p ".workflows/.inbox/$folder"
   printf '%s\n' "$content" > ".workflows/.inbox/$folder/$basename"
 
-  # confirm-trigger A/B: name resolved + work unit created.
-  node "$MANIFEST_JS" init "$work_unit" --work-type "$work_type" \
-    --description "promoted from inbox" >/dev/null 2>&1
+  # confirm-trigger A/B: name resolved + work unit created (fixture writes
+  # the same document `engine workunit create` writes).
+  node -e '
+    const fs = require("fs"), path = require("path");
+    const [name, type] = process.argv.slice(1);
+    const dir = path.join(".workflows", name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
+      name, work_type: type, status: "in-progress",
+      created: new Date().toISOString().slice(0, 10),
+      description: "promoted from inbox", phases: {},
+    }, null, 2) + "\n");
+    const projPath = path.join(".workflows", "manifest.json");
+    const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
+    proj.work_units = proj.work_units || {};
+    proj.work_units[name] = { work_type: type };
+    fs.writeFileSync(projPath, JSON.stringify(proj, null, 2) + "\n");
+  ' "$work_unit" "$work_type" >/dev/null 2>&1
 
   # confirm-trigger D → land-seed.md (move into seeds/, track, index).
   local dest
   dest=$(normalise_filename "$basename")
   mkdir -p ".workflows/$work_unit/seeds/"
   mv ".workflows/.inbox/$folder/$basename" ".workflows/$work_unit/seeds/$dest"
-  node "$MANIFEST_JS" push "$work_unit" seeds \
+  node "$ENGINE_JS" manifest push "$work_unit" seeds \
     "{\"path\":\"seeds/$dest\",\"source\":\"inbox:$type\",\"seeded_at\":\"2026-06-02T00:00:00Z\"}" >/dev/null 2>&1
   node "$BUNDLE" index ".workflows/$work_unit/seeds/$dest" >/dev/null 2>&1
 
@@ -132,12 +147,12 @@ promote_and_assert() {
   # Assert: registered in manifest.seeds[] with the right source tag,
   # and NOT in manifest.imports[].
   local seeds_json imports_json
-  seeds_json=$(node "$MANIFEST_JS" get "$work_unit" seeds 2>&1)
+  seeds_json=$(node "$ENGINE_JS" manifest get "$work_unit" seeds 2>&1)
   assert_eq "$label: manifest.seeds[] has the entry" "true" \
     "$(printf '%s' "$seeds_json" | grep -qF "seeds/$dest" && echo true || echo false)"
   assert_eq "$label: seed tagged source inbox:$type" "true" \
     "$(printf '%s' "$seeds_json" | grep -qF "inbox:$type" && echo true || echo false)"
-  imports_json=$(node "$MANIFEST_JS" get "$work_unit" imports 2>&1)
+  imports_json=$(node "$ENGINE_JS" manifest get "$work_unit" imports 2>&1)
   assert_eq "$label: NOT recorded in manifest.imports[]" "false" \
     "$(printf '%s' "$imports_json" | grep -qF "$dest" && echo true || echo false)"
 

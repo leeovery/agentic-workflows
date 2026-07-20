@@ -1,0 +1,839 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the manifest field surface — `engine manifest <command>`.
+//
+// The absorbed manifest CLI: dot-path addressing (`wu[.phase[.topic]]`,
+// segment count = level, reserved `project` prefix routes to the project
+// manifest), schema validation from kernel/manifest-schema, IO and locking
+// from kernel/manifest-io. The command functions are the CLI's, refactored —
+// not rewritten — so field semantics can't drift.
+//
+// Output contract, deliberately split:
+//   Reads (get, exists, list, key-of, resolve) print the CLI's bare stdout
+//   byte-for-byte — they are prose substitution surfaces. Their errors keep
+//   the CLI's exit-code convention (`Error: …` on stderr; exit 1 = real
+//   error, exit 2 = expected miss) via the `exitCode` carried on the throw.
+//   Mutations (set, push, pull, delete) return a decision-ready object for
+//   the engine's one-line JSON response; their failures are the engine's
+//   `{ok:false}` stderr exit 1 like every other verb.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const path = require('path');
+const io = require('../kernel/manifest-io.cjs');
+const {
+  VALID_WORK_TYPES,
+  VALID_PHASES,
+  VALID_PHASE_STATUSES,
+  VALID_GATE_MODES,
+  VALID_WORK_UNIT_STATUSES,
+} = require('../kernel/manifest-schema.cjs');
+
+/** Phases whose artifacts the knowledge base indexes — `resolve`'s scope. */
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification'];
+
+/**
+ * @param {string} msg
+ * @param {number} [code] 1 = real error, 2 = expected miss
+ * @returns {never}
+ */
+function fail(msg, code = 1) {
+  const err = /** @type {Error & {exitCode: number}} */ (new Error(msg));
+  err.exitCode = code;
+  throw err;
+}
+
+/** @param {string} cwd */
+function workflowsDir(cwd) {
+  return path.join(cwd, '.workflows');
+}
+
+/** @param {string} cwd @param {string} name */
+function manifestPath(cwd, name) {
+  return io.workUnitManifestPath(workflowsDir(cwd), name);
+}
+
+/** @param {string} cwd @param {string} name */
+function readManifest(cwd, name) {
+  if (!fs.existsSync(manifestPath(cwd, name))) fail(`Work unit "${name}" not found`, 2);
+  return io.readWorkUnitManifest(workflowsDir(cwd), name);
+}
+
+// ---------------------------------------------------------------------------
+// Path parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * Check if a path argument targets the project manifest.
+ * @param {string} pathArg
+ * @returns {{isProject: boolean, fieldSegments: string[]}}
+ */
+function parseProjectPath(pathArg) {
+  if (pathArg === 'project') {
+    return { isProject: true, fieldSegments: [] };
+  }
+  if (pathArg.startsWith('project.')) {
+    const remainder = pathArg.slice('project.'.length);
+    return { isProject: true, fieldSegments: remainder.split('.') };
+  }
+  return { isProject: false, fieldSegments: [] };
+}
+
+/**
+ * Parse a dot-path argument into work unit, phase, and topic.
+ * Segment count determines the access level:
+ *   1 segment  → work-unit level
+ *   2 segments → phase level
+ *   3 segments → topic level
+ * @param {string} pathArg
+ * @returns {{workUnit: string, phase: string|null, topic: string|null}}
+ */
+function parsePath(pathArg) {
+  const parts = pathArg.split('.');
+  if (parts.length === 1) return { workUnit: parts[0], phase: null, topic: null };
+  if (parts.length === 2) {
+    validatePhase(parts[1]);
+    return { workUnit: parts[0], phase: parts[1], topic: null };
+  }
+  if (parts.length === 3) {
+    validatePhase(parts[1]);
+    return { workUnit: parts[0], phase: parts[1], topic: parts[2] };
+  }
+  fail(`Invalid path "${pathArg}". Expected: <work-unit>[.<phase>[.<topic>]]`);
+}
+
+/**
+ * Resolve the internal JSON path segments for a phase+topic operation.
+ * All work types route through items when topic is provided.
+ * @param {string} phase @param {string|null} topic @param {string[]} fieldSegments
+ * @returns {string[]}
+ */
+function resolvePhaseSegments(phase, topic, fieldSegments) {
+  const base = ['phases', phase];
+  if (!topic) return [...base, ...fieldSegments];
+  return [...base, 'items', topic, ...fieldSegments];
+}
+
+/**
+ * Resolve field segments to the full manifest path: work-unit level maps to
+ * the manifest root, phase/topic level is prefixed with the phase path.
+ * @param {string|null} phase @param {string|null} topic @param {string[]} fieldSegments
+ */
+function resolveSegments(phase, topic, fieldSegments) {
+  return phase ? resolvePhaseSegments(phase, topic, fieldSegments) : fieldSegments;
+}
+
+/** @param {string} cwd @param {string} workUnit */
+function requireWorkUnit(cwd, workUnit) {
+  if (!fs.existsSync(manifestPath(cwd, workUnit))) {
+    fail(`Work unit "${workUnit}" not found`, 2);
+  }
+}
+
+/**
+ * Resolve wildcard topic — collect field values from all topics in a phase.
+ * @param {object} manifest @param {string} phase @param {string[]} fieldSegments
+ * @returns {Array<{topic: string, value: *}>}
+ */
+function resolveWildcardTopic(manifest, phase, fieldSegments) {
+  const phaseData = getByPath(manifest, ['phases', phase]);
+  if (!phaseData) return [];
+
+  const items = phaseData.items;
+  if (!items || typeof items !== 'object') return [];
+
+  return Object.keys(items).map(topic => ({
+    topic,
+    value: fieldSegments.length ? getByPath(items[topic], fieldSegments) : items[topic],
+  })).filter(entry => entry.value !== undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+/** @param {string} value */
+function validateWorkType(value) {
+  if (!VALID_WORK_TYPES.includes(value)) {
+    fail(`Invalid work_type "${value}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
+  }
+}
+
+/** @param {string} value */
+function validateWorkUnitStatus(value) {
+  if (!VALID_WORK_UNIT_STATUSES.includes(value)) {
+    fail(`Invalid status "${value}". Must be one of: ${VALID_WORK_UNIT_STATUSES.join(', ')}`);
+  }
+}
+
+/** @param {string} phase */
+function validatePhase(phase) {
+  if (!VALID_PHASES.includes(phase)) {
+    fail(`Invalid phase "${phase}". Must be one of: ${VALID_PHASES.join(', ')}`);
+  }
+}
+
+/** @param {string} value */
+function validateGateMode(value) {
+  if (!VALID_GATE_MODES.includes(value)) {
+    fail(`Invalid gate mode "${value}". Must be one of: ${VALID_GATE_MODES.join(', ')}`);
+  }
+}
+
+/** @param {string} phase @param {string} value */
+function validatePhaseStatus(phase, value) {
+  const valid = VALID_PHASE_STATUSES[phase];
+  if (valid && valid.length === 0) {
+    fail(`Phase "${phase}" items carry no status field — lifecycle is computed at render time; create map items with \`engine discovery-map add\``);
+  }
+  if (valid && !valid.includes(value)) {
+    fail(`Invalid status "${value}" for phase "${phase}". Must be one of: ${valid.join(', ')}`);
+  }
+}
+
+/**
+ * Validate a set operation from the resolved internal path and value.
+ * @param {string[]} segments @param {string} value
+ */
+function validateSet(segments, value) {
+  // Top-level status
+  if (segments.length === 1 && segments[0] === 'status') {
+    validateWorkUnitStatus(value);
+    return;
+  }
+
+  // Top-level work_type
+  if (segments.length === 1 && segments[0] === 'work_type') {
+    validateWorkType(value);
+    return;
+  }
+
+  // Gate modes anywhere in the tree
+  const last = segments[segments.length - 1];
+  if (last.endsWith('_gate_mode') || last === 'gate_mode') {
+    validateGateMode(value);
+    return;
+  }
+
+  // phases.<phase> — validate phase name
+  if (segments.length >= 2 && segments[0] === 'phases') {
+    const phase = segments[1];
+    validatePhase(phase);
+
+    // phases.<phase>.items.<item>.status
+    if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'status') {
+      validatePhaseStatus(phase, value);
+      return;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dot-path utilities
+// ---------------------------------------------------------------------------
+
+/** @param {any} obj @param {string[]} segments */
+function getByPath(obj, segments) {
+  let current = obj;
+  for (const seg of segments) {
+    if (current == null || typeof current !== 'object') return undefined;
+    current = current[seg];
+  }
+  return current;
+}
+
+/** @param {any} obj @param {string[]} segments @param {*} value */
+function setByPath(obj, segments, value) {
+  let current = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    if (current[seg] == null || typeof current[seg] !== 'object') {
+      current[seg] = {};
+    }
+    current = current[seg];
+  }
+  current[segments[segments.length - 1]] = value;
+}
+
+/** @param {any} obj @param {string[]} segments */
+function deleteByPath(obj, segments) {
+  let current = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    if (current == null || typeof current !== 'object') return false;
+    current = current[seg];
+  }
+  if (current == null || typeof current !== 'object') return false;
+  const last = segments[segments.length - 1];
+  if (!(last in current)) return false;
+  delete current[last];
+  return true;
+}
+
+/** JSON first (arrays, objects, numbers, booleans), string fallback. @param {string} raw */
+function parseValue(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    return raw;
+  }
+}
+
+// Deep equality used by `pull` so object-shaped array entries (e.g. imports[]
+// records) can be matched by value, not by reference. Order-independent for
+// object keys.
+/** @param {*} a @param {*} b @returns {boolean} */
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!deepEqual(a[i], b[i])) return false;
+    return true;
+  }
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
+  if (ak.length !== bk.length) return false;
+  for (const k of ak) {
+    if (!Object.prototype.hasOwnProperty.call(b, k)) return false;
+    if (!deepEqual(a[k], b[k])) return false;
+  }
+  return true;
+}
+
+/** @param {any[]} arr @param {*} value */
+function findDeepIndex(arr, value) {
+  for (let i = 0; i < arr.length; i++) {
+    if (deepEqual(arr[i], value)) return i;
+  }
+  return -1;
+}
+
+/** @param {*} value */
+function outputValue(value) {
+  if (value !== null && typeof value === 'object') {
+    process.stdout.write(JSON.stringify(value, null, 2) + '\n');
+  } else {
+    process.stdout.write(String(value) + '\n');
+  }
+}
+
+/**
+ * Parse the batch tail of a mutation: `<field>=<value>` pairs, split on the
+ * FIRST `=` only so values may contain `=` themselves.
+ * @param {string[]} pairs
+ * @returns {Array<{field: string, value: *, raw: string}>}
+ */
+function parseFieldValuePairs(pairs) {
+  return pairs.map((pair) => {
+    const eq = pair.indexOf('=');
+    if (eq <= 0) {
+      fail(`bad assignment "${pair}" (expected <field>=<value>)`);
+    }
+    const raw = pair.slice(eq + 1);
+    return { field: pair.slice(0, eq), value: parseValue(raw), raw };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Reads — bare stdout, byte-compatible with the absorbed CLI
+// ---------------------------------------------------------------------------
+
+/** @param {string} cwd @param {string[]} args */
+function cmdGet(cwd, args) {
+  if (args.length < 1) fail('Usage: engine manifest get <path> [field.path]');
+
+  // Project manifest routing
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    const manifest = io.readProjectManifest(workflowsDir(cwd));
+    if (proj.fieldSegments.length === 0) {
+      process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
+      return;
+    }
+    const value = getByPath(manifest, proj.fieldSegments);
+    if (value === undefined) return;
+    outputValue(value);
+    return;
+  }
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  if (!fs.existsSync(manifestPath(cwd, workUnit))) return;
+  const manifest = readManifest(cwd, workUnit);
+
+  if (!phase) {
+    // Work-unit-level: get <wu> [field]
+    if (args.length === 1) {
+      process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
+      return;
+    }
+    const segments = args[1].split('.');
+    const value = getByPath(manifest, segments);
+    if (value === undefined) return;
+    outputValue(value);
+    return;
+  }
+
+  // Phase/topic level
+  const fieldSegments = args.length > 1 ? args[1].split('.') : [];
+
+  // Wildcard topic: collect values from all topics
+  if (topic === '*') {
+    const results = resolveWildcardTopic(manifest, phase, fieldSegments);
+    if (results.length === 0) return;
+    process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+    return;
+  }
+
+  const segments = resolvePhaseSegments(phase, topic, fieldSegments);
+  const value = getByPath(manifest, segments);
+  if (value === undefined) return;
+  outputValue(value);
+}
+
+/** @param {string} cwd @param {string[]} args */
+function cmdExists(cwd, args) {
+  if (args.length < 1) fail('Usage: engine manifest exists <path> [field.path]');
+
+  // Project manifest routing: exists project[.field.path]
+  const proj = parseProjectPath(args[0]);
+  if (proj.isProject) {
+    const manifest = io.readProjectManifest(workflowsDir(cwd));
+    if (proj.fieldSegments.length === 0) {
+      // exists project — check if project manifest has any content
+      process.stdout.write(Object.keys(manifest).length > 0 ? 'true\n' : 'false\n');
+      return;
+    }
+    const value = getByPath(manifest, proj.fieldSegments);
+    process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+    return;
+  }
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const mp = manifestPath(cwd, workUnit);
+
+  // Work-unit level, no field path — just check if manifest file exists
+  if (!phase && args.length === 1) {
+    process.stdout.write(fs.existsSync(mp) ? 'true\n' : 'false\n');
+    return;
+  }
+
+  // If manifest doesn't exist, any deeper path is false
+  if (!fs.existsSync(mp)) {
+    process.stdout.write('false\n');
+    return;
+  }
+
+  const manifest = readManifest(cwd, workUnit);
+
+  if (!phase) {
+    // Work-unit level with field path
+    const segments = args[1].split('.');
+    const value = getByPath(manifest, segments);
+    process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+    return;
+  }
+
+  // Phase/topic level
+  const fieldSegments = args.length > 1 ? args[1].split('.') : [];
+
+  // Wildcard topic: check if any topic has the specified field
+  if (topic === '*') {
+    const results = resolveWildcardTopic(manifest, phase, fieldSegments);
+    process.stdout.write(results.length > 0 ? 'true\n' : 'false\n');
+    return;
+  }
+
+  const segments = resolvePhaseSegments(phase, topic, fieldSegments);
+  const value = getByPath(manifest, segments);
+  process.stdout.write(value !== undefined ? 'true\n' : 'false\n');
+}
+
+/** @param {string} cwd @param {string[]} args */
+function cmdList(cwd, args) {
+  /** @type {string|null} */ let filterStatus = null;
+  /** @type {string|null} */ let filterWorkType = null;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--status' && i + 1 < args.length) {
+      filterStatus = args[++i];
+    } else if (args[i] === '--work-type' && i + 1 < args.length) {
+      filterWorkType = args[++i];
+    }
+  }
+
+  const wfDir = workflowsDir(cwd);
+  if (!fs.existsSync(wfDir)) {
+    process.stdout.write('[]\n');
+    return;
+  }
+
+  // Use project manifest for work unit names, fall back to filesystem scan
+  const proj = io.readProjectManifest(wfDir);
+  let names;
+  if (proj.work_units && Object.keys(proj.work_units).length > 0) {
+    names = Object.keys(proj.work_units);
+  } else {
+    names = fs.readdirSync(wfDir, { withFileTypes: true })
+      .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+      .map(e => e.name);
+  }
+
+  const results = [];
+
+  for (const name of names) {
+    if (!fs.existsSync(manifestPath(cwd, name))) continue;
+
+    try {
+      const manifest = io.readWorkUnitManifest(wfDir, name);
+
+      if (filterStatus && manifest.status !== filterStatus) continue;
+      if (filterWorkType && manifest.work_type !== filterWorkType) continue;
+
+      results.push(manifest);
+    } catch (_) {
+      // Skip malformed manifests
+    }
+  }
+
+  process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+}
+
+/** @param {string} cwd @param {string[]} args */
+function cmdKeyOf(cwd, args) {
+  if (args.length < 3) fail('Usage: engine manifest key-of <path> <field.path> <value>');
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+  const searchValue = args[2];
+
+  const manifest = readManifest(cwd, workUnit);
+  const segments = resolveSegments(phase, topic, fieldSegments);
+  const obj = getByPath(manifest, segments);
+
+  if (obj == null || typeof obj !== 'object') {
+    fail(`Path "${segments.join('.')}" is not an object in "${workUnit}"`);
+  }
+
+  const key = Object.keys(obj).find(k => String(obj[k]) === searchValue);
+
+  if (key === undefined) {
+    fail(`Value "${searchValue}" not found in "${segments.join('.')}"`, 2);
+  }
+
+  process.stdout.write(key + '\n');
+}
+
+/**
+ * Map `wu.phase[.topic]` to artifact file paths on disk — the knowledge
+ * CLI's artifact discovery.
+ * @param {string} cwd @param {string[]} args
+ */
+function cmdResolve(cwd, args) {
+  if (!args[0]) {
+    fail('Usage: engine manifest resolve <work_unit>.<phase>[.<topic>]\nResolves artifact file paths for indexed phases.');
+  }
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+
+  if (!phase) {
+    fail('resolve requires at least 2 segments: <work_unit>.<phase>[.<topic>]');
+  }
+
+  if (!INDEXED_PHASES.includes(phase)) {
+    fail(`Phase "${phase}" is not indexed by the knowledge base. Indexed phases: ${INDEXED_PHASES.join(', ')}`);
+  }
+
+  // Validate that the work unit exists by reading its manifest.
+  const manifest = readManifest(cwd, workUnit);
+  const wuDir = path.join(workflowsDir(cwd), workUnit);
+
+  if (phase === 'research') {
+    if (topic) {
+      // 3-segment: specific research item.
+      process.stdout.write(path.join(wuDir, 'research', topic + '.md') + '\n');
+    } else {
+      // 2-segment: iterate phases.research.items from the manifest.
+      const items = manifest.phases && manifest.phases.research && manifest.phases.research.items;
+      if (!items || typeof items !== 'object') {
+        // No research items tracked — output nothing, exit 0.
+        return;
+      }
+      for (const itemName of Object.keys(items)) {
+        process.stdout.write(path.join(wuDir, 'research', itemName + '.md') + '\n');
+      }
+    }
+    return;
+  }
+
+  // For non-research phases, topic is required (3 segments).
+  if (!topic) {
+    fail(`resolve for ${phase} requires 3 segments: <work_unit>.${phase}.<topic>`);
+  }
+
+  if (phase === 'discussion') {
+    process.stdout.write(path.join(wuDir, 'discussion', topic + '.md') + '\n');
+    return;
+  }
+
+  if (phase === 'investigation') {
+    process.stdout.write(path.join(wuDir, 'investigation', topic + '.md') + '\n');
+    return;
+  }
+
+  if (phase === 'specification') {
+    process.stdout.write(path.join(wuDir, 'specification', topic, 'specification.md') + '\n');
+    return;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mutations — one lock, one write, one decision-ready response object
+// ---------------------------------------------------------------------------
+
+/**
+ * `set <path> <field> <value> [<field>=<value> …]` — batched writes land in
+ * one lock/read/write. Project paths embed the first field in the dot-path:
+ * `set project.<field.path> <value> [<field.path>=<value> …]`.
+ * @param {string} cwd @param {string[]} args
+ * @returns {object}
+ */
+function cmdSet(cwd, args) {
+  // Project manifest routing
+  const proj = parseProjectPath(args[0] || '');
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0 || args.length < 2) {
+      fail('Usage: engine manifest set project.<field.path> <value> [<field.path>=<value> …]');
+    }
+    const writes = [
+      { field: proj.fieldSegments.join('.'), value: parseValue(args[1]) },
+      ...parseFieldValuePairs(args.slice(2)),
+    ];
+    io.withProjectLock(workflowsDir(cwd), () => {
+      const manifest = io.readProjectManifest(workflowsDir(cwd));
+      for (const write of writes) {
+        setByPath(manifest, write.field.split('.'), write.value);
+      }
+      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+    });
+    return { path: 'project', set: Object.fromEntries(writes.map(w => [w.field, w.value])) };
+  }
+
+  if (args.length < 3) fail('Usage: engine manifest set <path> <field> <value> [<field>=<value> …]');
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const writes = [
+    { field: args[1], value: parseValue(args[2]) },
+    ...parseFieldValuePairs(args.slice(3)),
+  ];
+
+  requireWorkUnit(cwd, workUnit);
+
+  // Validate every field before any write — a refused value fails the batch.
+  const planned = writes.map((write) => {
+    const segments = resolveSegments(phase, topic, write.field.split('.'));
+    if (typeof write.value === 'string') {
+      validateSet(segments, write.value);
+    }
+    return { segments, value: write.value };
+  });
+
+  io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    const manifest = readManifest(cwd, workUnit);
+    for (const write of planned) {
+      setByPath(manifest, write.segments, write.value);
+    }
+    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+  });
+
+  return { path: args[0], set: Object.fromEntries(writes.map(w => [w.field, w.value])) };
+}
+
+/** @param {string} cwd @param {string[]} args @returns {object} */
+function cmdPush(cwd, args) {
+  // Project manifest routing: push project.field.path <value>
+  const proj = parseProjectPath(args[0] || '');
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0 || args.length < 2) {
+      fail('Usage: engine manifest push project.<field.path> <value>');
+    }
+    const value = parseValue(args[1]);
+    const length = io.withProjectLock(workflowsDir(cwd), () => {
+      const manifest = io.readProjectManifest(workflowsDir(cwd));
+      const current = getByPath(manifest, proj.fieldSegments);
+
+      if (current !== undefined && !Array.isArray(current)) {
+        fail(`Path "${proj.fieldSegments.join('.')}" is not an array in project manifest`);
+      }
+
+      let next;
+      if (current === undefined) {
+        setByPath(manifest, proj.fieldSegments, [value]);
+        next = 1;
+      } else {
+        current.push(value);
+        next = current.length;
+      }
+
+      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+      return next;
+    });
+    return { path: 'project', field: proj.fieldSegments.join('.'), pushed: value, length };
+  }
+
+  if (args.length < 3) fail('Usage: engine manifest push <path> <field> <value>');
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+  const value = parseValue(args[2]);
+
+  requireWorkUnit(cwd, workUnit);
+
+  const segments = resolveSegments(phase, topic, fieldSegments);
+
+  const length = io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    const manifest = readManifest(cwd, workUnit);
+    const current = getByPath(manifest, segments);
+
+    if (current !== undefined && !Array.isArray(current)) {
+      fail(`Path "${segments.join('.')}" is not an array`);
+    }
+
+    let next;
+    if (current === undefined) {
+      setByPath(manifest, segments, [value]);
+      next = 1;
+    } else {
+      current.push(value);
+      next = current.length;
+    }
+
+    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+    return next;
+  });
+
+  return { path: args[0], field: args[1], pushed: value, length };
+}
+
+/** @param {string} cwd @param {string[]} args @returns {object} */
+function cmdPull(cwd, args) {
+  // Project manifest routing: pull project.field.path <value>
+  const proj = parseProjectPath(args[0] || '');
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0 || args.length < 2) {
+      fail('Usage: engine manifest pull project.<field.path> <value>');
+    }
+    const value = parseValue(args[1]);
+    const result = io.withProjectLock(workflowsDir(cwd), () => {
+      const manifest = io.readProjectManifest(workflowsDir(cwd));
+      const current = getByPath(manifest, proj.fieldSegments);
+      if (!Array.isArray(current)) return { removed: false, length: null }; // no-op
+      const idx = findDeepIndex(current, value);
+      if (idx === -1) return { removed: false, length: current.length }; // no-op
+      current.splice(idx, 1);
+      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+      return { removed: true, length: current.length };
+    });
+    return { path: 'project', field: proj.fieldSegments.join('.'), ...result };
+  }
+
+  if (args.length < 3) fail('Usage: engine manifest pull <path> <field> <value>');
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+  const value = parseValue(args[2]);
+
+  requireWorkUnit(cwd, workUnit);
+
+  const segments = resolveSegments(phase, topic, fieldSegments);
+
+  const result = io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    const manifest = readManifest(cwd, workUnit);
+    const current = getByPath(manifest, segments);
+    if (!Array.isArray(current)) return { removed: false, length: null }; // no-op
+    const idx = findDeepIndex(current, value);
+    if (idx === -1) return { removed: false, length: current.length }; // no-op
+    current.splice(idx, 1);
+    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+    return { removed: true, length: current.length };
+  });
+
+  return { path: args[0], field: args[1], ...result };
+}
+
+/** @param {string} cwd @param {string[]} args @returns {object} */
+function cmdDelete(cwd, args) {
+  // Project manifest routing: delete project.field.path
+  const proj = parseProjectPath(args[0] || '');
+  if (proj.isProject) {
+    if (proj.fieldSegments.length === 0) {
+      fail('Usage: engine manifest delete project.<field.path>');
+    }
+    io.withProjectLock(workflowsDir(cwd), () => {
+      const manifest = io.readProjectManifest(workflowsDir(cwd));
+      if (!deleteByPath(manifest, proj.fieldSegments)) {
+        fail(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);
+      }
+      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+    });
+    return { path: 'project', field: proj.fieldSegments.join('.'), deleted: true };
+  }
+
+  if (args.length < 2) fail('Usage: engine manifest delete <path> <field.path>');
+
+  const { workUnit, phase, topic } = parsePath(args[0]);
+  const fieldSegments = args[1].split('.');
+
+  requireWorkUnit(cwd, workUnit);
+
+  const segments = resolveSegments(phase, topic, fieldSegments);
+
+  io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    const manifest = readManifest(cwd, workUnit);
+    if (!deleteByPath(manifest, segments)) {
+      fail(`Path "${segments.join('.')}" not found in "${workUnit}"`);
+    }
+    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+  });
+
+  return { path: args[0], field: args[1], deleted: true };
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch
+// ---------------------------------------------------------------------------
+
+const READS = { get: cmdGet, exists: cmdExists, list: cmdList, 'key-of': cmdKeyOf, resolve: cmdResolve };
+const MUTATIONS = { set: cmdSet, push: cmdPush, pull: cmdPull, delete: cmdDelete };
+
+const USAGE =
+  'Usage: engine manifest <get|set|push|pull|delete|exists|list|key-of|resolve> …\n' +
+  'Dot-path addressing: <work-unit>[.<phase>[.<topic>]]; the `project` prefix routes to the project manifest.';
+
+/** @param {string} command */
+function isRead(command) {
+  return Object.prototype.hasOwnProperty.call(READS, command);
+}
+
+/**
+ * Execute one field command. Reads print their own bare stdout and return
+ * undefined; mutations return the response object for the engine's JSON
+ * line. Unknown commands and all failures throw (reads carry `exitCode`).
+ * @param {string} cwd @param {string} command @param {string[]} args
+ * @returns {object|undefined}
+ */
+function runFieldCommand(cwd, command, args) {
+  if (isRead(command)) {
+    READS[/** @type {keyof typeof READS} */ (command)](cwd, args);
+    return undefined;
+  }
+  if (Object.prototype.hasOwnProperty.call(MUTATIONS, command)) {
+    return MUTATIONS[/** @type {keyof typeof MUTATIONS} */ (command)](cwd, args);
+  }
+  fail(USAGE);
+}
+
+module.exports = { runFieldCommand, isRead, INDEXED_PHASES };

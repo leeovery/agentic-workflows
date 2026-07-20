@@ -1,7 +1,7 @@
 ---
 name: workflow-investigation-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -60,7 +60,7 @@ Investigation is always bugfix work_type. Store work_unit for the handoff.
 Check if the investigation phase entry exists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.investigation.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.investigation.{topic}
 ```
 
 **If exists (`true`):**

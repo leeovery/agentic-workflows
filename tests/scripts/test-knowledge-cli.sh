@@ -6,7 +6,7 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLE="$SCRIPT_DIR/../../skills/workflow-knowledge/scripts/knowledge.cjs"
-MANIFEST_JS="$SCRIPT_DIR/../../skills/workflow-manifest/scripts/manifest.cjs"
+ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
 
 PASS=0
 FAIL=0
@@ -44,11 +44,27 @@ teardown_project() {
   TEST_ROOT=""
 }
 
-# Create a work unit via the manifest CLI.
+# Fixture: create a work unit on disk (manifest + project registration) —
+# the same document `engine workunit create` writes.
 create_work_unit() {
   local name="$1" type="$2" desc="$3"
   cd "$TEST_ROOT"
-  node "$MANIFEST_JS" init "$name" --work-type "$type" --description "$desc" >/dev/null 2>&1
+  node -e '
+    const fs = require("fs"), path = require("path");
+    const [name, type, desc] = process.argv.slice(1);
+    const dir = path.join(".workflows", name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
+      name, work_type: type, status: "in-progress",
+      created: new Date().toISOString().slice(0, 10),
+      description: desc, phases: {},
+    }, null, 2) + "\n");
+    const projPath = path.join(".workflows", "manifest.json");
+    const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
+    proj.work_units = proj.work_units || {};
+    proj.work_units[name] = { work_type: type };
+    fs.writeFileSync(projPath, JSON.stringify(proj, null, 2) + "\n");
+  ' "$name" "$type" "$desc" >/dev/null 2>&1
 }
 
 # Write a stub config for the knowledge base.
@@ -582,7 +598,7 @@ node -e "
   m.dimensions = 1536;
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set auth-flow.discussion.auth-flow status completed >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow.discussion.auth-flow status completed >/dev/null 2>&1
 exit_code=0
 # Bulk-index (no file arg) should now error on the mismatch instead of
 # silently reporting 'N already indexed'.
@@ -1125,9 +1141,9 @@ echo "=== Bulk Index Tests ==="
 init_phase_topic() {
   local wu="$1" phase="$2" topic="$3" status="$4"
   cd "$TEST_ROOT"
-  node "$MANIFEST_JS" init-phase "$wu.$phase.$topic" >/dev/null 2>&1
+  node "$ENGINE_JS" manifest set "$wu.$phase.$topic" status in-progress >/dev/null 2>&1
   if [ -n "$status" ]; then
-    node "$MANIFEST_JS" set "$wu.$phase.$topic" status "$status" >/dev/null 2>&1
+    node "$ENGINE_JS" manifest set "$wu.$phase.$topic" status "$status" >/dev/null 2>&1
   fi
 }
 
@@ -1212,8 +1228,8 @@ echo "=== Compact Command Tests ==="
 set_completed_with_date() {
   local wu="$1" date="$2"
   cd "$TEST_ROOT"
-  node "$MANIFEST_JS" set "$wu" status completed >/dev/null 2>&1
-  node "$MANIFEST_JS" set "$wu" completed_at "$date" >/dev/null 2>&1
+  node "$ENGINE_JS" manifest set "$wu" status completed >/dev/null 2>&1
+  node "$ENGINE_JS" manifest set "$wu" completed_at "$date" >/dev/null 2>&1
 }
 
 # Helper: write config with a custom prune floor (+ optional stability).
@@ -1417,7 +1433,7 @@ create_work_unit "cancelled-wu" "feature" "Cancelled"
 write_stub_config
 create_discussion_file "cancelled-wu" "cancelled-wu"
 run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set cancelled-wu status cancelled >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu status cancelled >/dev/null 2>&1
 output=$(run_kb status 2>&1)
 assert_eq "detects cancelled" "true" "$(echo "$output" | grep -q 'Cancelled work unit still indexed' && echo true || echo false)"
 teardown_project
@@ -1743,10 +1759,10 @@ setup_project
 create_work_unit "cancelled-wu" "feature" "Cancelled"
 write_stub_config
 create_discussion_file "cancelled-wu" "cancelled-wu"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase cancelled-wu.discussion.cancelled-wu >/dev/null 2>&1
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set cancelled-wu.discussion.cancelled-wu status completed >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu.discussion.cancelled-wu status in-progress >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu.discussion.cancelled-wu status completed >/dev/null 2>&1
 run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set cancelled-wu status cancelled >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu status cancelled >/dev/null 2>&1
 run_kb remove --work-unit cancelled-wu >/dev/null 2>&1
 # After cancel + remove, bulk index must NOT re-add the chunks.
 output=$(run_kb index 2>&1)
@@ -1762,7 +1778,7 @@ write_stub_config
 # Spec file present on disk to prove it is the STATUS filter that skips it,
 # not the missing-file guard.
 create_spec_file "prop-wu" "auth-grouping"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set prop-wu.specification.auth-grouping status proposed >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set prop-wu.specification.auth-grouping status proposed >/dev/null 2>&1
 run_kb index >/dev/null 2>&1
 status_output=$(run_kb status 2>&1)
 assert_eq "bulk index skipped proposed spec" "true" "$(echo "$status_output" | grep -q 'auth-grouping' && echo false || echo true)"
@@ -1876,8 +1892,8 @@ setup_project
 create_work_unit "wu-a" "feature" "A"
 write_stub_config
 create_discussion_file "wu-a" "wu-a"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase wu-a.discussion.wu-a >/dev/null 2>&1
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set wu-a.discussion.wu-a status completed >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status in-progress >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status completed >/dev/null 2>&1
 run_kb index .workflows/wu-a/discussion/wu-a.md >/dev/null 2>&1
 # Simulate a leftover .bak from a prior aborted rebuild.
 touch "$TEST_ROOT/.workflows/.knowledge/store.msp.bak"
@@ -1973,7 +1989,7 @@ setup_project
 create_work_unit "subdir-wu" "feature" "Subdir"
 write_stub_config
 create_discussion_file "subdir-wu" "subdir-wu"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase subdir-wu.discussion.subdir-wu >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set subdir-wu.discussion.subdir-wu status in-progress >/dev/null 2>&1
 run_kb index .workflows/subdir-wu/discussion/subdir-wu.md >/dev/null 2>&1
 # Now invoke status from a deeply nested subdirectory of the project.
 mkdir -p "$TEST_ROOT/.workflows/subdir-wu/discussion"
@@ -2031,7 +2047,7 @@ create_work_unit "seeded-wu" "epic" "Seeded"
 write_stub_config
 create_import_file "seeded-wu" "seed-conversation"
 # Track the import on the manifest the way import-files.md does.
-node "$MANIFEST_JS" push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
 # Bulk index (no args) — should find the import via discoverArtifacts.
 output=$(run_kb index 2>&1)
 assert_eq "bulk index processes imports" "true" \
@@ -2049,7 +2065,7 @@ create_work_unit "mixed-wu" "epic" "Mixed"
 write_stub_config
 # Index a discussion file and an imports file under the same work unit.
 create_discussion_file "mixed-wu" "mixed-wu"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" init-phase mixed-wu.discussion.mixed-wu >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set mixed-wu.discussion.mixed-wu status in-progress >/dev/null 2>&1
 run_kb index .workflows/mixed-wu/discussion/mixed-wu.md >/dev/null 2>&1
 create_import_file "mixed-wu" "seed-conversation"
 run_kb index .workflows/mixed-wu/imports/seed-conversation.md >/dev/null 2>&1
@@ -2074,10 +2090,10 @@ create_work_unit "guarded-wu" "epic" "Guarded"
 write_stub_config
 create_import_file "guarded-wu" "legit-seed"
 # Push one legitimate entry plus three malformed ones (path-traversal, dotfile, subdir).
-node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/legit-seed.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
-node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/../escape.md","imported_at":"2026-05-10T10:01:00Z"}' >/dev/null 2>&1
-node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/.dotfile.md","imported_at":"2026-05-10T10:02:00Z"}' >/dev/null 2>&1
-node "$MANIFEST_JS" push guarded-wu imports '{"path":"imports/sub/nested.md","imported_at":"2026-05-10T10:03:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push guarded-wu imports '{"path":"imports/legit-seed.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push guarded-wu imports '{"path":"imports/../escape.md","imported_at":"2026-05-10T10:01:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push guarded-wu imports '{"path":"imports/.dotfile.md","imported_at":"2026-05-10T10:02:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push guarded-wu imports '{"path":"imports/sub/nested.md","imported_at":"2026-05-10T10:03:00Z"}' >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 assert_eq "indexes the legit import" "true" \
   "$(echo "$output" | grep -q 'imports/legit-seed.md' && echo true || echo false)"
@@ -2096,8 +2112,8 @@ create_work_unit "dup-wu" "epic" "Dup"
 write_stub_config
 create_import_file "dup-wu" "seed-conversation"
 # Two pushes of the same path — re-import noise.
-node "$MANIFEST_JS" push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
-node "$MANIFEST_JS" push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:05:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:05:00Z"}' >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 indexing_lines=$(echo "$output" | grep -c 'Indexing .workflows/dup-wu/imports/seed-conversation.md')
 assert_eq "deduped to one index call per identity" "1" "$indexing_lines"
@@ -2239,7 +2255,7 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_stub_config
 create_analysis_cache "auth-flow" "research-analysis"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" set auth-flow status cancelled >/dev/null 2>&1
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow status cancelled >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 assert_eq "cancelled wu's analysis cache skipped" "true" "$(echo "$output" | grep -q 'research-analysis.md' && echo false || echo true)"
 teardown_project
@@ -2345,7 +2361,7 @@ setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
 write_stub_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
-cd "$TEST_ROOT" && node "$MANIFEST_JS" push login-timeout seeds \
+cd "$TEST_ROOT" && node "$ENGINE_JS" manifest push login-timeout seeds \
   '{"path":"seeds/2026-05-30-login-timeout.md","source":"inbox:bug","seeded_at":"2026-06-02T00:00:00Z"}' >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 assert_eq "bulk index reports the seed indexed" "true" \

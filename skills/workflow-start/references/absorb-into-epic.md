@@ -81,7 +81,7 @@ Set `topic` to the user's input.
 Check if a discussion topic with this name already exists in the target epic:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {target_epic}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
 ```
 
 #### If `true`
@@ -110,7 +110,7 @@ Set `topic` to the user's input.
 Read the feature's research items with their statuses:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.research.*' status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{selected.name}.research.*' status
 ```
 
 #### If output is empty (no research)
@@ -132,8 +132,8 @@ Set `has_research` = true and `research_item_count` to the number of items. Name
 Read the feature's imports and seeds lists:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} imports
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name} seeds
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name} imports
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name} seeds
 ```
 
 Default `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false` / `seeds_count` = 0 — then, for each non-empty JSON array, set the flag `true` and the count to its length. Filename collisions in the target epic's directories are resolved by the engine; entries move with their original timestamps and seed provenance.
@@ -147,7 +147,7 @@ Default `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false`
 Read the discussion status:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {selected.name}.discussion.{selected.name} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}.discussion.{selected.name} status
 ```
 
 Store the result as `discussion_status`.

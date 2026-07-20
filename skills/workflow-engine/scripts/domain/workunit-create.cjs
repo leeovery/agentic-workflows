@@ -14,7 +14,7 @@
 // index (warn-don't-block); the scoped commit comes last.
 //
 // The created manifest and its project-manifest registration reproduce the
-// manifest CLI's `init` field-for-field — one on-disk shape, two writers.
+// canonical work-unit document field-for-field — one on-disk shape.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -34,7 +34,7 @@ const {
   VALID_WORK_TYPES,
   VALID_PHASES,
   RESERVED_WORK_UNIT_NAMES,
-} = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+} = require('../kernel/manifest-schema.cjs');
 
 /** Seed provenance tag per inbox folder. */
 const SEED_SOURCES = { ideas: 'inbox:idea', bugs: 'inbox:bug', quickfixes: 'inbox:quickfix' };
@@ -47,7 +47,7 @@ const SEED_SOURCES = { ideas: 'inbox:idea', bugs: 'inbox:bug', quickfixes: 'inbo
  * @property {{path: string}[]} imports  landed import entries (work-unit-relative)
  * @property {{path: string, source: string}[]} seeds  landed seed entries (work-unit-relative)
  * @property {string[]} skipped_imports  source paths rejected by filename normalisation
- * @property {string} session_log  the installed log's project-relative path
+ * @property {string|null} session_log  the installed log's project-relative path (null when no log was given)
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]  set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
@@ -100,7 +100,7 @@ function dedupe(name, destDir, taken) {
 
 /**
  * Push onto a top-level manifest array field, creating it when absent — loud
- * when the field exists but is not an array (mirrors manifest.cjs `push`).
+ * when the field exists but is not an array (mirrors `engine manifest push`).
  * @param {Record<string, any>} manifest @param {string} field @param {unknown} value
  */
 function pushEntry(manifest, field, value) {
@@ -111,8 +111,8 @@ function pushEntry(manifest, field, value) {
 
 /**
  * The work-type commit: create the work unit (manifest + project-manifest
- * registration, exactly as `manifest.cjs init` writes them — reused as-is
- * when it already exists), copy imports into `imports/`, move inbox seeds
+ * registration; an existing manifest is reused as-is), copy imports into
+ * `imports/`, move inbox seeds
  * into `seeds/` (both manifest-tracked and KB-indexed, warn-don't-block),
  * install the session log verbatim as `session-001.md` (epic also gets the
  * `active_session` marker), and commit scoped to the work unit plus the
@@ -121,10 +121,11 @@ function pushEntry(manifest, field, value) {
  * @param {string} workUnit
  * @param {string} workType
  * @param {object} opts
- * @param {string} opts.description     one-line intent, recorded at creation
- * @param {string} opts.sessionLogFile  model-authored log content, installed verbatim
- * @param {string[]} [opts.imports]     source paths to copy in
- * @param {string[]} [opts.seeds]       live inbox paths to move in
+ * @param {string} opts.description       one-line intent, recorded at creation
+ * @param {string} [opts.sessionLogFile]  model-authored log content, installed verbatim;
+ *                                        omitted for creations outside discovery (e.g. spec promotion)
+ * @param {string[]} [opts.imports]       source paths to copy in
+ * @param {string[]} [opts.seeds]         live inbox paths to move in
  * @returns {WorkUnitCreateResult}
  */
 function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, imports = [], seeds = [] }) {
@@ -142,11 +143,14 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     throw new Error(`Work unit name "${workUnit}" is reserved`);
   }
 
-  let sessionLog;
-  try {
-    sessionLog = fs.readFileSync(path.resolve(cwd, sessionLogFile), 'utf8');
-  } catch {
-    throw new Error(`session log file not found: ${sessionLogFile}`);
+  /** @type {string|null} */
+  let sessionLog = null;
+  if (sessionLogFile !== undefined) {
+    try {
+      sessionLog = fs.readFileSync(path.resolve(cwd, sessionLogFile), 'utf8');
+    } catch {
+      throw new Error(`session log file not found: ${sessionLogFile}`);
+    }
   }
 
   const missing = imports.filter((p) => !fs.existsSync(path.resolve(cwd, p)));
@@ -234,21 +238,23 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       });
     }
 
-    const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
+    if (sessionLog !== null) {
+      const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
+      fs.mkdirSync(sessionsDir, { recursive: true });
+      fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
 
-    // Epic is the sole work type with a resumable discovery session loop.
-    if (workType === 'epic') {
-      if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-      if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
-      manifest.phases.discovery.active_session = '001';
+      // Epic is the sole work type with a resumable discovery session loop.
+      if (workType === 'epic') {
+        if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+        if (!manifest.phases.discovery || typeof manifest.phases.discovery !== 'object') manifest.phases.discovery = {};
+        manifest.phases.discovery.active_session = '001';
+      }
     }
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { importMoves: importPlan, seedMoves: seedPlan, skippedImports: skipped };
   });
-  const sessionLogPath = `.workflows/${workUnit}/discovery/sessions/session-001.md`;
+  const sessionLogPath = sessionLog !== null ? `.workflows/${workUnit}/discovery/sessions/session-001.md` : null;
 
   if (created) {
     withProjectLock(cwd, () => {

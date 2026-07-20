@@ -69,8 +69,8 @@ When naming topics:
 Read filter inputs from the work unit's manifest:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery items
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery dismissed
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery items
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery dismissed
 ```
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed from the map by the user.
@@ -95,15 +95,15 @@ Check if the existing item's `source` field already includes `research-analysis`
 Read the existing source:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.discovery.{name} source
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{name} source
 ```
 
 **If the existing source is empty or the literal string `null`:**
 
-The manifest CLI prints `"null"` for fields that exist with a JSON null value (intentional — `exists` is the way to distinguish missing from null). Treat both empty and `"null"` as "no real source" and set the new value alone:
+`engine manifest get` prints `"null"` for fields that exist with a JSON null value (intentional — `exists` is the way to distinguish missing from null). Treat both empty and `"null"` as "no real source" and set the new value alone:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} source "research-analysis"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{name} source "research-analysis"
 ```
 
 **Otherwise:**
@@ -111,7 +111,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.disco
 Set source to `{existing},research-analysis` (comma-joined):
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery.{name} source "{existing},research-analysis"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{name} source "{existing},research-analysis"
 ```
 
 Do not change the existing item's routing — the user (or earlier analysis) already set it. Do not stage a candidate.

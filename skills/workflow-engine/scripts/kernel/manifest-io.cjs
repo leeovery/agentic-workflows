@@ -4,19 +4,19 @@
 // Manifest IO — the single implementation of manifest reads, atomic writes,
 // and the lock discipline.
 //
-// Consumed by BOTH writers (the manifest CLI and the engine), sibling to
-// manifest-schema.cjs: one on-disk contract, one serialisation, one lock
-// protocol — the two writers can never drift. Pure mechanism: this module
-// knows file locations, JSON parsing, temp-file renames, and lock files; it
-// knows nothing about what a manifest contains.
+// Consumed by every manifest writer in the engine (the field commands and
+// the transactions), sibling to manifest-schema.cjs: one on-disk contract,
+// one serialisation, one lock protocol — writers can never drift. Pure
+// mechanism: this module knows file locations, JSON parsing, temp-file
+// renames, and lock files; it knows nothing about what a manifest contains.
 //
 // Every function takes `workflowsDir` — the absolute path of the project's
-// `.workflows/` directory — so callers with different cwd conventions (the
-// CLI resolves against process.cwd(), the engine passes the project root)
-// share one implementation.
+// `.workflows/` directory — so callers with different cwd conventions share
+// one implementation.
 //
-// Errors throw `Error` with a stable message; CLI callers translate to their
-// exit-code convention, engine callers let them ride to the JSON error line.
+// Errors throw `Error` with a stable message; read-surface callers translate
+// to their exit-code convention, transaction callers let them ride to the
+// JSON error line.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

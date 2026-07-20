@@ -1,7 +1,7 @@
 ---
 name: workflow-discussion-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-discussion-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-discussion-process/scripts/discovery.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 # Discussion Process
@@ -81,7 +81,7 @@ node .claude/skills/workflow-discussion-process/scripts/discovery.cjs map {work_
 
 Emit the DISPLAY section verbatim as a code block — never the `===` marker lines.
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file and the manifest's map state (node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discussion.{topic} subtopics)`, commit = `discussion({work_unit}): restart discussion`.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file and the manifest's map state (node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discussion.{topic} subtopics)`, commit = `discussion({work_unit}): restart discussion`.
 
 ---
 

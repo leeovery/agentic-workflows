@@ -20,7 +20,7 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('./kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
-const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
+const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
 const { startTopic, completeTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
@@ -30,6 +30,7 @@ const { boot } = require('./domain/boot.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
+const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -87,7 +88,16 @@ const USAGE = `Usage: engine <command> [args]
 
 Commands:
   boot
-  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
+  manifest get    <dotpath> [<field.path>]
+  manifest set    <dotpath> <field> <value> [<field>=<value> …]
+  manifest push   <dotpath> <field> <value>
+  manifest pull   <dotpath> <field> <value>
+  manifest delete <dotpath> <field.path>
+  manifest exists <dotpath> [<field.path>]
+  manifest list   [--status <s>] [--work-type <t>]
+  manifest key-of <dotpath> <field.path> <value>
+  manifest resolve <work-unit>.<phase>[.<topic>]
+  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
                   [--import <path> …] [--seed <path> …]
   workunit complete <work-unit> -m <message>
   workunit cancel <work-unit>
@@ -130,6 +140,36 @@ Commands:
   render tree [--width N]            (reads a JSON TreeNode array on stdin)`;
 
 // ---------------------------------------------------------------------------
+// manifest — the field surface (domain/fields.cjs): dot-path addressing over
+// manifest fields with schema validation and the shared lock. Output contract
+// split on purpose: reads (get/exists/list/key-of/resolve) keep the absorbed
+// CLI's bare stdout byte-for-byte — prose substitution surfaces, including
+// their exit-code convention (2 = expected miss) — while mutations
+// (set/push/pull/delete) answer with the engine's one-line JSON response.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+/** @param {string[]} argv */
+function runManifest(argv) {
+  const [command, ...rest] = argv;
+  if (command !== undefined && isRead(command)) {
+    try {
+      runFieldCommand(process.cwd(), command, rest);
+    } catch (err) {
+      const code = err && typeof err === 'object' && 'exitCode' in err && typeof err.exitCode === 'number' ? err.exitCode : 1;
+      process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(code);
+    }
+    return;
+  }
+  try {
+    respond(/** @type {object} */ (runFieldCommand(process.cwd(), command ?? '', rest)));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // workunit — work-unit lifecycle. create is the work-type commit: one
 // transaction covering the manifest, imports, seeds, the model-authored
 // session log (installed verbatim — the engine never writes prose), and the
@@ -150,10 +190,14 @@ function runWorkunit(argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'create') {
-      const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
+      const { opts, flags, lists, positional } = parseArgs(rest, ['no-session-log'], ['import', 'seed']);
       const [workUnit, workType] = positional;
-      if (!workUnit || !workType || !opts.description || !opts['session-log-file']) {
-        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]');
+      if (!workUnit || !workType || !opts.description) {
+        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log [--import <path> …] [--seed <path> …]');
+      }
+      // Log-less creation must be explicit — accidental omission is an error.
+      if (flags.has('no-session-log') ? opts['session-log-file'] !== undefined : opts['session-log-file'] === undefined) {
+        throw new Error('exactly one of --session-log-file <path> or --no-session-log is required');
       }
       respond(createWorkUnit(process.cwd(), workUnit, workType, {
         description: opts.description,
@@ -568,6 +612,9 @@ function runCli(argv) {
   switch (command) {
     case 'boot':
       runBoot();
+      break;
+    case 'manifest':
+      runManifest(rest);
       break;
     case 'workunit':
       runWorkunit(rest);

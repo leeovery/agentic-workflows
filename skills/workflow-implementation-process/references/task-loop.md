@@ -22,9 +22,9 @@ H. Update progress + phase check + commit
 
 ## A. Retrieve Next Task
 
-Read the plan's `external_id` via manifest CLI:
+Read the plan's `external_id` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
 ```
 
 Follow the format's **reading.md** instructions to determine the next available task.
@@ -203,7 +203,7 @@ Accept the reviewer's fix analysis?
 #### If `auto`
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} fix_gate_mode auto
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode auto
 ```
 
 → Return to **B. Execute Task**.
@@ -269,7 +269,7 @@ Approve this task?
 **If `auto`:**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.implementation.{topic} task_gate_mode auto
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode auto
 ```
 
 → Proceed to **H. Update Progress and Commit**.

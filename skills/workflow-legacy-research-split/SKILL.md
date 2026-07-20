@@ -1,7 +1,7 @@
 ---
 name: workflow-legacy-research-split
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/validate.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/apply.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(mkdir -p .workflows/.cache/), Bash(mv .workflows/.cache/), Bash(rm .workflows/.cache/), Bash(rm -rf .workflows/.cache/)
+allowed-tools: Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/validate.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/apply.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest), Bash(mkdir -p .workflows/.cache/), Bash(mv .workflows/.cache/), Bash(rm .workflows/.cache/), Bash(rm -rf .workflows/.cache/)
 ---
 
 # Legacy Research Split
@@ -182,6 +182,6 @@ Evaluate the branches below in order — error reporting takes precedence over c
 If `apply.cjs` returns `ok: false`, the response's `recovery_hint` names the manual cleanup the failing stage requires. Common cleanups:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {work_unit}.discovery.{stuck_source} legacy_split_state
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{stuck_source} legacy_split_state
 rm -rf .workflows/.cache/{work_unit}/legacy-split/{stuck_source}
 ```

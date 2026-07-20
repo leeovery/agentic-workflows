@@ -11,7 +11,7 @@ Gather targeted context about the mechanical change. Read the work's seed and th
 → Load **[../../workflow-shared/references/seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit} description
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
 If the seed and description already capture what, where, and why — skip to the complexity check. Otherwise, ask targeted questions.

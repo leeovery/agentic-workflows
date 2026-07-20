@@ -804,8 +804,8 @@ describe('knowledge store rides along on every engine commit', () => {
   });
 });
 
-describe('schema enforcement: engine refuses what the manifest CLI refuses', () => {
-  const { VALID_PHASE_STATUSES } = require('../../skills/workflow-shared/scripts/manifest-schema.cjs');
+describe('schema enforcement: transitions refuse what the field surface refuses', () => {
+  const { VALID_PHASE_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 
   it('discovery is not a lifecycle phase — start/complete/cancel all refuse', () => {
     const dir = setupGitFixture();
@@ -825,11 +825,11 @@ describe('schema enforcement: engine refuses what the manifest CLI refuses', () 
     cleanupFixture(dir);
   });
 
-  it('the enforcement table IS the manifest CLI schema (shared module, no mirror)', () => {
+  it('the enforcement table IS the kernel schema (shared module, no mirror)', () => {
     assert.deepStrictEqual(VALID_PHASE_STATUSES.discovery, []);  // map items carry no status — empty vocabulary refuses every write
     const src = fs.readFileSync(
       path.join(__dirname, '../../skills/workflow-engine/scripts/domain/transitions.cjs'), 'utf8');
-    assert.ok(src.includes("require('../../../workflow-shared/scripts/manifest-schema.cjs')"),
+    assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'transitions must require the shared schema, not mirror it');
     assert.ok(!/VALID_PHASE_STATUSES\s*=\s*{/.test(src), 'no local copy of the status table');
   });

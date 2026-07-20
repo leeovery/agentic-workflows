@@ -8,7 +8,6 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const REAL_SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const MANIFEST_CLI = path.join(__dirname, '../../skills/workflow-manifest/scripts/manifest.cjs');
 
 // Hermetic git: no user/system config leaks into fixtures or the engine's
 // spawned git subprocesses.
@@ -58,8 +57,7 @@ process.exit(0);
 `;
 
 /**
- * A hermetic skills layout: the real engine scripts (plus the workflow-shared
- * scripts the domain ring requires) copied into a temp skills root, with a
+ * A hermetic skills layout: the real engine scripts copied into a temp skills root, with a
  * stub knowledge.cjs sibling — exercising the engine's __dirname-relative
  * resolution exactly as installed.
  */
@@ -67,7 +65,6 @@ function setupFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-create-'));
   const skills = path.join(root, 'skills');
   fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  fs.cpSync(path.join(__dirname, '../../skills/workflow-shared/scripts'), path.join(skills, 'workflow-shared/scripts'), { recursive: true });
   writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
   return {
     root,
@@ -184,7 +181,7 @@ describe('engine workunit create — happy path', () => {
     assert.strictEqual(m.seeds[0].source, 'inbox:idea');
     assert.match(m.seeds[0].seeded_at, ISO_SECONDS);
 
-    // Registered in the project manifest, exactly as manifest.cjs init does.
+    // Registered in the project manifest.
     const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, { payments: { work_type: 'epic' } });
 
@@ -248,29 +245,28 @@ describe('engine workunit create — happy path', () => {
   });
 });
 
-describe('engine workunit create — manifest equivalence with manifest.cjs init', () => {
+describe('engine workunit create — the canonical on-disk documents', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); stageLog(fix); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true }); });
 
-  it('writes byte-identical manifest and project-manifest documents', () => {
-    // Reference: the manifest CLI in a sibling project dir.
-    const reference = path.join(fix.root, 'reference');
-    fs.mkdirSync(reference, { recursive: true });
-    execFileSync('node', [MANIFEST_CLI, 'init', 'payments', '--work-type', 'feature', '--description', 'Payments overhaul'], {
-      cwd: reference,
-      encoding: 'utf8',
-    });
-
+  it('writes byte-exact manifest and project-manifest documents', () => {
     engine(fix, createArgs('payments', 'feature'));
 
-    const cliManifest = fs.readFileSync(path.join(reference, '.workflows/payments/manifest.json'), 'utf8');
     const engineManifest = fs.readFileSync(path.join(fix.project, '.workflows/payments/manifest.json'), 'utf8');
-    assert.strictEqual(engineManifest, cliManifest);
+    assert.strictEqual(engineManifest, JSON.stringify({
+      name: 'payments',
+      work_type: 'feature',
+      status: 'in-progress',
+      created: new Date().toISOString().slice(0, 10),
+      description: 'Payments overhaul',
+      phases: {},
+    }, null, 2) + '\n');
 
-    const cliProject = fs.readFileSync(path.join(reference, '.workflows/manifest.json'), 'utf8');
     const engineProject = fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8');
-    assert.strictEqual(engineProject, cliProject);
+    assert.strictEqual(engineProject, JSON.stringify({
+      work_units: { payments: { work_type: 'feature' } },
+    }, null, 2) + '\n');
   });
 });
 
@@ -506,15 +502,34 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'create']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic', '--description', 'x']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb>/);
+  });
+
+  it('omitting the session log without --no-session-log refuses — log-less creation must be explicit', () => {
+    const err = engineFails(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec']);
+    assert.match(err.error, /exactly one of --session-log-file <path> or --no-session-log/);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy')), 'nothing created on refusal');
+  });
+
+  it('creates without a session log — no sessions dir, no active_session, session_log null', () => {
+    const res = engine(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec', '--no-session-log']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.created, true);
+    assert.strictEqual(res.session_log, null);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy/discovery')),
+      'no discovery/sessions tree without a log');
+    const manifest = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/promoted-policy/manifest.json'), 'utf8'));
+    assert.strictEqual(manifest.work_type, 'cross-cutting');
+    assert.strictEqual(manifest.phases.discovery, undefined, 'no active_session marker without a log');
+    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
+    assert.deepStrictEqual(project.work_units['promoted-policy'], { work_type: 'cross-cutting' });
   });
 });
 
 describe('engine workunit create — schema sharing', () => {
   it('validates work types through the shared schema module, never a local literal', () => {
     const src = fs.readFileSync(path.join(REAL_SCRIPTS, 'domain/workunit-create.cjs'), 'utf8');
-    assert.ok(src.includes("require('../../../workflow-shared/scripts/manifest-schema.cjs')"),
+    assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'workunit-create must require the shared schema');
     assert.ok(!/VALID_WORK_TYPES\s*=\s*\[/.test(src), 'no local copy of the work-type vocabulary');
   });

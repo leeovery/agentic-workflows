@@ -99,7 +99,7 @@ When the file is first created, populate the header, **Description (as of sessio
 At that same first-creation write, set the active-session marker so it always pairs with an existing log:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.discovery active_session "{session_number:03d}"
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery active_session "{session_number:03d}"
 ```
 
 The caller's own commit step stages and commits this alongside the log.

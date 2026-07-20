@@ -4,10 +4,10 @@
 
 ---
 
-Check research status via manifest CLI:
+Check research status via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.research.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
 #### If status is `completed`
@@ -15,7 +15,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.resea
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research.{topic} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.research.{topic} status in-progress
 ```
 
 > *Output the next fenced block as a code block:*

@@ -16,7 +16,6 @@ const SKILL_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-legacy
 const DETECT_CLI   = path.join(SKILL_DIR, 'detect.cjs');
 const VALIDATE_CLI = path.join(SKILL_DIR, 'validate.cjs');
 const APPLY_CLI    = path.join(SKILL_DIR, 'apply.cjs');
-const MANIFEST_CLI = path.resolve(__dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs');
 
 let dir;
 

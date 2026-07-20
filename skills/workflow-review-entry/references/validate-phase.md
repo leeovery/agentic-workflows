@@ -4,12 +4,12 @@
 
 ---
 
-Check if plan and implementation exist and are ready via manifest CLI.
+Check if plan and implementation exist and are ready via `engine manifest`.
 
 ## A. Existence Checks
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic}
 ```
 
 #### If plan doesn't exist (`false`)
@@ -29,7 +29,7 @@ A completed plan and completed implementation are required for review.
 #### If plan exists (`true`)
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}.implementation.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.implementation.{topic}
 ```
 
 **If implementation doesn't exist (`false`):**
@@ -53,7 +53,7 @@ A completed implementation is required for review.
 ## B. Implementation Status
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.implementation.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} status
 ```
 
 #### If implementation status is not `completed`
@@ -75,7 +75,7 @@ The implementation for "{topic:(titlecase)}" is not yet completed.
 ## C. Review State
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.review.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} status
 ```
 
 #### If output is empty (review does not exist)
@@ -87,7 +87,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.revie
 Reset to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.review.{topic} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} status in-progress
 ```
 
 → Return to caller.

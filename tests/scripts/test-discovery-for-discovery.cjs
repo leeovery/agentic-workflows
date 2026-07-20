@@ -710,7 +710,7 @@ describe('workflow-discovery format', () => {
       assert.strictEqual(r.active_session, '002');
     });
 
-    it('format() carries no active_session line — the manifest CLI owns the resume signal', () => {
+    it('format() carries no active_session line — the manifest field surface owns the resume signal', () => {
       createManifest(dir, 'payments', {
         work_type: 'epic',
         phases: { discovery: { active_session: '003' } },

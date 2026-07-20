@@ -237,7 +237,7 @@ function fixAttempt(cwd, workUnit, topic, internalId, findingsFile) {
 }
 
 /**
- * Mirror of manifest.cjs `key-of` over `phases.planning.items.{topic}.task_map`:
+ * Mirror of the field surface's `key-of` (domain/fields.cjs) over `phases.planning.items.{topic}.task_map`:
  * the internal id whose mapped external id matches, or a loud error.
  * @param {object} manifest @param {string} workUnit @param {string} topic @param {string} externalId
  * @returns {string}

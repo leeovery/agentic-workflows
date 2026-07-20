@@ -40,9 +40,9 @@ every stage.
 
 Work through each phase in order. Check the current phase's state.
 
-Check `task_list_gate_mode` via manifest CLI:
+Check `task_list_gate_mode` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} task_list_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_list_gate_mode
 ```
 
 #### If the phase has no task table in the planning file
@@ -113,7 +113,7 @@ Tasks are authored in a single batch per phase. One sub-agent authors all tasks 
 
 All tasks already authored. Check via manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} task_map
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
 > *Output the next fenced block as a code block:*
@@ -136,8 +136,8 @@ Phase {N}: {Phase Name} — all tasks already authored.
 
 Advance the manifest planning position to the next phase:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} phase {N+1}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase {N+1}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task '~'
 ```
 
 Commit:

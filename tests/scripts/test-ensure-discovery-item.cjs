@@ -1,7 +1,7 @@
 'use strict';
 
 // The ensure-discovery-item reference is markdown — it instructs Claude to
-// invoke the engine CLI (`discovery-map add`) plus the manifest CLI's
+// invoke the engine CLI (`discovery-map add`) plus the field surface's
 // existence check. These tests exercise the same CLI sequence the reference
 // prescribes, so we lock in the observable manifest state and the
 // back-compat shape:
@@ -21,7 +21,7 @@ const os = require('os');
 const { spawnSync } = require('child_process');
 
 const MANIFEST_CLI = path.resolve(
-  __dirname, '..', '..', 'skills', 'workflow-manifest', 'scripts', 'manifest.cjs'
+  __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
 );
 const ENGINE_CLI = path.resolve(
   __dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'
@@ -40,7 +40,7 @@ function cleanup() {
 }
 
 function runCli(...args) {
-  const r = spawnSync('node', [MANIFEST_CLI, ...args], { cwd: dir, encoding: 'utf8' });
+  const r = spawnSync('node', [MANIFEST_CLI, 'manifest', ...args], { cwd: dir, encoding: 'utf8' });
   return { stdout: r.stdout, stderr: r.stderr, status: r.status };
 }
 

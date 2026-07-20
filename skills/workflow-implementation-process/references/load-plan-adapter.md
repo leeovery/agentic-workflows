@@ -4,9 +4,9 @@
 
 ---
 
-1. Read the plan's `format` via manifest CLI:
+1. Read the plan's `format` via `engine manifest`:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} format
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
    ```
 2. Load the format's adapter files from `../workflow-planning-process/references/output-formats/{format}/`:
    - **about.md** — prerequisites and setup instructions

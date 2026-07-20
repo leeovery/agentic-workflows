@@ -12,14 +12,14 @@ Two-part review dispatched to sub-agents. Traceability runs first — its approv
 
 Check the `review_cycle` field in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} review_cycle
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle
 ```
 
 #### If `review_cycle` is `0`
 
 Set `review_cycle` to 1 in the manifest:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} review_cycle 1
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle 1
 ```
 
 Record the current cycle number — passed to both review agents for tracking file naming (`c{N}`).
@@ -30,7 +30,7 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 Increment `review_cycle` by 1:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} review_cycle {N+1}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle {N+1}
 ```
 
 Record the current cycle number — passed to both review agents for tracking file naming (`c{N}`).
@@ -41,9 +41,9 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 ## B. Cycle Gate
 
-Check `finding_gate_mode` via manifest CLI:
+Check `finding_gate_mode` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} finding_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
 ```
 
 #### If `review_cycle` <= 3
@@ -121,10 +121,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 ## E. Re-Loop Prompt
 
-Check `finding_gate_mode` and `review_cycle` via manifest CLI:
+Check `finding_gate_mode` and `review_cycle` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} finding_gate_mode
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.planning.{topic} review_cycle
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle
 ```
 
 #### If no findings were surfaced in this cycle

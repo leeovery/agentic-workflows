@@ -40,7 +40,7 @@ Once the user confirms a name (the suggestion or their own), kebab-case it and h
 ## B. Conflict Check
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}
 ```
 
 #### If a work unit with the same name exists

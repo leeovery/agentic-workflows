@@ -1,12 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Shared manifest IO (workflow-shared/scripts/manifest-io.cjs) and the
+// Kernel manifest IO (workflow-engine/scripts/kernel/manifest-io.cjs) and the
 // engine's lock discipline over it: one read/parse, one atomic-write
-// serialisation, one lock protocol for BOTH writers (manifest CLI + engine).
+// serialisation, one lock protocol for every manifest writer.
 //
 // Proves the concurrency contract the island-absorption wave closed: engine
-// writes take the same .lock the CLI honours — a fresh lock blocks the engine
+// writes take the same .lock as every manifest writer — a fresh lock blocks the engine
 // until released, a stale lock is broken per the shared constants, and no
 // lock file ever leaks into a transaction's commit.
 // ---------------------------------------------------------------------------
@@ -19,7 +19,7 @@ const path = require('path');
 const { execFileSync, spawnSync, spawn } = require('child_process');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
-const io = require('../../skills/workflow-shared/scripts/manifest-io.cjs');
+const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 
 // Hermetic git: no user/system config leaks into fixtures or the engine's
 // spawned git subprocesses.
@@ -85,7 +85,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-io-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
 
-  it('carries the manifest CLI lock discipline: 30s stale, 50ms retry, 10s timeout', () => {
+  it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout', () => {
     assert.strictEqual(io.LOCK_STALE_MS, 30000);
     assert.strictEqual(io.LOCK_RETRY_MS, 50);
     assert.strictEqual(io.LOCK_TIMEOUT_MS, 10000);
@@ -256,20 +256,20 @@ describe('engine project-manifest writes take the project lock', () => {
   });
 });
 
-describe('CLI and engine stay one implementation', () => {
-  it('the manifest CLI requires the shared manifest-io module — no local lock or write copies', () => {
-    const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-manifest/scripts/manifest.cjs'), 'utf8');
-    assert.ok(src.includes("require('../../workflow-shared/scripts/manifest-io.cjs')"),
-      'manifest CLI must consume the shared manifest IO');
-    assert.ok(!src.includes('openSync'), 'no local lock implementation in the CLI');
-    assert.ok(!src.includes('renameSync'), 'no local atomic-write implementation in the CLI');
+describe('field surface and transactions stay one implementation', () => {
+  it('the field surface requires the kernel manifest-io module — no local lock or write copies', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/fields.cjs'), 'utf8');
+    assert.ok(src.includes("require('../kernel/manifest-io.cjs')"),
+      'fields must consume the kernel manifest IO');
+    assert.ok(!src.includes('openSync'), 'no local lock implementation in the field surface');
+    assert.ok(!src.includes('renameSync'), 'no local atomic-write implementation in the field surface');
     assert.ok(!/LOCK_STALE_MS\s*=/.test(src), 'no local copy of the lock constants');
   });
 
-  it('the engine kernel requires the shared manifest-io module — no local IO copy', () => {
+  it('the engine kernel façade requires the sibling manifest-io module — no local IO copy', () => {
     const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest.cjs'), 'utf8');
-    assert.ok(src.includes("require('../../../workflow-shared/scripts/manifest-io.cjs')"),
-      'engine kernel must consume the shared manifest IO');
+    assert.ok(src.includes("require('./manifest-io.cjs')"),
+      'engine kernel must consume the sibling manifest IO');
     assert.ok(!src.includes('readFileSync'), 'no local read implementation in the kernel');
     assert.ok(!src.includes('renameSync'), 'no local atomic-write implementation in the kernel');
   });

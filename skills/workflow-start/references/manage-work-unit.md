@@ -80,7 +80,7 @@ Default `implementation_completed` = false, `has_plan` = false.
 Check whether the planning phase exists and store the result as `has_plan`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.planning
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {selected.name}.planning
 ```
 
 #### If `selected.work_type` is `feature`
@@ -90,19 +90,19 @@ Default `has_spec` = false, `has_discussion` = false, `has_in_progress_epics` = 
 Check whether the specification phase exists and store the result as `has_spec`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.specification
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {selected.name}.specification
 ```
 
 Check whether the discussion phase exists and store the result as `has_discussion`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name}.discussion
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {selected.name}.discussion
 ```
 
 List in-progress epics:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs list --status in-progress --work-type epic
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest list --status in-progress --work-type epic
 ```
 
 If the result is a non-empty JSON array, set `has_in_progress_epics` = true and store the array as `available_epics`.
@@ -118,7 +118,7 @@ If the result is a non-empty JSON array, set `has_in_progress_epics` = true and 
 Read all topic statuses in the implementation phase:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get '{selected.name}.implementation.*' status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{selected.name}.implementation.*' status
 ```
 
 #### If output is empty (no implementation phase)

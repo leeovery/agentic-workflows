@@ -92,7 +92,7 @@ Set `result = landed`.
 The discovery item exists; read its `routing=` value from the map row. Create that phase's item:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.{routing}.{target}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} {routing} {target}
 ```
 
 Create the artefact stub at `.workflows/{work_unit}/{routing}/{target}.md` from the `{routing}` template — [discussion template](../../workflow-discussion-process/references/template.md) or [research template](../../workflow-research-process/references/template.md). Write the concern into its `## Triage` section using the entry shape above, replacing the `(none)` placeholder.
@@ -110,13 +110,13 @@ Append the concern as a `### {short title}` subsection under that file's `## Tri
 Reopen the target if it has concluded, so it recomputes as actionable:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.{current_phase}.{target} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.{current_phase}.{target} status
 ```
 
 **If the status is `completed`:**
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.{current_phase}.{target} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.{current_phase}.{target} status in-progress
 ```
 
 Set `landed_topic = {target}` and `result = landed`.

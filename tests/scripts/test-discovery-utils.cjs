@@ -15,7 +15,7 @@ const {
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing,
   TIER_RANK,
-} = require('../../skills/workflow-shared/scripts/discovery-utils.cjs');
+} = require('../../skills/workflow-engine/scripts/domain/discovery-utils.cjs');
 
 describe('discovery-utils', () => {
   let dir;
