@@ -17,7 +17,7 @@ This is pragmatic TDD, not purist. The mandatory discipline is **test-first sequ
 - You MUST see it fail for the right reason
 - You MUST NOT change tests to make broken code pass
 
-But write **complete, functional implementations** - don't artificially minimize with hardcoded returns or fake values that you'll "fix later". "Minimal" means no gold-plating beyond what the test requires, not "return 42 and triangulate".
+But write **complete, functional implementations** — don't artificially minimize with hardcoded returns or fake values that you'll "fix later". "Minimal" means no gold-plating beyond what the test requires, not "return 42 and triangulate".
 
 ## TDD Violation Recovery
 
@@ -55,7 +55,7 @@ Write complete, functional code that passes:
 - No "while I'm here" improvements
 - No edge cases not yet tested
 
-If you think "I should also handle X" - STOP. Write a test for X first.
+If you think "I should also handle X" — STOP. Write a test for X first.
 
 **One test at a time**: Write test → Run (fails) → Implement → Run (passes) → Commit → Next
 

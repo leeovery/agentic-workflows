@@ -153,12 +153,12 @@ Questions to ask when gathering bug symptoms.
 
 Start broad, then narrow:
 
-1. **Problem description** - What's wrong?
-2. **Impact assessment** - How bad is it?
-3. **Reproduction** - Can we trigger it?
-4. **Environment** - Where does it happen?
-5. **History** - When did it start?
-6. **References** - What do we have to work with?
-7. **Hypotheses** - What do you suspect?
+1. **Problem description** — What's wrong?
+2. **Impact assessment** — How bad is it?
+3. **Reproduction** — Can we trigger it?
+4. **Environment** — Where does it happen?
+5. **History** — When did it start?
+6. **References** — What do we have to work with?
+7. **Hypotheses** — What do you suspect?
 
 Don't ask all questions upfront. Start with the most important, gather initial context, then drill down based on responses.

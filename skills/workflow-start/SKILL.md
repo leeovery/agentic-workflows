@@ -53,6 +53,13 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 ── Initialisation ───────────────────────────────
 ```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Setting up the session — shared conventions first, then the
+> system boot checks.
+```
+
 ### Step 0.1: Casing Conventions
 
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.

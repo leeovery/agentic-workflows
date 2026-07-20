@@ -107,7 +107,7 @@ Proceed?
 
 ## B. Handle Response
 
-#### If user confirms (y)
+#### If `yes`
 
 **If spec is completed with pending sources:**
 
@@ -117,7 +117,7 @@ Proceed?
 
 → Load **[continue.md](handoffs/continue.md)** and follow its instructions as written.
 
-#### If user declines (n)
+#### If `no`
 
 **If single discussion (no menu to return to):**
 

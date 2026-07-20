@@ -62,7 +62,6 @@ Implementation completed for "{work_unit:(titlecase)}".
 
 - **`y`/`yes`** — Proceed to review
 - **`d`/`done`** — Complete without review
-
 · · · · · · · · · · · ·
 ```
 

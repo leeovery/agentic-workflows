@@ -69,6 +69,13 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 ── Dispatch ─────────────────────────────────────
 ```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Determining the invocation mode — brand-new work, or re-shaping
+> an existing epic's map.
+```
+
 Read the positional arguments:
 
 - `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s`/start path, no hint). A hint, not a given — still confirmed in new mode.

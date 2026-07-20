@@ -68,4 +68,4 @@ Mutations from A and B are already committed. Returning to the caller would cont
 > takes over immediately.
 ```
 
-**STOP.** Terminal — do not return to the caller's Step 6.
+**STOP.** Do not proceed — terminal condition. Do not return to the caller's Step 6.

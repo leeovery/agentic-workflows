@@ -66,7 +66,6 @@ All topics have completed review for "{work_unit:(titlecase)}".
 
 - **`y`/`yes`** — Mark this epic as completed
 - **`n`/`no`** — Return to the epic menu
-
 · · · · · · · · · · · ·
 ```
 

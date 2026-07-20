@@ -86,8 +86,8 @@ Candidate themes for {current_source}.md:
 ```
 · · · · · · · · · · · ·
 - **`y`/`yes`** — Proceed to draft cache files
-- **Redirect** — Adjust the theme list (rename, merge two, split one, add, remove)
 - **`a`/`abandon`** — Skip this source file
+- **Redirect** — Adjust the theme list (rename, merge two, split one, add, remove)
 · · · · · · · · · · · ·
 ```
 
@@ -201,8 +201,8 @@ Source file will be renamed to {current_source}-superseded-{datetime}.md.
 ```
 · · · · · · · · · · · ·
 - **`y`/`yes`** — Apply this plan
-- **Edit** — Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
 - **`a`/`abandon`** — Skip this source file
+- **Edit** — Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.
 · · · · · · · · · · · ·
 ```
 

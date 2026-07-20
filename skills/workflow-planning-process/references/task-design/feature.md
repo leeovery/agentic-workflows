@@ -1,6 +1,6 @@
 # Feature Task Design
 
-*Context guidance for **[task-design.md](../task-design.md)** — feature additions to existing systems*
+*Reference for **[task-design.md](../task-design.md)** — feature additions to existing systems*
 
 ---
 

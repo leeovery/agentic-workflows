@@ -1,6 +1,6 @@
 # Bugfix Task Design
 
-*Context guidance for **[task-design.md](../task-design.md)** — bug fixes*
+*Reference for **[task-design.md](../task-design.md)** — bug fixes*
 
 ---
 

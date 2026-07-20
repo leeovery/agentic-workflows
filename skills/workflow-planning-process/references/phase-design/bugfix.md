@@ -1,6 +1,6 @@
 # Bugfix Phase Design
 
-*Context guidance for **[phase-design.md](../phase-design.md)** — bug fixes*
+*Reference for **[phase-design.md](../phase-design.md)** — bug fixes*
 
 ---
 

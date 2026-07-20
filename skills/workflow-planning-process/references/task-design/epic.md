@@ -1,6 +1,6 @@
 # Epic Task Design
 
-*Context guidance for **[task-design.md](../task-design.md)** — new system builds*
+*Reference for **[task-design.md](../task-design.md)** — new system builds*
 
 ---
 

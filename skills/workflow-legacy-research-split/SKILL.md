@@ -56,6 +56,13 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 ── List Qualifying Sources ──────────────────────
 ```
 
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Scanning the epic's research files for migration-seeded broad
+> sources that qualify for decomposition.
+```
+
 Initialise `applied_count = 0`, `abandoned_count = 0`, `errored_count = 0`.
 
 ```bash

@@ -38,7 +38,7 @@ At every stop point — phases, task lists, individual tasks, dependencies — t
 
 When uncertain whether the user approved, ask: "Ready to proceed, or do you want to change something?"
 
-#### Self-Check Before Logging
+### Self-Check Before Logging
 
 Before logging any task to the plan, ask yourself:
 

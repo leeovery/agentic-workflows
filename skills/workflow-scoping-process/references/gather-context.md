@@ -8,7 +8,7 @@ Gather targeted context about the mechanical change. Read the work's seed and th
 
 ## A. Read Existing Context
 
-→ Load **[../../workflow-shared/references/seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+→ Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
