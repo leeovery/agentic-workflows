@@ -56,6 +56,8 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 2. **No acceptance criteria** — mechanical changes are verified by test baselines and completeness checks, not by acceptance criteria.
 3. **No agents** — scoping writes specs and tasks directly, without invoking planning agents or review cycles.
 
+---
+
 ## Step 0: Resume Detection
 
 > *Output the next fenced block as a code block:*
