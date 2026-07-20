@@ -41,7 +41,7 @@ You receive via the orchestrator's prompt:
 
 ## Output File Format
 
-Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context, and the rename lands atomically over the dispatch-time skeleton. Reproduce the skeleton's frontmatter with `status` flipped to `pending` (results ready for the orchestrator). Use this structure:
+Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context, and the rename lands atomically over the dispatch-time skeleton. Bash is for this rename only. Reproduce the skeleton's frontmatter with `status` flipped to `pending` (results ready for the orchestrator). Use this structure:
 
 ```markdown
 {skeleton frontmatter, with status: pending}
