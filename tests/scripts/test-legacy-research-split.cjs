@@ -190,6 +190,38 @@ describe('detect.cjs: filter conditions', () => {
     const r = runScriptJson(DETECT_CLI, 'substr');
     assert.deepStrictEqual(r.json.qualifying_sources, ['foo']);
   });
+
+  it('surfaces an otherwise-qualifying source with an illegal (dotted) name as unsplittable', () => {
+    seedLegacyEpic('dotted', 'api.v2');
+    const r = runScriptJson(DETECT_CLI, 'dotted');
+    assert.deepStrictEqual(r.json.qualifying_sources, []);
+    assert.strictEqual(r.json.unsplittable.length, 1);
+    assert.strictEqual(r.json.unsplittable[0].name, 'api.v2');
+    assert.ok(r.json.unsplittable[0].reason.length > 0);
+  });
+
+  it('does not surface non-candidate illegal names as unsplittable', () => {
+    // Illegal name but not migration-seeded — it was never a split candidate.
+    seedLegacyEpic('notcand', 'api.v2', { source: 'discovery' });
+    const r = runScriptJson(DETECT_CLI, 'notcand');
+    assert.deepStrictEqual(r.json.qualifying_sources, []);
+    assert.deepStrictEqual(r.json.unsplittable, []);
+  });
+
+  it('surfaces a set legacy_split_state as a stranded sentinel', () => {
+    seedLegacyEpic('stranded', 'src', { legacy_split_state: 'in-progress' });
+    const r = runScriptJson(DETECT_CLI, 'stranded');
+    assert.deepStrictEqual(r.json.qualifying_sources, []);
+    assert.deepStrictEqual(r.json.stranded_sentinels, ['src']);
+  });
+
+  it('a clean run reports empty unsplittable and stranded lists', () => {
+    seedLegacyEpic('clean', 'exploration');
+    const r = runScriptJson(DETECT_CLI, 'clean');
+    assert.deepStrictEqual(r.json.qualifying_sources, ['exploration']);
+    assert.deepStrictEqual(r.json.unsplittable, []);
+    assert.deepStrictEqual(r.json.stranded_sentinels, []);
+  });
 });
 
 // ----- validate.cjs -----
