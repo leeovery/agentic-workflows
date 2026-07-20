@@ -4,7 +4,7 @@
 
 ---
 
-Drive the per-source iteration: read source, identify themes, early sanity gate, draft cache, propose, edit, validate, apply. Edit operations live in their own lettered sections (K–P) dispatched from G.
+Drive the per-source iteration: read source, identify themes, early sanity gate, draft cache, propose, edit, validate, apply. Edit operations live in their own lettered sections (K, M–P) dispatched from G.
 
 ## A. Iterate
 
