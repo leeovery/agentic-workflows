@@ -38,7 +38,11 @@ Order subsections `### Do now`, `### Quick-fixes`, `### Ideas`, `### Bugs`. Only
 
 ### Commit and Continue
 
-Commit: `review({work_unit}): complete review`
+Commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review"
+```
 
 Your review feedback can be:
 - Addressed by implementation (same or new session)
