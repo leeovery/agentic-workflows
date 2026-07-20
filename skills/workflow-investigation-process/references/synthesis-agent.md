@@ -39,11 +39,15 @@ Why It Wasn't Caught:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+> An independent agent will trace the code to validate the
+> root cause hypothesis before confirming.
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
 · · · · · · · · · · · ·
 Root cause documented. Run synthesis validation?
-
-An independent agent will trace the code to validate the
-root cause hypothesis before confirming.
 
 - **`y`/`yes`** — Run synthesis validation
 - **`s`/`skip`** — Skip straight to findings review
