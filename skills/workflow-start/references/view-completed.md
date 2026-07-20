@@ -94,49 +94,21 @@ Store the selected item.
 
 #### If user chose `r`/`reactivate`
 
-Set status back to in-progress:
+Run the reactivate transaction — one command restores `status: in-progress`, clears a stale `completed_at`, re-indexes the work unit's knowledge-base chunks when it was cancelled (completed units retain theirs), and commits:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit reactivate {selected.name}
 ```
 
-Capture whether `completed_at` is set (used by the completed branches; harmless on the cancelled path):
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs exists {selected.name} completed_at
-```
-
-**If `selected.status` was `cancelled`:**
-
-Cancellation removed the work unit's chunks from the knowledge base. Restore them by loading **[reindex-work-unit.md](../../workflow-knowledge/references/reindex-work-unit.md)** with work_unit = `{selected.name}`.
+The JSON response reports `previous_status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the reactivation is already recorded:
 
 > *Output the next fenced block as a code block:*
 
 ```
-"{selected.name:(titlecase)}" reactivated.
+⚑ Knowledge indexing warning
+  {warning}
+  Indexing can be retried later.
 ```
-
-→ Return to caller.
-
-**If `selected.status` was `completed` and `completed_at` is set:**
-
-Completed work units retain their chunks — no re-indexing needed. Clear the stale `completed_at`:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs delete {selected.name} completed_at
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-"{selected.name:(titlecase)}" reactivated.
-```
-
-→ Return to caller.
-
-**If `selected.status` was `completed` and `completed_at` is not set:**
-
-Completed work units retain their chunks — no re-indexing needed.
 
 > *Output the next fenced block as a code block:*
 

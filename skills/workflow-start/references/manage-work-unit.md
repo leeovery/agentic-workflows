@@ -170,12 +170,11 @@ Set `implementation_completed` = true.
 
 #### If user chose `d`/`done`
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} completed_at $(date +%Y-%m-%d)
-```
+Run the complete transaction — one command sets `status: completed`, stamps `completed_at`, and commits:
 
-Commit: `workflow({selected.name}): mark as completed`
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
+```
 
 > *Output the next fenced block as a code block:*
 
@@ -226,27 +225,21 @@ Invoke the `/workflow-continue-epic` skill.
 
 #### If user chose `c`/`cancel`
 
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {selected.name} status cancelled
-```
-
-Remove the cancelled work unit's chunks from the knowledge base:
+Run the cancel transaction — one command sets `status: cancelled`, removes the work unit's chunks from the knowledge base, and commits:
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {selected.name}
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {selected.name}
 ```
 
-If the remove command fails, display the error but do not block — the cancellation itself is already recorded:
+The JSON response reports `status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the cancellation is already recorded:
 
 > *Output the next fenced block as a code block:*
 
 ```
 ⚑ Knowledge removal warning
-  {error details}
+  {warning}
   The work unit is cancelled. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
 ```
-
-Commit: `workflow({selected.name}): mark as cancelled`
 
 > *Output the next fenced block as a code block:*
 

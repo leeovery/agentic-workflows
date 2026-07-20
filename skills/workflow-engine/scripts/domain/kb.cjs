@@ -14,6 +14,19 @@ const { spawnSync } = require('child_process');
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
 /**
+ * Phases whose completed artifact is knowledge-base indexed, with the artifact
+ * path per topic. One table for every engine transaction that indexes or
+ * re-indexes phase artifacts.
+ * @type {Record<string, (wu: string, topic: string) => string>}
+ */
+const INDEXED_ARTIFACTS = {
+  research: (wu, topic) => `.workflows/${wu}/research/${topic}.md`,
+  discussion: (wu, topic) => `.workflows/${wu}/discussion/${topic}.md`,
+  investigation: (wu, topic) => `.workflows/${wu}/investigation/${topic}.md`,
+  specification: (wu, topic) => `.workflows/${wu}/specification/${topic}/specification.md`,
+};
+
+/**
  * Spawn the knowledge CLI; on failure push a warning instead of throwing.
  * @param {string} cwd @param {string[]} args @param {string} label @param {string[]} warnings
  */
@@ -28,4 +41,4 @@ function knowledge(cwd, args, label, warnings) {
   }
 }
 
-module.exports = { knowledge };
+module.exports = { knowledge, INDEXED_ARTIFACTS };

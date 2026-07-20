@@ -58,6 +58,7 @@ const LIFECYCLE_PHRASES = {
  * @property {string} [source]            add: the provenance tag written
  * @property {boolean} [handled]          handle/reactivate: the marker after the op
  * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
+ * @property {boolean} [backfill]         add: item landed without summary/description for summary-backfill
  * @property {number} [map_total]         add: items on the map after the add
  */
 
@@ -145,22 +146,29 @@ function sequenceMap(cwd, workUnit, orders) {
 /**
  * Add a new map item: `{routing, source, summary[, description]}` — never a
  * `status` field; map-item lifecycle is computed at render time, not stored.
- * Refuses an active duplicate, and a dismissed name unless `forceDismissed`
- * carries the user's confirmed re-add decision (the entry is then pulled off
- * the dismissed list so analyses treat the topic as live again). No git
- * commit — the calling session's commit cadence picks the change up.
+ * `backfill` lands the item without summary/description (keys absent, not "")
+ * so the next epic entry's summary-backfill drafts them — for topics whose
+ * artifacts already exist (absorb, pivot); it is mutually exclusive with
+ * passing either field. Refuses an active duplicate, and a dismissed name
+ * unless `forceDismissed` carries the user's confirmed re-add decision (the
+ * entry is then pulled off the dismissed list so analyses treat the topic as
+ * live again). No git commit — the calling session's commit cadence picks the
+ * change up.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} name
- * @param {{routing?: string, source?: string, summary?: string, description?: string, forceDismissed?: boolean}} [fields]
+ * @param {{routing?: string, source?: string, summary?: string, description?: string, forceDismissed?: boolean, backfill?: boolean}} [fields]
  * @returns {MapOpResult}
  */
-function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, forceDismissed = false } = {}) {
+function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, description, forceDismissed = false, backfill = false } = {}) {
   if (!routing || !VALID_ROUTINGS.includes(routing)) {
     throw new Error(`unknown routing ${JSON.stringify(routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
   }
-  if (summary === undefined) {
-    throw new Error('--summary is required');
+  if (backfill && (summary !== undefined || description !== undefined)) {
+    throw new Error('--backfill lands the item without summary/description — drop the flag or the fields');
+  }
+  if (!backfill && summary === undefined) {
+    throw new Error('--summary is required (or --backfill to leave it for summary-backfill)');
   }
   // Same structural rule rename enforces: dots break the manifest CLI's
   // dot-path addressing, slashes break paths.
@@ -187,7 +195,8 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
   }
 
   /** @type {Record<string, unknown>} */
-  const item = { routing, source, summary };
+  const item = { routing, source };
+  if (summary !== undefined) item.summary = summary;
   if (description !== undefined) item.description = description;
   discovery.items[name] = item;
 
@@ -195,8 +204,10 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
 
   const { lifecycle } = computeTopicLifecycle(manifest, name);
   /** @type {MapOpResult} */
-  const result = { work_unit: workUnit, name, op: 'add', routing, source, summary, lifecycle, map_total: Object.keys(discovery.items).length };
+  const result = { work_unit: workUnit, name, op: 'add', routing, source, lifecycle, map_total: Object.keys(discovery.items).length };
+  if (summary !== undefined) result.summary = summary;
   if (description !== undefined) result.description = description;
+  if (backfill) result.backfill = true;
   if (wasDismissed) result.undismissed = true;
   return result;
 }

@@ -507,7 +507,7 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'create', 'payments']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic']).error, usage);
     assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic', '--description', 'x']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, usage);
+    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate>/);
   });
 });
 

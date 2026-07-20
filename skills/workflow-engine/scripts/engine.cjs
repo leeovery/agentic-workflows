@@ -28,6 +28,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
+const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -87,11 +88,15 @@ Commands:
   boot
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
+  workunit complete <work-unit> -m <message>
+  workunit cancel <work-unit>
+  workunit reactivate <work-unit>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map add <work-unit> <name> --routing <research|discussion> --summary <text>
-                [--description <text>] [--source <tag>] [--force-dismissed]
+  discovery-map add <work-unit> <name> --routing <research|discussion>
+                (--summary <text> [--description <text>] | --backfill)
+                [--source <tag>] [--force-dismissed]
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
   discovery-map remove <work-unit> <name>
   discovery-map rename <work-unit> <old> <new>
@@ -126,23 +131,51 @@ Commands:
 // session log (installed verbatim — the engine never writes prose), and the
 // scoped commit. A missing import fails the whole call with
 // `missing_imports` in the response so the calling flow can re-prompt.
+// complete/cancel/reactivate are the lifecycle transactions: manifest write,
+// knowledge-base sync (warn-don't-block), scoped git commit. complete takes
+// -m because its message varies by caller (manual vs pipeline-terminal vs
+// review-skipped); cancel/reactivate messages are engine-owned.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
 function runWorkunit(argv) {
   const [command, ...rest] = argv;
   try {
-    const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
-    const [workUnit, workType] = positional;
-    if (command !== 'create' || !workUnit || !workType || !opts.description || !opts['session-log-file']) {
-      throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]');
+    if (command === 'create') {
+      const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
+      const [workUnit, workType] = positional;
+      if (!workUnit || !workType || !opts.description || !opts['session-log-file']) {
+        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]');
+      }
+      respond(createWorkUnit(process.cwd(), workUnit, workType, {
+        description: opts.description,
+        sessionLogFile: opts['session-log-file'],
+        imports: lists.import || [],
+        seeds: lists.seed || [],
+      }));
+    } else if (command === 'complete') {
+      /** @type {string|null} */ let workUnit = null;
+      /** @type {string|null} */ let message = null;
+      for (let i = 0; i < rest.length; i++) {
+        const a = rest[i];
+        if (a === '-m' || a === '--message') message = rest[++i];
+        else if (workUnit === null) workUnit = a;
+        else throw new Error(`unexpected argument "${a}"`);
+      }
+      if (!workUnit || !message) {
+        throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
+      }
+      respond(completeWorkUnit(process.cwd(), workUnit, { message }));
+    } else if (command === 'cancel' || command === 'reactivate') {
+      const [workUnit, ...extra] = rest;
+      if (!workUnit || extra.length > 0) {
+        throw new Error(`Usage: engine workunit ${command} <work-unit>`);
+      }
+      const fn = command === 'cancel' ? cancelWorkUnit : reactivateWorkUnit;
+      respond(fn(process.cwd(), workUnit));
+    } else {
+      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate> …');
     }
-    respond(createWorkUnit(process.cwd(), workUnit, workType, {
-      description: opts.description,
-      sessionLogFile: opts['session-log-file'],
-      imports: lists.import || [],
-      seeds: lists.seed || [],
-    }));
   } catch (err) {
     failJson(err);
   }
@@ -212,7 +245,7 @@ function runDiscoveryMap(argv) {
   const cwd = process.cwd();
 
   try {
-    const { opts, flags, positional } = parseArgs(rest, ['force-dismissed']);
+    const { opts, flags, positional } = parseArgs(rest, ['force-dismissed', 'backfill']);
     const [workUnit] = positional;
     if (command === 'sequence') {
       if (!workUnit || positional.length < 2) {
@@ -236,8 +269,8 @@ function runDiscoveryMap(argv) {
     } else if (command === 'add') {
       // Strict positional count: an unquoted payload would spill into
       // positionals and silently truncate the text — refuse instead.
-      if (!workUnit || positional.length !== 2 || !opts.routing || opts.summary === undefined) {
-        throw new Error('Usage: engine discovery-map add <work-unit> <name> --routing <research|discussion> --summary <text> [--description <text>] [--source <tag>] [--force-dismissed]');
+      if (!workUnit || positional.length !== 2 || !opts.routing || (opts.summary === undefined && !flags.has('backfill'))) {
+        throw new Error('Usage: engine discovery-map add <work-unit> <name> --routing <research|discussion> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]');
       }
       respond(addItem(cwd, workUnit, positional[1], {
         routing: opts.routing,
@@ -245,6 +278,7 @@ function runDiscoveryMap(argv) {
         summary: opts.summary,
         description: opts.description,
         forceDismissed: flags.has('force-dismissed'),
+        backfill: flags.has('backfill'),
       }));
     } else if (command === 'edit') {
       // Strict positional count: an unquoted payload would spill into

@@ -17,7 +17,7 @@
 
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { commitScoped } = require('../kernel/git.cjs');
-const { knowledge } = require('./kb.cjs');
+const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
 
@@ -39,14 +39,6 @@ function assertLegalWrite(phase, status) {
     throw new Error(`Invalid status "${status}" for phase "${phase}". Must be one of: ${(valid || []).join(', ')}`);
   }
 }
-
-/** Phases whose completed artifact is knowledge-base indexed, with the artifact path per topic. */
-const INDEXED_ARTIFACTS = {
-  research: (wu, topic) => `.workflows/${wu}/research/${topic}.md`,
-  discussion: (wu, topic) => `.workflows/${wu}/discussion/${topic}.md`,
-  investigation: (wu, topic) => `.workflows/${wu}/investigation/${topic}.md`,
-  specification: (wu, topic) => `.workflows/${wu}/specification/${topic}/specification.md`,
-};
 
 /**
  * @typedef {object} TopicTransitionResult

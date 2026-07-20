@@ -80,14 +80,11 @@ All topics have completed review for "{work_unit:(titlecase)}".
 
 **If user chose `y`/`yes`:**
 
-Set the work unit status to completed:
+Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} status completed
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit} completed_at $(date +%Y-%m-%d)
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete epic pipeline"
 ```
-
-Commit: `workflow({work_unit}): complete epic pipeline`
 
 > *Output the next fenced block as a code block:*
 
