@@ -97,7 +97,7 @@ Resolve the destination per the caller's **Navigation** section — the user's p
 
 → Return to caller for **B. Process Current Phase**.
 
-#### If `approved`
+#### If `yes`
 
 **If the phase structure is new or was amended:**
 

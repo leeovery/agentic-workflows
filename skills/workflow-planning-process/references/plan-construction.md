@@ -105,7 +105,7 @@ Resolve the destination per **Navigation** above — the user's position moves, 
 
 → Return to **B. Process Current Phase** for the phase navigated to.
 
-**If confirmed:**
+**If `yes`:**
 
 → Proceed to **C. Author Phase Tasks**.
 

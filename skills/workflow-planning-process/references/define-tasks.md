@@ -125,7 +125,7 @@ Resolve the destination per the caller's **Navigation** section — the user's p
 
 → Return to caller for **B. Process Current Phase**.
 
-#### If approved (`y`/`yes`)
+#### If `yes`
 
 → Proceed to **C. Finalize Approval**.
 

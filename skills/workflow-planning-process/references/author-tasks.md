@@ -148,7 +148,7 @@ Present the full task content:
 
 **STOP.** Wait for user response.
 
-**If `approved` (`y`/`yes`):**
+**If `yes`:**
 
 Mark the task `approved` in the task detail file.
 
