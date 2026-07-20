@@ -121,6 +121,9 @@ function startTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is already completed — reopen it instead`);
     } else if (existing.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    } else if (existing.status === 'superseded') {
+      const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
+      throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
     } else {
       existing.status = 'in-progress';
     }
@@ -148,6 +151,10 @@ function completeTopic(cwd, workUnit, phase, topic) {
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    }
+    if (item.status === 'superseded') {
+      const by = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
+      throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
     }
     item.status = 'completed';
 
