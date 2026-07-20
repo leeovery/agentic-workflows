@@ -99,13 +99,15 @@ Set `topic` to the user's input.
 
 ## D. Research Check
 
-Read the feature's research items with their statuses:
+Read the feature's manifest once as a full dump — sections D, E, and F all derive their values from this single read:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{selected.name}.research.*' status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}
 ```
 
-#### If output is empty (no research)
+Take the feature's research items from `phases.research.items`.
+
+#### If there are no research items
 
 Set `has_research` = false.
 
@@ -121,12 +123,7 @@ Set `has_research` = true and `research_item_count` to the number of items. Name
 
 ## E. Imports and Seeds Check
 
-Read the feature's imports and seeds lists:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name} imports
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name} seeds
-```
+Take the top-level `imports` and `seeds` arrays from the manifest dump.
 
 Default `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false` / `seeds_count` = 0 — then, for each non-empty JSON array, set the flag `true` and the count to its length. Filename collisions in the target epic's directories are resolved by the engine; entries move with their original timestamps and seed provenance.
 
@@ -136,13 +133,7 @@ Default `has_imports` = `false` / `imports_count` = 0, and `has_seeds` = `false`
 
 ## F. Confirm
 
-Read the discussion status:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}.discussion.{selected.name} status
-```
-
-Store the result as `discussion_status`.
+Take the discussion item's status (`phases.discussion.items.{selected.name}.status`) from the manifest dump. Store the result as `discussion_status`.
 
 > *Output the next fenced block as a code block:*
 
