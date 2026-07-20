@@ -10,11 +10,7 @@ This step invokes the `workflow-implementation-task-executor` agent (`../../../a
 
 ## Determine Workflow Reference
 
-Check the work type:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
-```
+Use `work_type` from session context — read once at the task loop's entry (**[task-loop.md](task-loop.md)**), not per invocation.
 
 #### If `work_type` is `quick-fix`
 
@@ -37,9 +33,9 @@ Use **tdd-workflow.md** (`.claude/skills/workflow-implementation-process/referen
 1. **Workflow reference**: the file determined above
 2. **code-quality.md**: `.claude/skills/workflow-implementation-process/references/code-quality.md`
 3. **Specification path**: from the specification (if available)
-4. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
+4. **Project skill paths**: from session context — the `project_skills` discovered in Step 3 (Project Skills Discovery)
 5. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
-6. **Linter commands**: from `linters` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters`) (if configured)
+6. **Linter commands**: from session context — the `linters` configured in Step 4 (Linter Discovery), if any
 
 **Re-attempts after review feedback** additionally include:
 7. **User-approved review notes**: verbatim or as modified by the user
