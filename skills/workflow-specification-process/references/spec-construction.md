@@ -74,13 +74,19 @@ Record this to the specification verbatim?
 
 Update the specification with the approved changes. Commit. Continue extraction.
 
+→ Return to **A. Exhaustive Extraction**.
+
 #### If `view full`
 
 Re-present the full updated section in the format it would appear in the specification. Then re-present the approval menu without `v`/`view full`.
 
+→ Return to **A. Exhaustive Extraction**.
+
 #### If the user provides feedback
 
 Work through the changes per **C. Discuss and Refine**, then re-present the diff with the revised content.
+
+→ Return to **A. Exhaustive Extraction**.
 
 Better to resurface and confirm "already covered" than let something slip past.
 
@@ -100,6 +106,8 @@ List the pending ones (`node .claude/skills/workflow-engine/scripts/engine.cjs m
 
 Already-`addressed` references are skipped on later topic cycles.
 
+→ Proceed to **B. Synthesize and Present**.
+
 ---
 
 ## B. Synthesize and Present
@@ -118,7 +126,13 @@ Then check `construction_gate_mode` via `engine manifest` (`node .claude/skills/
 
 #### If `construction_gate_mode` is `auto`
 
-Skip the menu and STOP. The content presented above is logged exactly as shown — auto adds no output of its own.
+Skip the menu and the STOP gate. The content presented above is logged exactly as shown.
+
+> *Output the next fenced block as a code block:*
+
+```
+{topic:(titlecase)} — auto-approved. Recording to the specification.
+```
 
 **CRITICAL**: Auto removes only the approval STOP — process one topic at a time (extract → present → log → commit → next). Never generate multiple topics, or the whole specification, in a single pass. Commit after each topic.
 
@@ -133,7 +147,7 @@ Skip the menu and STOP. The content presented above is logged exactly as shown �
 Record this to the specification verbatim?
 
 - **`y`/`yes`** — Add exactly as shown, no modifications
-- **`a`/`auto`** — Add this and all remaining topics automatically
+- **`a`/`auto`** — Approve this and all remaining topics automatically
 - **Tell me what to change** — Revise before recording
 · · · · · · · · · · · ·
 ```
@@ -167,6 +181,8 @@ Work through the content together:
 
 This is a **human-level conversation**, not form-filling. The user brings context from across the project that may not be in the reference material — decisions from other topics, implications from later work, or knowledge that can't all fit in context.
 
+→ Proceed to **D. Approval Gate**.
+
 ---
 
 ## D. Approval Gate
@@ -176,6 +192,8 @@ This is a **human-level conversation**, not form-filling. The user brings contex
 If you are uncertain whether the user approved, **ASK**: "Ready to log it, or do you want to change something?"
 
 > **CHECKPOINT**: If you are about to write to the specification and the user's last message was not explicit approval, **STOP**. Present the choices again.
+
+→ Proceed to **E. Log and Commit**.
 
 ---
 
@@ -187,6 +205,8 @@ If you are uncertain whether the user approved, **ASK**: "Ready to log it, or do
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what changed}"
    ```
+
+→ Proceed to **F. Topic Complete**.
 
 ---
 
