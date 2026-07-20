@@ -35,7 +35,7 @@ Create the specification file at `.workflows/{work_unit}/specification/{topic}/s
 {- Any additional checks specific to this change}
 ```
 
-Present the spec to the user:
+Confirm the spec was written:
 
 > *Output the next fenced block as a code block:*
 

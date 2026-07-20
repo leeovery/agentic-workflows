@@ -53,6 +53,8 @@ This decision sits on a {tension description} tension. Want to explore both lens
 
 Continue the discussion without perspectives.
 
+→ Return to caller.
+
 #### If `yes`
 
 → Proceed to **B. Dispatch Perspective Agents**.

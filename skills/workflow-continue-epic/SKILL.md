@@ -80,11 +80,11 @@ If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
-**From the `=== EPICS ===` section:**
+**From the `=== EPICS (N) ===` section:**
 - one line per active epic — `{name}: {active_phases}` (phases with items; `(no phases)` when none)
 - `count` — the header count of active epics
 
-**From the `=== COMPLETED ===` / `=== CANCELLED ===` sections:**
+**From the `=== COMPLETED (N) ===` / `=== CANCELLED (N) ===` sections:**
 - one line per closed epic — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 
@@ -176,7 +176,18 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ## Step 5: Backfill
 
-Silent gate. Detects whether any one-time-per-project recovery work is needed; loads the dispatching reference only when work fires.
+> *Output the next fenced block as a code block:*
+
+```
+── Backfill ─────────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Checking for one-time recovery work — legacy research splits
+> or discovery-map rows missing a summary or description.
+```
 
 ```bash
 node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}

@@ -12,7 +12,7 @@ The fold preserves the **full** rerouted context — each entry becomes real wor
 
 The caller provides these via context before loading:
 
-- `work_unit` — the epic. Always present.
+- `work_unit` — the work unit. Always present.
 - `topic` — the current topic, whose artefact is drained.
 - `phase` — `discussion` or `research`. Selects the artefact path and the fold shape.
 

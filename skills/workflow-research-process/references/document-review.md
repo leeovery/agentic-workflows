@@ -33,7 +33,7 @@ Pull the current state fresh into context — don't rely on your memory of what 
 
 ## B. Compare and Reconcile
 
-Walk the conversation against the document and check three dimensions:
+Walk the conversation against the document and check four dimensions:
 
 1. **Undocumented substance** — threads, insights, constraints, open questions, tradeoffs, or preliminary positions that came up in conversation but never made it into the document. Not verbatim — the *substance* of what was explored. This is the most common failure mode as sessions grow long and later exchanges crowd out earlier ones.
 

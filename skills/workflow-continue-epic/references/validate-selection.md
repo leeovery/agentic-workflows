@@ -6,7 +6,7 @@
 
 Validate the selected work unit against the discovery output, then load its state surface.
 
-#### If `work_unit` not found in the `=== EPICS ===` section
+#### If `work_unit` not found in the `=== EPICS (N) ===` section
 
 > *Output the next fenced block as a code block:*
 

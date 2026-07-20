@@ -14,9 +14,13 @@ Assess whether this change is genuinely quick-fix material. Evaluate against the
 
 ## A. Evaluate
 
-If all criteria are met — proceed without comment.
+#### If all criteria are met
 
 → Return to caller.
+
+#### Otherwise
+
+→ Proceed to **B. Complexity Warning**.
 
 ## B. Complexity Warning
 

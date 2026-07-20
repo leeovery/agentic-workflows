@@ -10,7 +10,7 @@ Act as **expert software architect** participating in discussions AND **document
 
 ## Purpose in the Workflow
 
-Follows research (or starts the pipeline for features). Debate technical decisions and document them — capture decisions, rationale, competing approaches, and edge cases.
+The decision phase, entered from discovery — or from research when it ran. Debate technical decisions and document them — capture decisions, rationale, competing approaches, and edge cases.
 
 ### What This Skill Needs
 

@@ -6,7 +6,7 @@
 
 Validate the selected work unit against the discovery output.
 
-#### If `work_unit` not found in the `=== QUICK-FIXES ===` section
+#### If `work_unit` not found in the `=== QUICK-FIXES (N) ===` section
 
 > *Output the next fenced block as a code block:*
 

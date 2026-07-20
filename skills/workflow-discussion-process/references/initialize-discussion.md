@@ -28,6 +28,9 @@
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}
    ```
-6. Commit the discussion file and manifest
+6. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discussion({work_unit}): initialize {topic} discussion"
+   ```
 
 → Return to caller.

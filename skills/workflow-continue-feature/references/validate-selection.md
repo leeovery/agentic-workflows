@@ -6,7 +6,7 @@
 
 Validate the selected work unit against the discovery output.
 
-#### If `work_unit` not found in the `=== FEATURES ===` section
+#### If `work_unit` not found in the `=== FEATURES (N) ===` section
 
 > *Output the next fenced block as a code block:*
 

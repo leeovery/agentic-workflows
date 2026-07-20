@@ -10,7 +10,7 @@ Act as **research partner** with broad expertise spanning technical, product, bu
 
 ## Purpose in the Workflow
 
-First phase in the pipeline — explore feasibility (technical, business, market), validate assumptions, and document findings before discussion begins.
+The exploration phase, entered from discovery — explore feasibility (technical, business, market), validate assumptions, and document findings before discussion begins.
 
 ### What This Skill Needs
 
