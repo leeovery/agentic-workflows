@@ -15,9 +15,9 @@ const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
-  phaseStatus,
   phaseItems,
   computeUnitPhaseState,
+  lastCompletedPhase,
 } = require('./derivations.cjs');
 const { WORK_UNIT_TYPES } = require('./workunit-detail.cjs');
 
@@ -113,30 +113,6 @@ function pipelineOf(workType) {
  * @property {InboxDetail} inbox
  * @property {StartState} state
  */
-
-/**
- * Last phase with a completed item (epic) or completed aggregate status
- * (single-topic types), in pipeline order. Null when nothing completed.
- * @param {object} manifest
- * @returns {string|null}
- */
-function lastCompletedPhase(manifest) {
-  let last = null;
-  if (manifest.work_type === 'epic') {
-    for (const phase of ALL_PHASES) {
-      const items = phaseItems(manifest, phase);
-      if (items.length > 0 && items.some(i => i.status === 'completed')) {
-        last = phase;
-      }
-    }
-  } else {
-    for (const phase of ALL_PHASES) {
-      const s = phaseStatus(manifest, phase);
-      if (s === 'completed') last = phase;
-    }
-  }
-  return last;
-}
 
 /** First markdown H1, or null. @param {string} filePath @returns {string|null} */
 function readTitle(filePath) {
@@ -270,9 +246,9 @@ function startDetail(cwd) {
 
   for (const m of allManifests) {
     if (m.status === 'completed') {
-      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
+      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
     } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
+      cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
     }
   }
 

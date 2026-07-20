@@ -16,6 +16,7 @@ const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
   phaseStatus,
   computeUnitPhaseState,
+  lastCompletedPhase,
 } = require('./derivations.cjs');
 
 /**
@@ -120,15 +121,6 @@ function unitsOf(cfg, detail) {
   return detail[cfg.resultKey] || [];
 }
 
-/** Last pipeline phase with completed aggregate status, or null. @param {WorkUnitTypeConfig} cfg @param {object} manifest */
-function lastCompletedPhase(cfg, manifest) {
-  let last = null;
-  for (const phase of cfg.pipeline) {
-    if (phaseStatus(manifest, phase) === 'completed') last = phase;
-  }
-  return last;
-}
-
 /** All completed pipeline phases, in pipeline order. @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {string[]} */
 function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
@@ -172,9 +164,9 @@ function workUnitDetail(cwd, type) {
   for (const m of loadAllManifests(cwd)) {
     if (m.work_type !== cfg.workType) continue;
     if (m.status === 'completed') {
-      completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(cfg, m) });
+      completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, cfg.pipeline) });
     } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(cfg, m) });
+      cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, cfg.pipeline) });
     }
   }
 

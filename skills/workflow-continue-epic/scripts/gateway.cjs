@@ -20,20 +20,9 @@
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadActiveManifests, loadAllManifests } = engine.reads;
-const { phaseItems } = engine.derivations;
+const { phaseItems, lastCompletedPhase } = engine.derivations;
 
 const EPIC_PHASES = engine.detail.EPIC_PHASES;
-
-function lastCompletedPhaseEpic(manifest) {
-  let last = null;
-  for (const phase of EPIC_PHASES) {
-    const items = phaseItems(manifest, phase);
-    if (items.length > 0 && items.some(i => i.status === 'completed')) {
-      last = phase;
-    }
-  }
-  return last;
-}
 
 function discover(cwd, workUnit) {
   const allManifests = loadActiveManifests(cwd);
@@ -79,9 +68,9 @@ function discover(cwd, workUnit) {
     for (const m of allManifests) {
       if (m.work_type !== 'epic') continue;
       if (m.status === 'completed') {
-        completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
+        completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, EPIC_PHASES) });
       } else if (m.status === 'cancelled') {
-        cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhaseEpic(m) });
+        cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, EPIC_PHASES) });
       }
     }
   }
