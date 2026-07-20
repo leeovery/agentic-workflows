@@ -22,6 +22,14 @@ const path = require('path');
 //   ]
 // }
 
+// Every theme name becomes an engine dot-path segment (`{wu}.discovery.{name}`)
+// and a research filename (`research/{name}.md`). The engine rejects dots and
+// slashes; the canonical map name is kebab. Enforce that shape BEFORE any
+// mutation — apply.cjs is only reached once validation passes, so a name that
+// would fail mid-apply (after the source is already renamed/deleted) is caught
+// here instead. Mirrors the discovery gateway's name legality.
+const NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
+
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
   process.exit(code);
@@ -42,6 +50,7 @@ function loadDiscoveryItemNames(cwd, workUnit) {
 function validate(cwd, workUnit, currentSource) {
   const cacheDir = path.join(cwd, '.workflows', '.cache', workUnit, 'legacy-split', currentSource);
   const planPath = path.join(cacheDir, 'plan.json');
+  const researchDir = path.join(cwd, '.workflows', workUnit, 'research');
   const errors = [];
 
   // For collision check: existing discovery items the cache must not duplicate.
@@ -98,6 +107,14 @@ function validate(cwd, workUnit, currentSource) {
     }
 
     if (typeof kebab === 'string' && kebab.trim() !== '') {
+      // Name legality: an illegal name breaks apply mid-flight — the engine
+      // rejects the dot-path (`{wu}.discovery.{name}`) or the research write
+      // fails on a slash, but only after the source has already been renamed
+      // and deleted. Refuse it here, before any mutation.
+      if (!NAME_RE.test(kebab)) {
+        errors.push(`theme '${kebab}' has an illegal name; must match ${NAME_RE.source}`);
+      }
+
       const filePath = path.join(cacheDir, `${kebab}.md`);
       if (!fs.existsSync(filePath)) {
         errors.push(`theme '${kebab}' has no cache file at ${kebab}.md`);
@@ -113,6 +130,15 @@ function validate(cwd, workUnit, currentSource) {
       // creation — the natural source-rename case).
       if (discoveryNames && discoveryNames.has(kebab) && kebab !== currentSource) {
         errors.push(`theme '${kebab}' collides with an existing discovery item; rename the theme`);
+      }
+
+      // Disk-collision check: apply.cjs writes each theme to research/{name}.md
+      // with writeFileSync, which clobbers any pre-existing file there. The
+      // discovery-item check above misses files that have no manifest item.
+      // The source's own file is exempt — apply renames it away before writing
+      // themes, so a theme reusing the source name is the source-rename case.
+      if (kebab !== currentSource && fs.existsSync(path.join(researchDir, `${kebab}.md`))) {
+        errors.push(`theme '${kebab}' would overwrite existing research file ${kebab}.md; rename the theme`);
       }
     }
   }

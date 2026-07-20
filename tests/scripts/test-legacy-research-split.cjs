@@ -300,6 +300,68 @@ describe('validate.cjs: cache shape contract', () => {
     assert.strictEqual(r.json.ok, true);
   });
 
+  it('rejects a theme name containing a dot (engine dot-path hazard)', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'api-v2.0' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme 'api-v2.0' has an illegal name")));
+  });
+
+  it('rejects a theme name containing a slash (filesystem hazard)', () => {
+    // Write plan.json directly — a slash in the name can't be a flat cache filename.
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
+      themes: [{ kebab_name: 'api/v2', summary: 's', description: 'd' }],
+    }));
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme 'api/v2' has an illegal name")));
+  });
+
+  it('rejects an uppercase / underscore theme name', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'API_Design' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme 'API_Design' has an illegal name")));
+  });
+
+  it('rejects a theme name with a leading dash', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: '-auth' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme '-auth' has an illegal name")));
+  });
+
+  it('accepts a clean kebab name with digits', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'api-v2' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, true);
+  });
+
+  it('rejects a theme that would overwrite an existing research file (no manifest item)', () => {
+    // A research file on disk with NO discovery/research manifest item — the
+    // discovery-collision check misses it, but apply's writeFileSync would clobber it.
+    writeResearchFile('wu', 'orphan', '# Orphan research\n\nPre-existing.');
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'orphan' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("would overwrite existing research file orphan.md")));
+  });
+
+  it('allows a theme reusing the source name even though its file exists on disk', () => {
+    // src is 'auth'; research/auth.md exists (the source). apply renames it away
+    // before writing themes, so the disk-collision check exempts the source name.
+    writeManifest('wu', {
+      name: 'wu', work_type: 'epic', status: 'in-progress',
+      phases: { discovery: { items: { auth: { routing: 'research', source: 'migration-seeded' } } } },
+    });
+    writeResearchFile('wu', 'auth', '# Broad Research\n\nContent.');
+    writeCachePlan('wu', 'auth', [{ ...baseTheme() }]);  // baseTheme kebab_name === 'auth'
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'auth');
+    assert.strictEqual(r.json.ok, true);
+  });
+
   it('rejects malformed JSON in plan.json', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
