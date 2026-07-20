@@ -146,6 +146,19 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     assert.match(res.stderr, /^Error: Invalid phase "cooking"/);
     assert.ok(!res.stderr.includes('"ok"'));
   });
+
+  it('a reader closing the pipe early (| head -1) exits cleanly — no EPIPE stack', () => {
+    // A large multi-line read so `head -1` closes stdout mid-write.
+    const big = { name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} };
+    for (let i = 0; i < 5000; i++) big['field' + i] = 'value ' + i;
+    const wuDir = path.join(dir, '.workflows', 'auth');
+    fs.mkdirSync(wuDir, { recursive: true });
+    fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(big, null, 2) + '\n');
+
+    const res = spawnSync('sh', ['-c', `node '${ENGINE}' manifest get auth | head -1`], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(res.stdout, '{\n');
+    assert.doesNotMatch(res.stderr, /EPIPE|ERR_STREAM|engine\.cjs:/);
+  });
 });
 
 describe('engine manifest — mutations answer with the engine JSON contract', () => {

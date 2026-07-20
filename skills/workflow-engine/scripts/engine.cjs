@@ -717,6 +717,13 @@ function runCli(argv) {
 }
 
 if (require.main === module) {
+  // A downstream reader closing early (`engine … | head -1`) makes the next
+  // stdout write raise EPIPE; without a handler Node prints an unhandled-error
+  // stack. Treat the closed pipe as a clean stop.
+  process.stdout.on('error', (err) => {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'EPIPE') process.exit(0);
+    throw err;
+  });
   try {
     runCli(process.argv.slice(2));
   } catch (err) {
