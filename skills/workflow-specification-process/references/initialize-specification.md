@@ -50,13 +50,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 ## C. Set Review State
 
-Set review state and gate modes (both branches):
+Set review state and gate modes (both branches) — one batched write, all same-path fields:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle 0
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode gated
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode gated
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle 0 finding_gate_mode=gated construction_gate_mode=gated date=$(date +%Y-%m-%d)
 ```
 
 Commit:
