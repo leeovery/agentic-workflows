@@ -12,8 +12,10 @@
 
 WORKFLOWS_DIR="${PROJECT_DIR:-.}/.workflows"
 
+# The orchestrator sources this script, so a top-level `exit` would terminate
+# the whole migration chain. Use `return` to bow out of just this migration.
 if [ ! -d "$WORKFLOWS_DIR" ]; then
-  exit 0
+  return 0
 fi
 
 for dir in "$WORKFLOWS_DIR"/*/; do
