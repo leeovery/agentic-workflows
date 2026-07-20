@@ -167,29 +167,23 @@ If any of your sources were **existing specifications** (as opposed to discussio
 
 Only supersede sources whose status is **not** `proposed`. A proposed source is an analyzed grouping with no specification file — absorbing it is a delete handled by reconcile, never a supersede.
 
-1. Mark each non-proposed source specification as superseded via manifest CLI:
+1. Supersede each non-proposed source specification — one command sets `status: superseded` and `superseded_by`, and removes the source's chunks from the knowledge base:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{source-topic} status superseded
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{source-topic} superseded_by {topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {source-topic} --by {topic}
    ```
-2. Remove superseded spec chunks from the knowledge base (per source topic):
 
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {source-topic}
-```
+   If the JSON response's `warnings` is non-empty, display them but do not block — the supersession is already recorded:
 
-If the remove command fails, display the error but do not block — the supersession is already recorded:
+   > *Output the next fenced block as a code block:*
 
-> *Output the next fenced block as a code block:*
+   ```
+   ⚑ Knowledge removal warning
+     {warning}
+     The spec is superseded. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
+   ```
 
-```
-⚑ Knowledge removal warning
-  {error details}
-  The spec is superseded. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
-```
-
-3. Inform the user which topics were updated
-4. Commit:
+2. Inform the user which topics were updated
+3. Commit:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark source specifications as superseded"
    ```

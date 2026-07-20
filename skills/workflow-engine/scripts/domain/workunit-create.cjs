@@ -310,4 +310,4 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   return result;
 }
 
-module.exports = { createWorkUnit };
+module.exports = { createWorkUnit, dedupe, readProjectManifest, writeProjectManifestAtomic };

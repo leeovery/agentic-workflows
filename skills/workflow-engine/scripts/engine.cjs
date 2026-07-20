@@ -22,13 +22,14 @@ const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
 const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
-const { startTopic, completeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, completeTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
-const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit } = require('./domain/workunit-lifecycle.cjs');
+const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
+const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -91,6 +92,8 @@ Commands:
   workunit complete <work-unit> -m <message>
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
+  workunit pivot <work-unit>
+  workunit absorb <feature> --into <epic> --topic <name>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
@@ -105,6 +108,7 @@ Commands:
   discovery-map reactivate <work-unit> <name>
   topic start <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
+  topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
   task init <work-unit> <topic>
@@ -134,7 +138,11 @@ Commands:
 // complete/cancel/reactivate are the lifecycle transactions: manifest write,
 // knowledge-base sync (warn-don't-block), scoped git commit. complete takes
 // -m because its message varies by caller (manual vs pipeline-terminal vs
-// review-skipped); cancel/reactivate messages are engine-owned.
+// review-skipped); cancel/reactivate messages are engine-owned. pivot flips
+// a feature to an epic — both manifests, the map registration, the
+// re-index — as one transaction with an engine-owned message. absorb merges
+// a feature into an epic as a new topic and deletes the feature — validated
+// completely before anything moves, one multi-pathspec commit at the end.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -166,15 +174,22 @@ function runWorkunit(argv) {
         throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
       }
       respond(completeWorkUnit(process.cwd(), workUnit, { message }));
-    } else if (command === 'cancel' || command === 'reactivate') {
+    } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
-      const fn = command === 'cancel' ? cancelWorkUnit : reactivateWorkUnit;
+      const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
       respond(fn(process.cwd(), workUnit));
+    } else if (command === 'absorb') {
+      const { opts, positional } = parseArgs(rest);
+      const [feature] = positional;
+      if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
+        throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
+      }
+      respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
     } else {
-      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate> …');
+      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb> …');
     }
   } catch (err) {
     failJson(err);
@@ -314,24 +329,35 @@ function runDiscoveryMap(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/complete are manifest-side lifecycle
-// bookkeeping (complete also KB-indexes indexed phases, warn-don't-block) with
-// no git commit — the calling session's commit cadence picks the change up.
-// cancel/reactivate are one transaction per call: manifest write, knowledge-
-// base sync (warn-don't-block), scoped git commit. The JSON response reports
-// what happened — no follow-up read needed.
+// topic — phase-item transitions. start/complete/supersede are manifest-side
+// lifecycle bookkeeping (KB sync where the phase is indexed: index on
+// complete, remove on supersede — warn-don't-block) with no git commit — the
+// calling session's commit cadence picks the change up. cancel/reactivate are
+// one transaction per call: manifest write, knowledge-base sync
+// (warn-don't-block), scoped git commit. The JSON response reports what
+// happened — no follow-up read needed.
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 /** @param {string[]} argv */
 function runTopic(argv) {
-  const [command, workUnit, phase, topic] = argv;
+  const [command, ...rest] = argv;
   try {
+    if (command === 'supersede') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, phase, topic] = positional;
+      if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.by) {
+        throw new Error('Usage: engine topic supersede <work-unit> <phase> <topic> --by <topic>');
+      }
+      respond(supersedeTopic(process.cwd(), workUnit, phase, topic, { by: opts.by }));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|complete|cancel|reactivate> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|complete|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
+    const [workUnit, phase, topic] = rest;
     if (!workUnit || !phase || !topic) {
       throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
     }
