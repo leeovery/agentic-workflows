@@ -40,6 +40,25 @@ const {
 const SEED_SOURCES = { ideas: 'inbox:idea', bugs: 'inbox:bug', quickfixes: 'inbox:quickfix' };
 
 /**
+ * Refuse an illegal work-unit name — dots and slashes break manifest
+ * addressing, phase names collide with dot-path segments, and reserved names
+ * route to the project manifest. One rule for every verb that mints a work
+ * unit (create, promote).
+ * @param {string} workUnit
+ */
+function assertLegalWorkUnitName(workUnit) {
+  if (workUnit.includes('.') || workUnit.includes('/')) {
+    throw new Error(`Work unit name "${workUnit}" must not contain dots or slashes`);
+  }
+  if (VALID_PHASES.includes(workUnit)) {
+    throw new Error(`Work unit name "${workUnit}" conflicts with a phase name`);
+  }
+  if (RESERVED_WORK_UNIT_NAMES.includes(workUnit)) {
+    throw new Error(`Work unit name "${workUnit}" is reserved`);
+  }
+}
+
+/**
  * @typedef {object} WorkUnitCreateResult
  * @property {string} work_unit
  * @property {string} work_type
@@ -133,15 +152,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   if (!VALID_WORK_TYPES.includes(workType)) {
     throw new Error(`Invalid work_type "${workType}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
   }
-  if (workUnit.includes('.') || workUnit.includes('/')) {
-    throw new Error(`Work unit name "${workUnit}" must not contain dots or slashes`);
-  }
-  if (VALID_PHASES.includes(workUnit)) {
-    throw new Error(`Work unit name "${workUnit}" conflicts with a phase name`);
-  }
-  if (RESERVED_WORK_UNIT_NAMES.includes(workUnit)) {
-    throw new Error(`Work unit name "${workUnit}" is reserved`);
-  }
+  assertLegalWorkUnitName(workUnit);
 
   /** @type {string|null} */
   let sessionLog = null;
@@ -274,9 +285,11 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     knowledge(cwd, ['index', `.workflows/${workUnit}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
   }
 
-  // Seed removals ride along in the same commit as their new home.
+  // Seed removals ride along in the same commit as their new home, and a
+  // fresh creation's project-manifest registration lands with it too.
   const pathspecs = [`.workflows/${workUnit}`];
   if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
+  if (created) pathspecs.push('.workflows/manifest.json');
   const committed = commitScopedWithKb(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`);
 
   /** @type {WorkUnitCreateResult} */
@@ -298,4 +311,4 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   return result;
 }
 
-module.exports = { createWorkUnit, dedupe };
+module.exports = { createWorkUnit, dedupe, assertLegalWorkUnitName };

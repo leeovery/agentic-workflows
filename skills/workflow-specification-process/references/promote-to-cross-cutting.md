@@ -6,7 +6,7 @@
 
 Promote an epic specification assessed as cross-cutting to its own cross-cutting work unit.
 
-Derive the new work unit name: `cc_work_unit = {topic}`. All work-unit-level operations below use `{cc_work_unit}`. The original `{topic}` is only used when referencing the item within the epic's phases.
+Derive the new work unit name: `cc_work_unit = {topic}`. The original `{topic}` is only used when referencing the item within the epic's phases.
 
 ## A. Collision Check
 
@@ -24,118 +24,29 @@ Choose a descriptive alternative name that captures the cross-cutting concern (e
 
 #### If `false`
 
-→ Proceed to **B. Create Cross-Cutting Work Unit**.
+→ Proceed to **B. Promote**.
 
-## B. Create Cross-Cutting Work Unit
+## B. Promote
 
-Create the new cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry), then mark it as completed (the pipeline is terminal after spec, and spec is already complete) with origin provenance:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {cc_work_unit} cross-cutting --description "{one-line summary from spec}" --no-session-log
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {cc_work_unit} status completed completed_at=$(date +%Y-%m-%d) source_work_unit={work_unit} source_topic={topic}
-```
-
-→ Proceed to **C. Move Discussion Files**.
-
-## C. Move Discussion Files
-
-Read sources from the epic spec manifest:
+One engine transaction owns the promotion: it creates the cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry; already completed, since the pipeline is terminal after spec and the spec is complete; origin provenance recorded), moves the specification to `specification/{cc_work_unit}/`, moves each spec source whose discussion file exists into the new unit's `discussion/`, marks the epic's spec item `promoted` with `promoted_to`, re-homes the knowledge-base chunks, and commits both work units plus the project manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_unit} {topic} --to {cc_work_unit} --description "{one-line summary from spec}"
 ```
 
-For each source that is a discussion file (check if `.workflows/{work_unit}/discussion/{source}.md` exists), move it to the new work unit:
-
-```bash
-mkdir -p .workflows/{cc_work_unit}/discussion/
-mv .workflows/{work_unit}/discussion/{source}.md .workflows/{cc_work_unit}/discussion/{source}.md
-```
-
-Register each moved source in the new manifest — the `complete` call indexes the discussion at its new location — then remove the old chunks:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {cc_work_unit} discussion {source}
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {cc_work_unit} discussion {source}
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase discussion --topic {source}
-```
-
-If the `complete` response carries `warnings` or the remove command fails, display the error but do not block — the move is already recorded:
+If the response's `warnings` is non-empty, display them but do not block — the promotion is already recorded and committed; knowledge-base removals are queued automatically (retry on the next `knowledge remove` / `knowledge compact`), and failed indexing can be retried later:
 
 > *Output the next fenced block as a code block:*
 
 ```
 ⚑ Knowledge warning
-  {error details}
-  The discussion is moved. Removals are queued automatically (retry on next `knowledge remove` / `knowledge compact`). Index the moved discussion manually if the automatic background index did not run.
+  {warnings}
+  The promotion is committed. The knowledge base will catch up on the next sync.
 ```
 
-→ Proceed to **D. Move Specification**.
+→ Proceed to **C. Display**.
 
-## D. Move Specification
-
-Move the specification directory to the new work unit. For cross-cutting work units, the topic within the specification phase equals the work unit name:
-
-```bash
-mkdir -p .workflows/{cc_work_unit}/specification/
-mv .workflows/{work_unit}/specification/{topic}/ .workflows/{cc_work_unit}/specification/{cc_work_unit}/
-```
-
-Register the specification in the new manifest — the `complete` call indexes it at its new location — then stamp the date:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {cc_work_unit} specification {cc_work_unit}
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {cc_work_unit} specification {cc_work_unit}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {cc_work_unit}.specification.{cc_work_unit} date $(date +%Y-%m-%d)
-```
-
-If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {error details}
-  The artifact is saved. Indexing can be retried later.
-```
-
-→ Proceed to **E. Update Epic Manifest**.
-
-## E. Update Epic Manifest
-
-Mark the topic as promoted in the epic manifest:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} status promoted
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} promoted_to {cc_work_unit}
-```
-
-Remove the promoted spec's chunks from the original work unit (already re-indexed under the new cc work unit in section D):
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit {work_unit} --phase specification --topic {topic}
-```
-
-If the remove command fails, display the error but do not block — the promotion is already recorded:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge removal warning
-  {error details}
-  The spec is promoted. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
-```
-
-→ Proceed to **F. Commit and Display**.
-
-## F. Commit and Display
-
-The promotion spans two work units, so the scoped commit helper cannot cover it — stage both directly:
-
-```bash
-git add -- .workflows/{work_unit} .workflows/{cc_work_unit}
-git commit -m "spec({work_unit}): promote {topic} to cross-cutting work unit"
-```
+## C. Display
 
 > *Output the next fenced block as a code block:*
 
