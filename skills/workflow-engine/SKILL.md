@@ -26,7 +26,7 @@ Output sections are one-directional: DATA is for reasoning and is never displaye
 Every command follows six rules — new commands must too:
 
 1. **Identity is positional, in containment order**: `{work-unit}`, then `{topic}`, then `{item}`.
-2. **Required values with closed vocabularies are positional enums** (`discussion-map set … {state}`, `cache stamp {wu} research-analysis|gap-analysis`).
+2. **Required values with closed vocabularies are positional enums** (`discussion-map set … {state}`, `cache stamp {wu} research-analysis|gap-analysis`, `workunit create {wu} {work-type}`).
 3. **Payloads are always named flags, even when required** (`-m {message}`, `--findings-file {path}`).
 4. **Optional modifiers and alternate addressing are flags** (`--skipped`, `--parent`, `--external {id}`).
 5. **Mappings are `key=value` pairs** (`discovery-map sequence {wu} {topic}={order} …`).
@@ -46,6 +46,12 @@ Domain commands (state transitions, queries) land here as they are built.
 
 ```bash
 engine boot
+```
+
+**`workunit`** — work-unit lifecycle. `create` is the work-type commit — discovery's durability boundary as one transaction. It creates the manifest exactly as `manifest.cjs init` writes it (same document, same project-manifest registration; an existing manifest is reused as-is, `created: false`), copies each `--import` into `imports/`, moves each `--seed` — a live inbox path, its folder deriving the `inbox:{idea|bug|quickfix}` source tag — into `seeds/`, installs the `--session-log-file` content verbatim as `discovery/sessions/session-001.md` (the content is model-authored — the engine never writes prose), sets `phases.discovery.active_session = "001"` for an epic, and commits scoped to the work unit plus `.workflows/.inbox` when seeds moved out of it (`discovery({wu}): create work unit ({work_type})` — engine-owned message). Landing filenames are normalised (lowercase; whitespace/punctuation runs → `-`; repeats collapsed; `.md` forced; imports normalising to dotfiles are skipped and reported in `skipped_imports`, seeds fall back to `seed.md`) and collisions are suffixed `-2`, `-3` against both the destination directory and the batch; every landing gets an `imports[]`/`seeds[]` manifest entry with a fresh ISO-8601 UTC timestamp and a knowledge-base index (warn-don't-block). Validation completes before any mutation — a missing import fails the whole call with `{"ok": false, "error": …, "missing_imports": […]}` so the calling flow can re-prompt and re-run against untouched state. Response: `{"ok": true, "work_unit": …, "work_type": …, "created": bool, "imports": [{"path": …}…], "seeds": [{"path": …, "source": …}…], "skipped_imports": […], "session_log": …, "committed": "<short-sha>", "warnings": []}`.
+
+```bash
+engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]
 ```
 
 **`discussion-map`** — Discussion Map subtopic writes. `add` and `set` each load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed, and no git commit (the calling session's commit cadence picks the manifest change up). Errors print `{"ok": false, "error": "…"}` to stderr and exit 1.
@@ -187,4 +193,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-specification-projections.cjs`, `tests/scripts/test-engine-discussion-map.cjs`, `tests/scripts/test-engine-discovery-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-specification-projections.cjs`, `tests/scripts/test-engine-discussion-map.cjs`, `tests/scripts/test-engine-discovery-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-workunit-create.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.

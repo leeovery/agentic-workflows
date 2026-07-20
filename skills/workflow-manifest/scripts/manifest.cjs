@@ -16,9 +16,8 @@ const {
   VALID_PHASE_STATUSES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
+  RESERVED_WORK_UNIT_NAMES: RESERVED_NAMES,
 } = require('../../workflow-shared/scripts/manifest-schema.cjs');
-
-const RESERVED_NAMES = ['project'];
 
 const LOCK_STALE_MS = 30000;
 const LOCK_RETRY_MS = 50;

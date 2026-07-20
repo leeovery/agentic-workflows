@@ -15,13 +15,9 @@
 // blocks. Validation throws loud and specific before anything is touched.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
-const { spawnSync } = require('child_process');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { commitScoped } = require('../kernel/git.cjs');
-
-// Resolved against this file so it works wherever the skill tree is installed.
-const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
+const { knowledge } = require('./kb.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
 
@@ -80,21 +76,6 @@ function phaseItem(manifest, phase, topic) {
     throw new Error(`no ${phase} item "${topic}" in the manifest (phases.${phase}.items)`);
   }
   return item;
-}
-
-/**
- * Spawn the knowledge CLI; on failure push a warning instead of throwing.
- * @param {string} cwd @param {string[]} args @param {string} label @param {string[]} warnings
- */
-function knowledge(cwd, args, label, warnings) {
-  const res = spawnSync('node', [KNOWLEDGE_CLI, ...args], { cwd, encoding: 'utf8' });
-  const failed = res.error || res.status !== 0;
-  if (failed) {
-    const detail = res.error
-      ? res.error.message
-      : (res.stderr || res.stdout || `exit ${res.status}`).trim();
-    warnings.push(`${label} failed: ${detail}`);
-  }
 }
 
 /**

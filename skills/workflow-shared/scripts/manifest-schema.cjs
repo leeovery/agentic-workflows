@@ -34,10 +34,15 @@ const VALID_GATE_MODES = ['gated', 'auto'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
+// Names a work unit can never take: `project` routes dot-path commands to the
+// project manifest.
+const RESERVED_WORK_UNIT_NAMES = ['project'];
+
 module.exports = {
   VALID_WORK_TYPES,
   VALID_PHASES,
   VALID_PHASE_STATUSES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
+  RESERVED_WORK_UNIT_NAMES,
 };
