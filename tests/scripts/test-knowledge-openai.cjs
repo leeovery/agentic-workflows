@@ -236,6 +236,51 @@ describe('OpenAIProvider embedBatch (mocked)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Per-vector width validation — a model whose native output differs from the
+// configured dimensions returns the right COUNT of wrong-WIDTH vectors. The
+// count check does not catch it; the width check does, with a clean
+// provider-level error rather than a raw Orama insert failure mid-index.
+// ---------------------------------------------------------------------------
+
+describe('OpenAIProvider vector-width validation', () => {
+  let originalFetch;
+  beforeEach(() => { originalFetch = globalThis.fetch; });
+  afterEach(() => { globalThis.fetch = originalFetch; });
+
+  it('embed rejects a wrong-width vector', async () => {
+    globalThis.fetch = mockFetchSuccess({
+      data: [{ index: 0, embedding: [0.1, 0.2, 0.3, 0.4] }], // width 4
+    });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await assert.rejects(
+      () => p.embed('hello'),
+      /expected width 2/
+    );
+  });
+
+  it('embed accepts a correct-width vector', async () => {
+    const vec = [0.1, 0.2];
+    globalThis.fetch = mockFetchSuccess({ data: [{ index: 0, embedding: vec }] });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    assert.deepStrictEqual(await p.embed('hello'), vec);
+  });
+
+  it('embedBatch rejects a wrong-width vector and names the index', async () => {
+    globalThis.fetch = mockFetchSuccess({
+      data: [
+        { index: 0, embedding: [0.1, 0.2] },        // ok
+        { index: 1, embedding: [0.3, 0.4, 0.5] },   // width 3 — wrong
+      ],
+    });
+    const p = new OpenAIProvider({ apiKey: 'sk-test', dimensions: 2 });
+    await assert.rejects(
+      () => p.embedBatch(['a', 'b']),
+      (err) => /expected width 2/.test(err.message) && /index 1/.test(err.message)
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Config integration — resolveProvider creates OpenAIProvider
 // ---------------------------------------------------------------------------
 
