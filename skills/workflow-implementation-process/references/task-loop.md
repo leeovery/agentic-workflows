@@ -58,11 +58,17 @@ Emit the `MENU: blocked tasks` section carried by this session's most recent `ta
 
 **If `proceed`:**
 
-Treat the first blocked task as the available task — continue with the *If a task is available* flow below.
+Treat the first blocked task as the available task.
+
+→ Proceed to the **If a task is available** flow below.
 
 **If `skip`:**
 
-Take the first blocked task and → Proceed to **H. Update Progress and Commit** (mark task as skipped). Stage A re-detects any remaining blocked tasks on the loop back.
+Take the first blocked task as the one to skip.
+
+→ Proceed to **H. Update Progress and Commit** (mark task as skipped).
+
+Stage A re-detects any remaining blocked tasks on the loop back.
 
 **If `stop`:**
 
@@ -169,7 +175,7 @@ Record the attempt via the engine (increments `fix_attempts` and appends the fin
 node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
-`{N}` below is the response's `attempts`.
+`{N}` below is the response's `attempts`. The response also carries the `MENU: fix gate` section that **F. Fix Approval Gate** emits — never emit it here.
 
 #### If the response's `threshold_reached` is `true`
 
@@ -312,6 +318,8 @@ Include the user's feedback when re-invoking.
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --next-task '{next_task_id or ~}' [--skipped] [--phase-complete]
 ```
+
+The response also carries the `MENU: blocked tasks` section that **A. Retrieve Next Task** emits — never emit it here.
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
 

@@ -152,7 +152,7 @@ Any questions before proceeding?
 
 **STOP.** Wait for user response.
 
-#### If user asks a question
+#### If ask a question
 
 Answer the question using the review file, QA task files, specification, and plan as context.
 
@@ -235,7 +235,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review
 Apply every item in the `### Do now` subsection of `report.md`:
 
 1. Make each described edit at its `file:line`. Stay within the scope of the note — no opportunistic changes.
-2. Run the project's linters; when any change touched a code or test file, also run the test suite (see the project skills loaded in Step 3 and the topic's configured linters).
+2. Run the project's linters; when any change touched a code or test file, also run the test suite (see the project skills loaded in Step 3 and the topic's configured linters). These are project-specific commands, so they fall outside this skill's allowed-tools and prompt for approval when run.
 3. If a change fails verification, revert that single change and re-tag its item `[quickfix]` in `report.md` — leave the rest applied.
 
 Commit the applied changes with raw git — the fixes touch project files outside the work unit, so the scoped helper cannot cover them. Stage the touched files and the work unit (for any report re-tags), then commit:

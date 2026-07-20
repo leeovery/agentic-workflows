@@ -79,7 +79,7 @@ After every `tick create`, run `tick show <tick-id>` and confirm that the title,
 
 #### If any field is empty or wrong
 
-Load **[updating.md](updating.md)** and follow its instructions to correct the field using `tick update`.
+→ Load **[updating.md](updating.md)** and follow its instructions to correct the field using `tick update`.
 
 ## Task Properties
 
@@ -106,9 +106,9 @@ tick list --parent <phase-tick-id>
 
 ### Type
 
-Optional. Set via `--type`. Valid types: `bug`, `feature`, `task`, `chore`. Use `bug` for bugfix work types, `feature` for feature work types, and `task` or `chore` as appropriate for individual tasks within any work type. Doesn't hurt to set — adds useful categorisation at no cost.
+Optional. Set via `--type`. Valid types: `bug`, `feature`, `task`, `chore`. Use `bug` for bugfix work types, `feature` for feature work types, and `task` or `chore` as appropriate for individual tasks within any work type.
 
-### Tags
+### Labels / Tags
 
 Optional — not necessary in most cases, but available if needed. Set via `--tags` with comma-separated, kebab-case values. Tags provide additional categorisation beyond the parent/child hierarchy. Filter tasks by tag:
 

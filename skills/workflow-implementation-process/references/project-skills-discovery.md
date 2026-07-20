@@ -20,31 +20,24 @@ Set `source` = `topic`.
 
 #### Otherwise
 
-Check if project-level default `project_skills` exists via `engine manifest`:
+Check whether a project-level default `project_skills` exists and read its value via `engine manifest`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists project.defaults.project_skills
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.project_skills
 ```
 
 **If `false`:**
 
 → Proceed to **C. Discovery**.
 
-**If `true`:**
-
-Read project default `project_skills` via `engine manifest`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.project_skills
-```
-
-**If project default is populated:**
+**If `true` and project default is populated:**
 
 Set `source` = `project`.
 
 → Proceed to **B. Confirm Skills**.
 
-**If project default is empty:**
+**If `true` and project default is empty:**
 
 > *Output the next fenced block as a code block:*
 

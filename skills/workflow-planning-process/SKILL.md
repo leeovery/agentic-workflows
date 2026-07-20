@@ -79,6 +79,8 @@ This process constructs a plan from a specification. A plan consists of:
 
 Follow every step in sequence. No steps are optional.
 
+---
+
 ## Step 0: Resume Detection
 
 > *Output the next fenced block as a code block:*

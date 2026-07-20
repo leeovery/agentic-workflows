@@ -16,15 +16,15 @@ Check the work type:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-#### If work_type is `quick-fix`
+#### If `work_type` is `quick-fix`
 
-Use **verification-workflow.md** (`verification-workflow.md`) as the workflow reference (item 1 below).
+Use **verification-workflow.md** (`.claude/skills/workflow-implementation-process/references/verification-workflow.md`) as the workflow reference (item 1 below).
 
 → Proceed to **Invoke the Agent**.
 
 #### Otherwise
 
-Use **tdd-workflow.md** (`tdd-workflow.md`) as the workflow reference (item 1 below).
+Use **tdd-workflow.md** (`.claude/skills/workflow-implementation-process/references/tdd-workflow.md`) as the workflow reference (item 1 below).
 
 → Proceed to **Invoke the Agent**.
 
@@ -35,7 +35,7 @@ Use **tdd-workflow.md** (`tdd-workflow.md`) as the workflow reference (item 1 be
 **Every invocation** — initial or re-attempt — includes these file paths:
 
 1. **Workflow reference**: the file determined above
-2. **code-quality.md**: `code-quality.md`
+2. **code-quality.md**: `.claude/skills/workflow-implementation-process/references/code-quality.md`
 3. **Specification path**: from the specification (if available)
 4. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 5. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
