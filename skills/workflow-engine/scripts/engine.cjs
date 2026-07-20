@@ -15,13 +15,28 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifest.cjs');
+const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/map.cjs');
+const { cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
   process.stderr.write(msg + '\n');
+  process.exit(1);
+}
+
+/** One decision-ready JSON line on stdout. @param {object} obj */
+function respond(obj) {
+  process.stdout.write(JSON.stringify({ ok: true, ...obj }) + '\n');
+}
+
+/** `{ok:false}` JSON on stderr, exit 1. @param {unknown} err @returns {never} */
+function failJson(err) {
+  process.stderr.write(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }) + '\n');
   process.exit(1);
 }
 
@@ -48,6 +63,13 @@ const USAGE = `Usage: engine <command> [args]
 Commands:
   map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   map set <work-unit> <topic> <subtopic> <state>
+  topic cancel <work-unit> <phase> <topic>
+  topic reactivate <work-unit> <phase> <topic>
+  inbox archive <path> [<path> …]
+  inbox restore <path> [<path> …]
+  inbox delete <path> [<path> …]
+  commit <work-unit> -m <message>
+  commit --inbox -m <message>
   render signpost <label> [--style step|substep] [--width N]
   render box <title> [--width N]
   render wrap <text> [--width N] [--prefix STR]
@@ -87,21 +109,105 @@ function runMap(argv) {
       throw new Error('Usage: engine map <add|set> …');
     }
   } catch (err) {
-    process.stderr.write(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }) + '\n');
-    process.exit(1);
+    failJson(err);
   }
 }
 
 /** @param {object} manifest @param {string} topic @param {string} subtopic @param {string} status */
 function respondMap(manifest, topic, subtopic, status) {
   const state = mapState(manifest, topic);
-  process.stdout.write(JSON.stringify({
-    ok: true,
+  respond({
     subtopic,
     status,
     all_decided: state.all_decided,
     unresolved_count: state.unresolved.length,
-  }) + '\n');
+  });
+}
+
+// ---------------------------------------------------------------------------
+// topic — epic topic cancel / reactivate. One transaction per call: manifest
+// write, knowledge-base sync (warn-don't-block), scoped git commit. The JSON
+// response reports what happened — no follow-up read needed.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runTopic(argv) {
+  const [command, workUnit, phase, topic] = argv;
+  try {
+    if (command !== 'cancel' && command !== 'reactivate') {
+      throw new Error('Usage: engine topic <cancel|reactivate> <work-unit> <phase> <topic>');
+    }
+    if (!workUnit || !phase || !topic) {
+      throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
+    }
+    const fn = command === 'cancel' ? cancelTopic : reactivateTopic;
+    respond(fn(process.cwd(), workUnit, phase, topic));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// inbox — archive / restore / delete one or more inbox items as a single
+// transaction: strict path validation, file moves (or git rm), one scoped
+// commit for the whole set.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runInbox(argv) {
+  const [command, ...paths] = argv;
+  try {
+    if (!['archive', 'restore', 'delete'].includes(command) || paths.length === 0) {
+      throw new Error('Usage: engine inbox <archive|restore|delete> <path> [<path> …]');
+    }
+    const cwd = process.cwd();
+    if (command === 'archive') respond(archiveItems(cwd, paths));
+    else if (command === 'restore') respond(restoreItems(cwd, paths));
+    else respond(deleteItems(cwd, paths));
+  } catch (err) {
+    failJson(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// commit — the scoped commit helper: stage `.workflows/{wu}` (or the inbox
+// with --inbox) and commit. A clean tree is fine: {committed: null}.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runCommit(argv) {
+  try {
+    /** @type {string|null} */ let workUnit = null;
+    /** @type {string|null} */ let message = null;
+    let inbox = false;
+    for (let i = 0; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === '-m' || a === '--message') message = argv[++i];
+      else if (a === '--inbox') inbox = true;
+      else if (workUnit === null) workUnit = a;
+      else throw new Error(`unexpected argument "${a}"`);
+    }
+    if (!message || (inbox ? workUnit !== null : workUnit === null)) {
+      throw new Error('Usage: engine commit <work-unit> -m <message> | engine commit --inbox -m <message>');
+    }
+    const cwd = process.cwd();
+    let scope;
+    if (inbox) {
+      scope = '.workflows/.inbox';
+    } else {
+      const wu = /** @type {string} */ (workUnit);
+      if (wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);
+      if (!fs.existsSync(path.join(cwd, '.workflows', wu))) {
+        throw new Error(`no work unit directory: .workflows/${wu}`);
+      }
+      scope = `.workflows/${wu}`;
+    }
+    const committed = commitScoped(cwd, scope, message);
+    if (committed === null) respond({ committed: null, note: 'nothing to commit' });
+    else respond({ committed });
+  } catch (err) {
+    failJson(err);
+  }
 }
 
 /** @param {string[]} argv */
@@ -142,6 +248,15 @@ function runCli(argv) {
   switch (command) {
     case 'map':
       runMap(rest);
+      break;
+    case 'topic':
+      runTopic(rest);
+      break;
+    case 'inbox':
+      runInbox(rest);
+      break;
+    case 'commit':
+      runCommit(rest);
       break;
     case 'render':
       runRender(rest);
