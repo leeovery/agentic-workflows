@@ -30,8 +30,7 @@ You receive file paths and context via the orchestrator's prompt:
 5. **Perform Direction 1** (Spec → Plan): verify every spec element has plan coverage
 6. **Perform Direction 2** (Plan → Spec): verify every plan element traces to the spec
 7. **Create the tracking file** — write findings to `review-traceability-tracking-c{N}.md` in the plan topic directory, using the format defined in the review criteria file. Produce it in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents
-8. **Commit the tracking file**: `planning({topic}): traceability review cycle {N}`
-9. **Return status**
+8. **Return status** — the orchestrator commits the tracking file
 
 ## Writing Full Fix Content
 
@@ -53,7 +52,7 @@ For `remove-task` or `remove-phase`, include **Current** for reference and omit 
 
 1. **Read everything** — spec, plan, and all tasks. Do not skip or skim.
 2. **Write only the tracking file** — do not modify the plan, tasks, or specification
-3. **Commit the tracking file** — ensures it survives context refresh
+3. **No git writes** — do not commit or stage. Writing the tracking file is your only file write.
 4. **No user interaction** — return status to the orchestrator. The orchestrator handles presentation and approval.
 5. **Full fix content** — every finding must include complete Current/Proposed content in plan format. No summaries.
 6. **Trace, don't invent** — if content can't be traced to the spec, flag it. Don't justify it.

@@ -7,12 +7,17 @@
 //
 // Migrations are the durability-critical leg: a failing migrate.sh is a hard
 // error — migrations must never half-run silently. The knowledge base is a
-// derived index: a failing `check` reports "not-ready" (the caller's gate),
-// a failing `compact` is a warning, never a block.
+// derived index: a failing `check` reports "not-ready" (the caller's gate —
+// knowledge setup is a deliberate human choice, never self-served). A failing
+// `compact` is a warning, never a block. Store dirt found when ready is
+// committed (the post-setup first boot, compact churn, or leftovers).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { git, commitScoped } = require('../kernel/git.cjs');
+const { KB_DIR } = require('./commit.cjs');
 
 // Resolved against this file so they work wherever the skill tree is installed.
 const SKILLS_ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -31,7 +36,8 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
  * @property {{changed: boolean, output: string}} migrations
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} compacted
- * @property {string[]} warnings non-blocking failures (knowledge compaction)
+ * @property {string|null} kb_committed short sha of the knowledge-store commit, or null when the store was clean
+ * @property {string[]} warnings non-blocking failures (knowledge init/compaction, store commit)
  */
 
 /**
@@ -70,6 +76,8 @@ function boot(cwd) {
   const check = spawnSync('node', [KNOWLEDGE_CLI, 'check'], { cwd, encoding: 'utf8' });
   const ready = !check.error && check.status === 0 && (check.stdout || '').trim() === 'ready';
 
+  const knowledge = ready ? 'ready' : 'not-ready';
+
   let compacted = false;
   if (ready) {
     const compact = spawnSync('node', [KNOWLEDGE_CLI, 'compact'], { cwd, encoding: 'utf8' });
@@ -83,7 +91,34 @@ function boot(cwd) {
     }
   }
 
-  return { migrations, knowledge: ready ? 'ready' : 'not-ready', compacted, warnings };
+  // Commit the knowledge-store dirt this boot found (a fresh store from the
+  // user's `knowledge setup` run — the restart's first boot — compact churn,
+  // or leftovers from an interrupted session). The store is a derived index
+  // and boot must stay usable, so a commit failure is a warning, never a
+  // block.
+  /** @type {string|null} */
+  let kbCommitted = null;
+  if (ready) {
+    try {
+      const status = fs.existsSync(path.join(cwd, KB_DIR))
+        ? git(cwd, ['status', '--porcelain', '--', KB_DIR])
+        : '';
+      if (status.trim() !== '') {
+        // Untracked store files mean this is their first commit — the boot
+        // right after `knowledge setup` created them.
+        const message = status.split('\n').some((l) => l.startsWith('??'))
+          ? 'chore(knowledge): initialise store'
+          : 'chore(knowledge): compact store';
+        kbCommitted = commitScoped(cwd, KB_DIR, message);
+      }
+    } catch (err) {
+      warnings.push(`knowledge store commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** @type {BootResult} */
+  const result = { migrations, knowledge: /** @type {BootResult['knowledge']} */ (knowledge), compacted, kb_committed: kbCommitted, warnings };
+  return result;
 }
 
 module.exports = { boot };

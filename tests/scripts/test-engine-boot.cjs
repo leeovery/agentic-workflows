@@ -67,12 +67,12 @@ esac
 `;
 
 // Stub knowledge CLI: records each invocation to knowledge-calls.log in the
-// project cwd; check/compact behaviour is env-driven.
+// project cwd; check/init/compact behaviour is env-driven.
 const STUB_KNOWLEDGE = `#!/usr/bin/env node
 'use strict';
 const fs = require('fs');
 const cmd = process.argv[2] || '';
-fs.appendFileSync('knowledge-calls.log', cmd + '\\n');
+fs.appendFileSync('knowledge-calls.log', process.argv.slice(2).join(' ') + '\\n');
 if (cmd === 'check') {
   if (process.env.STUB_CHECK_EXIT) process.exit(parseInt(process.env.STUB_CHECK_EXIT, 10));
   process.stdout.write((process.env.STUB_CHECK || 'not-ready') + '\\n');
@@ -150,6 +150,7 @@ describe('engine boot', () => {
       migrations: { changed: false, output: '[SKIP] No changes needed' },
       knowledge: 'ready',
       compacted: true,
+      kb_committed: null,
       warnings: [],
     });
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check', 'compact']);
@@ -169,21 +170,51 @@ describe('engine boot', () => {
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
   });
 
-  it('knowledge not-ready: reported, compact never invoked', () => {
+  it('knowledge not-ready is terminal: no init, no commit, setup stays a human choice', () => {
     const res = runEngine(fix.engine, fix.project, ['boot']);
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.compacted, false);
+    assert.strictEqual(res.kb_committed, null);
     assert.deepStrictEqual(res.warnings, []);
     assert.deepStrictEqual(knowledgeCalls(fix.project), ['check']);
   });
 
-  it('a crashing knowledge check reports not-ready — boot still succeeds', () => {
+  it('the post-setup first boot commits the untracked store as initialise', () => {
+    // knowledge setup ran outside the session and left untracked store files.
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+    writeFile(fix.project, '.workflows/.knowledge/config.json', '{}\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
+    const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.deepStrictEqual(show, ['.workflows/.knowledge/config.json', '.workflows/.knowledge/store.msp']);
+  });
+
+  it('finds compact dirt on the ready path and commits it', () => {
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v1\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'store v1']);
+    writeFile(fix.project, '.workflows/.knowledge/store.msp', 'v2-compacted\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK: 'ready' });
+
+    assert.strictEqual(res.knowledge, 'ready');
+    assert.strictEqual(res.compacted, true);
+    assert.strictEqual(res.kb_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): compact store');
+  });
+
+  it('a crashing knowledge check is not-ready — never a crash', () => {
     const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_CHECK_EXIT: '2' });
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.compacted, false);
+    assert.strictEqual(res.kb_committed, null);
   });
 
   it('a failing compact is a warning, never a block', () => {
@@ -219,24 +250,44 @@ describe('engine boot (real scripts)', () => {
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 
-  it('runs the real migrate.sh and knowledge CLI against an isolated project', () => {
+  it('runs the real migrate.sh and knowledge CLI against an isolated project', async () => {
     const first = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
     assert.strictEqual(typeof first.migrations.output, 'string');
     // The trimmed report never leaks the prose stop-gate lines.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
-    // No knowledge store in the fixture.
+    // No knowledge store in the fixture — the hard stop: nothing is created.
     assert.strictEqual(first.knowledge, 'not-ready');
     assert.strictEqual(first.compacted, false);
+    assert.strictEqual(first.kb_committed, null);
+    assert.ok(!fs.existsSync(path.join(project, '.workflows/.knowledge')));
     // The tracking file landed in the fixture, not the repo.
     assert.ok(fs.existsSync(path.join(project, '.workflows/.state/migrations')));
 
-    // Second run: every migration is recorded — nothing to apply.
+    // The user runs knowledge setup outside the session — simulated here by
+    // writing what setup writes: a keyword-only config and a real store file
+    // (created by the same store module the CLI bundles, so the real `check`
+    // loads it).
+    writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
+    writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
+    const store = require('../../src/knowledge/store.js');
+    await store.createStore(3).then((db) => store.saveStore(db, path.join(project, '.workflows/.knowledge/store.msp')));
+
+    // …and the restart's boot finds the store ready and commits it: the
+    // untracked setup output rides `chore(knowledge): initialise store`.
     const second = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
-    assert.strictEqual(second.migrations.output, '[SKIP] No changes needed');
+    assert.strictEqual(second.knowledge, 'ready');
+    assert.strictEqual(second.compacted, true);
+    assert.strictEqual(second.kb_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore(knowledge): initialise store');
+
+    // Third boot: nothing new to commit.
+    const third = runEngine(REAL_ENGINE, project, ['boot']);
+    assert.strictEqual(third.knowledge, 'ready');
+    assert.strictEqual(third.kb_committed, null);
   });
 });
 

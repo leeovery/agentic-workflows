@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifest.cjs');
-const { commitScoped } = require('./kernel/git.cjs');
+const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
 const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
@@ -477,7 +477,8 @@ function runBoot() {
 
 // ---------------------------------------------------------------------------
 // commit — the scoped commit helper: stage `.workflows/{wu}` (the inbox with
-// --inbox, or the whole tree with --workflows) and commit. A clean tree is
+// --inbox, or the whole tree with --workflows) and commit. The knowledge
+// store rides along whenever it exists (domain/commit.cjs). A clean tree is
 // fine: {committed: null}.
 // ---------------------------------------------------------------------------
 
@@ -514,7 +515,7 @@ function runCommit(argv) {
       }
       scope = `.workflows/${wu}`;
     }
-    const committed = commitScoped(cwd, scope, message);
+    const committed = commitScopedWithKb(cwd, scope, message);
     if (committed === null) respond({ committed: null, note: 'nothing to commit' });
     else respond({ committed });
   } catch (err) {

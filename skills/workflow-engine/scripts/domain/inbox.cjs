@@ -13,7 +13,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { commitScoped, removeFiles } = require('../kernel/git.cjs');
+const { removeFiles } = require('../kernel/git.cjs');
+const { commitScopedWithKb } = require('./commit.cjs');
 
 const INBOX = '.workflows/.inbox';
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
@@ -104,7 +105,7 @@ function moveAndCommit(cwd, items, destDir, verb) {
     fs.renameSync(path.join(cwd, item.given), path.join(cwd, dest));
     moved.push(dest);
   }
-  return { moved, committed: commitScoped(cwd, INBOX, commitMessage(verb, items)) };
+  return { moved, committed: commitScopedWithKb(cwd, INBOX, commitMessage(verb, items)) };
 }
 
 /**
@@ -143,7 +144,7 @@ function deleteItems(cwd, paths) {
   removeFiles(cwd, items.map((i) => i.given));
   return {
     deleted: items.map((i) => i.given),
-    committed: commitScoped(cwd, INBOX, commitMessage('delete', items)),
+    committed: commitScopedWithKb(cwd, INBOX, commitMessage('delete', items)),
   };
 }
 

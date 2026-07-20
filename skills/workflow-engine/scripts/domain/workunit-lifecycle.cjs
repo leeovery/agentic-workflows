@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { commitScoped } = require('../kernel/git.cjs');
+const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { readProjectManifest, writeProjectManifestAtomic } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -76,7 +76,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
 
   saveWorkUnitManifest(cwd, workUnit, manifest);
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, message);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'completed', completed_at: completedAt, committed, warnings: [] };
   if (committed === null) result.note = 'nothing to commit';
@@ -109,7 +109,7 @@ function cancelWorkUnit(cwd, workUnit) {
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
@@ -120,9 +120,9 @@ function cancelWorkUnit(cwd, workUnit) {
  * Re-index the work unit's chunk-backed material: every completed artifact in
  * an indexed phase, the tracked imports and seeds (entries must match
  * `imports/{file}.md` / `seeds/{file}.md` — anything else signals a tampered
- * manifest entry and is skipped), and the on-disk analysis caches. Restores
- * what cancellation removed, and refreshes chunk metadata after a pivot. All
- * warn-don't-block.
+ * manifest entry and is skipped), the on-disk analysis caches, and — epics
+ * only — the discovery session logs. Restores what cancellation removed, and
+ * refreshes chunk metadata after a pivot. All warn-don't-block.
  * @param {string} cwd @param {string} workUnit @param {object} manifest @param {string[]} warnings
  */
 function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
@@ -151,6 +151,25 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
     const rel = `.workflows/${workUnit}/.state/${cache}`;
     if (fs.existsSync(path.join(cwd, rel))) {
       knowledge(cwd, ['index', rel], `knowledge index (.state/${cache})`, warnings);
+    }
+  }
+
+  // Discovery session logs — file-based (the on-disk session files ARE the
+  // indexed artifacts), epic-only: the knowledge CLI's bulk walk indexes
+  // sessions only for epics (non-epic discovery logs are thin
+  // shape-and-route), and this walk restores exactly what that indexed.
+  if (manifest.work_type === 'epic') {
+    const sessDir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
+    /** @type {string[]} */
+    let sessions = [];
+    try {
+      sessions = fs.readdirSync(sessDir).filter((f) => /^session-\d+\.md$/.test(f)).sort();
+    } catch {
+      sessions = [];
+    }
+    for (const f of sessions) {
+      const rel = `.workflows/${workUnit}/discovery/sessions/${f}`;
+      knowledge(cwd, ['index', rel], `knowledge index (discovery/sessions/${f})`, warnings);
     }
   }
 }
@@ -186,7 +205,7 @@ function reactivateWorkUnit(cwd, workUnit) {
     reindexWorkUnit(cwd, workUnit, manifest, warnings);
   }
 
-  const committed = commitScoped(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
+  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
@@ -262,7 +281,7 @@ function pivotWorkUnit(cwd, workUnit) {
   const warnings = [];
   reindexWorkUnit(cwd, workUnit, manifest, warnings);
 
-  const committed = commitScoped(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
+  const committed = commitScopedWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', routing, committed, warnings };
   if (committed === null) result.note = 'nothing to commit';
