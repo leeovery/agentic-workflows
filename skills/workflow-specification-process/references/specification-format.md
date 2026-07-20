@@ -12,7 +12,7 @@ The specification is a single file per topic. Structure is **flexible** — orga
 
 ---
 
-## Metadata (Manifest CLI)
+## Metadata
 
 Specification metadata is stored in the work-unit manifest, not in file frontmatter. Access via `engine manifest`:
 
@@ -90,7 +90,7 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**Important**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
+**IMPORTANT**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
 - All sources are marked as `incorporated`
 - Both review phases are complete
 - User has signed off

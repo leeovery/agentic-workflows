@@ -10,7 +10,7 @@ Two-phase review of the specification. Phase 1 (Input Review) compares against s
 
 **Why this matters**: The specification is the golden document. Plans are built from it, and those plans inform implementation. If a detail isn't in the specification, it won't make it to the plan, and therefore won't be built. Worse, the implementation agent may hallucinate to fill gaps, potentially getting it wrong. The goal is a specification robust enough that an agent or human could pick it up, create plans, break it into tasks, and write the code.
 
-Load **[review-tracking-format.md](review-tracking-format.md)** — internalize the tracking file format for both phases.
+→ Load **[review-tracking-format.md](review-tracking-format.md)** — internalize the tracking file format for both phases.
 
 ---
 

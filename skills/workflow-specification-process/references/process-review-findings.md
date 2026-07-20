@@ -116,7 +116,7 @@ Present the changes as a diff. Read Current and Proposed Addition from the track
 
 Check `finding_gate_mode` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode`).
 
-#### If `finding_gate_mode: auto`
+#### If `finding_gate_mode` is `auto`
 
 1. Log the proposed content to the specification verbatim
 2. Update the tracking file: set resolution to "Approved"
@@ -130,7 +130,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specifi
 
 → Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
 
-#### If `finding_gate_mode: gated`
+#### If `finding_gate_mode` is `gated`
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -184,7 +184,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 4. Commit
 5. Process all remaining findings using the auto-mode flow above
 
-→ After all processed, proceed to **C. After All Findings Processed**.
+→ Proceed to **C. After All Findings Processed**.
 
 #### If `skip`
 
