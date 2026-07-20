@@ -268,6 +268,22 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.match(runFails(dir, ['delete', 'auth', 'extra.a']).error, /not found/);
   });
 
+  it('delete on an array index splices — no null hole left behind', () => {
+    writeWorkUnit(dir, 'auth', 'feature', { imports: ['a.md', { path: 'b.md' }, 'c.md'] });
+    const res = runJson(dir, ['delete', 'auth', 'imports.0']);
+    assert.deepStrictEqual(res, { ok: true, path: 'auth', field: 'imports.0', deleted: true });
+    // The element is gone AND the array closed up — the classic `delete arr[0]`
+    // would leave [null, {...}, "c.md"].
+    assert.deepStrictEqual(readWorkUnit(dir, 'auth').imports, [{ path: 'b.md' }, 'c.md']);
+  });
+
+  it('delete on an out-of-range or non-numeric array segment is a miss, not a hole', () => {
+    writeWorkUnit(dir, 'auth', 'feature', { imports: ['a.md', 'b.md'] });
+    assert.match(runFails(dir, ['delete', 'auth', 'imports.5']).error, /not found/);
+    assert.match(runFails(dir, ['delete', 'auth', 'imports.foo']).error, /not found/);
+    assert.deepStrictEqual(readWorkUnit(dir, 'auth').imports, ['a.md', 'b.md']);
+  });
+
   it('project routing: set/push/pull/delete against the project manifest', () => {
     const set = runJson(dir, ['set', 'project.defaults.plan_format', 'tick']);
     assert.deepStrictEqual(set, { ok: true, path: 'project', set: { 'defaults.plan_format': 'tick' } });

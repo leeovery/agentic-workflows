@@ -289,6 +289,16 @@ function deleteByPath(obj, segments) {
   }
   if (current == null || typeof current !== 'object') return false;
   const last = segments[segments.length - 1];
+  // Deleting an array index with `delete` leaves a literal null hole; splice
+  // instead so the element is truly removed and the array closes up. A
+  // non-numeric (or out-of-range) segment on an array is a miss, not a hole.
+  if (Array.isArray(current)) {
+    if (!/^(0|[1-9][0-9]*)$/.test(last)) return false;
+    const idx = Number(last);
+    if (idx >= current.length) return false;
+    current.splice(idx, 1);
+    return true;
+  }
   if (!(last in current)) return false;
   delete current[last];
   return true;
