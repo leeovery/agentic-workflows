@@ -141,13 +141,13 @@ describe('start projections: overview', () => {
     assert.ok(out.includes('\nInbox: 1 idea, 2 quick-fixes\n'));
   });
 
-  it('epic with no phase items falls back to its phase label', () => {
+  it('epic with no phase items and no map reports In Discovery', () => {
     createManifest(dir, 'fresh-epic', { work_type: 'epic' });
     assert.strictEqual(startOverview(startDetail(dir)), [
       ...BOX,
       'Epics:',
       '  1. Fresh Epic',
-      '     └─ Ready For Discussion',
+      '     └─ In Discovery',
       '',
     ].join('\n'));
   });

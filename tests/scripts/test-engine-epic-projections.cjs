@@ -201,7 +201,7 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
     ].join('\n')));
   });
 
-  it('renders the brand-new-epic branch', () => {
+  it('renders the brand-new-epic branch with the discovery callout', () => {
     const d = detailFor(dir, 'fresh-epic', { work_type: 'epic' });
     assert.strictEqual(
       epicDashboard('fresh-epic', d),
@@ -211,6 +211,10 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
         '●───────────────────────────────────────────────●',
         '',
         'No work started yet.',
+        '',
+        '  ⚑ Run discovery to shape the topic map — research and',
+        '    discussion start from there.',
+        '',
       ].join('\n')
     );
   });
@@ -460,14 +464,15 @@ describe('epic projections: menu', () => {
     assert.ok(rendered.includes('— Continue "Roles" — implementation (Phase 2, 3 task(s) completed)'), rendered);
   });
 
-  it('brand-new epic menu offers only the always-present command options', () => {
+  it('brand-new epic menu leads with recommended discovery', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const { keys, rendered } = epicMenu('fresh', d);
-    assert.deepStrictEqual(keys.map((k) => k.key), ['d', 'r']);
+    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'r']);
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
       'What would you like to do?',
       '',
+      '- **`i`/`discovery`** — Run discovery — shape the topic map (recommended)',
       '- **`d`/`discuss`** — Start new discussion',
       '- **`r`/`research`** — Start new research',
       '',
