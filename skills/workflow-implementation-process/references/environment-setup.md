@@ -44,8 +44,14 @@ I should follow before implementing?
 
 **STOP.** Wait for user response.
 
-If they provide instructions, save them to `.workflows/.state/environment-setup.md` and follow them.
+**If they provide instructions:**
 
-If they say no setup is needed, create `.workflows/.state/environment-setup.md` with "No special setup required." and commit. This prevents asking the same question in future sessions.
+Save them to `.workflows/.state/environment-setup.md` and follow them.
+
+→ Return to caller.
+
+**If they say no setup is needed:**
+
+Create `.workflows/.state/environment-setup.md` with "No special setup required." and commit. This prevents asking the same question in future sessions.
 
 → Return to caller.
