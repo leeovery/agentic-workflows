@@ -6,7 +6,7 @@
 
 ## A. Seed Idea
 
-Ask each question below **one at a time**. After each, **STOP** and wait for the user's response before proceeding.
+Ask each question below **one at a time**. After each, stop and wait for the user's response before proceeding.
 
 > *Output the next fenced block as a code block:*
 
@@ -49,22 +49,6 @@ Where should we start?
 
 - Technical feasibility? Market landscape? Business model?
 - Or just talk it through and see where it goes?
-```
-
-**STOP.** Wait for user response.
-
-→ Proceed to **D. Final Context**.
-
----
-
-## D. Final Context
-
-> *Output the next fenced block as a code block:*
-
-```
-Any constraints or context I should know about upfront?
-
-(Or "none" if we're starting fresh)
 ```
 
 **STOP.** Wait for user response.
