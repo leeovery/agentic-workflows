@@ -99,7 +99,7 @@ The `ADDABLE` table in the working-set DATA lists the inbox items not already in
 
 #### If the triggering message already named the item(s) to add
 
-Match each named item against the `ADDABLE` table — by title, or by the number if the user referenced one. If any reference is ambiguous or unmatched, → Proceed to **Otherwise**. Otherwise append the matched items' paths to the working set.
+Match each named item against the `ADDABLE` table — by title, or by the number if the user referenced one. If any reference is ambiguous or unmatched, treat the request as unmatched and follow **Otherwise** below. Otherwise append the matched items' paths to the working set.
 
 → Return to **A. Render the Working Set**.
 
@@ -123,7 +123,7 @@ Resolve each chosen number to its `ADDABLE` row and append the row's path to the
 
 #### If the triggering message already named the item(s) to drop
 
-Resolve each named item against the working set by title or description. If any reference is ambiguous or unmatched, → Proceed to **Otherwise**. Otherwise remove the resolved items (they stay in the inbox):
+Resolve each named item against the working set by title or description. If any reference is ambiguous or unmatched, treat the request as unmatched and follow **Otherwise** below. Otherwise remove the resolved items (they stay in the inbox):
 
 **If the set is now empty:**
 
