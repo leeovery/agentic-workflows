@@ -67,12 +67,12 @@ Set `created_topic` to the validated `proposed_name`.
 Create the discovery item — `--force-dismissed` clears any matching dismissed entry (the user has confirmed this topic by name, so a prior dismissal never blocks it):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {created_topic} --routing {routing} --source "{source}" --summary "{summary}" --description "{description}" --force-dismissed
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {created_topic} {routing} --source "{source}" --summary "{summary}" --description "{description}" --force-dismissed
 ```
 
-Assemble the flags as follows:
+Assemble the call as follows:
 
-- `--routing {routing}`, `--source "{source}"`, and `--force-dismissed` — always included.
+- Positional `{routing}`, `--source "{source}"`, and `--force-dismissed` — always included.
 - `--summary "{summary}"` — included only when `summary` is present and non-empty.
 - `--description "{description}"` — included only when `description` is present and non-empty.
 - When `summary` is absent, pass `--backfill` in place of both fields — the next epic entry's summary-backfill drafts them.
