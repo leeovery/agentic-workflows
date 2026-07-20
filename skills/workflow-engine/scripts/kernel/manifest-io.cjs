@@ -298,15 +298,22 @@ function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS) 
       );
     }
 
-    // Busy wait (short)
-    const end = Date.now() + LOCK_RETRY_MS;
-    while (Date.now() < end) { /* spin */ }
+    // Sleep before retrying — a real synchronous wait, not a CPU spin.
+    sleepSync(LOCK_RETRY_MS);
   }
 }
 
 /** @param {string} lockFile */
 function releaseLockFile(lockFile) {
   try { fs.unlinkSync(lockFile); } catch { /* already gone */ }
+}
+
+// Block the thread for `ms` without burning CPU. Atomics.wait on a throwaway
+// zero-initialised SharedArrayBuffer int32 never gets notified, so it always
+// sleeps the full timeout — a real synchronous sleep, not a spin loop.
+/** @param {number} ms */
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 /**

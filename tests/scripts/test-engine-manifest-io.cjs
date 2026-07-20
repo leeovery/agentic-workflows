@@ -168,6 +168,21 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), String(process.pid), 'fresh lock never touched');
   });
 
+  it('a contended timeout sleeps instead of spinning — CPU stays far below wall time', () => {
+    fs.mkdirSync(path.join(dir, 'unit'));
+    const lock = path.join(dir, 'unit', '.lock');
+    fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
+    const cpu0 = process.cpuUsage();
+    const wall0 = Date.now();
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', 400));
+    const wallMs = Date.now() - wall0;
+    const cpuMs = (() => { const c = process.cpuUsage(cpu0); return (c.user + c.system) / 1000; })();
+    // It blocks for the full timeout…
+    assert.ok(wallMs >= 350, `timed out too early: ${wallMs}ms`);
+    // …but a real sleep burns almost no CPU; a busy-wait would burn ~all of it.
+    assert.ok(cpuMs < wallMs * 0.5, `CPU ${cpuMs.toFixed(1)}ms of ${wallMs}ms wall — busy-wait regression?`);
+  });
+
   it('write sweeps orphaned temp files past TMP_STALE_MS and spares fresh ones', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
     const orphan = path.join(dir, 'unit', '.manifest.json.11111.tmp');
