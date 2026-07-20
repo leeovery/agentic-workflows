@@ -90,7 +90,7 @@ announced: false
 
 ### T1: Framing alignment _(only if restatements diverged significantly)_
 
-{What divergence the framing check found. Which perspective is answering a different question, and what the actual decision might be. Omit this entire section if restatements aligned and renumber.}
+{What divergence the framing check found. Which perspective is answering a different question, and what the actual decision might be. Omit this entire section if restatements aligned — the first tradeoff then starts at T1.}
 
 ### T1: {label} _(or T2 if Framing alignment is present)_
 

@@ -20,3 +20,7 @@ Edit the task file directly:
 - **Priority**: Set or change the `priority:` field in frontmatter
 - **Tags**: Set or change the `tags:` field in frontmatter
 - **Dependencies**: See [graph.md](graph.md)
+
+## Phase Completion
+
+No action — phases have no entity in this format. Phase progress is derived from the task files' `status` fields; the internal ID encodes the phase.

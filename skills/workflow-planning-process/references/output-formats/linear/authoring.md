@@ -2,6 +2,16 @@
 
 Uses the official Linear MCP server (`https://mcp.linear.app/mcp`). Tool names below reflect this server — verify available tools if using a different implementation.
 
+## Identifiers
+
+`{team_id}` is the project default `linear_team_id` (persisted during setup — see about.md); `{project_id}` is the plan's `external_id`; phase and task issue UUIDs are recorded in `task_map`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.linear_team_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
+```
+
 ## Plan Structure
 
 Create a Linear project — this is the plan-level entity:

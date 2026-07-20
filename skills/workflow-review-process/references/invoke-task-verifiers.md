@@ -87,7 +87,7 @@ Each verifier receives:
 2. **Specification path** — from the manifest (if available)
 3. **Plan path** — the full plan for phase context
 4. **Project skill paths** — from Step 3 discovery
-5. **Review checklist path** — `skills/workflow-review-process/references/review-checklist.md`
+5. **Review checklist path** — `.claude/skills/workflow-review-process/references/review-checklist.md`
 6. **Work unit** — the work unit name (for path construction)
 7. **Topic** — the plan topic name (used for output directory)
 8. **Task suffix** — the `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)

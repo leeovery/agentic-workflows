@@ -72,20 +72,30 @@ For each file:
 
 ## Step 5: Register the Format
 
-Add an entry to `skills/workflow-planning-process/references/output-formats.md` following the existing pattern:
+`skills/workflow-planning-process/references/output-formats.md` renders a numbered selection menu. Register the new format with three edits, using the next available number `{N}`:
 
-```markdown
-### {Format Name}
-format: `{format-key}`
+1. **Listing** — append an entry to the "Available output formats" code block:
 
-adapter: [{format-key}/](output-formats/{format-key}/)
+   ```
+   {N}. {Format Name}
+      {One-line description.}
+      {Requirements — external tools/accounts, or "No external tools required."}
+      Best for: {ideal use cases}
+   ```
 
-{One-line description of the format.}
+2. **Menu** — append an option to the selection menu block:
 
-- **Pros**: ...
-- **Cons**: ...
-- **Best for**: ...
-```
+   ```
+   - **`{N}`** — {Format Name}
+   ```
+
+3. **Branch** — append a routing branch after the existing `#### If` branches:
+
+   ```markdown
+   #### If `{N}`
+
+   Set `chosen-format` = `{format-key}`.
+   ```
 
 ## Step 6: Validate
 
@@ -97,6 +107,6 @@ Verify:
 - [ ] Authoring.md documents task properties: status, phase grouping, labels (NOT priority or dependencies)
 - [ ] Authoring.md includes a complete task creation example
 - [ ] Reading.md explains next-task ordering using status, priority, dependencies, and phase
-- [ ] Updating.md covers all status transitions and how to modify task properties
+- [ ] Updating.md covers all status transitions, how to modify task properties, and phase completion
 - [ ] Graph.md covers priority levels and adding/removing dependencies
 - [ ] Format is registered in output-formats.md

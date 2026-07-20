@@ -84,7 +84,7 @@ Each perspective agent receives:
 1. **Lens** — the assigned lens from the polarity pair (e.g., `Formal Systems`, `Tail-Risk`)
 2. **Decision topic** — the decision being explored
 3. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-4. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{lens}.md`
+4. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{lens:(kebabcase)}.md`
 5. **Frontmatter** — the frontmatter block to write:
    ```yaml
    ---

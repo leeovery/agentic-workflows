@@ -17,18 +17,22 @@ All tasks are authored. Now I'll analyze internal dependencies and
 priorities across the full plan.
 ```
 
-Read the `format` from the manifest:
+Read the `format`, the plan's `external_id`, and the `task_map` from the manifest:
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
 Load the format's **[reading.md](output-formats/{format}/reading.md)** and **[graph.md](output-formats/{format}/graph.md)**.
 
-Invoke `workflow-planning-dependency-grapher` with these file paths:
+Invoke `workflow-planning-dependency-grapher` with these inputs:
 
 1. **Planning file path**: `.workflows/{work_unit}/planning/{topic}/planning.md`
 2. **reading.md**: the format's reading reference loaded above
 3. **graph.md**: the format's graph reference loaded above
+4. **Plan external ID**: the `external_id` value read above
+5. **Task map**: the `task_map` value read above
 
 The agent clears any existing dependencies/priorities, analyzes all tasks, and — if no cycles — applies the new graph data directly. It returns a structured summary of what was done.
 

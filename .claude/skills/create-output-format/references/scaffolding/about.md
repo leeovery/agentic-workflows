@@ -2,6 +2,8 @@
 
 <!-- Replace {Format Name} with the display name of this format -->
 
+*Output format adapter for **[workflow-planning-process](../../../SKILL.md)***
+
 ---
 
 <!-- One-line description of when to use this format -->

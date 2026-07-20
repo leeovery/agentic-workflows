@@ -13,10 +13,11 @@ You are reviewing a specification as a standalone document — looking *inward* 
 
 You receive via the orchestrator's prompt:
 
-1. **Specification path** — the specification file to review
-2. **Topic name** — the specification topic
-3. **Cycle number** — which review cycle this is (used in output file naming)
-4. **Review tracking format path** — the tracking file format reference
+1. **Work unit** — the work unit name (for output path construction)
+2. **Specification path** — the specification file to review
+3. **Topic name** — the specification topic
+4. **Cycle number** — which review cycle this is (used in output file naming)
+5. **Review tracking format path** — the tracking file format reference
 
 No source material — this phase looks inward only.
 
@@ -115,6 +116,7 @@ topic: {Topic Name}
 
 **Source**: Specification analysis
 **Category**: Enhancement to existing topic | New topic | Gap/Ambiguity
+**Priority**: Critical | Important | Minor
 **Affects**: {which section(s) of the specification}
 
 **Details**:

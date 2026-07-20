@@ -63,3 +63,5 @@ get_issue(issueId: "{issue_id}")
 ```
 
 Look for the relation in the issue's relations list, then remove it using the relation ID.
+
+> **Note**: The official Linear MCP server may not expose a relation-deletion tool. If none is available, ask the user to remove the relation in the Linear UI (issue → Relations), then confirm before proceeding.

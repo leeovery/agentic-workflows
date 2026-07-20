@@ -20,12 +20,13 @@ Read the `format` field from the manifest (`node .claude/skills/workflow-engine/
 
 Pass via the orchestrator's prompt:
 
-1. **Topic name** — the implementation topic (scopes tasks to correct plan)
-2. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle-number}.md`
-3. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
-4. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
-5. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
-6. **Phase label** — `Review Remediation (Cycle {N})`
+1. **Work unit** — the work unit name (for path construction)
+2. **Topic name** — the implementation topic (scopes tasks to correct plan)
+3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle-number}.md`
+4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
+5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
+6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`
+7. **Phase label** — `Review Remediation (Cycle {N})`
 
 ---
 

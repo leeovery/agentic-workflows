@@ -129,10 +129,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit
 
 #### If `continue`
 
-Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the `format` from the manifest and locate and read the task files via the format's **[reading.md](../workflow-planning-process/references/output-formats/{format}/reading.md)**:
+Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the `format` and the plan's `external_id` from the manifest and locate and read the task files via the format's **[reading.md](../workflow-planning-process/references/output-formats/{format}/reading.md)**:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
 ```
 
 > *Output the next fenced block as a code block:*
@@ -165,12 +166,13 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
 
 #### If `restart`
 
-1. Read the `format` from the manifest:
+1. Read the `format` and the plan's `external_id` from the manifest:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
    ```
 2. Load the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**
-3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic
+3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
 4. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
 5. Remove the spec's knowledge-base entry:
    ```bash
