@@ -360,6 +360,9 @@ function specificationMenu(detail) {
  * @returns {{keys: SpecMenuKey[], display: string, rendered: string}}
  */
 function specificationCompletedMenu(detail) {
+  if (detail.concluded.length === 0) {
+    throw new Error('specificationCompletedMenu: no concluded specifications — nothing to render');
+  }
   /** @type {SpecMenuKey[]} */
   const keys = detail.concluded.map((row, i) => ({
     key: String(i + 1), action: 'refine_spec', topic: row.name, verb: 'Refining',

@@ -54,7 +54,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 A section is everything beneath its marker up to the next marker; the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, trimmed, or re-derived. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
-Engine transaction verbs (e.g. `engine task …`) may append labelled DISPLAY/MENU sections after their one-line JSON response — the state-derived gates of the calling flow. The label names the gate (`=== MENU: fix gate … ===`) and the marker's instruction names the emission moment: the section is emitted only where the flow's prose prescribes it, which may be a later gate than the call — never at the call itself. The same verbatim rules apply.
+Engine calls may append labelled DISPLAY/MENU sections — transaction verbs (e.g. `engine task …`) after their one-line JSON response, snapshot verbs after their unlabelled sections — the state-derived gates of the calling flow. The label names the gate (`=== MENU: fix gate … ===`) and the marker's instruction names the emission moment: the section is emitted only where the flow's prose prescribes it, which may be a later gate than the call — never at the call itself. The same verbatim rules apply.
 
 ### Phase Titles
 
@@ -228,7 +228,7 @@ Unnumbered trees follow the same structure:
 
 Item-level statuses use square brackets `[term]`. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
 
-Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`. Phase-specific terms are fine but format is always `[term]` for items.
+Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine but format is always `[term]` for items.
 
 ### Callout Flag
 
@@ -259,7 +259,7 @@ Reads as: "advanced-features is blocked by task core-2-3 in the core-features pl
 
 ### Key / Legend
 
-Separate code block. Categorized. Em dash (`—`) separators. **No `---` separator before the Key block.** Only show statuses that appear in the current display. **Blank line between categories.**
+Separate code block (engine snapshots compose the Key into the same DISPLAY block, beneath the display it explains). Categorized. Em dash (`—`) separators. **No `---` separator before the Key block.** Only show statuses that appear in the current display. **Blank line between categories.**
 
 ```
 Key:
@@ -276,7 +276,7 @@ Key:
 
 ### Menus / Interactive Prompts
 
-Rendered as markdown (not code blocks). Framed with `· · · · · · · · · · · ·` dot separators at top and bottom — no blank lines between the dots and the content they frame. A question or contextual label appears first inside the dots, followed by a blank line, then the options. Verb-based labels for selection menus. No single-character icons.
+Rendered as markdown (not code blocks). Framed with `· · · · · · · · · · · ·` dot separators at top and bottom — no blank lines between the dots and the content they frame. A question or contextual label opens the menu, followed by a blank line, then the options — compact yes/no prompts may omit the blank line. Selection menus may carry the prompt as a trailing `Select an option:` line after the options instead of (or in addition to) an opening label, as in the examples below. Verb-based labels for selection menus. No single-character icons.
 
 **Option types** — menus contain two kinds of option:
 
