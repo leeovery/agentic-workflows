@@ -1,6 +1,6 @@
 # Agents
 
-Twenty-three sub-agents ship in `agents/`, and the reason they exist is context: a sub-agent reads the artifact cold, with no memory of the conversation that produced it, which is exactly what makes its critique worth having. The orchestrating session was *in* the conversation, so it can catch what was said but not written; the sub-agent catches what was written but not right. Every agent is stateless (each invocation starts fresh with full inputs), writes findings to files rather than chat, and returns a brief structured status. None touches git; commits belong to the orchestrator.
+Twenty-three sub-agents ship in `agents/`, and the reason they exist is context: a sub-agent reads the artifact cold, with no memory of the conversation that produced it, which is exactly what makes its critique worth having. The orchestrating session was *in* the conversation, so it can catch what was said but not written; the sub-agent catches what was written but not right. Every agent is stateless (each invocation starts fresh with full inputs) and returns a brief structured status. Most write their findings to files rather than chat, though the phase and task designers hand their deliverable back in the message itself. None touches git; commits belong to the orchestrator.
 
 They divide by *when* they act.
 
@@ -64,7 +64,7 @@ The post-loop [analysis cycle](implementation.md#the-analysis-loop) and [review 
 
 ## The common shape
 
-Read a few of these files and a pattern emerges. Inputs are explicit file paths plus content, never "the conversation so far". Outputs are structured: findings files with stable IDs and frontmatter state for the background critics, tracking files for the review cycles, staging files for the synthesizers, plus a terse `STATUS:` report to the orchestrator. Tool grants are minimal for the job (the phase designers get read-only `Read, Glob, Grep`; only the deep-dive researcher gets web access; only the task-writing agents get the Linear MCP tools). And every judgment gate stays with the orchestrator and the user: agents propose, findings get triaged, nothing an agent writes becomes plan or spec content without passing through an approval gate.
+Read a few of these files and a pattern emerges. Inputs are explicit file paths plus content, never "the conversation so far". Outputs are structured: findings files with stable IDs and frontmatter state for the background critics, tracking files for the review cycles, staging files for the synthesizers, plus a terse `STATUS:` report to the orchestrator. Tool grants are minimal for the job (the phase designers get read-only `Read, Glob, Grep`; only the deep-dive researcher gets web access; the Linear MCP tools go only to agents that operate on plan tasks in the external format — the task-writer to create issues, the two plan reviewers read-only, the dependency-grapher to write relations). And every judgment gate stays with the orchestrator and the user: agents propose, findings get triaged, nothing an agent writes becomes plan or spec content without passing through an approval gate.
 
 ---
 
