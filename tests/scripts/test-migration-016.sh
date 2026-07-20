@@ -1545,6 +1545,40 @@ EOF
   teardown
 }
 
+# --- Test: topic name with a single quote — no node injection ---
+# The work-unit name is passed to the manifest-building node call via
+# process.argv. A quote in the name (previously interpolated into the source
+# string as var name = '...') would otherwise be a JS SyntaxError that crashes
+# the run after files have already moved.
+test_quote_in_topic_name() {
+  setup
+  mkdir -p "$TEST_DIR/.workflows/discussion"
+  cat > "$TEST_DIR/.workflows/discussion/user's-auth.md" << 'EOF'
+---
+topic: user's-auth
+status: concluded
+work_type: feature
+date: 2026-01-15
+---
+
+# Discussion: User's Auth
+
+We need auth.
+EOF
+
+  cd "$TEST_DIR"
+  source "$MIGRATION"
+
+  assert_eq "quoted-name: manifest.json created" "true" "$([ -f "$TEST_DIR/.workflows/user's-auth/manifest.json" ] && echo true || echo false)"
+  assert_eq "quoted-name: discussion moved as {name}.md" "true" "$([ -f "$TEST_DIR/.workflows/user's-auth/discussion/user's-auth.md" ] && echo true || echo false)"
+
+  local wu_name
+  wu_name=$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).name)" "$TEST_DIR/.workflows/user's-auth/manifest.json" 2>/dev/null)
+  assert_eq "quoted-name: manifest name correct" "user's-auth" "$wu_name"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 016 tests..."
 echo ""
@@ -1582,6 +1616,7 @@ test_epic_spec_path
 test_superseded_spec
 test_research_subdirs
 test_gitkeep_empty
+test_quote_in_topic_name
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
