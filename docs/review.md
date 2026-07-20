@@ -1,38 +1,23 @@
 # Review
 
-Review is the pipeline's fresh pair of eyes, structurally fresh: the reviewing session has not seen the code before, and its hard rules keep it that way. Review all tasks. Don't fix code. Don't re-implement. Be specific ("test doesn't cover X", never "tests need work"). Reference artifacts with file-and-line. Flag under-testing *and* over-testing. Question everything.
+Review is the last phase, and it closes the loop the whole system was built around: it holds the delivered work up against what was agreed and confirms they match. The reviewer is framed as a senior architect who has never seen this code before — fresh eyes, questioning everything, there to find problems rather than fix them. That independence is the point. The people and agents who build something are the worst placed to notice what they assumed; a reviewer with no stake in the implementation and no memory of writing it catches what they cannot.
 
-The phase verifies the built work against everything upstream: every plan task against its acceptance criteria, the implementation against the [specification's](specification.md) intent, the tests against both. Scope can be a single plan, several, or all of an epic's.
+Review refuses to start unless both the plan and the implementation are complete. If a review already exists, you can continue it — the system tracks which tasks each review covered, so it re-reviews only what has not been checked yet — or restart and review everything again.
 
-## Verification
+## What a cycle checks
 
-One **task-verifier agent** per completed task, dispatched in batches of five in parallel. Each verifier receives the task with its acceptance criteria, the spec for context, the plan, project skills, a shared review checklist, and the files the task's commits touched as a starting set. It works through a fixed sequence: understand the task, load spec context, verify the implementation exists and is correct, verify the tests are adequate (neither under- nor over-tested), check code quality, and categorize non-blocking observations. Findings go to a per-task report file (`review/{topic}/report-{phase}-{task}.md`); a brief status returns to the orchestrator.
+Review reads the plan and the specification. It does not re-read the discussion, because the discussion's decisions were already absorbed into the spec upstream; the spec is the contract, so the spec is what the built work is measured against. Working from those, it dispatches verifier agents in parallel, one per task, and each checks its task independently on three fronts. It checks the implementation: is the task actually built, does it match its acceptance criteria and the spec, has anything drifted. It checks the tests: does a real test exist, does it cover the criteria and the edge cases, would it fail if the feature broke — and, just as importantly, is it *over*-tested, padded with redundant assertions or excessive mocking. And it checks code quality against the project's conventions and the usual structural concerns. Once the tasks are checked, it steps back to the whole plan: were all the acceptance criteria met, was anything built that was never planned, was anything planned never built.
 
-Quick-fix tasks are deliberately authored without acceptance criteria ([scoping's](work-types.md#quick-fix) rule), and the verifier knows it: they are verified by their own branch of the checklist, and the missing criteria are never reported as a finding.
+## The report and the verdict
 
-The orchestrator aggregates everything into `review/{topic}/report.md` with one of three verdicts:
+The result is a single report with a clear verdict at the top — **Approve** when every criterion is met and nothing blocks, **Request Changes** when requirements are missing or functionality is broken or tests are inadequate, or **Comments Only** for non-blocking observations. Beneath it sit the quality assessments and, most usefully, a set of recommendations sorted by how safe they are to act on: things safe to do right now with no logic change, mechanical quick-fixes that do touch logic, ideas that need discussion before anyone acts, and non-blocking bugs. Every finding carries a file-and-line reference, so nothing is a vague gesture at "the auth code."
 
-| Verdict | Meaning |
-|---|---|
-| **Approve** | All acceptance criteria met, no blocking issues. |
-| **Request Changes** | Missing requirements, broken functionality, or inadequate tests. |
-| **Comments Only** | Non-blocking suggestions and observations. |
+What you do with the report is yours. The reviewer's stated philosophy is that it produces feedback and you decide what to do with it — implement it, delegate it, set it aside for later, or override it and ship anyway. Concretely, when the report is presented you can have the safe zero-risk fixes applied immediately (the system edits them in place, runs the linters and tests, and reverts anything that fails verification), surface selected recommendations into your [inbox](capture-and-inbox.md) as future work, ask questions about any finding, or move on. Then the verdict decides the path. An approval with no changes needed completes the review automatically — and because review is the last phase, that is the pipeline finished for this topic. A request for changes leads into remediation.
 
-Coverage is tracked in the manifest (`reviewed_tasks` against implementation's `completed_tasks`), so a review resumed later knows exactly which tasks are unreviewed and can review just those; restart wipes the reports and the tracking.
+## Why it runs in cycles, and why they are capped
 
-## The remediation loop
+Review is not a verdict handed down once. When changes are needed, the findings are synthesised into remediation tasks — which you approve one by one — and those tasks are written back into the plan. Review then re-opens implementation and hands off to a fresh session to build exactly those tasks, which then flows back into review again. Build, review, remediate, build again: this is the loop, and it repeats until the work and the agreements line up. Each pass reviews incrementally, only the newly changed work, so cycles get cheaper rather than re-litigating the whole thing every time.
 
-An approved review completes the phase and hands off through the [bridge](how-it-fits-together.md#the-bridge): the pipeline is done (or, for an epic, the topic is). Anything else enters the remediation loop:
+The self-correcting loops inside this machinery are deliberately capped. The automated checks that run during specification and planning escalate to you after a few unproductive rounds and stop entirely at a hard safety limit; implementation's fix loop forces a decision after three attempts on a single task, and its analysis loop caps at three cycles per session. At every one of these limits the same thing happens: the system shows you a convergence read — is this converging, holding steady, or diverging with each fix spawning new problems — and hands you the decision. The cap is not a signal to give up; it is an escape hatch for you. Its reason is straightforward: an unattended loop that keeps correcting itself can thrash forever, or worse, diverge, with every fix creating the next problem. Rather than let that happen quietly, the system surfaces it and asks. A loop that cannot end on its own is one you would not want running while you are away, so the design guarantees it always comes back to a human before it goes too far.
 
-1. **Synthesis.** A findings-synthesizer agent turns the review reports into proposed remediation tasks, deduplicated across per-task findings, each with problem, solution, acceptance criteria, and tests. Strongly recommended for Request Changes; optional for Comments Only. Declining synthesis is allowed, and completes the review with findings on record.
-2. **Triage.** Each proposed task is presented for approval, with the usual `y`/`a`/`s`/comment options and auto opt-in. Skipping all of them completes the review.
-3. **Write-back.** A task-writer agent adds the approved tasks to the plan as a new phase through the [format adapter](output-formats.md), extending `task_map` with the new IDs.
-4. **Re-open.** The engine re-opens the implementation item (`engine topic reopen`, the dedicated completed-to-in-progress transition), and the session enters plan mode with a handoff naming the exact next invocation. The user clears context, and the fresh [implementation](implementation.md) session picks up the remediation tasks like any others: executor, reviewer, fix loop, analysis loop, and then review again.
-
-The loop means "review found problems" is not a dead end that gets argued about in a tired context: it is new work, planned and executed with the same machinery as the original tasks, then re-verified.
-
-Review reports are never indexed into the [knowledge base](knowledge-base.md). They judge a moment in the code's history; the spec and discussions remain the durable knowledge.
-
----
-
-*Next: what the pipeline remembers and how it recalls it, the [knowledge base](knowledge-base.md).*
+The result is a delivery that has been measured against the record that produced it, with any gaps either closed or consciously accepted by you. That is what makes "done" mean something here: not that the agents ran out of things to do, but that the built thing was checked against what you decided to build and found to match.

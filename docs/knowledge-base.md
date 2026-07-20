@@ -1,67 +1,35 @@
-# Knowledge Base
+# The knowledge base
 
-A spec written three months ago, a discussion that rejected an approach, an investigation that ruled out a cause: all of it stays queryable. The knowledge base is a local retrieval index over completed workflow artifacts, stored at full fidelity (chunks are the actual text, never summaries) with provenance attached: work unit, phase, topic, index date. It lives in your repo at `.workflows/.knowledge/` and travels with it.
+The knowledge base is the system's memory. As each piece of thinking work finishes, its document is quietly added to a searchable store that any future session can draw on — searched by meaning, not just by exact words. Nothing leaves your machine; the store lives inside the project alongside the work. And it keeps the real text of what was written, not a summary of it, with a note of where each piece came from: which work unit, which phase, which topic, and when. When something resurfaces, you get the actual sentence someone reasoned their way to, and a citation for it.
 
-## What goes in, and what deliberately doesn't
+Its reason for existing is to stop knowledge from evaporating — both between different pieces of work and within a single long one. A specification written months ago, a discussion that argued its way to rejecting an approach, an investigation that ruled out a suspected cause — all stay findable, instead of being rediscovered the hard way.
 
-Indexed, each with an intrinsic confidence tier:
+## What it remembers, and what it deliberately forgets
 
-| Phase | Confidence | Character |
-|---|---|---|
-| `specification` | high | Validated decisions: what we decided to build |
-| `investigation` | medium | Diagnostic work tied to specific symptoms |
-| `discussion` | low-medium | Conversational; may contain assumptions corrected later in the same file |
-| `research` | low | Exploratory; may be dead ends and unvalidated ideas |
-| `imports` | low | User-shared reference material |
-| `seeds` | low | The work unit's origin: promoted inbox items, verbatim |
-| `analysis` | low | The research-analysis and gap-analysis caches |
-| `discovery` | low | Epic exploration session logs: the running record |
+The knowledge base indexes the thinking artifacts: research, discussion, investigation, and specification. Alongside those it keeps a little early-stage context so new work starts warm — the reference material you attached when a piece of work began, the original captured note it grew out of, and an epic's running discovery record.
 
-Never indexed: **planning, implementation, review**. Those phases describe execution, not knowledge; searching them would surface task IDs and code fragments, not insight.
+It never indexes planning, implementation, or review. This omission is deliberate, and it is the sharpest line the design draws. Those phases describe *how the work got done* — task breakdowns, code, verification steps — not *what was learned or decided*. Indexing them would flood every future search with task IDs and diffs instead of insight. The rule is simply: the knowledge base stores knowledge, not execution. If it is a decision, a rationale, or a discovery, it is remembered; if it is a to-do list or a diff, it is not. That is what keeps recall sharp instead of noisy.
 
-Confidence tells you how to weigh a chunk, not whether to use it. The API docs are explicit: **low confidence is not low value**. A research chunk that rejected an approach prevents the next work unit from re-exploring the same dead end; a discussion chunk showing a corrected assumption explains *why* the spec says what it says.
+Each remembered piece carries an honest confidence label, so you know how much weight to put on it. A specification is high-confidence — a decision that was validated and written down. An investigation is medium — a trustworthy diagnosis, though worth checking the symptom is still current. A discussion is lower, because it is a conversation that may contain an assumption corrected later in the very same file. Research and the early seed material are lowest. But low confidence is not low value: a research note that killed a bad approach is exactly the thing that stops the next person re-exploring the same dead end.
 
-## The recall model
+## How the past resurfaces
 
-Indexing is automatic and event-driven: `engine topic complete` indexes the finished artifact, imports and seeds index at the work-type commit, epic session logs at session close, analysis caches when they're stamped. Removal is equally automatic: cancelling a work unit removes its chunks, superseding or promoting a spec removes the stale ones, reactivation re-indexes what cancellation removed. Skills never bookkeep the index by hand; it rides the engine's transactions, and its failures are warnings, never blocks.
+You do not go looking for the memory; it comes to you. As you work through the early, thinking-heavy phases — research, discussion, investigation, quick-fix scoping — the system checks the memory on your behalf: at the start of a phase, and again whenever the conversation drifts toward the edge of the current topic, brushes an upstream or downstream dependency, or wanders into ground that might have been covered before. You can also just ask — "have we discussed this?", "what did we decide about X?"
 
-Querying is a judgment call with stated heuristics. Phases load a shared usage guide whose bias is explicit: under-querying is the bigger risk; err toward querying. Four triggers: topic boundaries (the conversation brushes adjacent territory), upstream/downstream dependencies, unfamiliar ground, and the user asking "have we discussed this?". Queries are natural language, framed the way the original author would have written, never topic slugs:
+When something relevant turns up, you get a brief, unintrusive line noting the one or two things that actually bear on what you are doing — not a wall of old material — and that context folds into the phase. It pulls up a full original document only when a snippet looks genuinely load-bearing. If nothing relevant exists, you see nothing at all and the session simply continues.
 
-```bash
-knowledge query "why we ruled out email as a primary identity field"
-knowledge query "OAuth2 PKCE flow" "token refresh handling" --boost:work-unit auth-flow
-```
+There is deliberate restraint about *when* it looks. During the phases meant to stay faithful to a single source — writing the specification, and planning against it — the system does not rummage through the wider memory, because that would pull the document away from its own agreed source material. The memory is for widening context early, not for second-guessing a decision that has already been captured.
 
-Hard filters (`--work-unit`, `--work-type`, `--phase`, `--topic`) exclude; `--boost:<field>` re-ranks without excluding, and the guide says to reach for boost first, because filtering by work unit throws away exactly the cross-work-unit context the store exists to keep. Results come back as provenance-tagged chunks (`[discussion | payments-overhaul/data-model | low-medium | 2026-03-10]`), and retrieval is two-step: chunks land in context cheaply, and the source file is read in full only when a chunk is load-bearing.
+## Why old material fades
 
-Just as deliberate is where querying is banned. **Not while authoring a spec** (it would pull the golden document away from its own source material; the one exception is the advisory query at [spec entry's grouping analysis](specification.md#grouping-which-discussions-become-which-specs), which chooses inputs rather than injecting content). **Not during planning** (the spec is the sole source; a gap found while planning is a blocker to flag, not a hole to fill from retrieval). **Barely during implementation** (code is the truth for *what* exists; the store answers only the rare *why*). A failed query pauses the phase for an explicit retry-or-skip decision, and a skip is recorded in the artifact so missing context is auditable.
+Left alone, the memory would grow forever and stale thinking would crowd the results. So material decays and eventually gets pruned — but the important nuance is *how* staleness is judged. It is not a wall-clock timer. A note does not fade because six months passed; it fades based on how much later work has since completed. As the project moves on and more work lands past an old unit, that unit's material sinks in the rankings, and once it has effectively sunk out of reach it becomes eligible to be pruned. Staleness is measured by the project's progress, not by the calendar.
 
-## Modes and decay
+Two protections sit on top of this. Specifications are exempt — validated decisions of record are never auto-pruned. And the behaviour can be dialled down or switched off entirely. The intent is a memory that keeps recent, still-relevant thinking near the surface and quietly lets the distant past recede, without ever discarding the decisions the project was built on.
 
-Two search modes, auto-selected from config:
+## Turning it on
 
-- **Hybrid**, when an embedding provider is configured: keyword plus vector search, re-ranked by boosts plus always-on confidence and recency signals.
-- **Keyword-only** (BM25), when none is: a supported degraded mode, not a broken state. Exact-term queries still work; query output opens with a note flagging keyword-only mode.
+The memory needs to be switched on once per project, and this is the single moment where you may be asked to do something by name. If it has not been set up, you will be guided to run `knowledge setup`. This step is human-only and interactive by design — it walks you through choosing how the memory should work, and if a cloud embedding service is involved it collects the API key through a private terminal prompt that never travels through the chat. The assistant genuinely cannot do this part for you.
 
-`knowledge compact` is the storage backstop, run automatically at boot. Decay is **progress-based, not wall-clock**: a work unit's non-spec chunks are pruned only once enough later work has completed (weighted by work type) that they've become effectively unreachable in ranking. Specifications never decay. The threshold is configurable, and `false` disables pruning entirely.
+You have a real choice here, including a no-dependencies option. If you would rather not wire up an embedding service, the memory runs in keyword-only mode — a fully supported, deliberately-degraded mode, not a broken one. You lose search-by-meaning (it will not know that "sign-in" and "authentication" are related), but exact-term search still works and everything else behaves normally; results carry a small note that configuring a provider would unlock semantic search.
 
-## Setup
-
-`engine boot` runs `knowledge check` on every `/workflow-start`. A `not-ready` store is a gate, not a crash: the boot response carries a `system_config` report (valid, absent, or invalid, plus the active provider and model, never key material) and the session walks the user through initialisation conversationally using `knowledge setup`'s non-interactive forms:
-
-```bash
-knowledge setup --from-system      # reuse existing system config
-knowledge setup --keyword-only     # BM25-only project store, no provider
-knowledge setup --provider openai --model {m}
-knowledge setup --provider openai-compatible --base-url {u} --model {m} --dimensions {d}
-```
-
-The `openai-compatible` form covers local and self-hosted endpoints (LM Studio, Ollama, vLLM, LiteLLM). Provider configs are validated with a test embed before anything lands on disk.
-
-API keys get unusual care: there is deliberately **no `--key` flag**, and any invocation carrying one is refused, because argv lands in shell history and process listings. Keys resolve from `$OPENAI_API_KEY` or from `~/.config/workflows/credentials.json` (mode 0600), written only by the masked-prompt `--key-only` terminal detour or the interactive wizard, both TTY-required and human-only. Setup output names the active provider and model, never key material, so no secret can transit the chat.
-
-Config layers: `~/.config/workflows/config.json` holds system defaults shared across projects; `.workflows/.knowledge/` holds the per-project store, metadata, and config. `knowledge status` prints a full health report (chunk counts, pending retry queue, provider mismatches, orphans, unindexed artifacts); `knowledge rebuild` is the destructive human-only reset.
-
----
-
-*Next: the deterministic layer everything above stands on, the [engine](engine.md).*
+Every entry into the workflow checks that this memory is initialised before any real phase runs. When things are fine, the check is silent. You only notice it when the memory is not ready: rather than letting you start work against a memory that does not exist, the system stops cleanly and points you at setup. It is a gate, not a nag — it guarantees that by the time you are doing thinking work, there is somewhere for that thinking to be remembered, and somewhere for prior thinking to be recalled from.

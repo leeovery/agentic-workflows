@@ -1,143 +1,42 @@
-# How It Fits Together
+# How it fits together
 
-Three layers, strictly separated:
+The system is built from three layers with a strict division of labour, and almost everything about how it behaves falls out of keeping them separate.
 
-- **Skills**: markdown instruction files Claude follows step by step. They own conversation, judgment, and prose artifacts. They never derive state.
-- **The [engine](engine.md)**: a Node CLI plus in-process library owning everything fully determined by data, from manifests and transitions to transactions, derivations, and rendering. Anything computable is computed here, in code, and consumed by Claude, never re-derived in prose.
-- **The [knowledge base](knowledge-base.md)**: retrieval over completed artifacts, so any phase can pull in what a sibling or predecessor already settled.
+The first layer is the **skills** — the markdown instruction files the assistant follows step by step. They own the conversation, the judgment, and the prose documents you read and approve. They never work out the state of your project for themselves. The second is [the engine](engine.md), the deterministic core beneath them that owns everything fully determined by data: the record of your work, the transitions between phases, and the computed displays. Anything that can be calculated is calculated there and handed up, never reconstructed in prose. The third is [the knowledge base](knowledge-base.md), sitting alongside the others as retrieval over completed work, so any phase can pull in what a sibling or a predecessor already settled.
 
-The division has a blunt consequence: Claude decides *what to do*; the engine decides *what is true*. When a skill needs the current state of an epic, it runs a gateway script and reads structured output. It does not glob directories and reason about what it finds.
+The consequence is blunt and worth holding onto: the assistant decides *what to do*; the engine decides *what is true*. When a skill needs to know where an epic stands, it asks the engine and reads back a structured answer. It does not rummage through your files and form an opinion.
 
 ## The skill tiers
 
-| Tier | Skills | Role |
-|---|---|---|
-| Entry | `workflow-start` | The sole user-invocable entry point. Boots the system, shows all work, routes everywhere. |
-| First phase | `workflow-discovery` | Shapes new work, settles the type, persists the work unit. Model-only. |
-| Navigation | `workflow-continue-{epic,feature,bugfix,quickfix,cross-cutting}` | Per-type dashboards: show state, route to the right phase. Model-only. |
-| Phase entry | `workflow-{phase}-entry` | Intake coordinators: validate state, gather context, hand off. Never engage the subject matter. |
-| Processing | `workflow-{phase}-process` | The phases themselves, where the actual work happens. |
-| Bridge | `workflow-bridge` | Plan-mode handoffs between phases, built to survive context compaction. |
-| Capture | `workflow-log-{idea,bug,quickfix}` | Lightweight [inbox capture](inbox-and-capture.md), outside the pipeline. |
-| Shared | `workflow-shared/references/` | Protocols loaded by many skills: casing, compliance checks, analysis gates, natural breaks. |
+The skills are organised into tiers, each with a narrow role, so that a given moment in a session is always handled by the piece built for it.
 
-Every skill file opens with the same two disciplines. The **zero-output rule**: no narration, no "proceeding with…"; the first output must be content the instructions explicitly call for. And the **STOP-gate contract**: after rendering a decision gate, the turn ends, and no session-level directive (auto mode, "work without stopping", hook-injected text) overrides it. The only skip mechanism is a per-gate `*_gate_mode: auto` manifest value set by the user's own explicit `a`/`auto` choice at a prior gate. The skill text names the failure mode precisely: *"the reasonable call is X, I'll proceed with X" is the auto-answer the rule forbids.*
+| Tier | Its job |
+|---|---|
+| **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, and routes you everywhere else. |
+| **First phase** | Discovery. Shapes brand-new work, settles its type, and persists it. |
+| **Navigation** | The per-type dashboards. They show a work unit's current state and route you to whichever phase comes next. |
+| **Phase entry** | Thin intake coordinators. They validate that a phase can start, gather its opening context, and hand off — without ever engaging the subject matter. |
+| **Processing** | The phases themselves, where the actual work happens: the conversations, the documents, the loops. |
+| **Bridge** | The clean hand-off between one phase and the next. |
+| **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely. |
+| **Shared** | Protocols loaded by many skills at once — conventions, self-checks, break detection — so they behave identically wherever they apply. |
 
-## A session, end to end
+Two disciplines run through every skill regardless of tier. The first is that a skill produces no chatter — no "proceeding with…", no narration of its own reasoning; its first output is content the instructions explicitly call for. The second is the stop-gate contract described in [the collaboration model](collaboration.md): after presenting a decision to you, the turn ends, and no background directive can talk the system past it. Only your own explicit choice to hand a gate over can skip it.
 
-What follows is a real session against a scratch project, output captured verbatim.
+## A single action, travelling down through the layers
 
-**`/workflow-start` boots the system.** Step 0 runs one engine call, `engine boot`, covering migrations, the knowledge check, and store compaction:
+Following one action shows how the layers cooperate. You type `/workflow-start`. The entry skill boots the system — bringing any older project structure up to date and confirming the memory is ready — then asks the engine for a snapshot of all your work and shows it to you. That snapshot is computed, not remembered, which is why the same state always looks the same.
 
-```json
-{"ok":true,"migrations":{"changed":false,"output":"[SKIP] No changes needed"},
- "knowledge":"ready","compacted":true,"kb_committed":"b941380","warnings":[]}
-```
+If you start something new, you are routed into discovery, where the work is shaped in conversation and, at the moment you confirm it, written to disk in a single transaction. If you pick up existing work, you are routed into that work type's dashboard instead. Either way you end up inside a **processing** skill, doing the real work of a phase.
 
-A failing migration is a hard stop; migrations never half-run silently. A `not-ready` knowledge store routes into the [knowledge gate](knowledge-base.md#setup) instead of proceeding.
+When that phase concludes, it does not simply roll into the next one in the same conversation. It goes through the bridge.
 
-**State discovery runs through a gateway script**, not ad-hoc shell. The skill file embeds `` !`node .claude/skills/workflow-start/scripts/gateway.cjs` ``, and the `!` prefix makes Claude Code execute the script during skill load and splice its output into the prompt. The `view` snapshot then arrives in three demarcated sections:
+## The bridge, and why phases start fresh
 
-```
-=== DATA (reason from this — never display or parse the sections below) ===
-has_any_work: true
-counts: 1 epic, 0 feature, 0 bugfix, 0 quick-fix, 0 cross-cutting
-ACTIONS (key  action  work_unit  → route):
-  1  continue_work_unit  venue-ordering  → /workflow-continue-epic venue-ordering
-  s  start_new  —  → (internal)  (pre_seed: none)
-  f  start_new  —  → (internal)  (pre_seed: feature)
-  ...
+Context is a consumable. A phase's conversation fills the working window with detail the next phase does not need — the whole back-and-forth of a discussion is not something a specification should have to wade through. So each phase concludes by handing off cleanly: it works out what comes next, writes that hand-off down where it will survive a context refresh, and lets you start the next phase in a fresh, uncluttered context. Because the hand-off lives in your files and the durable record rather than in conversation memory, it survives even if the session is compacted or killed between phases. The next phase does not re-interview you; its thin entry skill picks up the context that was prepared for it — the description, the discovery notes, an epic topic's [brief](discovery.md) — and gets to work. Its job is preparation, not processing.
 
-=== DISPLAY (emit verbatim as a code block) ===
-●───────────────────────────────────────────────●
-  Workflow Overview
-●───────────────────────────────────────────────●
-
-Epics:
-  1. Venue Ordering
-     └─ Ready For Discussion
-
-=== MENU (emit verbatim as markdown) ===
-· · · · · · · · · · · ·
-What would you like to do?
-
-- **`1`** — Continue "Venue Ordering" — epic
-- **`s`/`start`** — Start something new (not sure what kind yet)
-...
-```
-
-The sections are one-directional by contract. **DATA** is the reasoning surface: Claude matches the user's pick against the ACTIONS table by key and reads the entry's `action` and `route`, never its label text. **DISPLAY** and **MENU** are emitted to the user verbatim, never redrawn, reflowed, or parsed for decisions. Rendering lives in engine projections, so the same state always produces the same bytes, and a skill can't "improve" a dashboard on the fly.
-
-**New work routes into [discovery](discovery.md).** A menu pick pre-seeds the work type (`f` means feature); `s` pre-seeds nothing. Discovery shapes the work in conversation, and at the confirm trigger one engine transaction creates the work unit: manifest, imports, seeds, session log, commit. Until that moment nothing exists on disk.
-
-**Phases hand off through the bridge.** When a phase concludes, it does not roll into the next phase in the same conversation.
-
-### The bridge
-
-`workflow-bridge` exists because context is a consumable. A phase's conversation fills the window with detail the next phase doesn't need, so each phase concludes by entering plan mode with a deterministic continuation:
-
-1. The bridge computes `next_phase` from manifest state (for discovery handoffs the destination is supplied, since the first phase has no prior state to derive from).
-2. It writes a plan file naming the exact next invocation, e.g. `/workflow-discussion-entry feature auth-flow`, and presents it for approval via plan mode.
-3. The user clears context. The fresh session invokes the phase entry skill with `work_type` and `work_unit` as arguments, skipping all discovery.
-
-The handoff survives compaction because it lives in the plan file and the manifest, not in conversation memory. The bridge also carries the between-phase choices: revisiting a completed earlier phase, and, after implementation, `d`/done to complete without review. For epics there is no single next phase, so the epic continuation shows the dashboard and lets the user choose; the plan-mode content is deterministic once they have.
-
-**Phase entry skills are deliberately thin.** They receive positional arguments (`$0` = work_type, `$1` = work_unit, `$2` = topic, resolved as `$2 || ($1 unless epic)`), check the manifest for new-vs-resume-vs-reopen, gather the seed context, and invoke the processing skill. The context they gather comes from the **durable carrier**, not from re-asking: for single-phase work, the manifest `description` plus the discovery session log's Exploration section; for an epic topic shaped on the map, the topic's [discovery brief](discovery.md#the-harvest). The intake never engages the subject matter: "your role is preparation, not processing."
-
-### The epic dashboard
-
-`/workflow-continue-epic` renders the whole epic from one gateway snapshot, here immediately after discovery synthesised three topics:
-
-```
-●───────────────────────────────────────────────●
-  Venue Ordering
-●───────────────────────────────────────────────●
-
-── DISCOVERY ────────────────────────────────────
-
-  RESEARCH & DISCUSSION (3 topics · 3 fresh)
-  ├─ ○ Kitchen Routing [fresh · routed to research]
-  │     Ticket routing and printer integration options
-  ├─ ○ Qr Ordering Flow [fresh · routed to discussion]
-  │     Diner-facing QR ordering journey
-  └─ ○ Operator Dashboard [fresh · routed to discussion]
-        Live operational view for venue staff
-```
-
-with a menu whose ACTIONS table already carries the routing decisions:
-
-```
-1  start_research    kitchen-routing   → /workflow-research-entry epic venue-ordering kitchen-routing  (recommended)
-2  start_discussion  qr-ordering-flow  → /workflow-discussion-entry epic venue-ordering qr-ordering-flow
-```
-
-The `(recommended)` marker follows the map's sequencing; `(blocked: …)` markers surface cross-topic task dependencies from planning. Before the dashboard renders, the continue skill runs its housekeeping pipeline: legacy backfill checks, the [self-healing topic analyses](research-and-discussion.md#self-healing-the-map) (research-analysis and gap-analysis, which can add newly-surfaced topics to the map), and map sequencing. As phases accumulate items, the dashboard grows stage dividers (Discovery, Definition, Delivery) with each topic's tree under the phase it currently occupies.
+For an epic there is no single "next phase," so the hand-off returns you to the epic's dashboard to choose your next move. That dashboard is rendered from one computed snapshot, organised into the three stages of [the work's life](work-types.md) — Discovery, Definition, Delivery — with each topic shown under the phase it currently occupies, and markers noting which move is recommended next and which are blocked by unfinished dependencies. Before it draws, the navigation layer quietly runs its housekeeping: the self-healing analyses that re-read completed work and can surface topics you had not thought to add.
 
 ## Where everything lives
 
-```
-.workflows/
-├── manifest.json                    # work-unit registry + project defaults
-├── .inbox/{ideas,bugs,quickfixes}/  # pre-pipeline capture
-├── .knowledge/                      # knowledge store
-├── .state/                          # migration log, environment setup
-├── .cache/{wu}/{phase}/{topic}/     # scratch files, fix-tracking, staged logs
-└── {work_unit}/
-    ├── manifest.json                # all state for this work unit
-    ├── seeds/                       # promoted inbox items — the work's origin
-    ├── imports/                     # user-shared reference files
-    ├── discovery/sessions/          # session logs; briefs/ for per-topic views
-    ├── research/{topic}.md
-    ├── discussion/{topic}.md
-    ├── investigation/{topic}.md
-    ├── specification/{topic}/specification.md
-    ├── planning/{topic}/planning.md
-    ├── implementation/{topic}/
-    └── review/{topic}/report.md
-```
-
-Every artifact is markdown in your repo, versioned with your code. Commits happen at natural breaks with conventional messages (`discovery(venue-ordering): synthesise 3 new topic(s)`), so `git log` doubles as the workflow's journal. The context-refresh recovery protocol in every skill leans on exactly that: re-read the skill, read the files, check `git log`, announce your position. Files on disk and git history are authoritative; recollection is not.
-
----
-
-*Next: the phases in order, starting with [discovery](discovery.md), or jump to the [engine](engine.md) that underpins all of it.*
+All of it lands as ordinary files in your repository, versioned alongside your code. Each work unit gets its own folder, and within it each phase writes its documents in a predictable place — the discovery session logs and topic briefs, the research and discussion files, the investigation, the specification, the plan, the implementation record, the review report — beside the promoted note the work grew from and the reference material it pulled in. Because everything is committed as it goes, with plain, conventional messages, your git history doubles as the workflow's own journal. That is not incidental: the recovery behaviour built into every phase leans on it. When a session needs to work out where it was, it re-reads its instructions, reads the files, and checks the history — because the files and the history are authoritative, and recollection is not.

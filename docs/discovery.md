@@ -1,110 +1,69 @@
 # Discovery
 
-Every piece of work, from a two-line config tweak to a six-month platform rebuild, enters through the same door. Discovery shapes what the user is bringing, settles what kind of work it is, persists it in one transaction, and routes it into the right pipeline.
+Every piece of work begins here. Discovery's job is deliberately narrow: figure out what kind of work this is, sketch its shape, save it, and hand it to the right next phase. It does not solve the problem — feasibility, design decisions, root-cause analysis all belong to the phases discovery routes *into*. It settles what the work is and where it goes.
 
-It runs in two modes:
+**Why every work type starts here.** The system runs five different pipeline shapes, and each begins with a different first phase. You cannot route the work until you know which shape it is. Discovery is the single funnel where that decision gets made, once, before the pipeline branches. It is also the one place designed to catch a wrong guess cheaply — the type you named at the start is only a hint, and reshaping it here costs nothing, whereas discovering the mismatch three phases later costs a great deal.
 
-- **New mode**, invoked from [`workflow-start`](how-it-fits-together.md). Nothing exists yet. Decide the work type, shape the outline, create the work unit, route to the first phase.
-- **Existing-epic mode**, invoked from the epic dashboard. The work type is settled; this session re-shapes the epic's [discovery map](#the-discovery-map): new exploration threads, edits to existing topics, or resuming an interrupted sketch.
+You never choose how discovery runs. If you are starting something new, it decides the type, shapes it, saves it, and routes it. If you are returning to an epic you already created, it re-opens that epic's map of topics to refine it. Which mode you are in is decided by how you arrived, not by anything you pick.
 
-## Shaping new work
+## Starting something new
 
-### The opener
+Discovery opens by reading anything you have already handed it, then inviting you to describe the work in your own words. Two kinds of material can come in at this opener. If you started this work by promoting something from your [inbox](capture-and-inbox.md) — a logged idea, bug, or quick-fix — discovery has already read it and opens by reflecting back the shape it picked up rather than parroting your note. And whatever you are working on, the opener invites you to share paths to related files: notes, design docs, error reports, prior research. That invitation is woven into the opening question, never a separate step, so having nothing to share costs you nothing. Anything you point at gets read to shape the conversation and saved into the work later.
 
-Discovery opens by reading whatever the user already brought. Promoted [inbox items](inbox-and-capture.md) arrive as seeds: pre-captured thoughts that become this work unit's origin. The opener synthesises them into a one-line sketch and asks a targeted question; it never dumps them back verbatim. File imports are woven into the same opening line ("if you have notes or files, share the path(s)"). There is no standalone import gate, and the no-files path costs zero extra turns.
+Then comes the heart of it: a shaping conversation whose only goal is to settle which of the five shapes this is. Discovery asks one open question at a time — never a rapid-fire checklist — and as patterns emerge it floats tentative reads softly, easy to redirect: *"I'm hearing a few distinct things — this might be more than one feature. Want to pull on that, or stay focused?"* It works out the cheap, terminal shapes first, because they confirm fast: a **bugfix** is something that used to work and now fails; a **quick-fix** is a small mechanical change with nothing to debate. If it is neither, the work is something to build or define, and the question becomes how many distinct concerns are in scope — one coherent thing is a **feature**, a concern that fans out into several is an **epic**, and a pattern or policy with nothing shippable at the end is **cross-cutting**.
 
-### Detecting the shape
+Two habits keep this conversation from sprawling. If a tangential concern surfaces that does not belong to the shape, discovery offers to park it as a fresh inbox note rather than let it creep the scope — and if you accept, it saves that note immediately, so the thought survives even if you abandon the session. And if the conversation tunnels into substance — mechanism, feasibility, root cause — discovery pulls back out: *"That's the kind of thing we'll get into once this is set up. For now, let's pin down what this is."* Staying in its lane is the whole discipline; the depth comes later, in the phase built for it.
 
-A detection core (`workflow-discovery/references/detection-core.md`) governs the conversation. It resolves two levels simultaneously, the work type and whether the work has one topic or many, but commits them in dependency order. The discriminator tree settles cheap, terminal shapes first:
+### The moment work becomes real
 
-1. **Something that worked is now failing**: specific symptoms, root cause unknown. Bugfix.
-2. **A small, known, mechanical change**: "bump the timeout", no behaviour debate. Quick-fix.
-3. **Otherwise, something to build or define.** A pattern or principle with nothing ship-able is cross-cutting; ship-able and coherent is a feature; ship-able with topics that keep multiplying is an epic.
+When the signals have converged and held steady, discovery states its read and the specific signals that drove it — concrete enough that you can challenge a particular cue — and asks:
 
-Topic count is a macro discriminator, not a post-commit step: you cannot tell epic from feature without surfacing whether topics multiply, so by the time "epic" commits, the topic seeds are already on the table. The bucket names stay internal until the commit moment. The user hears "several distinct things, more than one feature in scope", not "epic".
+> **Have I read this right?**
+> - **`y`/`yes`** — that's the right shape, set it up
+> - **`o`/`other`** — it's something else (tell me what)
+> - **Keep shaping** — tell me what I'm missing
 
-The conversation carries three standing disciplines:
+This gate is the single most important moment in discovery. **Until you say yes here, nothing exists on disk.** The entire shaping conversation is ephemeral — if you walk away before confirming, there is no half-created work, no stray files, nothing to clean up. The instant you confirm, everything persists at once, in a single commit: the work unit gets its own home and a name (which you confirm), your shared files are copied in as **imports**, any inbox notes that seeded the work are *moved* in as its **seeds** — its permanent record of origin — and a first session log captures the shaping conversation.
 
-- **Tentative reads surface mid-loop**, soft and easy to redirect, never silently accumulated to a verdict.
-- **Pivots stay live.** A pre-seeded type (the user picked `f`/feature from the menu) is a hint, never a lock; the same detection core watches for competing shapes ("this is shaping bigger than one feature") throughout.
-- **Tangents scope down to the inbox.** A concern that doesn't fit the current shape gets offered to the [capture skills](inbox-and-capture.md) instead of creeping the scope, and the capture is committed immediately, so it survives even if the discovery session is abandoned.
+Making this the one hinge is deliberate. Shaping is exploratory and often abandoned, so an abandoned exploration should leave zero residue, and a confirmed one should land completely and atomically. Everything downstream can then trust that "the work unit exists" means "its whole origin story exists."
 
-While the type is being determined, the conversation shapes rather than resolves: mechanism, feasibility, and design decisions belong to the phase the work routes into. If the conversation tunnels into substance, discovery notes the thread for the right later phase and returns to shaping.
+Once saved, the work is routed by its type. A **feature** or **cross-cutting** concern gets one more question — start in research or discussion? — with discovery leading on its read and one reason. A **bugfix** goes straight to investigation, a **quick-fix** straight to scoping. An **epic** does not stop at all; the same conversation deepens into shaping the epic itself.
 
-The commit move has three parts: state the read in plain terms; give the specific signals that drove it, concrete enough that the user can challenge a cue rather than accept or reject the whole; and render the confirm gate (`y`/yes · `o`/other · keep shaping).
+## Shaping an epic
 
-### The confirm trigger: the durability boundary
+Confirming an epic does not end the conversation — it opens it up. This is a genuine design conversation, framed as two senior engineers throwing an idea around: opinionated, willing to disagree, ready to counter-propose and push on the weak points. It holds tensions open instead of smoothing them over — the friction between two competing goals is usually where the real shape is — and it makes real decisions and writes them down plainly rather than hedging. Those decisions are *soft* not because they are worded tentatively but because of where they sit in the pipeline; the per-topic discussion phase is where they harden.
 
-Until the work type commits, everything is ephemeral. Nothing is on disk: no directory, no manifest, no log. The confirm trigger is the single persistence hinge, and it fires for every work type identically:
+One rule you will feel: **topics are never named during the conversation.** Discovery will not interrupt with "I'm hearing X, Y, and Z as topics." Topics are the *output* of understanding the whole shape, and naming them early would tunnel the conversation onto one item before the full picture exists. Throughout, discovery keeps a running written record — the ideas, the objections, the pivots, and crucially the paths that were rejected and *why* — because that record, not the live conversation, is what survives a context refresh.
 
-1. **Resolve the name** (collision-checked against existing work units).
-2. **Author the session log** to a staging path, with description, seeds, imports, and an Exploration section back-filled from the shaping conversation.
-3. **One engine transaction**:
+When the conversation converges, discovery drops a light, ambient invitation to harvest — woven into normal prose, requiring no answer, never repeated as a nagging check-in. **You** pull the harvest when you are ready ("let's pull topics," "that covers it," "good enough to start"); discovery never forces it. When you pull, it reads out the distinct surfaces the conversation named, merges the ones that share a domain or decision space, proposes a routing for each — research or discussion — and shows you the proposed topic set as a preview:
 
-```bash
-engine workunit create {work_unit} {work_type} --description "…" \
-  --session-log-file {staged-log} [--import {path} …] [--seed {path} …]
-```
+> **Confirm to commit, or tell me what to adjust.**
+> - **`y`/`yes`** — commit these topics and conclude
+> - **`e`/`explore`** — go back to exploration; not ready yet
+> - **Adjust** — split, merge, rename, re-route, or reword
 
-The transaction creates the manifest, copies imports into `imports/`, moves inbox seeds into `seeds/`, installs the staged log verbatim as `discovery/sessions/session-001.md`, indexes seeds and imports into the [knowledge base](knowledge-base.md), and commits. Validation completes before any mutation, so a missing import path fails the whole call with nothing created. The [engine](engine.md) owns the mechanics; the log content is model-authored, because the engine never writes prose.
+There is no pressure toward completeness. Two topics is fine; twenty is fine. The map is expected to keep filling as the work progresses.
 
-From here the pipeline branches. An epic continues into topic exploration in the same conversation. Feature and cross-cutting pick research or discussion at a one-question gate (research for open unknowns, discussion when the shape is clear and the open questions are trade-offs). Bugfix routes to investigation, quick-fix to scoping; no choice to make. Every type concludes through the [bridge](how-it-fits-together.md#the-bridge) into a clean context.
+### Briefs — the reasoning that travels forward
 
-## Epic exploration: the session loop
+Before the topics are saved, discovery writes a **brief** for each one: a per-topic view projected out of the whole conversation, with three sections — the soft decisions reached and why, the paths rejected and why, and the open questions carried forward. Each topic's downstream research or discussion phase reads its brief in full as its starting context.
 
-For an epic, the shaping conversation deepens rather than restarts. The register is collaborative challenge: two senior engineers throwing an idea around, not an interviewer running a checklist.
+Briefs are why an epic's wide, expensive conversation is not wasted on its narrow phases. The rejected paths especially — with the reasons attached — mean a downstream phase inherits the thinking instead of re-deriving it and re-walking the same dead ends. A brief is regenerable, never a record; the durable record is the session log, and a brief can always be re-projected from it. One safety behaviour matters here: if a brief is regenerated *after* downstream work on that topic has already begun, discovery does not overwrite that work — it flags the downstream phase to reconcile the change next time it runs. Soft thinking can prompt hardened thinking to re-examine itself; it can never silently overwrite it.
 
-- **Sparring, not mirroring.** Engage the shape: disagree, push on the weak point, offer a sharper framing. *"If the kitchen printer is the source of truth, the dashboard is just a cache, and that changes what happens when a venue drops offline. Buy that?"*
-- **One thread at a time.** No rapid-fire question lists, no monologues. Each answer shapes the next move.
-- **Topics are the output, never the agenda.** No inline decomposition ("I'm hearing X, Y, Z as topics") mid-loop. Topics fall out at the harvest, when the user pulls.
-- **Conversational, not autonomous.** Substance and soft decisions are welcome; autonomous research runs are not. A background agent spins up only if the user asks.
+## Returning to an epic
 
-The **Exploration** section of the session log is the running record: the ideas, objections, pivots, false paths with why they were dropped, soft decisions, answers to in-session questions. Prose, not transcript, layered forward at natural pauses and never summarised away. The log survives context compaction; conversation memory does not. Session logs are created lazily via `engine discovery-session open` on the first write, so a browse-only session leaves no file, no marker, no commit.
+When you come back to an epic to refine it, discovery skips all the type detection and re-opens the map as an anchor, briefs you on where the last conversation had got to, and lets you do two things in any mix: explore new areas (harvested into new topics exactly as the first time) and edit existing ones. You edit by saying what you want in plain language — remove a topic, rename it, change its routing, reword its summary, mark it handled — and discovery shows a proposal and a small confirm before making any change.
 
-Discovery makes real decisions and records them plainly, without hedging. They are soft not because of wording but because of **where they live**: firmness is conferred by position on the gradient running discovery (soft) → discussion (hardened) → specification (golden) → plan. The per-topic discussion still ratifies everything, so discovery explores substance freely without bypassing anything.
+Some edits are allowed only while a topic is still fresh, before any research or discussion work exists under its name. Removing, renaming, and re-routing all lock once real work begins — because the map item is the historical record that a topic ever existed, and letting you delete one with work behind it would erase the audit trail. When you ask for something blocked, discovery explains why in plain terms and points you at the right tool (cancelling in-flight work is a separate operation that preserves the record). Removing a fresh topic adds its name to a **dismissed list**, which stops the epic's self-healing analyses from quietly re-proposing something you deliberately dropped — and that stays reversible: ask to "show dismissed" in any session to bring a dropped topic back into the conversation.
 
-### The harvest
+## When a session is interrupted
 
-Convergence has proxies: the conversation circles back to covered ground, turns produce confirmation rather than new ground, the user's energy flags. When they show, discovery surfaces an ambient nudge woven into the turn; it never pushes synthesis. Only the user's pull ("that covers it", "let's wrap") triggers the harvest.
+Two recovery paths protect you. If a previous discovery session for an epic was left open, discovery notices and offers to continue it or restart — and restarting keeps any map edits you had already applied, discarding only the narrative record of the abandoned session. Either way it gives you a short "where we'd got to" briefing drawn from the recent session logs, so you resume a conversation rather than a bare topic list.
 
-Synthesis cross-references three sources, each with a different strength: the Exploration log (durable), conversation memory (richer but volatile), the existing map (the anchor). It then identifies **surfaces**: parts of the product with their own user interaction, decision space, and boundary. Granularity rules merge surfaces that share a domain or data model and resist splitting one surface into its implementation concerns; the map item is the unit of future research or discussion, not the unit of implementation. Routing is inferred per topic (research vs discussion) from how the user framed it, and the proposed set renders over the existing map for one confirmation gate: `y`/yes · `e`/explore · adjust (split, merge, rename, re-route, drop).
+And if the underlying conversation is compacted mid-discovery, the rule is simple: if the work had not yet been confirmed, the shaping is genuinely gone (nothing was on disk) and discovery re-opens with you; if it had, discovery recovers from the files and git history — which are authoritative, not its own recollection — announces where it thinks it is, and waits for you to confirm before continuing.
 
-On confirm, brief synthesis runs while the whole exploration is still in context. A **brief** (`discovery/briefs/{topic}.md`) is one topic's slice of the discovery record: soft decisions with reasoning, rejected paths with why, open questions. It is a projection, regenerated at every harvest that touches its topic, never a record. When a regenerated brief post-dates in-flight downstream work, the engine flags that work with `reconcile_needed`. A signal, never a rewrite: soft can prompt re-examination; it can never overwrite hard.
+## What you are left with
 
-Persistence closes the session: each confirmed topic lands via `engine discovery-map add`, the log's Topics Identified and Conclusion sections are written, and `engine discovery-session close` clears the active-session marker, indexes the finalised log into the knowledge base, and commits, one call covering everything the session left dirty.
+Discovery leaves a small set of artifacts in the work unit's folder, each meaning something specific to you. The **session log** is the durable narrative of each discovery conversation — what was explored, what was decided, and the paths dropped with their reasons — written as prose, not a transcript, and created only once there is a real change to record. For an epic, the **map** is the list of topics with their routing and a lifecycle state computed from what work actually exists, and the **briefs** are the per-topic starting contexts. **Seeds** are the inbox notes the work was born from; **imports** are the reference files you shared. Before an epic session finalises its topics, discovery reconciles the session log against the actual conversation, so what is written down matches what you discussed.
 
-## The discovery map
-
-The map lives in the epic's manifest at `phases.discovery.items.{topic}` and drives auto-routing for research and discussion. Rendered live from the fixture:
-
-```
-── DISCOVERY ────────────────────────────────────
-
-  RESEARCH & DISCUSSION (3 topics · 3 fresh)
-  ├─ ○ Kitchen Routing [fresh · routed to research]
-  │     Ticket routing and printer integration options
-  ├─ ○ Qr Ordering Flow [fresh · routed to discussion]
-  │     Diner-facing QR ordering journey
-  └─ ○ Operator Dashboard [fresh · routed to discussion]
-        Live operational view for venue staff
-```
-
-Map items carry `routing`, `summary`, `description`, a suggested execution `order`, a `brief_path`, and a `source` provenance field recording how the topic arrived: `discovery` (user-surfaced), `research-analysis:{parent}`, `gap-analysis`, `research-split:{parent}`, `direct-start`, `migration-seeded`, `legacy-split:{parent}`, or `reroute:{origin}`. Multi-source items comma-accumulate.
-
-Deliberately, a map item has **no status field**. Lifecycle (`fresh`, `researching`, `ready for discussion`, `discussing`, `decided`, `handled`, `cancelled`) is computed at render time by joining the map item against the per-phase items that actually exist. State that can be derived is never stored.
-
-### Editing the map
-
-A populated-map session takes edits conversationally: *"remove X"*, *"rename X to Y"*, *"re-route Y to discussion"*, *"edit the summary of Z"*, *"mark X handled"*. Operations group by destructiveness: contiguous summary/description edits batch into one gate and one commit; each remove, rename, or re-route stands alone. The engine enforces the lifecycle gates, so prose pre-validation and the write path can never disagree:
-
-- **Remove, rename, re-route** require a `fresh` item, one with no research or discussion work. Once phase work exists, the map item is that work's historical anchor and is preserved. The refusal names the block and the recovery path; the [engine page](engine.md#refusals) shows one captured live.
-- **Removal is not deletion into the void.** The name lands on a dismissed list so the self-healing analyses won't auto-re-add the topic. Any session can say "show dismissed"; re-adding a dismissed name requires the user's explicit confirmation, carried to the engine as `--force-dismissed`.
-- **Handled** marks a topic whose substance fanned out into differently-named discussions: visible on the map, out of the actionable set, reversible via unhandle.
-
-## Resuming
-
-The `active_session` manifest marker is the authoritative in-progress signal, set at the log's first write and cleared at session close. On the next epic entry, resume detection offers `c`/continue (the on-disk log becomes the working state, and a continuity pass briefs across prior session logs) or `r`/restart (discard the interrupted log; map edits already applied stay applied). After context compaction mid-session, the protocol is explicit: re-read the skill, determine from disk whether the confirm trigger fired, check `git status` and recent commits, and announce the recovered position before continuing. Files on disk and git history are authoritative; recollection is not.
-
----
-
-*Next: where a routed topic goes first, [research and discussion](research-and-discussion.md).*
+Throughout, discovery stops and waits at every gate — the type confirmation, the name, the routing, each map edit, each harvest. It will not answer these for you, even under pressure to "just proceed." These are the decisions that shape everything downstream, and they are yours to make.

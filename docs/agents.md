@@ -1,71 +1,21 @@
-# Agents
+# The agents
 
-Twenty-three sub-agents ship in `agents/`, and the reason they exist is context: a sub-agent reads the artifact cold, with no memory of the conversation that produced it, which is exactly what makes its critique worth having. The orchestrating session was *in* the conversation, so it can catch what was said but not written; the sub-agent catches what was written but not right. Every agent is stateless (each invocation starts fresh with full inputs) and returns a brief structured status. Most write their findings to files rather than chat, though the phase and task designers hand their deliverable back in the message itself. None touches git; commits belong to the orchestrator.
+Twenty-three specialised sub-agents work alongside the pipeline, and the reason they exist comes down to a single idea about context. The session you are talking to was *in* the conversation — it remembers what was said, what was meant, what was waved off. That memory is an asset when the job is to catch what was discussed but never written down. It is a liability when the job is to judge what *was* written down, because a participant reads a document already knowing what it was supposed to say. A sub-agent has no such memory. It reads the artifact cold, with nothing but the artifact in front of it, and that is exactly what makes its critique worth having. The orchestrating session catches what was said but not written; the fresh agent catches what was written but not right.
 
-They divide by *when* they act.
+Every one of these agents is stateless — each time it runs it starts from nothing and is given its inputs in full — and every one hands back a short, structured result. Most write their findings to files rather than into the chat, so the conversation is not flooded. None of them touches git or changes your project's state; committing and record-keeping belong to the orchestrating session and the [engine](engine.md) alone. The agents propose; nothing they produce becomes part of a plan or a specification without passing through a gate you control.
 
-## While you converse (background critics)
+They divide naturally by *when* in the work they act.
 
-These run behind live [research and discussion](research-and-discussion.md) sessions, and their findings surface through the never-dump protocol: one finding per turn, reframed as a question, only after the user opts in.
+**While you converse.** Behind a live [research or discussion](research-and-discussion.md) session, background critics read the growing document with clean eyes and look for what is missing — coverage gaps, shallow spots, assumptions taken on faith. A researcher can be sent off to investigate a single thread in real depth while the conversation carries on. And when a decision has two genuinely competing answers, a pair of them argue it from deliberately opposing viewpoints, after which another reconciles the two into a map of the real trade-offs. Their findings never dump on you all at once; they surface one at a time, as questions, when you are ready for them.
 
-| Agent | Role |
-|---|---|
-| `workflow-research-review` | Reads the research files with a clean slate; flags coverage gaps, shallow areas, unvalidated assumptions. Dispatched after meaningful commits. |
-| `workflow-research-deep-dive` | Independent investigation of one thread (competitor, API, feasibility, market) with web access, running while the conversation continues. |
-| `workflow-discussion-review` | The discussion counterpart of the research reviewer: gaps, shallow coverage, missing edge cases. |
-| `workflow-discussion-perspective` | Argues a decision from one assigned analytical lens. Two run in parallel as a deliberate polarity pair (Formal Systems ↔ Incentive Realist, Common Path ↔ Tail-Risk, …), each restating the decision through its lens before arguing. |
-| `workflow-discussion-synthesis` | Reconciles a completed perspective pair into a tradeoff landscape of tensions; a framing mismatch between the restatements becomes the first tension surfaced. |
+**When a document must be validated.** As a [specification](specification.md) or a [plan](planning.md) nears completion, agents check it in a strict sequence — one finds what was missed or distorted coming in from the sources, the next reads the finished document as its future consumers will, and because they run in order, the second is always reviewing the corrected version rather than the original. A bugfix's root cause gets the same treatment: an independent agent re-traces the code from scratch to confirm the diagnosis holds.
 
-## When a document must be validated (review cycles)
+**While the plan is built.** The plan is not drafted in one pass by one mind. One agent designs the phase structure from the specification, another breaks a phase into a task list, another writes the full detail of those tasks, and another works out the dependencies and ordering across the whole plan — each doing one job well, with you approving between them.
 
-Dispatched synchronously inside the [specification](specification.md#review-two-agents-strictly-sequential) and [planning](planning.md#review) review loops, always in a strict order so the second agent reviews the corrected document.
+**While the code is written.** Each task in the [implementation](implementation.md) loop is handled by a pair: an executor that writes the code test-first, and an independent reviewer — which did not write that code — that checks it against the specification and the task's acceptance criteria. The reviewer's verdict is what drives the fix loop.
 
-| Agent | Role |
-|---|---|
-| `workflow-investigation-synthesis` | Independently validates a bugfix's root-cause hypothesis by tracing the code and checking it explains every symptom. |
-| `workflow-specification-review-input` | Compares the spec against all source material: what got missed or distorted on the way in. |
-| `workflow-specification-review-gap-analysis` | Reads the spec standalone, as its consumers will: completeness, clarity, ambiguity, planning readiness. |
-| `workflow-planning-review-traceability` | Checks plan against spec in both directions: every task traceable, every requirement landed. |
-| `workflow-planning-review-integrity` | Checks the plan's own structural quality, implementation readiness, and standards adherence. |
-
-## While the plan is built
-
-The [planning](planning.md#construction) construction pipeline, one concern per agent:
-
-| Agent | Role |
-|---|---|
-| `workflow-planning-phase-designer` | Designs the phase structure from the specification. |
-| `workflow-planning-task-designer` | Breaks one phase into a task list with edge cases. |
-| `workflow-planning-task-author` | Writes full detail for all of a phase's tasks into the task detail file: one agent per phase, never concurrent. |
-| `workflow-planning-dependency-grapher` | Establishes inter-task dependencies and priorities across the whole plan, detects cycles, writes graph data through the format adapter. |
-
-## While the code is written
-
-The [implementation](implementation.md) loop's pair, per task:
-
-| Agent | Role |
-|---|---|
-| `workflow-implementation-task-executor` | Implements one task via the TDD workflow (or the quick-fix verification workflow). Stops and reports on any spec deviation rather than choosing a workaround. |
-| `workflow-implementation-task-reviewer` | Independently reviews that one task: spec conformance, acceptance criteria, architectural quality. Its `needs-changes` verdict drives the fix loop. |
-
-## After the code exists (analysis and remediation)
-
-The post-loop [analysis cycle](implementation.md#the-analysis-loop) and [review remediation](review.md#the-remediation-loop) pipelines, three examiners, then synthesis, then write-back:
-
-| Agent | Role |
-|---|---|
-| `workflow-implementation-analysis-architecture` | API surface quality, module structure, integration gaps, seam quality. |
-| `workflow-implementation-analysis-duplication` | Cross-file duplication, near-duplicate logic, extraction candidates. |
-| `workflow-implementation-analysis-standards` | Specification conformance and project convention compliance. |
-| `workflow-implementation-analysis-synthesizer` | Deduplicates and normalizes the three analysts' findings into staged tasks for user approval. |
-| `workflow-implementation-analysis-task-writer` | Writes approved analysis tasks into the plan via the format's authoring adapter. |
-| `workflow-review-task-verifier` | Verifies one completed plan task against acceptance criteria, spec context, and test adequacy; dispatched in parallel batches of five during [review](review.md#verification). |
-| `workflow-review-findings-synthesizer` | Turns review findings into normalized remediation tasks for triage and write-back. |
+**After the code exists.** Once the tasks are built, a set of examiners looks back over the whole result from different angles — architecture, duplication, standards conformance — and a synthesiser turns their overlapping findings into a clean list of remediation tasks for you to approve. In the final [review](review.md), verifiers check the completed tasks against what was agreed, working in parallel, and another agent turns the review's findings into remediation work.
 
 ## The common shape
 
-Read a few of these files and a pattern emerges. Inputs are explicit file paths plus content, never "the conversation so far". Outputs are structured: findings files with stable IDs and frontmatter state for the background critics, tracking files for the review cycles, staging files for the synthesizers, plus a terse `STATUS:` report to the orchestrator. Tool grants are minimal for the job (the phase designers get read-only `Read, Glob, Grep`; only the deep-dive researcher gets web access; the Linear MCP tools go only to agents that operate on plan tasks in the external format — the task-writer to create issues, the two plan reviewers read-only, the dependency-grapher to write relations). And every judgment gate stays with the orchestrator and the user: agents propose, findings get triaged, nothing an agent writes becomes plan or spec content without passing through an approval gate.
-
----
-
-*Next: where work comes from before it has a pipeline, [inbox and capture](inbox-and-capture.md).*
+Read across all of them and the same discipline repeats. Their inputs are always explicit — the exact material to work from, handed over in full, never a vague "everything we've discussed so far" — which is what lets a stateless agent do a reliable job. Their outputs are always structured, so the orchestrator can act on them without guessing. Each is given only the capabilities its job actually needs and no more. And every point where judgment is exercised stays with the orchestrating session and with you: the agents surface, propose, and argue, but the decisions, and the commits that record them, are never theirs to make. That is the whole arrangement in one line — a workforce of fresh, narrow experts that produce findings, feeding a single conversation that decides what to do with them.

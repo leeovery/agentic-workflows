@@ -1,27 +1,35 @@
 # Introduction
 
-Claude Code is a capable engineer with no memory and no process. Left alone, it starts coding while requirements are still forming, loses hard-won context at every compaction, and re-derives yesterday's decisions from scratch, differently. This system adds the two missing pieces: a process that makes the thinking happen in the right order, and a memory that makes it durable.
+Claude Code is a strong engineer with no memory and no process. This system adds both. It wraps your work in a phased pipeline that thinks before it builds — a conversation that pushes back, a specification you approve, a plan broken into tasks, then implementation running task by task while you step away — and it remembers what it learns, so the next piece of work starts warmer than the last.
 
-It installs as a set of skills and agents into any project (`npx agntc add leeovery/agentic-workflows`), and everything it produces is markdown and JSON in your repo, versioned with your code. One command, `/workflow-start`, is the whole user surface.
+You reach all of it through one command. You type `/workflow-start`, describe what you want, and answer the questions that follow. From there the system shows you where you are, asks for decisions at the moments that matter, and produces documents you read and approve. You never run the machinery underneath — there are no state commands to remember, no files to hand-edit, no bookkeeping to keep straight. Your job is to decide; the system's job is to keep the record straight and do the work.
 
-## Three commitments
+## Why it is built this way
 
-**Documents drive phases.** Work moves through a pipeline (shaped per [work type](work-types.md)) where each phase produces an artifact the next phase consumes: a [discovery](discovery.md) session log, [research and discussion](research-and-discussion.md) records, a [specification](specification.md), a [plan](planning.md), the [implementation](implementation.md), a [review](review.md) report. The discipline is cumulative: decisions harden as they move (discovery is soft, discussion hardens, the spec is golden), and nothing reaches code that didn't survive the chain. Because the artifacts are the memory, sessions are disposable: any phase can stop, clear context, and resume from disk without losing a decision. Completed artifacts feed a [knowledge base](knowledge-base.md), so the next work unit inherits what this one settled, including the paths it rejected.
+Three commitments shape everything the system does. Understanding them upfront makes the rest of this documentation read as consequences rather than rules.
 
-**The deterministic engine owns state.** Anything fully determined by data is computed in code, never re-derived in prose: statuses, transitions, lifecycle joins, dashboards, menus. The [engine](engine.md) validates every write against a schema, refuses illegal transitions with the recovery path named, runs multi-step changes as all-or-nothing transactions, and renders every display byte-stably. Claude reads the engine's answers; it does not maintain a mental model of your project's state and hope.
+**Documents drive the work.** Every phase produces a durable document in your repository — a discussion, a specification, a plan, a review. These are not notes the system keeps for itself; they are the working material of the next phase and the record you approve along the way. Thinking is front-loaded into writing, so that building becomes the execution of decisions already made. This is why a specification exists before a plan, and a plan before code: each phase hands the next a document solid enough to work from without re-litigating what came before.
 
-**Claude orchestrates, never freewheels.** The model's job is judgment: shaping work in conversation, arguing design trade-offs, deciding when a subtopic has converged, writing the code. Around that judgment sit hard structural controls: STOP gates that end the turn and wait (no session directive overrides them; automation is only ever the user's own explicit `a`/auto opt-in, and escalation thresholds re-gate it), [sub-agents](agents.md) that critique artifacts with clean eyes, review loops that rerun until clean, and an executor whose instruction on hitting a spec problem is to stop and report, never to improvise a workaround. The system's own skill files name the failure mode precisely: *"the reasonable call is X, I'll proceed with X" is the auto-answer the rule forbids.*
+**A deterministic core owns the state.** The assistant reasons, proposes, and talks with you — but it never decides on its own what the true state of your work is. Anything that can be computed from what is already on disk is computed the same way every time by a rule-bound core, then handed to the assistant to act on. Status displays are derived from your files rather than remembered; phase transitions are committed by the core, not narrated into being. The effect is that the system does not drift. You will not get one answer today and a subtly different one tomorrow because the assistant recalled the state loosely. There is one authority on what is true, and everything reads from it.
 
-## What using it feels like
+**Work is validated against what was agreed.** "Done" is not a feeling. The final phase holds the delivered work up against the record that produced it — the discussion that shaped it, the specification that defined it, the plan that scheduled it — and confirms they match. Decisions are captured, the capture is authoritative, and the outcome is checked back against the capture. The loop closes.
 
-You type `/workflow-start`. The system boots (migrations, knowledge check, one call), shows every piece of work in flight, and offers to continue any of it or start something new. New work opens as a conversation that figures out what the work *is*, a bug, a mechanical tweak, one feature, a multi-topic initiative, a project-wide policy, and routes it into the right pipeline. From there each phase is a session with a clear artifact, ending in a handoff built to survive a context clear. At every point the current state is on disk, in git, and on a dashboard the engine rendered.
+## The shape of a session
 
-The [how it fits together](how-it-fits-together.md) page walks a real session end to end, with the actual renders.
+Work moves through phases, and your involvement narrows as certainty grows. Early on — settling what the work is, exploring it, arguing decisions to a conclusion — the system is conversational and stops often, because these are the moments where a wrong turn is cheap to correct now and expensive to discover later. By the time work reaches implementation, the decisions are already written down, so the loop runs hands-off: agents write code test-first, check it against the plan, and surface to you only when something needs a human call. This graduated hand-off — heavy collaboration up front, agent-led delivery at the end — is a deliberate design, described in [the collaboration model](collaboration.md).
 
-## Where it came from
+A single piece of work travels from a rough idea to landed, reviewed code without you ever leaving the pipeline. You describe it; [discovery](discovery.md) settles what kind of work it is and shapes it; the middle phases explore, decide, specify, and plan; [implementation](implementation.md) builds it and [review](review.md) verifies it. Everything produced lands in git as you go, so you can kill a session at any point and the next one resumes from disk. Nothing important ever lives only in a chat window.
 
-The short version: it started (Nov 2025) as two prose skills, discuss-then-plan, and every era since has moved one more class of bookkeeping from Claude's head into typed systems: a manifest for state, a knowledge base for recall, a discovery map for shaping, and finally a deterministic engine for everything derivable, built across a 57-PR re-platforming with adversarial review campaigns. The [history](history.md) and [timeline](timeline.md) pages tell it properly, including the rendering bug that triggered the engine.
+## Getting started
 
----
+```bash
+npx agntc add leeovery/agentic-workflows
+```
 
-*Next: the five pipeline shapes in [work types](work-types.md).*
+Then, in Claude Code:
+
+```
+/workflow-start
+```
+
+That is the whole interface. The first run configures itself in conversation — there is no setup procedure to follow. If you want search-by-meaning over your past work, you will be offered a one-time setup for it; everything works without it too. From here, [the five work types](work-types.md) explains the pipeline shapes and how the right one gets chosen, and it is the natural next page.
