@@ -13,10 +13,10 @@ This step dispatches the three analysis agents in parallel to evaluate the compl
 Build the list of implementation files using git history:
 
 ```bash
-git log --oneline --name-only --pretty=format: --grep="impl({work_unit}):" | sort -u | grep -v '^$'
+git log --oneline --name-only --pretty=format: --grep="impl({work_unit}): T{topic}-" | sort -u | grep -v '^$'
 ```
 
-This captures all files touched by implementation commits for the topic.
+This captures all files touched by this topic's task commits (internal IDs embed the topic, so the `T{topic}-` prefix keeps sibling topics of a multi-topic epic out of scope).
 
 ---
 

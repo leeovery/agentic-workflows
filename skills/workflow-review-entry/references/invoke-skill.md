@@ -16,9 +16,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 ```
 Review session
 Work unit: {work_unit}
+Topic: {topic}
+Scope: single
 
 Plans to review:
   - work_unit: {work_unit}
+    topic: {topic}
     format: {format}
     specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
 

@@ -6,7 +6,7 @@
 
 Process findings from a review agent interactively with the user. The agent writes findings — with full fix content — to a tracking file. Read the tracking file and present each finding for approval.
 
-**Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (B or C in plan-review.md).
+**Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (C or D in plan-review.md).
 
 **Commits in this file**: applying a finding writes through the format adapter, and the format's task storage may live outside the work unit. Commit with raw git — `git add -- .workflows/{work_unit} {format task storage paths}`, then `git commit` — never the scoped helper.
 
@@ -132,8 +132,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 #### If `finding_gate_mode: auto`
 
 1. Apply the fix to the plan (use **Proposed** content exactly as in tracking file)
-2. Update the tracking file: set resolution to "Fixed"
-3. Commit the tracking file and plan changes
+2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} task_map.{internal_id}
+   ```
+3. Update the tracking file: set resolution to "Fixed"
+4. Commit the tracking file and plan changes
 
 > *Output the next fenced block as a code block:*
 
@@ -178,9 +183,10 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 #### If `approved`
 
 1. Apply the fix to the plan — use the **Proposed** content exactly as shown, using the output format adapter to determine how it's written. Do not modify content between approval and writing.
-2. Update the tracking file: set resolution to "Fixed", add any discussion notes.
-3. Commit the tracking file and any plan changes — ensures progress survives context refresh.
-4. > *Output the next fenced block as a code block:*
+2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry (same commands as the auto flow above).
+3. Update the tracking file: set resolution to "Fixed", add any discussion notes.
+4. Commit the tracking file and any plan changes — ensures progress survives context refresh.
+5. > *Output the next fenced block as a code block:*
 
    ```
    Finding {N} of {total}: {Brief Title} — fixed.
@@ -190,7 +196,7 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 
 #### If `auto`
 
-1. Apply the fix (same as "If approved" above)
+1. Apply the fix and the `task_map` upkeep (same as "If approved" steps 1–2 above)
 2. Update the tracking file: set resolution to "Fixed"
 3. Update `finding_gate_mode` in the manifest:
    ```bash

@@ -54,6 +54,35 @@ completes.
 
 **STOP.** Do not proceed — terminal condition.
 
+#### If specification exists and status is `superseded`
+
+> *Output the next fenced block as a code block:*
+
+```
+Specification Superseded
+
+The specification for "{topic:(titlecase)}" was consolidated into
+"{superseded_by:(titlecase)}".
+
+Plan the superseding specification instead.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If specification exists and status is `promoted`
+
+> *Output the next fenced block as a code block:*
+
+```
+Specification Promoted
+
+"{topic:(titlecase)}" was promoted to the cross-cutting work unit
+"{promoted_to}". Cross-cutting specifications inform other plans —
+they are not planned directly.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
 #### If specification exists and status is `completed`
 
 → Return to caller.

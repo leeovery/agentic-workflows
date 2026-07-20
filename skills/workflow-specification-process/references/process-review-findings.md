@@ -6,7 +6,7 @@
 
 Process findings from a review phase interactively with the user. The analysis phase writes findings to a tracking file. Read the tracking file and present each finding for approval.
 
-**Review type**: `{review_type:[Input Review|Gap Analysis]}` — set by the calling context (B or C in spec-review.md).
+**Review type**: `{review_type:[Input Review|Gap Analysis]}` — set by the calling context (C or D in spec-review.md).
 
 Check if the tracking file exists at the expected path.
 

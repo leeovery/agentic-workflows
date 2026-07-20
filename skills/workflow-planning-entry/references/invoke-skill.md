@@ -33,6 +33,7 @@ Work unit: {work_unit}
 
 Specification: .workflows/{work_unit}/specification/{topic}/specification.md
 Existing plan: .workflows/{work_unit}/planning/{topic}/planning.md
+Cross-cutting references: {list of applicable cross-cutting specs with brief summaries, or "none"}
 
 Invoke the workflow-planning-process skill.
 ```

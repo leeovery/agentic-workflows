@@ -13,10 +13,10 @@ This step dispatches `workflow-review-task-verifier` agents in batches to verify
 Build the list of implementation files using git history. For each plan in scope:
 
 ```bash
-git log --oneline --name-only --pretty=format: --grep="impl({work_unit}):" | sort -u | grep -v '^$'
+git log --oneline --name-only --pretty=format: --grep="impl({work_unit}): T{topic}-" | sort -u | grep -v '^$'
 ```
 
-This captures all files touched by implementation commits for the topic.
+This captures all files touched by that plan topic's task commits (internal IDs embed the topic, so the `T{topic}-` prefix keeps sibling topics of a multi-topic epic out of scope).
 
 → Proceed to **B. Extract All Tasks**.
 
@@ -24,10 +24,16 @@ This captures all files touched by implementation commits for the topic.
 
 ## B. Extract All Tasks
 
+Read the work type:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+```
+
 Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope:
 - Note each task's description
-- Note each task's acceptance criteria
-- Note expected micro acceptance (test name)
+- Note each task's acceptance criteria — quick-fix tasks carry a **Verification** section instead of acceptance criteria; note that
+- Note expected micro acceptance (test name) — absent for quick-fix tasks
 - Note each task's **internal ID** (format: `{topic}-{phase_id}-{task_id}`) — derive the **task suffix** by stripping the topic prefix (e.g., `auth-flow-1-1` → `1-1`)
 
 → Proceed to **C. Filter Tasks**.
@@ -85,6 +91,7 @@ Each verifier receives:
 6. **Work unit** — the work unit name (for path construction)
 7. **Topic** — the plan topic name (used for output directory)
 8. **Task suffix** — the `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
+9. **Work type** — from the manifest (`quick-fix` switches the verifier to completeness-based criteria)
 
 If any verifier fails (error, timeout), record the failure and continue — aggregate what's available.
 
