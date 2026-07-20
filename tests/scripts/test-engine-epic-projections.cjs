@@ -338,7 +338,6 @@ describe('epic projections: menu', () => {
       '- **`i`/`discovery`** — Continue discovery',
       '- **`c`/`completed`** — Resume a completed topic',
       '- **`a`/`cancel`** — Cancel a topic (phase work)',
-      '- **`m`/`map`** — View pipeline map',
       '',
       'Select an option:',
       '· · · · · · · · · · · ·',
@@ -359,7 +358,6 @@ describe('epic projections: menu', () => {
         ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
-        ['m', 'view_map', null, null],
       ]
     );
     assert.strictEqual(keys[0].recommended, true);
