@@ -14,7 +14,7 @@
 
 **On length**: Discussions can be thousands of lines. Length = whatever needed to fully capture discussion, debates, edge cases, false paths. Terseness preferred, but comprehensive documentation more important. Don't summarize — document.
 
-See **[meeting-assistant.md](meeting-assistant.md)** for the dual-role approach (expert architect + documentation assistant).
+→ Load **[meeting-assistant.md](meeting-assistant.md)** and follow its instructions as written — the dual-role approach (expert architect + documentation assistant).
 
 ## Organic Flow
 
@@ -34,7 +34,7 @@ The conversation follows the thinking, not a checklist. Subtopics emerge, get ex
 
 **Don't**: Transcribe verbatim, write code/implementation, create build phases, skip context
 
-See **[guidelines.md](guidelines.md)** for best practices and anti-hallucination techniques.
+→ Load **[guidelines.md](guidelines.md)** and follow its instructions as written — best practices and anti-hallucination techniques.
 
 ## Write to Disk and Commit Frequently
 

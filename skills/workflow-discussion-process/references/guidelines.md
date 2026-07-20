@@ -90,3 +90,5 @@ Before marking discussion complete:
 - ✅ Confidence stated where uncertain
 - ✅ No hallucination
 - ✅ Open threads noted in Summary
+
+→ Return to caller.

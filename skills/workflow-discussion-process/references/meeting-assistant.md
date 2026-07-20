@@ -109,3 +109,5 @@ The file on disk is the work product. Context compaction will destroy conversati
 Give them: Context (why), direction (what), trade-offs (constraints), rationale (why X over Y), false paths (what not to try)
 
 Your job ends at documentation. Planning team creates implementation plan.
+
+→ Return to caller.

@@ -248,7 +248,7 @@ Convergence is the natural end state — not a forced conclusion. The discussion
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries the convergence facts: `all_decided` and `review_cycles`.
+Its DATA section carries the convergence facts: `all_decided` and `review_cycles`. The DISPLAY section isn't emitted here — this flow reads DATA only.
 
 #### If `review_cycles` is 0
 
@@ -265,8 +265,6 @@ Dispatch a review agent as a foreground task (not background — results are nee
 → Return to **B. Session Loop**.
 
 #### If `review_cycles` is at least 1
-
-**When convergence is reached** (`all_decided` is true):
 
 > *Output the next fenced block as a code block:*
 
@@ -311,7 +309,7 @@ node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_un
 
 Its DATA section carries everything this flow needs: `all_decided`, `unresolved`, `review_cycles`.
 
-**If `review_cycles` is 0:**
+#### If `review_cycles` is 0
 
 > *Output the next fenced block as a code block:*
 
@@ -323,7 +321,7 @@ Its DATA section carries everything this flow needs: `all_decided`, `unresolved`
 
 Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, delegate to **B. Check and Surface** in review-agent.md — the shared surfacing protocol applies the never-dump rules and presents findings one at a time. Then continue with the conclusion flow below.
 
-**If `review_cycles` is at least 1:**
+#### If `review_cycles` is at least 1
 
 Continue with the conclusion flow below.
 

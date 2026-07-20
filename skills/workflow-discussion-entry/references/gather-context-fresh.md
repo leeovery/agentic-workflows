@@ -4,7 +4,7 @@
 
 ---
 
-Ask each question below **one at a time**. After each, **STOP** and wait for the user's response before proceeding.
+Ask each question below **one at a time**. After each, stop and wait for the user's response before proceeding.
 
 ---
 
