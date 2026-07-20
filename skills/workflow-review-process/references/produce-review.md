@@ -13,7 +13,11 @@ Write the review to `.workflows/{work_unit}/review/{topic}/report.md`. The revie
 - **Request Changes** — Missing requirements, broken functionality, inadequate tests
 - **Comments Only** — Minor suggestions, non-blocking observations
 
-### Categorizing and Clustering Recommendations
+→ Proceed to **A. Categorizing and Clustering Recommendations**.
+
+---
+
+## A. Categorizing and Clustering Recommendations
 
 When writing the `## Recommendations` section, read the NON-BLOCKING NOTES from all `report-*.md` files and group them by their category tags:
 
@@ -36,7 +40,11 @@ A clustered item:
 
 Order subsections `### Do now`, `### Quick-fixes`, `### Ideas`, `### Bugs`. Only include subsections with at least one item. Number items sequentially across all subsections (do not reset per category). Omit the entire `## Recommendations` section if no notes survive.
 
-### Commit and Continue
+→ Proceed to **B. Commit and Continue**.
+
+---
+
+## B. Commit and Continue
 
 Commit:
 

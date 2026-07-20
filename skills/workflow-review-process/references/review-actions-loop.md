@@ -229,6 +229,8 @@ Review synthesis cycle {N}: {K} proposed tasks
 
 → Proceed to **E. Route on Results**.
 
+#### Otherwise
+
 Present the next pending task:
 
 > *Output the next fenced block as markdown (not a code block):*
