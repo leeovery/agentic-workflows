@@ -1,0 +1,27 @@
+# The engine
+
+Underneath the conversation sits a deterministic core the system calls the engine. You never touch it and you will never see it named in a prompt, but almost every guarantee in [how it stays reliable](reliability.md) traces back to it, so it is worth understanding what it is and why it was built.
+
+The engine exists to answer a specific failure class. Ask a language model to hold your project's state in its head, work out what phase things are in by reading around, or draw a status dashboard by hand, and the result is *usually* right — which is another way of saying occasionally wrong, unpredictably, and worse each time the reasoning is reconstructed from scratch. The engine draws one firm line to end that: anything fully determined by the data is computed once, in code, and handed to the assistant to act on — never re-derived in prose. The assistant reasons and decides; the engine records what is true. Judgment decides, code records.
+
+## The token argument
+
+The first reason this matters is economic. Before the core existed, every session paid to rebuild the same facts: reading through directories to infer progress, recomputing which phase each topic occupied, redrawing the same dashboards from written instructions turn after turn. That is a great deal of a model's attention spent reconstructing things that had not changed — attention that is finite, and that would rather be spent on your actual problem.
+
+The alternative was considered and rejected: hand the whole orchestration to plain code and call the model only as a hired hand through an API. That trades away the thing that makes the model worth having. So the design inverted instead. The assistant stays the driver of the work; the code becomes a reliable thing it *consults*. Now a single request returns a finished snapshot of the state, and the model reads it rather than rebuilding it. The reasoning the model has to carry from one turn to the next shrank dramatically. Less is spent on bookkeeping, more on the conversation, and the bookkeeping is correct every time rather than usually.
+
+## Determinism
+
+The second reason is that a display you cannot trust is worse than no display. Because the status you see is computed from your files rather than drawn from memory, the same state always produces the same result, down to the byte. A dashboard is not re-imagined each session and quietly restyled; the arithmetic that lays out a tree or wraps a summary lives in exactly one place, so it behaves identically everywhere and fails loudly rather than silently mis-drawing. Some of what the core produces is meant only for the assistant to reason from and is never shown to you; the rest is meant for you and is passed through untouched, never reinterpreted as if it were an instruction. That one-way separation is what makes the status trustworthy — it cannot drift because the assistant recalled the situation loosely, and no session can "helpfully" edit what it reports.
+
+## Safety
+
+The third reason is that work you hand over for months has to survive interruption without corrupting. Every change to your project's state is a transaction: validated completely before anything is written, and either applied whole or not at all. When a new piece of work is created, everything about its origin — its record, the files it pulled in, the note it grew from, its first session log — is committed in a single transaction, and if any part cannot be done, none of it is, leaving nothing half-created behind (this is the durability boundary described in [discovery](discovery.md)). The same holds for reshaping operations: a merge that cannot proceed leaves both sides exactly as they were. Writes happen one at a time under a lock and land atomically, so a crash in the middle can never leave a torn, half-written record. And when the core refuses something, it refuses loudly and usefully — naming both what blocked the change and the way to achieve what you wanted — rather than failing quietly or, worse, corrupting the state to make an illegal thing fit. The one deliberate exception is the memory index: because it is derived from your artifacts and can always be rebuilt, a hiccup there is reported as a warning rather than being allowed to abort real work.
+
+## Committed as it goes, kept current
+
+The core also owns how work reaches git. Its commits are scoped to the workflow's own files, so recording a state change can never sweep unrelated edits from your working tree along with it, and the changes that represent a clean, invariant transition carry their own committed record. The same core runs the reconciliation that keeps older projects current with the latest design: a numbered series of small, idempotent steps, each applied at most once, that stop hard rather than half-apply if anything is wrong. This is why an update never leaves you on a stale or partially-migrated project.
+
+## What it changed
+
+The engine did not change what the system is *for* — documents still drive the work, and the conversation is still the driver. What it changed is who keeps the books. Everything that could be answered by data moved out of the model's prose and into code the model consults, and everything that requires judgment stayed with the conversation and with you. That balance — a thinking driver over a dependable, deterministic memory — is the design, more than any single part of it.

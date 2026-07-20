@@ -114,15 +114,19 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## Documentation
 
-The [full documentation](docs/README.md) covers every phase in detail, the knowledge base, the collaboration model, and how the system stays reliable. Start with these:
+The [full documentation](docs/README.md) covers every phase in detail, the engine beneath them, the knowledge base, all twenty-three agents, and the history of the project. Start with these:
 
 | Page | Contents |
 |---|---|
 | [Introduction](docs/introduction.md) | The ideas behind the design |
+| [How it fits together](docs/how-it-fits-together.md) | The layers, the tiers, and how an action travels through them |
 | [The five work types](docs/work-types.md) | Epic to quick-fix, each pipeline in full |
 | [Implementation](docs/implementation.md) | The TDD loop, gates, and the fix threshold |
+| [The engine](docs/engine.md) | What the deterministic core does, and why |
 | [The knowledge base](docs/knowledge-base.md) | Recall, provenance, decay |
+| [The agents](docs/agents.md) | All twenty-three, organised by when they act |
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
+| [History](docs/history.md) | Where this came from and how it evolved |
 
 **Setup:** Node 18+. There is no setup procedure; the first run configures itself in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
 

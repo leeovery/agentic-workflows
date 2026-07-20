@@ -25,6 +25,15 @@ The phases in order — the journey from a rough idea to landed, reviewed code. 
 - [The collaboration model](collaboration.md) — why your involvement is widest at the start and narrows toward delivery, and how the approval gates work.
 - [How it stays reliable](reliability.md) — why the system does not drift, in terms of the guarantees you feel rather than the machinery beneath them.
 
+## Under the hood
+
+How the system works beneath the conversation — described, not as anything you operate.
+
+- [How it fits together](how-it-fits-together.md) — the layers, the skill tiers, and how a single action travels down through them.
+- [The engine](engine.md) — the deterministic core: what it is, and why it was built for token economy, determinism, and safety.
+- [The agents](agents.md) — the workforce of fresh, narrow sub-agents, and why work is delegated to them.
+- [History](history.md) — where the system came from, and the problems that bent it into its current shape.
+
 ## Day to day
 
 - [Capture and the inbox](capture-and-inbox.md) — logging ideas, bugs, and quick-fixes without stopping, then triaging them into real work.
