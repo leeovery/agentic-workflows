@@ -190,6 +190,38 @@ describe('detect.cjs: filter conditions', () => {
     const r = runScriptJson(DETECT_CLI, 'substr');
     assert.deepStrictEqual(r.json.qualifying_sources, ['foo']);
   });
+
+  it('surfaces an otherwise-qualifying source with an illegal (dotted) name as unsplittable', () => {
+    seedLegacyEpic('dotted', 'api.v2');
+    const r = runScriptJson(DETECT_CLI, 'dotted');
+    assert.deepStrictEqual(r.json.qualifying_sources, []);
+    assert.strictEqual(r.json.unsplittable.length, 1);
+    assert.strictEqual(r.json.unsplittable[0].name, 'api.v2');
+    assert.ok(r.json.unsplittable[0].reason.length > 0);
+  });
+
+  it('does not surface non-candidate illegal names as unsplittable', () => {
+    // Illegal name but not migration-seeded — it was never a split candidate.
+    seedLegacyEpic('notcand', 'api.v2', { source: 'discovery' });
+    const r = runScriptJson(DETECT_CLI, 'notcand');
+    assert.deepStrictEqual(r.json.qualifying_sources, []);
+    assert.deepStrictEqual(r.json.unsplittable, []);
+  });
+
+  it('surfaces a set legacy_split_state as a stranded sentinel', () => {
+    seedLegacyEpic('stranded', 'src', { legacy_split_state: 'in-progress' });
+    const r = runScriptJson(DETECT_CLI, 'stranded');
+    assert.deepStrictEqual(r.json.qualifying_sources, []);
+    assert.deepStrictEqual(r.json.stranded_sentinels, ['src']);
+  });
+
+  it('a clean run reports empty unsplittable and stranded lists', () => {
+    seedLegacyEpic('clean', 'exploration');
+    const r = runScriptJson(DETECT_CLI, 'clean');
+    assert.deepStrictEqual(r.json.qualifying_sources, ['exploration']);
+    assert.deepStrictEqual(r.json.unsplittable, []);
+    assert.deepStrictEqual(r.json.stranded_sentinels, []);
+  });
 });
 
 // ----- validate.cjs -----
@@ -296,6 +328,68 @@ describe('validate.cjs: cache shape contract', () => {
     });
     // src is 'auth'; the single theme is also 'auth'. This is the source-rename case.
     writeCachePlan('wu', 'auth', [{ ...baseTheme() }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'auth');
+    assert.strictEqual(r.json.ok, true);
+  });
+
+  it('rejects a theme name containing a dot (engine dot-path hazard)', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'api-v2.0' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme 'api-v2.0' has an illegal name")));
+  });
+
+  it('rejects a theme name containing a slash (filesystem hazard)', () => {
+    // Write plan.json directly — a slash in the name can't be a flat cache filename.
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
+      themes: [{ kebab_name: 'api/v2', summary: 's', description: 'd' }],
+    }));
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme 'api/v2' has an illegal name")));
+  });
+
+  it('rejects an uppercase / underscore theme name', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'API_Design' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme 'API_Design' has an illegal name")));
+  });
+
+  it('rejects a theme name with a leading dash', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: '-auth' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("theme '-auth' has an illegal name")));
+  });
+
+  it('accepts a clean kebab name with digits', () => {
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'api-v2' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, true);
+  });
+
+  it('rejects a theme that would overwrite an existing research file (no manifest item)', () => {
+    // A research file on disk with NO discovery/research manifest item — the
+    // discovery-collision check misses it, but apply's writeFileSync would clobber it.
+    writeResearchFile('wu', 'orphan', '# Orphan research\n\nPre-existing.');
+    writeCachePlan('wu', 'src', [{ ...baseTheme(), kebab_name: 'orphan' }]);
+    const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
+    assert.strictEqual(r.json.ok, false);
+    assert.ok(r.json.errors.some(e => e.includes("would overwrite existing research file orphan.md")));
+  });
+
+  it('allows a theme reusing the source name even though its file exists on disk', () => {
+    // src is 'auth'; research/auth.md exists (the source). apply renames it away
+    // before writing themes, so the disk-collision check exempts the source name.
+    writeManifest('wu', {
+      name: 'wu', work_type: 'epic', status: 'in-progress',
+      phases: { discovery: { items: { auth: { routing: 'research', source: 'migration-seeded' } } } },
+    });
+    writeResearchFile('wu', 'auth', '# Broad Research\n\nContent.');
+    writeCachePlan('wu', 'auth', [{ ...baseTheme() }]);  // baseTheme kebab_name === 'auth'
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'auth');
     assert.strictEqual(r.json.ok, true);
   });
@@ -415,6 +509,82 @@ describe('apply.cjs: end-to-end', () => {
       fs.existsSync(path.join(dir, '.workflows', '.cache', 'e1', 'legacy-split', 'exploration')),
       false
     );
+  });
+
+  it('pathspec-limits the commit — pre-staged unrelated files stay out', () => {
+    seedLegacyEpic('e1p', 'exploration');
+    writeCachePlan('e1p', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
+    ]);
+    // User pre-stages an unrelated file for other work.
+    fs.writeFileSync(path.join(dir, 'unrelated.md'), 'user work in progress');
+    spawnSync('git', ['add', 'unrelated.md'], { cwd: dir });
+
+    const r = runScriptJson(APPLY_CLI, 'e1p', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+
+    // The split commit must not contain the unrelated file.
+    const committed = spawnSync('git', ['show', '--pretty=format:', '--name-only', 'HEAD'],
+      { cwd: dir, encoding: 'utf8' }).stdout;
+    assert.ok(!committed.split('\n').includes('unrelated.md'),
+      `split commit unexpectedly included unrelated.md:\n${committed}`);
+    // It's still staged, uncommitted.
+    const staged = spawnSync('git', ['diff', '--cached', '--name-only'],
+      { cwd: dir, encoding: 'utf8' }).stdout.trim().split('\n');
+    assert.ok(staged.includes('unrelated.md'));
+  });
+
+  it('untracked source succeeds — no phantom old-path git add fatal', () => {
+    seedLegacyEpic('eu', 'exploration');
+    // Make the source untracked: remove it from git but keep it on disk.
+    spawnSync('git', ['rm', '--cached', '-q', '.workflows/eu/research/exploration.md'], { cwd: dir });
+    spawnSync('git', ['commit', '-q', '-m', 'untrack source'], { cwd: dir });
+
+    writeCachePlan('eu', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
+    ]);
+
+    const r = runScriptJson(APPLY_CLI, 'eu', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+    // New theme + superseded file committed.
+    const committed = spawnSync('git', ['show', '--pretty=format:', '--name-only', 'HEAD'],
+      { cwd: dir, encoding: 'utf8' }).stdout;
+    assert.ok(committed.includes('.workflows/eu/research/auth.md'));
+    assert.ok(committed.includes('exploration-superseded-'));
+  });
+
+  it('untracked source + failing hook gives an accurate (not pre-commit) hint', () => {
+    seedLegacyEpic('euh', 'exploration');
+    spawnSync('git', ['rm', '--cached', '-q', '.workflows/euh/research/exploration.md'], { cwd: dir });
+    spawnSync('git', ['commit', '-q', '-m', 'untrack source'], { cwd: dir });
+
+    writeCachePlan('euh', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
+    ]);
+    const hookDir = path.join(dir, '.git', 'hooks');
+    fs.writeFileSync(path.join(hookDir, 'pre-commit'), '#!/bin/sh\nexit 1\n');
+    fs.chmodSync(path.join(hookDir, 'pre-commit'), 0o755);
+
+    const r = runScriptJson(APPLY_CLI, 'euh', 'exploration');
+    assert.strictEqual(r.json.ok, false);
+    assert.strictEqual(r.json.stage, 'git_commit');
+    assert.ok(r.json.recovery_hint.includes('never committed'));
+    assert.ok(!r.json.recovery_hint.includes('pre-commit hook'));
+  });
+
+  it('batched discovery set preserves summary/description containing "="', () => {
+    seedLegacyEpic('eb', 'exploration');
+    writeCachePlan('eb', 'exploration', [
+      { kebab_name: 'auth', summary: 'a = b tradeoff', description: 'x=y and p=q notes',
+        _content: 'auth content' },
+    ]);
+    const r = runScriptJson(APPLY_CLI, 'eb', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+    const m = readManifest('eb');
+    assert.strictEqual(m.phases.discovery.items.auth.summary, 'a = b tradeoff');
+    assert.strictEqual(m.phases.discovery.items.auth.description, 'x=y and p=q notes');
+    assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:exploration');
+    assert.strictEqual(m.phases.discovery.items.auth.routing, 'research');
   });
 
   it('handles topic-name source: source name reused by a theme', () => {
