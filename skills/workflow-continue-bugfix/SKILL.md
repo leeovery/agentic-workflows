@@ -80,11 +80,11 @@ If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
-**From the `=== BUGFIXES ===` section:**
+**From the `=== BUGFIXES (N) ===` section:**
 - one line per active bugfix — `{name}: {phase_label}`
 - `count` — the header count of active bugfixes
 
-**From the `=== COMPLETED ===` / `=== CANCELLED ===` sections:**
+**From the `=== COMPLETED (N) ===` / `=== CANCELLED (N) ===` sections:**
 - one line per closed bugfix — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 

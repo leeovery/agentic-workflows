@@ -80,11 +80,11 @@ If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
-**From the `=== FEATURES ===` section:**
+**From the `=== FEATURES (N) ===` section:**
 - one line per active feature — `{name}: {phase_label}`
 - `count` — the header count of active features
 
-**From the `=== COMPLETED ===` / `=== CANCELLED ===` sections:**
+**From the `=== COMPLETED (N) ===` / `=== CANCELLED (N) ===` sections:**
 - one line per closed feature — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 

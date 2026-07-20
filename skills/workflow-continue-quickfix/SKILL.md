@@ -80,11 +80,11 @@ If discovery output is already displayed, it has been run on your behalf.
 
 Parse the discovery output to understand:
 
-**From the `=== QUICK-FIXES ===` section:**
+**From the `=== QUICK-FIXES (N) ===` section:**
 - one line per active quick-fix — `{name}: {phase_label}`
 - `count` — the header count of active quick-fixes
 
-**From the `=== COMPLETED ===` / `=== CANCELLED ===` sections:**
+**From the `=== COMPLETED (N) ===` / `=== CANCELLED (N) ===` sections:**
 - one line per closed quick-fix — `{name} (last phase: {phase})`
 - `completed_count` / `cancelled_count` — the header counts
 
