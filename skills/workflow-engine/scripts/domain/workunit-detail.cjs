@@ -15,8 +15,8 @@
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
   phaseStatus,
-  computeNextPhase,
-  computeInProgressPhases,
+  computeUnitPhaseState,
+  lastCompletedPhase,
 } = require('./derivations.cjs');
 
 /**
@@ -121,15 +121,6 @@ function unitsOf(cfg, detail) {
   return detail[cfg.resultKey] || [];
 }
 
-/** Last pipeline phase with completed aggregate status, or null. @param {WorkUnitTypeConfig} cfg @param {object} manifest */
-function lastCompletedPhase(cfg, manifest) {
-  let last = null;
-  for (const phase of cfg.pipeline) {
-    if (phaseStatus(manifest, phase) === 'completed') last = phase;
-  }
-  return last;
-}
-
 /** All completed pipeline phases, in pipeline order. @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {string[]} */
 function completedPhases(cfg, manifest) {
   return cfg.pipeline.filter((phase) => phaseStatus(manifest, phase) === 'completed');
@@ -149,28 +140,15 @@ function workUnitDetail(cwd, type) {
   const units = [];
   for (const m of loadActiveManifests(cwd)) {
     if (m.work_type !== cfg.workType) continue;
-    const state = computeNextPhase(m);
-    const inProgress = computeInProgressPhases(m, cfg.pipeline);
-    // A finished pipeline on a still-in-progress unit is surfaced, never
-    // hidden: the unit sat between the last topic completion and `workunit
-    // complete` when the flow stopped, and finalising is its only way out.
-    // But a reopened earlier phase means the unit is mid-revisit, not
-    // finalising — the phase in flight is the next action, and completing the
-    // unit now would abandon the revisit.
-    let nextPhase = state.next_phase;
-    let phaseLabel = state.phase_label;
-    if (nextPhase === 'done' && inProgress.length > 0) {
-      nextPhase = inProgress[0];
-      phaseLabel = `${inProgress[0]} (in-progress)`;
-    }
+    const state = computeUnitPhaseState(m, cfg.pipeline);
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
-      next_phase: nextPhase,
-      phase_label: phaseLabel,
-      finalising: nextPhase === 'done',
+      next_phase: state.next_phase,
+      phase_label: state.phase_label,
+      finalising: state.finalising,
       completed_phases: completedPhases(cfg, m),
-      in_progress_phases: inProgress,
+      in_progress_phases: state.in_progress_phases,
     };
     if (cfg.surfacesSeeds) {
       unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;
@@ -186,9 +164,9 @@ function workUnitDetail(cwd, type) {
   for (const m of loadAllManifests(cwd)) {
     if (m.work_type !== cfg.workType) continue;
     if (m.status === 'completed') {
-      completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(cfg, m) });
+      completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, cfg.pipeline) });
     } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(cfg, m) });
+      cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, cfg.pipeline) });
     }
   }
 

@@ -14,16 +14,16 @@
 const path = require('path');
 const {
   phaseItems,
-  computeTopicLifecycle,
-  computeNextAction,
-  computeMapSummary,
-  computeSourceProvenance,
   computeAnalysisCacheStatus,
-  compareMapRows,
-  computeNeedsSequencing,
+  buildDiscoveryMap,
 } = require('./derivations.cjs');
 
-const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+// Every phase the epic detail iterates and the epic dashboard / thin dump
+// surface — discovery (the map) first, then the pipeline. The pipeline-only
+// view (research → review, for completion / next-phase and the start
+// dashboard) is domain/start.cjs's EPIC_PIPELINE_PHASES, derived from this
+// minus discovery — discovery is the map, not a pipeline phase.
+const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
 /**
  * @typedef {object} SpecSource
@@ -194,7 +194,7 @@ function epicDetail(cwd, manifest) {
   /** @type {NextPhaseEntry[]} */
   const nextPhaseReady = [];
 
-  for (const phase of EPIC_PHASES) {
+  for (const phase of EPIC_DETAIL_PHASES) {
     if (phase === 'discovery') continue;
     const items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
@@ -322,36 +322,16 @@ function epicDetail(cwd, manifest) {
   const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
-  const discoveryItems = phaseItems(manifest, 'discovery');
+  // The map rows, summary, and sequencing flag come from the shared builder —
+  // the same rows the discovery-session gateway reads. map_summary stays null
+  // (not the zero-count shape) when the map is empty, the epic dashboard's cue
+  // that there is no map to render.
+  const builtMap = buildDiscoveryMap(manifest);
   /** @type {MapRow[]} */
-  let discoveryMap = [];
+  const discoveryMap = builtMap.map;
+  const mapSummary = discoveryMap.length > 0 ? builtMap.summary : null;
   let convergenceState = null;
-  let mapSummary = null;
-  if (discoveryItems.length > 0) {
-    discoveryMap = discoveryItems.map(item => {
-      const { lifecycle, tier, current_phase, research_state } = computeTopicLifecycle(manifest, item.name);
-      const next_action = computeNextAction(item.routing, lifecycle);
-      const source_provenance = computeSourceProvenance(item.source);
-      const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
-      const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
-      return {
-        name: item.name,
-        summary_present: summaryText !== null,
-        summary: summaryText,
-        description_present: descriptionText !== null,
-        routing: item.routing || null,
-        source: item.source || 'discovery',
-        source_provenance,
-        order: item.order ?? null,
-        lifecycle,
-        tier,
-        current_phase,
-        research_state,
-        next_action,
-      };
-    });
-    discoveryMap.sort(compareMapRows);
-    mapSummary = computeMapSummary(discoveryMap);
+  if (discoveryMap.length > 0) {
     const allSettled = discoveryMap.every(t =>
       t.lifecycle === 'decided' || t.lifecycle === 'cancelled' || t.lifecycle === 'handled');
     convergenceState = allSettled ? 'settled' : 'in-progress';
@@ -370,7 +350,7 @@ function epicDetail(cwd, manifest) {
     reopened_discussions: reopenedDiscussions,
     discovery_map: discoveryMap,
     convergence_state: convergenceState,
-    needs_sequencing: computeNeedsSequencing(discoveryMap),
+    needs_sequencing: builtMap.needs_sequencing,
     map_summary: mapSummary,
     imports_count: importsCount,
     seeds_count: seedsCount,
@@ -384,4 +364,4 @@ function epicDetail(cwd, manifest) {
   };
 }
 
-module.exports = { EPIC_PHASES, epicDetail };
+module.exports = { EPIC_DETAIL_PHASES, epicDetail };

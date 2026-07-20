@@ -23,7 +23,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../kernel/manifest-schema.cjs');
@@ -302,7 +302,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): cancel ${topic} (${phase})`);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: 'cancelled', committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 
@@ -346,7 +346,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate ${topic} (${phase})`);
   /** @type {TopicTransitionResult} */
   const result = { topic, phase, status: restored, committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 

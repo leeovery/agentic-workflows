@@ -15,14 +15,18 @@ const fs = require('fs');
 const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
-  phaseStatus,
   phaseItems,
-  computeNextPhase,
-  computeInProgressPhases,
+  computeUnitPhaseState,
+  lastCompletedPhase,
 } = require('./derivations.cjs');
 const { WORK_UNIT_TYPES } = require('./workunit-detail.cjs');
+const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 
-const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+// The epic pipeline — research → review, the completion / next-phase pipeline
+// and the start dashboard's active-phase row. Derived from epic-detail's full
+// EPIC_DETAIL_PHASES minus discovery (the map, not a pipeline phase) so the two
+// lists can never drift.
+const EPIC_PIPELINE_PHASES = EPIC_DETAIL_PHASES.filter((p) => p !== 'discovery');
 
 const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 
@@ -35,7 +39,7 @@ const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'speci
  * @returns {string[]}
  */
 function pipelineOf(workType) {
-  if (workType === 'epic') return EPIC_PHASES;
+  if (workType === 'epic') return EPIC_PIPELINE_PHASES;
   const cfg = WORK_UNIT_TYPES[workType];
   return cfg ? cfg.pipeline : ALL_PHASES;
 }
@@ -114,30 +118,6 @@ function pipelineOf(workType) {
  * @property {InboxDetail} inbox
  * @property {StartState} state
  */
-
-/**
- * Last phase with a completed item (epic) or completed aggregate status
- * (single-topic types), in pipeline order. Null when nothing completed.
- * @param {object} manifest
- * @returns {string|null}
- */
-function lastCompletedPhase(manifest) {
-  let last = null;
-  if (manifest.work_type === 'epic') {
-    for (const phase of ALL_PHASES) {
-      const items = phaseItems(manifest, phase);
-      if (items.length > 0 && items.some(i => i.status === 'completed')) {
-        last = phase;
-      }
-    }
-  } else {
-    for (const phase of ALL_PHASES) {
-      const s = phaseStatus(manifest, phase);
-      if (s === 'completed') last = phase;
-    }
-  }
-  return last;
-}
 
 /** First markdown H1, or null. @param {string} filePath @returns {string|null} */
 function readTitle(filePath) {
@@ -231,34 +211,19 @@ function startDetail(cwd) {
   const cross_cutting = [];
 
   for (const m of manifests) {
-    const state = computeNextPhase(m);
-
-    // A finished pipeline on a still-in-progress unit is surfaced, never
-    // hidden: the unit sat between the last topic completion and `workunit
-    // complete` when the flow stopped, and finalising is its only way out.
-    // But a reopened earlier phase means the unit is mid-revisit, not
-    // finalising — the phase in flight is the next action.
-    let nextPhase = state.next_phase;
-    let phaseLabel = state.phase_label;
-    if (nextPhase === 'done') {
-      const inProgress = computeInProgressPhases(m, pipelineOf(m.work_type));
-      if (inProgress.length > 0) {
-        nextPhase = inProgress[0];
-        phaseLabel = `${inProgress[0]} (in-progress)`;
-      }
-    }
+    const state = computeUnitPhaseState(m, pipelineOf(m.work_type));
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
-      next_phase: nextPhase,
-      phase_label: phaseLabel,
-      finalising: nextPhase === 'done',
+      next_phase: state.next_phase,
+      phase_label: state.phase_label,
+      finalising: state.finalising,
     };
 
     if (m.work_type === 'epic') {
       // For epics, include list of phases that have items
       const activePhases = [];
-      for (const phase of EPIC_PHASES) {
+      for (const phase of EPIC_PIPELINE_PHASES) {
         const items = phaseItems(m, phase);
         if (items.length > 0) {
           activePhases.push(phase);
@@ -286,9 +251,9 @@ function startDetail(cwd) {
 
   for (const m of allManifests) {
     if (m.status === 'completed') {
-      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
+      completed.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
     } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m) });
+      cancelled.push({ name: m.name, work_type: m.work_type, status: m.status, last_phase: lastCompletedPhase(m, ALL_PHASES) });
     }
   }
 

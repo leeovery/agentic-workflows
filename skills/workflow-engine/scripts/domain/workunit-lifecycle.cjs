@@ -26,9 +26,10 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
+const { todayStamp } = require('./dates.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
@@ -40,11 +41,6 @@ function assertLegalStatus(status) {
   if (!VALID_WORK_UNIT_STATUSES.includes(status)) {
     throw new Error(`Invalid status "${status}". Must be one of: ${VALID_WORK_UNIT_STATUSES.join(', ')}`);
   }
-}
-
-/** The work unit's date stamp for today (UTC), matching the manifest `created` field. */
-function todayStamp() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 /**
@@ -101,7 +97,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'completed', completed_at: completedAt, committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 
@@ -136,7 +132,7 @@ function cancelWorkUnit(cwd, workUnit) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 
@@ -204,7 +200,7 @@ function reactivateWorkUnit(cwd, workUnit) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 
@@ -281,7 +277,7 @@ function pivotWorkUnit(cwd, workUnit) {
   const committed = commitScopedWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', routing, committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 

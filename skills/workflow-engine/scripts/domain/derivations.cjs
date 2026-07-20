@@ -139,6 +139,56 @@ function computeInProgressPhases(manifest, pipeline) {
 }
 
 /**
+ * The active work unit's next-phase state with the finalising / mid-revisit
+ * override applied. computeNextPhase short-circuits on a completed review, so a
+ * finished pipeline reports `next_phase: done` (finalising — the unit sat
+ * between the last topic completion and `workunit complete`). But a reopened
+ * earlier phase means the unit is mid-revisit, not finalising: the phase in
+ * flight is the next action, and completing the unit now would abandon the
+ * revisit. The one derivation both the start dashboard and the single-topic
+ * work-unit detail read, so the two can never disagree.
+ * @param {object} manifest
+ * @param {string[]} pipeline  the work type's pipeline phases, in order
+ * @returns {{next_phase: string, phase_label: string, finalising: boolean, in_progress_phases: string[]}}
+ */
+function computeUnitPhaseState(manifest, pipeline) {
+  const state = computeNextPhase(manifest);
+  const inProgress = computeInProgressPhases(manifest, pipeline);
+  let nextPhase = state.next_phase;
+  let phaseLabel = state.phase_label;
+  if (nextPhase === 'done' && inProgress.length > 0) {
+    nextPhase = inProgress[0];
+    phaseLabel = `${inProgress[0]} (in-progress)`;
+  }
+  return {
+    next_phase: nextPhase,
+    phase_label: phaseLabel,
+    finalising: nextPhase === 'done',
+    in_progress_phases: inProgress,
+  };
+}
+
+/**
+ * The last phase, in the given pipeline order, with at least one completed
+ * item — or null when nothing has completed. Single-topic phases carry one
+ * item, so "an item completed" and "the phase aggregate is completed" coincide;
+ * epics keep the per-item reading (one topic completing a phase is enough). The
+ * one spelling every closed-unit surface reads (start dashboard, single-topic
+ * detail, epic gateway) — each passes the pipeline its display walks.
+ * @param {object} manifest
+ * @param {string[]} pipeline  phases to scan, in order
+ * @returns {string|null}
+ */
+function lastCompletedPhase(manifest, pipeline) {
+  let last = null;
+  for (const phase of pipeline) {
+    const items = phaseItems(manifest, phase);
+    if (items.length > 0 && items.some((i) => i.status === 'completed')) last = phase;
+  }
+  return last;
+}
+
+/**
  * The sorted set of existing completed input files for one analysis kind —
  * completed research files for `research-analysis`, completed research plus
  * completed discussion files for `gap-analysis`. The one collection both
@@ -163,58 +213,53 @@ function collectAnalysisInputs(manifest, workflowsDir, kind) {
   return [];
 }
 
+// Per-kind config for computeAnalysisCacheStatus: where the cache object
+// lives, which field on it lists the cached file names, and the two kind-
+// specific reason strings. The body is otherwise one path for both kinds —
+// the same read the write side checksums (collectAnalysisInputs).
+const ANALYSIS_KINDS = {
+  'research-analysis': {
+    cacheOf: (manifest) => ((manifest.phases || {}).research || {}).analysis_cache,
+    filesField: 'files',
+    reasonNoInputs: 'no completed research files',
+    reasonStale: 'completed research has changed since cache was generated',
+  },
+  'gap-analysis': {
+    cacheOf: (manifest) => ((manifest.phases || {}).discovery || {}).gap_analysis_cache,
+    filesField: 'input_files',
+    reasonNoInputs: 'no completed research or discussion files',
+    reasonStale: 'completed research/discussion has changed since gap analysis was generated',
+  },
+};
+
 function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
   if (!manifest || !manifest.name) return { status: 'absent', generated: null, files: [] };
 
-  if (kind === 'research-analysis') {
-    const cache = ((manifest.phases || {}).research || {}).analysis_cache;
-    const completedFiles = collectAnalysisInputs(manifest, workflowsDir, kind);
+  const cfg = ANALYSIS_KINDS[kind];
+  if (!cfg) return { status: 'absent', generated: null, files: [] };
 
-    if (!cache || !cache.checksum) {
-      return completedFiles.length > 0
-        ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
-        : { status: 'absent', generated: null, files: [] };
-    }
+  const cache = cfg.cacheOf(manifest);
+  const inputPaths = collectAnalysisInputs(manifest, workflowsDir, kind);
+  const cachedFiles = () => (cache && Array.isArray(cache[cfg.filesField])) ? cache[cfg.filesField] : [];
 
-    if (completedFiles.length === 0) {
-      return { status: 'absent', generated: cache.generated || null, files: Array.isArray(cache.files) ? cache.files : [], reason: 'no completed research files' };
-    }
-
-    const currentChecksum = filesChecksum(completedFiles);
-    const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
-    return {
-      status,
-      generated: cache.generated || null,
-      files: Array.isArray(cache.files) ? cache.files : [],
-      reason: status === 'valid' ? 'checksums match' : 'completed research has changed since cache was generated',
-    };
+  if (!cache || !cache.checksum) {
+    return inputPaths.length > 0
+      ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
+      : { status: 'absent', generated: null, files: [] };
   }
 
-  if (kind === 'gap-analysis') {
-    const cache = ((manifest.phases || {}).discovery || {}).gap_analysis_cache;
-    const inputPaths = collectAnalysisInputs(manifest, workflowsDir, kind);
-
-    if (!cache || !cache.checksum) {
-      return inputPaths.length > 0
-        ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
-        : { status: 'absent', generated: null, files: [] };
-    }
-
-    if (inputPaths.length === 0) {
-      return { status: 'absent', generated: cache.generated || null, files: Array.isArray(cache.input_files) ? cache.input_files : [], reason: 'no completed research or discussion files' };
-    }
-
-    const currentChecksum = filesChecksum(inputPaths);
-    const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
-    return {
-      status,
-      generated: cache.generated || null,
-      files: Array.isArray(cache.input_files) ? cache.input_files : [],
-      reason: status === 'valid' ? 'checksums match' : 'completed research/discussion has changed since gap analysis was generated',
-    };
+  if (inputPaths.length === 0) {
+    return { status: 'absent', generated: cache.generated || null, files: cachedFiles(), reason: cfg.reasonNoInputs };
   }
 
-  return { status: 'absent', generated: null, files: [] };
+  const currentChecksum = filesChecksum(inputPaths);
+  const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
+  return {
+    status,
+    generated: cache.generated || null,
+    files: cachedFiles(),
+    reason: status === 'valid' ? 'checksums match' : cfg.reasonStale,
+  };
 }
 
 const TIER_RANK = { '→': 0, '◐': 1, '✓': 2, '○': 3, '⊙': 4, '⊘': 5 };
@@ -329,12 +374,74 @@ function computeSourceProvenance(source) {
   return `from ${labels.join(' + ')}`;
 }
 
+/**
+ * @typedef {object} DiscoveryMapRow
+ * @property {string} name
+ * @property {string|null} summary            normalised — whitespace-only / non-string reads as null
+ * @property {boolean} summary_present
+ * @property {string|null} description        raw value, for surfaces that render it in full
+ * @property {boolean} description_present     normalised presence
+ * @property {string|null} routing
+ * @property {string} source
+ * @property {string|null} source_provenance
+ * @property {number|null} order
+ * @property {string} lifecycle
+ * @property {string} tier
+ * @property {string|null} current_phase
+ * @property {string|null} research_state
+ * @property {string|null} next_action
+ */
+
+/**
+ * The discovery-map rows for one epic manifest: each discovery item joined to
+ * its per-phase lifecycle, sorted by tier → order → name, with the map summary
+ * and the sequencing flag. The single builder every discovery-map surface
+ * reads — the epic detail and the discovery-session gateway consume the same
+ * rows, so the two can never silently disagree.
+ *
+ * Each row carries the superset of fields any surface needs. `summary` and
+ * `description_present` follow the normalised reading — a whitespace-only or
+ * non-string value is treated as absent — so the presence booleans always
+ * agree with the text; `description` carries the raw value for surfaces that
+ * render it in full.
+ * @param {object} manifest
+ * @returns {{map: DiscoveryMapRow[], summary: object, needs_sequencing: boolean}}
+ */
+function buildDiscoveryMap(manifest) {
+  const discoveryItems = phaseItems(manifest, 'discovery');
+  const map = discoveryItems.map((item) => {
+    const { lifecycle, tier, current_phase, research_state } = computeTopicLifecycle(manifest, item.name);
+    const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
+    const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
+    return {
+      name: item.name,
+      summary: summaryText,
+      summary_present: summaryText !== null,
+      description: item.description || null,
+      description_present: descriptionText !== null,
+      routing: item.routing || null,
+      source: item.source || 'discovery',
+      source_provenance: computeSourceProvenance(item.source),
+      order: item.order ?? null,
+      lifecycle,
+      tier,
+      current_phase,
+      research_state,
+      next_action: computeNextAction(item.routing, lifecycle),
+    };
+  });
+  map.sort(compareMapRows);
+  return { map, summary: computeMapSummary(map), needs_sequencing: computeNeedsSequencing(map) };
+}
+
 module.exports = {
   phaseData,
   phaseItems,
   phaseStatus,
   computeNextPhase,
   computeInProgressPhases,
+  computeUnitPhaseState,
+  lastCompletedPhase,
   collectAnalysisInputs,
   computeAnalysisCacheStatus,
   computeTopicLifecycle,
@@ -343,5 +450,6 @@ module.exports = {
   computeSourceProvenance,
   compareMapRows,
   computeNeedsSequencing,
+  buildDiscoveryMap,
   TIER_RANK,
 };

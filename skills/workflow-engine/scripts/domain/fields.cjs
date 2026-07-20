@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
+const { INDEXED_ARTIFACTS } = require('./kb.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -28,8 +29,10 @@ const {
   VALID_WORK_UNIT_STATUSES,
 } = require('../kernel/manifest-schema.cjs');
 
-/** Phases whose artifacts the knowledge base indexes — `resolve`'s scope. */
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification'];
+// Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
+// Derived from kb's INDEXED_ARTIFACTS, the one table declaring what the KB
+// indexes and where, so the resolve scope can never drift from it.
+const INDEXED_PHASES = Object.keys(INDEXED_ARTIFACTS);
 
 /**
  * @param {string} msg
@@ -634,6 +637,38 @@ function cmdResolve(cwd, args) {
 // ---------------------------------------------------------------------------
 
 /**
+ * The write target for a mutation — the project manifest or a work unit's,
+ * chosen by whether the path arg was `project`-prefixed. `transact(fn)` runs
+ * `fn(manifest, save)` under the matching lock with the loaded manifest and a
+ * `save()` that writes it atomically, returning fn's value. The one
+ * project-vs-work-unit branch the four mutations share, so the lock / read /
+ * write plumbing lives in a single place. Callers still own usage validation,
+ * path parsing, and the `save()` call, so nothing reorders — a `fail()` inside
+ * `fn` throws out of the lock exactly as before, and a no-op path that never
+ * calls `save()` writes nothing.
+ * @param {string} cwd @param {boolean} isProject @param {string} [workUnit]
+ * @returns {{transact: <T>(fn: (manifest: any, save: () => void) => T) => T}}
+ */
+function manifestTarget(cwd, isProject, workUnit) {
+  const wfDir = workflowsDir(cwd);
+  if (isProject) {
+    return {
+      transact: (fn) => io.withProjectLock(wfDir, () => {
+        const manifest = io.readProjectManifest(wfDir);
+        return fn(manifest, () => io.writeProjectManifestAtomic(wfDir, manifest));
+      }),
+    };
+  }
+  const wu = /** @type {string} */ (workUnit);
+  return {
+    transact: (fn) => io.withWorkUnitLock(wfDir, wu, () => {
+      const manifest = readManifest(cwd, wu);
+      return fn(manifest, () => io.writeWorkUnitManifestAtomic(wfDir, wu, manifest));
+    }),
+  };
+}
+
+/**
  * `set <path> <field> <value> [<field>=<value> …]` — batched writes land in
  * one lock/read/write. Project paths embed the first field in the dot-path:
  * `set project.<field.path> <value> [<field.path>=<value> …]`.
@@ -651,12 +686,11 @@ function cmdSet(cwd, args) {
       { field: proj.fieldSegments.join('.'), value: parseValue(args[1]) },
       ...parseFieldValuePairs(args.slice(2)),
     ];
-    io.withProjectLock(workflowsDir(cwd), () => {
-      const manifest = io.readProjectManifest(workflowsDir(cwd));
+    manifestTarget(cwd, true).transact((manifest, save) => {
       for (const write of writes) {
         setByPath(manifest, write.field.split('.'), write.value);
       }
-      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+      save();
     });
     return { path: 'project', set: Object.fromEntries(writes.map(w => [w.field, w.value])) };
   }
@@ -681,12 +715,11 @@ function cmdSet(cwd, args) {
     return { segments, value: write.value };
   });
 
-  io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const manifest = readManifest(cwd, workUnit);
+  manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     for (const write of planned) {
       setByPath(manifest, write.segments, write.value);
     }
-    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+    save();
   });
 
   return { path: args[0], set: Object.fromEntries(writes.map(w => [w.field, w.value])) };
@@ -701,8 +734,7 @@ function cmdPush(cwd, args) {
       fail('Usage: engine manifest push project.<field.path> <value>');
     }
     const value = parseValue(args[1]);
-    const length = io.withProjectLock(workflowsDir(cwd), () => {
-      const manifest = io.readProjectManifest(workflowsDir(cwd));
+    const length = manifestTarget(cwd, true).transact((manifest, save) => {
       const current = getByPath(manifest, proj.fieldSegments);
 
       if (current !== undefined && !Array.isArray(current)) {
@@ -718,7 +750,7 @@ function cmdPush(cwd, args) {
         next = current.length;
       }
 
-      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+      save();
       return next;
     });
     return { path: 'project', field: proj.fieldSegments.join('.'), pushed: value, length };
@@ -734,8 +766,7 @@ function cmdPush(cwd, args) {
 
   const segments = resolveSegments(phase, topic, fieldSegments);
 
-  const length = io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const manifest = readManifest(cwd, workUnit);
+  const length = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     const current = getByPath(manifest, segments);
 
     if (current !== undefined && !Array.isArray(current)) {
@@ -751,7 +782,7 @@ function cmdPush(cwd, args) {
       next = current.length;
     }
 
-    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+    save();
     return next;
   });
 
@@ -767,14 +798,13 @@ function cmdPull(cwd, args) {
       fail('Usage: engine manifest pull project.<field.path> <value>');
     }
     const value = parseValue(args[1]);
-    const result = io.withProjectLock(workflowsDir(cwd), () => {
-      const manifest = io.readProjectManifest(workflowsDir(cwd));
+    const result = manifestTarget(cwd, true).transact((manifest, save) => {
       const current = getByPath(manifest, proj.fieldSegments);
       if (!Array.isArray(current)) return { removed: false, length: null }; // no-op
       const idx = findDeepIndex(current, value);
       if (idx === -1) return { removed: false, length: current.length }; // no-op
       current.splice(idx, 1);
-      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+      save();
       return { removed: true, length: current.length };
     });
     return { path: 'project', field: proj.fieldSegments.join('.'), ...result };
@@ -790,14 +820,13 @@ function cmdPull(cwd, args) {
 
   const segments = resolveSegments(phase, topic, fieldSegments);
 
-  const result = io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const manifest = readManifest(cwd, workUnit);
+  const result = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     const current = getByPath(manifest, segments);
     if (!Array.isArray(current)) return { removed: false, length: null }; // no-op
     const idx = findDeepIndex(current, value);
     if (idx === -1) return { removed: false, length: current.length }; // no-op
     current.splice(idx, 1);
-    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+    save();
     return { removed: true, length: current.length };
   });
 
@@ -812,12 +841,11 @@ function cmdDelete(cwd, args) {
     if (proj.fieldSegments.length === 0) {
       fail('Usage: engine manifest delete project.<field.path>');
     }
-    io.withProjectLock(workflowsDir(cwd), () => {
-      const manifest = io.readProjectManifest(workflowsDir(cwd));
+    manifestTarget(cwd, true).transact((manifest, save) => {
       if (!deleteByPath(manifest, proj.fieldSegments)) {
         fail(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);
       }
-      io.writeProjectManifestAtomic(workflowsDir(cwd), manifest);
+      save();
     });
     return { path: 'project', field: proj.fieldSegments.join('.'), deleted: true };
   }
@@ -831,12 +859,11 @@ function cmdDelete(cwd, args) {
 
   const segments = resolveSegments(phase, topic, fieldSegments);
 
-  io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const manifest = readManifest(cwd, workUnit);
+  manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     if (!deleteByPath(manifest, segments)) {
       fail(`Path "${segments.join('.')}" not found in "${workUnit}"`);
     }
-    io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+    save();
   });
 
   return { path: args[0], field: args[1], deleted: true };

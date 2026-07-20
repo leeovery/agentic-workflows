@@ -50,21 +50,26 @@ engine.derivations.phaseData(manifest, phase)     // → phases.{phase} ({} when
 engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] from phases.{phase}.items
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
+engine.derivations.lastCompletedPhase(manifest, pipeline) // → last phase (pipeline order) with a completed item, or null
 engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, generated, files[, reason] }
 engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
 engine.derivations.computeNeedsSequencing(items)  // → true when a live row lacks an order
+engine.derivations.buildDiscoveryMap(manifest)    // → { map, summary, needs_sequencing } — the one discovery-map row builder
 
 // domain: discussion-map transitions + queries
 engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
 engine.discussionMap.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
 engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_decided, unresolved }
 
+// domain: discovery-session queries
+engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)
+
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
-engine.detail.EPIC_PHASES                         // string[] — the seven epic phases, in pipeline order
+engine.detail.EPIC_DETAIL_PHASES                  // string[] — every phase the epic detail surfaces (discovery first, then the pipeline)
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)

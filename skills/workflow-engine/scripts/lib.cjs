@@ -25,6 +25,7 @@ const manifest = require('./kernel/manifest.cjs');
 const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
+const discoverySession = require('./domain/discovery-session.cjs');
 const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic-detail.cjs');
 const start = require('./domain/start.cjs');
@@ -59,12 +60,14 @@ module.exports = {
     phaseItems: derivations.phaseItems,
     phaseStatus: derivations.phaseStatus,
     computeNextPhase: derivations.computeNextPhase,
+    lastCompletedPhase: derivations.lastCompletedPhase,
     computeAnalysisCacheStatus: derivations.computeAnalysisCacheStatus,
     computeTopicLifecycle: derivations.computeTopicLifecycle,
     computeMapSummary: derivations.computeMapSummary,
     computeSourceProvenance: derivations.computeSourceProvenance,
     compareMapRows: derivations.compareMapRows,
     computeNeedsSequencing: derivations.computeNeedsSequencing,
+    buildDiscoveryMap: derivations.buildDiscoveryMap,
   },
   discussionMap: {
     addSubtopic: discussionMap.addSubtopic,
@@ -72,9 +75,12 @@ module.exports = {
     mapState: discussionMap.mapState,
     SUBTOPIC_STATES: discussionMap.SUBTOPIC_STATES,
   },
+  session: {
+    nextSessionNumber: discoverySession.nextSessionNumber,
+  },
   detail: {
     epicDetail: epic.epicDetail,
-    EPIC_PHASES: epic.EPIC_PHASES,
+    EPIC_DETAIL_PHASES: epic.EPIC_DETAIL_PHASES,
     startDetail: start.startDetail,
     combinedInbox: inboxSet.combinedInbox,
     workingSetDetail: inboxSet.workingSetDetail,
