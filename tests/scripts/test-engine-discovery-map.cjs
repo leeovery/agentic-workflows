@@ -338,15 +338,48 @@ describe('engine CLI: discovery-map operations', () => {
       assert.strictEqual(res.renamed_from, 'rich-fresh');
       assert.strictEqual(res.lifecycle, 'fresh');
       assert.strictEqual(res.matches_dismissed, false);
+      // No brief file on disk — nothing moved, no marker.
+      assert.ok(!('brief_moved' in res));
       assert.deepStrictEqual(res.preserved_fields.sort(), Object.keys(RICH_FRESH).sort());
 
       const items = readManifest(dir).phases.discovery.items;
       assert.strictEqual(items['rich-fresh'], undefined);
-      // Every field — order, brief_path, brief_incorporated, the accumulated
-      // source, and the legacy_split_state sentinel — carries across intact.
-      assert.deepStrictEqual(items['menu-admin'], RICH_FRESH);
+      // Every field — order, brief_incorporated, the accumulated source, and
+      // the legacy_split_state sentinel — carries across intact; brief_path is
+      // rewritten to the new name (briefs are keyed by topic name).
+      assert.deepStrictEqual(items['menu-admin'], { ...RICH_FRESH, brief_path: 'discovery/briefs/menu-admin.md' });
       // Map position holds: the renamed key sits where the old one did.
       assert.strictEqual(Object.keys(items)[1], 'menu-admin');
+    });
+
+    it('moves the brief file with the topic and reports brief_moved', () => {
+      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      fs.mkdirSync(briefsDir, { recursive: true });
+      fs.writeFileSync(path.join(briefsDir, 'rich-fresh.md'), '# Brief: Rich Fresh\n\nsoft decisions\n');
+
+      const res = runOk(dir, ['rename', 'payments', 'rich-fresh', 'menu-admin']);
+      assert.strictEqual(res.brief_moved, true);
+      assert.ok(!fs.existsSync(path.join(briefsDir, 'rich-fresh.md')));
+      assert.strictEqual(
+        fs.readFileSync(path.join(briefsDir, 'menu-admin.md'), 'utf8'),
+        '# Brief: Rich Fresh\n\nsoft decisions\n');
+      assert.strictEqual(
+        readManifest(dir).phases.discovery.items['menu-admin'].brief_path,
+        'discovery/briefs/menu-admin.md');
+    });
+
+    it('refuses when a brief already exists at the new name — manifest and files untouched', () => {
+      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      fs.mkdirSync(briefsDir, { recursive: true });
+      fs.writeFileSync(path.join(briefsDir, 'rich-fresh.md'), 'the brief\n');
+      fs.writeFileSync(path.join(briefsDir, 'menu-admin.md'), 'an unrelated brief\n');
+      const before = JSON.stringify(readManifest(dir));
+
+      const err = runFail(dir, ['rename', 'payments', 'rich-fresh', 'menu-admin']);
+      assert.match(err.error, /a brief already exists at discovery\/briefs\/menu-admin\.md/);
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+      assert.strictEqual(fs.readFileSync(path.join(briefsDir, 'rich-fresh.md'), 'utf8'), 'the brief\n');
+      assert.strictEqual(fs.readFileSync(path.join(briefsDir, 'menu-admin.md'), 'utf8'), 'an unrelated brief\n');
     });
 
     it('refuses a collision with an active map item', () => {
@@ -392,7 +425,8 @@ describe('engine CLI: discovery-map operations', () => {
       'ready-topic': /research has completed and discussion is queued.*cancel from the epic menu instead/,
       'discussing-topic': /discussion is in flight on it.*cancel from the epic menu instead/,
       'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
-      'handled-topic': /fanned out into discussions.*unhandle it to make it actionable again/,
+      // handled-topic has no research item — no fan-out to claim.
+      'handled-topic': /it is marked handled and stays on the map as historical anchor.*unhandle it to make it actionable again/,
       'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
     };
 
@@ -420,6 +454,25 @@ describe('engine CLI: discovery-map operations', () => {
         assert.match(err.error, new RegExp(`"${topic}" can't be re-routed`), topic);
         assert.match(err.error, message, topic);
       }
+    });
+
+    it('names superseded research honestly in the refusal — never as completed', () => {
+      const m = readManifest(dir);
+      m.phases.research.items['ready-topic'].status = 'superseded';
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+
+      const err = runFail(dir, ['remove', 'payments', 'ready-topic']);
+      assert.match(err.error, /its research was superseded and discussion is queued/);
+      assert.ok(!/research has completed/.test(err.error), 'superseded research must not read as completed');
+    });
+
+    it('a handled topic with completed research keeps the fan-out phrasing', () => {
+      const m = readManifest(dir);
+      m.phases.research.items['handled-topic'] = { status: 'completed' };
+      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+
+      const err = runFail(dir, ['rename', 'payments', 'handled-topic', 'anything-else']);
+      assert.match(err.error, /it has fanned out into discussions and stays on the map as historical anchor/);
     });
   });
 

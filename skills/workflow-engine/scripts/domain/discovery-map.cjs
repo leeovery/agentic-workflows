@@ -20,21 +20,35 @@
 // manifest lock (the same lock every manifest writer honours).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
+const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 // Why each non-fresh lifecycle blocks a destructive op — mirrors the
-// conversational rejection phrasing in map-operations.md section B.
-const LIFECYCLE_PHRASES = {
-  researching: 'research is in flight on it',
-  discussing: 'discussion is in flight on it',
-  ready_for_discussion: 'research has completed and discussion is queued',
-  decided: 'discussion has concluded',
-  handled: 'it has fanned out into discussions and stays on the map as historical anchor',
-  cancelled: 'it has phase work in cancelled state and stays on the map as historical record',
-};
+// conversational rejection phrasing in map-operations.md. Derived from the
+// actual research state, same honesty rule as the render-time tags: superseded
+// research is named as such, never as completed, and a handled topic claims a
+// fan-out only when research completed or was superseded.
+/** @param {string} lifecycle @param {string|null} researchState */
+function lifecyclePhrase(lifecycle, researchState) {
+  switch (lifecycle) {
+    case 'researching': return 'research is in flight on it';
+    case 'discussing': return 'discussion is in flight on it';
+    case 'ready_for_discussion':
+      return researchState === 'superseded'
+        ? 'its research was superseded and discussion is queued'
+        : 'research has completed and discussion is queued';
+    case 'decided': return 'discussion has concluded';
+    case 'handled':
+      return researchState === 'completed' || researchState === 'superseded'
+        ? 'it has fanned out into discussions and stays on the map as historical anchor'
+        : 'it is marked handled and stays on the map as historical anchor';
+    default: return 'it has phase work in cancelled state and stays on the map as historical record'; // cancelled
+  }
+}
 
 /**
  * @typedef {object} SequenceResult
@@ -55,6 +69,7 @@ const LIFECYCLE_PHRASES = {
  * @property {string} [renamed_from]      rename: the old name
  * @property {string[]} [preserved_fields] rename: every field carried across
  * @property {boolean} [matches_dismissed] rename: new name matches a dismissed entry (left alone)
+ * @property {boolean} [brief_moved]      rename: the brief file moved to the new name
  * @property {string} [routing]           add/reroute: the value written
  * @property {string} [source]            add: the provenance tag written
  * @property {boolean} [handled]          handle/unhandle: the marker after the op
@@ -97,12 +112,12 @@ function mapItem(manifest, name) {
  * @param {object} manifest @param {string} name @param {string} verbPhrase  "removed" | "renamed" | "re-routed"
  */
 function assertFresh(manifest, name, verbPhrase) {
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
+  const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
   if (lifecycle === 'fresh') return;
   const recovery = lifecycle === 'handled'
     ? 'unhandle it to make it actionable again'
     : 'cancel from the epic menu instead';
-  throw new Error(`"${name}" can't be ${verbPhrase} — ${LIFECYCLE_PHRASES[/** @type {keyof typeof LIFECYCLE_PHRASES} */ (lifecycle)]}; ${recovery}`);
+  throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
 }
 
 /**
@@ -273,12 +288,14 @@ function removeItem(cwd, workUnit, name) {
 }
 
 /**
- * Rename a fresh map item, carrying EVERY field across (the item object moves
- * key untouched — order, brief_path, accumulated source, sentinel fields, all
- * of it) and keeping its map position. The new name must not collide with an
- * active map item; a match against the dismissed list is allowed (the
- * dismissed entry is left alone — it only blocks automatic re-adds). No git
- * commit.
+ * Rename a fresh map item, carrying every field across and keeping its map
+ * position — order, accumulated source, sentinel fields, all of it. The brief
+ * rides with the topic: briefs live at `discovery/briefs/{name}.md` and the
+ * item's `brief_path` points there, so a rename moves the file and rewrites
+ * the pointer (or both go stale under the old name). The new name must not
+ * collide with an active map item or an existing brief at the new name; a
+ * match against the dismissed list is allowed (the dismissed entry is left
+ * alone — it only blocks automatic re-adds). No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} oldName
@@ -303,20 +320,33 @@ function renameItem(cwd, workUnit, oldName, newName) {
     if (items[newName]) {
       throw new Error(`"${newName}" is already on the map — pick a different name`);
     }
+    const briefsDir = path.join(cwd, '.workflows', workUnit, 'discovery', 'briefs');
+    const oldBrief = path.join(briefsDir, `${oldName}.md`);
+    const newBrief = path.join(briefsDir, `${newName}.md`);
+    const briefOnDisk = fs.existsSync(oldBrief);
+    if (briefOnDisk && fs.existsSync(newBrief)) {
+      throw new Error(`a brief already exists at discovery/briefs/${newName}.md — resolve the collision before renaming`);
+    }
     const dismissed = manifest.phases.discovery.dismissed;
     const matchesDismissed = Array.isArray(dismissed) && dismissed.includes(newName);
 
     // Rebuild the items record with the key swapped in place: the item object
-    // itself is untouched (every field preserved) and its map position holds.
+    // carries every field (brief_path rewritten below) and its map position
+    // holds.
     /** @type {Record<string, object>} */
     const rebuilt = {};
     for (const [key, value] of Object.entries(items)) {
       rebuilt[key === oldName ? newName : key] = value;
     }
     manifest.phases.discovery.items = rebuilt;
+    if (typeof (/** @type {Record<string, unknown>} */ (item).brief_path) === 'string') {
+      /** @type {Record<string, unknown>} */ (item).brief_path = `discovery/briefs/${newName}.md`;
+    }
 
+    if (briefOnDisk) fs.renameSync(oldBrief, newBrief);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return {
+    /** @type {MapOpResult} */
+    const result = {
       work_unit: workUnit,
       name: newName,
       op: 'rename',
@@ -325,6 +355,8 @@ function renameItem(cwd, workUnit, oldName, newName) {
       matches_dismissed: matchesDismissed,
       lifecycle: 'fresh',
     };
+    if (briefOnDisk) result.brief_moved = true;
+    return result;
   });
 }
 
