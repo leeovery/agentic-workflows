@@ -444,9 +444,8 @@ Load **[casing-conventions.md](...)** and follow its instructions as written.
 [up-to-date display]
 → Proceed to **Step 0.3**.
 
-### Step 0.3: Intro and Knowledge Check
-[phase title + intro signpost]
-Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
+### Step 0.3: Knowledge Gate
+[branch on the boot response: not-ready → terminal stop; ready → proceed]
 → Proceed to **Step 1**.
 ```
 

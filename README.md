@@ -224,8 +224,6 @@ Log ideas, bugs, and quick-fixes as they occur to you — say "log that as an id
 
 **Capture:** [`/workflow-log-idea`](skills/workflow-log-idea/) | [`/workflow-log-bug`](skills/workflow-log-bug/) | [`/workflow-log-quickfix`](skills/workflow-log-quickfix/)
 
-**Utilities:** [`/workflow-migrate`](skills/workflow-migrate/)
-
 </details>
 
 <details>
