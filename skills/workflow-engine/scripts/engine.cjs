@@ -21,7 +21,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifes
 const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
-const { sequenceMap, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
+const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
 const { startTopic, completeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -90,6 +90,8 @@ Commands:
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
+  discovery-map add <work-unit> <name> --routing <research|discussion> --summary <text>
+                [--description <text>] [--source <tag>] [--force-dismissed]
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
   discovery-map remove <work-unit> <name>
   discovery-map rename <work-unit> <old> <new>
@@ -198,7 +200,7 @@ function respondDiscussionMap(manifest, topic, subtopic, status) {
 // ---------------------------------------------------------------------------
 // discovery-map — the Discovery Map's writes. sequence records the suggested
 // execution order as one transaction with its own scoped commit; the per-item
-// map operations (edit/remove/rename/reroute/handle/reactivate) write the
+// map operations (add/edit/remove/rename/reroute/handle/reactivate) write the
 // manifest with no git commit — the calling session's commit cadence picks
 // the change up. Judgment (what to change) stays with the caller; lifecycle
 // gates are enforced in the domain op.
@@ -210,7 +212,7 @@ function runDiscoveryMap(argv) {
   const cwd = process.cwd();
 
   try {
-    const { opts, positional } = parseArgs(rest);
+    const { opts, flags, positional } = parseArgs(rest, ['force-dismissed']);
     const [workUnit] = positional;
     if (command === 'sequence') {
       if (!workUnit || positional.length < 2) {
@@ -231,6 +233,19 @@ function runDiscoveryMap(argv) {
         orders[name] = parseInt(value, 10);
       }
       respond(sequenceMap(cwd, workUnit, orders));
+    } else if (command === 'add') {
+      // Strict positional count: an unquoted payload would spill into
+      // positionals and silently truncate the text — refuse instead.
+      if (!workUnit || positional.length !== 2 || !opts.routing || opts.summary === undefined) {
+        throw new Error('Usage: engine discovery-map add <work-unit> <name> --routing <research|discussion> --summary <text> [--description <text>] [--source <tag>] [--force-dismissed]');
+      }
+      respond(addItem(cwd, workUnit, positional[1], {
+        routing: opts.routing,
+        source: opts.source,
+        summary: opts.summary,
+        description: opts.description,
+        forceDismissed: flags.has('force-dismissed'),
+      }));
     } else if (command === 'edit') {
       // Strict positional count: an unquoted payload would spill into
       // positionals and silently truncate the text — refuse instead.
@@ -257,7 +272,7 @@ function runDiscoveryMap(argv) {
       }
       respond(rerouteItem(cwd, workUnit, positional[1], positional[2]));
     } else {
-      throw new Error('Usage: engine discovery-map <sequence|edit|remove|rename|reroute|handle|reactivate> …');
+      throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|reroute|handle|reactivate> …');
     }
   } catch (err) {
     failJson(err);

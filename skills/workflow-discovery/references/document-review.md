@@ -63,11 +63,10 @@ Walk the conversation against the log. Five checks:
 
 Briefs (`discovery/briefs/`) are views — regenerated at each harvest, never records — and are **out of scope** here. Reconcile only the log's narrative sections.
 
-Apply corrections directly to the file. Stage and commit the fixes:
+Apply corrections directly to the file, then commit:
 
 ```bash
-git add .workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md
-git commit -m "docs(discovery/{work_unit}): reconcile session log with conversation"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "docs(discovery/{work_unit}): reconcile session log with conversation"
 ```
 
 → Proceed to **D. Brief the User**.
