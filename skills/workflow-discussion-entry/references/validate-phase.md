@@ -28,10 +28,10 @@ Set source="continue".
 
 #### If discussion exists and status is `completed`
 
-Reset to in-progress:
+Reopen it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discussion.{topic} status in-progress
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} discussion {topic}
 ```
 
 > *Output the next fenced block as a code block:*
