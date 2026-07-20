@@ -29,6 +29,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs <command> [args]
 
 Domain commands (state transitions, queries) land here as they are built.
 
+**`boot`** — the entry pipeline: runs `workflow-migrate/scripts/migrate.sh` (resolved relative to the engine, cwd = project root), then `knowledge check`, then `knowledge compact` when ready — one call in place of the sequential Step 0 commands. Response: `{"ok": true, "migrations": {"changed": false, "output": "<trimmed report>"}, "knowledge": "ready"|"not-ready", "compacted": false, "warnings": []}`. `migrations.changed` mirrors migrate.sh's own files-updated signal; `output` is the report with the prose stop-gate lines stripped (update counts kept). A failing migrate.sh is a hard error (`{ok:false}` on stderr, exit 1) — migrations must never half-run silently. A failing `check` reports `not-ready`; a failing `compact` lands in `warnings`, never blocks. The conversational pieces (migration summary, review gate, not-ready terminal stop) stay in the calling skill.
+
+```bash
+engine boot
+```
+
 **`map`** — discussion-map transitions. Both commands load the work unit's manifest, apply the transition, save atomically, and print one decision-ready JSON line: `{"ok": true, "subtopic": "…", "status": "…", "all_decided": false, "unresolved_count": N}` — no follow-up read needed. Errors print `{"ok": false, "error": "…"}` to stderr and exit 1. No git commit — the calling session's commit cadence picks the manifest change up.
 
 ```bash
@@ -53,11 +59,12 @@ engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
 engine inbox delete <path> [<path> …]    # git rm archived items
 ```
 
-**`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (or `.workflows/.inbox` with `--inbox`) plus commit. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
+**`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (`.workflows/.inbox` with `--inbox`, or the whole `.workflows` tree with `--workflows` — migrations touch many work units plus `.workflows/.state`) plus commit. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
 
 ```bash
 engine commit <work-unit> -m "<message>"
 engine commit --inbox -m "<message>"
+engine commit --workflows -m "<message>"
 ```
 
 **Rendering is not a runtime CLI concern.** Static chrome (signposts, boxes, gate rules) lives as literal blocks in skill prose; parameterised chrome is rendered in-process by projections. No skill flow calls a render command at runtime — the `render` command group in `engine.cjs` is a development/debugging utility only (e.g. generating a correct literal while authoring prose).
@@ -128,4 +135,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-map.cjs`, and `tests/scripts/test-engine-transactions.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.

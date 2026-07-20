@@ -1,7 +1,7 @@
 ---
 name: workflow-start
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/), Bash(mv .workflows/.inbox/), Bash(git add), Bash(git commit), Bash(git rm)
+allowed-tools: Bash(node .claude/skills/workflow-start/scripts/discovery.cjs), Bash(node .claude/skills/workflow-manifest/scripts/manifest.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/), Bash(mv .workflows/.inbox/), Bash(git status), Bash(git diff)
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.
@@ -59,25 +59,128 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 → Proceed to **Step 0.2**.
 
-### Step 0.2: Migrations
+### Step 0.2: Boot
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Running migrations to keep workflow files in sync.
+> Running migrations and the knowledge base check.
 ```
 
-**Run migrations — this is mandatory. You must complete it before proceeding.**
+**Run the boot pipeline — this is mandatory. You must complete it before proceeding.**
 
-Invoke the `/workflow-migrate` skill and follow its instructions exactly — if it issues a STOP gate, you must stop.
+Run the boot command with sandbox disabled (migrations may need to modify `.claude/settings.json`) and capture its JSON response:
 
-**CRITICAL**: When the migrate skill returns (either after committing changes or reporting no changes needed), you MUST continue to **Step 0.3**. Do not stop after migration completes.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs boot
+```
+
+**CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command.
+
+#### If the command fails (`ok: false` or non-zero exit)
+
+Migrations must never half-run silently. Surface the reported error to the user.
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `migrations.changed` is `true`
+
+Files were updated. You MUST complete the steps below before proceeding.
+
+1. Run `git status --short -- .workflows` and `git diff -- .workflows` to see what changed. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
+2. Write a brief natural language summary of what the migrations did (e.g., "Restructured workflow directories, created manifest files, renamed tracking artifacts"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
+3. Display the summary (`{N}`/`{M}` come from `migrations.output`):
+
+> *Output the next fenced block as a code block:*
+
+```
+Migrations Applied
+
+{your natural language summary}
+
+{N} migration(s), {M} file(s) updated.
+```
+
+4. Confirm:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+Ready to continue?
+
+- **`c`/`continue`** — Proceed
+- **Ask** — Ask questions about the changes
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `continue`:**
+
+Commit the migration changes:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "chore: apply workflow migrations"
+```
 
 → Proceed to **Step 0.3**.
 
-### Step 0.3: Knowledge Check
+**If ask:**
 
-Load **[knowledge-check.md](../workflow-knowledge/references/knowledge-check.md)** and follow its instructions as written.
+Answer the user's question, then re-render the confirmation prompt above.
+
+**STOP.** Wait for user response.
+
+#### Otherwise
+
+> *Output the next fenced block as a code block:*
+
+```
+All documents up to date.
+```
+
+**Do not stop here.** No migrations were needed.
+
+→ Proceed to **Step 0.3**.
+
+### Step 0.3: Knowledge Gate
+
+Branch on the boot response — run no further commands (`compact` already ran inside boot when the knowledge base was ready).
+
+#### If `knowledge` is `not-ready`
+
+> *Output the next fenced block as a code block:*
+
+```
+●───────────────────────────────────────────────●
+  Knowledge Base Not Ready
+●───────────────────────────────────────────────●
+
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> The knowledge base is required infrastructure for workflows.
+> It must be initialised before any workflow can proceed.
+```
+
+> *Output the next fenced block as a code block:*
+
+```
+To set up the knowledge base, run:
+
+  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
+
+Setup configures system defaults, initialises the project store,
+and runs the initial indexing pass. If no API key is available,
+stub mode is offered as an alternative.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `knowledge` is `ready`
 
 → Proceed to **Step 1**.
 
