@@ -8,47 +8,27 @@ View and manage items archived out of the inbox. Pick one item, then restore it,
 
 ## A. Select
 
-Run discovery for the current archived state — re-run on every entry so prior actions are reflected:
+Render the archived snapshot — re-run on every entry so prior actions are reflected:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs
+node .claude/skills/workflow-start/scripts/gateway.cjs archived
 ```
 
-Read the `=== ARCHIVED ===` section.
+The output is one snapshot in three demarcated sections:
 
-#### If no archived items remain
+- **DATA** — reasoning surface: `archived_count` and the `ITEMS` table — one line per item, `n  type  date  slug  → path`. Reason from it; never display or restate it.
+- **DISPLAY** — the numbered archived list. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **MENU** — the selection prompt. Emit verbatim as markdown (not a code block). Empty when nothing is archived.
 
-> *Output the next fenced block as a code block:*
+Emit the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
-```
-  No archived items.
-```
+#### If `archived_count` is 0
 
 → Return to caller.
 
 #### Otherwise
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Archived
-●───────────────────────────────────────────────●
-
-@foreach(item in archived_items sorted by date)
-  {N}. {item.title} ({item.type}, {item.date})
-@endforeach
-```
-
-Build a numbered list combining all archived ideas, bugs, and quick-fixes, sorted by date. Hold the number → item mapping (type, slug, date).
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Select an item (enter number, or **`b`/`back`** to return):
-· · · · · · · · · · · ·
-```
+Emit the MENU section.
 
 **STOP.** Wait for user response.
 
@@ -58,7 +38,7 @@ Select an item (enter number, or **`b`/`back`** to return):
 
 **If user chose a number:**
 
-Store the selected item and resolve its path `.workflows/.inbox/.archived/{type}/{date}--{slug}.md`.
+Store the selected item's `ITEMS` row — its type, slug, date, and path.
 
 → Proceed to **B. Action Menu**.
 
@@ -98,7 +78,7 @@ Read the file and render its full content.
 Move the file back into its inbox folder and commit — one command:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore .workflows/.inbox/.archived/{type}/{date}--{slug}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore {item.path}
 ```
 
 > *Output the next fenced block as a code block:*
@@ -134,7 +114,7 @@ repo and cannot be undone.
 **If user chose `y`/`yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete .workflows/.inbox/.archived/{type}/{date}--{slug}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete {item.path}
 ```
 
 > *Output the next fenced block as a code block:*

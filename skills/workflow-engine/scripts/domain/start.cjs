@@ -320,4 +320,4 @@ function startDetail(cwd) {
   };
 }
 
-module.exports = { startDetail };
+module.exports = { startDetail, discoverInbox };

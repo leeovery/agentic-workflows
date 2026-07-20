@@ -47,13 +47,13 @@ Set `target_phase` = `next_phase`.
 
 ## B. Check for Earlier Phases
 
-Check if there are completed phases earlier in the pipeline that the user could revisit. Read the discovery output's `completed_phases` — any phase listed before `next_phase` in the pipeline order.
+Read the discovery output's `revisitable_phases` — the completed phases the user could revisit.
 
-#### If no earlier completed phases exist
+#### If `revisitable_phases` is `(none)`
 
 → Proceed to **E. Enter Plan Mode**.
 
-#### If earlier completed phases exist
+#### Otherwise
 
 → Proceed to **C. Offer Revisit**.
 
@@ -82,21 +82,7 @@ Check if there are completed phases earlier in the pipeline that the user could 
 
 ## D. Select Phase
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which phase would you like to revisit?
-
-- **`1`** — {phase:(titlecase)} — completed
-- **`2`** — ...
-- **`b`/`back`** — Return to the previous menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-List only completed phases that come before `next_phase`.
+Emit the discovery output's `MENU: revisit phases` section verbatim as markdown (not a code block). Its numbering follows `revisitable_phases` order.
 
 **STOP.** Wait for user response.
 
@@ -106,7 +92,7 @@ List only completed phases that come before `next_phase`.
 
 #### If user chose a phase
 
-Set `target_phase` = selected phase.
+Set `target_phase` = the number's phase in `revisitable_phases`.
 
 → Proceed to **E. Enter Plan Mode**.
 

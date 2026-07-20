@@ -8,7 +8,9 @@
 //
 //   gateway.cjs               → labelled dump, all active features (head insert)
 //   gateway.cjs view {work_unit}
-//                               → DATA + DISPLAY + MENU snapshot (Step 5)
+//                               → DATA + DISPLAY + MENU snapshot (Step 5),
+//                                 plus the deferred revisit-phase menu when
+//                                 earlier phases can be revisited
 //
 // Those two calls are the whole legal surface: an unknown verb, a bare
 // positional, or excess arguments is a usage error (stderr, exit 1) — never
@@ -40,7 +42,8 @@ function view(workUnit) {
     engine.gateway.dataBlock(engine.project.workUnitData(TYPE, unit, menu)),
     engine.gateway.displayBlock(engine.project.workUnitStatus(TYPE, unit)),
     engine.gateway.menuBlock(menu.rendered),
-  ].join('\n');
+    engine.project.revisitPhasesSection(engine.project.revisitablePhases(TYPE, unit)),
+  ].filter(Boolean).join('\n');
 }
 
 const USAGE = 'Usage: gateway.cjs | gateway.cjs view {work_unit}';

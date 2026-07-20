@@ -23,6 +23,7 @@ The output is one snapshot in three demarcated sections:
 - **DATA** — reasoning surface: state flags (`next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  action  topic  → route`. Reason from it; never display or restate it.
 - **DISPLAY** — the status block. Emit verbatim as a code block. Never redraw, reflow, or trim it.
 - **MENU** — the proceed/revisit menu. Emit verbatim as markdown (not a code block). Empty when there is nothing to revisit or finalise.
+- **MENU: revisit phases** — labelled deferred section, present when earlier phases can be revisited. Emitted only at **C. Select Phase**, never here.
 
 Emit the DISPLAY section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
@@ -78,21 +79,7 @@ Feature Completed
 
 ## C. Select Phase
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which phase would you like to revisit?
-
-- **`1`** — {phase:(titlecase)} — completed
-- **`2`** — ...
-- **`b`/`back`** — Return to the previous menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-List one option per `revisit_phase` entry in `ACTIONS`, numbered by its key.
+Emit the snapshot's `MENU: revisit phases` section verbatim as markdown (not a code block). Its numbering matches the `revisit_phase` keys in `ACTIONS`.
 
 **STOP.** Wait for user response.
 

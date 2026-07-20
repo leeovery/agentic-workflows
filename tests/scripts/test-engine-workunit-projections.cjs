@@ -5,7 +5,7 @@ const assert = require('node:assert');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { workUnitDetail, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
-const { workUnitStatus, workUnitMenu, workUnitData } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
+const { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
 
 // Golden tests: byte-exact expected strings for the work-unit status display
 // and proceed/revisit menu, across all four single-topic types. Fixtures go
@@ -454,5 +454,59 @@ describe('workunit projections: data body', () => {
 describe('workunit domain: type registry', () => {
   it('throws loudly on an unknown work type', () => {
     assert.throws(() => typeConfig('epic'), /unknown work type "epic"/);
+  });
+});
+
+describe('workunit projections: revisit phases section', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('mirrors the revisit_phase keys for a mid-pipeline feature', () => {
+    createManifest(dir, 'auth-flow', {
+      phases: {
+        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
+      },
+    });
+    const unit = unitOf(dir, 'feature', 'auth-flow');
+    assert.deepStrictEqual(revisitablePhases('feature', unit), ['discussion', 'specification']);
+  });
+
+  it('pins the labelled section byte-for-byte', () => {
+    assert.strictEqual(revisitPhasesSection(['discussion', 'specification']), [
+      '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===',
+      '· · · · · · · · · · · ·',
+      'Which phase would you like to revisit?',
+      '',
+      '- **`1`** — Discussion — completed',
+      '- **`2`** — Specification — completed',
+      '- **`b`/`back`** — Return to the previous menu',
+      '',
+      'Select an option:',
+      '· · · · · · · · · · · ·',
+      '',
+    ].join('\n'));
+  });
+
+  it('renders nothing when there is nothing to revisit', () => {
+    assert.strictEqual(revisitPhasesSection([]), '');
+    createManifest(dir, 'fresh', {});
+    assert.deepStrictEqual(revisitablePhases('feature', unitOf(dir, 'feature', 'fresh')), []);
+  });
+
+  it('filters quick-fix candidates to the quick-fix pipeline', () => {
+    createManifest(dir, 'hotfix', {
+      work_type: 'quick-fix',
+      phases: {
+        scoping: { items: { hotfix: { status: 'completed' } } },
+        specification: { items: { hotfix: { status: 'completed' } } },
+        planning: { items: { hotfix: { status: 'completed' } } },
+        implementation: { items: { hotfix: { status: 'completed' } } },
+      },
+    });
+    const unit = unitOf(dir, 'quick-fix', 'hotfix');
+    assert.deepStrictEqual(revisitablePhases('quick-fix', unit), ['scoping', 'implementation']);
   });
 });

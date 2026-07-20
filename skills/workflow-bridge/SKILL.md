@@ -45,7 +45,7 @@ Run the discovery script with the work unit:
 node .claude/skills/workflow-bridge/scripts/gateway.cjs {work_unit}
 ```
 
-The output contains `next_phase` and `completed_phases` (in pipeline order).
+The output contains `next_phase`, `completed_phases` (in pipeline order), and `revisitable_phases` — the completed phases before `next_phase`, filtered to the work type's pipeline. When candidates exist, a labelled `MENU: revisit phases` section follows the dump — emitted only at the continuation's revisit gate, never here.
 
 → Proceed to **Step 2**.
 

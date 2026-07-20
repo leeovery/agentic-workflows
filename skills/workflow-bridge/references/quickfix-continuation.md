@@ -93,13 +93,13 @@ Quick-Fix Completed
 
 ## C. Check for Earlier Phases
 
-Check if there are completed phases earlier in the pipeline that the user could revisit. Read the discovery output's `completed_phases` and keep only quick-fix pipeline phases — scoping, implementation, review — listed before `next_phase` in the pipeline order. The dump also lists specification and planning (written by scoping); they are not quick-fix phases, have no quick-fix entry route, and are never revisit targets.
+Read the discovery output's `revisitable_phases` — the completed phases the user could revisit, already filtered to quick-fix pipeline phases (specification and planning, written by scoping, are never revisit targets).
 
-#### If no earlier completed phases exist
+#### If `revisitable_phases` is `(none)`
 
 → Proceed to **F. Enter Plan Mode**.
 
-#### If earlier completed phases exist
+#### Otherwise
 
 → Proceed to **D. Offer Revisit**.
 
@@ -128,21 +128,7 @@ Check if there are completed phases earlier in the pipeline that the user could 
 
 ## E. Select Phase
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which phase would you like to revisit?
-
-- **`1`** — {phase:(titlecase)} — completed
-- **`2`** — ...
-- **`b`/`back`** — Return to the previous menu
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-List only completed quick-fix pipeline phases (scoping, implementation, review) that come before `next_phase` — never specification or planning.
+Emit the discovery output's `MENU: revisit phases` section verbatim as markdown (not a code block). Its numbering follows `revisitable_phases` order.
 
 **STOP.** Wait for user response.
 
@@ -152,7 +138,7 @@ List only completed quick-fix pipeline phases (scoping, implementation, review) 
 
 #### If user chose a phase
 
-Set `target_phase` = selected phase.
+Set `target_phase` = the number's phase in `revisitable_phases`.
 
 → Proceed to **F. Enter Plan Mode**.
 

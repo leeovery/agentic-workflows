@@ -8,58 +8,19 @@ Manage an in-progress work unit's lifecycle.
 
 ## A. Select
 
-> *Output the next fenced block as a code block:*
+Render the manage selection snapshot:
 
-```
-●───────────────────────────────────────────────●
-  Manage
-●───────────────────────────────────────────────●
-
-@if(feature_count > 0)
-Features:
-@foreach(unit in the FEATURES section)
-  {N}. {unit.name:(titlecase)}
-@endforeach
-@endif
-
-@if(bugfix_count > 0)
-Bugfixes:
-@foreach(unit in the BUGFIXES section)
-  {N}. {unit.name:(titlecase)}
-@endforeach
-@endif
-
-@if(quickfix_count > 0)
-Quick Fixes:
-@foreach(unit in the QUICK-FIXES section)
-  {N}. {unit.name:(titlecase)}
-@endforeach
-@endif
-
-@if(cross_cutting_count > 0)
-Cross-Cutting:
-@foreach(unit in the CROSS-CUTTING section)
-  {N}. {unit.name:(titlecase)}
-@endforeach
-@endif
-
-@if(epic_count > 0)
-Epics:
-@foreach(unit in the EPICS section)
-  {N}. {unit.name:(titlecase)}
-@endforeach
-@endif
+```bash
+node .claude/skills/workflow-start/scripts/gateway.cjs manage
 ```
 
-Build from discovery output. Only show sections that have work units. Numbering is continuous across sections — same numbers as the overview.
+The output is one snapshot in three demarcated sections:
 
-> *Output the next fenced block as markdown (not a code block):*
+- **DATA** — reasoning surface: the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
+- **DISPLAY** — the numbered work-unit list by type. Emit verbatim as a code block. Never redraw, reflow, or trim it.
+- **MENU** — the selection prompt. Emit verbatim as markdown (not a code block).
 
-```
-· · · · · · · · · · · ·
-Select a work unit (enter number, or **`b`/`back`** to return):
-· · · · · · · · · · · ·
-```
+Emit the DISPLAY section, then the MENU section. A section is everything beneath its `===` marker up to the next marker — the marker lines themselves are never emitted.
 
 **STOP.** Wait for user response.
 
@@ -69,73 +30,23 @@ Select a work unit (enter number, or **`b`/`back`** to return):
 
 #### If user chose a number
 
-Store the selected work unit.
+Store the selected work unit's `UNITS` row — its name and work type.
 
-→ Proceed to **B. Pre-Checks**.
+→ Proceed to **B. Action Menu**.
 
-## B. Pre-Checks
+## B. Action Menu
 
-Default `implementation_completed` = false, `has_plan` = false.
-
-Check whether the planning phase exists and store the result as `has_plan`:
+Render the selected work unit's manage snapshot:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {selected.name}.planning
+node .claude/skills/workflow-start/scripts/gateway.cjs manage {selected.name}
 ```
 
-#### If `selected.work_type` is `feature`
+The response carries demarcated sections:
 
-Default `has_spec` = false, `has_discussion` = false, `has_in_progress_epics` = false.
-
-Check whether the specification phase exists and store the result as `has_spec`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {selected.name}.specification
-```
-
-Check whether the discussion phase exists and store the result as `has_discussion`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {selected.name}.discussion
-```
-
-List in-progress epics:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest list --status in-progress --work-type epic
-```
-
-If the result is a non-empty JSON array, set `has_in_progress_epics` = true and store the array as `available_epics`.
-
-→ Proceed to **C. Implementation Check**.
-
-#### Otherwise
-
-→ Proceed to **C. Implementation Check**.
-
-## C. Implementation Check
-
-Read all topic statuses in the implementation phase:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{selected.name}.implementation.*' status
-```
-
-#### If output is empty (no implementation phase)
-
-→ Proceed to **D. Action Menu**.
-
-#### If any result has `"value": "completed"`
-
-Set `implementation_completed` = true.
-
-→ Proceed to **D. Action Menu**.
-
-#### Otherwise
-
-→ Proceed to **D. Action Menu**.
-
-## D. Action Menu
+- **DATA** — reasoning surface: lifecycle flags (`implementation_completed`, `has_plan`, `absorb_available`, …), `available_epics`, `planning_topics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
+- **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim as markdown (not a code block) at this section's gate below.
+- **Labelled sections** (`MENU: absorb target`, `MENU: plan topics`) — deferred: each is emitted only at the gate its marker names (inside **[absorb-into-epic.md](absorb-into-epic.md)** / **[view-plan.md](view-plan.md)**), never here.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -144,29 +55,13 @@ Set `implementation_completed` = true.
 > cancel abandons it, pivot converts a feature to an epic when the
 > scope grows beyond a single topic, absorb merges a feature's
 > discussion into an existing epic.
-
-· · · · · · · · · · · ·
-**{selected.name:(titlecase)}** ({selected.work_type})
-
-@if(implementation_completed)
-- **`d`/`done`** — Mark as completed
-@endif
-@if(selected.work_type == 'feature')
-- **`p`/`pivot`** — Convert to epic (enables multiple topics)
-@endif
-@if(selected.work_type == 'feature' and !has_spec and has_discussion and has_in_progress_epics)
-- **`a`/`absorb`** — Merge into an existing epic
-@endif
-@if(has_plan)
-- **`v`/`view-plan`** — View the implementation plan
-@endif
-- **`c`/`cancel`** — Mark as cancelled
-- **`b`/`back`** — Return
-- **Ask** — Ask a question about this work unit
-· · · · · · · · · · · ·
 ```
 
+Emit the MENU section.
+
 **STOP.** Wait for user response.
+
+A branch below can only be chosen when the menu offered its option.
 
 #### If user chose `d`/`done`
 
@@ -221,7 +116,7 @@ Invoke the `/workflow-continue-epic` skill.
 
 → Load **[view-plan.md](view-plan.md)** and follow its instructions as written.
 
-→ Return to **D. Action Menu**.
+→ Return to **B. Action Menu**.
 
 #### If user chose `c`/`cancel`
 
@@ -257,4 +152,4 @@ The JSON response reports `status`, `committed`, and `warnings`. If `warnings` i
 
 Answer the question.
 
-→ Return to **D. Action Menu**.
+→ Return to **B. Action Menu**.

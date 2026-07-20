@@ -14,17 +14,9 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > This will move the feature's discussion, research, seed, and imports
 > into the selected epic as a new topic and delete the feature work unit.
 > Git history serves as provenance.
-
-· · · · · · · · · · · ·
-Select a target epic:
-
-@foreach(epic in available_epics)
-- **`{N}`** — {epic.name:(titlecase)}
-@endforeach
-
-- **`b`/`back`** — Return
-· · · · · · · · · · · ·
 ```
+
+Emit the `MENU: absorb target` section from the caller's `manage {selected.name}` snapshot verbatim as markdown (not a code block). Its numbering follows the snapshot's `available_epics` order.
 
 **STOP.** Wait for user response.
 
@@ -34,7 +26,7 @@ Select a target epic:
 
 #### If user chose a number
 
-Store the selected epic as `target_epic`.
+Resolve the number against `available_epics` and store the selected epic as `target_epic`.
 
 → Proceed to **B. Name Topic**.
 
