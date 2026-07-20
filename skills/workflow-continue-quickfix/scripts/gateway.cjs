@@ -1,19 +1,19 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-continue-bugfix. Thin by design: the
+// Adapter (read gateway) for workflow-continue-quickfix. Thin by design: the
 // work-unit collation and projections live in the engine's domain ring; this
 // script selects which engine answers the skill's flow needs and sections the
 // output.
 //
-//   discovery.cjs               → labelled dump, all active bugfixes (head insert)
-//   discovery.cjs view {work_unit}
+//   gateway.cjs               → labelled dump, all active quick-fixes (head insert)
+//   gateway.cjs view {work_unit}
 //                               → DATA + DISPLAY + MENU snapshot (Step 5)
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 
-const TYPE = 'bugfix';
+const TYPE = 'quick-fix';
 
 function discover(cwd) {
   return engine.detail.workUnitDetail(cwd, TYPE);
@@ -27,9 +27,9 @@ function format(result) {
 // the rendered status block (DISPLAY), and the proceed/revisit menu (MENU).
 function view(workUnit) {
   const result = discover(process.cwd());
-  const unit = (result.bugfixes || []).find((u) => u.name === workUnit);
+  const unit = (result.quick_fixes || []).find((u) => u.name === workUnit);
   if (!unit) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active bugfix with this name' });
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active quick-fix with this name' });
   }
   const menu = engine.project.workUnitMenu(TYPE, unit);
   return [

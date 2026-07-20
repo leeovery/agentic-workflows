@@ -5,13 +5,13 @@
 // building lives in the engine's domain ring; this script selects which
 // engine answers the skill's flow needs and sections the output.
 //
-//   discovery.cjs               → thin index dump, all active epics (head insert)
-//   discovery.cjs {work_unit}   → scoped state dump, one epic (Steps 5–7, bridge)
-//   discovery.cjs view {work_unit} [new_arrivals_json]
+//   gateway.cjs               → thin index dump, all active epics (head insert)
+//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–7, bridge)
+//   gateway.cjs view {work_unit} [new_arrivals_json]
 //                               → DATA + DISPLAY + MENU snapshot (Step 8)
-//   discovery.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
-//   discovery.cjs cancel-menu {work_unit}      → Cancel Topic sub-view (E)
-//   discovery.cjs reactivate-menu {work_unit}  → Reactivate Topic sub-view (F)
+//   gateway.cjs completed-menu {work_unit}   → Resume Completed sub-view (D)
+//   gateway.cjs cancel-menu {work_unit}      → Cancel Topic sub-view (E)
+//   gateway.cjs reactivate-menu {work_unit}  → Reactivate Topic sub-view (F)
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');

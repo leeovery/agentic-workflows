@@ -11,7 +11,7 @@ Shows when proposed groupings exist (directly from routing) or after analysis co
 Arriving from **[analysis-flow.md](analysis-flow.md)**, the manifest changed since the last snapshot — re-run it first:
 
 ```bash
-node .claude/skills/workflow-specification-entry/scripts/discovery.cjs view {work_unit}
+node .claude/skills/workflow-specification-entry/scripts/gateway.cjs view {work_unit}
 ```
 
 Arriving from routing, use the Step 1 snapshot as-is.

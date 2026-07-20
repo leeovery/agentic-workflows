@@ -59,7 +59,7 @@ Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topi
 Then render the proposal:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs map-view {work_unit} --proposed-file .workflows/.cache/{work_unit}/discovery/proposed-topics.json
+node .claude/skills/workflow-discovery/scripts/gateway.cjs map-view {work_unit} --proposed-file .workflows/.cache/{work_unit}/discovery/proposed-topics.json
 ```
 
 The output arrives in demarcated sections. Read `=== DATA` to reason from (never display it) — it carries a per-name flag row for each proposed topic:

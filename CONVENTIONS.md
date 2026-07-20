@@ -46,7 +46,7 @@ Code blocks are used for informational displays (overviews, status, keys, phase 
 
 ### Engine Output Sections
 
-Skills that render state via an engine/adapter call (e.g. `discovery.cjs view {work_unit}`) receive one snapshot in three demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
+Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in three demarcated sections. The section markers carry their own handling instruction, and the skill file restates it at the call site:
 
 - `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions.
 - `=== DISPLAY … ===` — emit verbatim **as a code block**. Indentation-dependent content (trees, aligned columns) breaks under markdown rendering.

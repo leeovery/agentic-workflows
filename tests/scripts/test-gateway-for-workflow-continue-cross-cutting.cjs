@@ -3,7 +3,7 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-continue-cross-cutting/scripts/discovery.cjs');
+const { discover, format } = require('../../skills/workflow-continue-cross-cutting/scripts/gateway.cjs');
 
 describe('workflow-continue-cross-cutting discovery', () => {
   let dir;

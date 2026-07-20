@@ -17,13 +17,13 @@ This reference collects the user's selection and returns control to the caller. 
 Render the epic snapshot:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs view {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit}
 ```
 
 When `new_arrivals` has any names, pass the tracker as a JSON argument instead:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs view {work_unit} '{"research_analysis":["{topic}", "{topic}"],"gap_analysis":[]}'
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} '{"research_analysis":["{topic}", "{topic}"],"gap_analysis":[]}'
 ```
 
 The output is one snapshot in three demarcated sections:
@@ -155,7 +155,7 @@ Store the selected entry's `action`, `topic`, and `route`. The route is the exac
 Render the completed-topics list and pick menu:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs completed-menu {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs completed-menu {work_unit}
 ```
 
 Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
@@ -179,7 +179,7 @@ Store the selected entry's `phase`, `topic`, and `route`.
 Render the cancellable-topics list and pick menu:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs cancel-menu {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs cancel-menu {work_unit}
 ```
 
 Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.
@@ -245,7 +245,7 @@ Cancelled "{topic:(titlecase)}" in {phase}.
 Render the cancelled-topics list and pick menu:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs reactivate-menu {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs reactivate-menu {work_unit}
 ```
 
 Emit the DISPLAY section, then the MENU section. Match the user's input to its `ACTIONS` entry by `key`.

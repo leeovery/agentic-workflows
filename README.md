@@ -210,6 +210,7 @@ Log ideas, bugs, and quick-fixes as they occur to you — say "log that as an id
 | [workflow-research-process](skills/workflow-research-process/) | Free-form exploration across technical, business, and market domains |
 | [workflow-discussion-process](skills/workflow-discussion-process/) | Captures context, decisions, edge cases, competing solutions, and rationale |
 | [workflow-investigation-process](skills/workflow-investigation-process/) | Symptom gathering and code analysis for root cause identification |
+| [workflow-scoping-process](skills/workflow-scoping-process/) | Context, spec, and plan in one pass for quick-fixes |
 | [workflow-specification-process](skills/workflow-specification-process/) | Collaborative refinement into validated, standalone specifications |
 | [workflow-planning-process](skills/workflow-planning-process/) | Phased plans with tasks, acceptance criteria, and multiple output formats |
 | [workflow-implementation-process](skills/workflow-implementation-process/) | Strict TDD — tests first, implements to pass, commits frequently |

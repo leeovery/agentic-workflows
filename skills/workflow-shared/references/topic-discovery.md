@@ -31,7 +31,7 @@ The caller provides these via context before loading:
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Parse the `analysis_caches` line from the output (`research_analysis=<status>, gap_analysis=<status>`):

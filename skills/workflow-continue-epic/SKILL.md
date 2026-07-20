@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-continue-epic/scripts/gateway.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -62,12 +62,12 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 > Scanning for active epics and their current progress.
 ```
 
-!`node .claude/skills/workflow-continue-epic/scripts/discovery.cjs`
+!`node .claude/skills/workflow-continue-epic/scripts/gateway.cjs`
 
 If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run. Execute the script before continuing:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs
 ```
 
 If discovery output is already displayed, it has been run on your behalf.
@@ -238,7 +238,7 @@ Load **[sequence-discovery-map.md](../workflow-shared/references/sequence-discov
 On return, re-run discovery so the display sees the new order:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 → Proceed to **Step 8**.

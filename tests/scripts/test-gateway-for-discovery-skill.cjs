@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format, listSessionLogs } = require('../../skills/workflow-discovery/scripts/discovery.cjs');
+const { discover, format, listSessionLogs } = require('../../skills/workflow-discovery/scripts/gateway.cjs');
 
 function writeSessionLog(dir, workUnit, number, conclusionBody, opts = {}) {
   const padded = String(number).padStart(3, '0');

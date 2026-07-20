@@ -53,7 +53,7 @@ Where do you want to take it from here?
 The map exists; editing existing items is available alongside new exploration. Render the map as an anchor, then open the conversation:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/discovery.cjs map-view {work_unit}
+node .claude/skills/workflow-discovery/scripts/gateway.cjs map-view {work_unit}
 ```
 
 The output arrives in demarcated sections: read `=== DATA` to reason from (never display it); emit the `=== DISPLAY` section verbatim **as a code block**.
@@ -128,7 +128,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
 2. **Recognise intent.** The user's message may contain:
    - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect, positions taken on a decision. Continue the conversation: push on the thread the user opened, counter-frame, follow where it leads. See [discovery-guidelines.md](discovery-guidelines.md) → *The Exploration Stance — How* for the register and where to push.
    - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
-   - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-run `discovery.cjs map-view {work_unit}` and emit its `=== DISPLAY` section verbatim as a code block. No STOP gate; just render and continue.
+   - **A request to see the map** — *"show map"*, *"what's on the map"*. Re-run `gateway.cjs map-view {work_unit}` and emit its `=== DISPLAY` section verbatim as a code block. No STOP gate; just render and continue.
    - **A request to see dismissed items** — *"show dismissed"*, *"what was removed"*. Load [show-dismissed.md](show-dismissed.md).
    - **A KB query for prior context** — when a conversational thread would benefit from prior work on this or sibling work units, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-knowledge/references/contextual-query.md) for the pattern).
    - **A harvest pull** — *"let's pull topics"*, *"that covers it"*, *"good enough to start"*, *"let's wrap"*, *"done"*, *"ready to go"*. Route to **C. Harvest**.

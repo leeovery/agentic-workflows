@@ -11,7 +11,7 @@
 # work unit and its verbatim content reaches every downstream phase.
 #
 # This test executes that documented promotion sequence against the real
-# manifest.cjs and knowledge.cjs CLIs and asserts the end state for every
+# engine.cjs and knowledge.cjs CLIs and asserts the end state for every
 # inbox type (idea / bug / quick-fix) and a representative spread of resulting
 # work types (feature / epic / bugfix / quick-fix). It also runs the
 # downstream-surfacing path check — a paraphrased, work-unit-boosted query

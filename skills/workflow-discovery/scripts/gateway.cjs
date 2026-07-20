@@ -4,9 +4,9 @@
 // Adapter (read gateway) for workflow-discovery. Thin by design: the scoped
 // discovery dump plus the map-view projection over one epic's discovery map.
 //
-//   discovery.cjs {work_unit}            → labelled dump (thin reasoning surface)
-//   discovery.cjs map-view {work_unit}   → DATA + DISPLAY map snapshot
-//   discovery.cjs map-view {work_unit} --proposed-file {path}
+//   gateway.cjs {work_unit}            → labelled dump (thin reasoning surface)
+//   gateway.cjs map-view {work_unit}   → DATA + DISPLAY map snapshot
+//   gateway.cjs map-view {work_unit} --proposed-file {path}
 //                                        → synthesis overlay: the harvest's
 //                                          proposed set (model-authored JSON)
 //                                          rendered over the existing map
@@ -194,7 +194,7 @@ function readProposedFile(cwd, file) {
 
 function mapView(workUnit, ...rest) {
   if (!workUnit || workUnit.startsWith('--')) {
-    throw new Error('Usage: discovery.cjs map-view <work_unit> [--proposed-file <path>]');
+    throw new Error('Usage: gateway.cjs map-view <work_unit> [--proposed-file <path>]');
   }
   const cwd = process.cwd();
   let proposedFile = null;
@@ -237,7 +237,7 @@ function mapView(workUnit, ...rest) {
 if (require.main === module) {
   engine.gateway.runGateway({
     index: () => {
-      process.stderr.write('Error: work unit name required\nUsage: discovery.cjs <work_unit> | discovery.cjs map-view <work_unit> [--proposed-file <path>]\n');
+      process.stderr.write('Error: work unit name required\nUsage: gateway.cjs <work_unit> | gateway.cjs map-view <work_unit> [--proposed-file <path>]\n');
       process.exit(1);
       return ''; // unreachable; keeps the handler's return type uniform
     },
@@ -250,7 +250,7 @@ if (require.main === module) {
         return ''; // unreachable
       }
     },
-    // Scoped dump form: `discovery.cjs {work_unit}` — exit 2 on an unknown
+    // Scoped dump form: `gateway.cjs {work_unit}` — exit 2 on an unknown
     // work unit so calling flows fail loudly.
     fallback: (workUnit) => {
       const result = discover(process.cwd(), workUnit);

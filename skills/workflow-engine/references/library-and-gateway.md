@@ -83,4 +83,4 @@ engine.gateway.runGateway({
 });
 ```
 
-The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — the adapter never infers what a call is for.
+The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for.

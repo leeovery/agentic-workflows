@@ -3,17 +3,15 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the manifest field surface — `engine manifest <command>`.
 //
-// The absorbed manifest CLI: dot-path addressing (`wu[.phase[.topic]]`,
-// segment count = level, reserved `project` prefix routes to the project
-// manifest), schema validation from kernel/manifest-schema, IO and locking
-// from kernel/manifest-io. The command functions are the CLI's, refactored —
-// not rewritten — so field semantics can't drift.
+// Dot-path addressing (`wu[.phase[.topic]]`, segment count = level, reserved
+// `project` prefix routes to the project manifest), schema validation from
+// kernel/manifest-schema, IO and locking from kernel/manifest-io.
 //
 // Output contract, deliberately split:
-//   Reads (get, exists, list, key-of, resolve) print the CLI's bare stdout
-//   byte-for-byte — they are prose substitution surfaces. Their errors keep
-//   the CLI's exit-code convention (`Error: …` on stderr; exit 1 = real
-//   error, exit 2 = expected miss) via the `exitCode` carried on the throw.
+//   Reads (get, exists, list, key-of, resolve) print bare stdout — they are
+//   prose substitution surfaces. Their errors keep the `Error: …` stderr
+//   convention (exit 1 = real error, exit 2 = expected miss) via the
+//   `exitCode` carried on the throw.
 //   Mutations (set, push, pull, delete) return a decision-ready object for
 //   the engine's one-line JSON response; their failures are the engine's
 //   `{ok:false}` stderr exit 1 like every other verb.

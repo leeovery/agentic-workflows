@@ -11,7 +11,7 @@ View and manage items archived out of the inbox. Pick one item, then restore it,
 Run discovery for the current archived state — re-run on every entry so prior actions are reflected:
 
 ```bash
-node .claude/skills/workflow-start/scripts/discovery.cjs
+node .claude/skills/workflow-start/scripts/gateway.cjs
 ```
 
 Read the `=== ARCHIVED ===` section.

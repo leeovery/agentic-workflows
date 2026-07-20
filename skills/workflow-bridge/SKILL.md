@@ -1,7 +1,7 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/discovery.cjs), Bash(node .claude/skills/workflow-continue-epic/scripts/discovery.cjs), Bash(node .claude/skills/workflow-discovery/scripts/discovery.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Bash(node .claude/skills/workflow-continue-epic/scripts/gateway.cjs), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 Enter plan mode with deterministic continuation instructions.
@@ -42,7 +42,7 @@ The discovery handoff needs no state computation. Discovery is the first phase, 
 Run the discovery script with the work unit:
 
 ```bash
-node .claude/skills/workflow-bridge/scripts/discovery.cjs {work_unit}
+node .claude/skills/workflow-bridge/scripts/gateway.cjs {work_unit}
 ```
 
 The output contains `next_phase` and `completed_phases` (in pipeline order).

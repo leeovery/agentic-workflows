@@ -58,13 +58,13 @@ Missing Dependencies
 
 @foreach(dep in blocking_list where state is unresolved)
   {dep_topic:(titlecase)}
-  └─ {description}
+  ├─ {description}
   └─ No plan exists
 
 @endforeach
 @foreach(dep in blocking_list where state is resolved)
   {dep_topic:(titlecase)}
-  └─ {description}
+  ├─ {description}
   └─ Waiting on {topic}:{internal_id}
 
 @endforeach

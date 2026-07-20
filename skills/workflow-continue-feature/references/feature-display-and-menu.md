@@ -15,7 +15,7 @@ This reference stores the selected `ACTIONS` entry's `action` and `route` and re
 Render the feature snapshot:
 
 ```bash
-node .claude/skills/workflow-continue-feature/scripts/discovery.cjs view {work_unit}
+node .claude/skills/workflow-continue-feature/scripts/gateway.cjs view {work_unit}
 ```
 
 The output is one snapshot in three demarcated sections:
