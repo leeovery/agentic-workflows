@@ -193,7 +193,7 @@ Add or update a test alongside any change to engine scripts, adapters, migration
 
 Retrieval-augmented store of completed workflow artifacts (research, discussion, investigation, specification — never planning/implementation/review), plus epic discovery **session logs** (indexed under a `discovery` phase — the running exploration record) and seed material for early-phase context: user-shared `imports` and the inbox-promoted `seeds` (the work unit's origin). Every entry-point skill gates on knowledge base initialisation before any phase runs.
 
-**Source vs bundle**: Source lives in `src/knowledge/` (multi-file Node.js — `index.js`, `store.js`, `chunker.js`, `embeddings.js`, `config.js`, `setup.js`, `providers/openai.js`). Committed CLI at `skills/workflow-knowledge/scripts/knowledge.cjs` is a single-file esbuild bundle. AGNTC installs from git tags with no build step, so the bundle must be present and current at tag time.
+**Source vs bundle**: Source lives in `src/knowledge/` (multi-file Node.js — `index.js`, `store.js`, `chunker.js`, `embeddings.js`, `config.js`, `setup.js`, `setup-forms.js`, `providers/openai.js`, `providers/openai-engine.js`, `providers/openai-compatible.js`). Committed CLI at `skills/workflow-knowledge/scripts/knowledge.cjs` is a single-file esbuild bundle. AGNTC installs from git tags with no build step, so the bundle must be present and current at tag time.
 
 **Building**: `npm run build` runs `node build/knowledge.build.js`, which esbuild-bundles `src/knowledge/index.js` into `skills/workflow-knowledge/scripts/knowledge.cjs`. Always rebuild after editing `src/knowledge/` and commit the bundle alongside the source change.
 

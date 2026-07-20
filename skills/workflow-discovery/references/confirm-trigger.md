@@ -22,7 +22,7 @@ Write the log content to the staging path `.workflows/.cache/{work_unit}/discove
 
 For each listed `{filename}`, derive the landed name the way the engine will: the source basename lowercased, whitespace/punctuation runs collapsed to `-`, `.md` ensured (an inbox basename just collapses its `--` separator).
 
-This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and never KB-indexed — it is shape-talk, not validated substance.
+This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and not KB-indexed at creation; for epics, `engine discovery-session close` indexes it under the `discovery` phase at session close.
 
 → Proceed to **C. Create the Work Unit**.
 

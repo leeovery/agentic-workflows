@@ -25,7 +25,7 @@ Context: This consolidates multiple sources. The existing specification should b
 
 After the specification is complete, mark the incorporated specs as superseded via the engine — only specs whose status is not `proposed`:
 
-    engine topic supersede {work_unit} specification {source-topic} --by {topic}
+    node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {source-topic} --by {topic}
 
 ---
 Invoke the workflow-specification-process skill.
