@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-20
+
+✨ Added
+- Added a full documentation site under `docs/`, covering the engine, the knowledge base, every phase, and all 23 agents.
+- Knowledge base setup can now run non-interactively (`--from-system`, `--keyword-only`, `--provider`, `--key-only`) — `/workflow-start` can walk you through setup in chat instead of dropping to a terminal wizard.
+- Discussion Map subtopics can now be marked `deferred` — a discussion can conclude with items explicitly set aside instead of forced to a decision.
+
+🔧 Changed
+- Replaced the manifest CLI and a scattered set of per-skill state scripts with a single deterministic engine — dashboards, maps, and menus now render consistently every time.
+- Off-topic concerns raised mid-discussion now land in the target topic's queue instead of automatically spawning a new discussion.
+- `/workflow-start` boots faster — migrations, the knowledge-base check, and store compaction now run as a single step.
+- Feature-to-epic pivot, absorption, and specification promotion are now atomic engine transactions — an interruption can no longer leave things half-migrated.
+- README trimmed to a quick pitch, with full detail moved into the new documentation site.
+
+🗑️ Removed
+- Removed the standalone `workflow-manifest` skill — its state management now lives in the workflow engine.
+
+🐛 Fixed
+- Fixed a crash when indexing files containing very long unbroken text runs, like base64 blobs or minified code.
+- Fixed cross-cutting work units failing to enter the specification phase correctly.
+- Fixed a race condition that could let two writers acquire the same workflow-state lock at once.
+- Fixed a task's fix-attempt count sometimes leaking into a different task during implementation.
+- Fixed review incorrectly flagging quick-fix tasks for missing acceptance criteria they were never meant to have.
+- Fixed embedding-provider setup to catch model/dimension mismatches immediately instead of failing later mid-index.
+
+🔒 Security
+- Fixed upstream API error responses being able to leak bearer tokens into error messages — they're now redacted.
+- Fixed indexed file content with terminal escape sequences being echoed unescaped into knowledge-base search output.
+- API keys can no longer be passed as a command-line flag to knowledge base setup, closing off a path where they'd land in shell history.
+
 ## [0.5.13] - 2026-07-16
 
 🔧 Changed
