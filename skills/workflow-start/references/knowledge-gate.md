@@ -24,12 +24,14 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The knowledge base powers cross-work-unit recall and must be
-> initialised before any workflow runs. Your machine already has
-> a system configuration this project can reuse.
+> The knowledge base powers recall across work units and within
+> them — later phases draw on earlier work. It is required
+> infrastructure: no workflow runs until it is initialised. Your
+> machine already has a system configuration this project can
+> reuse.
 
 · · · · · · · · · · · ·
-Set up the knowledge base for this project?
+Set up the knowledge base for this project:
 
 - **`y`/`yes`** — Use the existing configuration (@if(system_config.provider) {system_config.provider} · {system_config.model} @else keyword-only @endif)
 - **`d`/`different`** — Choose a different mode for this project

@@ -43,7 +43,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 |__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
 
 ●─────────────────────────────────────────────────────────────────●
-  Agentic engineering workflows — from idea to implementation.
+  Agentic Engineering Workflows (v0.5.13)
 ●─────────────────────────────────────────────────────────────────●
 ```
 
@@ -61,10 +61,10 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 
 ### Step 0.2: Boot
 
-> *Output the next fenced block as markdown (not a code block):*
+> *Output the next fenced block as a code block:*
 
 ```
-> Running migrations and the knowledge base check.
+Running migrations and the knowledge base check.
 ```
 
 **Run the boot pipeline — this is mandatory. You must complete it before proceeding.**
