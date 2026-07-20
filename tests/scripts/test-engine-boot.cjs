@@ -40,30 +40,32 @@ function setupProject(root) {
   return project;
 }
 
-// Stub migrate.sh: env-driven behaviour, mimicking the real report format
+// Stub migrate.cjs: env-driven behaviour, mimicking the real report format
 // byte-for-byte (boot parses the report, so the stub must reproduce it).
-const STUB_MIGRATE = `#!/usr/bin/env bash
-case "$STUB_MIGRATE_MODE" in
-  update)
-    mkdir -p .workflows/.state .workflows/payments
-    echo "045" >> .workflows/.state/migrations
-    echo "migrated" > .workflows/payments/marker.md
-    echo ""
-    echo "1 migration(s) applied, 2 file(s) updated."
-    echo ""
-    echo "---STOP_GATE: FILES_UPDATED---"
-    echo "You MUST now follow the migration skill instructions to STOP and let the user review."
-    echo "Follow the explicit instructions in the migration skill before proceeding."
-    ;;
-  fail)
-    echo "partial output before the failure"
-    echo "boom: migration 099 exploded" >&2
-    exit 1
-    ;;
-  *)
-    echo "[SKIP] No changes needed"
-    ;;
-esac
+const STUB_MIGRATE = `#!/usr/bin/env node
+'use strict';
+const fs = require('fs');
+const mode = process.env.STUB_MIGRATE_MODE || '';
+if (mode === 'update') {
+  fs.mkdirSync('.workflows/.state', { recursive: true });
+  fs.mkdirSync('.workflows/payments', { recursive: true });
+  fs.appendFileSync('.workflows/.state/migrations', '045\\n');
+  fs.writeFileSync('.workflows/payments/marker.md', 'migrated\\n');
+  process.stdout.write(
+    '\\n' +
+    '1 migration(s) applied, 2 file(s) updated.\\n' +
+    '\\n' +
+    '---STOP_GATE: FILES_UPDATED---\\n' +
+    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n' +
+    'Follow the explicit instructions in the migration skill before proceeding.\\n'
+  );
+} else if (mode === 'fail') {
+  process.stdout.write('partial output before the failure\\n');
+  process.stderr.write('boom: migration 099 exploded\\n');
+  process.exit(1);
+} else {
+  process.stdout.write('[SKIP] No changes needed\\n');
+}
 `;
 
 // Stub knowledge CLI: records each invocation to knowledge-calls.log in the
@@ -90,14 +92,14 @@ process.exit(1);
 
 /**
  * A hermetic skills layout: the real engine scripts copied into a temp skills root, with stub
- * migrate.sh / knowledge.cjs siblings — exercising the engine's own
+ * migrate.cjs / knowledge.cjs siblings — exercising the engine's own
  * __dirname-relative resolution exactly as installed.
  */
 function setupSkillsFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-'));
   const skills = path.join(root, 'skills');
   fs.cpSync(REAL_SCRIPTS, path.join(skills, 'workflow-engine/scripts'), { recursive: true });
-  writeFile(skills, 'workflow-migrate/scripts/migrate.sh', STUB_MIGRATE);
+  writeFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
   writeFile(skills, 'workflow-knowledge/scripts/knowledge.cjs', STUB_KNOWLEDGE);
   return {
     root,
@@ -228,10 +230,10 @@ describe('engine boot', () => {
     assert.match(res.warnings[0], /knowledge compact failed: compact blew up/);
   });
 
-  it('a failing migrate.sh is a hard error — ok false, stderr detail, exit 1', () => {
+  it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
     const err = runEngineFails(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });
 
-    assert.match(err.error, /migrate\.sh failed/);
+    assert.match(err.error, /migrate\.cjs failed/);
     assert.match(err.error, /never half-run silently/);
     assert.match(err.error, /boom: migration 099 exploded/);
     // The knowledge legs never ran.
@@ -322,7 +324,7 @@ describe('engine boot (real scripts)', () => {
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 
-  it('runs the real migrate.sh and knowledge CLI against an isolated project', async () => {
+  it('runs the real migrate.cjs and knowledge CLI against an isolated project', async () => {
     const first = runEngine(REAL_ENGINE, project, ['boot']);
     assert.strictEqual(first.ok, true);
     assert.strictEqual(typeof first.migrations.changed, 'boolean');
