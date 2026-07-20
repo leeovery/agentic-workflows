@@ -17,8 +17,6 @@
 // never nested, so multi-manifest transactions cannot deadlock.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
-const path = require('path');
 const {
   loadWorkUnitManifest,
   saveWorkUnitManifest,
@@ -29,7 +27,7 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
-const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
+const { knowledge } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
 
@@ -77,7 +75,7 @@ function todayStamp() {
  */
 function completeWorkUnit(cwd, workUnit, { message }) {
   assertLegalStatus('completed');
-  const { completedAt, previous, manifest } = withWorkUnitLock(cwd, workUnit, () => {
+  const { completedAt, previous } = withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.status === 'completed') {
       throw new Error(`work unit "${workUnit}" is already completed`);
@@ -91,13 +89,13 @@ function completeWorkUnit(cwd, workUnit, { message }) {
     loaded.completed_at = stamped;
 
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { completedAt: stamped, previous: from, manifest: loaded };
+    return { completedAt: stamped, previous: from };
   });
 
   /** @type {string[]} */
   const warnings = [];
   if (previous === 'cancelled') {
-    reindexWorkUnit(cwd, workUnit, manifest, warnings);
+    reindexWorkUnit(cwd, workUnit, warnings);
   }
 
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
@@ -143,61 +141,27 @@ function cancelWorkUnit(cwd, workUnit) {
 }
 
 /**
- * Re-index the work unit's chunk-backed material: every completed artifact in
- * an indexed phase, the tracked imports and seeds (entries must match
- * `imports/{file}.md` / `seeds/{file}.md` — anything else signals a tampered
- * manifest entry and is skipped), the on-disk analysis caches, and — epics
- * only — the discovery session logs. Restores what cancellation removed, and
- * refreshes chunk metadata after a pivot. All warn-don't-block.
- * @param {string} cwd @param {string} workUnit @param {object} manifest @param {string[]} warnings
+ * Re-index a work unit's chunk-backed material in ONE knowledge spawn (formerly
+ * one spawn per artifact). `knowledge index --work-unit <wu>` runs the bulk
+ * discovery scoped to this unit — exactly the set the per-artifact walk covered:
+ * every completed indexed-phase topic, the shape-valid imports and seeds, the
+ * on-disk analysis caches, and (epics only) the discovery session logs. The CLI
+ * reads the manifest itself, so no manifest is threaded in here.
+ *
+ * `clearFirst` (pivot) removes the unit's chunks before re-indexing. A pivot
+ * refreshes chunk work_type metadata on ALREADY-indexed chunks, and bulk index
+ * skips artifacts that are already indexed — so the stale chunks must be cleared
+ * first for the fresh index to re-stamp them. reactivate / complete-from-
+ * cancelled start from removed chunks (cancellation cleared them), so the index
+ * alone restores them. All warn-don't-block.
+ * @param {string} cwd @param {string} workUnit @param {string[]} warnings
+ * @param {{clearFirst?: boolean}} [opts]
  */
-function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
-  const phases = manifest.phases && typeof manifest.phases === 'object' ? manifest.phases : {};
-  for (const [phase, artifact] of Object.entries(INDEXED_ARTIFACTS)) {
-    const ph = phases[phase];
-    const items = ph && typeof ph === 'object' && ph.items && typeof ph.items === 'object' ? ph.items : {};
-    for (const [topic, item] of Object.entries(items)) {
-      if (item && typeof item === 'object' && item.status === 'completed') {
-        knowledge(cwd, ['index', artifact(workUnit, topic)], `knowledge index (${phase}/${topic})`, warnings);
-      }
-    }
+function reindexWorkUnit(cwd, workUnit, warnings, opts) {
+  if (opts && opts.clearFirst) {
+    knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
   }
-
-  for (const field of ['imports', 'seeds']) {
-    const entries = Array.isArray(manifest[field]) ? manifest[field] : [];
-    const shape = new RegExp(`^${field}/[^./][^/]*\\.md$`);
-    for (const entry of entries) {
-      const rel = entry && typeof entry === 'object' ? entry.path : null;
-      if (typeof rel !== 'string' || !shape.test(rel)) continue;
-      knowledge(cwd, ['index', `.workflows/${workUnit}/${rel}`], `knowledge index (${rel})`, warnings);
-    }
-  }
-
-  for (const cache of ['research-analysis.md', 'discovery-gap-analysis.md']) {
-    const rel = `.workflows/${workUnit}/.state/${cache}`;
-    if (fs.existsSync(path.join(cwd, rel))) {
-      knowledge(cwd, ['index', rel], `knowledge index (.state/${cache})`, warnings);
-    }
-  }
-
-  // Discovery session logs — file-based (the on-disk session files ARE the
-  // indexed artifacts), epic-only: the knowledge CLI's bulk walk indexes
-  // sessions only for epics (non-epic discovery logs are thin
-  // shape-and-route), and this walk restores exactly what that indexed.
-  if (manifest.work_type === 'epic') {
-    const sessDir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
-    /** @type {string[]} */
-    let sessions = [];
-    try {
-      sessions = fs.readdirSync(sessDir).filter((f) => /^session-\d+\.md$/.test(f)).sort();
-    } catch {
-      sessions = [];
-    }
-    for (const f of sessions) {
-      const rel = `.workflows/${workUnit}/discovery/sessions/${f}`;
-      knowledge(cwd, ['index', rel], `knowledge index (discovery/sessions/${f})`, warnings);
-    }
-  }
+  knowledge(cwd, ['index', '--work-unit', workUnit], 'knowledge index', warnings);
 }
 
 /**
@@ -215,7 +179,7 @@ function reindexWorkUnit(cwd, workUnit, manifest, warnings) {
  */
 function reactivateWorkUnit(cwd, workUnit) {
   assertLegalStatus('in-progress');
-  const { manifest, previous } = withWorkUnitLock(cwd, workUnit, () => {
+  const { previous } = withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.status === 'in-progress') {
       throw new Error(`work unit "${workUnit}" is already in-progress`);
@@ -228,13 +192,13 @@ function reactivateWorkUnit(cwd, workUnit) {
     if ('completed_at' in loaded) delete loaded.completed_at;
 
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { manifest: loaded, previous: from };
+    return { previous: from };
   });
 
   /** @type {string[]} */
   const warnings = [];
   if (previous === 'cancelled') {
-    reindexWorkUnit(cwd, workUnit, manifest, warnings);
+    reindexWorkUnit(cwd, workUnit, warnings);
   }
 
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): reactivate work unit`);
@@ -268,7 +232,7 @@ function reactivateWorkUnit(cwd, workUnit) {
  * @returns {WorkUnitPivotResult}
  */
 function pivotWorkUnit(cwd, workUnit) {
-  const { manifest, routing } = withWorkUnitLock(cwd, workUnit, () => {
+  const { routing } = withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.work_type !== 'feature') {
       throw new Error(`work unit "${workUnit}" is not a feature (work_type: ${loaded.work_type ?? 'none'}) — only features pivot to epics`);
@@ -292,7 +256,7 @@ function pivotWorkUnit(cwd, workUnit) {
 
     loaded.work_type = 'epic';
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { manifest: loaded, routing: phases.research ? 'research' : 'discussion' };
+    return { routing: phases.research ? 'research' : 'discussion' };
   });
 
   // The feature's single topic joins the map (routing, source, no summary/
@@ -309,10 +273,10 @@ function pivotWorkUnit(cwd, workUnit) {
     writeProjectManifestAtomic(cwd, projectManifest);
   });
 
-  // Chunk metadata carries work_type — that's why pivot re-indexes.
+  // Chunk metadata carries work_type — that's why pivot clears then re-indexes.
   /** @type {string[]} */
   const warnings = [];
-  reindexWorkUnit(cwd, workUnit, manifest, warnings);
+  reindexWorkUnit(cwd, workUnit, warnings, { clearFirst: true });
 
   const committed = commitScopedWithKb(cwd, [`.workflows/${workUnit}`, '.workflows/manifest.json'], `workflow(${workUnit}): pivot to epic`);
   /** @type {WorkUnitPivotResult} */

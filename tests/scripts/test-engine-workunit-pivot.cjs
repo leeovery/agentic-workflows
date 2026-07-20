@@ -178,13 +178,12 @@ describe('engine workunit pivot — happy path', () => {
     assert.deepStrictEqual(staged.sort(), ['.workflows/auth-flow/manifest.json', '.workflows/manifest.json']);
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
-    // Chunk metadata carries work_type — the whole unit re-indexes, seeds
-    // included (the walk restores/refreshes seeds exactly as imports).
+    // Chunk metadata carries work_type — pivot clears the unit's chunks then
+    // re-indexes them in ONE scoped bulk spawn (was one spawn per artifact).
+    // The bulk walk covers the same set (completed topics, imports, seeds, …).
     assert.deepStrictEqual(knowledgeCalls(fix), [
-      'index .workflows/auth-flow/research/exploration.md',
-      'index .workflows/auth-flow/discussion/auth-flow.md',
-      'index .workflows/auth-flow/imports/notes.md',
-      'index .workflows/auth-flow/seeds/seed.md',
+      'remove --work-unit auth-flow',
+      'index --work-unit auth-flow',
     ]);
   });
 
@@ -216,8 +215,10 @@ describe('engine workunit pivot — happy path', () => {
     const res = engine(fix, ['workunit', 'pivot', 'auth-flow'], { STUB_KNOWLEDGE_EXIT: '1' });
 
     assert.strictEqual(res.work_type, 'epic');
-    assert.strictEqual(res.warnings.length, 4, res.warnings.join('\n'));
-    assert.match(res.warnings[3], /knowledge index \(seeds\/seed\.md\) failed/);
+    // The clear + re-index are two spawns; both fail here → two warnings.
+    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge remove failed/);
+    assert.match(res.warnings[1], /knowledge index failed/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'epic');
     assert.strictEqual(res.committed, shortHead(fix));
   });

@@ -514,16 +514,19 @@ function featureManifest() {
 function setupFeatureFixture() {
   const dir = setupGitFixture();
   writeFile(dir, '.workflows/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
+  // The completed phase artifacts (bulk re-index discovers only files that
+  // exist on disk).
+  writeFile(dir, '.workflows/auth-flow/research/exploration.md', '# Exploration\n');
+  writeFile(dir, '.workflows/auth-flow/discussion/auth-flow.md', '# Discussion\n');
   writeFile(dir, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(dir, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(dir, '.workflows/auth-flow/.state/research-analysis.md', '# Analysis\n');
-  // Present but never indexed for a feature — the re-index walk's session
-  // leg is epic-only, and the 5-warning reactivate test pins that gate.
+  // Present but never indexed for a feature — discovery's session leg is
+  // epic-only.
   writeFile(dir, '.workflows/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');
-  // A plain file where the knowledge store's directory belongs: every
-  // knowledge CLI call fails deterministically (stub mode would otherwise
-  // index existing files successfully), so each attempt is provable as a
-  // warning.
+  // A plain file where the knowledge store's directory belongs: the re-index
+  // spawn fails deterministically (stub mode would otherwise index the existing
+  // files successfully), so warn-don't-block is provable as a warning.
   writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
   commitAll(dir, 'init');
   return dir;
@@ -541,6 +544,10 @@ function setupFinishedCrossCuttingFixture() {
       specification: { items: { caching: { status: 'completed' } } },
     },
   }, null, 2) + '\n');
+  // The completed phase artifacts on disk, so the re-index bulk walk discovers
+  // them (it skips artifacts whose files are absent).
+  writeFile(dir, '.workflows/caching/discussion/caching.md', '# Discussion\n');
+  writeFile(dir, '.workflows/caching/specification/caching/specification.md', '# Spec\n');
   // Deterministic KB failure: a plain file where the store directory belongs.
   writeFile(dir, '.workflows/.knowledge', 'not a directory\n');
   commitAll(dir, 'init');
@@ -604,11 +611,11 @@ describe('engine workunit complete', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.committed, shortHead(ccDir));
-    // No KB configured in the fixture — one warning per completed indexed
-    // artifact (discussion/caching, specification/caching).
-    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index \(discussion\/caching\)/);
-    assert.match(res.warnings[1], /knowledge index \(specification\/caching\)/);
+    // Cancellation removed the unit's chunks; completion re-indexes them in ONE
+    // scoped bulk spawn. No KB in the fixture, so that spawn fails → a single
+    // warn-don't-block warning.
+    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index failed/);
 
     const m = readManifest(ccDir, 'caching');
     assert.strictEqual(m.status, 'completed');
@@ -680,28 +687,23 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 
-  it('re-indexes after a cancel: completed artifacts, valid imports and seeds, and analysis caches — failures are warnings', () => {
+  it('re-indexes after a cancel in one scoped bulk spawn — failure is a warning', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     const res = engine(dir, ['workunit', 'reactivate', 'auth-flow']);
 
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
-    // No KB configured in the fixture, so every re-index attempt lands as a
-    // warning — one per completed indexed artifact (discussion/auth-flow,
-    // research/exploration; the cancelled research item and the in-progress
-    // spec are skipped), one for the shape-valid import (the traversal entry
-    // is skipped), one for the seed — cancellation removed its chunks too —
-    // and one for the on-disk analysis cache.
-    assert.strictEqual(res.warnings.length, 5, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index \(research\/exploration\)/);
-    assert.match(res.warnings[1], /knowledge index \(discussion\/auth-flow\)/);
-    assert.match(res.warnings[2], /knowledge index \(imports\/notes\.md\)/);
-    assert.match(res.warnings[3], /knowledge index \(seeds\/seed\.md\)/);
-    assert.match(res.warnings[4], /knowledge index \(\.state\/research-analysis\.md\)/);
+    // Cancellation removed the unit's chunks; reactivation re-indexes them in a
+    // SINGLE `knowledge index --work-unit` spawn (formerly one spawn per
+    // artifact). The bulk walk covers the same set — completed phase artifacts,
+    // shape-valid imports/seeds, analysis caches. No KB in the fixture, so the
+    // spawn fails → one warn-don't-block warning.
+    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 
-  it('epic reactivate re-indexes discovery session logs alongside the rest', () => {
+  it('epic reactivate re-indexes in one scoped bulk spawn (session logs in scope) — failure is a warning', () => {
     const epicDir = setupGitFixture();
     writeFile(epicDir, '.workflows/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -710,6 +712,7 @@ describe('engine workunit reactivate', () => {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
       },
     }, null, 2) + '\n');
+    writeFile(epicDir, '.workflows/payments/discussion/auth-flow.md', '# Discussion\n');
     writeFile(epicDir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
     writeFile(epicDir, '.workflows/payments/discovery/sessions/session-002.md', '# Session 002\n');
     writeFile(epicDir, '.workflows/payments/discovery/sessions/notes.txt', 'not a session log\n');
@@ -721,12 +724,12 @@ describe('engine workunit reactivate', () => {
     const res = engine(epicDir, ['workunit', 'reactivate', 'payments']);
 
     assert.strictEqual(res.status, 'in-progress');
-    // One warning per re-index attempt: the completed discussion, then the
-    // two session logs (the non-matching file is skipped).
-    assert.strictEqual(res.warnings.length, 3, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index \(discussion\/auth-flow\)/);
-    assert.match(res.warnings[1], /knowledge index \(discovery\/sessions\/session-001\.md\)/);
-    assert.match(res.warnings[2], /knowledge index \(discovery\/sessions\/session-002\.md\)/);
+    // The epic's re-index (completed discussion + the two session logs; the
+    // non-matching file is excluded by discovery) collapses to one scoped bulk
+    // spawn. Session-scoping itself is pinned by the discovery snapshot test;
+    // here the barrier makes the single spawn fail → one warning.
+    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index failed/);
     cleanupFixture(epicDir);
   });
 
@@ -757,12 +760,11 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'in-progress');
     assert.strictEqual(res.previous_status, 'cancelled');
-    // Cancellation removed the unit's chunks — the normal cancelled
-    // reactivation re-index runs (no KB in the fixture: one warning per
-    // completed indexed artifact).
-    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /knowledge index \(discussion\/caching\)/);
-    assert.match(res.warnings[1], /knowledge index \(specification\/caching\)/);
+    // Cancellation removed the unit's chunks — the cancelled reactivation
+    // re-index runs as one scoped bulk spawn (no KB in the fixture: it fails,
+    // one warn-don't-block warning).
+    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(readManifest(ccDir, 'caching').status, 'in-progress');
     cleanupFixture(ccDir);
   });
