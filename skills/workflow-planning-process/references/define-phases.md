@@ -74,8 +74,8 @@ Present the phase structure to the user as rendered markdown (not in a code bloc
 Approve this phase structure?
 
 - **`y`/`yes`** — Proceed to task breakdown
-- **Tell me what to change** — reorder, split, merge, add, edit, or remove phases
-- **Navigate** — a different phase or task, or the leading edge
+- **Tell me what to change** — which phases to reorder, split, merge, add, edit, or remove
+- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 

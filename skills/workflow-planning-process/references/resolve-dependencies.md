@@ -208,7 +208,7 @@ Reverse resolutions:
 Approve the dependency resolution?
 
 - **`y`/`yes`** — Proceed
-- **Tell me what to change** — Adjust resolutions or add missing links
+- **Tell me what to change** — which resolutions to adjust or links to add
 · · · · · · · · · · · ·
 ```
 

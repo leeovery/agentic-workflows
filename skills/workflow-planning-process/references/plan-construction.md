@@ -86,8 +86,8 @@ Phase {N}: {Phase Name} — task list confirmed. Proceeding to authoring.
 Approve this task list?
 
 - **`y`/`yes`** — Proceed to authoring
-- **Tell me what to change** — Revise tasks in this phase
-- **Navigate** — a different phase or task, or the leading edge
+- **Tell me what to change** — which tasks to revise in this phase
+- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 

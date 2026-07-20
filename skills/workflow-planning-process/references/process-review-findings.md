@@ -168,7 +168,7 @@ Finding {N} of {total}: {Brief Title} — approved. Applied to plan.
 @endif
 - **`a`/`auto`** — Approve this and all remaining findings automatically
 - **`s`/`skip`** — Leave as-is, move to next finding
-- **Provide feedback** — Adjust before approving
+- **Provide feedback** — Tell me what to change before approving
 · · · · · · · · · · · ·
 ```
 

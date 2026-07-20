@@ -94,8 +94,8 @@ Approve this task list?
 
 - **`y`/`yes`** — Proceed to authoring
 - **`a`/`auto`** — Approve this and all remaining task list gates automatically
-- **Tell me what to change** — reorder, split, merge, add, edit, or remove tasks
-- **Navigate** — a different phase or task, or the leading edge
+- **Tell me what to change** — which tasks to reorder, split, merge, add, edit, or remove
+- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
 · · · · · · · · · · · ·
 ```
 
