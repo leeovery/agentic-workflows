@@ -14,15 +14,15 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 
 **Deep-dive findings drain first.** Scan `.workflows/.cache/{work_unit}/research/{topic}/` for `deep-dive-*.md` files with `status: pending` or `status: acknowledged` — thread findings that never finished surfacing during the session would otherwise be dropped at conclusion.
 
-**If any such file exists:**
+#### If any such file exists
 
 Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-**Otherwise:**
+#### Otherwise
 
-Find the most recent review file in `.workflows/.cache/{work_unit}/research/{topic}/` by set number.
+Find the most recent review file in `.workflows/.cache/{work_unit}/research/{topic}/` by set number, then branch on its `status:` below.
 
 #### If no review files exist
 
