@@ -132,7 +132,7 @@ None identified.
 Return a brief status to the orchestrator:
 
 ```
-STATUS: gaps_found | thorough
+STATUS: gaps_found | clean
 GAPS_COUNT: {N}
 ASSUMPTIONS_COUNT: {N}
 SUMMARY: {1 sentence}

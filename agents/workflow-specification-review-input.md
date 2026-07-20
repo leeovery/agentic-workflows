@@ -1,7 +1,7 @@
 ---
 name: workflow-specification-review-input
 description: Compares specification against all source material to catch missed content, edge cases, and decisions. Invoked by workflow-specification-process skill during review cycle.
-tools: Read, Write, Glob, Grep, Bash
+tools: Read, Write, Grep, Bash
 model: opus
 ---
 
@@ -71,7 +71,7 @@ You receive via the orchestrator's prompt:
 
 ## Output File Format
 
-Write to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{cycle-number}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Use this format:
+Write to `.workflows/{work_unit}/specification/{topic}/review-input-tracking-c{cycle-number}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Bash is for this rename only. Use this format:
 
 ```markdown
 ---

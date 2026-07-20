@@ -30,7 +30,7 @@ The agent returns a brief status:
 STATUS: findings | clean
 CYCLE: {N}
 TRACKING_FILE: {path to tracking file}
-FINDING_COUNT: {N}
+FINDINGS_COUNT: {N}
 ```
 
 - `clean`: plan is a faithful, complete translation of the specification. No findings to process.

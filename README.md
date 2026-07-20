@@ -40,7 +40,7 @@ That's the whole interface. Describe what you want to build and the right pipeli
 Work comes in five shapes, each with a pipeline suited to its size, from months of multi-topic discovery down to a one-file fix. Mid-conversation capture too: say "log that as an idea" and keep working.
 
 ```
-epic           Discovery → Research → Discussion → Specification → Planning → Implementation → Review
+epic           Discovery → (Research) → Discussion → Specification → Planning → Implementation → Review
 feature        Discovery → (Research) → Discussion → Specification → Planning → Implementation → Review
 bugfix         Discovery → Investigation → Specification → Planning → Implementation → Review
 quick-fix      Discovery → Scoping → Implementation → Review

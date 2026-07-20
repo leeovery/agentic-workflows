@@ -67,7 +67,7 @@ Return a brief status:
 STATUS: findings | clean
 CYCLE: {N}
 TRACKING_FILE: {path to tracking file}
-FINDING_COUNT: {N}
+FINDINGS_COUNT: {N}
 ```
 
 - `clean`: No findings. The plan is a faithful translation of the specification.

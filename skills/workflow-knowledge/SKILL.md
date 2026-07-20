@@ -10,7 +10,7 @@ CLI tool for querying the workflow knowledge base — a retrieval-augmented stor
 
 ## What the knowledge base is
 
-A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time, analysis caches (research-analysis, gap-analysis) indexed when topic-discovery rewrites them, and epic discovery session logs indexed at each harvest. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, when it was indexed.
+A local semantic-search index over every completed research, discussion, investigation, and specification artifact in `.workflows/`, plus user-supplied imports indexed at import time, analysis caches (research-analysis, gap-analysis) indexed when topic-discovery rewrites them, and epic discovery session logs indexed at each harvest. Content is stored at full fidelity — chunks are the actual text, not summaries — with provenance metadata attached: which work unit, which phase, which topic, and the source document's date.
 
 **Why it exists**: to surface prior context that would otherwise be lost across work units or forgotten within one. A spec written three months ago, a discussion that rejected an approach, an investigation that ruled out a cause — all remain queryable.
 
@@ -72,7 +72,7 @@ Multiple positional arguments run separate searches in one invocation, merge the
 
 Two modes, auto-selected based on project config:
 
-- **Hybrid** (default when an embedding provider is configured): keyword + vector search combined, results re-ranked by any `--boost:<field>` directives you pass, plus always-on confidence-tier and recency signals.
+- **Hybrid** (default when an embedding provider is configured): keyword + vector search combined, results re-ranked by any `--boost:<field>` directives you pass, plus an always-on confidence-tier boost and a progress-based decay that down-ranks units the project has moved past.
 - **Keyword-only** (when no provider is configured): full-text search only. Still useful — you lose semantic expansion but exact-term queries work. The output prepends a note: `[keyword-only mode — configure embedding provider for semantic search]`. This is a supported degraded mode, not a broken state.
 
 ### Query construction
@@ -105,7 +105,7 @@ Source: .workflows/payments-overhaul/research/identity.md
 ```
 
 - **Header line**: `[N results]` where N is the merged, deduplicated, re-ranked count after `--limit`.
-- **Provenance line** (per chunk): `[phase | work_unit/topic | confidence | YYYY-MM-DD]`. Date is the indexing timestamp, approximating when the knowledge was produced.
+- **Provenance line** (per chunk): `[phase | work_unit/topic | confidence | YYYY-MM-DD]`. Date is the source document's date (file mtime).
 - **Content**: the chunk text verbatim. No summarisation, no truncation.
 - **Source line**: the path to the source artifact. Use this with the two-step retrieval pattern below.
 - **Blank line** between chunks.
@@ -179,7 +179,7 @@ Typically invoked by processing skills at phase completion — not queried by Cl
 ## `remove` — remove chunks
 
 ```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit <wu> [--phase <p>] [--topic <t>]
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs remove --work-unit <wu> [--phase <p>] [--topic <t>] [--dry-run]
 ```
 
 Removes chunks matching the given filter. Granularity:
@@ -188,7 +188,7 @@ Removes chunks matching the given filter. Granularity:
 - `--work-unit <wu> --phase <p>` — narrows to one phase
 - `--work-unit <wu> --phase <p> --topic <t>` — narrows to one topic
 
-Used when a spec is superseded or promoted, when a work unit is cancelled, or when catching up after a manifest change. `--topic` requires `--phase`.
+Used when a spec is superseded or promoted, when a work unit is cancelled, or when catching up after a manifest change. `--topic` requires `--phase`. `--dry-run` counts what the filter matches and reports it without touching the store.
 
 Output: `Removed N chunks for {scope}`. Exits non-zero on usage errors.
 
@@ -206,7 +206,7 @@ Human-readable report of the store's state: chunk counts by work unit, phase, an
 
 ## `rebuild` and `compact` — maintenance commands
 
-- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` array, and any present analysis caches (`.state/research-analysis.md`, `.state/discovery-gap-analysis.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
+- **`rebuild`** — destructive. Deletes the existing index and re-indexes everything currently discoverable: completed phase artifacts (research, discussion, investigation, specification), all entries on each work unit's `imports[]` and `seeds[]` arrays, epic discovery session logs (`discovery/sessions/session-NNN.md`), and any present analysis caches (`.state/research-analysis.md`, `.state/discovery-gap-analysis.md`). Prompts the user to type `rebuild` literally to confirm. **Human-only** — Claude cannot run it (interactive prompt). Non-deterministic: rebuilt chunks won't match the originals (embedding variance, edited artifacts).
 - **`compact [--dry-run]`** — storage backstop. Removes a work unit's non-spec chunks once their retrievability `R` has decayed below `decay_prune_below` — i.e. once enough later work has completed that they're effectively unreachable in query ranking. Decay is progress-based (how much work completed after the unit, weighted by work type), not wall-clock; specifications are exempt; `false`/`null` disables it. `--dry-run` previews without deleting.
 
 Skills do not call these directly during normal operation. Users run them manually.

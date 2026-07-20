@@ -140,3 +140,4 @@ DEPENDENCIES and PRIORITIES sections may be empty if none are needed. This is a 
 6. **Cycle detection before writing** — detect cycles in your analysis before applying any changes. If a cycle exists, report it and stop.
 7. **Less is more** — only add dependencies and priorities that change execution order in a way that matters. An empty graph is a valid result.
 8. **Do not modify task content** — only add/update priority and dependency fields. Do not change titles, descriptions, acceptance criteria, or any other task content.
+9. **No git writes** — do not commit or stage. Recording dependencies and priorities via graph.md is your only write.

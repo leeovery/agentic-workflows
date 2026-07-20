@@ -99,7 +99,7 @@ If any verifier fails (error, timeout), record the failure and continue — aggr
 Each verifier returns a brief status:
 
 ```
-STATUS: Complete | Incomplete | Issues Found
+STATUS: complete | incomplete | issues_found
 FINDINGS_COUNT: {N blocking issues}
 SUMMARY: {1 sentence}
 ```
@@ -128,7 +128,7 @@ This enables incremental review detection on subsequent review sessions.
 
 1. Read all `.workflows/{work_unit}/review/{topic}/report-*.md` files
 2. Synthesize findings from file contents:
-   - Collect all tasks with `STATUS: Incomplete` or `STATUS: Issues Found` as blocking issues
+   - Collect all tasks with `STATUS: incomplete` or `STATUS: issues_found` as blocking issues
    - Collect all test issues (under/over-tested)
    - Collect all code quality concerns
    - Include specific file:line references
