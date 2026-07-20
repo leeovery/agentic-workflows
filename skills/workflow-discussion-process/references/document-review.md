@@ -26,9 +26,15 @@ Discussion is higher-stakes than research for this check. The Context → Option
 
 Read the discussion file in full: `.workflows/{work_unit}/discussion/{topic}.md`
 
-Pull the current state fresh into context — don't rely on your memory of what you wrote earlier. Pay particular attention to:
+Pull the current Discussion Map state fresh as well:
 
-- The **Discussion Map** and every subtopic's state
+```bash
+node .claude/skills/workflow-discussion-process/scripts/discovery.cjs map {work_unit} {topic}
+```
+
+Don't rely on your memory of what you wrote earlier. Pay particular attention to:
+
+- The **Discussion Map** — every subtopic's state from the call's DATA section
 - Each subtopic section (Context → Options → Journey → Decision)
 - The **Summary** section (Key Insights, Open Threads, Current State)
 - The **Triage** section — it must read `(none)` by conclusion
@@ -45,13 +51,13 @@ Walk the conversation against the document and check three dimensions:
 
 3. **Accuracy drift** — positions documented as firmer than they were, tentative leans written as decisions, softened user pushback, competing options understated to make the chosen one look cleaner, or a subtopic marked `decided` on the Discussion Map when it was really `converging`. Check the Discussion Map itself for drift — child subtopics absorbed into a parent decision when they weren't fully resolved, Open Threads in the Summary that don't match what was actually left unresolved in the conversation.
 
-4. **Triage consistency** — `## Triage` must read `(none)` by conclusion. The drain at session start normally clears it, but a concern can land mid-session after drain ran. If any `### {title}` entry remains, fold it into the working content — a `pending` subtopic on the Discussion Map plus a seeded `## {title}` section — and clear the section. If the `(none)` placeholder drifted (missing, or replaced by stray text with no real entry), restore it.
+4. **Triage consistency** — `## Triage` must read `(none)` by conclusion. The drain at session start normally clears it, but a concern can land mid-session after drain ran. If any `### {title}` entry remains, fold it into the working content — a `pending` subtopic on the Discussion Map (engine `map add`) plus a seeded `## {title}` section — and clear the section. If the `(none)` placeholder drifted (missing, or replaced by stray text with no real entry), restore it.
 
 **Apply the reconciliation.** For each finding:
 
 - Gap → add the missing substance to the discussion file at the appropriate place (subtopic section, Journey, or Summary)
 - Hallucination → remove or correct to match what was discussed
-- Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed
+- Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed (`node .claude/skills/workflow-engine/scripts/engine.cjs map set {work_unit} {topic} {subtopic} {state}`)
 - Undrained Triage entry → fold into the Discussion Map and a subtopic section, then reset `## Triage` to `(none)`; restore the placeholder if it drifted
 
 Commit the changes with a descriptive message (e.g., `docs(discussion): capture undocumented trade-off thread`, `docs(discussion): correct drift on caching decision`, `docs(discussion): soften Map state to converging`).

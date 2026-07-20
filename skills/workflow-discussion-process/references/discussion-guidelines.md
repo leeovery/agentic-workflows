@@ -43,7 +43,7 @@ The discussion file is your memory. Context compaction is lossy — what's not o
 **Write to the file at natural moments:**
 
 - A subtopic decision is reached (even if provisional)
-- The Discussion Map states change
+- A subtopic's map state changes
 - A piece of the puzzle is solved
 - The discussion is about to branch into a new subtopic
 - A new subtopic is uncovered
@@ -53,6 +53,6 @@ These are natural pauses, not every exchange. Document the reasoning and context
 
 **After writing, git commit.** Commits let you track, backtrack, and recover after compaction. Don't batch — commit each time you write.
 
-**Create the file early.** After understanding the topic and initial seed subtopics, create the discussion file with context and the Discussion Map. Don't wait until you have decisions.
+**Create the file early.** After understanding the topic and initial seed subtopics, create the discussion file with context and seed the Discussion Map (manifest state, via the engine `map add` command). Don't wait until you have decisions.
 
 → Return to caller.

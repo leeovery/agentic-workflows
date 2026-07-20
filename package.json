@@ -7,7 +7,7 @@
     "build": "node build/knowledge.build.js",
     "knowledge:repl": "node scripts/knowledge-repl.js",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test tests/scripts/test-render.cjs tests/scripts/test-engine-gateway.cjs tests/scripts/test-engine-epic-projections.cjs"
+    "test": "node --test tests/scripts/test-render.cjs tests/scripts/test-engine-gateway.cjs tests/scripts/test-engine-epic-projections.cjs tests/scripts/test-engine-map.cjs"
   },
   "devDependencies": {
     "@msgpack/msgpack": "3.1.3",
