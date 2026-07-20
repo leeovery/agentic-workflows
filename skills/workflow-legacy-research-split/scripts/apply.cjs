@@ -31,6 +31,14 @@ function runGit(cwd, args) {
   return r.stdout;
 }
 
+// Index-truth check: does git track this path? Reads the index, so it answers
+// correctly even after the file has been moved on disk (the index still records
+// the old path until we stage the move).
+function isTracked(cwd, relPath) {
+  const r = spawnSync('git', ['ls-files', '--error-unmatch', '--', relPath], { cwd, encoding: 'utf8' });
+  return r.status === 0;
+}
+
 function makeDatetimeStamp() {
   // Filesystem-safe ISO-ish stamp: YYYY-MM-DDTHH-MM-SS, no colons.
   const d = new Date();
@@ -207,26 +215,37 @@ function apply(cwd, workUnit, currentSource) {
     };
   }
 
-  // Stage 6: git add + commit.
+  // Stage 6: git add + commit, scoped to exactly the split's paths.
+  const sourceRel = path.relative(cwd, sourceFile);
+  // Only reference the source's old path if git knows it. An untracked source
+  // (never committed) was renamed away in Stage 2, so the old path matches
+  // nothing on disk and nothing in the index — `git add` on it would fatal.
+  const sourceTracked = isTracked(cwd, sourceRel);
   const addPaths = [
     path.relative(cwd, path.join(wuDir, 'manifest.json')),
-    path.relative(cwd, sourceFile),
+    ...(sourceTracked ? [sourceRel] : []),
     path.relative(cwd, supersededFile),
     ...created.map(c => path.relative(cwd, c.path)),
   ];
 
   try {
     runGit(cwd, ['add', '-A', '--', ...addPaths]);
-    runGit(cwd, ['commit', '--allow-empty', '-m', `discovery(${workUnit}): legacy-split ${currentSource}`]);
+    // Pathspec-limit the commit so any files the user pre-staged for unrelated
+    // work don't get swept into the split commit.
+    runGit(cwd, ['commit', '--allow-empty', '-m', `discovery(${workUnit}): legacy-split ${currentSource}`, '--', ...addPaths]);
   } catch (e) {
+    const recovery_hint = sourceTracked
+      ? `commit failed (likely pre-commit hook). All file and manifest mutations are applied. ` +
+        `Resolve the hook issue, commit manually, then clean the cache: ` +
+        `rm -rf ${cacheDir}`
+      : `git staging failed — the source file ${sourceRel} was never committed, so its pre-split ` +
+        `history isn't in git. All file and manifest mutations are applied. Stage and commit the ` +
+        `split manually (git add .workflows/${workUnit}), then clean the cache: rm -rf ${cacheDir}`;
     return {
       ok: false,
       stage: 'git_commit',
       error: e.message,
-      recovery_hint:
-        `commit failed (likely pre-commit hook). All file and manifest mutations are applied. ` +
-        `Resolve the hook issue, commit manually, then clean the cache: ` +
-        `rm -rf ${cacheDir}`,
+      recovery_hint,
     };
   }
 

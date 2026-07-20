@@ -511,6 +511,67 @@ describe('apply.cjs: end-to-end', () => {
     );
   });
 
+  it('pathspec-limits the commit — pre-staged unrelated files stay out', () => {
+    seedLegacyEpic('e1p', 'exploration');
+    writeCachePlan('e1p', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
+    ]);
+    // User pre-stages an unrelated file for other work.
+    fs.writeFileSync(path.join(dir, 'unrelated.md'), 'user work in progress');
+    spawnSync('git', ['add', 'unrelated.md'], { cwd: dir });
+
+    const r = runScriptJson(APPLY_CLI, 'e1p', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+
+    // The split commit must not contain the unrelated file.
+    const committed = spawnSync('git', ['show', '--pretty=format:', '--name-only', 'HEAD'],
+      { cwd: dir, encoding: 'utf8' }).stdout;
+    assert.ok(!committed.split('\n').includes('unrelated.md'),
+      `split commit unexpectedly included unrelated.md:\n${committed}`);
+    // It's still staged, uncommitted.
+    const staged = spawnSync('git', ['diff', '--cached', '--name-only'],
+      { cwd: dir, encoding: 'utf8' }).stdout.trim().split('\n');
+    assert.ok(staged.includes('unrelated.md'));
+  });
+
+  it('untracked source succeeds — no phantom old-path git add fatal', () => {
+    seedLegacyEpic('eu', 'exploration');
+    // Make the source untracked: remove it from git but keep it on disk.
+    spawnSync('git', ['rm', '--cached', '-q', '.workflows/eu/research/exploration.md'], { cwd: dir });
+    spawnSync('git', ['commit', '-q', '-m', 'untrack source'], { cwd: dir });
+
+    writeCachePlan('eu', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
+    ]);
+
+    const r = runScriptJson(APPLY_CLI, 'eu', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+    // New theme + superseded file committed.
+    const committed = spawnSync('git', ['show', '--pretty=format:', '--name-only', 'HEAD'],
+      { cwd: dir, encoding: 'utf8' }).stdout;
+    assert.ok(committed.includes('.workflows/eu/research/auth.md'));
+    assert.ok(committed.includes('exploration-superseded-'));
+  });
+
+  it('untracked source + failing hook gives an accurate (not pre-commit) hint', () => {
+    seedLegacyEpic('euh', 'exploration');
+    spawnSync('git', ['rm', '--cached', '-q', '.workflows/euh/research/exploration.md'], { cwd: dir });
+    spawnSync('git', ['commit', '-q', '-m', 'untrack source'], { cwd: dir });
+
+    writeCachePlan('euh', 'exploration', [
+      { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
+    ]);
+    const hookDir = path.join(dir, '.git', 'hooks');
+    fs.writeFileSync(path.join(hookDir, 'pre-commit'), '#!/bin/sh\nexit 1\n');
+    fs.chmodSync(path.join(hookDir, 'pre-commit'), 0o755);
+
+    const r = runScriptJson(APPLY_CLI, 'euh', 'exploration');
+    assert.strictEqual(r.json.ok, false);
+    assert.strictEqual(r.json.stage, 'git_commit');
+    assert.ok(r.json.recovery_hint.includes('never committed'));
+    assert.ok(!r.json.recovery_hint.includes('pre-commit hook'));
+  });
+
   it('handles topic-name source: source name reused by a theme', () => {
     seedLegacyEpic('e2', 'auth');
     writeCachePlan('e2', 'auth', [
