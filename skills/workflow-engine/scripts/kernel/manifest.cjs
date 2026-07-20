@@ -82,6 +82,10 @@ function withProjectLock(cwd, fn) {
   return io.withProjectLock(workflowsDir(cwd), fn);
 }
 
+// Structural-container descent (create when empty, refuse scalars/arrays) —
+// the io module's single implementation, re-exported for the domain ring.
+const { ensureContainer } = io;
+
 module.exports = {
   loadWorkUnitManifest,
   saveWorkUnitManifest,
@@ -89,4 +93,5 @@ module.exports = {
   readProjectManifest,
   writeProjectManifestAtomic,
   withProjectLock,
+  ensureContainer,
 };

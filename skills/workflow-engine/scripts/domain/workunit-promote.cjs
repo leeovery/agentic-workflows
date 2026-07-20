@@ -26,6 +26,7 @@ const {
   readProjectManifest,
   writeProjectManifestAtomic,
   withProjectLock,
+  ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
@@ -181,8 +182,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   // Registration — a fresh read under the project lock.
   withProjectLock(cwd, () => {
     const projectManifest = readProjectManifest(cwd);
-    if (!projectManifest.work_units || typeof projectManifest.work_units !== 'object') projectManifest.work_units = {};
-    projectManifest.work_units[to] = { work_type: 'cross-cutting' };
+    ensureContainer(projectManifest, 'work_units', 'work_units')[to] = { work_type: 'cross-cutting' };
     writeProjectManifestAtomic(cwd, projectManifest);
   });
 

@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { collectAnalysisInputs, filesChecksum } = require('./discovery-utils.cjs');
 const { knowledge } = require('./kb.cjs');
 
@@ -40,10 +40,7 @@ const CACHE_FILES = {
  * @returns {Record<string, unknown>}
  */
 function phaseObject(manifest, phase) {
-  if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
-  const existing = manifest.phases[phase];
-  if (!existing || typeof existing !== 'object') manifest.phases[phase] = {};
-  return manifest.phases[phase];
+  return ensureContainer(ensureContainer(manifest, 'phases', 'phases'), phase, `phases.${phase}`);
 }
 
 /**

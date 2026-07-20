@@ -85,10 +85,11 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-io-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
 
-  it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout', () => {
+  it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout, 60s tmp orphan', () => {
     assert.strictEqual(io.LOCK_STALE_MS, 30000);
     assert.strictEqual(io.LOCK_RETRY_MS, 50);
     assert.strictEqual(io.LOCK_TIMEOUT_MS, 10000);
+    assert.strictEqual(io.TMP_STALE_MS, 60000);
   });
 
   it('work-unit read is loud on missing and on corrupt JSON', () => {
@@ -148,6 +149,210 @@ describe('manifest-io — shared lock constants and IO contract', () => {
       assert.ok(fs.existsSync(lock));
     });
     assert.ok(!fs.existsSync(lock));
+  });
+
+  it('lock timeout carries the remedy: lock path, 30s stale self-clear, manual delete', () => {
+    fs.mkdirSync(path.join(dir, 'unit'));
+    const lock = path.join(dir, 'unit', '.lock');
+    fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
+    assert.throws(
+      () => io.acquireLockFile(lock, 'Timed out waiting for lock on "unit"', 250),
+      (/** @type {Error} */ err) => {
+        assert.match(err.message, /Timed out waiting for lock on "unit"/);
+        assert.ok(err.message.includes(lock), 'message names the lock file');
+        assert.match(err.message, /clears automatically after 30 seconds/);
+        assert.match(err.message, /delete the lock file/);
+        return true;
+      }
+    );
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), String(process.pid), 'fresh lock never touched');
+  });
+
+  it('write sweeps orphaned temp files past TMP_STALE_MS and spares fresh ones', () => {
+    fs.mkdirSync(path.join(dir, 'unit'));
+    const orphan = path.join(dir, 'unit', '.manifest.json.11111.tmp');
+    const fresh = path.join(dir, 'unit', '.manifest.json.22222.tmp');
+    fs.writeFileSync(orphan, '{}');
+    fs.writeFileSync(fresh, '{}');
+    const past = (Date.now() - io.TMP_STALE_MS - 5000) / 1000;
+    fs.utimesSync(orphan, past, past);
+
+    io.writeWorkUnitManifestAtomic(dir, 'unit', { name: 'unit' });
+    assert.ok(!fs.existsSync(orphan), 'crashed writer\'s orphan swept');
+    assert.ok(fs.existsSync(fresh), 'fresh temp file spared — a live concurrent writer owns it');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'unit/manifest.json'), 'utf8')), { name: 'unit' });
+  });
+});
+
+describe('stale-lock break is atomic — one winner, mutual exclusion holds', () => {
+  const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+  let dir;
+  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-break-')); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+
+  /** Spawn a node child running `script` with argv, resolving with its exit code. */
+  function child(script, args) {
+    const proc = spawn('node', ['-e', script, ...args]);
+    let stderr = '';
+    proc.stderr.on('data', (chunk) => { stderr += chunk; });
+    return new Promise((resolve) => proc.on('exit', (code) => resolve({ code, stderr })));
+  }
+
+  it('N contenders racing the break primitive: exactly one wins, no residue', async () => {
+    const lock = path.join(dir, '.lock');
+    const log = path.join(dir, 'break.log');
+    fs.writeFileSync(lock, '99999');
+    makeStale(lock);
+
+    const script = [
+      "const fs = require('fs');",
+      'const [ioPath, lock, fenceStr, log] = process.argv.slice(1);',
+      'const io = require(ioPath);',
+      'const fence = Number(fenceStr);',
+      'while (Date.now() < fence) {}',
+      'const won = io.breakStaleLockFile(lock);',
+      "fs.appendFileSync(log, process.pid + ' ' + won + '\\n');",
+    ].join('\n');
+
+    // Fence far enough out that every child has booted before contending.
+    const fence = Date.now() + 700;
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () => child(script, [IO_PATH, lock, String(fence), log])));
+    for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
+
+    const lines = fs.readFileSync(log, 'utf8').trim().split('\n');
+    assert.strictEqual(lines.length, 6, 'every contender reported');
+    const winners = lines.filter((line) => line.endsWith(' true'));
+    assert.strictEqual(winners.length, 1, `exactly one contender may break the stale lock:\n${lines.join('\n')}`);
+    assert.ok(!fs.existsSync(lock), 'stale lock gone');
+    assert.deepStrictEqual(fs.readdirSync(dir).filter((n) => n.includes('.breaking.')), [],
+      'the winner removed its renamed file');
+  });
+
+  it('N contenders racing a stale lock through withProjectLock: all acquire, never concurrently', async () => {
+    const lock = path.join(dir, '.project-lock');
+    const log = path.join(dir, 'hold.log');
+    fs.writeFileSync(lock, '99999');
+    makeStale(lock);
+
+    const script = [
+      "const fs = require('fs');",
+      'const [ioPath, wfDir, fenceStr, log] = process.argv.slice(1);',
+      'const io = require(ioPath);',
+      'const fence = Number(fenceStr);',
+      'while (Date.now() < fence) {}',
+      'io.withProjectLock(wfDir, () => {',
+      '  const t0 = Date.now();',
+      '  const end = t0 + 40;',
+      '  while (Date.now() < end) {}',
+      "  fs.appendFileSync(log, process.pid + ' ' + t0 + ' ' + Date.now() + '\\n');",
+      '});',
+    ].join('\n');
+
+    const fence = Date.now() + 700;
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => child(script, [IO_PATH, dir, String(fence), log])));
+    for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
+
+    const holds = fs.readFileSync(log, 'utf8').trim().split('\n')
+      .map((line) => line.split(' ').map(Number))
+      .sort((a, b) => a[1] - b[1]);
+    assert.strictEqual(holds.length, 5, 'every contender eventually acquired');
+    for (let i = 1; i < holds.length; i++) {
+      assert.ok(holds[i][1] >= holds[i - 1][2],
+        `holds overlap — two contenders held the lock at once:\n${holds.map((h) => h.join(' ')).join('\n')}`);
+    }
+    assert.ok(!fs.existsSync(lock), 'lock released after the last holder');
+  });
+});
+
+describe('structurally corrupt manifests refuse writes', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-root-'));
+    fs.mkdirSync(path.join(dir, '.workflows/unit'), { recursive: true });
+  });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+
+  /** Run the engine expecting `{ok:false}` exit 1; returns the parsed stderr JSON. */
+  function engineFail(args) {
+    const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(res.status, 1, `expected exit 1, got ${res.status}\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    return JSON.parse(res.stderr.trim());
+  }
+
+  /** Write raw manifest bytes; returns a function asserting they are untouched. */
+  function plant(rel, raw) {
+    const file = path.join(dir, rel);
+    fs.writeFileSync(file, raw);
+    return () => assert.strictEqual(fs.readFileSync(file, 'utf8'), raw, 'manifest bytes must be untouched');
+  }
+
+  it('array root: set refuses with the domain diagnostic, file byte-identical', () => {
+    const untouched = plant('.workflows/unit/manifest.json', '[]\n');
+    const res = engineFail(['manifest', 'set', 'unit', 'status', 'completed']);
+    assert.strictEqual(res.ok, false);
+    assert.match(res.error, /manifest root is not an object/);
+    untouched();
+  });
+
+  it('null root: the domain diagnostic, never a raw TypeError', () => {
+    const untouched = plant('.workflows/unit/manifest.json', 'null\n');
+    const res = engineFail(['manifest', 'set', 'unit', 'status', 'completed']);
+    assert.match(res.error, /manifest root is not an object/);
+    assert.ok(!/TypeError/.test(res.error), 'no raw JS TypeError may surface');
+    untouched();
+  });
+
+  it('number root: the domain diagnostic, never a raw TypeError', () => {
+    const untouched = plant('.workflows/unit/manifest.json', '42\n');
+    const res = engineFail(['manifest', 'set', 'unit', 'status', 'completed']);
+    assert.match(res.error, /manifest root is not an object/);
+    assert.ok(!/TypeError/.test(res.error));
+    untouched();
+  });
+
+  it('string `phases` + topic start: refusal, manifest pristine — no silent coercion', () => {
+    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+      name: 'unit', work_type: 'epic', status: 'in-progress', phases: 'oops',
+    }, null, 2) + '\n');
+    const res = engineFail(['topic', 'start', 'unit', 'research', 'auth']);
+    assert.match(res.error, /"phases" is not an object \(found string\)/);
+    untouched();
+  });
+
+  it('array `phases` + topic start: refusal — fields set into an array are stringify-dropped', () => {
+    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+      name: 'unit', work_type: 'epic', status: 'in-progress', phases: [],
+    }, null, 2) + '\n');
+    const res = engineFail(['topic', 'start', 'unit', 'research', 'auth']);
+    assert.match(res.error, /"phases" is not an object \(found array\)/);
+    untouched();
+  });
+
+  it('scalar mid-path container: set refuses instead of coercing to {}', () => {
+    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+      name: 'unit', work_type: 'epic', status: 'in-progress', phases: { research: 'active' },
+    }, null, 2) + '\n');
+    const res = engineFail(['manifest', 'set', 'unit.research.auth', 'status', 'in-progress']);
+    assert.match(res.error, /"phases\.research" is not an object — refusing to overwrite/);
+    untouched();
+  });
+
+  it('named field into an array: set refuses — stringify would silently drop it', () => {
+    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+      name: 'unit', work_type: 'feature', status: 'in-progress', imports: [], phases: {},
+    }, null, 2) + '\n');
+    const res = engineFail(['manifest', 'set', 'unit', 'imports.name', 'x']);
+    assert.match(res.error, /"imports" is an array — cannot set field "name"/);
+    untouched();
+  });
+
+  it('array-root project manifest: set refuses with the domain diagnostic, file byte-identical', () => {
+    const untouched = plant('.workflows/manifest.json', '[]\n');
+    const res = engineFail(['manifest', 'set', 'project.defaults.plan_format', 'tick']);
+    assert.match(res.error, /manifest root is not an object/);
+    untouched();
   });
 });
 
