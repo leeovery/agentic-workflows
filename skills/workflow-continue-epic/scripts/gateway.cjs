@@ -53,11 +53,22 @@ function discover(cwd, workUnit) {
       }
     }
 
-    epics.push({
-      name: m.name,
-      active_phases: activePhases,
-      detail: engine.detail.epicDetail(cwd, m),
+    // The detail build checksums every completed research + discussion file.
+    // Only the scoped / view / sub-view flows read `detail`; the index dump
+    // reads just name + active_phases. Defer the build to first access — a
+    // non-enumerable, memoised getter — so the index dump never pays for it,
+    // while scoped callers get the identical object on demand.
+    const epic = { name: m.name, active_phases: activePhases };
+    let detail;
+    let detailBuilt = false;
+    Object.defineProperty(epic, 'detail', {
+      enumerable: false,
+      get() {
+        if (!detailBuilt) { detail = engine.detail.epicDetail(cwd, m); detailBuilt = true; }
+        return detail;
+      },
     });
+    epics.push(epic);
   }
 
   // Load completed/cancelled epics (only in list mode, not detail mode)

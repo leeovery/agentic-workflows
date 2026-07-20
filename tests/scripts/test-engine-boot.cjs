@@ -59,6 +59,19 @@ if (mode === 'update') {
     'You MUST now follow the migration skill instructions to STOP and let the user review.\\n' +
     'Follow the explicit instructions in the migration skill before proceeding.\\n'
   );
+} else if (mode === 'update-config') {
+  fs.mkdirSync('.workflows/.state', { recursive: true });
+  fs.mkdirSync('.claude', { recursive: true });
+  fs.appendFileSync('.workflows/.state/migrations', '046\\n');
+  fs.writeFileSync('.claude/settings.json', '{"permissions":{}}\\n');
+  fs.appendFileSync('.gitignore', '.DS_Store\\n');
+  process.stdout.write(
+    '\\n' +
+    '1 migration(s) applied, 3 file(s) updated.\\n' +
+    '\\n' +
+    '---STOP_GATE: FILES_UPDATED---\\n' +
+    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n'
+  );
 } else if (mode === 'fail') {
   process.stdout.write('partial output before the failure\\n');
   process.stderr.write('boom: migration 099 exploded\\n');
@@ -168,6 +181,39 @@ describe('engine boot', () => {
     // The migration landed in the project's .workflows tree.
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/marker.md')));
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
+  });
+
+  it('a migration touching config files commits settings.json and .gitignore, leaving .workflows to the skill', () => {
+    const res = runEngine(fix.engine, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update-config' });
+
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.migrations.changed, true);
+    // Boot commits exactly the two config paths the skill's .workflows-scoped
+    // migration commit would otherwise leave dirty.
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migration config changes');
+    const show = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.deepStrictEqual(show, ['.claude/settings.json', '.gitignore']);
+    // The .workflows changes stay uncommitted — the skill's reviewed commit owns them.
+    assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /\.workflows\/\.state/);
+  });
+
+  it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
+    // Track a config baseline, then dirty both files with no migration running.
+    writeFile(fix.project, '.claude/settings.json', '{"permissions":{}}\n');
+    writeFile(fix.project, '.gitignore', 'node_modules\n');
+    git(fix.project, ['add', '-A']);
+    git(fix.project, ['commit', '-q', '-m', 'config baseline']);
+    writeFile(fix.project, '.claude/settings.json', '{"permissions":{"allow":["x"]}}\n');
+    writeFile(fix.project, '.gitignore', 'node_modules\n.DS_Store\n');
+
+    const res = runEngine(fix.engine, fix.project, ['boot']);
+
+    assert.strictEqual(res.migrations.changed, false);
+    // Both stay dirty; HEAD is still the baseline, not a config commit.
+    const status = git(fix.project, ['status', '--porcelain']);
+    assert.match(status, /\.claude\/settings\.json/);
+    assert.match(status, /\.gitignore/);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'config baseline');
   });
 
   it('knowledge not-ready is terminal: no init, no commit, setup stays a human choice', () => {
