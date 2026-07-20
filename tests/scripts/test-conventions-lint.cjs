@@ -1,0 +1,661 @@
+'use strict';
+
+// Conventions linter — mechanical enforcement of the DECIDABLE tier of
+// CONVENTIONS.md across the skill/agent corpus. Runs in CI forever, so every
+// check is calibrated for ZERO false positives: anything that cannot be made
+// exact stays out (the judgment tier belongs to humans).
+//
+// Each check is a pure function `(files) => violations[]` where a violation is
+// `{ file, line, message }`. The same function backs both the corpus test
+// (must find zero violations) and a negative test (must catch deliberately
+// broken temp fixtures). No repo files are mutated.
+
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const REPO = path.resolve(__dirname, '..', '..');
+const DOT = '·'; // MIDDLE DOT (U+00B7)
+const MENU_FRAME = Array(12).fill(DOT).join(' '); // "· · · · · · · · · · · ·"
+const ZERO_OUTPUT_RULE =
+  '> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.';
+
+// ---------------------------------------------------------------------------
+// Corpus discovery
+// ---------------------------------------------------------------------------
+
+function walkMd(dir, acc) {
+  if (!fs.existsSync(dir)) return acc;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkMd(p, acc);
+    else if (entry.isFile() && p.endsWith('.md')) acc.push(p);
+  }
+  return acc;
+}
+
+function corpusFiles() {
+  const files = [];
+  walkMd(path.join(REPO, 'skills'), files);
+  const agentsDir = path.join(REPO, 'agents');
+  if (fs.existsSync(agentsDir)) {
+    for (const name of fs.readdirSync(agentsDir)) {
+      if (name.endsWith('.md') && fs.statSync(path.join(agentsDir, name)).isFile()) {
+        files.push(path.join(agentsDir, name));
+      }
+    }
+  }
+  walkMd(path.join(REPO, '.claude', 'skills', 'create-output-format'), files);
+  return files.sort();
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+function readLines(file) {
+  return fs.readFileSync(file, 'utf8').split('\n').map((l) => l.replace(/\r$/, ''));
+}
+
+function charLen(str) {
+  return [...str].length; // code-point count = character count for BMP glyphs
+}
+
+function rel(file) {
+  return path.relative(REPO, file);
+}
+
+// Parse fenced code blocks. Returns { blocks, inFence } where `blocks` is an
+// array of { open, close, lines: [{ n, text }] } and `inFence` is a boolean
+// array indexed by 0-based line number (true inside a fence, excluding the
+// ``` delimiter lines themselves).
+function parseFences(lines) {
+  const blocks = [];
+  const inFence = new Array(lines.length).fill(false);
+  let open = -1;
+  let content = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*```/.test(lines[i])) {
+      if (open === -1) {
+        open = i;
+        content = [];
+      } else {
+        blocks.push({ open, close: i, lines: content });
+        open = -1;
+      }
+      continue;
+    }
+    if (open !== -1) {
+      inFence[i] = true;
+      content.push({ n: i, text: lines[i] });
+    }
+  }
+  return { blocks, inFence };
+}
+
+// A fence is the workflow-start banner iff it contains an ASCII-art line
+// (pure slashes / underscores / pipes / spaces, 10+ chars). The corpus
+// contains exactly one such fence; no other display uses these glyphs alone.
+function isBannerFence(block) {
+  return block.lines.some((l) => l.text.trim() !== '' && /^[\s/\\_|]{10,}$/.test(l.text));
+}
+
+// First non-blank content line index after any YAML frontmatter.
+function firstContentIndex(lines) {
+  let i = 0;
+  if (lines[0] !== undefined && lines[0].trim() === '---') {
+    i = 1;
+    while (i < lines.length && lines[i].trim() !== '---') i++;
+    i++;
+  }
+  while (i < lines.length && lines[i].trim() === '') i++;
+  return i;
+}
+
+// ---------------------------------------------------------------------------
+// Check 1 — Phase-title borders: ●-bordered lines are exactly 49 characters
+// (● + 47 ─ + ●). The workflow-start banner block is the one documented
+// exception and is skipped.
+// ---------------------------------------------------------------------------
+
+function checkBorders(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { blocks } = parseFences(lines);
+    const bannerLines = new Set();
+    for (const b of blocks) {
+      if (isBannerFence(b)) b.lines.forEach((l) => bannerLines.add(l.n));
+    }
+    lines.forEach((line, i) => {
+      const t = line.trim();
+      if (!/^●─+●$/.test(t)) return; // ● … ─ … ●
+      if (bannerLines.has(i)) return; // documented banner exception
+      const w = charLen(t);
+      if (w !== 49) {
+        out.push({
+          file,
+          line: i + 1,
+          message: `phase-title border must be 49 characters (● + 47 ─ + ●), found ${w}`,
+        });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 2 — Step / sub-step markers are exactly 49 characters. A marker is
+// positively identified as the SOLE content line of a fenced block whose text
+// begins with "── " or "·· ". Centered "── {Title} ──" content dividers live
+// embedded inside multi-line DISPLAY blocks and are therefore never matched.
+// ---------------------------------------------------------------------------
+
+function checkMarkers(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { blocks } = parseFences(lines);
+    for (const b of blocks) {
+      if (b.lines.length !== 1) continue; // sole-line fence only
+      const { n, text } = b.lines[0];
+      if (!/^(── |·· )/.test(text)) continue;
+      const w = charLen(text);
+      if (w !== 49) {
+        const kind = text.startsWith('── ') ? 'step marker' : 'sub-step marker';
+        out.push({
+          file,
+          line: n + 1,
+          message: `${kind} must be 49 characters, found ${w}`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 3 — Menu dot frames: any line of spaced middle dots must be exactly
+// "· · · · · · · · · · · ·". Leading indentation (menus nested under list
+// items) is permitted; the dot pattern itself must be canonical.
+// ---------------------------------------------------------------------------
+
+function checkDotFrames(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    lines.forEach((line, i) => {
+      const t = line.trim();
+      if (!/^[· ]+$/.test(t)) return;
+      const dots = (t.match(/·/g) || []).length;
+      if (dots < 3) return; // a lone "·" is a bullet, not a frame
+      if (t !== MENU_FRAME) {
+        out.push({ file, line: i + 1, message: `menu dot frame must be exactly "${MENU_FRAME}"` });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 4 — Banned STOP variants must not appear.
+// ---------------------------------------------------------------------------
+
+const BANNED_STOP = ['Stop here.', 'Command ends.', 'Wait for user to acknowledge before ending.'];
+
+function checkBannedStop(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    lines.forEach((line, i) => {
+      for (const phrase of BANNED_STOP) {
+        if (line.includes(phrase)) {
+          out.push({ file, line: i + 1, message: `banned STOP variant "${phrase}"` });
+        }
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 5 — Banned navigation verbs after an arrow.
+// ---------------------------------------------------------------------------
+
+const BANNED_NAV = /→\s*(Go to|Jump to|Skip to|Continue to|Enter |Proceed directly)/;
+
+function checkBannedNav(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    lines.forEach((line, i) => {
+      const m = line.match(BANNED_NAV);
+      if (m) {
+        out.push({ file, line: i + 1, message: `banned navigation verb "→ ${m[1].trim()}"` });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 6 — Internal routing-target existence. For "→ Proceed to **X**." and
+// "→ Return to **X**." where X is "Step N" or a lettered section ("B. Name"),
+// the same file must contain the matching heading. Skips caller returns,
+// backbone-escape links, and parameterised ({…}) targets.
+// ---------------------------------------------------------------------------
+
+function checkRouting(files) {
+  const out = [];
+  const routeRe = /→\s*(?:Proceed to|Return to)\s+\*\*([^*]+)\*\*/g;
+  for (const file of files) {
+    const lines = readLines(file);
+    // Headings are collected from every line (not fence-filtered): a heading
+    // shown inside a fenced example could only ever mask a broken route (a
+    // harmless false negative), whereas fence-parity parsing is fragile and
+    // could produce false positives — which this linter must never do.
+    const headings = [];
+    lines.forEach((line) => {
+      const hm = line.match(/^#{1,6}\s+(.+?)\s*$/);
+      if (hm) headings.push(hm[1]);
+    });
+    lines.forEach((line, i) => {
+      routeRe.lastIndex = 0;
+      let m;
+      while ((m = routeRe.exec(line))) {
+        const tgt = m[1];
+        if (tgt.includes('{')) continue; // parameterised
+        if (/^\[.*\]\(.*\)$/.test(tgt)) continue; // backbone-escape link
+        if (/^Step \d/.test(tgt)) {
+          const n = tgt.replace(/^Step\s+/, '').trim();
+          const nre = new RegExp('^Step ' + n.replace(/\./g, '\\.') + '(?=[:\\s]|$)');
+          if (!headings.some((h) => nre.test(h))) {
+            out.push({ file, line: i + 1, message: `routing target **${tgt}** has no matching heading in file` });
+          }
+        } else if (/^[A-Z]\.\s/.test(tgt)) {
+          if (!headings.some((h) => h === tgt)) {
+            out.push({ file, line: i + 1, message: `routing target **${tgt}** has no matching heading in file` });
+          }
+        }
+        // else: not a Step/lettered target (e.g. "Invoke the Agent") — skip
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 7 — Markdown link resolution: every relative [text](path) link
+// resolves to an existing file (anchor fragment stripped). External URLs and
+// template-placeholder ({…}) paths are skipped. Links inside fenced code
+// blocks (illustrative templates) and create-output-format scaffolding
+// templates (whose links are destination-relative) are exempt.
+// ---------------------------------------------------------------------------
+
+function checkLinks(files) {
+  const out = [];
+  const linkRe = /\[[^\]]*\]\(([^)]+)\)/g;
+  for (const file of files) {
+    if (file.includes(`${path.sep}create-output-format${path.sep}references${path.sep}scaffolding${path.sep}`)) {
+      continue; // destination-relative scaffolding templates
+    }
+    const dir = path.dirname(file);
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (inFence[i]) return; // illustrative template links
+      linkRe.lastIndex = 0;
+      let m;
+      while ((m = linkRe.exec(line))) {
+        let target = m[1].trim();
+        if (/^(https?:|mailto:|tel:|#)/.test(target) || target.startsWith('//')) continue;
+        target = target.split('#')[0];
+        if (target === '') continue; // pure in-page anchor
+        if (target.includes('{')) continue; // template placeholder
+        if (!fs.existsSync(path.resolve(dir, target))) {
+          out.push({ file, line: i + 1, message: `unresolved relative link (${target})` });
+        }
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 8 — H1 category rule (scoped to workflow-* SKILL.md backbones).
+// Processing backbones (workflow-*-process, plus engine and knowledge) open
+// with a title H1; entry, navigation, and phase-entry backbones carry none.
+// ---------------------------------------------------------------------------
+
+function skillNameOf(file) {
+  // .../skills/<name>/SKILL.md
+  const parts = file.split(path.sep);
+  const idx = parts.lastIndexOf('skills');
+  if (idx === -1 || parts[parts.length - 1] !== 'SKILL.md') return null;
+  return parts[parts.length - 2] || null;
+}
+
+function checkH1Category(files) {
+  const out = [];
+  const H1_KNOWN = new Set(['workflow-engine', 'workflow-knowledge']);
+  for (const file of files) {
+    const name = skillNameOf(file);
+    if (!name || !name.startsWith('workflow-')) continue; // only workflow backbones
+    const mustHaveH1 = /^workflow-.+-process$/.test(name) || H1_KNOWN.has(name);
+    const lines = readLines(file);
+    const first = lines[firstContentIndex(lines)] || '';
+    const isH1 = /^# /.test(first);
+    if (mustHaveH1 && !isH1) {
+      out.push({ file, line: firstContentIndex(lines) + 1, message: `processing backbone (${name}) must open with a title H1` });
+    } else if (!mustHaveH1 && isH1) {
+      out.push({ file, line: firstContentIndex(lines) + 1, message: `entry/navigation/phase-entry backbone (${name}) must not carry an H1` });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 9 — Zero Output Rule blockquote is byte-identical to the canonical
+// form wherever it appears.
+// ---------------------------------------------------------------------------
+
+function checkZeroOutput(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    lines.forEach((line, i) => {
+      if (line.includes('ZERO OUTPUT RULE') && line !== ZERO_OUTPUT_RULE) {
+        out.push({ file, line: i + 1, message: 'Zero Output Rule blockquote is not byte-identical to the canonical form' });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 10 — Reference-file attribution: files under skills/*/references/ open
+// (after the H1) with an italic attribution line in a sanctioned form —
+// parent/sub-reference link ("*Reference for **[link](path)**…*") or shared
+// ("*Shared reference…*"). Multi-consumer output-format adapter files are
+// exempt (a single-parent attribution would be inaccurate).
+// ---------------------------------------------------------------------------
+
+const ATTR_REFERENCE = /^\*Reference for \*\*\[[^\]]+\]\([^)]+\)\*\*.*\*$/;
+const ATTR_SHARED = /^\*Shared reference\b.*\*$/;
+
+function posix(file) {
+  return file.split(path.sep).join('/');
+}
+
+// In scope: reference files under a workflow skill (skills/*/references/…) or
+// under the create-output-format tooling skill. Matched on path suffix (not
+// repo-anchored) so the same logic drives corpus and temp-fixture tests.
+function isReferenceFile(file) {
+  const p = posix(file);
+  const workflowRef = /\/skills\/[^/]+\/references\//.test(p) && !/\.claude\/skills\//.test(p);
+  const cofRef = /\/create-output-format\/references\//.test(p);
+  return workflowRef || cofRef;
+}
+
+function checkAttribution(files) {
+  const out = [];
+  for (const file of files) {
+    if (!isReferenceFile(file)) continue;
+    const p = posix(file);
+    if (p.includes('/output-formats/')) continue; // multi-consumer adapter exemption
+    if (p.includes('/create-output-format/references/scaffolding/')) continue; // template scaffolding exemption
+    const lines = readLines(file);
+    const h1Idx = lines.findIndex((l) => /^# /.test(l));
+    if (h1Idx === -1) {
+      out.push({ file, line: 1, message: 'reference file missing H1 (cannot locate attribution)' });
+      continue;
+    }
+    let j = h1Idx + 1;
+    while (j < lines.length && lines[j].trim() === '') j++;
+    const attr = (lines[j] || '').trim();
+    if (!ATTR_REFERENCE.test(attr) && !ATTR_SHARED.test(attr)) {
+      out.push({ file, line: j + 1, message: 'reference file must open with a sanctioned italic attribution line' });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Registry + reporting
+// ---------------------------------------------------------------------------
+
+const CHECKS = [
+  ['1: phase-title borders (49 chars)', checkBorders],
+  ['2: step / sub-step markers (49 chars)', checkMarkers],
+  ['3: menu dot frames', checkDotFrames],
+  ['4: banned STOP variants', checkBannedStop],
+  ['5: banned navigation verbs', checkBannedNav],
+  ['6: internal routing-target existence', checkRouting],
+  ['7: markdown link resolution', checkLinks],
+  ['8: H1 category rule', checkH1Category],
+  ['9: Zero Output Rule byte-identity', checkZeroOutput],
+  ['10: reference-file attribution', checkAttribution],
+];
+
+function report(violations) {
+  return violations.map((v) => `  ${rel(v.file)}:${v.line} — ${v.message}`).join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Temp-fixture harness for negative tests
+// ---------------------------------------------------------------------------
+
+function withTemp(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'conv-lint-'));
+  try {
+    return fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function write(dir, relPath, content) {
+  const p = path.join(dir, relPath);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, content);
+  return p;
+}
+
+// ---------------------------------------------------------------------------
+// Corpus tests — every check must find zero violations on the audited tree.
+// ---------------------------------------------------------------------------
+
+const CORPUS = corpusFiles();
+
+test('corpus is non-empty and covers all three scan roots', () => {
+  assert.ok(CORPUS.length > 250, `expected a large corpus, found ${CORPUS.length}`);
+  assert.ok(CORPUS.some((f) => f.includes(`${path.sep}agents${path.sep}`)), 'agents/*.md not scanned');
+  assert.ok(CORPUS.some((f) => f.includes('create-output-format')), 'create-output-format not scanned');
+});
+
+for (const [label, fn] of CHECKS) {
+  test(`check ${label} — corpus is clean`, () => {
+    const violations = fn(CORPUS);
+    assert.strictEqual(violations.length, 0, `expected 0 violations, found ${violations.length}:\n${report(violations)}`);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Negative tests — each check must catch deliberately broken fixtures, and
+// must NOT flag the sanctioned edge cases it is designed to permit.
+// ---------------------------------------------------------------------------
+
+test('check 1 (borders) — catches wrong widths, skips the banner', () => {
+  withTemp((dir) => {
+    const bad = write(
+      dir,
+      'skills/x/SKILL.md',
+      '```\n●' + '─'.repeat(46) + '●\n  Too Short\n●' + '─'.repeat(46) + '●\n```\n'
+    );
+    const v1 = checkBorders([bad]);
+    assert.strictEqual(v1.length, 2, `expected 2 border violations, got ${v1.length}`);
+
+    // banner: ascii art + a 67-wide ● border → must be skipped
+    const banner = write(
+      dir,
+      'skills/workflow-start/SKILL.md',
+      '```\n●' + '─'.repeat(65) + '●\n    ___   ____________\n   /   | / ____/ ___/\n●' + '─'.repeat(65) + '●\n```\n'
+    );
+    assert.strictEqual(checkBorders([banner]).length, 0, 'banner border must be exempt');
+
+    // a correct 49-char border → clean
+    const good = write(dir, 'skills/y/SKILL.md', '```\n●' + '─'.repeat(47) + '●\n  Overview\n●' + '─'.repeat(47) + '●\n```\n');
+    assert.strictEqual(checkBorders([good]).length, 0, 'valid 49-char border must pass');
+  });
+});
+
+test('check 2 (markers) — catches wrong widths, skips embedded dividers', () => {
+  withTemp((dir) => {
+    const badStep = write(dir, 'skills/x/a.md', '```\n── Too Short ────\n```\n');
+    assert.strictEqual(checkMarkers([badStep]).length, 1, 'short step marker must be caught');
+
+    const badSub = write(dir, 'skills/x/b.md', '```\n·· Sub ' + '·'.repeat(60) + '\n```\n');
+    assert.strictEqual(checkMarkers([badSub]).length, 1, 'over-long sub-step marker must be caught');
+
+    // centered content divider embedded in a multi-line display fence → not a marker
+    const divider = write(
+      dir,
+      'skills/x/c.md',
+      '```\n  Some Display\n  ── Section Title ──\n  more content\n```\n'
+    );
+    assert.strictEqual(checkMarkers([divider]).length, 0, 'embedded content divider must not be flagged');
+
+    // valid 49-char step marker → clean
+    const label = '── Construct Specification ';
+    const marker = label + '─'.repeat(49 - charLen(label));
+    assert.strictEqual(charLen(marker), 49);
+    const good = write(dir, 'skills/x/d.md', '```\n' + marker + '\n```\n');
+    assert.strictEqual(checkMarkers([good]).length, 0, 'valid marker must pass');
+  });
+});
+
+test('check 3 (dot frames) — catches malformed patterns, permits nesting indent', () => {
+  withTemp((dir) => {
+    const short = write(dir, 'skills/x/a.md', Array(11).fill(DOT).join(' ') + '\n');
+    assert.strictEqual(checkDotFrames([short]).length, 1, '11-dot frame must be caught');
+
+    const doubled = write(dir, 'skills/x/b.md', DOT + '  ' + DOT + '  ' + DOT + '  ' + DOT + '\n');
+    assert.strictEqual(checkDotFrames([doubled]).length, 1, 'double-spaced frame must be caught');
+
+    const indented = write(dir, 'skills/x/c.md', '   ' + MENU_FRAME + '\n');
+    assert.strictEqual(checkDotFrames([indented]).length, 0, 'legitimately nested frame must pass');
+
+    const bullet = write(dir, 'skills/x/d.md', '  ' + DOT + ' advanced-features\n');
+    assert.strictEqual(checkDotFrames([bullet]).length, 0, 'a single bullet dot must not be flagged');
+
+    const good = write(dir, 'skills/x/e.md', MENU_FRAME + '\n');
+    assert.strictEqual(checkDotFrames([good]).length, 0, 'canonical frame must pass');
+  });
+});
+
+test('check 4 (banned STOP) — catches each banned variant', () => {
+  withTemp((dir) => {
+    for (const phrase of BANNED_STOP) {
+      const f = write(dir, `skills/x/${phrase.length}.md`, `Text. ${phrase} More.\n`);
+      assert.strictEqual(checkBannedStop([f]).length, 1, `must catch "${phrase}"`);
+    }
+    const good = write(dir, 'skills/x/ok.md', '**STOP.** Wait for user response.\n');
+    assert.strictEqual(checkBannedStop([good]).length, 0, 'sanctioned STOP must pass');
+  });
+});
+
+test('check 5 (banned nav) — catches banned verbs, permits Proceed/Return', () => {
+  withTemp((dir) => {
+    const cases = ['→ Go to **Step 2**.', '→ Jump to **B. X**.', '→ Skip to **Step 3**.', '→ Continue to **Step 4**.', '→ Enter plan mode.', '→ Proceed directly to **Step 5**.'];
+    cases.forEach((c, idx) => {
+      const f = write(dir, `skills/x/${idx}.md`, c + '\n');
+      assert.strictEqual(checkBannedNav([f]).length, 1, `must catch "${c}"`);
+    });
+    const good = write(dir, 'skills/x/ok.md', '→ Proceed to **Step 2**.\n→ Return to caller.\n→ Continue with the session loop.\n');
+    assert.strictEqual(checkBannedNav([good]).length, 0, 'sanctioned navigation must pass');
+  });
+});
+
+test('check 6 (routing) — catches dangling targets, skips exempt shapes', () => {
+  withTemp((dir) => {
+    const badStep = write(dir, 'skills/x/a.md', '## Step 1: Start\n\n→ Proceed to **Step 9**.\n');
+    assert.strictEqual(checkRouting([badStep]).length, 1, 'dangling Step target must be caught');
+
+    const badLettered = write(dir, 'skills/x/b.md', '## A. First\n\n→ Proceed to **Z. Missing**.\n');
+    assert.strictEqual(checkRouting([badLettered]).length, 1, 'dangling lettered target must be caught');
+
+    const good = write(
+      dir,
+      'skills/x/c.md',
+      '## Step 1: Start\n→ Proceed to **Step 2**.\n\n## Step 2: Next\n\n## B. Second Section\n→ Return to **B. Second Section**.\n→ Return to caller.\n→ Return to **[the skill](../SKILL.md)** for **Step 7**.\n→ Proceed to **{next_section}**.\n'
+    );
+    assert.strictEqual(checkRouting([good]).length, 0, 'resolvable / caller / escape / param targets must pass');
+  });
+});
+
+test('check 7 (links) — catches broken links, skips fenced/external/placeholder/scaffolding', () => {
+  withTemp((dir) => {
+    write(dir, 'skills/x/real.md', '# real\n');
+    const bad = write(dir, 'skills/x/a.md', '[missing](nope.md)\n[real](real.md)\n');
+    const v = checkLinks([bad]);
+    assert.strictEqual(v.length, 1, `only the broken link must be caught, got ${v.length}`);
+    assert.match(v[0].message, /nope\.md/);
+
+    const exempt = write(
+      dir,
+      'skills/x/b.md',
+      '```\n[fenced](nope.md)\n```\n[ext](https://example.com/x.md)\n[tmpl]({work_unit}/f.md)\n[anchor](#section)\n'
+    );
+    assert.strictEqual(checkLinks([exempt]).length, 0, 'fenced/external/placeholder/anchor links must be skipped');
+
+    const scaffold = write(dir, '.claude/skills/create-output-format/references/scaffolding/about.md', '[p](../../../SKILL.md)\n');
+    assert.strictEqual(checkLinks([scaffold]).length, 0, 'scaffolding templates must be exempt');
+  });
+});
+
+test('check 8 (H1 category) — enforces the processing/backbone split', () => {
+  withTemp((dir) => {
+    const procNoH1 = write(dir, 'skills/workflow-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
+
+    const entryWithH1 = write(dir, 'skills/workflow-foo-entry/SKILL.md', '# Foo Entry\n\nOne-liner.\n');
+    assert.strictEqual(checkH1Category([entryWithH1]).length, 1, 'entry backbone with H1 must be caught');
+
+    const navWithH1 = write(dir, 'skills/workflow-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
+    assert.strictEqual(checkH1Category([navWithH1]).length, 1, 'navigation backbone with H1 must be caught');
+
+    const procGood = write(dir, 'skills/workflow-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
+    const entryGood = write(dir, 'skills/workflow-bar-entry/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const engineGood = write(dir, 'skills/workflow-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
+    assert.strictEqual(checkH1Category([procGood, entryGood, engineGood]).length, 0, 'correctly-categorised backbones must pass');
+  });
+});
+
+test('check 9 (Zero Output Rule) — catches drift from the canonical form', () => {
+  withTemp((dir) => {
+    const mangled = write(dir, 'skills/x/a.md', '> **⚠️ ZERO OUTPUT RULE**: Do not narrate.\n');
+    assert.strictEqual(checkZeroOutput([mangled]).length, 1, 'drifted Zero Output Rule must be caught');
+
+    const good = write(dir, 'skills/x/b.md', ZERO_OUTPUT_RULE + '\n');
+    assert.strictEqual(checkZeroOutput([good]).length, 0, 'canonical Zero Output Rule must pass');
+  });
+});
+
+test('check 10 (attribution) — catches missing/wrong attribution, skips output-formats', () => {
+  withTemp((dir) => {
+    const missing = write(dir, 'skills/x/references/a.md', '# Some Reference\n\nStraight into content with no attribution.\n');
+    assert.strictEqual(checkAttribution([missing]).length, 1, 'missing attribution must be caught');
+
+    const wrong = write(dir, 'skills/x/references/b.md', '# Some Reference\n\n*Loaded by whoever.*\n');
+    assert.strictEqual(checkAttribution([wrong]).length, 1, 'non-sanctioned attribution must be caught');
+
+    const refForm = write(dir, 'skills/x/references/c.md', '# C\n\n*Reference for **[skill-name](../SKILL.md)***\n\n---\n');
+    const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all workflow skills.*\n');
+    assert.strictEqual(checkAttribution([refForm, sharedForm]).length, 0, 'sanctioned forms must pass');
+
+    const of = write(dir, 'skills/workflow-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
+    assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
+  });
+});
