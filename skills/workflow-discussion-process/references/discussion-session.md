@@ -281,7 +281,7 @@ All subtopics on the Discussion Map are decided.
 Discussion complete. Ready to conclude?
 
 - **`y`/`yes`** — Conclude discussion
-- **Keep going** — Continue discussing to explore further
+- **Keep going** — Tell me what else to explore
 · · · · · · · · · · · ·
 ```
 
