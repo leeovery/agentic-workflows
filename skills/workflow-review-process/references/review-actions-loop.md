@@ -373,7 +373,11 @@ For each plan that received new tasks:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): re-open implementation tracking"
 ```
 
-Then enter plan mode and write the following plan:
+Then enter plan mode and write the following plan. Resolve `{work_type}` from the manifest when not already in context:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+```
 
 ```
 # Review Actions Complete: {work_unit}
@@ -384,10 +388,12 @@ Review findings have been synthesized into {N} implementation tasks.
 
 {Summary, e.g., "auth-flow: 3 tasks in Phase 9"}
 
-## Instructions
+## Next Step
 
-1. Invoke `workflow-implementation-entry`
-2. The skill will detect the new tasks and start executing them
+Invoke `/workflow-implementation-entry {work_type} {work_unit} {topic}`
+
+Arguments: work_type = {work_type}, work_unit = {work_unit}, topic = {topic}
+The skill will detect the new tasks and start executing them.
 
 ## Context
 

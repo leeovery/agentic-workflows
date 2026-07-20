@@ -93,7 +93,7 @@ Quick-Fix Completed
 
 ## C. Check for Earlier Phases
 
-Check if there are completed phases earlier in the pipeline that the user could revisit. Read the discovery output's `completed_phases` — any phase listed before `next_phase` in the pipeline order.
+Check if there are completed phases earlier in the pipeline that the user could revisit. Read the discovery output's `completed_phases` and keep only quick-fix pipeline phases — scoping, implementation, review — listed before `next_phase` in the pipeline order. The dump also lists specification and planning (written by scoping); they are not quick-fix phases, have no quick-fix entry route, and are never revisit targets.
 
 #### If no earlier completed phases exist
 
@@ -142,7 +142,7 @@ Select an option:
 · · · · · · · · · · · ·
 ```
 
-List only completed phases that come before `next_phase`.
+List only completed quick-fix pipeline phases (scoping, implementation, review) that come before `next_phase` — never specification or planning.
 
 **STOP.** Wait for user response.
 
