@@ -119,6 +119,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 → Proceed to **C. Finalize Approval**.
 
+#### If navigate
+
+Resolve the destination per the caller's **Navigation** section — the user's position moves, the leading edge does not.
+
+→ Return to caller for **B. Process Current Phase**.
+
 #### If approved (`y`/`yes`)
 
 → Proceed to **C. Finalize Approval**.

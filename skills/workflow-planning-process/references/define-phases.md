@@ -91,6 +91,12 @@ Update the planning file with the revised output.
 
 → Return to **B. Review and Approve**.
 
+#### If navigate
+
+Resolve the destination per the caller's **Navigation** section — the user's position moves, the leading edge does not.
+
+→ Return to caller for **B. Process Current Phase**.
+
 #### If `approved`
 
 **If the phase structure is new or was amended:**
