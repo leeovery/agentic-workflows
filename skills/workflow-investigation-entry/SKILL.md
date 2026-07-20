@@ -57,21 +57,23 @@ Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, top
 
 Investigation is always bugfix work_type. Store work_unit for the handoff.
 
-Check if the investigation phase entry exists:
+Read the investigation phase status:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.investigation.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic} status
 ```
 
-**If exists (`true`):**
+Store the result as `phase_status`.
 
-→ Proceed to **Step 2** (Validate Phase).
-
-**If not exists (`false`):**
+**If empty (no investigation entry):**
 
 Set source="new".
 
 → Proceed to **Step 3** (Gather Bug Context).
+
+**Otherwise (an entry exists):**
+
+→ Proceed to **Step 2** (Validate Phase).
 
 ---
 
@@ -90,7 +92,7 @@ Set source="new".
 > in progress, or completed.
 ```
 
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
 #### If source is `continue`
 

@@ -4,15 +4,9 @@
 
 ---
 
-Check if a discussion already exists for this work unit and topic.
+Check whether a discussion already exists for this work unit and topic. Branch on the `phase_status` the caller read in Step 1 — no re-read.
 
-Use `engine manifest` to check discussion phase state:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic}
-```
-
-#### If output is empty (discussion doesn't exist — fresh start)
+#### If `phase_status` is empty (discussion doesn't exist — fresh start)
 
 Nothing to validate — `source` keeps the value set in Step 1.
 

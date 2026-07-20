@@ -103,19 +103,21 @@ Silently derive `direct_entry_summary` (one-line) and `direct_entry_description`
 
 Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`. On the direct-entry path (no topic supplied as `$2`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. When the topic was provided by the caller, omit both — the caller didn't derive them.
 
-Check if the research phase entry exists:
+Read the research phase status:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.research.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
-#### If exists (`true`)
+Store the result as `phase_status`.
 
-→ Proceed to **Step 3**.
-
-#### If not exists (`false`)
+#### If output is empty (no research entry)
 
 → Proceed to **Step 4**.
+
+#### Otherwise
+
+→ Proceed to **Step 3**.
 
 ---
 
@@ -134,7 +136,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_uni
 > or completed.
 ```
 
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
 → Proceed to **Step 5**.
 
