@@ -8,16 +8,28 @@ disable-model-invocation: true
 
 Scaffold a new output format adapter for the workflow-planning-process workflow. Each format adapter is a directory of 5 files, one per concern.
 
+---
+
 ## Step 1: Gather Information
 
-Before writing anything, understand the tool. Ask the user for:
+Before writing anything, understand the tool. You need two things from the user:
 
 1. **What is the tool/system called?**
 2. **Documentation links** — official docs, API references, MCP server docs, anything relevant
 
-If the user provided these upfront, skip straight to research.
+#### If the user provided these upfront
 
-### Research
+→ Proceed to **Step 1.1: Research**.
+
+#### Otherwise
+
+Ask the user for both items above.
+
+**STOP.** Wait for user response before proceeding.
+
+→ Proceed to **Step 1.1: Research**.
+
+### Step 1.1: Research
 
 Fetch and read all provided documentation using WebFetch. From the docs, establish:
 
@@ -31,17 +43,27 @@ Fetch and read all provided documentation using WebFetch. From the docs, establi
 - Benefits and trade-offs vs simpler approaches
 - Any constraints or limitations
 
-### Clarify Gaps
+→ Proceed to **Step 1.2: Clarify Gaps**.
+
+### Step 1.2: Clarify Gaps
 
 Present what you've learned as a summary and ask the user to confirm or correct. Use AskUserQuestion to clarify anything the documentation didn't cover or left ambiguous — motivation for choosing this format, preferred interface if multiple exist, setup specifics, etc.
 
 Suggest a kebab-case format key based on the tool name and confirm with the user.
 
-Do not proceed until the user confirms your understanding.
+**STOP.** Wait for user response before proceeding.
+
+→ Proceed to **Step 2**.
+
+---
 
 ## Step 2: Understand the Contract
 
 Read **[references/contract.md](references/contract.md)** — this defines the 5-file interface every format must implement.
+
+→ Proceed to **Step 3**.
+
+---
 
 ## Step 3: Create the Format Directory
 
@@ -50,6 +72,10 @@ Create the directory at:
 ```
 skills/workflow-planning-process/references/output-formats/{format-key}/
 ```
+
+→ Proceed to **Step 4**.
+
+---
 
 ## Step 4: Write the Files
 
@@ -67,35 +93,36 @@ For each file:
 
 1. Start from the scaffolding template structure
 2. Replace all `{placeholder}` tokens with format-specific content from your gathered information
-3. Remove template guidance comments (lines starting with `<!-- -->`)
+3. Remove template guidance comments — the HTML comment lines, `<!-- ... -->`
 4. Include concrete commands, API calls, or MCP operations — not vague descriptions
+
+→ Proceed to **Step 5**.
+
+---
 
 ## Step 5: Register the Format
 
-`skills/workflow-planning-process/references/output-formats.md` renders a numbered selection menu. Register the new format with three edits, using the next available number `{N}`:
+`skills/workflow-planning-process/references/output-formats.md` renders a numbered selection menu. Register the new format with two edits, using the next available number `{N}`:
 
-1. **Listing** — append an entry to the "Available output formats" code block:
-
-   ```
-   {N}. {Format Name}
-      {One-line description.}
-      {Requirements — external tools/accounts, or "No external tools required."}
-      Best for: {ideal use cases}
-   ```
-
-2. **Menu** — append an option to the selection menu block:
+1. **Menu** — append an option to the selection menu block, folding the format's identity into the description:
 
    ```
-   - **`{N}`** — {Format Name}
+   - **`{N}`** — {Format Name} — {one-line description}; {requirements, or "no external tools"}. Best for {ideal use cases}.
    ```
 
-3. **Branch** — append a routing branch after the existing `#### If` branches:
+2. **Branch** — append a routing branch after the existing `#### If` branches:
 
    ```markdown
    #### If `{N}`
 
    Set `chosen-format` = `{format-key}`.
+
+   → Return to caller.
    ```
+
+→ Proceed to **Step 6**.
+
+---
 
 ## Step 6: Validate
 

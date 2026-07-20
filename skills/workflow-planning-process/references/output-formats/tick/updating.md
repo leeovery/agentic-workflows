@@ -34,7 +34,7 @@ To update a task's properties:
 
 After every `tick update`, run `tick show <tick-id>` and confirm that the updated fields were set correctly. If any field is empty or wrong, re-run the update.
 
-## Phase / Parent Status (Auto-Cascade)
+## Phase Completion
 
 Tick automatically cascades status changes through the parent/child hierarchy. **Do not manually update phase or topic parent status** — tick handles it.
 

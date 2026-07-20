@@ -1,5 +1,9 @@
 # Output Format Contract
 
+*Reference for **[create-output-format](../SKILL.md)***
+
+---
+
 Every output format adapter is a directory of 5 files, each serving a specific concern.
 
 ## Required Files
@@ -12,6 +16,8 @@ Every output format adapter is a directory of 5 files, each serving a specific c
 | `updating.md` | Modifying tasks — status, content, properties |
 | `graph.md` | Task graph — priority and dependencies across tasks |
 
+**Header exemption.** `about.md` opens with the adapter attribution line (`*Output format adapter for …*`). The per-concern files — `authoring.md`, `reading.md`, `updating.md`, `graph.md` — are read by many callers (the planning process, the task-authoring and graphing agents, implementation, and review), so they carry no attribution line: each begins with its `# {Format}: {Concern}` title and goes straight into content.
+
 ## File Specifications
 
 ### about.md
@@ -23,8 +29,8 @@ Must include:
 - **Format name and description** — what this format is
 - **Benefits** — why choose this format
 - **Setup** — installation, configuration, prerequisites
-- **Output Location** — where tasks are stored
 - **Structure Mapping** — how workflow concepts (topic, phase, task) map to the format's entities
+- **Output Location** — where tasks are stored
 
 ### authoring.md
 
