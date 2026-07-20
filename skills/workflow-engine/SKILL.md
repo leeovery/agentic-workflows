@@ -51,6 +51,18 @@ engine topic cancel <work-unit> <phase> <topic>
 engine topic reactivate <work-unit> <phase> <topic>
 ```
 
+**`task`** — implementation-task bookkeeping: format-blind, manifest-side only. The engine never reads or writes a task backend and knows no plan-format names — the session does the plan surgery, these commands record it against `phases.implementation.items.{topic}`. Each command is load → apply → save plus one decision-ready JSON line; no git commit (the session's per-task commit cadence picks the manifest change up).
+
+```bash
+engine task init <work-unit> <topic>                       # create-or-resume the implementation item
+engine task start <work-unit> <topic> <internal-id>        # reset fix_attempts, drop the task's fix-tracking cache file
+engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
+engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]
+engine task analysis-cycle <work-unit> <topic>             # increment both analysis counters
+```
+
+`init` creates the item with `status: in-progress`, gated gate modes, zeroed counters, empty `linters`/`project_skills`, `current_phase: 1`, `current_task: null` — or, when it already exists, performs a session-only reset (three gate modes → `gated`, `fix_attempts`/`analysis_cycle_session` → 0; `analysis_cycle_total`, arrays, and progress fields untouched). Response: `{"ok": true, "mode": "created"|"resumed", "gates": {…}, "counters": {…}}`. `fix-attempt` increments `fix_attempts` and appends the findings file's content verbatim under a `## Attempt {N}` section in `.workflows/.cache/{wu}/implementation/{topic}/fix-tracking-{internal-id}.md`; response carries `attempts`, `threshold_reached` (≥ 3), and `fix_gate_mode`. `complete` pushes the internal id to `completed_tasks` (skips included — the plan carries the skip distinction), resolves `--external` by mirroring manifest `key-of` over `{wu}.planning.{topic}.task_map`, sets `current_phase`/`current_task` (`~` = null) when flagged, and pushes to `completed_phases` on `--phase-complete` (`--phase`, or the phase embedded in the internal id). `analysis-cycle` responds with `cycle_total`, `cycle_session`, `over_session_limit` (> 3), and `analysis_gate_mode`.
+
 **`inbox`** — archive / restore / delete one or more inbox items as a single transaction. Paths are validated strictly against the inbox layout (`.workflows/.inbox/{ideas|bugs|quickfixes}/…`, archived items under `.inbox/.archived/…`) before anything moves; one commit covers the whole set (`workflow(inbox): archive {slug}` for one item, `… archive {N} items` for several — same forms for restore/delete). Response: `{"ok": true, "archived": [paths…], "committed": "<short-sha>"}` (key matches the verb: `archived` / `restored` / `deleted`).
 
 ```bash
@@ -140,4 +152,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
