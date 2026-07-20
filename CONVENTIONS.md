@@ -174,6 +174,8 @@ Example with filter: `@foreach(inv in investigations.files where status is in-pr
 
 **When to use placeholders vs concrete examples:** Placeholders work well for structural templates (tree displays, status blocks) where each field has a clear source. Selection menus should use concrete examples instead — they encode conditional logic (which verb maps to which state) that placeholders obscure.
 
+In model-instruction fenced blocks (not user-facing templates), the anonymous enumeration shorthand `{option1|option2}` is acceptable where a name adds nothing.
+
 ### List Display
 
 Two styles, chosen by whether items have sub-detail.
@@ -247,6 +249,10 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
   before they can be included in a specification.
 ```
 
+### Content Dividers & Frames
+
+Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing. Boxed frames (`╭─ … ─╮` / `╰─ … ─╯`) are sanctioned for before/after diff presentation in review-findings flows.
+
 ### Cross-Plan References
 
 Use colon notation to reference a task within a plan: `{plan}:{internal_id}`.
@@ -281,7 +287,7 @@ Rendered as markdown (not code blocks). Framed with `· · · · · · · · · 
 **Option types** — menus contain two kinds of option:
 
 - **Command option** (explicit): A discrete input the user types verbatim. Formatted with backtick-wrapped shorthand: **`y`/`yes`**, **`s`/`single`**, **`a`/`auto`**. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a`/`approve`** and **`b`/`abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``).
-- **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
+- **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`); where the bare label reads awkwardly as a condition, a descriptive form naming the intent is equally valid (`#### If the user provides feedback` for a **Provide feedback** option). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
 
 Both types use `— description` to explain what the option does (unless self-evident, as with yes/no).
 
@@ -409,9 +415,9 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 ### Heading Hierarchy
 
-- **H1** (`#`): File title only — one per file, at the top
+- **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; entry, navigation, and phase-entry SKILL.md files carry none (frontmatter and the one-liner open the backbone)
 - **H2** (`##`): Steps and major sections (`## Step N: {Name}`, `## Notes`, `## Instructions`)
-- **H3** (`###`): Sub-steps within early setup steps only (`### Step 0.1: Casing Conventions`)
+- **H3** (`###`): In flow files, sub-steps within early setup steps only (`### Step 0.1: Casing Conventions`). Non-flow reference files — templates, question banks, agent-prompt content, API documentation — may use H3 freely for content organisation
 - **H4** (`####`): Conditional routing only (`#### If {condition}`, `#### Otherwise`)
 
 ### Step Numbering
@@ -546,6 +552,12 @@ Reference files loaded by skills use this header pattern:
 ---
 ```
 
+Attribution variants by loading context:
+
+- **Loaded by another reference file** (not the backbone): attribute to the loading file — `*Reference for **[spec-review](spec-review.md)***`. A short context clause may follow the link (`— loaded at phase start`).
+- **Shared references** (`workflow-shared/references/`, no parent SKILL.md): use the shared form — `*Shared reference. Loaded by {callers}.*` or `*Shared reference for all workflow skills.*`
+- **Multi-consumer content files** (output-format per-concern adapters loaded by several skills): no attribution line — a single-parent attribution would be inaccurate. The format contract documents this exemption.
+
 ### Critical / Important Markers
 
 Use bold labels with colons for emphasis levels:
@@ -568,7 +580,7 @@ Entry-point skills that invoke processing skills use this exact blockquote to pr
 
 Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STOP gates. This pattern is used in implementation (task + fix gates), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
 
-**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated` or `auto`). This ensures they survive context refresh.
+**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated` or `auto`). This ensures they survive context refresh. One sanctioned exception: review's actions loop stores `gate_mode` in its staging-file frontmatter — the staging file is that cycle's durable carrier and survives refresh the same way.
 
 **Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
 
@@ -583,8 +595,8 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 **Lifecycle**:
 - Default: `gated` (set in manifest on creation)
 - Opt-in: user chooses `a`/`auto` at any per-item gate → manifest updated via `engine manifest` before next commit
-- Reset: entry-point skills reset gates to `gated` on fresh invocation (not on `continue`)
-- Context refresh: read gate modes from manifest and preserve
+- Reset: entry-point skills reset gates to `gated` at session start — fresh invocation or resume. Auto opt-in is session-scoped, never carried across sessions
+- Context refresh: read gate modes from manifest and preserve (a refresh continues the same session — no reset)
 
 **Menu option format**: Add between the primary action and secondary options:
 ```

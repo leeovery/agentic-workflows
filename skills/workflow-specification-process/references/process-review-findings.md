@@ -128,7 +128,13 @@ Check `finding_gate_mode` via `engine manifest` (`node .claude/skills/workflow-e
 Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specification.
 ```
 
-→ Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 #### If `finding_gate_mode` is `gated`
 
@@ -174,7 +180,13 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 Finding {N} of {total}: {brief_title:(titlecase)} — added.
 ```
 
-→ Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 #### If `auto`
 
@@ -197,7 +209,13 @@ Finding {N} of {total}: {brief_title:(titlecase)} — added.
 Finding {N} of {total}: {brief_title:(titlecase)} — skipped.
 ```
 
-→ Return to **B. Process One Item at a Time** for the next pending finding, or proceed to **C. After All Findings Processed**.
+**If pending findings remain:**
+
+→ Return to **B. Process One Item at a Time**.
+
+**If all findings are processed:**
+
+→ Proceed to **C. After All Findings Processed**.
 
 ---
 
