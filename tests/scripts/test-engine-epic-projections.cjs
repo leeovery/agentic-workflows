@@ -464,6 +464,14 @@ describe('epic projections: menu', () => {
     assert.ok(rendered.includes('— Continue "Roles" — implementation (Phase 2, 3 task(s) completed)'), rendered);
   });
 
+  it('an open discovery session leads the menu as resume, regardless of map state', () => {
+    const d = detailFor(dir, 'resumable', { work_type: 'epic' });
+    d.active_session = '001';
+    const { keys, rendered } = epicMenu('resumable', d);
+    assert.strictEqual(keys[0].key, 'i');
+    assert.ok(rendered.includes('- **`i`/`discovery`** — Resume the in-progress discovery session (session-001) (recommended)'));
+  });
+
   it('brand-new epic menu leads with recommended discovery', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const { keys, rendered } = epicMenu('fresh', d);

@@ -473,8 +473,17 @@ function commandOptions(workUnit, detail, hasMap) {
   const discoveryOpt = {
     key: 'i', word: 'discovery', action: 'continue_discovery', topic: null,
     route: `/workflow-discovery epic ${workUnit}`,
-    label: hasMap ? 'Continue discovery' : 'Run discovery — shape the topic map',
+    // An open session marker outranks map state: the user left a session
+    // mid-flight, and discovery's resume gate is waiting for them.
+    label: detail.active_session
+      ? `Resume the in-progress discovery session (session-${detail.active_session})`
+      : (hasMap ? 'Continue discovery' : 'Run discovery — shape the topic map'),
   };
+  if (detail.active_session && hasMap) {
+    // resume leads even on a populated map; the !hasMap unshift below already
+    // leads for map-less epics
+    opts.push(discoveryOpt);
+  }
   if (!hasMap) opts.push(discoveryOpt);
   opts.push({
     key: 'd', word: 'discuss', action: 'new_discussion', topic: null,
@@ -486,7 +495,7 @@ function commandOptions(workUnit, detail, hasMap) {
     route: `/workflow-research-entry epic ${workUnit}`,
     label: hasMap ? 'Start research on a new topic' : 'Start new research',
   });
-  if (hasMap) opts.push(discoveryOpt);
+  if (hasMap && !detail.active_session) opts.push(discoveryOpt);
   if (detail.completed.length > 0) {
     opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
   }
@@ -514,6 +523,13 @@ function liveItems(detail, phase) {
  */
 function pickRecommendation(detail, numbered, options, hasMap) {
   const sOption = options.find((o) => o.action === 'analyze_discussions');
+
+  // An interrupted discovery session outranks every other recommendation —
+  // the user left mid-thought and the resume gate is waiting.
+  if (detail.active_session) {
+    const discoveryOpt = options.find((o) => o.action === 'continue_discovery');
+    if (discoveryOpt) { discoveryOpt.recommended = true; return null; }
+  }
 
   if (hasMap) {
     if (detail.convergence_state === 'in-progress') {
