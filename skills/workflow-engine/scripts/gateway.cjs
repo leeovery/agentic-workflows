@@ -70,7 +70,7 @@ function runGateway(handlers, argv = process.argv.slice(2)) {
       throw new Error('gateway: no `index` handler registered for the no-args call');
     }
     out = handlers.index();
-  } else if (typeof handlers[first] === 'function' && first !== 'fallback') {
+  } else if (Object.hasOwn(handlers, first) && typeof handlers[first] === 'function' && first !== 'fallback') {
     out = handlers[first](...rest);
   } else if (typeof handlers.fallback === 'function') {
     out = handlers.fallback(...argv);
