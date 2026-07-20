@@ -66,7 +66,7 @@ engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_de
 
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
-engine.detail.EPIC_PHASES                         // string[] — the seven epic phases, in pipeline order
+engine.detail.EPIC_DETAIL_PHASES                  // string[] — every phase the epic detail surfaces (discovery first, then the pipeline)
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)

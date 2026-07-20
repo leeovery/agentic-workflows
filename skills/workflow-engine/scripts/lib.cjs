@@ -76,7 +76,7 @@ module.exports = {
   },
   detail: {
     epicDetail: epic.epicDetail,
-    EPIC_PHASES: epic.EPIC_PHASES,
+    EPIC_DETAIL_PHASES: epic.EPIC_DETAIL_PHASES,
     startDetail: start.startDetail,
     combinedInbox: inboxSet.combinedInbox,
     workingSetDetail: inboxSet.workingSetDetail,

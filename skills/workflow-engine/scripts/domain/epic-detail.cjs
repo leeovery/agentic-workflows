@@ -18,7 +18,12 @@ const {
   buildDiscoveryMap,
 } = require('./derivations.cjs');
 
-const EPIC_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+// Every phase the epic detail iterates and the epic dashboard / thin dump
+// surface — discovery (the map) first, then the pipeline. The pipeline-only
+// view (research → review, for completion / next-phase and the start
+// dashboard) is domain/start.cjs's EPIC_PIPELINE_PHASES, derived from this
+// minus discovery — discovery is the map, not a pipeline phase.
+const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 
 /**
  * @typedef {object} SpecSource
@@ -189,7 +194,7 @@ function epicDetail(cwd, manifest) {
   /** @type {NextPhaseEntry[]} */
   const nextPhaseReady = [];
 
-  for (const phase of EPIC_PHASES) {
+  for (const phase of EPIC_DETAIL_PHASES) {
     if (phase === 'discovery') continue;
     const items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
@@ -359,4 +364,4 @@ function epicDetail(cwd, manifest) {
   };
 }
 
-module.exports = { EPIC_PHASES, epicDetail };
+module.exports = { EPIC_DETAIL_PHASES, epicDetail };

@@ -20,8 +20,13 @@ const {
   lastCompletedPhase,
 } = require('./derivations.cjs');
 const { WORK_UNIT_TYPES } = require('./workunit-detail.cjs');
+const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 
-const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
+// The epic pipeline — research → review, the completion / next-phase pipeline
+// and the start dashboard's active-phase row. Derived from epic-detail's full
+// EPIC_DETAIL_PHASES minus discovery (the map, not a pipeline phase) so the two
+// lists can never drift.
+const EPIC_PIPELINE_PHASES = EPIC_DETAIL_PHASES.filter((p) => p !== 'discovery');
 
 const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
 
@@ -34,7 +39,7 @@ const ALL_PHASES = ['research', 'discussion', 'investigation', 'scoping', 'speci
  * @returns {string[]}
  */
 function pipelineOf(workType) {
-  if (workType === 'epic') return EPIC_PHASES;
+  if (workType === 'epic') return EPIC_PIPELINE_PHASES;
   const cfg = WORK_UNIT_TYPES[workType];
   return cfg ? cfg.pipeline : ALL_PHASES;
 }
@@ -218,7 +223,7 @@ function startDetail(cwd) {
     if (m.work_type === 'epic') {
       // For epics, include list of phases that have items
       const activePhases = [];
-      for (const phase of EPIC_PHASES) {
+      for (const phase of EPIC_PIPELINE_PHASES) {
         const items = phaseItems(m, phase);
         if (items.length > 0) {
           activePhases.push(phase);
