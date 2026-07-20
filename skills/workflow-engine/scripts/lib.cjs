@@ -25,6 +25,7 @@ const manifest = require('./kernel/manifest.cjs');
 const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
+const discoverySession = require('./domain/discovery-session.cjs');
 const gateway = require('./gateway.cjs');
 const epic = require('./domain/epic-detail.cjs');
 const start = require('./domain/start.cjs');
@@ -73,6 +74,9 @@ module.exports = {
     setSubtopicState: discussionMap.setSubtopicState,
     mapState: discussionMap.mapState,
     SUBTOPIC_STATES: discussionMap.SUBTOPIC_STATES,
+  },
+  session: {
+    nextSessionNumber: discoverySession.nextSessionNumber,
   },
   detail: {
     epicDetail: epic.epicDetail,

@@ -28,7 +28,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { dedupe } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -318,7 +318,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     committed,
     warnings,
   };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 

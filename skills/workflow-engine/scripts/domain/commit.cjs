@@ -33,4 +33,14 @@ function commitScopedWithKb(cwd, pathspec, message) {
   return commitScoped(cwd, specs, message);
 }
 
-module.exports = { commitScopedWithKb, KB_DIR };
+/**
+ * Stamp a transaction result when nothing was staged. `commitScopedWithKb`
+ * returns null on a clean tree; `nothing to commit` is the one note every
+ * engine transaction shares for that outcome. Mutates the result in place.
+ * @param {{note?: string}} result @param {string|null} committed
+ */
+function noteIfNothingCommitted(result, committed) {
+  if (committed === null) result.note = 'nothing to commit';
+}
+
+module.exports = { commitScopedWithKb, noteIfNothingCommitted, KB_DIR };

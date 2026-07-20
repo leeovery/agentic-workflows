@@ -64,6 +64,9 @@ engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; 
 engine.discussionMap.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
 engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_decided, unresolved }
 
+// domain: discovery-session queries
+engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)
+
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
 engine.detail.EPIC_DETAIL_PHASES                  // string[] — every phase the epic detail surfaces (discovery first, then the pipeline)

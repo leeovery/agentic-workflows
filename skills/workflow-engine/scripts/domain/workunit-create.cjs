@@ -28,9 +28,10 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 const { parseInboxPath } = require('./inbox.cjs');
+const { todayStamp } = require('./dates.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -199,7 +200,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
           name: workUnit,
           work_type: workType,
           status: 'in-progress',
-          created: new Date().toISOString().slice(0, 10),
+          created: todayStamp(),
           description,
           phases: {},
         }
@@ -306,7 +307,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     committed,
     warnings,
   };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 

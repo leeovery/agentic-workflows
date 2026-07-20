@@ -32,11 +32,6 @@ function listSessionLogs(cwd, workUnit) {
   }));
 }
 
-function findLatestSessionLog(cwd, workUnit) {
-  const logs = listSessionLogs(cwd, workUnit);
-  return logs.length === 0 ? null : { number: logs[logs.length - 1].number };
-}
-
 function discover(cwd, workUnit) {
   const manifest = loadManifest(cwd, workUnit);
   if (!manifest) {
@@ -48,8 +43,7 @@ function discover(cwd, workUnit) {
     ? discoveryPhase.active_session
     : null;
   const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest);
-  const latestSession = findLatestSessionLog(cwd, workUnit);
-  const nextSessionNumber = latestSession ? latestSession.number + 1 : 1;
+  const nextSessionNumber = engine.session.nextSessionNumber(path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions'));
   const workflowsDir = path.join(cwd, '.workflows');
   const analysisCaches = {
     research_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'research-analysis'),

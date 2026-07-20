@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { computeTopicLifecycle, phaseItems } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
@@ -170,7 +170,7 @@ function sequenceMap(cwd, workUnit, orders) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `discovery(${workUnit}): sequence topic map`);
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 

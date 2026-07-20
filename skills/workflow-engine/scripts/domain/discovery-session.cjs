@@ -26,7 +26,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge } = require('./kb.cjs');
 
 /**
@@ -165,8 +165,8 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {DiscoverySessionCloseResult} */
   const result = { work_unit: workUnit, session: session.number, session_log: session.rel, committed, warnings };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 
-module.exports = { openDiscoverySession, closeDiscoverySession };
+module.exports = { openDiscoverySession, closeDiscoverySession, nextSessionNumber };

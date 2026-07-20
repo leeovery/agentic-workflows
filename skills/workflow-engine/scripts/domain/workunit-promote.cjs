@@ -28,14 +28,10 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitScopedWithKb } = require('./commit.cjs');
+const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
-
-/** The work unit's date stamp for today (UTC), matching the manifest `created` field. */
-function todayStamp() {
-  return new Date().toISOString().slice(0, 10);
-}
+const { todayStamp } = require('./dates.cjs');
 
 /**
  * @typedef {object} WorkUnitPromoteResult
@@ -215,7 +211,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     committed,
     warnings,
   };
-  if (committed === null) result.note = 'nothing to commit';
+  noteIfNothingCommitted(result, committed);
   return result;
 }
 
