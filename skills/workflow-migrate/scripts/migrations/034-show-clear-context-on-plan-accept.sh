@@ -20,6 +20,14 @@ if [ -f "$SETTINGS_FILE" ] && node -e "
   return 0
 fi
 
+# Treat an unparseable settings.json as a skip rather than crash the migration
+# chain over a hand-edited file (e.g. a trailing comma) — mirrors migration 046.
+if [ -f "$SETTINGS_FILE" ] && ! node -e "
+  JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+" "$SETTINGS_FILE" 2>/dev/null; then
+  return 0
+fi
+
 mkdir -p "$SETTINGS_DIR"
 
 if [ -f "$SETTINGS_FILE" ]; then
