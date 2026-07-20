@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-07-20
+
+✨ Added
+- New docs pages: capture and the inbox, the collaboration model, investigation and scoping, lifecycle operations, and how the system stays reliable.
+- Epic dashboard now offers discovery as a menu option in every state, including a resume prompt when a discovery session was left open mid-flight — no more dead-ending on a map-less epic.
+
+🔧 Changed
+- Documentation rewritten wholesale in a warmer, second-person voice aimed at the person using the system rather than the system's internals.
+- The engine, agents, discovery, and other reference pages trade exhaustive technical detail for a narrative walkthrough of what each part does and why.
+- `docs/timeline.md` merged into a shortened `docs/history.md`; `docs/inbox-and-capture.md`, `docs/lifecycle-tools.md`, and `docs/output-formats.md` split and folded into the new capture, lifecycle, and configuration pages.
+
+🐛 Fixed
+- A brand-new epic with no discovery map no longer shows a dead-end "No work started yet." message — it now points you at running discovery.
+- The start-page work list no longer misreports a map-less, phase-less epic as ready for its first empty phase; it correctly shows it as still in discovery.
+
 ## [0.6.0] - 2026-07-20
 
 ✨ Added
