@@ -120,9 +120,23 @@ if [ -d "$CACHE_DIR/planning" ]; then
       fi
 
       mkdir -p "$new_dir"
-      cp -r "$topic_dir"* "$new_dir/" 2>/dev/null || true
-      rm -rf "$topic_dir"
-      report_update "$wu_name/$topic: moved cache to new structure"
+      # Copy entries (regular + dot-prefixed, skipping . / ..) and only remove
+      # the source once every copy succeeded — a failed cp must never destroy
+      # the cache. The old unquoted glob also skipped dotfiles; iterate to
+      # include them (same . / .. skip pattern as migration 011).
+      copy_ok=1
+      for item in "$topic_dir"* "$topic_dir".*; do
+        base=$(basename "$item")
+        [ "$base" = "." ] || [ "$base" = ".." ] && continue
+        [ ! -e "$item" ] && continue
+        cp -r "$item" "$new_dir/" 2>/dev/null || copy_ok=0
+      done
+      if [ "$copy_ok" -eq 1 ]; then
+        rm -rf "$topic_dir"
+        report_update "$wu_name/$topic: moved cache to new structure"
+      else
+        report_skip
+      fi
     done
 
     # Clean up empty wu_dir

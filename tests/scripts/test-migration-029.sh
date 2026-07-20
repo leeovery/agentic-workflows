@@ -335,6 +335,53 @@ PLAN
   teardown
 }
 
+# --- Test 7: Cache move carries dot-prefixed files (glob no longer skips them) ---
+# The old unquoted glob skipped dotfiles but rm -rf deleted the source dir,
+# losing them. The move must carry dotfiles too.
+test_cache_migration_dotfiles() {
+  setup
+  local cache_old="$TEST_DIR/.workflows/.cache/planning/myapp/portal"
+  mkdir -p "$cache_old"
+  echo "scratch" > "$cache_old/phase-1.md"
+  echo "hidden scratch" > "$cache_old/.notes"
+
+  local wu_dir="$TEST_DIR/.workflows/myapp"
+  mkdir -p "$wu_dir"
+  echo '{"name":"myapp","work_type":"feature","status":"in-progress","phases":{}}' > "$wu_dir/manifest.json"
+
+  source "$MIGRATION"
+
+  local new_dir="$TEST_DIR/.workflows/.cache/myapp/planning/portal"
+  assert_eq "cache: regular file moved" "true" "$([ -f "$new_dir/phase-1.md" ] && echo true || echo false)"
+  assert_eq "cache: dotfile moved" "true" "$([ -f "$new_dir/.notes" ] && echo true || echo false)"
+  assert_eq "cache: old dir removed" "false" "$([ -d "$TEST_DIR/.workflows/.cache/planning" ] && echo true || echo false)"
+
+  teardown
+}
+
+# --- Test 8: A failed copy must not destroy the source cache ---
+# When any cp fails, the source dir must be left intact rather than rm -rf'd.
+test_cache_migration_copy_failure_preserves_source() {
+  setup
+  local cache_old="$TEST_DIR/.workflows/.cache/planning/myapp/portal"
+  mkdir -p "$cache_old"
+  echo "keep me" > "$cache_old/phase-1.md"
+  echo "unreadable" > "$cache_old/locked.md"
+  chmod 000 "$cache_old/locked.md"
+
+  local wu_dir="$TEST_DIR/.workflows/myapp"
+  mkdir -p "$wu_dir"
+  echo '{"name":"myapp","work_type":"feature","status":"in-progress","phases":{}}' > "$wu_dir/manifest.json"
+
+  source "$MIGRATION"
+
+  assert_eq "source dir preserved on copy failure" "true" "$([ -d "$cache_old" ] && echo true || echo false)"
+  assert_eq "readable file still in source" "true" "$([ -f "$cache_old/phase-1.md" ] && echo true || echo false)"
+
+  chmod 644 "$cache_old/locked.md" 2>/dev/null || true
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 029 tests..."
 echo ""
@@ -345,6 +392,8 @@ test_multi_phase
 test_idempotent
 test_cache_migration
 test_no_topic
+test_cache_migration_dotfiles
+test_cache_migration_copy_failure_preserves_source
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
