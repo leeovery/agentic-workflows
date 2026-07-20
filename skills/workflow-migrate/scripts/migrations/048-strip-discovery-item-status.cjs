@@ -26,6 +26,10 @@ module.exports = {
   description: 'strip discovery item status',
   run({ projectDir, reportUpdate, reportSkip }) {
     const wfDir = path.join(projectDir, '.workflows');
+    if (!fs.existsSync(wfDir)) {
+      reportSkip();
+      return;
+    }
     const updated = [];
 
     for (const entry of fs.readdirSync(wfDir, { withFileTypes: true })) {
