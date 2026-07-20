@@ -2455,6 +2455,377 @@ assert_eq "discovery chunks gone after work-unit remove" "true" \
   "$(echo "$after" | grep -q 'payments/session-001' && echo false || echo true)"
 teardown_project
 
+# ============================================================================
+# NON-INTERACTIVE SETUP FORM TESTS
+# ============================================================================
+
+echo ""
+echo "=== Non-Interactive Setup Form Tests ==="
+
+# The unresolvable-key refusals depend on $OPENAI_API_KEY being absent — a
+# developer shell exporting it would satisfy key resolution and flip the
+# refusal tests. This section is last, so unsetting here affects nothing else.
+unset OPENAI_API_KEY
+
+# These tests write to $HOME/.config/workflows (the FAKE_HOME above) — reset
+# it after each test so system-config state never leaks between tests.
+clean_system_config() {
+  rm -rf "$HOME/.config"
+}
+
+# Start a fake OpenAI-compatible embeddings server on a random port.
+# Sets FAKE_SERVER_PID and FAKE_SERVER_PORT.
+start_fake_embed_server() {
+  local dims="$1"
+  local portfile="$TEST_ROOT/fake-server-port.txt"
+  rm -f "$portfile"
+  node -e '
+    const http = require("http");
+    const fs = require("fs");
+    const dims = parseInt(process.argv[1], 10);
+    const srv = http.createServer((req, res) => {
+      let body = "";
+      req.on("data", (c) => body += c);
+      req.on("end", () => {
+        const parsed = JSON.parse(body);
+        const inputs = Array.isArray(parsed.input) ? parsed.input : [parsed.input];
+        const data = inputs.map((_, index) => ({ index, embedding: Array(dims).fill(0.5) }));
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ data }));
+      });
+    });
+    srv.listen(0, "127.0.0.1", () => {
+      fs.writeFileSync(process.argv[2], String(srv.address().port));
+    });
+  ' "$dims" "$portfile" &
+  FAKE_SERVER_PID=$!
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    [ -f "$portfile" ] && break
+    sleep 0.1
+  done
+  FAKE_SERVER_PORT=$(cat "$portfile")
+}
+
+stop_fake_embed_server() {
+  [ -n "${FAKE_SERVER_PID:-}" ] && kill "$FAKE_SERVER_PID" 2>/dev/null
+  FAKE_SERVER_PID=""
+}
+
+# --- Test S1: --key flag is refused on every setup invocation ---
+echo "Test S1: setup --key refusal"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+exit_code=0
+output=$(run_kb setup --key sk-oops 2>&1) || exit_code=$?
+assert_eq "refuses --key (exit 1)" "1" "$exit_code"
+assert_eq "refusal names the argv risk" "true" \
+  "$(echo "$output" | grep -q 'never pass through command arguments' && echo true || echo false)"
+assert_eq "refusal points at --key-only" "true" \
+  "$(echo "$output" | grep -qF -- '--key-only' && echo true || echo false)"
+assert_eq "the key never echoes back" "true" \
+  "$(echo "$output" | grep -q 'sk-oops' && echo false || echo true)"
+exit_code=0
+output=$(run_kb setup --from-system --key=sk-oops 2>&1) || exit_code=$?
+assert_eq "refuses --key=value alongside a form (exit 1)" "1" "$exit_code"
+assert_eq "nothing was initialised" "true" \
+  "$([ ! -d "$TEST_ROOT/.workflows/.knowledge" ] && echo true || echo false)"
+clean_system_config
+teardown_project
+
+# --- Test S2: two forms at once are refused ---
+echo "Test S2: setup form conflict refusal"
+setup_project
+exit_code=0
+output=$(run_kb setup --from-system --keyword-only 2>&1) || exit_code=$?
+assert_eq "conflicting forms refused (exit 1)" "1" "$exit_code"
+assert_eq "refusal lists the forms" "true" \
+  "$(echo "$output" | grep -q 'choose one setup form' && echo true || echo false)"
+clean_system_config
+teardown_project
+
+# --- Test S3: --keyword-only happy path ---
+echo "Test S3: setup --keyword-only happy path"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+exit_code=0
+output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
+assert_eq "keyword-only init exits 0" "0" "$exit_code"
+assert_eq "summary names keyword-only mode" "true" \
+  "$(echo "$output" | grep -q 'keyword-only (BM25)' && echo true || echo false)"
+assert_eq "project config is empty (no system provider to unset)" \
+  '{"knowledge":{}}' \
+  "$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))))' "$TEST_ROOT/.workflows/.knowledge/config.json")"
+assert_eq "metadata provider is null" "null" \
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "check reports ready" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S4: --keyword-only is idempotent ---
+echo "Test S4: setup --keyword-only idempotent"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+run_kb setup --keyword-only >/dev/null 2>&1
+first_meta=$(cat "$TEST_ROOT/.workflows/.knowledge/metadata.json")
+exit_code=0
+output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
+assert_eq "second run exits 0" "0" "$exit_code"
+assert_eq "second run reaches the summary" "true" \
+  "$(echo "$output" | grep -q 'keyword-only (BM25)' && echo true || echo false)"
+assert_eq "metadata unchanged across runs" "$first_meta" "$(cat "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "check still ready" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S5: --keyword-only fills in a partial state ---
+echo "Test S5: setup --keyword-only partial fill-in"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+run_kb setup --keyword-only >/dev/null 2>&1
+rm "$TEST_ROOT/.workflows/.knowledge/config.json"
+exit_code=0
+run_kb setup --keyword-only >/dev/null 2>&1 || exit_code=$?
+assert_eq "fill-in run exits 0" "0" "$exit_code"
+assert_eq "config.json restored" "true" \
+  "$([ -f "$TEST_ROOT/.workflows/.knowledge/config.json" ] && echo true || echo false)"
+assert_eq "check ready after fill-in" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S6: --keyword-only refuses store-without-metadata toward rebuild ---
+echo "Test S6: setup --keyword-only store-without-metadata refusal"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+run_kb setup --keyword-only >/dev/null 2>&1
+rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+exit_code=0
+output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
+assert_eq "partial state refused (exit 1)" "1" "$exit_code"
+assert_eq "refusal names the inconsistent state" "true" \
+  "$(echo "$output" | grep -q 'inconsistent state' && echo true || echo false)"
+assert_eq "refusal directs to knowledge rebuild" "true" \
+  "$(echo "$output" | grep -q 'knowledge rebuild' && echo true || echo false)"
+clean_system_config
+teardown_project
+
+# --- Test S7: --keyword-only never touches the system config; pins provider:null ---
+echo "Test S7: setup --keyword-only with a provider-bearing system config"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+mkdir -p "$HOME/.config/workflows"
+cat > "$HOME/.config/workflows/config.json" <<'CONF'
+{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
+CONF
+sys_before=$(cat "$HOME/.config/workflows/config.json")
+exit_code=0
+run_kb setup --keyword-only >/dev/null 2>&1 || exit_code=$?
+assert_eq "keyword-only init exits 0" "0" "$exit_code"
+assert_eq "system config untouched" "$sys_before" "$(cat "$HOME/.config/workflows/config.json")"
+assert_eq "project config pins provider null" "true" \
+  "$(node -e 'const k = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).knowledge; process.stdout.write(String("provider" in k && k.provider === null))' "$TEST_ROOT/.workflows/.knowledge/config.json")"
+assert_eq "metadata provider is null" "null" \
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "check reports ready" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S8: --from-system refuses when no/invalid system config exists ---
+echo "Test S8: setup --from-system refusals"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+exit_code=0
+output=$(run_kb setup --from-system 2>&1) || exit_code=$?
+assert_eq "no system config refused (exit 1)" "1" "$exit_code"
+assert_eq "refusal names the remedies" "true" \
+  "$(echo "$output" | grep -qF -- '--provider' && echo true || echo false)"
+mkdir -p "$HOME/.config/workflows"
+echo 'not json' > "$HOME/.config/workflows/config.json"
+exit_code=0
+output=$(run_kb setup --from-system 2>&1) || exit_code=$?
+assert_eq "invalid system config refused (exit 1)" "1" "$exit_code"
+assert_eq "refusal says not valid" "true" \
+  "$(echo "$output" | grep -q 'is not valid' && echo true || echo false)"
+assert_eq "nothing was initialised" "true" \
+  "$([ ! -d "$TEST_ROOT/.workflows/.knowledge" ] && echo true || echo false)"
+clean_system_config
+teardown_project
+
+# --- Test S9: --from-system with a providerless system config → keyword-only ---
+echo "Test S9: setup --from-system providerless (keyword) system config"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+mkdir -p "$HOME/.config/workflows"
+echo '{ "knowledge": {} }' > "$HOME/.config/workflows/config.json"
+exit_code=0
+output=$(run_kb setup --from-system 2>&1) || exit_code=$?
+assert_eq "providerless from-system exits 0" "0" "$exit_code"
+assert_eq "no key needed, no test embed attempted" "true" \
+  "$(echo "$output" | grep -q 'Validating' && echo false || echo true)"
+assert_eq "summary names keyword-only mode" "true" \
+  "$(echo "$output" | grep -q 'keyword-only (BM25)' && echo true || echo false)"
+assert_eq "check reports ready" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S10: --from-system refuses an unresolvable openai key ---
+echo "Test S10: setup --from-system unresolvable key refusal"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+mkdir -p "$HOME/.config/workflows"
+cat > "$HOME/.config/workflows/config.json" <<'CONF'
+{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
+CONF
+exit_code=0
+output=$(run_kb setup --from-system 2>&1) || exit_code=$?
+assert_eq "unresolvable key refused (exit 1)" "1" "$exit_code"
+assert_eq "refusal names the env var" "true" \
+  "$(echo "$output" | grep -q 'OPENAI_API_KEY' && echo true || echo false)"
+assert_eq "refusal names the --key-only remedy" "true" \
+  "$(echo "$output" | grep -qF -- '--key-only' && echo true || echo false)"
+assert_eq "refusal warns against pasting the key into chat" "true" \
+  "$(echo "$output" | grep -q 'Never paste the key into a chat' && echo true || echo false)"
+assert_eq "nothing was initialised" "true" \
+  "$([ ! -d "$TEST_ROOT/.workflows/.knowledge" ] && echo true || echo false)"
+clean_system_config
+teardown_project
+
+# --- Test S11: --from-system with a full provider config validates and indexes ---
+# Uses the stub provider — a real provider config exercising the key-free
+# validation path (test embed runs locally, no network).
+echo "Test S11: setup --from-system full provider path"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+mkdir -p "$HOME/.config/workflows"
+echo '{ "knowledge": { "provider": "stub", "dimensions": 64 } }' > "$HOME/.config/workflows/config.json"
+create_work_unit "seeded-wu" "epic" "Seeded"
+create_import_file "seeded-wu" "seed-conversation"
+node "$ENGINE_JS" manifest push seeded-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+exit_code=0
+output=$(run_kb setup --from-system 2>&1) || exit_code=$?
+assert_eq "from-system exits 0" "0" "$exit_code"
+assert_eq "validated via a test embed" "true" \
+  "$(echo "$output" | grep -q 'Validating stub via a test embed' && echo true || echo false)"
+assert_eq "bulk index picked up the existing artifact" "true" \
+  "$(echo "$output" | grep -q 'imports/seed-conversation.md' && echo true || echo false)"
+assert_eq "summary names the provider" "true" \
+  "$(echo "$output" | grep -q 'provider: stub' && echo true || echo false)"
+assert_eq "metadata records the provider" "stub" \
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "check reports ready" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S12: --provider openai refuses without a resolvable key; config not written ---
+echo "Test S12: setup --provider openai unresolvable key refusal"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+exit_code=0
+output=$(run_kb setup --provider openai --model text-embedding-3-small 2>&1) || exit_code=$?
+assert_eq "refused (exit 1)" "1" "$exit_code"
+assert_eq "refusal names the env var" "true" \
+  "$(echo "$output" | grep -q 'OPENAI_API_KEY' && echo true || echo false)"
+assert_eq "refusal names the --key-only remedy" "true" \
+  "$(echo "$output" | grep -qF -- '--key-only' && echo true || echo false)"
+assert_eq "system config was not written" "true" \
+  "$([ ! -f "$HOME/.config/workflows/config.json" ] && echo true || echo false)"
+clean_system_config
+teardown_project
+
+# --- Test S13: --provider openai-compatible keyless end-to-end; old schema self-heals ---
+echo "Test S13: setup --provider openai-compatible keyless + self-heal"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+mkdir -p "$HOME/.config/workflows"
+cat > "$HOME/.config/workflows/config.json" <<'CONF'
+{ "knowledge": { "provider": "openai", "model": "old-model", "decay_months": 6, "api_key_env": "LEGACY_VAR" } }
+CONF
+start_fake_embed_server 4
+exit_code=0
+output=$(run_kb setup --provider openai-compatible \
+  --base-url "http://127.0.0.1:$FAKE_SERVER_PORT/v1" --model fake-embed --dimensions 4 2>&1) || exit_code=$?
+stop_fake_embed_server
+assert_eq "keyless compatible setup exits 0" "0" "$exit_code"
+assert_eq "validated before writing" "true" \
+  "$(echo "$output" | grep -q 'Validating openai-compatible via a test embed' && echo true || echo false)"
+assert_eq "summary names provider and model" "true" \
+  "$(echo "$output" | grep -q 'provider: openai-compatible' && echo "$output" | grep -q 'model:    fake-embed' && echo true || echo false)"
+sys_after=$(cat "$HOME/.config/workflows/config.json")
+assert_eq "old decay_months field dropped on write" "true" \
+  "$(echo "$sys_after" | grep -q 'decay_months' && echo false || echo true)"
+assert_eq "old api_key_env field dropped on write" "true" \
+  "$(echo "$sys_after" | grep -q 'api_key_env' && echo false || echo true)"
+assert_eq "current schema written (provider)" "true" \
+  "$(echo "$sys_after" | grep -q '"provider": "openai-compatible"' && echo true || echo false)"
+assert_eq "current schema written (base_url)" "true" \
+  "$(echo "$sys_after" | grep -q '"base_url"' && echo true || echo false)"
+assert_eq "check reports ready" "ready" "$(run_kb check)"
+clean_system_config
+teardown_project
+
+# --- Test S14: --provider argument validation ---
+echo "Test S14: setup --provider argument refusals"
+setup_project
+exit_code=0
+output=$(run_kb setup --provider bogus --model m 2>&1) || exit_code=$?
+assert_eq "unknown provider refused" "1" "$exit_code"
+assert_eq "refusal lists available providers" "true" \
+  "$(echo "$output" | grep -q 'openai, openai-compatible' && echo true || echo false)"
+exit_code=0
+output=$(run_kb setup --provider openai-compatible --base-url http://x/v1 --model m 2>&1) || exit_code=$?
+assert_eq "missing --dimensions refused" "1" "$exit_code"
+assert_eq "refusal explains the native-output constraint" "true" \
+  "$(echo "$output" | grep -q 'native output' && echo true || echo false)"
+exit_code=0
+output=$(run_kb setup --provider openai-compatible --model m --dimensions 4 2>&1) || exit_code=$?
+assert_eq "missing --base-url refused" "1" "$exit_code"
+exit_code=0
+output=$(run_kb setup --provider openai 2>&1) || exit_code=$?
+assert_eq "missing --model refused" "1" "$exit_code"
+clean_system_config
+teardown_project
+
+# --- Test S15: a stored key never leaks into output or the system config ---
+echo "Test S15: stored key never transits stdout or the system config"
+setup_project
+rm -rf "$TEST_ROOT/.workflows/.knowledge"
+mkdir -p "$HOME/.config/workflows"
+cat > "$HOME/.config/workflows/credentials.json" <<'CRED'
+{ "credentials": { "openai-compatible": { "api_key": "sk-COMPAT-SECRET" } } }
+CRED
+chmod 600 "$HOME/.config/workflows/credentials.json"
+start_fake_embed_server 4
+exit_code=0
+output=$(run_kb setup --provider openai-compatible \
+  --base-url "http://127.0.0.1:$FAKE_SERVER_PORT/v1" --model fake-embed --dimensions 4 2>&1) || exit_code=$?
+stop_fake_embed_server
+assert_eq "setup with a stored key exits 0" "0" "$exit_code"
+assert_eq "key absent from all output" "true" \
+  "$(echo "$output" | grep -q 'sk-COMPAT-SECRET' && echo false || echo true)"
+assert_eq "key absent from the system config" "true" \
+  "$(grep -q 'sk-COMPAT-SECRET' "$HOME/.config/workflows/config.json" && echo false || echo true)"
+assert_eq "key absent from project files" "true" \
+  "$(grep -rq 'sk-COMPAT-SECRET' "$TEST_ROOT/.workflows/.knowledge" && echo false || echo true)"
+clean_system_config
+teardown_project
+
+# --- Test S16: --key-only requires a TTY and validates the provider first ---
+echo "Test S16: setup --key-only guards"
+setup_project
+exit_code=0
+output=$(echo "" | run_kb setup --key-only 2>&1) || exit_code=$?
+assert_eq "non-TTY invocation aborts" "1" "$exit_code"
+assert_eq "abort names the interactive-terminal requirement" "true" \
+  "$(echo "$output" | grep -q 'requires an interactive terminal' && echo true || echo false)"
+assert_eq "credentials file not created" "true" \
+  "$([ ! -f "$HOME/.config/workflows/credentials.json" ] && echo true || echo false)"
+exit_code=0
+output=$(echo "" | run_kb setup --key-only --provider bogus 2>&1) || exit_code=$?
+assert_eq "unknown --key-only provider refused" "1" "$exit_code"
+assert_eq "refusal names the supported providers" "true" \
+  "$(echo "$output" | grep -q 'openai and openai-compatible' && echo true || echo false)"
+clean_system_config
+teardown_project
+
 # --- Summary ---
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

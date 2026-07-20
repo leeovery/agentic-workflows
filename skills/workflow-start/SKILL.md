@@ -150,35 +150,7 @@ Branch on the boot response — run no further commands (`compact` already ran i
 
 #### If `knowledge` is `not-ready`
 
-> *Output the next fenced block as a code block:*
-
-```
-●───────────────────────────────────────────────●
-  Knowledge Base Not Ready
-●───────────────────────────────────────────────●
-
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> The knowledge base is required infrastructure for workflows.
-> It must be initialised before any workflow can proceed.
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-To set up the knowledge base, run:
-
-  node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup
-
-Setup configures system defaults, initialises the project store,
-and runs the initial indexing pass. If no API key is available,
-stub mode is offered as an alternative.
-```
-
-**STOP.** Do not proceed — terminal condition.
+The response's `system_config` object carries what the gate needs to branch. Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
 
 #### If `knowledge` is `ready`
 

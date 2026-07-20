@@ -124,6 +124,11 @@ function askSecret(rl, prompt) {
 
     stdout.write(prompt);
     rl.pause();
+    // rl.pause() does not detach readline's keypress echo — each typed char
+    // would co-echo in plaintext beside our mask. Mute readline's output
+    // writer for the duration of the raw read.
+    const savedWrite = rl._writeToOutput;
+    rl._writeToOutput = () => {};
 
     const wasRaw = stdin.isRaw === true;
     stdin.setRawMode(true);
@@ -135,6 +140,7 @@ function askSecret(rl, prompt) {
       stdin.removeListener('data', onData);
       try { stdin.setRawMode(wasRaw); } catch (_) { /* best effort */ }
       stdin.pause();
+      rl._writeToOutput = savedWrite;
       rl.resume();
     };
 
@@ -249,8 +255,10 @@ function detectSystemConfig(sysPath) {
       return { exists: true, valid: false, knowledge: null, reason: 'missing or invalid "knowledge" key' };
     }
     return { exists: true, valid: true, knowledge: parsed.knowledge };
-  } catch (e) {
-    return { exists: true, valid: false, knowledge: null, reason: e.message };
+  } catch (_) {
+    // Never propagate JSON.parse messages — V8 embeds a content snippet,
+    // and a malformed config's content is untrusted.
+    return { exists: true, valid: false, knowledge: null, reason: 'not valid JSON' };
   }
 }
 

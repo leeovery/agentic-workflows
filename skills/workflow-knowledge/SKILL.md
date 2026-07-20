@@ -153,7 +153,7 @@ Exit code is always `0` (unless the filesystem itself is unreadable). Output on 
 - `ready` — knowledge base is initialised and the store is loadable
 - `not-ready` — missing directory, missing config, missing store, or unloadable store
 
-Skills branch on the stdout string, not the exit code. Used in Step 0 of entry-point skills to detect an uninitialised knowledge base and direct the user to `knowledge setup`.
+Skills branch on the stdout string, not the exit code. Used in Step 0 of entry-point skills (via `engine boot`) to detect an uninitialised knowledge base and route into the knowledge gate, which drives `knowledge setup` through its non-interactive forms.
 
 ---
 
@@ -213,9 +213,30 @@ Skills do not call these directly during normal operation. Users run them manual
 
 ---
 
-## `setup` — interactive wizard
+## `setup` — initialise the knowledge base
 
-One-shot first-time setup. Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts in a single guided flow. **Human-only** — prompts throughout via readline. Non-TTY invocations (including Claude or piped input) abort with `knowledge setup requires an interactive terminal`. If `knowledge check` returns `not-ready`, direct the user to run `knowledge setup` rather than trying to fix it programmatically. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
+Handles system config (`~/.config/workflows/config.json`), project init (`.workflows/.knowledge/`), and initial indexing of all completed artifacts. Two surfaces: an interactive wizard (no flags) and non-interactive forms (flag-dispatched) that skills can run.
+
+**The API key never passes through a flag, a chat, or stdout.** There is deliberately no `--key` flag — any setup invocation carrying one is refused (argv lands in shell history and process listings). Keys resolve from the provider env var (`$OPENAI_API_KEY` — wins) or `~/.config/workflows/credentials.json` (mode 0600, written by `--key-only` or the wizard). Setup output names active settings only (provider · model), never key material.
+
+### Non-interactive forms
+
+```bash
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-only
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai --model <m> [--dimensions <d>]
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai-compatible --base-url <u> --model <m> --dimensions <d>
+node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --key-only [--provider <id>]
+```
+
+- **`--from-system`** — reuse the existing system config: resolve the key (env → credentials; providerless configs need none), validate provider configs with one test embed, create the project store, bulk-index existing artifacts, print the active-settings summary. Refuses clearly when the system config is missing/invalid or the openai key is unresolvable (the message names the env var and the `--key-only` remedy).
+- **`--keyword-only`** — project-level keyword-only init: project config, empty store, provider-null metadata. Never touches the system config — when the system layer names a provider, the project config pins `provider: null` so this project genuinely runs keyword-only. Idempotent; partial states fill in; a store without metadata refuses toward `knowledge rebuild`.
+- **`--provider ...`** — write the system config from flags (validation embed first — a broken provider never lands on disk), then proceed as `--from-system`. Every system-config write rewrites the file clean, dropping fields the current schema no longer knows. `openai` requires a resolvable key; `openai-compatible` allows keyless endpoints and requires `--dimensions` (must match the model's native output).
+- **`--key-only`** — the terminal detour: a masked readline prompt for the key alone (TTY-required; non-TTY aborts), written to `credentials.json` (mode 0600), then exit. `--provider` selects which provider the key is stored under (default `openai`).
+
+### Interactive wizard
+
+`setup` with no flags runs the guided wizard — **human-only**, prompts throughout via readline; non-TTY invocations abort with `knowledge setup requires an interactive terminal`. Safe to re-run: per-step prompts detect existing state and offer skip or reconfigure; the bulk index at the end only processes missing artifacts.
 
 The provider menu offers `openai` (cloud, requires an API key), `openai-compatible` (any local/self-hosted OpenAI-compatible `/v1/embeddings` endpoint — LM Studio, Ollama, vLLM, LiteLLM), or `skip` (keyword-only). For `openai-compatible`, the wizard collects `base_url` (required), `model`, and `dimensions`; the API key is **optional** (press Enter to omit for open servers) and is stored only in `credentials.json` — there is no env-var override. `base_url` is consumed only under the `openai-compatible` provider and ignored under `openai`. Configured dimensions must match the local model's native output; the validation embed fails loudly on a mismatch.
 
