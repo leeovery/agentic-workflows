@@ -103,6 +103,12 @@ report_skip() {
 export -f report_update report_skip
 export TRACKING_FILE FILES_UPDATED FILES_SKIPPED
 
+# Pin the project directory migrations operate on. Migrations 019+ use
+# ${PROJECT_DIR:-.} while 001-018/027 use bare relative paths — both resolve to
+# the current directory. A user-exported PROJECT_DIR would otherwise redirect
+# half the fleet elsewhere, so force it to "." for the duration of the run.
+export PROJECT_DIR="."
+
 #
 # Main: Run all migrations in order
 #
@@ -113,8 +119,13 @@ if [ ! -d "$MIGRATIONS_DIR" ]; then
     exit 0
 fi
 
-# Find all migration scripts, sorted by name (numeric order)
-mapfile -t MIGRATION_SCRIPTS < <(find "$MIGRATIONS_DIR" -name "*.sh" -type f | sort)
+# Find all migration scripts, sorted by name (numeric order).
+# bash 3.2 (stock macOS) has no `mapfile`, so read the sorted find output line
+# by line via process substitution — which keeps the array in this shell.
+MIGRATION_SCRIPTS=()
+while IFS= read -r script; do
+    MIGRATION_SCRIPTS+=("$script")
+done < <(find "$MIGRATIONS_DIR" -name "*.sh" -type f | sort)
 
 if [ ${#MIGRATION_SCRIPTS[@]} -eq 0 ]; then
     echo "No migration scripts found."
