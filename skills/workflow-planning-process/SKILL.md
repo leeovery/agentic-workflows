@@ -131,6 +131,8 @@ Found existing plan for **{topic:(titlecase)}** (previously reached phase {N}, t
 {spec change summary from spec-change-detection.md}
 
 · · · · · · · · · · · ·
+How would you like to proceed?
+
 - **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.
 - **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.
 · · · · · · · · · · · ·
