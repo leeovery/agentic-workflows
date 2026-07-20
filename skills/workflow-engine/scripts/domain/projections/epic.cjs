@@ -272,9 +272,12 @@ function epicDashboard(workUnit, detail, opts = {}) {
   const hasMap = detail.discovery_map.length > 0;
   const phaseNames = Object.keys(detail.phases);
 
-  // Brand-new epic — nothing started anywhere.
+  // Brand-new epic — nothing started anywhere. Point at the one true door.
   if (!hasMap && phaseNames.length === 0) {
-    return box(titlecase(workUnit)) + 'No work started yet.';
+    return box(titlecase(workUnit))
+      + 'No work started yet.\n\n'
+      + flaggedCallout('Run discovery to shape the topic map — research and discussion start from there.')
+      + '\n';
   }
 
   /** @type {string[]} stage blocks, each ending with a single \n */
@@ -463,6 +466,25 @@ function commandOptions(workUnit, detail, hasMap) {
       label: `Analyze / regroup discussions — ${desc}`,
     });
   }
+  // Discovery is reachable in EVERY map state: with a map it refines the
+  // map; without one it is how the map gets built — the map-less epic is the
+  // state that needs the route most, so it leads the menu there.
+  /** @type {MenuKey} */
+  const discoveryOpt = {
+    key: 'i', word: 'discovery', action: 'continue_discovery', topic: null,
+    route: `/workflow-discovery epic ${workUnit}`,
+    // An open session marker outranks map state: the user left a session
+    // mid-flight, and discovery's resume gate is waiting for them.
+    label: detail.active_session
+      ? `Resume the in-progress discovery session (session-${detail.active_session})`
+      : (hasMap ? 'Continue discovery' : 'Run discovery — shape the topic map'),
+  };
+  if (detail.active_session && hasMap) {
+    // resume leads even on a populated map; the !hasMap unshift below already
+    // leads for map-less epics
+    opts.push(discoveryOpt);
+  }
+  if (!hasMap) opts.push(discoveryOpt);
   opts.push({
     key: 'd', word: 'discuss', action: 'new_discussion', topic: null,
     route: `/workflow-discussion-entry epic ${workUnit}`,
@@ -473,13 +495,7 @@ function commandOptions(workUnit, detail, hasMap) {
     route: `/workflow-research-entry epic ${workUnit}`,
     label: hasMap ? 'Start research on a new topic' : 'Start new research',
   });
-  if (hasMap) {
-    opts.push({
-      key: 'i', word: 'discovery', action: 'continue_discovery', topic: null,
-      route: `/workflow-discovery epic ${workUnit}`,
-      label: 'Continue discovery',
-    });
-  }
+  if (hasMap && !detail.active_session) opts.push(discoveryOpt);
   if (detail.completed.length > 0) {
     opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
   }
@@ -508,6 +524,13 @@ function liveItems(detail, phase) {
 function pickRecommendation(detail, numbered, options, hasMap) {
   const sOption = options.find((o) => o.action === 'analyze_discussions');
 
+  // An interrupted discovery session outranks every other recommendation —
+  // the user left mid-thought and the resume gate is waiting.
+  if (detail.active_session) {
+    const discoveryOpt = options.find((o) => o.action === 'continue_discovery');
+    if (discoveryOpt) { discoveryOpt.recommended = true; return null; }
+  }
+
   if (hasMap) {
     if (detail.convergence_state === 'in-progress') {
       // Top of the map — the first discovery entry mirrors the first map row
@@ -524,6 +547,12 @@ function pickRecommendation(detail, numbered, options, hasMap) {
   }
 
   // No-map branch — recommendation by phase completion state.
+  // Brand-new epic (no phase work at all): discovery is the recommendation.
+  if (Object.values(detail.phases).every((items) => items.length === 0)) {
+    const discoveryOpt = options.find((o) => o.action === 'continue_discovery');
+    if (discoveryOpt) discoveryOpt.recommended = true;
+    return null;
+  }
   const proposedEntry = numbered.find((e) => e.action === 'start_specification');
   if (proposedEntry) return proposedEntry;
 

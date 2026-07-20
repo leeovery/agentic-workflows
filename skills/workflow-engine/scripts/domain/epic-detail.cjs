@@ -115,6 +115,7 @@ const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specificatio
  * @property {string[]} unaccounted_discussions
  * @property {string[]} reopened_discussions
  * @property {MapRow[]} discovery_map
+ * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
  * @property {boolean} needs_sequencing
  * @property {MapSummary|null} map_summary
@@ -349,6 +350,8 @@ function epicDetail(cwd, manifest) {
     unaccounted_discussions: unaccountedDiscussions,
     reopened_discussions: reopenedDiscussions,
     discovery_map: discoveryMap,
+    active_session: (manifest.phases && manifest.phases.discovery && typeof manifest.phases.discovery.active_session === 'string')
+      ? manifest.phases.discovery.active_session : null,
     convergence_state: convergenceState,
     needs_sequencing: builtMap.needs_sequencing,
     map_summary: mapSummary,

@@ -230,6 +230,13 @@ function startDetail(cwd) {
         }
       }
       unit.active_phases = activePhases;
+      // An epic with no phase items AND no discovery map is still in
+      // discovery — the pipeline walk (which excludes discovery) would
+      // otherwise report it as ready for its first empty phase.
+      if (activePhases.length === 0 && phaseItems(m, 'discovery').length === 0) {
+        unit.next_phase = 'discovery';
+        unit.phase_label = 'in discovery';
+      }
       epics.push(unit);
     } else if (m.work_type === 'bugfix') {
       bugfixes.push(unit);
