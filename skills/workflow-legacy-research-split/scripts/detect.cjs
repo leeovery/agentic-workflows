@@ -4,11 +4,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const {
-  loadManifest,
-  phaseItems,
-  fileExists,
-} = require('../../workflow-engine/scripts/lib.cjs').discovery;
+const engine = require('../../workflow-engine/scripts/lib.cjs');
+const { loadManifest, fileExists } = engine.reads;
+const { phaseItems } = engine.derivations;
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: epic projections — the dashboard, key, and menu views over one
-// EpicDetail (see ../epic.cjs).
+// EpicDetail (see ../epic-detail.cjs).
 //
 // Deterministic: same detail, same string. The dashboard groups every phase
 // under the three-D stage dividers (DISCOVERY / DEFINITION / DELIVERY); the
@@ -13,12 +13,12 @@
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 
-/** @typedef {import('../epic.cjs').EpicDetail} EpicDetail */
-/** @typedef {import('../epic.cjs').MapRow} MapRow */
-/** @typedef {import('../epic.cjs').PhaseEntry} PhaseEntry */
-/** @typedef {import('../epic.cjs').NextPhaseEntry} NextPhaseEntry */
-/** @typedef {import('../epic.cjs').DepBlocking} DepBlocking */
-/** @typedef {import('../epic.cjs').ItemRef} ItemRef */
+/** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
+/** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
+/** @typedef {import('../epic-detail.cjs').PhaseEntry} PhaseEntry */
+/** @typedef {import('../epic-detail.cjs').NextPhaseEntry} NextPhaseEntry */
+/** @typedef {import('../epic-detail.cjs').DepBlocking} DepBlocking */
+/** @typedef {import('../epic-detail.cjs').ItemRef} ItemRef */
 
 /**
  * @typedef {object} NewArrivals

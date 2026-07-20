@@ -7,18 +7,18 @@
 // Collates every active work unit by type (with next-phase state), the inbox
 // (live and archived), and the completed/cancelled sets. Pure over the
 // project's `.workflows/` tree: same files, same answer. Shared manifest
-// semantics come from domain/discovery-utils — never duplicated here.
+// semantics come from domain/reads and domain/derivations — never duplicated
+// here.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
+const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const {
-  loadActiveManifests,
-  loadAllManifests,
   phaseStatus,
   phaseItems,
   computeNextPhase,
-} = require('./discovery-utils.cjs');
+} = require('./derivations.cjs');
 
 const EPIC_PHASES = ['research', 'discussion', 'specification', 'planning', 'implementation', 'review'];
 

@@ -4,7 +4,7 @@
 // Domain ring: analysis-cache stamping — record that an analysis ran over the
 // current set of completed inputs.
 //
-// The input collection and checksum come from the same shared discovery-utils
+// The input collection and checksum come from the same shared derivations
 // logic the read side (computeAnalysisCacheStatus) uses, so a fresh stamp is
 // `valid` by construction and the two sides can never drift. The stamp also
 // indexes the kind's on-disk cache file into the knowledge base — the same
@@ -14,7 +14,8 @@
 
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { collectAnalysisInputs, filesChecksum } = require('./discovery-utils.cjs');
+const { collectAnalysisInputs } = require('./derivations.cjs');
+const { filesChecksum } = require('./reads.cjs');
 const { knowledge } = require('./kb.cjs');
 
 const KINDS = ['research-analysis', 'gap-analysis'];

@@ -8,7 +8,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
-const { discussionMap } = require('../../skills/workflow-engine/scripts/domain/projections/discussion.cjs');
+const { discussionMap } = require('../../skills/workflow-engine/scripts/domain/projections/discussion-map.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../../skills/workflow-engine/scripts/kernel/manifest.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');

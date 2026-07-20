@@ -4,7 +4,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { workUnitDetail, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit.cjs');
+const { workUnitDetail, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
 const { workUnitStatus, workUnitMenu, workUnitData } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
 
 // Golden tests: byte-exact expected strings for the work-unit status display

@@ -10,14 +10,16 @@ const {
   fileExists, listFiles, listDirs, countFiles, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
+} = require('../../skills/workflow-engine/scripts/domain/reads.cjs');
+const {
   phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing,
   TIER_RANK,
-} = require('../../skills/workflow-engine/scripts/domain/discovery-utils.cjs');
+} = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 
-describe('discovery-utils', () => {
+describe('reads + derivations', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
