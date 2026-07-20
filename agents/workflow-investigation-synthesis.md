@@ -88,7 +88,7 @@ Write to the output file path provided — in two steps: write the content to th
 If fully validated with no gaps:
 
 ```markdown
-{frontmatter provided by orchestrator}
+{skeleton frontmatter, with status: pending}
 
 # Investigation Synthesis: {topic}
 

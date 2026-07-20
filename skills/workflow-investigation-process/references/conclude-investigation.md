@@ -13,7 +13,7 @@ The user has already reviewed findings and agreed on fix direction. This step co
 Investigation complete. Ready to conclude?
 
 - **`y`/`yes`** — Conclude investigation
-- **Keep going** — Continue discussing to explore further
+- **Keep going** — Tell me what else to explore
 · · · · · · · · · · · ·
 ```
 

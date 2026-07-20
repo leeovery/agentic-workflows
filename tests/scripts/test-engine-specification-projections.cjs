@@ -690,6 +690,25 @@ describe('specification projections: menu goldens', () => {
       ]
     );
   });
+
+  it('completed sub-view: refuses cleanly when nothing is concluded', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'completed' } } },
+        specification: {
+          items: {
+            'auth-flow': { status: 'in-progress', sources: { a: { status: 'pending' } } },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# A');
+    assert.throws(
+      () => specificationCompletedMenu(detailOf(dir, 'v1')),
+      /no concluded specifications/
+    );
+  });
 });
 
 describe('specification adapter: gateway verbs', () => {
