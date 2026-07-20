@@ -1,83 +1,50 @@
 'use strict';
 
-const { loadActiveManifests, loadAllManifests, phaseStatus, computeNextPhase } = require('../../workflow-shared/scripts/discovery-utils.cjs');
+// ---------------------------------------------------------------------------
+// Adapter (read gateway) for workflow-continue-bugfix. Thin by design: the
+// work-unit collation and projections live in the engine's domain ring; this
+// script selects which engine answers the skill's flow needs and sections the
+// output.
+//
+//   discovery.cjs               → labelled dump, all active bugfixes (head insert)
+//   discovery.cjs view {work_unit}
+//                               → DATA + DISPLAY + MENU snapshot (Step 5)
+// ---------------------------------------------------------------------------
 
-const BUGFIX_PIPELINE = ['investigation', 'specification', 'planning', 'implementation', 'review'];
+const engine = require('../../workflow-engine/scripts/lib.cjs');
 
-function lastCompletedPhase(manifest) {
-  let last = null;
-  for (const phase of BUGFIX_PIPELINE) {
-    const s = phaseStatus(manifest, phase);
-    if (s === 'completed') last = phase;
-  }
-  return last;
-}
-
-function completedPhases(manifest) {
-  const completed = [];
-  for (const phase of BUGFIX_PIPELINE) {
-    const s = phaseStatus(manifest, phase);
-    if (s === 'completed') {
-      completed.push(phase);
-    }
-  }
-  return completed;
-}
+const TYPE = 'bugfix';
 
 function discover(cwd) {
-  const manifests = loadActiveManifests(cwd);
-  const bugfixes = [];
-
-  for (const m of manifests) {
-    if (m.work_type !== 'bugfix') continue;
-    const state = computeNextPhase(m);
-    if (state.next_phase === 'done') continue;
-    bugfixes.push({
-      name: m.name,
-      next_phase: state.next_phase,
-      phase_label: state.phase_label,
-      completed_phases: completedPhases(m),
-    });
-  }
-
-  const allManifests = loadAllManifests(cwd);
-  const completed = [];
-  const cancelled = [];
-
-  for (const m of allManifests) {
-    if (m.work_type !== 'bugfix') continue;
-    if (m.status === 'completed') {
-      completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
-    } else if (m.status === 'cancelled') {
-      cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m) });
-    }
-  }
-
-  return {
-    bugfixes,
-    count: bugfixes.length,
-    completed,
-    cancelled,
-    completed_count: completed.length,
-    cancelled_count: cancelled.length,
-    summary: bugfixes.length === 0
-      ? 'no active bugfixes'
-      : `${bugfixes.length} active bugfix(es)`,
-  };
+  return engine.detail.workUnitDetail(cwd, TYPE);
 }
 
 function format(result) {
-  const lines = [];
-  lines.push(`=== BUGFIXES (${result.count}) ===`);
-  lines.push(`summary: ${result.summary}`);
-  for (const b of result.bugfixes) {
-    lines.push(`  ${b.name}: ${b.phase_label} [completed: ${b.completed_phases.join(', ') || 'none'}]`);
+  return engine.detail.workUnitIndex(TYPE, result);
+}
+
+// One snapshot for Step 5: reasoning DATA (flow flags + the ACTIONS table),
+// the rendered status block (DISPLAY), and the proceed/revisit menu (MENU).
+function view(workUnit) {
+  const result = discover(process.cwd());
+  const unit = (result.bugfixes || []).find((u) => u.name === workUnit);
+  if (!unit) {
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active bugfix with this name' });
   }
-  return lines.join('\n') + '\n';
+  const menu = engine.project.workUnitMenu(TYPE, unit);
+  return [
+    engine.gateway.dataBlock(engine.project.workUnitData(TYPE, unit, menu)),
+    engine.gateway.displayBlock(engine.project.workUnitStatus(TYPE, unit)),
+    engine.gateway.menuBlock(menu.rendered),
+  ].join('\n');
 }
 
 if (require.main === module) {
-  process.stdout.write(format(discover(process.cwd())));
+  engine.gateway.runGateway({
+    index: () => format(discover(process.cwd())),
+    view,
+    fallback: () => format(discover(process.cwd())),
+  });
 }
 
 module.exports = { discover, format };

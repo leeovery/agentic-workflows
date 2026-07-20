@@ -78,7 +78,7 @@ Parse the discovery output to understand:
 - `name` - the work unit name
 - `next_phase` - the phase to route to
 - `phase_label` - human-readable phase status
-- `completed_phases` - list of completed phases (for backwards navigation)
+- `completed_phases` - list of completed phases (drives the revisit options)
 
 **From top-level fields:**
 - `count` - number of active quick-fixes
@@ -170,52 +170,42 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 ---
 
-## Step 5: Backwards Navigation
+## Step 5: Display State and Menu
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Check Progress ───────────────────────────────
+── Display State and Menu ───────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking whether earlier phases are available to revisit.
+> Showing the quick-fix's pipeline state and available actions.
 ```
 
-Load **[revisit-phase.md](references/revisit-phase.md)** and follow its instructions as written.
+Load **[quickfix-display-and-menu.md](references/quickfix-display-and-menu.md)** and follow its instructions as written.
 
 → Proceed to **Step 6**.
 
 ---
 
-## Step 6: Route to Phase Skill
+## Step 6: Route Selection
 
 > *Output the next fenced block as a code block:*
 
 ```
-── Route to Phase ───────────────────────────────
+── Route Selection ──────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the next phase for this quick-fix.
+> Handing off to the selected phase for this quick-fix.
 ```
 
-Using the selected quick-fix's `next_phase`, invoke the appropriate phase skill:
-
-| next_phase | Invoke |
-|------------|--------|
-| scoping | `/workflow-scoping-entry quick-fix {work_unit}` |
-| implementation | `/workflow-implementation-entry quick-fix {work_unit}` |
-| review | `/workflow-review-entry quick-fix {work_unit}` |
+Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from quickfix-display-and-menu.md (e.g. `/workflow-implementation-entry quick-fix {work_unit}`).
 
 Skills receive positional arguments: `$0` = work_type (`quick-fix`), `$1` = work_unit. Topic is inferred from work_unit.
 
-If the user chose to revisit a completed phase in Step 5, use that phase instead of `next_phase`.
-
-Invoke the skill.
-
-**STOP.** Do not proceed — terminal condition.
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

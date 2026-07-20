@@ -102,12 +102,17 @@ engine.map.mapState(manifest, topic)              // → { counts, total, all_de
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
+engine.detail.workUnitDetail(cwd, type)           // → WorkUnitDetail (single-topic types: feature | bugfix | quick-fix | cross-cutting)
+engine.detail.workUnitIndex(type, detail)         // → labelled dump for the head-of-skill insert (byte-stable legacy format)
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' for a brand-new epic)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
 engine.project.startOverview(detail)              // → Workflow Overview display block
 engine.project.startMenu(detail)                  // → { keys, rendered } — continue entries + start/lifecycle options
+engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
+engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
+engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
 
 // gateway: adapter harness
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
@@ -135,4 +140,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-map.cjs`, `tests/scripts/test-engine-transactions.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
