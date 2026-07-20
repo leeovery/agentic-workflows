@@ -572,6 +572,21 @@ describe('apply.cjs: end-to-end', () => {
     assert.ok(!r.json.recovery_hint.includes('pre-commit hook'));
   });
 
+  it('batched discovery set preserves summary/description containing "="', () => {
+    seedLegacyEpic('eb', 'exploration');
+    writeCachePlan('eb', 'exploration', [
+      { kebab_name: 'auth', summary: 'a = b tradeoff', description: 'x=y and p=q notes',
+        _content: 'auth content' },
+    ]);
+    const r = runScriptJson(APPLY_CLI, 'eb', 'exploration');
+    assert.strictEqual(r.json.ok, true);
+    const m = readManifest('eb');
+    assert.strictEqual(m.phases.discovery.items.auth.summary, 'a = b tradeoff');
+    assert.strictEqual(m.phases.discovery.items.auth.description, 'x=y and p=q notes');
+    assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:exploration');
+    assert.strictEqual(m.phases.discovery.items.auth.routing, 'research');
+  });
+
   it('handles topic-name source: source name reused by a theme', () => {
     seedLegacyEpic('e2', 'auth');
     writeCachePlan('e2', 'auth', [

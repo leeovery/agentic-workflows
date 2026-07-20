@@ -196,11 +196,16 @@ function apply(cwd, workUnit, currentSource) {
       }
 
       // set auto-creates each item; discovery map items carry no status field.
+      // The four discovery fields batch into one locked write — the engine
+      // validates every pair before writing, so the item lands atomically.
       runCli(cwd, ['set', `${workUnit}.research.${theme.kebab_name}`, 'status', 'in-progress']);
-      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'routing', 'research']);
-      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'summary', theme.summary]);
-      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'description', theme.description]);
-      runCli(cwd, ['set', `${workUnit}.discovery.${theme.kebab_name}`, 'source', `legacy-split:${currentSource}`]);
+      runCli(cwd, [
+        'set', `${workUnit}.discovery.${theme.kebab_name}`,
+        'routing', 'research',
+        `summary=${theme.summary}`,
+        `description=${theme.description}`,
+        `source=legacy-split:${currentSource}`,
+      ]);
     }
   } catch (e) {
     return {
