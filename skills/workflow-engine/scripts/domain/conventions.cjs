@@ -53,11 +53,16 @@ function derivedFrom(text) {
 
 // Compose a tree node's title from its parts: `glyph label [tag]`. Any part may
 // be omitted. Single space between segments; the tag is bracketed.
+// Labels are user-authored names with no length limit; clamp them here so a
+// pathological name cannot overflow the tree row — the glyph and tag always
+// survive the clamp.
+const LABEL_MAX = 40;
+
 /** @param {{glyph?: string, label?: string, tag?: string}} [parts] */
 function title({ glyph, label, tag: term } = {}) {
   const parts = [];
   if (glyph) parts.push(glyph);
-  if (label) parts.push(label);
+  if (label) parts.push(label.length > LABEL_MAX ? label.slice(0, LABEL_MAX - 1) + '…' : label);
   let line = parts.join(' ');
   if (term) line += (line ? ' ' : '') + tag(term);
   return line;
