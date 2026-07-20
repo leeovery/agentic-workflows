@@ -27,6 +27,15 @@ if [ -d "$SPEC_DIR" ]; then
     for file in "$SPEC_DIR"/*.md; do
         [ -f "$file" ] || continue
 
+        # Skip tracking/review files — only process specification documents.
+        # They are relocated into their topic directory by the inner tracking
+        # loop below; treating one as a topic manufactures a phantom item (and
+        # glob order visits {topic}-review-*.md before {topic}.md). Same guard
+        # as migrations 002/003/005.
+        case "$(basename "$file")" in
+            *-review-*|*-tracking*) continue ;;
+        esac
+
         name=$(basename "$file" .md)
 
         # Skip if already a directory (already migrated)
@@ -63,6 +72,15 @@ fi
 if [ -d "$PLAN_DIR" ]; then
     for file in "$PLAN_DIR"/*.md; do
         [ -f "$file" ] || continue
+
+        # Skip tracking/review files — only process plan documents. They are
+        # relocated into their topic directory by the inner tracking loop below;
+        # treating one as a topic manufactures a phantom item (and glob order
+        # visits {topic}-review-*.md before {topic}.md). Same guard as
+        # migrations 002/003/005.
+        case "$(basename "$file")" in
+            *-review-*|*-tracking*) continue ;;
+        esac
 
         name=$(basename "$file" .md)
 
