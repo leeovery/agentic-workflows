@@ -1,7 +1,7 @@
 ---
 name: workflow-specification-review-input
 description: Compares specification against all source material to catch missed content, edge cases, and decisions. Invoked by workflow-specification-process skill during review cycle.
-tools: Read, Write, Glob, Grep, Bash
+tools: Read, Write, Grep, Bash
 model: opus
 ---
 

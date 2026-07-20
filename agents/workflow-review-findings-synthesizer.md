@@ -1,7 +1,7 @@
 ---
 name: workflow-review-findings-synthesizer
 description: Synthesizes review findings into normalized tasks. Reads QA verification files, deduplicates, groups, normalizes using task template, and writes a staging file for orchestrator approval. Invoked by workflow-review-process skill after review actions are initiated.
-tools: Read, Write, Glob, Grep, Bash
+tools: Read, Write, Glob, Bash
 model: opus
 ---
 

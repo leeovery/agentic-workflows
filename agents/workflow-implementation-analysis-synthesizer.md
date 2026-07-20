@@ -1,7 +1,7 @@
 ---
 name: workflow-implementation-analysis-synthesizer
 description: Synthesizes analysis findings into normalized tasks. Reads findings files, deduplicates, groups, normalizes using task template, and writes a staging file for orchestrator approval. Invoked by workflow-implementation-process skill after analysis agents complete.
-tools: Read, Write, Glob, Grep, Bash
+tools: Read, Write, Glob, Bash
 model: opus
 ---
 
