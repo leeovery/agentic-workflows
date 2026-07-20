@@ -129,7 +129,7 @@ Check `finding_gate_mode` via `engine manifest`:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
 ```
 
-#### If `finding_gate_mode: auto`
+#### If `finding_gate_mode` is `auto`
 
 1. Apply the fix to the plan (use **Proposed** content exactly as in tracking file)
 2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry:
@@ -154,7 +154,7 @@ Finding {N} of {total}: {Brief Title} — approved. Applied to plan.
 
 → Proceed to **C. After All Findings Processed**.
 
-#### If `finding_gate_mode: gated`
+#### If `finding_gate_mode` is `gated`
 
 > *Output the next fenced block as markdown (not a code block):*
 
