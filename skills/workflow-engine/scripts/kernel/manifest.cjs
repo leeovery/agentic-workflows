@@ -1,55 +1,93 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: manifest IO — load and save one work unit's manifest.json.
+// Kernel: manifest IO — the engine's façade over the shared manifest-io
+// module (workflow-shared/scripts/manifest-io.cjs), which the manifest CLI
+// consumes too: one read/parse, one atomic-write serialisation, one lock
+// protocol — the two writers can never drift.
 //
-// Mechanism only: file location, parse, atomic write. It knows nothing about
-// what the manifest contains. Saves go through a temp file in the same
-// directory followed by a rename, so a crash mid-write can never leave a
-// truncated manifest behind.
+// Mechanism only: it knows nothing about what the manifest contains. The
+// façade translates the engine's `cwd` convention (project root) to the
+// shared module's `workflowsDir` and keeps the engine ring's import surface
+// stable.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const path = require('path');
+const io = require('../../../workflow-shared/scripts/manifest-io.cjs');
 
-/** @param {string} cwd @param {string} workUnit */
-function manifestPath(cwd, workUnit) {
-  return path.join(cwd, '.workflows', workUnit, 'manifest.json');
+/** @param {string} cwd project root (the directory containing `.workflows/`) */
+function workflowsDir(cwd) {
+  return path.join(cwd, '.workflows');
 }
 
 /**
- * Load and parse one work unit's manifest.
- * @param {string} cwd      project root (the directory containing `.workflows/`)
+ * Load and parse one work unit's manifest (loud on missing/invalid).
+ * @param {string} cwd
  * @param {string} workUnit
- * @returns {object}
+ * @returns {any}
  */
 function loadWorkUnitManifest(cwd, workUnit) {
-  const file = manifestPath(cwd, workUnit);
-  let raw;
-  try {
-    raw = fs.readFileSync(file, 'utf8');
-  } catch {
-    throw new Error(`manifest not found: ${file}`);
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`invalid JSON in ${file}: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  return io.readWorkUnitManifest(workflowsDir(cwd), workUnit);
 }
 
 /**
- * Save one work unit's manifest atomically (temp file in the same directory,
- * then rename over the target).
+ * Save one work unit's manifest atomically (temp file + rename).
  * @param {string} cwd
  * @param {string} workUnit
  * @param {object} manifest
  */
 function saveWorkUnitManifest(cwd, workUnit, manifest) {
-  const file = manifestPath(cwd, workUnit);
-  const tmp = path.join(path.dirname(file), `.manifest.json.${process.pid}.tmp`);
-  fs.writeFileSync(tmp, JSON.stringify(manifest, null, 2) + '\n');
-  fs.renameSync(tmp, file);
+  io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
 }
 
-module.exports = { loadWorkUnitManifest, saveWorkUnitManifest };
+/**
+ * Run `fn` holding the work unit's manifest lock — every load→mutate→save
+ * belongs inside one of these so engine writes and CLI writes serialise
+ * against each other.
+ * @template T
+ * @param {string} cwd
+ * @param {string} workUnit
+ * @param {() => T} fn
+ * @returns {T}
+ */
+function withWorkUnitLock(cwd, workUnit, fn) {
+  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, fn);
+}
+
+/**
+ * Read the project manifest ({} when absent; loud on corrupt JSON).
+ * @param {string} cwd
+ * @returns {Record<string, any>}
+ */
+function readProjectManifest(cwd) {
+  return io.readProjectManifest(workflowsDir(cwd));
+}
+
+/**
+ * Save the project manifest atomically.
+ * @param {string} cwd
+ * @param {object} data
+ */
+function writeProjectManifestAtomic(cwd, data) {
+  io.writeProjectManifestAtomic(workflowsDir(cwd), data);
+}
+
+/**
+ * Run `fn` holding the project manifest lock.
+ * @template T
+ * @param {string} cwd
+ * @param {() => T} fn
+ * @returns {T}
+ */
+function withProjectLock(cwd, fn) {
+  return io.withProjectLock(workflowsDir(cwd), fn);
+}
+
+module.exports = {
+  loadWorkUnitManifest,
+  saveWorkUnitManifest,
+  withWorkUnitLock,
+  readProjectManifest,
+  writeProjectManifestAtomic,
+  withProjectLock,
+};

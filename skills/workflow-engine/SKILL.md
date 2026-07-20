@@ -10,7 +10,7 @@ The shared engine behind the workflow skills: deterministic state, derivation, a
 
 Internally layered as rings:
 
-- **Kernel** (`scripts/kernel/`) — mechanism with no workflow vocabulary: render primitives, the wrap/width core. The wrap budget (`width − prefix`) lives here once, so gutter-overflow bugs can exist in only one place.
+- **Kernel** (`scripts/kernel/`) — mechanism with no workflow vocabulary: render primitives, the wrap/width core. The wrap budget (`width − prefix`) lives here once, so gutter-overflow bugs can exist in only one place. Manifest IO is a façade over the shared `workflow-shared/scripts/manifest-io.cjs` — the same module the manifest CLI consumes, so both writers share one read/parse, one atomic-write serialisation, and one lock protocol. Every engine load→mutate→save holds the manifest's lock; KB syncs and commits run after release.
 - **Domain** (`scripts/domain/`) — the workflow ontology: glyph vocabulary, `[tag]` and `↳` composition conventions. Grows queries, projections, and transitions as call sites migrate.
 - **Gateway harness** (`scripts/gateway.cjs`) — the uniform verb dispatch every skill's adapter script uses, plus the demarcated output sections.
 
@@ -123,7 +123,7 @@ engine inbox restore <path> [<path> …]   # .archived/{folder}/ → live
 engine inbox delete <path> [<path> …]    # git rm archived items
 ```
 
-**`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in workflow-shared/discovery-utils) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis`. Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N}`. No git commit — the calling flow's commit cadence picks the manifest change up.
+**`cache`** — analysis-cache stamping: record that an analysis ran over the current completed inputs. Collects and checksums the input files exactly as the read side (`computeAnalysisCacheStatus` in workflow-shared/discovery-utils) does — a fresh stamp is `valid` by construction. Writes `checksum`, `generated` (current ISO timestamp), and the input file names to the kind's manifest home: `phases.research.analysis_cache` (`files`) for `research-analysis`, `phases.discovery.gap_analysis_cache` (`input_files`) for `gap-analysis` — then indexes the kind's `.state/` cache file (`research-analysis.md` / `discovery-gap-analysis.md`) into the knowledge base (warn-don't-block). Errors when no qualifying inputs exist — the analyses' preconditions skip the stamp in that case. Response: `{"ok": true, "kind": "…", "checksum": "…", "files": N, "warnings": []}`. No git commit — the calling flow's commit cadence picks the manifest change up.
 
 ```bash
 engine cache stamp <work-unit> (research-analysis|gap-analysis)
@@ -152,9 +152,13 @@ engine.render.wrapWithPrefix(text, { width, prefix }) // → string[] (prefixed 
 engine.render.wrap(text, budget)                  // → string[] (segments ≤ budget)
 engine.render.fillTo(head, fillChar, width)       // → string (padded)
 
-// kernel: manifest IO
+// kernel: manifest IO (façade over workflow-shared/scripts/manifest-io.cjs)
 engine.manifest.loadWorkUnitManifest(cwd, wu)     // → parsed manifest (loud on missing/invalid)
 engine.manifest.saveWorkUnitManifest(cwd, wu, m)  // atomic write (temp file + rename)
+engine.manifest.withWorkUnitLock(cwd, wu, fn)     // → fn() under the work unit's manifest lock
+engine.manifest.readProjectManifest(cwd)          // → project manifest ({} when absent, loud on corrupt)
+engine.manifest.writeProjectManifestAtomic(cwd, m)// atomic write
+engine.manifest.withProjectLock(cwd, fn)          // → fn() under the project manifest lock
 
 // domain: composition conventions
 engine.conventions.title({ glyph, label, tag })   // → "◐ Menu And Admin [researching]"
@@ -216,4 +220,4 @@ The .md's prescribed call names the verb (`discovery.cjs view {work_unit}`) — 
 
 ## Tests
 
-`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-specification-projections.cjs`, `tests/scripts/test-engine-discovery-projections.cjs`, `tests/scripts/test-engine-discussion-map.cjs`, `tests/scripts/test-engine-discovery-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-workunit-create.cjs`, `tests/scripts/test-engine-workunit-pivot.cjs`, `tests/scripts/test-engine-workunit-absorb.cjs`, `tests/scripts/test-engine-cache.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.
+`tests/scripts/test-render.cjs`, `tests/scripts/test-engine-gateway.cjs`, `tests/scripts/test-engine-epic-projections.cjs`, `tests/scripts/test-engine-start-projections.cjs`, `tests/scripts/test-engine-workunit-projections.cjs`, `tests/scripts/test-engine-specification-projections.cjs`, `tests/scripts/test-engine-discovery-projections.cjs`, `tests/scripts/test-engine-discussion-map.cjs`, `tests/scripts/test-engine-discovery-map.cjs`, `tests/scripts/test-engine-tasks.cjs`, `tests/scripts/test-engine-transactions.cjs`, `tests/scripts/test-engine-workunit-create.cjs`, `tests/scripts/test-engine-workunit-pivot.cjs`, `tests/scripts/test-engine-workunit-absorb.cjs`, `tests/scripts/test-engine-cache.cjs`, `tests/scripts/test-engine-manifest-io.cjs`, and `tests/scripts/test-engine-boot.cjs` (run via `npm test`). Type contracts are enforced by `npm run typecheck` (JSDoc + `tsc --noEmit`). Add a test alongside any change to engine scripts.

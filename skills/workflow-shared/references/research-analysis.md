@@ -174,18 +174,12 @@ Overwrite with the topic list:
 
 List every topic from **B**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **B** did not run this session (a deferred staging file was picked up), source the topic list from the staging file's candidate blocks instead.
 
-Stamp the manifest's analysis_cache — one command checksums the completed research files and writes `checksum`, `generated`, and `files`:
+Stamp the manifest's analysis_cache — one command checksums the completed research files, writes `checksum`, `generated`, and `files`, and indexes the cache file into the knowledge base so its content surfaces in future contextual queries:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs cache stamp {work_unit} research-analysis
 ```
 
-Index the cache file into the knowledge base so its content surfaces in future contextual queries:
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/.state/research-analysis.md
-```
-
-If the index call fails, surface the error to the user but do not abort — the cache file is already on disk and the manifest is updated; the user can re-run `knowledge index` manually or wait for the next analysis re-run to retry.
+If the response carries `warnings`, surface them to the user but do not abort — the cache file is already on disk and the manifest is updated; indexing retries on the next analysis re-run.
 
 → Return to caller.
