@@ -64,8 +64,11 @@ for file in "$DISCUSSION_DIR"/*.md; do
     date_value=$(grep -m1 '^\*\*Date\*\*:\|^\*\*Started:\*\*' "$file" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' || echo "")
 
     # Extract status from **Status**: Value or **Status:** Value (colon inside or outside bold)
-    # First extract the line, then remove all variations of the prefix
-    status_raw=$(grep -m1 '^\*\*Status' "$file" | sed 's/^\*\*Status\*\*:[[:space:]]*//' | sed 's/^\*\*Status:\*\*[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+    # First extract the line, then remove all variations of the prefix.
+    # Guard the pipeline: a file that matched line 51 on **Date**/**Started**
+    # alone has no Status line, and under `set -eo pipefail` the failed grep
+    # would otherwise abort the whole migration chain.
+    status_raw=$(grep -m1 '^\*\*Status' "$file" | sed 's/^\*\*Status\*\*:[[:space:]]*//' | sed 's/^\*\*Status:\*\*[[:space:]]*//' | tr '[:upper:]' '[:lower:]' || true)
     # Remove any emoji characters (like ✅) and trim whitespace
     status_raw=$(echo "$status_raw" | sed 's/✅//g' | xargs)
 
@@ -98,29 +101,43 @@ status: $status_new
 date: $date_value
 ---"
 
-    # Extract H1 heading (preserve original)
-    h1_heading=$(grep -m1 "^# " "$file")
+    # Extract H1 heading (preserve original). Guarded so a heading-less file
+    # can't abort the run under `set -eo pipefail`.
+    h1_heading=$(grep -m1 "^# " "$file" || true)
 
-    # Find line number of first ## heading (start of real content)
-    first_section_line=$(grep -n "^## " "$file" | head -1 | cut -d: -f1)
+    # Find line number of first ## heading (start of real content). Guarded: a
+    # file with no ## section must not fail the pipeline under pipefail.
+    first_section_line=$(grep -n "^## " "$file" | head -1 | cut -d: -f1 || true)
 
     # Get content from first ## onwards (preserves all content including **Status:** in decisions)
     if [ -n "$first_section_line" ]; then
-        content=$(tail -n +$first_section_line "$file")
+        content=$(tail -n +"$first_section_line" "$file")
     else
-        # No ## found - take everything after metadata block
-        # Find first blank line after H1, then take from there
-        content=""
+        # No ## found — preserve the body verbatim instead of dropping it.
+        # Skip the leading H1, the legacy **…** metadata lines, and blank lines,
+        # then emit everything from the first real body line onward.
+        content=$(awk '
+            seen { print; next }
+            /^# / { next }
+            /^\*\*/ { next }
+            /^[[:space:]]*$/ { next }
+            { seen = 1; print }
+        ' "$file")
     fi
 
-    # Write new content: frontmatter + H1 + blank line + content
+    # Write new content: frontmatter + H1 + blank line + content.
+    # Write to a temp file in the same directory then rename, so a mid-write
+    # kill can't leave a truncated file that the frontmatter skip-check would
+    # then treat as already migrated.
+    tmp_file="$file.tmp.$$"
     {
         echo "$frontmatter"
         echo ""
         echo "$h1_heading"
         echo ""
         echo "$content"
-    } > "$file"
+    } > "$tmp_file"
+    mv "$tmp_file" "$file"
 
     report_update
 done
