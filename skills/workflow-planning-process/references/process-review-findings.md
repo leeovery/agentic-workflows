@@ -180,7 +180,7 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 
 → Return to **B. Process One Item at a Time**.
 
-#### If `approved`
+#### If `yes`
 
 1. Apply the fix to the plan — use the **Proposed** content exactly as shown, using the output format adapter to determine how it's written. Do not modify content between approval and writing.
 2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry (same commands as the auto flow above).
@@ -196,7 +196,7 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 
 #### If `auto`
 
-1. Apply the fix and the `task_map` upkeep (same as "If approved" steps 1–2 above)
+1. Apply the fix and the `task_map` upkeep (same as "If `yes`" steps 1–2 above)
 2. Update the tracking file: set resolution to "Fixed"
 3. Update `finding_gate_mode` in the manifest:
    ```bash
@@ -207,7 +207,7 @@ Incorporate feedback and update the tracking file with the revised content. Re-p
 
 → After all processed, proceed to **C. After All Findings Processed**.
 
-#### If `skipped`
+#### If `skip`
 
 1. Update the tracking file: set resolution to "Skipped", note the reason.
 2. Commit the tracking file — ensures progress survives context refresh.

@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const { box, renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, title, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
+const { TREE_WIDTH, treeHeader, titlecase, title, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 
@@ -90,7 +90,7 @@ function proposedNodes(proposed) {
  */
 function discoveryMapView(workUnit, map) {
   const head = box(`Discovery — ${titlecase(workUnit)}`)
-    + `  Discovery Map (${map.summary.total} topics${breakdown(map.summary)})\n`;
+    + treeHeader(`Discovery Map (${map.summary.total} topics${breakdown(map.summary)})`) + '\n';
   if (map.rows.length === 0) return head + '  (empty)\n';
   return head + renderTree(mapNodes(map.rows), { width: TREE_WIDTH });
 }

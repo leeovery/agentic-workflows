@@ -71,7 +71,7 @@ Take the first blocked task and → Proceed to **H. Update Progress and Commit**
 #### If a task is available
 
 1. Normalise the task content following **[task-normalisation.md](task-normalisation.md)**.
-2. Start the task via the engine (a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; restarting the task recorded as `current_task` preserves both):
+2. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
@@ -112,7 +112,7 @@ Task {internal_id}: {Task Name} — {blocked/failed}
 
 ```
 · · · · · · · · · · · ·
-Task failed. How would you like to proceed?
+Task {status:[blocked|failed]}. How would you like to proceed?
 
 - **`r`/`retry`** — Re-invoke the executor with your comments (provide below)
 - **`s`/`skip`** — Skip this task and move to the next
@@ -304,7 +304,7 @@ Include the user's feedback when re-invoking.
 
 ## H. Update Progress and Commit
 
-**Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete.
+**Update task progress in the plan** — follow the format's **updating.md** instructions to mark the task complete — or, when this stage was reached via a skip path (stage C `skip`, or the blocked-tasks `skip`), its skip transition instead.
 
 **Check for phase completion** — use the format's **reading.md** to list remaining tasks in the current phase. If no tasks remain open or in-progress, follow the format's **updating.md** instructions for phase completion.
 

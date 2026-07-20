@@ -141,7 +141,8 @@ describe('discussion-map projection: golden renders', () => {
       'rollout-sequencing': { status: 'pending', parent: null },
     });
     assert.strictEqual(discussionMap('auth-flow', m), [
-      '  Discussion Map — Auth Flow (6 subtopics — 2 decided · 1 converging · 1 exploring · 1 pending · 1 deferred)',
+      '  Discussion Map — Auth Flow (6 subtopics — 2 decided · 1',
+      '  converging · 1 exploring · 1 pending · 1 deferred)',
       '  ├─ ✓ Subsystem Prefix Taxonomy [decided]',
       '  ├─ → Info Line Shape [converging]',
       '  │  ├─ ✓ Field Order [decided]',
@@ -174,15 +175,15 @@ describe('discussion-map projection: golden renders', () => {
     ].join('\n'));
   });
 
-  it('two categories — breakdown present, zero categories omitted', () => {
+  it('two categories — breakdown present, zero categories omitted, header wrapped to the tree width', () => {
     const m = manifestWith({
       a: { status: 'decided', parent: null },
       b: { status: 'decided', parent: null },
       c: { status: 'exploring', parent: null },
     });
-    assert.strictEqual(
-      discussionMap('auth-flow', m).split('\n')[0],
-      '  Discussion Map — Auth Flow (3 subtopics — 2 decided · 1 exploring)'
+    assert.deepStrictEqual(
+      discussionMap('auth-flow', m).split('\n').slice(0, 2),
+      ['  Discussion Map — Auth Flow (3 subtopics — 2 decided · 1', '  exploring)']
     );
   });
 
@@ -295,7 +296,8 @@ describe('discussion adapter: map verb', () => {
       'review_cycles: 1',
       '',
       '=== DISPLAY (emit verbatim as a code block) ===',
-      '  Discussion Map — Auth Flow (2 subtopics — 1 decided · 1 exploring)',
+      '  Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
+      '  exploring)',
       '  ├─ ◐ Token Refresh [exploring]',
       '  └─ ✓ Session Storage [decided]',
       '',
@@ -306,5 +308,16 @@ describe('discussion adapter: map verb', () => {
     createManifest(dir, 'auth', manifestWith());
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
     assert.match(out, /review_cycles: 0/);
+  });
+
+  it('review_cycles excludes status: in-flight dispatch skeletons', () => {
+    createManifest(dir, 'auth', manifestWith());
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'review-001.md'), '---\nstatus: incorporated\n---\n\nfindings\n');
+    fs.writeFileSync(path.join(cacheDir, 'review-002.md'), '---\nstatus: pending\n---\n\nfindings\n');
+    fs.writeFileSync(path.join(cacheDir, 'review-003.md'), '---\nstatus: in-flight\ndispatched: 2026-07-19\n---\n');
+    const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(out, /review_cycles: 2/);
   });
 });

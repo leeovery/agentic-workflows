@@ -96,9 +96,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
+· · · · · · · · · · · ·
 Found completed scoping for **{topic:(titlecase)}** — spec and plan are in place.
 
-· · · · · · · · · · · ·
 - **`c`/`continue`** — Adjust the existing spec and plan
 - **`r`/`restart`** — Erase the spec, plan, and task files, then rescope from scratch
 · · · · · · · · · · · ·
@@ -138,6 +138,12 @@ The spec exists but the plan is incomplete — an interrupted prior run. Rebuild
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
    ```
    If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved.
+3. Reconcile tasks the interrupted run may already have created in an external backend:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+   ```
+   If both are set, load the format's **[reading.md](../workflow-planning-process/references/output-formats/{format}/reading.md)** and list the tasks already created under `external_id`. Carry that list into Step 7 — existing tasks are adjusted or completed, never re-authored as duplicates. If either read is empty, nothing was authored — resume cleanly.
 
 → Proceed to **Step 6** (resume from format selection).
 

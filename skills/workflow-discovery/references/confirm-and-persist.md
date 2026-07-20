@@ -38,7 +38,7 @@ Notes:
 - The topic name is the manifest dict key (the `{topic}` path segment). There is no separate `name` field to set.
 - `routing` is the value confirmed by the user at the synthesis gate.
 - `--source` defaults to `discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`). Omit it here.
-- The last add response's `map_total` is `{T}` for the Conclusion line in **C** — no re-read needed.
+- The last map-operation response's `map_total` is `{T}` for the Conclusion line in **C** — no re-read needed.
 - `brief_path` is an opaque field set by a post-create `set` — never an `add` flag. It records where the topic's brief lives; the brief file itself was written at harvest by [brief-synthesis.md](brief-synthesis.md).
 
 → Proceed to **B. Write Topics Identified**.
@@ -70,8 +70,11 @@ Leave **Topics Identified** as `(none)`.
 
 Replace the **Conclusion** `(none)` placeholder. Skip if no log file exists (browse-only session).
 
-- New topics + (optional) edits: `{N_new} topic(s) added{ and M edit(s) applied | }. Map now has {T} topics.` (`{T}` is the last add response's `map_total`.)
-- Edits only, no new topics: `{M} edit(s) applied. Map has {T} topics.` (Re-run discovery to compute `{T}`.)
+- New topics + (optional) edits: `{N_new} topic(s) added{ and M edit(s) applied | }. Map now has {T} topics.`
+- Edits only, no new topics: `{M} edit(s) applied. Map has {T} topics.`
+- No new topics and no edits: `No map changes — exploration captured in the session log. Map has {T} topics.`
+
+`{T}` is the `map_total` carried by every map-operation response — take it from the session's last one. A session with no map operations takes `{T}` from Step 7's discovery output (the map is unchanged).
 
 Pick the commit message:
 

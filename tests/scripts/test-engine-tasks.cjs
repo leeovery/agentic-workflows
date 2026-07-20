@@ -130,6 +130,8 @@ describe('engine task init', () => {
   });
 
   it('resumes with a session-only reset — lifetime state and progress untouched', () => {
+    // current_task has no tracking file on disk, so there is no in-flight
+    // counter/file pair to preserve: fix_attempts resets with the session.
     const phases = planPhases();
     phases.implementation = { items: { 'auth-flow': inFlightItem() } };
     createManifest(dir, 'auth', { phases });
@@ -149,6 +151,27 @@ describe('engine task init', () => {
     expected.fix_attempts = 0;
     expected.analysis_cycle_session = 0;
     assert.deepStrictEqual(implItem(dir), expected);
+  });
+
+  it('preserves fix_attempts on resume when current_task has a live tracking file — gates still reset', () => {
+    // A crash-resume mid-task: the counter and tracking file are the task's
+    // convergence history and survive the session reset in lockstep.
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': inFlightItem() } };
+    createManifest(dir, 'auth', { phases });
+    fs.mkdirSync(path.dirname(trackingPath(dir, 'auth-flow-2-1')), { recursive: true });
+    fs.writeFileSync(trackingPath(dir, 'auth-flow-2-1'), '## Attempt 1\n\none\n\n## Attempt 2\n\ntwo\n');
+
+    const res = engine(dir, ['init', 'auth', 'auth-flow']);
+    assert.deepStrictEqual(res, {
+      ok: true,
+      mode: 'resumed',
+      gates: GATED_GATES,
+      counters: { fix_attempts: 2, analysis_cycle_total: 7, analysis_cycle_session: 0 },
+    });
+    assert.strictEqual(implItem(dir).fix_attempts, 2);
+    assert.strictEqual(implItem(dir).analysis_cycle_session, 0);
+    assert.strictEqual(fs.readFileSync(trackingPath(dir, 'auth-flow-2-1'), 'utf8'), '## Attempt 1\n\none\n\n## Attempt 2\n\ntwo\n');
   });
 
   it('is create-or-resume: a second call resumes what the first created', () => {
@@ -174,7 +197,7 @@ describe('engine task start', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('fresh start on a different task resets fix_attempts and deletes its fix-tracking cache file', () => {
+  it('fresh start on a different task resets fix_attempts, deletes its fix-tracking cache file, and records current_task', () => {
     // current_task is auth-flow-2-1 — starting auth-flow-1-2 is a genuine
     // fresh start: clean slate for the new task.
     fs.mkdirSync(path.dirname(trackingPath(dir, 'auth-flow-1-2')), { recursive: true });
@@ -187,6 +210,7 @@ describe('engine task start', () => {
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
     });
     assert.strictEqual(implItem(dir).fix_attempts, 0);
+    assert.strictEqual(implItem(dir).current_task, 'auth-flow-1-2');
     assert.ok(!fs.existsSync(trackingPath(dir, 'auth-flow-1-2')));
   });
 
@@ -203,7 +227,18 @@ describe('engine task start', () => {
       gates: { task_gate_mode: 'auto', fix_gate_mode: 'auto' },
     });
     assert.strictEqual(implItem(dir).fix_attempts, 2);
+    assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
     assert.strictEqual(fs.readFileSync(trackingPath(dir, 'auth-flow-2-1'), 'utf8'), '## Attempt 1\n\nconvergence history\n');
+  });
+
+  it('re-starting current_task WITHOUT a tracking file is a fresh start — the counter resets', () => {
+    // current_task alone is not a resume: `complete --next-task` pre-records
+    // the id, and inheriting the previous task's attempts through it was the
+    // counter-leak defect. No tracking file → no in-flight pair → clean slate.
+    const res = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-2-1']);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(implItem(dir).fix_attempts, 0);
+    assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
   });
 
   it('succeeds when no cache file exists', () => {
@@ -311,6 +346,16 @@ describe('engine task complete', () => {
     assert.strictEqual(item.current_task, 'auth-flow-1-2');
   });
 
+  it('zeroes fix_attempts — the finished task\'s in-flight counter never leaks into the next task', () => {
+    const m = readManifest(dir);
+    m.phases.implementation.items['auth-flow'].fix_attempts = 2;
+    m.phases.implementation.items['auth-flow'].current_task = 'auth-flow-1-1';
+    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+
+    engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--next-task', 'auth-flow-1-2']);
+    assert.strictEqual(implItem(dir).fix_attempts, 0);
+  });
+
   it('--next-task ~ clears current_task to null', () => {
     const res = engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--next-task', '~']);
     assert.deepStrictEqual(res.recorded, { completed_task: 'auth-flow-1-1', current_task: null });
@@ -388,6 +433,78 @@ describe('engine task complete', () => {
     assert.match(
       engineFails(dir, ['complete', 'auth', 'auth-flow', '--external', 'ext-101']).error,
       /Path "phases\.planning\.items\.auth-flow\.task_map" is not an object in "auth"/);
+  });
+});
+
+describe('engine task counter/file lockstep (composition)', () => {
+  // The invariant across init/start/fix-attempt/complete: `fix_attempts` and
+  // the fix-tracking file always describe the in-flight work of
+  // `current_task`. Each scenario runs the real verb sequence a session runs.
+  let dir;
+  beforeEach(() => {
+    dir = setupFixture();
+    createManifest(dir, 'auth', { phases: planPhases() });
+    engine(dir, ['init', 'auth', 'auth-flow']);
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('complete --next-task then start: the next task opens at attempt 1, not the previous task\'s count', () => {
+    // Work T1 to two attempts…
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
+    engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- a\n')]);
+    engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- b\n')]);
+    assert.strictEqual(implItem(dir).fix_attempts, 2);
+
+    // …complete it handing over to T2, start T2: clean slate even though
+    // complete pre-recorded T2 as current_task.
+    engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--next-task', 'auth-flow-1-2']);
+    assert.strictEqual(implItem(dir).fix_attempts, 0);
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-2']);
+    assert.strictEqual(implItem(dir).fix_attempts, 0);
+
+    const res = engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-2', '--findings-file', writeFindings(dir, 'ISSUES:\n- first for T2\n')]);
+    assert.strictEqual(res.attempts, 1);
+    assert.strictEqual(res.threshold_reached, false);
+    assert.match(fs.readFileSync(trackingPath(dir, 'auth-flow-1-2'), 'utf8'), /^## Attempt 1\n/);
+  });
+
+  it('crash-resume (init → start) preserves the counter AND the file — sections stay monotonic', () => {
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
+    engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- a\n')]);
+    engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- b\n')]);
+
+    // Crash. New session: init resumes, start restarts the task in flight.
+    assert.strictEqual(engine(dir, ['init', 'auth', 'auth-flow']).counters.fix_attempts, 2);
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
+    assert.strictEqual(implItem(dir).fix_attempts, 2);
+
+    const res = engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- c\n')]);
+    assert.strictEqual(res.attempts, 3);
+    assert.strictEqual(res.threshold_reached, true);
+    const sections = fs.readFileSync(trackingPath(dir, 'auth-flow-1-1'), 'utf8').match(/^## Attempt (\d+)$/gm);
+    assert.deepStrictEqual(sections, ['## Attempt 1', '## Attempt 2', '## Attempt 3']);
+  });
+
+  it('re-running start for the in-flight task is idempotent — the post-compaction re-fetch is non-destructive', () => {
+    const first = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
+    engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- a\n')]);
+    const fileBefore = fs.readFileSync(trackingPath(dir, 'auth-flow-1-1'), 'utf8');
+
+    const again = engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
+    assert.deepStrictEqual(again, first);
+    assert.strictEqual(implItem(dir).fix_attempts, 1);
+    assert.strictEqual(fs.readFileSync(trackingPath(dir, 'auth-flow-1-1'), 'utf8'), fileBefore);
+  });
+
+  it('starting a different task mid-flight resets the pair for the new task', () => {
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-1-1']);
+    engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'ISSUES:\n- a\n')]);
+
+    engine(dir, ['start', 'auth', 'auth-flow', 'auth-flow-2-1']);
+    const item = implItem(dir);
+    assert.strictEqual(item.fix_attempts, 0);
+    assert.strictEqual(item.current_task, 'auth-flow-2-1');
+    assert.ok(!fs.existsSync(trackingPath(dir, 'auth-flow-2-1')));
   });
 });
 

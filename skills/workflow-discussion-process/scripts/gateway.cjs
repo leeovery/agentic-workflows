@@ -14,11 +14,22 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 
-// Completed review cycles = review-*.md files in the topic's discussion cache.
+// Completed review cycles = review-*.md files in the topic's discussion cache,
+// excluding `status: in-flight` skeletons — those are dispatch records for
+// agents still running, not cycles that happened.
 function reviewCycles(cwd, workUnit, topic) {
   const dir = path.join(cwd, '.workflows', '.cache', workUnit, 'discussion', topic);
   try {
-    return fs.readdirSync(dir).filter((f) => /^review-.*\.md$/.test(f)).length;
+    return fs.readdirSync(dir)
+      .filter((f) => /^review-.*\.md$/.test(f))
+      .filter((f) => {
+        try {
+          return !/^status:[ \t]*in-flight[ \t]*$/m.test(fs.readFileSync(path.join(dir, f), 'utf8'));
+        } catch {
+          return true;
+        }
+      })
+      .length;
   } catch {
     return 0;
   }
