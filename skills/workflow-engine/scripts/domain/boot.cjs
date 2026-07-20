@@ -111,6 +111,28 @@ function boot(cwd) {
 
   /** @type {string[]} */
   const warnings = [];
+
+  // Migrations reach past .workflows: some edit .claude/settings.json
+  // (permission/hook plumbing) and the repo-root .gitignore. The skill's
+  // .workflows-scoped migration commit misses those, leaving them dirty after
+  // boot for some later unrelated commit to sweep up. When migrations changed,
+  // commit whichever of the two exist on disk — existence-guarded, since a
+  // `git add` on a nonexistent path errors (the same lesson commit.cjs's
+  // KB_DIR guard encodes) and an all-clean stage simply commits nothing. The
+  // migration files are already applied, so a commit failure is a warning,
+  // never a block.
+  if (migrations.changed) {
+    try {
+      const configSpecs = ['.claude/settings.json', '.gitignore']
+        .filter((p) => fs.existsSync(path.join(cwd, p)));
+      if (configSpecs.length > 0) {
+        commitScoped(cwd, configSpecs, 'chore: apply workflow migration config changes');
+      }
+    } catch (err) {
+      warnings.push(`migration config commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   const check = spawnKnowledge(cwd, ['check']);
   const ready = !check.error && check.status === 0 && (check.stdout || '').trim() === 'ready';
 
