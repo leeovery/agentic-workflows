@@ -61,7 +61,7 @@ Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = wor
 
 **Work types and work units**: *Work type* = one of five pipeline shapes: epic, feature, bugfix, quick-fix, cross-cutting. *Work unit* = named instance of a work type (e.g., "auth-flow" is a feature work unit, "payments-overhaul" an epic work unit). Each work unit gets its own directory under `.workflows/` and its own `manifest.json`.
 
-- **Epic**: Multi-topic, multi-session, phase-centric (Discovery → Research → Discussion → Specification → Planning → Implementation → Review)
+- **Epic**: Multi-topic, multi-session, phase-centric (Discovery → Research (opt.) → Discussion → Specification → Planning → Implementation → Review)
 - **Feature**: Single-topic, single-session, linear (Discovery → Research (opt.) → Discussion → Specification → Planning → Implementation → Review)
 - **Bugfix**: Single-topic, investigation-centric (Discovery → Investigation → Specification → Planning → Implementation → Review)
 - **Quick-fix**: Single-topic, scoping-centric (Discovery → Scoping → Implementation → Review)

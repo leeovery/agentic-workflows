@@ -415,7 +415,7 @@ Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before en
 
 ### Heading Hierarchy
 
-- **H1** (`#`): File title — one per file, at the top. Reference files carry an H1; SKILL.md files do not (frontmatter and the one-liner open the backbone)
+- **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; entry, navigation, and phase-entry SKILL.md files carry none (frontmatter and the one-liner open the backbone)
 - **H2** (`##`): Steps and major sections (`## Step N: {Name}`, `## Notes`, `## Instructions`)
 - **H3** (`###`): In flow files, sub-steps within early setup steps only (`### Step 0.1: Casing Conventions`). Non-flow reference files — templates, question banks, agent-prompt content, API documentation — may use H3 freely for content organisation
 - **H4** (`####`): Conditional routing only (`#### If {condition}`, `#### Otherwise`)
