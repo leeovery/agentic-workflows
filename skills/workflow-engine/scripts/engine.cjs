@@ -23,6 +23,7 @@ const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
+const taskSections = require('./domain/projections/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -42,6 +43,15 @@ function die(msg) {
 /** One decision-ready JSON line on stdout. @param {object} obj */
 function respond(obj) {
   process.stdout.write(JSON.stringify({ ok: true, ...obj }) + '\n');
+}
+
+/**
+ * Rendered gate sections after a response's JSON line (domain/projections).
+ * Empty when the state renders nothing.
+ * @param {string} rendered
+ */
+function respondSections(rendered) {
+  if (rendered !== '') process.stdout.write(rendered);
 }
 
 /**
@@ -462,7 +472,9 @@ function runTopic(argv) {
 // task — implementation-task bookkeeping: format-blind, manifest-side only.
 // The engine never touches a task backend; the session does the plan surgery,
 // these commands record it. No git commit — the per-task commit is the
-// session's.
+// session's. After the JSON line, each verb appends its state-derived gate
+// sections (domain/projections/tasks.cjs) — the task loop emits them verbatim
+// at the gate each marker names.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
@@ -474,17 +486,28 @@ function runTask(argv) {
     const [workUnit, topic, internalId] = positional;
     if (command === 'init' || command === 'analysis-cycle') {
       if (!workUnit || !topic) throw new Error(`Usage: engine task ${command} <work-unit> <topic>`);
-      respond(command === 'init' ? initTasks(cwd, workUnit, topic) : analysisCycle(cwd, workUnit, topic));
+      if (command === 'init') {
+        respond(initTasks(cwd, workUnit, topic));
+        respondSections(taskSections.initSections());
+      } else {
+        const result = analysisCycle(cwd, workUnit, topic);
+        respond(result);
+        respondSections(taskSections.analysisCycleSections(result));
+      }
     } else if (command === 'start') {
       if (!workUnit || !topic || !internalId) {
         throw new Error('Usage: engine task start <work-unit> <topic> <internal-id>');
       }
-      respond(startTask(cwd, workUnit, topic, internalId));
+      const result = startTask(cwd, workUnit, topic, internalId);
+      respond(result);
+      respondSections(taskSections.startSections(result));
     } else if (command === 'fix-attempt') {
       if (!workUnit || !topic || !internalId || !opts['findings-file']) {
         throw new Error('Usage: engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>');
       }
-      respond(fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']));
+      const result = fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']);
+      respond(result);
+      respondSections(taskSections.fixAttemptSections(result, internalId));
     } else if (command === 'complete') {
       if (!workUnit || !topic) {
         throw new Error('Usage: engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]');
@@ -496,14 +519,16 @@ function runTask(argv) {
         if (!Number.isInteger(phase)) throw new Error(`--phase must be a number (got "${opts.phase}")`);
       }
       const next = opts['next-task'];
-      respond(completeTask(cwd, workUnit, topic, {
+      const result = completeTask(cwd, workUnit, topic, {
         internalId: internalId ?? null,
         externalId: opts.external ?? null,
         skipped: flags.has('skipped'),
         nextTask: next === undefined ? undefined : next === '~' ? null : next,
         phase,
         phaseComplete: flags.has('phase-complete'),
-      }));
+      });
+      respond(result);
+      respondSections(taskSections.completeSections());
     } else {
       throw new Error('Usage: engine task <init|start|fix-attempt|complete|analysis-cycle> …');
     }

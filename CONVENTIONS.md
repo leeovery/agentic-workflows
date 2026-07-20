@@ -54,6 +54,8 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 A section is everything beneath its marker up to the next marker; the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, trimmed, or re-derived. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
+Engine transaction verbs (e.g. `engine task …`) may append labelled DISPLAY/MENU sections after their one-line JSON response — the state-derived gates of the calling flow. The label names the gate (`=== MENU: fix gate … ===`) and the marker's instruction names the emission moment: the section is emitted only where the flow's prose prescribes it, which may be a later gate than the call — never at the call itself. The same verbatim rules apply.
+
 ### Phase Titles
 
 Bullet-bordered box. One per skill invocation. Serves as the top-level anchor telling the user where they are. Always followed by a blank line before any subsequent content.
@@ -279,7 +281,7 @@ Rendered as markdown (not code blocks). Framed with `· · · · · · · · · 
 **Option types** — menus contain two kinds of option:
 
 - **Command option** (explicit): A discrete input the user types verbatim. Formatted with backtick-wrapped shorthand: **`y`/`yes`**, **`s`/`single`**, **`a`/`auto`**. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`a`/`approve`** and **`b`/`abort`**). The conditional branch uses the command value (e.g., `#### If \`yes\``).
-- **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish.
+- **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
 
 Both types use `— description` to explain what the option does (unless self-evident, as with yes/no).
 

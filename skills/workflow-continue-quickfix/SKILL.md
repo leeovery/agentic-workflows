@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-quickfix
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(tick)
 ---
 
 Continue an in-progress quick-fix. Determines current phase and routes to the appropriate phase skill.

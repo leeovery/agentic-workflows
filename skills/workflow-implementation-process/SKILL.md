@@ -1,7 +1,7 @@
 ---
 name: workflow-implementation-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(git status), Bash(git log)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(tick), Bash(git status), Bash(git log), Bash(git add), Bash(git commit)
 ---
 
 # Implementation Process
@@ -81,6 +81,8 @@ Initialize or resume implementation tracking (idempotent — creates the manifes
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
 ```
+
+The response's `MENU: blocked tasks` section serves the task loop's blocked-tasks stop — never emit it at this step.
 
 #### If the response's `mode` is `created`
 

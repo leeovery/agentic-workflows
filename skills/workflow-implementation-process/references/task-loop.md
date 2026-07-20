@@ -18,6 +18,8 @@ H. Update progress + phase check + commit
 → loop back to A until done
 ```
 
+**Engine gate sections**: `engine task` responses carry rendered `=== DISPLAY … ===` / `=== MENU … ===` sections after their JSON line — the loop's state-derived gates, parameterised from manifest state. Emit a section only where a stage below prescribes it: DISPLAY verbatim as a code block, MENU verbatim as markdown (not a code block). A section is everything beneath its `===` marker up to the next marker or the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
+
 ---
 
 ## A. Retrieve Next Task
@@ -50,17 +52,7 @@ No ready tasks remain, but {N} task(s) are still open — blocked:
   ...
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-How would you like to proceed?
-
-- **`p`/`proceed`** — Continue with the first blocked task anyway (its blocker will not be completed)
-- **`s`/`skip`** — Skip the blocked tasks and conclude the loop
-- **`t`/`stop`** — Stop implementation entirely
-· · · · · · · · · · · ·
-```
+Emit the `MENU: blocked tasks` section carried by this session's most recent `task init` or `task complete` response.
 
 **STOP.** Wait for user response.
 
@@ -83,7 +75,7 @@ Take the first blocked task and → Proceed to **H. Update Progress and Commit**
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
-   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a`/`auto` opt-in is made by this flow itself, so you already know the current mode.
+   The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — stages E and G branch on these values. Do not re-read them mid-task: an `a`/`auto` opt-in is made by this flow itself, so you already know the current mode. When the task gate is `gated`, the response also carries the `MENU: task gate` section that **G. Task Gate** emits — never emit it here.
 3. Mark the task as in-progress — follow the format's **updating.md** status transition.
 
 → Proceed to **B. Execute Task**.
@@ -181,6 +173,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_un
 
 #### If the response's `threshold_reached` is `true`
 
+Emit the response's `DISPLAY: fix threshold` section.
+
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`.
 
 > *Output the next fenced block as a code block:*
@@ -223,19 +217,7 @@ Branch on the response's `fix_gate_mode`.
 
 ## F. Fix Approval Gate
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Accept the reviewer's fix analysis?
-
-- **`y`/`yes`** — Pass to executor
-- **`a`/`auto`** — Accept and auto-approve future fix analyses
-- **`s`/`skip`** — Override the reviewer and proceed as-is
-- **Ask** — Ask questions about the review (doesn't accept or reject)
-- **Comment** — Accept with adjustments — pass your own direction alongside the review
-· · · · · · · · · · · ·
-```
+Emit the `MENU: fix gate` section from this task's most recent `fix-attempt` response. The `a`/`auto` option is present only while the fix gate is `gated` — a threshold-forced gate in auto mode omits it.
 
 **STOP.** Wait for user response.
 
@@ -290,18 +272,7 @@ Branch on the `task_gate_mode` carried by this task's `start` response.
 
 #### If `task_gate_mode` is `gated`
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Approve this task?
-
-- **`y`/`yes`** — Commit and continue to next task
-- **`a`/`auto`** — Approve this and all future tasks automatically
-- **Ask** — Ask questions about the implementation (doesn't approve or reject)
-- **Comment** — Request changes (triggers a fix round)
-· · · · · · · · · · · ·
-```
+Emit the `MENU: task gate` section from this task's `start` response.
 
 **STOP.** Wait for user response.
 

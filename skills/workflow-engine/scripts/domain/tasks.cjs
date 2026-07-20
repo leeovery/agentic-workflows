@@ -370,4 +370,4 @@ function analysisCycle(cwd, workUnit, topic) {
   });
 }
 
-module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle };
+module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, FIX_THRESHOLD, SESSION_CYCLE_LIMIT };
