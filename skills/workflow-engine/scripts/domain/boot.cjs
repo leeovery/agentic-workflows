@@ -5,7 +5,7 @@
 // collapsed into one call: run migrations, probe the knowledge base, compact
 // when ready.
 //
-// Migrations are the durability-critical leg: a failing migrate.sh is a hard
+// Migrations are the durability-critical leg: a failing migrate.cjs is a hard
 // error — migrations must never half-run silently. The knowledge base is a
 // derived index: a failing `check` reports "not-ready" (the caller's gate —
 // boot never initialises anything itself; a not-ready response additionally
@@ -24,9 +24,9 @@ const { KB_DIR } = require('./commit.cjs');
 const { spawnKnowledge } = require('./kb.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
-const MIGRATE_SH = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.sh');
+const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
 
-// migrate.sh prints this marker if and only if files were updated — it is the
+// The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
 // session work may already be dirty under .workflows.) The marker's follow-on
 // instruction lines address a prose flow, not this caller, so the trimmed
@@ -79,8 +79,8 @@ function detectSystemConfig() {
 }
 
 /**
- * migrate.sh's report, trimmed for the JSON response: everything above the
- * stop-gate marker (update counts included), whitespace collapsed at the ends.
+ * The orchestrator's report, trimmed for the JSON response: everything above
+ * the stop-gate marker (update counts included), whitespace collapsed at the ends.
  * @param {string} stdout
  * @returns {string}
  */
@@ -96,12 +96,12 @@ function trimReport(stdout) {
  * @returns {BootResult}
  */
 function boot(cwd) {
-  const mig = spawnSync('bash', [MIGRATE_SH], { cwd, encoding: 'utf8' });
+  const mig = spawnSync('node', [MIGRATE_CJS], { cwd, encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message
       : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
-    throw new Error(`migrate.sh failed — migrations must never half-run silently (${detail})`);
+    throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
   }
   const stdout = mig.stdout || '';
   const migrations = {

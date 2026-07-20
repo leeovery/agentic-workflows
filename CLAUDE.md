@@ -139,38 +139,49 @@ Contract and scaffolding templates live in `.claude/skills/create-output-format/
 Migrations keep workflow files in sync with current system design (run via `engine boot` in Step 0 of `workflow-start`).
 
 **How it works:**
-- `skills/workflow-migrate/scripts/migrate.sh` runs all migration scripts in `skills/workflow-migrate/scripts/migrations/` in numeric order
+- `skills/workflow-migrate/scripts/migrate.cjs` (Node) runs every script in `skills/workflow-migrate/scripts/migrations/` — both the frozen `*.sh` fleet and modern `*.cjs` migrations — in one strict numeric-prefix ordering
 - Each migration is idempotent — safe to run multiple times
-- Progress tracked in `.workflows/.state/migrations`
-- Delete log file to force re-running all migrations
+- Progress tracked in `.workflows/.state/migrations`: numeric-only IDs, one per line, extension-independent. An ID is recorded only after its migration completes; any failure aborts the whole run without recording (boot treats a non-zero exit as fatal — migrations must never half-run silently)
+- Delete the log file to force re-running all migrations
 
-**Adding new migrations:**
-1. Create `skills/workflow-migrate/scripts/migrations/NNN-description.sh` (e.g., `002-spec-frontmatter.sh`)
-2. Script runs automatically in numeric order
-3. Orchestrator handles tracking — once a migration ID appears in the log, the script never runs again
-4. Use helper functions: `report_update`, `report_skip` (display only)
+**Two migration formats:**
+- **`*.sh` — the frozen fleet (001–046).** Shipped and already run by real installs; treat as immutable. Edit only to harden a failure path, **never** to change semantics — fix forward with a new numbered `.cjs` migration instead. The orchestrator sources each in a spawned bash with `report_update`/`report_skip` helpers, `PROJECT_DIR` pinned to `.`, cwd = project root, under `set -eo pipefail` (`return 0` semantics preserved).
+- **`*.cjs` — all new migrations.** A `.cjs` migration is a module exporting `id`, `description`, and a `run` function, executed in-process:
+  ```js
+  module.exports = {
+    id: '050',
+    description: 'short summary',
+    run({ projectDir, reportUpdate, reportSkip }) { /* ... */ },
+  };
+  ```
+  Read/write files under `path.join(projectDir, '.workflows')` (`projectDir` is always `.`). Signal outcome only through `reportUpdate()` / `reportSkip()` (display counters — call `reportUpdate()` once per changed unit); never write to stdout. A thrown error aborts the run; if a migration should instead degrade to a skip on unexpected input, catch internally and `reportSkip()`.
+
+**Adding a new migration:**
+1. Create `skills/workflow-migrate/scripts/migrations/NNN-description.cjs` (next number after the highest existing)
+2. It runs automatically in numeric order; once its ID is in the log it never runs again
 
 Migration `038-add-inception-phase.sh` seeds the phase for existing in-progress epics (`040-rename-inception-to-discovery.sh` then renames it to `discovery`) so legacy work units pick up the discovery map without manual intervention.
 
-**Critical: Migration scripts must not use `engine manifest`**
+**Critical: Migrations must not use `engine manifest`**
 
-Migration scripts are point-in-time snapshots. The engine's field surface validates against the current schema, which changes over time — a migration using it today may break silently later. Always read/write `manifest.json` directly with `node` or `jq`.
+Migrations are point-in-time snapshots. The engine's field surface validates against the current schema, which changes over time — a migration using it today may break silently later. Always read/write `manifest.json` directly (`node`/`fs` in `.cjs`; `node`/`jq` in the frozen `.sh` fleet).
 
-**Bash 3.2 compatibility** (macOS default): Avoid `mapfile`/`readarray`, `declare -A`, `local -n` (all bash 4+).
+**Bash 3.2 compatibility** (frozen `.sh` fleet only): the shipped bash migrations must run under stock macOS `/bin/bash` 3.2 — avoid `mapfile`/`readarray`, `declare -A`, `local -n` (all bash 4+). New `.cjs` migrations run under Node and are exempt.
 
 **Testing migrations:**
 
-Every migration must have a corresponding test file at `tests/scripts/test-migration-NNN.sh`. Follow the harness structure in existing test files (`set -euo pipefail`, `PASS`/`FAIL` counters, `report_update`/`report_skip` stubs, `assert_eq` function, `setup`/`teardown` with temp dir). Conventions:
-- **Invocation**: Use `source "$MIGRATION"` for migrations that use `return 0`. Use `bash "$MIGRATION"` with `export -f report_update report_skip` for migrations that use `exit 0`.
-- **Isolation**: Each test function calls `setup` at the start and `teardown` at the end. No shared state between tests.
-- **Assertions**: Use only `assert_eq`. Parameter order: `label`, `expected`, `actual`. Convert other checks inline:
-  - File exists: `assert_eq "desc" "true" "$([ -f "$path" ] && echo true || echo false)"`
-  - Content match: `assert_eq "desc" "true" "$(echo "$content" | grep -q 'pattern' && echo true || echo false)"`
-  - Fixed-string match: `assert_eq "desc" "true" "$(echo "$content" | grep -qF 'text' && echo true || echo false)"`
-- **grep with leading dashes**: Always use `--` before patterns starting with `-` (e.g., `grep -qF -- '- item'`).
-- **Test naming**: Functions prefixed `test_`, comments `# --- Test N: Description ---`.
+Every migration has a matching test suite.
+
+*New `.cjs` migrations* — a node:test suite at `tests/scripts/test-migration-NNN.cjs`, registered in `package.json`'s `test` script (runs under `npm test`). `require` the migration module and drive `run({ projectDir, reportUpdate, reportSkip })` directly against a temp `projectDir`. Follow the sibling suites (`test-migration-047/048/049.cjs`): `describe`/`it`, `node:assert`, per-test `setup`/`teardown` with a `mkdtemp` dir, counting `reportUpdate`/`reportSkip` stubs. Cover at minimum happy path, skip/no-op, idempotency (run twice), content preservation, and every defensive guard. The Node orchestrator itself is covered by `tests/scripts/test-migration-orchestrator.cjs` (mixed `.sh`/`.cjs` ordering, legacy tracking-log compatibility, failure-aborts-without-recording, the `.sh` path under stock `/bin/bash` 3.2, `PROJECT_DIR` pinning).
+
+*Frozen `.sh` fleet* — the existing `tests/scripts/test-migration-NNN.sh` suites (run under `npm run test:migrations`) stay as-is. Their harness: `set -euo pipefail`, `PASS`/`FAIL` counters, `report_update`/`report_skip` stubs, an `assert_eq` function, `setup`/`teardown` with a temp dir. Conventions:
+- **Invocation**: `source "$MIGRATION"` (the fleet uses `return 0`).
+- **Isolation**: each test function calls `setup` at the start and `teardown` at the end. No shared state.
+- **Assertions**: only `assert_eq` (`label`, `expected`, `actual`). File exists → `assert_eq "desc" "true" "$([ -f "$path" ] && echo true || echo false)"`; content match → `... "$(echo "$content" | grep -q 'pattern' && echo true || echo false)"`; fixed-string → `grep -qF`.
+- **grep with leading dashes**: always use `--` before patterns starting with `-`.
+- **Test naming**: functions prefixed `test_`, comments `# --- Test N: Description ---`.
 - **Summary**: `echo "Results: $PASS passed, $FAIL failed"` then `[ "$FAIL" -eq 0 ] || exit 1`.
-- **Coverage**: Every migration test must cover at minimum: happy path, skip/no-op conditions, idempotency (run twice, same result), and content preservation where applicable.
+- **Coverage**: happy path, skip/no-op, idempotency (run twice), and content preservation where applicable.
 
 ## Manifest Field Surface
 
