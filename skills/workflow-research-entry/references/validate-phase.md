@@ -4,11 +4,7 @@
 
 ---
 
-Check research status via `engine manifest`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
-```
+Branch on the `phase_status` the caller read in Step 2 — no re-read.
 
 #### If status is `completed`
 

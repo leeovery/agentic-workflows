@@ -91,13 +91,7 @@ Gather coverage state. Read `completed_tasks` from the implementation manifest:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} completed_tasks
 ```
 
-Check if `reviewed_tasks` exists in the review manifest:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} reviewed_tasks
-```
-
-If `true`, read it:
+Read `reviewed_tasks` from the review manifest — empty stdout means it was never recorded:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks

@@ -57,18 +57,10 @@ Project default format is **{format}**. Use the same format?
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
    ```
-4. Set metadata in the manifest:
+4. Set the planning metadata — every same-path field in one batched write, then the project default (a different path, so its own call):
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format {chosen-format}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format {chosen-format} spec_commit={commit-hash} task_list_gate_mode=gated author_gate_mode=gated finding_gate_mode=gated review_cycle=0 phase=1 task='~' task_map='{}'
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} spec_commit {commit-hash}
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_list_gate_mode gated
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} author_gate_mode gated
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode gated
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle 0
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase 1
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task '~'
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map '{}'
    ```
 
 5. Commit — the project default lands in `.workflows/manifest.json`, outside the work unit, so use the whole-tree scope:

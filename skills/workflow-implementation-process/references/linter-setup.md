@@ -24,24 +24,23 @@ Set `source` = `topic`.
 
 #### Otherwise
 
-Check whether a project-level default `linters` exists and read its value via `engine manifest`:
+Read the project-level default `linters` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists project.defaults.linters
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.linters
 ```
 
-**If `false`:**
+**If output is empty (never set):**
 
 → Proceed to **C. Discovery**.
 
-**If `true` and project default is populated:**
+**If output is a populated array:**
 
 Set `source` = `project`.
 
 → Proceed to **B. Confirm Linters**.
 
-**If `true` and project default is empty:**
+**If output is `[]` (previously skipped):**
 
 > *Output the next fenced block as a code block:*
 

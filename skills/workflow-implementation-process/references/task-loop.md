@@ -20,6 +20,12 @@ H. Update progress + phase check + commit
 
 **Engine gate sections**: `engine task` responses carry rendered `=== DISPLAY … ===` / `=== MENU … ===` sections after their JSON line — the loop's state-derived gates, parameterised from manifest state. Emit a section only where a stage below prescribes it: DISPLAY verbatim as a code block, MENU verbatim as markdown (not a code block). A section is everything beneath its `===` marker up to the next marker or the end of the response — the marker lines themselves are never emitted. Section content is emitted byte-for-byte — never redrawn, reflowed, or re-derived.
 
+Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** consumes it from session context rather than re-reading it per invocation:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+```
+
 ---
 
 ## A. Retrieve Next Task

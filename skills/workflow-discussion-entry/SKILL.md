@@ -63,23 +63,25 @@ Store work_unit for the handoff.
 
 #### If `topic` resolved
 
-Check if discussion phase entry exists:
+Read the discussion phase status:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
 ```
 
-**If exists (`true`):**
+Store the result as `phase_status`.
 
-→ Proceed to **Step 2** (Validate Phase).
-
-**If not exists (`false` — new entry):**
+**If empty (no discussion entry — new entry):**
 
 Set `source = "topic-provided"`.
 
 Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
 → Proceed to **Step 3** (Gather Context).
+
+**Otherwise (an entry exists):**
+
+→ Proceed to **Step 2** (Validate Phase).
 
 #### If no `topic`
 
@@ -94,6 +96,14 @@ What topic would you like to discuss?
 Kebab-case the response, store as `{topic}`. Set `source = "fresh"`.
 
 Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
+
+Read the discussion phase status for the resolved topic — a freshly named topic is usually empty, but this catches a collision with an existing discussion:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
+```
+
+Store the result as `phase_status`.
 
 → Proceed to **Step 2** (Validate Phase).
 
@@ -116,7 +126,7 @@ Silently derive `direct_entry_summary` (one-line) and `direct_entry_description`
 
 Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`. On the direct-entry path (`source = "fresh"`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. On the topic-resolved path, omit both — the caller didn't derive them.
 
-Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
+Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
 → Proceed to **Step 3**.
 

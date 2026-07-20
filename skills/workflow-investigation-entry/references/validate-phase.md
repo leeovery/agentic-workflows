@@ -4,11 +4,7 @@
 
 ---
 
-Check investigation status via `engine manifest`:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic}
-```
+Branch on the `phase_status` the caller read in Step 1 — no re-read.
 
 #### If status is `in-progress`
 

@@ -6,11 +6,10 @@
 
 ## Reset Gate Modes
 
-Reset `finding_gate_mode` and `construction_gate_mode` to `gated` via `engine manifest`:
+Reset `finding_gate_mode` and `construction_gate_mode` to `gated` in one batched write:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode gated
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode gated
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode gated construction_gate_mode=gated
 ```
 
 ## Register Consult References
