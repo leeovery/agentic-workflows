@@ -26,7 +26,7 @@ Existing specifications to incorporate:
   • .workflows/{work_unit}/specification/{topic}/specification.md → will be superseded
   • .workflows/{work_unit}/specification/{topic}/specification.md → will be superseded
 
-Output: .workflows/unified/specification/unified/specification.md
+Output: .workflows/{work_unit}/specification/unified/specification.md
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -55,7 +55,7 @@ Sources:
   • {discussion-name}
   ...
 
-Output: .workflows/unified/specification/unified/specification.md
+Output: .workflows/{work_unit}/specification/unified/specification.md
 ```
 
 > *Output the next fenced block as markdown (not a code block):*

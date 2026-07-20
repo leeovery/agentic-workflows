@@ -198,6 +198,26 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 
 → Load **[promote-to-cross-cutting.md](promote-to-cross-cutting.md)** and follow its instructions as written.
 
+#### If work_type is `cross-cutting`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Specification complete. The specification is the final artifact
+> for a cross-cutting concern — the pipeline completes here.
+```
+
+Invoke the bridge:
+
+```
+Pipeline bridge for: {work_unit}
+Completed phase: specification
+
+Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
 #### Otherwise
 
 > *Output the next fenced block as markdown (not a code block):*
