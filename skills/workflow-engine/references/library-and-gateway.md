@@ -50,12 +50,14 @@ engine.derivations.phaseData(manifest, phase)     // → phases.{phase} ({} when
 engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] from phases.{phase}.items
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
+engine.derivations.lastCompletedPhase(manifest, pipeline) // → last phase (pipeline order) with a completed item, or null
 engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, generated, files[, reason] }
 engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
 engine.derivations.computeNeedsSequencing(items)  // → true when a live row lacks an order
+engine.derivations.buildDiscoveryMap(manifest)    // → { map, summary, needs_sequencing } — the one discovery-map row builder
 
 // domain: discussion-map transitions + queries
 engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending

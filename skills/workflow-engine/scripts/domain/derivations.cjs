@@ -375,6 +375,24 @@ function computeSourceProvenance(source) {
 }
 
 /**
+ * @typedef {object} DiscoveryMapRow
+ * @property {string} name
+ * @property {string|null} summary            normalised — whitespace-only / non-string reads as null
+ * @property {boolean} summary_present
+ * @property {string|null} description        raw value, for surfaces that render it in full
+ * @property {boolean} description_present     normalised presence
+ * @property {string|null} routing
+ * @property {string} source
+ * @property {string|null} source_provenance
+ * @property {number|null} order
+ * @property {string} lifecycle
+ * @property {string} tier
+ * @property {string|null} current_phase
+ * @property {string|null} research_state
+ * @property {string|null} next_action
+ */
+
+/**
  * The discovery-map rows for one epic manifest: each discovery item joined to
  * its per-phase lifecycle, sorted by tier → order → name, with the map summary
  * and the sequencing flag. The single builder every discovery-map surface
@@ -387,7 +405,7 @@ function computeSourceProvenance(source) {
  * agree with the text; `description` carries the raw value for surfaces that
  * render it in full.
  * @param {object} manifest
- * @returns {{map: object[], summary: object, needs_sequencing: boolean}}
+ * @returns {{map: DiscoveryMapRow[], summary: object, needs_sequencing: boolean}}
  */
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');

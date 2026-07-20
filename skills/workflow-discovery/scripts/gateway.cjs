@@ -16,38 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadManifest } = engine.reads;
-const {
-  phaseItems,
-  computeTopicLifecycle,
-  computeMapSummary,
-  computeSourceProvenance,
-  computeAnalysisCacheStatus,
-  compareMapRows,
-  computeNeedsSequencing,
-} = engine.derivations;
-
-function buildDiscoveryMap(manifest) {
-  const discoveryItems = phaseItems(manifest, 'discovery');
-  if (discoveryItems.length === 0) return { map: [], summary: { total: 0, decided: 0, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 }, needs_sequencing: false };
-  const map = discoveryItems.map(item => {
-    const { lifecycle, tier, current_phase, research_state } = computeTopicLifecycle(manifest, item.name);
-    return {
-      name: item.name,
-      summary: item.summary || null,
-      description: item.description || null,
-      routing: item.routing || null,
-      source: item.source || 'discovery',
-      source_provenance: computeSourceProvenance(item.source),
-      order: item.order ?? null,
-      lifecycle,
-      tier,
-      current_phase,
-      research_state,
-    };
-  });
-  map.sort(compareMapRows);
-  return { map, summary: computeMapSummary(map), needs_sequencing: computeNeedsSequencing(map) };
-}
+const { computeAnalysisCacheStatus, buildDiscoveryMap } = engine.derivations;
 
 function listSessionLogs(cwd, workUnit) {
   const dir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
