@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
+const { INDEXED_ARTIFACTS } = require('./kb.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -28,8 +29,10 @@ const {
   VALID_WORK_UNIT_STATUSES,
 } = require('../kernel/manifest-schema.cjs');
 
-/** Phases whose artifacts the knowledge base indexes — `resolve`'s scope. */
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification'];
+// Phases whose artifacts the knowledge base indexes — `resolve`'s scope.
+// Derived from kb's INDEXED_ARTIFACTS, the one table declaring what the KB
+// indexes and where, so the resolve scope can never drift from it.
+const INDEXED_PHASES = Object.keys(INDEXED_ARTIFACTS);
 
 /**
  * @param {string} msg
