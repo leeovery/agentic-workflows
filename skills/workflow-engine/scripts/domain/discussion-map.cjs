@@ -8,8 +8,14 @@
 // these transitions validate and write it. Two levels max — a subtopic's
 // `parent` names another subtopic that is itself top-level. Subtopic keys are
 // kebab-case slugs (display titlecases them); insertion order is render
-// order. All errors throw loud and specific.
+// order. All errors throw loud and specific. The CLI transactions
+// (recordSubtopicAdd / recordSubtopicState) run load→apply→save under the
+// work unit's manifest lock (the same lock every manifest writer honours)
+// with NO git commit — the calling session's commit cadence picks the
+// manifest change up.
 // ---------------------------------------------------------------------------
+
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 
 const SUBTOPIC_STATES = ['pending', 'exploring', 'converging', 'decided', 'deferred'];
 
@@ -36,6 +42,14 @@ const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
  * @property {number} total
  * @property {boolean} all_decided  every subtopic `decided` or `deferred`; false when zero subtopics
  * @property {string[]} unresolved  names not `decided`/`deferred`, insertion order
+ */
+
+/**
+ * @typedef {object} SubtopicWriteResult
+ * @property {string} subtopic         the subtopic written
+ * @property {string} status           its status after the write
+ * @property {boolean} all_decided     from mapState after the write
+ * @property {number} unresolved_count from mapState after the write
  */
 
 /**
@@ -144,4 +158,60 @@ function mapState(manifest, topic) {
   };
 }
 
-module.exports = { SUBTOPIC_STATES, addSubtopic, setSubtopicState, mapState, subtopicsOf };
+/**
+ * Decision-ready body of a subtopic write: the subtopic written plus the
+ * map's derived convergence state.
+ * @param {object} manifest @param {string} topic @param {string} name @param {string} status
+ * @returns {SubtopicWriteResult}
+ */
+function subtopicWriteResult(manifest, topic, name, status) {
+  const state = mapState(manifest, topic);
+  return {
+    subtopic: name,
+    status,
+    all_decided: state.all_decided,
+    unresolved_count: state.unresolved.length,
+  };
+}
+
+/**
+ * The `discussion-map add` transaction: load → addSubtopic → save under the
+ * work unit's manifest lock. No git commit.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} topic
+ * @param {string} name           kebab-case slug
+ * @param {{parent?: string|null}} [opts]  nest under this top-level subtopic
+ * @returns {SubtopicWriteResult}
+ */
+function recordSubtopicAdd(cwd, workUnit, topic, name, { parent = null } = {}) {
+  const { manifest, sub } = withWorkUnitLock(cwd, workUnit, () => {
+    const loaded = loadWorkUnitManifest(cwd, workUnit);
+    const applied = addSubtopic(loaded, topic, name, { parent });
+    saveWorkUnitManifest(cwd, workUnit, loaded);
+    return { manifest: loaded, sub: applied };
+  });
+  return subtopicWriteResult(manifest, topic, name, sub.status);
+}
+
+/**
+ * The `discussion-map set` transaction: load → setSubtopicState → save under
+ * the work unit's manifest lock. No git commit.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} topic
+ * @param {string} name
+ * @param {string} state  one of SUBTOPIC_STATES
+ * @returns {SubtopicWriteResult}
+ */
+function recordSubtopicState(cwd, workUnit, topic, name, state) {
+  const { manifest, sub } = withWorkUnitLock(cwd, workUnit, () => {
+    const loaded = loadWorkUnitManifest(cwd, workUnit);
+    const applied = setSubtopicState(loaded, topic, name, state);
+    saveWorkUnitManifest(cwd, workUnit, loaded);
+    return { manifest: loaded, sub: applied };
+  });
+  return subtopicWriteResult(manifest, topic, name, sub.status);
+}
+
+module.exports = { SUBTOPIC_STATES, addSubtopic, setSubtopicState, mapState, subtopicsOf, recordSubtopicAdd, recordSubtopicState };

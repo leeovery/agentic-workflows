@@ -381,7 +381,8 @@ describe('engine writes take the work-unit lock', () => {
     });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
-    const exit = new Promise((resolve) => child.on('exit', resolve));
+    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
+    const exit = new Promise((resolve) => child.on('close', resolve));
 
     // Long enough for node to start and reach the lock wait; far inside the
     // 10s timeout, so a passing run never races it.
@@ -447,7 +448,8 @@ describe('engine project-manifest writes take the project lock', () => {
     ], { cwd: dir });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
-    const exit = new Promise((resolve) => child.on('exit', resolve));
+    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
+    const exit = new Promise((resolve) => child.on('close', resolve));
 
     const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
     assert.strictEqual(raced, 'waiting', 'create must wait on a live project lock');
