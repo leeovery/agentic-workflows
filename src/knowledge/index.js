@@ -224,6 +224,19 @@ function lockFilePath() {
   return path.join(knowledgeDir(), '.lock');
 }
 
+// Resolve a stored or relative artifact path against the PROJECT ROOT, never
+// process.cwd(). Every artifact path that flows through the store — pending-
+// queue entries, manifest-discovered imports/seeds/analysis/discovery files,
+// and the source path handed to a single-file index — is recorded relative to
+// the project root. Resolving them against cwd breaks every KB command
+// invoked from a subdirectory: the pending queue evicts live items as "no
+// longer exists" and bulk discovery silently skips unindexed artifacts.
+// path.resolve short-circuits on an already-absolute input, so paths the
+// engine returns absolute (manifest `resolve`) pass through unchanged.
+function resolveArtifactPath(p) {
+  return path.resolve(config.findProjectRoot(), p);
+}
+
 // ---------------------------------------------------------------------------
 // Retry wrapper — single-layer retry for all operations
 // ---------------------------------------------------------------------------
@@ -278,6 +291,22 @@ async function withRetry(fn, opts) {
  * Derive identity fields from a workflow artifact file path.
  * Returns { work_unit, phase, topic } or throws on invalid path.
  */
+// Reject a work-unit or topic segment that contains a dot. deriveIdentity's
+// `[^/]+` captures accept dots, but a dotted name is corrosive downstream: it
+// is indexable once, then unreachable forever. Bulk discovery addresses topics
+// as `wu.phase.topic` (manifest resolve), cmdStatus splits the same string on
+// `.`, and cmdRemove probes `project.work_units.<wu>` — all break on an
+// interior dot. Aligns with the engine's dot-free path rules.
+function rejectDottedSegment(kind, name) {
+  if (typeof name === 'string' && name.includes('.')) {
+    throw new UserError(
+      `Invalid ${kind} name "${name}": dots are not allowed. Work-unit and topic ` +
+        'names double as manifest dot-path and knowledge-identity segments, so a ' +
+        'dot leaves the artifact indexable but unreachable by status, remove, and discovery.'
+    );
+  }
+}
+
 function deriveIdentity(filePath) {
   // Normalise to forward slashes for pattern matching.
   const norm = filePath.replace(/\\/g, '/');
@@ -292,6 +321,7 @@ function deriveIdentity(filePath) {
     if (workUnit === '.' || workUnit === '..' || workUnit.startsWith('.')) {
       throw new UserError(`Invalid work unit name: "${workUnit}"`);
     }
+    rejectDottedSegment('work unit', workUnit);
     const fileMatch = /^([^/]+)\.md$/.exec(rest);
     if (!fileMatch) {
       throw new UserError(
@@ -332,6 +362,7 @@ function deriveIdentity(filePath) {
   if (workUnit === '.' || workUnit === '..' || workUnit.startsWith('.')) {
     throw new UserError(`Invalid work unit name: "${workUnit}"`);
   }
+  rejectDottedSegment('work unit', workUnit);
 
   // Validate indexed phase.
   if (!INDEXED_PHASES.includes(phase)) {
@@ -409,6 +440,7 @@ function deriveIdentity(filePath) {
   if (topic === '.' || topic === '..' || topic.startsWith('.')) {
     throw new UserError(`Invalid topic name: "${topic}"`);
   }
+  rejectDottedSegment('topic', topic);
 
   return { workUnit, phase, topic };
 }
@@ -431,6 +463,39 @@ function readWorkType(workUnit) {
 // ---------------------------------------------------------------------------
 // Provider state resolution
 // ---------------------------------------------------------------------------
+
+/**
+ * Distinguish "provider configured but its API key could not be resolved"
+ * from "no provider configured at all". Both leave config.resolveProvider()
+ * returning null, but they demand opposite remedies. cfg.provider is the
+ * tell: it's the provider NAME from config, set independently of whether the
+ * key resolved. A provider that carries a key env var (openai) with no
+ * resolved provider object means the key is missing — NOT that the store's
+ * provider changed. Telling the two apart matters because the "changed —
+ * rebuild" advice would discard the store's real embeddings for a keyword-only
+ * rebuild when all that was actually needed was the key.
+ */
+function providerKeyUnresolved(cfg) {
+  return !!(cfg && cfg.provider && config.PROVIDER_ENV_VARS[cfg.provider]);
+}
+
+/**
+ * Build the UserError shown when a keyed provider is configured but its key
+ * is unresolvable. Points at the env var and the key-only setup detour, and
+ * explicitly warns against `rebuild` (which would destroy embeddings).
+ */
+function keyUnresolvedError(cfg) {
+  const envVar = config.PROVIDER_ENV_VARS[cfg.provider];
+  const keySource = envVar ? `export ${envVar}=...` : 'set the provider API key';
+  return new UserError(
+    `Embedding provider "${cfg.provider}" is configured, but its API key could not be resolved — ` +
+      'the knowledge base fell back to keyword-only for this command.\n' +
+      "  The store's embeddings are intact. Do NOT run `knowledge rebuild` — that discards them.\n" +
+      '  Provide the key and retry:\n' +
+      `    • ${keySource}            (session or CI), or\n` +
+      '    • knowledge setup --key-only   (saves it to credentials.json)'
+  );
+}
 
 /**
  * Check provider state against metadata.
@@ -476,7 +541,13 @@ function resolveProviderState(metadata, cfg, provider) {
     );
   }
 
-  // Case 3: metadata has provider but current config does not.
+  // Case 3: metadata has provider but resolveProvider() gave us none. Two
+  // very different causes — a keyed provider whose key is missing (fix with
+  // the key, never a rebuild) vs. a config that genuinely dropped its
+  // provider. providerKeyUnresolved distinguishes them.
+  if (providerKeyUnresolved(cfg)) {
+    throw keyUnresolvedError(cfg);
+  }
   throw new UserError(
     'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
       `  Store was indexed with: provider=${metaProvider}, model=${metaModel}\n` +
@@ -496,8 +567,10 @@ async function cmdIndex(args, options, cfg, provider) {
 
   const sourceFile = args[0];
 
-  // Validate file exists.
-  const absSource = path.resolve(sourceFile);
+  // Validate file exists. Anchor at the project root, not cwd, so a source
+  // path recorded relative to the project resolves the same from any
+  // subdirectory (see resolveArtifactPath).
+  const absSource = resolveArtifactPath(sourceFile);
   if (!fs.existsSync(absSource)) {
     process.stderr.write(`File not found: ${absSource}\n`);
     process.exit(1);
@@ -507,10 +580,36 @@ async function cmdIndex(args, options, cfg, provider) {
   const identity = deriveIdentity(sourceFile);
 
   // Index with retry wrapper.
-  const chunkCount = await withRetry(
-    () => indexSingleFile(sourceFile, identity, cfg, provider),
-    { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
-  );
+  let chunkCount;
+  try {
+    chunkCount = await withRetry(
+      () => indexSingleFile(sourceFile, identity, cfg, provider),
+      { maxAttempts: 3, backoff: DEFAULT_RETRY_BACKOFF }
+    );
+  } catch (err) {
+    // Permanent failures (validation UserError, bad/expired key AuthError,
+    // programming errors) will fail identically on every retry — surface them
+    // now with a non-zero exit rather than clogging the pending queue. Only a
+    // TRANSIENT failure that exhausted its retries (network, lock timeout,
+    // store I/O) is queued for automatic retry on the next index call — the
+    // same durability contract cmdIndexBulk gives, which phase-completion (the
+    // primary single-file caller) previously never got.
+    const isPermanent =
+      err instanceof UserError ||
+      err instanceof AuthError ||
+      err instanceof TypeError ||
+      err instanceof ReferenceError ||
+      err instanceof SyntaxError ||
+      err instanceof RangeError;
+    if (isPermanent) throw err;
+
+    await addToPendingQueue(sourceFile, err.message);
+    process.stderr.write(
+      `Failed to index ${sourceFile} after 3 attempts: ${err.message}. Added to pending queue.\n`
+    );
+    if (err.stack) process.stderr.write(err.stack + '\n');
+    return;
+  }
 
   process.stdout.write(`Indexed ${chunkCount} chunks from ${sourceFile}\n`);
 
@@ -526,15 +625,27 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
   // Read work_type from manifest.
   const workType = readWorkType(identity.workUnit);
 
-  // Load chunking config.
-  const chunkConfigPath = path.join(__dirname, '..', 'chunking', identity.phase + '.json');
+  // Load chunking config. In the bundle, __dirname is
+  // skills/workflow-knowledge/scripts/, whose sibling ../chunking/ ships the
+  // configs. In source mode __dirname is src/knowledge/, whose sibling
+  // ../chunking/ does NOT exist — fall back to the shipped skills directory so
+  // the dev CLI can index too (mirrors resolveEngineJs's dual-candidate probe).
+  let chunkConfigPath = path.join(__dirname, '..', 'chunking', identity.phase + '.json');
+  if (!fs.existsSync(chunkConfigPath)) {
+    const shipped = path.join(
+      __dirname, '..', '..', 'skills', 'workflow-knowledge', 'chunking', identity.phase + '.json'
+    );
+    if (fs.existsSync(shipped)) chunkConfigPath = shipped;
+  }
   if (!fs.existsSync(chunkConfigPath)) {
     throw new UserError(`Chunking config not found: ${chunkConfigPath}`);
   }
   const chunkConfig = JSON.parse(fs.readFileSync(chunkConfigPath, 'utf8'));
 
-  // Read and chunk the source file.
-  const absSource = path.resolve(sourceFile);
+  // Read and chunk the source file. Anchor at the project root so a source
+  // path recorded relative to the project (bulk discovery, pending queue)
+  // reads correctly regardless of the invoking cwd.
+  const absSource = resolveArtifactPath(sourceFile);
   const content = fs.readFileSync(absSource, 'utf8');
   const chunks = chunker.chunk(content, chunkConfig);
 
@@ -788,7 +899,7 @@ function discoverArtifacts() {
         try {
           const raw = runManifest(['resolve', `${wuName}.${phase}.${topicName}`]);
           const filePath = raw.trim();
-          if (filePath && fs.existsSync(path.resolve(filePath))) {
+          if (filePath && fs.existsSync(resolveArtifactPath(filePath))) {
             items.push({ file: filePath, workUnit: wuName, phase, topic: topicName });
           }
         } catch (err) {
@@ -828,7 +939,7 @@ function discoverArtifacts() {
         if (seenImportTopics.has(base)) continue;
         seenImportTopics.add(base);
         const filePath = path.posix.join('.workflows', wuName, rel);
-        if (!fs.existsSync(path.resolve(filePath))) continue;
+        if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
         items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
       }
     }
@@ -852,7 +963,7 @@ function discoverArtifacts() {
         if (seenSeedTopics.has(base)) continue;
         seenSeedTopics.add(base);
         const filePath = path.posix.join('.workflows', wuName, rel);
-        if (!fs.existsSync(path.resolve(filePath))) continue;
+        if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
         items.push({ file: filePath, workUnit: wuName, phase: 'seeds', topic: base });
       }
     }
@@ -861,7 +972,7 @@ function discoverArtifacts() {
     // work unit; discover by existence on disk.
     for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
       const filePath = path.posix.join('.workflows', wuName, '.state', `${basename}.md`);
-      if (!fs.existsSync(path.resolve(filePath))) continue;
+      if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
       items.push({ file: filePath, workUnit: wuName, phase: 'analysis', topic });
     }
 
@@ -873,7 +984,7 @@ function discoverArtifacts() {
       const sessDir = path.posix.join('.workflows', wuName, 'discovery', 'sessions');
       let sessFiles = [];
       try {
-        sessFiles = fs.readdirSync(path.resolve(sessDir)).filter((f) => /^session-\d+\.md$/.test(f));
+        sessFiles = fs.readdirSync(resolveArtifactPath(sessDir)).filter((f) => /^session-\d+\.md$/.test(f));
       } catch (_) {
         sessFiles = [];
       }
@@ -1048,9 +1159,11 @@ async function processPendingQueue(cfg, provider, limit) {
       continue;
     }
 
-    const absFile = path.resolve(item.file);
+    const absFile = resolveArtifactPath(item.file);
     if (!fs.existsSync(absFile)) {
-      // File no longer exists — remove from queue.
+      // File no longer exists — remove from queue. Anchored at the project
+      // root so a pending entry (stored relative to the project) is not
+      // wrongly evicted when the CLI runs from a subdirectory.
       process.stderr.write(`Pending item ${item.file} no longer exists. Removing from queue.\n`);
       await removePendingItem(item.file);
       continue;
@@ -1507,6 +1620,11 @@ function resolveQueryMode(metadata, cfg, provider) {
 
   // Store has vectors — check provider compatibility.
   if (!provider) {
+    // A keyed provider with an unresolved key looks identical to "no provider"
+    // here, but the remedy is the key, not a store-destroying rebuild.
+    if (providerKeyUnresolved(cfg)) {
+      throw keyUnresolvedError(cfg);
+    }
     // Config has no provider but store has vectors — mismatch.
     throw new UserError(
       'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
@@ -1722,6 +1840,16 @@ async function cmdCheck(/* args, options, cfg, provider */) {
   try {
     await store.loadStore(sp);
   } catch (_) {
+    process.stdout.write('not-ready\n');
+    return;
+  }
+
+  // Condition 4: metadata.json exists. A store WITHOUT metadata is the
+  // partial state `query` refuses ("metadata.json missing but store exists")
+  // and that setup/setup-forms refuse toward rebuild — so `check` must not
+  // report it ready. Without this, boot's gate would pass and the failure
+  // would only surface later on the first query.
+  if (!fs.existsSync(metadataPath())) {
     process.stdout.write('not-ready\n');
     return;
   }
@@ -2005,6 +2133,10 @@ async function cmdRebuild(_args, options, cfg, provider) {
       : (cfg && cfg.dimensions) || KEYWORD_ONLY_DIMENSIONS;
     const emptyDb = await store.createStore(dims);
     await store.saveStore(emptyDb, sp);
+    // pending[] resets to empty and pending_removals is deliberately dropped:
+    // rebuild reindexes every artifact from scratch, so a queued index retry
+    // is redundant and a queued removal targets chunks that no longer exist in
+    // the fresh store. Both queues are meaningless against the rebuilt index.
     store.writeMetadata(mp, {
       provider: provider ? cfg.provider : null,
       model: provider ? provider.model() : null,

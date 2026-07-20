@@ -76,6 +76,30 @@ class OpenAIEmbeddingsEngine {
   }
 
   /**
+   * Validate a returned embedding is a numeric vector of the CONFIGURED width.
+   * The response-length checks in embedBatch only count vectors, not their
+   * width — a model whose native output differs from the configured
+   * `dimensions` returns the right COUNT of wrong-WIDTH vectors, which then
+   * surfaces as a raw Orama insert error mid-index (or, for embed(), silently
+   * stores a mis-sized vector). Catch it here with a clean provider-level
+   * error naming the mismatch. Skipped only when dimensions is not a positive
+   * integer (nothing to validate against).
+   * @param {*} vec
+   * @param {string} [where] contextual suffix, e.g. "at index 3"
+   */
+  _assertVectorWidth(vec, where) {
+    if (!Number.isInteger(this._dimensions) || this._dimensions <= 0) return;
+    if (!Array.isArray(vec) || vec.length !== this._dimensions) {
+      const got = Array.isArray(vec) ? `width ${vec.length}` : `a non-array (${typeof vec})`;
+      throw new Error(
+        `${this._errorContext.label} returned ${got}${where ? ' ' + where : ''}, ` +
+          `expected width ${this._dimensions}. The configured \`dimensions\` does not match ` +
+          "the model's native output — set dimensions to the model's real width and rebuild."
+      );
+    }
+  }
+
+  /**
    * Build the request body, including `dimensions` only when the policy
    * allows it.
    * @param {string|string[]} input
@@ -100,7 +124,9 @@ class OpenAIEmbeddingsEngine {
     if (!res.data || res.data.length === 0) {
       throw new Error(`${this._errorContext.label} embed returned no data (empty response)`);
     }
-    return res.data[0].embedding;
+    const vec = res.data[0].embedding;
+    this._assertVectorWidth(vec);
+    return vec;
   }
 
   /**
@@ -128,7 +154,10 @@ class OpenAIEmbeddingsEngine {
       }
       // OpenAI returns data sorted by index — ensure correct order.
       const sorted = [...res.data].sort((a, b) => a.index - b.index);
-      return sorted.map((d) => d.embedding);
+      return sorted.map((d, i) => {
+        this._assertVectorWidth(d.embedding, `at index ${i}`);
+        return d.embedding;
+      });
     }
 
     // Chunk into batches of MAX_BATCH_SIZE.
@@ -143,6 +172,7 @@ class OpenAIEmbeddingsEngine {
       }
       const sorted = [...res.data].sort((a, b) => a.index - b.index);
       for (let i = 0; i < sorted.length; i++) {
+        this._assertVectorWidth(sorted[i].embedding, `at index ${offset + i}`);
         results[offset + i] = sorted[i].embedding;
       }
     }

@@ -32,6 +32,10 @@ FAKE_HOME=$(mktemp -d)
 export HOME="$FAKE_HOME"
 trap 'rm -rf "$FAKE_HOME"' EXIT
 
+# Also unset a real OPENAI_API_KEY so key-resolution tests see "no key" rather
+# than a developer/CI-provided one leaking in via the env-wins precedence.
+unset OPENAI_API_KEY 2>/dev/null || true
+
 # Create a temp dir as the project root for each test group.
 TEST_ROOT=""
 setup_project() {
@@ -2928,6 +2932,219 @@ assert_eq "clear engine error surfaces" "true" \
 assert_eq "no stack frames in error" "false" \
   "$(echo "$output" | grep -qE '^    at ' && echo true || echo false)"
 rm -rf "$STANDALONE"
+teardown_project
+
+# ============================================================================
+# ROBUSTNESS FIXES — subdir path anchoring, single-file queueing,
+# key-unresolved diagnosis, dotted-name rejection
+# ============================================================================
+
+echo ""
+echo "=== Robustness Fix Tests ==="
+
+# --- Test R4: Pending queue survives a subdirectory invocation ---
+# Pre-fix, processPendingQueue resolved item.file against process.cwd(), so
+# running any index from a project subdirectory made every pending entry look
+# "no longer exists" and evicted valid items unindexed. Now anchored at the
+# project root.
+echo "Test R4: Pending queue not evicted from a subdirectory"
+setup_project
+create_work_unit "sub-pending" "feature" "SubPending"
+write_stub_config
+create_discussion_file "sub-pending" "topic-a"
+create_discussion_file "sub-pending" "topic-b"
+run_kb index .workflows/sub-pending/discussion/topic-a.md >/dev/null 2>&1
+# Inject topic-b as a pending item, recorded relative to the project root.
+node -e '
+  const fs = require("fs");
+  const mp = process.argv[1];
+  const m = JSON.parse(fs.readFileSync(mp, "utf8"));
+  m.pending = [{ file: ".workflows/sub-pending/discussion/topic-b.md", failed_at: new Date().toISOString(), error: "simulated", attempts: 1 }];
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + "\n");
+' "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+# Re-index topic-a from a nested subdirectory (absolute arg so the trigger index
+# is itself cwd-independent) — its success runs the pending catch-up.
+cd "$TEST_ROOT/.workflows/sub-pending/discussion"
+suberr=$(node "$BUNDLE" index "$TEST_ROOT/.workflows/sub-pending/discussion/topic-a.md" 2>&1 >/dev/null)
+cd "$TEST_ROOT"
+assert_eq "pending item not reported as missing from subdir" "false" \
+  "$(echo "$suberr" | grep -q 'no longer exists' && echo true || echo false)"
+qb=$(run_kb query "content" --topic topic-b 2>&1)
+assert_eq "pending topic-b was re-indexed, not evicted" "true" \
+  "$(echo "$qb" | grep -q 'discussion | sub-pending/topic-b' && echo true || echo false)"
+teardown_project
+
+# --- Test R5: Bulk discovery finds imports from a subdirectory ---
+# Pre-fix, discoverArtifacts' existsSync checks anchored at cwd, so bulk index
+# from a subdirectory silently skipped every import/seed/analysis/discovery
+# artifact. Now root-anchored.
+echo "Test R5: Bulk discovery from a subdirectory"
+setup_project
+create_work_unit "sub-bulk" "epic" "SubBulk"
+write_stub_config
+create_import_file "sub-bulk" "seed-conversation"
+node "$ENGINE_JS" manifest push sub-bulk imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
+cd "$TEST_ROOT/.workflows/sub-bulk/imports"
+subout=$(node "$BUNDLE" index 2>&1)
+cd "$TEST_ROOT"
+assert_eq "bulk from subdir discovers the import" "true" \
+  "$(echo "$subout" | grep -q 'imports/seed-conversation.md' && echo true || echo false)"
+q=$(run_kb query "OAuth" 2>&1)
+assert_eq "subdir-discovered import is indexed" "true" \
+  "$(echo "$q" | grep -q 'imports | sub-bulk/seed-conversation' && echo true || echo false)"
+teardown_project
+
+# --- Test R6: Single-file transient failure lands in the pending queue ---
+# Pre-fix, cmdIndex let retry-exhaustion propagate with no pending entry, so a
+# transient failure (network/lock/store I/O) was lost — contradicting the
+# documented pending-queue contract. Now a non-permanent failure is queued for
+# automatic retry, matching cmdIndexBulk. A corrupt store forces a NON-UserError
+# (retryable) failure inside indexSingleFile.
+echo "Test R6: Single-file transient failure is queued"
+setup_project
+create_work_unit "queue-wu" "feature" "Queue"
+write_stub_config
+create_discussion_file "queue-wu" "queue-wu"
+printf 'garbage-not-msgpack' > "$TEST_ROOT/.workflows/.knowledge/store.msp"
+set +e
+out=$(run_kb index .workflows/queue-wu/discussion/queue-wu.md 2>&1)
+exit_code=$?
+set -e
+assert_eq "transient failure exits 0 (graceful, queued)" "0" "$exit_code"
+assert_eq "reports the file was queued" "true" \
+  "$(echo "$out" | grep -q 'Added to pending queue' && echo true || echo false)"
+pend=$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String((m.pending||[]).length))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")
+assert_eq "pending has the failed file" "1" "$pend"
+teardown_project
+
+# --- Test R6b: Permanent single-file failure still surfaces (not queued) ---
+# The queueing must NOT swallow permanent validation errors — a provider
+# mismatch is a UserError and must still exit non-zero with its message.
+echo "Test R6b: Permanent failure still exits non-zero"
+setup_project
+create_work_unit "perm-wu" "feature" "Perm"
+write_stub_config
+create_discussion_file "perm-wu" "perm-wu"
+run_kb index .workflows/perm-wu/discussion/perm-wu.md >/dev/null 2>&1
+node -e "
+  const fs = require('fs');
+  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.provider = 'openai'; m.model = 'text-embedding-3-small'; m.dimensions = 1536;
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+"
+set +e
+permout=$(run_kb index .workflows/perm-wu/discussion/perm-wu.md 2>&1)
+perm_exit=$?
+set -e
+assert_eq "permanent failure exits non-zero" "true" "$([ "$perm_exit" -ne 0 ] && echo true || echo false)"
+assert_eq "permanent failure not swallowed by the queue" "false" \
+  "$(echo "$permout" | grep -q 'Added to pending queue' && echo true || echo false)"
+teardown_project
+
+# --- Test R7: Configured-provider-without-key is diagnosed as a missing key ---
+# Pre-fix, a store built with openai + an unresolvable key reported "Provider/
+# model changed — run knowledge rebuild", which is false and destructive (a
+# keyword-only rebuild discards the embeddings). Now it points at the key.
+echo "Test R7: Missing key is not misdiagnosed as a provider change"
+setup_project
+create_work_unit "keyless-wu" "feature" "Keyless"
+write_stub_config
+create_discussion_file "keyless-wu" "keyless-wu"
+run_kb index .workflows/keyless-wu/discussion/keyless-wu.md >/dev/null 2>&1
+# Rewrite metadata to claim an openai store, then point config at openai with
+# no resolvable key (HOME is isolated; OPENAI_API_KEY is unset).
+node -e "
+  const fs = require('fs');
+  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.provider = 'openai'; m.model = 'text-embedding-3-small'; m.dimensions = 1536;
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+"
+cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
+CONF
+qout=$(run_kb query "keyless" 2>&1 || true)
+assert_eq "query message names the missing key" "true" \
+  "$(echo "$qout" | grep -q 'could not be resolved' && echo true || echo false)"
+assert_eq "query message points at OPENAI_API_KEY" "true" \
+  "$(echo "$qout" | grep -q 'OPENAI_API_KEY' && echo true || echo false)"
+assert_eq "query message points at setup --key-only" "true" \
+  "$(echo "$qout" | grep -q 'key-only' && echo true || echo false)"
+assert_eq "query does NOT misdiagnose as a provider change" "false" \
+  "$(echo "$qout" | grep -q 'changed since last index' && echo true || echo false)"
+# The index path (resolveProviderState case 3) must agree.
+iout=$(run_kb index .workflows/keyless-wu/discussion/keyless-wu.md 2>&1 || true)
+assert_eq "index message names the missing key" "true" \
+  "$(echo "$iout" | grep -q 'could not be resolved' && echo true || echo false)"
+assert_eq "index does NOT misdiagnose as a provider change" "false" \
+  "$(echo "$iout" | grep -q 'changed since last index' && echo true || echo false)"
+teardown_project
+
+# --- Test R8: Dotted work-unit / topic names rejected at index time ---
+# Pre-fix, deriveIdentity accepted dots; the artifact indexed once but was
+# unreachable by status/remove/discovery (all split identity on ".").
+echo "Test R8: Dotted work-unit name rejected"
+setup_project
+create_work_unit "dot.unit" "feature" "Dotted"
+write_stub_config
+create_discussion_file "dot.unit" "dot.unit"
+exit_code=0
+dotout=$(run_kb index .workflows/dot.unit/discussion/dot.unit.md 2>&1 || true)
+run_kb index .workflows/dot.unit/discussion/dot.unit.md >/dev/null 2>&1 || exit_code=$?
+assert_eq "dotted work unit exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "explains dots are not allowed" "true" \
+  "$(echo "$dotout" | grep -q 'dots are not allowed' && echo true || echo false)"
+teardown_project
+
+echo "Test R8b: Dotted topic name rejected"
+setup_project
+create_work_unit "cleanunit" "feature" "Clean"
+write_stub_config
+mkdir -p "$TEST_ROOT/.workflows/cleanunit/discussion"
+printf '# Heading\n\nSome content that is long enough to chunk.\n' > "$TEST_ROOT/.workflows/cleanunit/discussion/a.b.md"
+exit_code=0
+dotout2=$(run_kb index .workflows/cleanunit/discussion/a.b.md 2>&1 || true)
+run_kb index .workflows/cleanunit/discussion/a.b.md >/dev/null 2>&1 || exit_code=$?
+assert_eq "dotted topic exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
+assert_eq "dotted topic explains dots are not allowed" "true" \
+  "$(echo "$dotout2" | grep -q 'dots are not allowed' && echo true || echo false)"
+teardown_project
+
+# --- Test R9: check reports not-ready for a store missing its metadata ---
+# Pre-fix, cmdCheck stopped at "store loads" and reported ready even when
+# metadata.json was absent — the exact partial state `query` then refuses.
+echo "Test R9: check not-ready when metadata is missing"
+setup_project
+create_work_unit "meta-wu" "feature" "Meta"
+write_stub_config
+create_discussion_file "meta-wu" "meta-wu"
+run_kb index .workflows/meta-wu/discussion/meta-wu.md >/dev/null 2>&1
+baseline=$(run_kb check 2>/dev/null | tr -d '\n')
+assert_eq "baseline is ready" "ready" "$baseline"
+rm -f "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+after=$(run_kb check 2>/dev/null | tr -d '\n')
+assert_eq "flips to not-ready without metadata" "not-ready" "$after"
+teardown_project
+
+# --- Test R10: source-mode dev CLI indexes via the chunking-config fallback ---
+# Pre-fix, indexSingleFile resolved __dirname/../chunking, which exists in the
+# bundle but NOT under src/ — so the source CLI could not index at all. Now it
+# falls back to the shipped skills/workflow-knowledge/chunking directory.
+echo "Test R10: source-mode CLI indexes via the chunking fallback"
+SRC="$SCRIPT_DIR/../../src/knowledge/index.js"
+setup_project
+create_work_unit "src-wu" "feature" "Src"
+write_stub_config
+create_discussion_file "src-wu" "src-wu"
+cd "$TEST_ROOT"
+srcout=$(node "$SRC" index .workflows/src-wu/discussion/src-wu.md 2>&1 || true)
+srcexit=0
+node "$SRC" index .workflows/src-wu/discussion/src-wu.md >/dev/null 2>&1 || srcexit=$?
+cd "$TEST_ROOT"
+assert_eq "source CLI indexes successfully" "0" "$srcexit"
+assert_eq "source CLI reports chunks" "true" \
+  "$(echo "$srcout" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
 # --- Summary ---
