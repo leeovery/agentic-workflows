@@ -34,7 +34,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs query "<framing 1>"
 
 #### If the command exits with a non-zero code
 
-Load **[knowledge-usage.md](knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When D returns:
+→ Load **[knowledge-usage.md](knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When D returns:
 
 - **If the user chose `skip`** — no results to interpret. → Return to caller.
 - **If a retry succeeded** — results are now available. → Proceed to **C. Interpret the results**.
