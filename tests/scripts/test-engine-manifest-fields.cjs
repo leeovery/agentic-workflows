@@ -146,6 +146,19 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     assert.match(res.stderr, /^Error: Invalid phase "cooking"/);
     assert.ok(!res.stderr.includes('"ok"'));
   });
+
+  it('a reader closing the pipe early (| head -1) exits cleanly — no EPIPE stack', () => {
+    // A large multi-line read so `head -1` closes stdout mid-write.
+    const big = { name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} };
+    for (let i = 0; i < 5000; i++) big['field' + i] = 'value ' + i;
+    const wuDir = path.join(dir, '.workflows', 'auth');
+    fs.mkdirSync(wuDir, { recursive: true });
+    fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(big, null, 2) + '\n');
+
+    const res = spawnSync('sh', ['-c', `node '${ENGINE}' manifest get auth | head -1`], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(res.stdout, '{\n');
+    assert.doesNotMatch(res.stderr, /EPIPE|ERR_STREAM|engine\.cjs:/);
+  });
 });
 
 describe('engine manifest — mutations answer with the engine JSON contract', () => {
@@ -192,6 +205,40 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.match(runFails(dir, ['set', 'ghost', 'status', 'completed']).error, /Work unit "ghost" not found/);
   });
 
+  it('a typed field refuses NON-string values — number, boolean, ~→null, object bypass nothing', () => {
+    writeWorkUnit(dir, 'auth', 'feature');
+    // The JSON-parsed value is a number/boolean/null/object here, not a string:
+    // the guard must refuse each just as it refuses a bad string.
+    assert.match(runFails(dir, ['set', 'auth', 'status', '123']).error, /Invalid status 123\b/);
+    assert.match(runFails(dir, ['set', 'auth', 'status', 'true']).error, /Invalid status true\b/);
+    assert.match(runFails(dir, ['set', 'auth', 'status', '~']).error, /Invalid status null\b/);
+    assert.match(runFails(dir, ['set', 'auth', 'work_type', '42']).error, /Invalid work_type 42\b/);
+    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', '5']).error, /Invalid gate mode 5\b/);
+    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'fix_gate_mode', '{}']).error, /Invalid gate mode \{\}/);
+    assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', '3']).error, /Invalid status 3 for phase "discussion"/);
+    // None of the refused writes touched the manifest.
+    const m = readWorkUnit(dir, 'auth');
+    assert.strictEqual(m.status, 'in-progress');
+    assert.strictEqual(m.work_type, 'feature');
+  });
+
+  it('a NON-string status inside a batch fails the whole batch — nothing written', () => {
+    writeWorkUnit(dir, 'auth', 'feature');
+    const err = runFails(dir, ['set', 'auth', 'description', 'updated', 'status=99']);
+    assert.match(err.error, /Invalid status 99\b/);
+    assert.strictEqual(readWorkUnit(dir, 'auth').description, 'Fixture', 'batch must be all-or-nothing');
+  });
+
+  it('UNtyped fields still accept non-string values — counters, ~→null pointers, task maps', () => {
+    writeWorkUnit(dir, 'auth', 'feature');
+    assert.strictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'fix_attempts', '3']).set.fix_attempts, 3);
+    assert.strictEqual(runJson(dir, ['set', 'auth.implementation.auth', 'current_task', '~']).set.current_task, null);
+    assert.deepStrictEqual(runJson(dir, ['set', 'auth.planning.auth', 'task_map', '{"a":"b"}']).set.task_map, { a: 'b' });
+    const item = readWorkUnit(dir, 'auth').phases.implementation.items.auth;
+    assert.strictEqual(item.fix_attempts, 3);
+    assert.strictEqual(item.current_task, null);
+  });
+
   it('push: appends (creating the array) and reports the new length', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     const first = runJson(dir, ['push', 'auth', 'tags', 'v1']);
@@ -232,6 +279,22 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     const res = runJson(dir, ['delete', 'auth', 'extra.a']);
     assert.deepStrictEqual(res, { ok: true, path: 'auth', field: 'extra.a', deleted: true });
     assert.match(runFails(dir, ['delete', 'auth', 'extra.a']).error, /not found/);
+  });
+
+  it('delete on an array index splices — no null hole left behind', () => {
+    writeWorkUnit(dir, 'auth', 'feature', { imports: ['a.md', { path: 'b.md' }, 'c.md'] });
+    const res = runJson(dir, ['delete', 'auth', 'imports.0']);
+    assert.deepStrictEqual(res, { ok: true, path: 'auth', field: 'imports.0', deleted: true });
+    // The element is gone AND the array closed up — the classic `delete arr[0]`
+    // would leave [null, {...}, "c.md"].
+    assert.deepStrictEqual(readWorkUnit(dir, 'auth').imports, [{ path: 'b.md' }, 'c.md']);
+  });
+
+  it('delete on an out-of-range or non-numeric array segment is a miss, not a hole', () => {
+    writeWorkUnit(dir, 'auth', 'feature', { imports: ['a.md', 'b.md'] });
+    assert.match(runFails(dir, ['delete', 'auth', 'imports.5']).error, /not found/);
+    assert.match(runFails(dir, ['delete', 'auth', 'imports.foo']).error, /not found/);
+    assert.deepStrictEqual(readWorkUnit(dir, 'auth').imports, ['a.md', 'b.md']);
   });
 
   it('project routing: set/push/pull/delete against the project manifest', () => {

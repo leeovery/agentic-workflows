@@ -237,6 +237,17 @@ describe('engine topic start', () => {
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
 
+  it('rejects starting a superseded item — supersession is terminal, superseded_by preserved', () => {
+    engine(dir, ['topic', 'supersede', 'payments', 'research', 'auth-flow', '--by', 'fee-model']);
+    const err = engineFails(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']);
+    assert.match(err.error, /is superseded \(by "fee-model"\) — supersession is terminal/);
+    // start must NOT resurrect the item — that would leave superseded_by dangling
+    // on an in-progress item, a state the render layer promises never to show.
+    const item = readManifest(dir, 'payments').phases.research.items['auth-flow'];
+    assert.strictEqual(item.status, 'superseded');
+    assert.strictEqual(item.superseded_by, 'fee-model');
+  });
+
   it('rejects unknown work unit, phase, and missing args — loud and specific', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
@@ -299,6 +310,17 @@ describe('engine topic complete', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).error, /is cancelled — reactivate it instead/);
     assert.match(engineFails(dir, ['topic', 'complete', 'payments']).error, /Usage: engine topic complete/);
+  });
+
+  it('rejects completing a superseded item — supersession is terminal, superseded_by preserved', () => {
+    engine(dir, ['topic', 'supersede', 'payments', 'research', 'auth-flow', '--by', 'fee-model']);
+    const err = engineFails(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
+    assert.match(err.error, /is superseded \(by "fee-model"\) — supersession is terminal/);
+    // complete must NOT overwrite the terminal status and leave superseded_by
+    // dangling on a completed item.
+    const item = readManifest(dir, 'payments').phases.research.items['auth-flow'];
+    assert.strictEqual(item.status, 'superseded');
+    assert.strictEqual(item.superseded_by, 'fee-model');
   });
 
   it('round-trips with start: start → complete → resuming via start is still rejected', () => {
@@ -851,6 +873,19 @@ describe('engine inbox archive / restore / delete', () => {
     ]);
     assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.match(engineFails(dir, ['inbox', 'archive']).error, /Usage: engine inbox/);
+  });
+
+  it('refuses a duplicate path in the set before any move — no half-applied state', () => {
+    const err = engineFails(dir, [
+      'inbox', 'archive',
+      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+    ]);
+    assert.match(err.error, /duplicate inbox path/);
+    // The one real file never moved — the transaction refused up front.
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
   });
 });
 

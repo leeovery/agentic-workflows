@@ -180,6 +180,34 @@ assert_exit_nonzero() {
     fi
 }
 
+# Assert the EXACT exit code, not merely non-zero — the read contract splits an
+# expected miss (exit 2) from a real error (exit 1), and mutations always fail
+# exit 1. Pinning the code distinctly means a regression collapsing 2 into 1
+# (or vice-versa) fails here instead of passing a lax non-zero check.
+assert_exit_code() {
+    local expected="$1"
+    local description="$2"
+    shift 2
+
+    TESTS_RUN=$((TESTS_RUN + 1))
+
+    cd "$TEST_DIR"
+    # `|| actual=$?` keeps a non-zero exit from tripping `set -e` and captures it.
+    local actual=0
+    node "$ENGINE_JS" manifest "$@" >/dev/null 2>&1 || actual=$?
+    if [ "$actual" = "$expected" ]; then
+        echo -e "  ${GREEN}✓${NC} $description"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+        return 0
+    else
+        echo -e "  ${RED}✗${NC} $description"
+        echo -e "    Expected exit: $expected"
+        echo -e "    Actual exit:   $actual"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        return 1
+    fi
+}
+
 # ============================================================================
 # WORK-UNIT DOCUMENT + RETIRED VERBS
 # ============================================================================
@@ -480,7 +508,7 @@ echo ""
 echo -e "${YELLOW}Test: set rejects invalid phase names${NC}"
 setup_fixture
 create_wu phase-check feature "Phase"
-assert_exit_nonzero "Invalid phase rejected" set phase-check.cooking.phase-check status in-progress
+assert_exit_code 1 "Invalid phase rejected" set phase-check.cooking.phase-check status in-progress
 
 echo ""
 
@@ -489,8 +517,8 @@ echo ""
 echo -e "${YELLOW}Test: set rejects invalid phase status${NC}"
 setup_fixture
 create_wu status-check feature "Status"
-assert_exit_nonzero "Invalid status for discussion rejected" set status-check.discussion.status-check status concluded
-assert_exit_nonzero "Invalid status for implementation rejected" set status-check.implementation.status-check status concluded
+assert_exit_code 1 "Invalid status for discussion rejected" set status-check.discussion.status-check status concluded
+assert_exit_code 1 "Invalid status for implementation rejected" set status-check.implementation.status-check status concluded
 
 echo ""
 
@@ -515,7 +543,7 @@ echo ""
 echo -e "${YELLOW}Test: set rejects invalid gate modes${NC}"
 setup_fixture
 create_wu gate-check feature "Gate"
-assert_exit_nonzero "Invalid gate mode rejected" set gate-check.planning.gate-check task_gate_mode manual
+assert_exit_code 1 "Invalid gate mode rejected" set gate-check.planning.gate-check task_gate_mode manual
 
 echo ""
 
@@ -536,7 +564,7 @@ echo ""
 echo -e "${YELLOW}Test: set rejects invalid work_type${NC}"
 setup_fixture
 create_wu wt-check feature "WT"
-assert_exit_nonzero "Invalid work_type on set rejected" set wt-check work_type project
+assert_exit_code 1 "Invalid work_type on set rejected" set wt-check work_type project
 
 echo ""
 
@@ -545,7 +573,7 @@ echo ""
 echo -e "${YELLOW}Test: set rejects invalid work unit status${NC}"
 setup_fixture
 create_wu ws-check feature "WS"
-assert_exit_nonzero "Invalid work unit status rejected" set ws-check status deleted
+assert_exit_code 1 "Invalid work unit status rejected" set ws-check status deleted
 
 echo ""
 
@@ -722,7 +750,7 @@ echo ""
 echo -e "${YELLOW}Test: item creation rejects invalid phase${NC}"
 setup_fixture
 create_wu bad-phase-epic epic "Bad"
-assert_exit_nonzero "Invalid phase in item creation rejected" set bad-phase-epic.cooking.soup status in-progress
+assert_exit_code 1 "Invalid phase in item creation rejected" set bad-phase-epic.cooking.soup status in-progress
 
 echo ""
 
@@ -869,7 +897,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set on missing work unit errors${NC}"
 setup_fixture
-assert_exit_nonzero "Set on nonexistent work unit fails" set ghost status cancelled
+assert_exit_code 1 "Set on nonexistent work unit fails" set ghost status cancelled
 
 echo ""
 
@@ -886,7 +914,7 @@ echo ""
 
 echo -e "${YELLOW}Test: unknown command errors${NC}"
 setup_fixture
-assert_exit_nonzero "Unknown command rejected" destroy everything
+assert_exit_code 1 "Unknown command rejected" destroy everything
 
 echo ""
 
@@ -896,7 +924,7 @@ echo -e "${YELLOW}Test: epic item-level status validation${NC}"
 setup_fixture
 create_wu epic-validation epic "Validate items"
 run_cli set epic-validation.discussion.my-topic status in-progress >/dev/null 2>&1
-assert_exit_nonzero "Invalid item status rejected" set epic-validation.discussion.my-topic status concluded
+assert_exit_code 1 "Invalid item status rejected" set epic-validation.discussion.my-topic status concluded
 
 # Valid item status should work
 run_cli set epic-validation.discussion.my-topic status completed >/dev/null 2>&1
@@ -1001,7 +1029,7 @@ echo ""
 
 echo -e "${YELLOW}Test: exists with no args returns non-zero exit${NC}"
 setup_fixture
-assert_exit_nonzero "exists with no args fails" exists
+assert_exit_code 1 "exists with no args fails" exists
 
 echo ""
 
@@ -1173,7 +1201,7 @@ echo ""
 echo -e "${YELLOW}Test: delete errors on missing path${NC}"
 setup_fixture
 create_wu del-missing feature "Missing"
-assert_exit_nonzero "Delete missing path errors" delete del-missing nonexistent.deep.path
+assert_exit_code 1 "Delete missing path errors" delete del-missing nonexistent.deep.path
 
 echo ""
 
@@ -1181,7 +1209,7 @@ echo ""
 
 echo -e "${YELLOW}Test: delete errors on missing work unit${NC}"
 setup_fixture
-assert_exit_nonzero "Delete missing work unit errors" delete ghost-unit some.field
+assert_exit_code 1 "Delete missing work unit errors" delete ghost-unit some.field
 
 echo ""
 
@@ -1203,7 +1231,7 @@ echo ""
 echo -e "${YELLOW}Test: delete rejects invalid phase${NC}"
 setup_fixture
 create_wu del-badphase feature "Bad phase"
-assert_exit_nonzero "Delete invalid phase errors" delete del-badphase.cooking.del-badphase status
+assert_exit_code 1 "Delete invalid phase errors" delete del-badphase.cooking.del-badphase status
 
 echo ""
 
@@ -1626,7 +1654,7 @@ echo ""
 echo -e "${YELLOW}Test: bogus specification status rejected${NC}"
 setup_fixture
 create_wu bogus-spec epic "Bogus"
-assert_exit_nonzero "Invalid specification status rejected" \
+assert_exit_code 1 "Invalid specification status rejected" \
     set bogus-spec.specification.auth-flow status bogus
 
 echo ""
@@ -2098,6 +2126,37 @@ assert_equals "$exit_code" "1" "Corrupt work-unit JSON → exit 1"
 
 echo ""
 
+# ----------------------------------------------------------------------------
+
+echo -e "${YELLOW}Test: read/mutation exit-code contract, pinned distinctly (miss=2, error/mutation=1)${NC}"
+setup_fixture
+create_wu codes feature "Codes"
+run_cli set codes.planning.codes task_map.codes-1-1 ext-1 >/dev/null 2>&1
+
+# Reads — an EXPECTED miss is exit 2, distinct from a real error's exit 1. A
+# regression collapsing 2 into 1 must fail here, not slip past a non-zero check.
+assert_exit_code 2 "key-of value-not-found → exit 2 (expected miss)" \
+    key-of codes.planning.codes task_map ext-absent
+assert_exit_code 2 "resolve on a missing work unit → exit 2 (expected miss)" \
+    resolve ghost.discussion.ghost
+
+# Reads — a real error is exit 1, never 2.
+assert_exit_code 1 "get on an invalid phase → exit 1 (real error)" \
+    get codes.cooking.codes status
+assert_exit_code 1 "resolve on a non-indexed phase → exit 1 (real error)" \
+    resolve codes.planning.codes
+assert_exit_code 1 "key-of on a non-object path → exit 1 (real error)" \
+    key-of codes work_type feature
+
+# Mutations — always exit 1, whatever the underlying error's own code.
+assert_exit_code 1 "set invalid work_type → exit 1" set codes work_type bogus
+assert_exit_code 1 "set NON-string status → exit 1" set codes status 123
+assert_exit_code 1 "set on a missing work unit → exit 1" set ghost status completed
+assert_exit_code 1 "delete a missing path → exit 1" delete codes nope.deep.path
+assert_exit_code 1 "unknown command → exit 1" destroy everything
+
+echo ""
+
 # ============================================================================
 # DISCOVERY PHASE CROSS-WORK-TYPE TESTS
 # ============================================================================
@@ -2146,9 +2205,9 @@ setup_fixture
 for wt in epic feature bugfix quick-fix cross-cutting; do
     name="${wt//-/_}-disc-guard"
     create_wu "$name" "$wt" "Guard $wt"
-    assert_exit_nonzero "$wt: discovery item status completed rejected" \
+    assert_exit_code 1 "$wt: discovery item status completed rejected" \
         set "$name.discovery.topic-one" status completed
-    assert_exit_nonzero "$wt: discovery item status in-progress rejected" \
+    assert_exit_code 1 "$wt: discovery item status in-progress rejected" \
         set "$name.discovery.topic-one" status in-progress
 done
 

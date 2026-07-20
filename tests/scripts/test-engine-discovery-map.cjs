@@ -328,6 +328,33 @@ describe('engine CLI: discovery-map operations', () => {
       runOk(dir, ['remove', 'payments', 'dismissed-name']);
       assert.deepStrictEqual(readManifest(dir).phases.discovery.dismissed, ['dismissed-name']);
     });
+
+    it('deletes the topic brief file (regenerable) and reports brief_removed', () => {
+      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      fs.mkdirSync(briefsDir, { recursive: true });
+      fs.writeFileSync(path.join(briefsDir, 'fresh-topic.md'), '# Brief: fresh-topic\n');
+      const res = runOk(dir, ['remove', 'payments', 'fresh-topic']);
+      assert.strictEqual(res.brief_removed, true);
+      assert.ok(!fs.existsSync(path.join(briefsDir, 'fresh-topic.md')));
+    });
+
+    it('omits brief_removed when the topic had no brief on disk', () => {
+      const res = runOk(dir, ['remove', 'payments', 'fresh-topic']);
+      assert.ok(!('brief_removed' in res));
+    });
+
+    it('frees the name for a later rename — the deleted brief no longer collides', () => {
+      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      fs.mkdirSync(briefsDir, { recursive: true });
+      fs.writeFileSync(path.join(briefsDir, 'fresh-topic.md'), '# Brief\n');
+      runOk(dir, ['remove', 'payments', 'fresh-topic']);
+      // Renaming another fresh item onto the freed (dismissed) name must NOT hit
+      // the brief-collision guard, since remove deleted the orphan brief.
+      const res = runOk(dir, ['rename', 'payments', 'rich-fresh', 'fresh-topic']);
+      assert.strictEqual(res.op, 'rename');
+      assert.strictEqual(res.matches_dismissed, true);
+      assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'] !== undefined, true);
+    });
   });
 
   describe('rename', () => {

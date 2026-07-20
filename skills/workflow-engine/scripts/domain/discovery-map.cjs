@@ -66,6 +66,7 @@ function lifecyclePhrase(lifecycle, researchState) {
  * @property {string} [summary]           add/edit: the value written
  * @property {string} [description]       add/edit: the value written
  * @property {boolean} [dismissed]        remove: name pushed onto the dismissed list
+ * @property {boolean} [brief_removed]    remove: the topic's brief file was deleted
  * @property {string} [renamed_from]      rename: the old name
  * @property {string[]} [preserved_fields] rename: every field carried across
  * @property {boolean} [matches_dismissed] rename: new name matches a dismissed entry (left alone)
@@ -295,7 +296,18 @@ function removeItem(cwd, workUnit, name) {
     if (!discovery.dismissed.includes(name)) discovery.dismissed.push(name);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: Object.keys(items).length };
+
+    // Drop the topic's brief — it's regenerable by design, and leaving it on
+    // disk would orphan the file and later block a `rename … <this-name>` on the
+    // brief-collision guard. Manifest first, file second (self-heals on retry).
+    const brief = path.join(cwd, '.workflows', workUnit, 'discovery', 'briefs', `${name}.md`);
+    let briefRemoved = false;
+    if (fs.existsSync(brief)) { fs.unlinkSync(brief); briefRemoved = true; }
+
+    /** @type {MapOpResult} */
+    const result = { work_unit: workUnit, name, op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: Object.keys(items).length };
+    if (briefRemoved) result.brief_removed = true;
+    return result;
   });
 }
 
@@ -361,8 +373,12 @@ function renameItem(cwd, workUnit, oldName, newName) {
       /** @type {Record<string, unknown>} */ (item).brief_path = `discovery/briefs/${newName}.md`;
     }
 
-    if (briefOnDisk) fs.renameSync(oldBrief, newBrief);
+    // Manifest first, brief second: a manifest pointing at a not-yet-moved
+    // brief self-heals (the brief is regenerable), whereas a moved brief with
+    // the manifest still under the old name would strand the file and dangle
+    // the pointer.
     saveWorkUnitManifest(cwd, workUnit, manifest);
+    if (briefOnDisk) fs.renameSync(oldBrief, newBrief);
     /** @type {MapOpResult} */
     const result = {
       work_unit: workUnit,

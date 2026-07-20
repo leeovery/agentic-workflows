@@ -151,17 +151,22 @@ function resolveWildcardTopic(manifest, phase, fieldSegments) {
 // Validation
 // ---------------------------------------------------------------------------
 
-/** @param {string} value */
+// The guarded validators accept a value of ANY type: a typed field's schema
+// declares a string vocabulary, so a non-string (number, boolean, ~→null,
+// object) is refused exactly as a bad string is. `JSON.stringify` renders the
+// offending value cleanly for every type and is byte-identical to the old
+// `"${value}"` for strings (`"foo"` either way).
+/** @param {*} value */
 function validateWorkType(value) {
-  if (!VALID_WORK_TYPES.includes(value)) {
-    fail(`Invalid work_type "${value}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
+  if (typeof value !== 'string' || !VALID_WORK_TYPES.includes(value)) {
+    fail(`Invalid work_type ${JSON.stringify(value)}. Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
   }
 }
 
-/** @param {string} value */
+/** @param {*} value */
 function validateWorkUnitStatus(value) {
-  if (!VALID_WORK_UNIT_STATUSES.includes(value)) {
-    fail(`Invalid status "${value}". Must be one of: ${VALID_WORK_UNIT_STATUSES.join(', ')}`);
+  if (typeof value !== 'string' || !VALID_WORK_UNIT_STATUSES.includes(value)) {
+    fail(`Invalid status ${JSON.stringify(value)}. Must be one of: ${VALID_WORK_UNIT_STATUSES.join(', ')}`);
   }
 }
 
@@ -172,27 +177,32 @@ function validatePhase(phase) {
   }
 }
 
-/** @param {string} value */
+/** @param {*} value */
 function validateGateMode(value) {
-  if (!VALID_GATE_MODES.includes(value)) {
-    fail(`Invalid gate mode "${value}". Must be one of: ${VALID_GATE_MODES.join(', ')}`);
+  if (typeof value !== 'string' || !VALID_GATE_MODES.includes(value)) {
+    fail(`Invalid gate mode ${JSON.stringify(value)}. Must be one of: ${VALID_GATE_MODES.join(', ')}`);
   }
 }
 
-/** @param {string} phase @param {string} value */
+/** @param {string} phase @param {*} value */
 function validatePhaseStatus(phase, value) {
   const valid = VALID_PHASE_STATUSES[phase];
   if (valid && valid.length === 0) {
     fail(`Phase "${phase}" items carry no status field — lifecycle is computed at render time; create map items with \`engine discovery-map add\``);
   }
-  if (valid && !valid.includes(value)) {
-    fail(`Invalid status "${value}" for phase "${phase}". Must be one of: ${valid.join(', ')}`);
+  if (valid && (typeof value !== 'string' || !valid.includes(value))) {
+    fail(`Invalid status ${JSON.stringify(value)} for phase "${phase}". Must be one of: ${valid.join(', ')}`);
   }
 }
 
 /**
- * Validate a set operation from the resolved internal path and value.
- * @param {string[]} segments @param {string} value
+ * Validate a set operation from the resolved internal path and value. Every
+ * planned write runs through here regardless of value type: a field whose
+ * schema declares a vocabulary is enforced against it even when the JSON-parsed
+ * value is a number, boolean, ~→null, array, or object — those are refused, not
+ * waved through. Untyped fields (counters, nullable pointers, task maps) match
+ * no guarded branch and pass, so legitimate non-string writes are unaffected.
+ * @param {string[]} segments @param {*} value
  */
 function validateSet(segments, value) {
   // Top-level status
@@ -279,6 +289,16 @@ function deleteByPath(obj, segments) {
   }
   if (current == null || typeof current !== 'object') return false;
   const last = segments[segments.length - 1];
+  // Deleting an array index with `delete` leaves a literal null hole; splice
+  // instead so the element is truly removed and the array closes up. A
+  // non-numeric (or out-of-range) segment on an array is a miss, not a hole.
+  if (Array.isArray(current)) {
+    if (!/^(0|[1-9][0-9]*)$/.test(last)) return false;
+    const idx = Number(last);
+    if (idx >= current.length) return false;
+    current.splice(idx, 1);
+    return true;
+  }
   if (!(last in current)) return false;
   delete current[last];
   return true;
@@ -652,11 +672,12 @@ function cmdSet(cwd, args) {
   requireWorkUnit(cwd, workUnit);
 
   // Validate every field before any write — a refused value fails the batch.
+  // Unconditional: the value is already JSON-parsed, so a guarded field must be
+  // checked whatever type that parse produced (a bare number/boolean/~ would
+  // otherwise slip past a string-only guard and corrupt a typed field).
   const planned = writes.map((write) => {
     const segments = resolveSegments(phase, topic, write.field.split('.'));
-    if (typeof write.value === 'string') {
-      validateSet(segments, write.value);
-    }
+    validateSet(segments, write.value);
     return { segments, value: write.value };
   });
 

@@ -70,7 +70,15 @@ function parseInboxPath(given, { archived }) {
  */
 function parseAll(cwd, paths, opts) {
   const items = paths.map((p) => parseInboxPath(p, opts));
+  // Refuse duplicates here, before anything moves: two paths naming the same
+  // file both pass existence, then the second `renameSync` hits ENOENT after
+  // the first move already applied — a half-done, uncommitted transaction.
+  const seen = new Set();
   for (const item of items) {
+    if (seen.has(item.given)) {
+      throw new Error(`duplicate inbox path: "${item.given}"`);
+    }
+    seen.add(item.given);
     if (!fs.existsSync(path.join(cwd, item.given))) {
       throw new Error(`inbox file not found: "${item.given}"`);
     }

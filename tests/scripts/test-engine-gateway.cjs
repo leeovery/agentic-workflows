@@ -51,6 +51,29 @@ describe('gateway: verb dispatch', () => {
     assert.strictEqual(out, 'fb:my-work-unit\n');
   });
 
+  it('an inherited Object.prototype name is not a verb — it falls through to fallback', () => {
+    for (const inherited of ['toString', 'constructor', 'hasOwnProperty', 'valueOf']) {
+      const out = captureRun(
+        { index: () => '', view: (wu) => `view:${wu}`, fallback: (...argv) => `fb:${argv.join(',')}` },
+        [inherited, 'x']
+      );
+      assert.strictEqual(out, `fb:${inherited},x\n`, `${inherited} must not dispatch to the inherited method`);
+    }
+  });
+
+  it('with no fallback, an inherited name is an unknown-verb usage error — never [object Object]', () => {
+    const { spawnSync } = require('child_process');
+    const gw = require.resolve('../../skills/workflow-engine/scripts/gateway.cjs');
+    const res = spawnSync(
+      'node',
+      ['-e', `require(${JSON.stringify(gw)}).runGateway({ view: (w) => 'v:' + w }, ['toString']);`],
+      { encoding: 'utf8' }
+    );
+    assert.strictEqual(res.status, 1);
+    assert.strictEqual(res.stdout, '');
+    assert.match(res.stderr, /unknown verb "toString"/);
+  });
+
   it('missing index handler on a no-args call throws', () => {
     assert.throws(() => captureRun({ data: () => '' }, []), /no `index` handler/);
   });
