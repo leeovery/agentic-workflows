@@ -22,6 +22,11 @@ const setupForms = require('./setup-forms');
 
 const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery'];
 
+// Phases whose artifact is a flat `{phase}/{basename}.md` file — one identical
+// derivation (topic = basename, no subdirectories). specification (nested under
+// a per-topic dir) and discovery (nested under sessions/) derive differently.
+const FLAT_PHASES = new Set(['research', 'discussion', 'investigation', 'imports', 'seeds']);
+
 // Whitelist of indexable filenames in .workflows/{wu}/.state/, mapping each
 // on-disk basename to its KB topic identity. The .state/ directory also holds
 // operational metadata (migrations, environment-setup) that must never enter
@@ -380,8 +385,10 @@ function deriveIdentity(filePath) {
       );
     }
     topic = specMatch[1];
-  } else if (phase === 'discussion' || phase === 'investigation') {
-    // .workflows/{wu}/{phase}/{topic}.md — flat file, no subdirectories.
+  } else if (FLAT_PHASES.has(phase)) {
+    // .workflows/{wu}/{phase}/{basename}.md — flat file, no subdirectories.
+    // The topic is the basename without .md (research/imports/seeds identity is
+    // the filename; discussion/investigation the topic — same shape either way).
     const flatMatch = /^([^/]+)\.md$/.exec(rest);
     if (!flatMatch) {
       throw new UserError(
@@ -390,39 +397,6 @@ function deriveIdentity(filePath) {
       );
     }
     topic = flatMatch[1];
-  } else if (phase === 'research') {
-    // .workflows/{wu}/research/{filename}.md — flat file.
-    const resMatch = /^([^/]+)\.md$/.exec(rest);
-    if (!resMatch) {
-      throw new UserError(
-        `Unexpected research path structure: ${rest}\n` +
-          'Expected: .workflows/{work_unit}/research/{filename}.md'
-      );
-    }
-    topic = resMatch[1];
-  } else if (phase === 'imports') {
-    // .workflows/{wu}/imports/{filename}.md — flat file. Topic is the
-    // basename without extension.
-    const impMatch = /^([^/]+)\.md$/.exec(rest);
-    if (!impMatch) {
-      throw new UserError(
-        `Unexpected imports path structure: ${rest}\n` +
-          'Expected: .workflows/{work_unit}/imports/{filename}.md'
-      );
-    }
-    topic = impMatch[1];
-  } else if (phase === 'seeds') {
-    // .workflows/{wu}/seeds/{filename}.md — flat file. Topic is the
-    // basename without extension. A seed is the work unit's origin (a
-    // promoted inbox item), structurally a flat file like an import.
-    const seedMatch = /^([^/]+)\.md$/.exec(rest);
-    if (!seedMatch) {
-      throw new UserError(
-        `Unexpected seeds path structure: ${rest}\n` +
-          'Expected: .workflows/{work_unit}/seeds/{filename}.md'
-      );
-    }
-    topic = seedMatch[1];
   } else if (phase === 'discovery') {
     // .workflows/{wu}/discovery/sessions/session-NNN.md — one file per session,
     // nested under sessions/. Topic is the session basename so each session is
@@ -497,62 +471,81 @@ function keyUnresolvedError(cfg) {
   );
 }
 
+// Shared first line of every provider/model-mismatch error. It appeared four
+// times across the two resolvers (two variants × index/query); a single
+// constant keeps the user-facing wording in exactly one place.
+const REBUILD_MISMATCH_MSG =
+  'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n';
+
 /**
- * Check provider state against metadata.
- * Returns { mode: 'full'|'keyword-only', provider: object|null }
- * Throws on mismatch (cases 2 and 3 from the task spec).
+ * Shared provider-state resolution for both index-time and query-time. The two
+ * callers agree on every outcome — full match, hard mismatch, and the
+ * missing-key vs dropped-provider diagnosis — EXCEPT one: a keyword-only store
+ * while a provider is now configured. `upgradeMode` names that one divergence:
+ *   • 'keyword-only' (index): index WITHOUT vectors, and warn once so the user
+ *     knows to `rebuild` to upgrade.
+ *   • 'upgrade-available' (query): surface the upgrade hint; the store has no
+ *     vectors to search, so results stay keyword-only either way. No warn here
+ *     — query composes its own note from the returned mode.
+ * @returns {{mode: string, provider: object|null}}  throws UserError on mismatch.
  */
-function resolveProviderState(metadata, cfg, provider) {
+function resolveProviderMode(metadata, cfg, provider, upgradeMode) {
   const metaProvider = metadata.provider;
   const metaModel = metadata.model;
   const metaDimensions = metadata.dimensions;
 
-  // Case 4: metadata.provider is null (keyword-only store).
-  // Always allowed — index WITHOUT vectors regardless of current config.
-  // If the user has since configured a provider, warn once so they know
-  // they're still in keyword-only mode and must `rebuild` to upgrade.
+  // Keyword-only store (metadata.provider null/undefined). Always allowed —
+  // index/search WITHOUT vectors regardless of current config. The one divergent
+  // case: a provider is now configured.
   if (metaProvider === null || metaProvider === undefined) {
-    if (provider && !stubUpgradeWarned) {
-      stubUpgradeWarned = true;
-      process.stderr.write(
-        'Note: store is keyword-only but an embedding provider is now configured. ' +
-        'Run `knowledge rebuild` to switch to full hybrid search.\n'
-      );
+    if (provider) {
+      // The index path (upgradeMode 'keyword-only') warns once; the query path
+      // ('upgrade-available') stays silent and lets cmdQuery emit its own note.
+      if (upgradeMode === 'keyword-only' && !stubUpgradeWarned) {
+        stubUpgradeWarned = true;
+        process.stderr.write(
+          'Note: store is keyword-only but an embedding provider is now configured. ' +
+          'Run `knowledge rebuild` to switch to full hybrid search.\n'
+        );
+      }
+      return { mode: upgradeMode, provider: null };
     }
     return { mode: 'keyword-only', provider: null };
   }
 
-  // Cases 1-3: metadata HAS a provider.
-  if (provider) {
-    // Current config has a provider.
-    const curModel = provider.model();
-    const curDimensions = provider.dimensions();
-
-    if (metaProvider === cfg.provider && metaModel === curModel && metaDimensions === curDimensions) {
-      // Case 1: match — proceed with full embedding.
-      return { mode: 'full', provider };
+  // Store HAS a provider but the current config resolved none. Two very
+  // different causes — a keyed provider whose key is missing (fix with the key,
+  // never a rebuild) vs. a config that genuinely dropped its provider.
+  if (!provider) {
+    if (providerKeyUnresolved(cfg)) {
+      throw keyUnresolvedError(cfg);
     }
-
-    // Case 2: mismatch.
     throw new UserError(
-      'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
-        `  Store: provider=${metaProvider}, model=${metaModel}, dimensions=${metaDimensions}\n` +
-        `  Config: provider=${cfg.provider}, model=${curModel}, dimensions=${curDimensions}`
+      REBUILD_MISMATCH_MSG +
+        `  Store was indexed with: provider=${metaProvider}, model=${metaModel}\n` +
+        '  Current config has no provider configured.'
     );
   }
 
-  // Case 3: metadata has provider but resolveProvider() gave us none. Two
-  // very different causes — a keyed provider whose key is missing (fix with
-  // the key, never a rebuild) vs. a config that genuinely dropped its
-  // provider. providerKeyUnresolved distinguishes them.
-  if (providerKeyUnresolved(cfg)) {
-    throw keyUnresolvedError(cfg);
+  // Both sides have a provider — full match or hard mismatch.
+  const curModel = provider.model();
+  const curDimensions = provider.dimensions();
+  if (metaProvider === cfg.provider && metaModel === curModel && metaDimensions === curDimensions) {
+    return { mode: 'full', provider };
   }
   throw new UserError(
-    'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
-      `  Store was indexed with: provider=${metaProvider}, model=${metaModel}\n` +
-      '  Current config has no provider configured.'
+    REBUILD_MISMATCH_MSG +
+      `  Store: provider=${metaProvider}, model=${metaModel}, dimensions=${metaDimensions}\n` +
+      `  Config: provider=${cfg.provider}, model=${curModel}, dimensions=${curDimensions}`
   );
+}
+
+/**
+ * Index-time provider-state check. Returns { mode: 'full'|'keyword-only',
+ * provider: object|null }; throws UserError on a provider/model mismatch.
+ */
+function resolveProviderState(metadata, cfg, provider) {
+  return resolveProviderMode(metadata, cfg, provider, 'keyword-only');
 }
 
 // ---------------------------------------------------------------------------
@@ -668,15 +661,15 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
     fs.mkdirSync(kDir, { recursive: true });
   }
 
-  // Load or create store.
+  // Resolve store state. The store is NOT loaded here: the pre-lock load's
+  // contents were only ever consulted to decide whether a fresh store had to
+  // be created — a question fs.existsSync answers — and the authoritative load
+  // happens inside the lock below. Dropping it removes one full store load per
+  // file without touching the lock window (the in-lock reload is unchanged).
   let db;
   let metadata;
   const storeExists = fs.existsSync(sp);
   const metadataExists = fs.existsSync(mp);
-
-  if (storeExists) {
-    db = await store.loadStore(sp);
-  }
 
   if (metadataExists) {
     metadata = store.readMetadata(mp);
@@ -703,8 +696,11 @@ async function indexSingleFile(sourceFile, identity, cfg, provider) {
     }
   }
 
-  // Create store if it doesn't exist.
-  if (!db) {
+  // Materialise a fresh empty store only when none exists on disk. When one
+  // does exist it is loaded inside the lock (never pre-lock) so the write sees
+  // the freshest committed state. The !storeExists lock branch falls back to
+  // this empty store when no concurrent writer created one first.
+  if (!storeExists) {
     const dims = effectiveProvider
       ? effectiveProvider.dimensions()
       : (cfg.dimensions || KEYWORD_ONLY_DIMENSIONS);
@@ -838,6 +834,23 @@ function reportUnexpectedManifestError(context, err) {
 }
 
 /**
+ * Read every work unit's full manifest via a single `manifest list` spawn.
+ * Returns an array of manifests, or [] on any failure (warned, non-fatal) or a
+ * non-array payload. Callers that need both the discovered artifacts AND the
+ * manifest tree (cmdStatus) fetch once and share, rather than listing twice.
+ * @param {string} context  label for the failure warning
+ */
+function listWorkUnits(context) {
+  try {
+    const parsed = JSON.parse(runManifest(['list']));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    reportUnexpectedManifestError(context, err);
+    return [];
+  }
+}
+
+/**
  * Check if chunks exist for the given identity triple.
  */
 async function isIndexed(db, workUnit, phase, topic) {
@@ -853,120 +866,101 @@ async function isIndexed(db, workUnit, phase, topic) {
   return res.length > 0;
 }
 
+// Per-topic artifact path shapes, keyed by phase. The shapes are static, so a
+// completed topic's file is derivable directly from (work_unit, topic) with no
+// engine round-trip. This MIRRORS the INDEXED_ARTIFACTS table in the engine's
+// domain/kb.cjs (the counterpart used by reindexWorkUnit) — the two must stay
+// in sync; a phase added there needs a row here and a `resolve` branch there.
+// Only these four phases are per-topic manifest items; imports/seeds/analysis/
+// discovery are file-based and discovered by their own traversals below.
+const ARTIFACT_PATHS = {
+  research: (wu, topic) => `.workflows/${wu}/research/${topic}.md`,
+  discussion: (wu, topic) => `.workflows/${wu}/discussion/${topic}.md`,
+  investigation: (wu, topic) => `.workflows/${wu}/investigation/${topic}.md`,
+  specification: (wu, topic) => `.workflows/${wu}/specification/${topic}/specification.md`,
+};
+
 /**
- * Discover all completed artifacts across all work units via engine manifest reads.
- * Returns an array of { file, workUnit, phase, topic }.
+ * Collect a work unit's flat-file entries for a top-level array field (imports
+ * or seeds). Both fields share the same on-disk shape ("{field}/{basename}.md",
+ * no subdirectories or escapes) and the same dedupe-by-topic-identity rule, so
+ * one helper walks either. Returns an array of { file, workUnit, phase, topic }.
+ *
+ * Path validation mirrors deriveIdentity: import-files.md / the seed lander only
+ * ever write "{field}/<basename>.md" to the manifest, so a different shape means
+ * manual tampering or an unrecognised flow — refuse it either way so a manifest-
+ * injection vector can't poison the store.
+ * @param {object} wu  the work-unit manifest @param {string} wuName @param {string} field
  */
-function discoverArtifacts() {
-  const items = [];
-  let workUnits;
-
-  try {
-    const raw = runManifest(['list']);
-    workUnits = JSON.parse(raw);
-  } catch (err) {
-    reportUnexpectedManifestError('discoverArtifacts:list', err);
-    return items;
+function collectFlatEntries(wu, wuName, field) {
+  const out = [];
+  const entries = wu[field];
+  if (!Array.isArray(entries)) return out;
+  const shape = new RegExp(`^${field}/([^/]+\\.md)$`);
+  const seen = new Set();
+  for (const entry of entries) {
+    if (!entry || typeof entry.path !== 'string') continue;
+    const rel = entry.path;
+    // Must be exactly {field}/{filename}.md — no subdirectories, no escapes.
+    const m = shape.exec(rel);
+    if (!m) continue;
+    const filename = m[1];
+    if (filename.includes('..') || filename.startsWith('.')) continue;
+    const base = filename.slice(0, -3); // strip .md
+    if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
+    // Dedupe by topic identity — re-imports may push duplicate manifest entries
+    // (acceptable noise per the design), but bulk index processes each once.
+    if (seen.has(base)) continue;
+    seen.add(base);
+    const filePath = path.posix.join('.workflows', wuName, rel);
+    if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
+    out.push({ file: filePath, workUnit: wuName, phase: field, topic: base });
   }
+  return out;
+}
 
-  if (!Array.isArray(workUnits) || workUnits.length === 0) return items;
+/**
+ * Discover all completed artifacts across all work units from a single
+ * `manifest list` read. Per-topic phase paths are derived locally from
+ * ARTIFACT_PATHS (no per-topic engine spawn); imports, seeds, analysis caches,
+ * and discovery sessions are file-based traversals.
+ * Returns an array of { file, workUnit, phase, topic }.
+ * @param {Array} [workUnits]  pre-fetched manifest list (via listWorkUnits) —
+ *   passed by cmdStatus so the manifest tree is read once, not once here plus
+ *   once for its consistency checks. Omitted → this fetches its own.
+ */
+function discoverArtifacts(workUnits) {
+  const items = [];
+  const units = workUnits || listWorkUnits('discoverArtifacts:list');
+  if (!Array.isArray(units) || units.length === 0) return items;
 
-  for (const wu of workUnits) {
+  for (const wu of units) {
     const wuName = wu.name;
     if (!wuName) continue;
     if (wu.status === 'cancelled') continue;
 
-    for (const phase of INDEXED_PHASES) {
-      // Imports and seeds live at top-level wu.imports[] / wu.seeds[], not
-      // under wu.phases.* — they need separate traversals. Skip in this loop
-      // and handle below.
-      if (phase === 'imports') continue;
-      if (phase === 'seeds') continue;
-      // Analysis caches are file-based, not manifest-tracked. Handled
-      // separately at the end of this work-unit iteration.
-      if (phase === 'analysis') continue;
-      // Discovery logs are session files, not manifest-per-topic. Epic-only,
-      // handled by a dedicated traversal at the end of this iteration.
-      if (phase === 'discovery') continue;
-
+    // Per-topic phase artifacts. The completed-topic set already arrived in the
+    // `list` payload and the paths are static (ARTIFACT_PATHS), so each file is
+    // derived locally — no `engine manifest resolve` spawn per topic.
+    for (const [phase, buildPath] of Object.entries(ARTIFACT_PATHS)) {
       const phaseData = wu.phases && wu.phases[phase];
       if (!phaseData || !phaseData.items) continue;
 
       for (const [topicName, topicData] of Object.entries(phaseData.items)) {
         if (!topicData || topicData.status !== 'completed') continue;
-
-        // Resolve file path via engine manifest resolve.
-        try {
-          const raw = runManifest(['resolve', `${wuName}.${phase}.${topicName}`]);
-          const filePath = raw.trim();
-          if (filePath && fs.existsSync(resolveArtifactPath(filePath))) {
-            items.push({ file: filePath, workUnit: wuName, phase, topic: topicName });
-          }
-        } catch (err) {
-          reportUnexpectedManifestError(
-            `discoverArtifacts:resolve(${wuName}.${phase}.${topicName})`,
-            err
-          );
+        const filePath = buildPath(wuName, topicName);
+        if (fs.existsSync(resolveArtifactPath(filePath))) {
+          items.push({ file: filePath, workUnit: wuName, phase, topic: topicName });
         }
       }
     }
 
-    // Imports — top-level array on the work unit, no per-item status. Each
-    // entry's path is relative to the work-unit directory. Topic identity is
-    // the basename without .md (matches deriveIdentity).
-    //
-    // Path validation: import-files.md only ever writes "imports/<basename>.md"
-    // to the manifest. A different shape here means either manual tampering
-    // or a flow we don't recognise — refuse to index in either case so the
-    // store can't be poisoned by a manifest-injection vector. The validation
-    // mirrors deriveIdentity's checks (no slash beyond the imports/ prefix,
-    // no .. segments, no dotfile basenames).
-    const seenImportTopics = new Set();
-    if (Array.isArray(wu.imports)) {
-      for (const entry of wu.imports) {
-        if (!entry || typeof entry.path !== 'string') continue;
-        const rel = entry.path;
-        // Must be exactly imports/{filename}.md — no subdirectories, no escapes.
-        const m = /^imports\/([^/]+\.md)$/.exec(rel);
-        if (!m) continue;
-        const filename = m[1];
-        if (filename.includes('..') || filename.startsWith('.')) continue;
-        const base = filename.slice(0, -3); // strip .md
-        if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
-        // Dedupe by topic identity — re-imports may push duplicate manifest
-        // entries (acceptable noise per the design), but bulk index should
-        // process each identity once.
-        if (seenImportTopics.has(base)) continue;
-        seenImportTopics.add(base);
-        const filePath = path.posix.join('.workflows', wuName, rel);
-        if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
-        items.push({ file: filePath, workUnit: wuName, phase: 'imports', topic: base });
-      }
-    }
-
-    // Seeds — top-level array on the work unit (the work's origin: promoted
-    // inbox items), no per-item status. Same shape and validation as imports,
-    // but rooted at "seeds/<basename>.md". Kept separate from imports so a
-    // seed stays deterministically distinguishable from reference material.
-    const seenSeedTopics = new Set();
-    if (Array.isArray(wu.seeds)) {
-      for (const entry of wu.seeds) {
-        if (!entry || typeof entry.path !== 'string') continue;
-        const rel = entry.path;
-        // Must be exactly seeds/{filename}.md — no subdirectories, no escapes.
-        const m = /^seeds\/([^/]+\.md)$/.exec(rel);
-        if (!m) continue;
-        const filename = m[1];
-        if (filename.includes('..') || filename.startsWith('.')) continue;
-        const base = filename.slice(0, -3); // strip .md
-        if (!base || base === '.' || base === '..' || base.startsWith('.')) continue;
-        if (seenSeedTopics.has(base)) continue;
-        seenSeedTopics.add(base);
-        const filePath = path.posix.join('.workflows', wuName, rel);
-        if (!fs.existsSync(resolveArtifactPath(filePath))) continue;
-        items.push({ file: filePath, workUnit: wuName, phase: 'seeds', topic: base });
-      }
-    }
+    // Imports (reference material) and seeds (the work's origin: promoted inbox
+    // items) — top-level arrays, no per-item status, same flat-file shape and
+    // dedupe rule. Kept as distinct phases so a seed stays deterministically
+    // distinguishable from reference material.
+    for (const it of collectFlatEntries(wu, wuName, 'imports')) items.push(it);
+    for (const it of collectFlatEntries(wu, wuName, 'seeds')) items.push(it);
 
     // Analysis caches — file-based, not manifest-tracked. Two known paths per
     // work unit; discover by existence on disk.
@@ -998,7 +992,14 @@ function discoverArtifacts() {
 }
 
 async function cmdIndexBulk(options, cfg, provider) {
-  const artifacts = discoverArtifacts();
+  let artifacts = discoverArtifacts();
+
+  // --work-unit scopes the bulk walk to a single unit. This is the lifecycle
+  // re-index path (reactivate / pivot): the same artifact set the engine's old
+  // per-artifact walk covered, indexed in ONE spawn instead of one per file.
+  if (options && options.workUnit) {
+    artifacts = artifacts.filter((a) => a.workUnit === options.workUnit);
+  }
 
   const kDir = knowledgeDir();
   const sp = storePath();
@@ -1052,10 +1053,11 @@ async function cmdIndexBulk(options, cfg, provider) {
       process.stdout.write(`Indexing ${item.file}... ${count} chunks\n`);
       totalNew++;
       totalChunks += count;
-      // Reload db after indexing so subsequent isIndexed checks see the new data.
-      if (fs.existsSync(sp)) {
-        db = await store.loadStore(sp);
-      }
+      // No db reload here. discoverArtifacts yields one entry per identity
+      // (imports/seeds deduped, phase topics distinct), so indexing this file
+      // can never flip a LATER item's isIndexed answer — every isIndexed check
+      // is against a different identity. Reloading the store each file was one
+      // full load per file that never changed an outcome.
     } catch (err) {
       // All retries exhausted — add to pending queue. Write the stack to
       // stderr so debugging does not depend on users capturing it later.
@@ -1601,51 +1603,24 @@ function normaliseBoosts(boosts) {
 }
 
 /**
- * Resolve provider state for query. Symmetric with index-time resolution
- * but returns mode information instead of throwing for the upgrade case.
+ * Query-time provider-state check. Symmetric with resolveProviderState but, for
+ * a keyword-only store while a provider is configured, returns
+ * 'upgrade-available' (so cmdQuery emits the rebuild hint) rather than warning
+ * and indexing keyword-only. Every other outcome is shared.
  */
 function resolveQueryMode(metadata, cfg, provider) {
-  const metaProvider = metadata.provider;
-  const metaModel = metadata.model;
-  const metaDimensions = metadata.dimensions;
+  return resolveProviderMode(metadata, cfg, provider, 'upgrade-available');
+}
 
-  // Keyword-only store (metadata.provider is null).
-  if (metaProvider === null || metaProvider === undefined) {
-    if (provider) {
-      // Stub-to-full upgrade case — store has no vectors, can't use provider.
-      return { mode: 'upgrade-available', provider: null };
-    }
-    return { mode: 'keyword-only', provider: null };
-  }
-
-  // Store has vectors — check provider compatibility.
-  if (!provider) {
-    // A keyed provider with an unresolved key looks identical to "no provider"
-    // here, but the remedy is the key, not a store-destroying rebuild.
-    if (providerKeyUnresolved(cfg)) {
-      throw keyUnresolvedError(cfg);
-    }
-    // Config has no provider but store has vectors — mismatch.
-    throw new UserError(
-      'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
-        `  Store was indexed with: provider=${metaProvider}, model=${metaModel}\n` +
-        '  Current config has no provider configured.'
-    );
-  }
-
-  const curModel = provider.model();
-  const curDimensions = provider.dimensions();
-
-  if (metaProvider === cfg.provider && metaModel === curModel && metaDimensions === curDimensions) {
-    return { mode: 'full', provider };
-  }
-
-  // Mismatch.
-  throw new UserError(
-    'Provider/model changed since last index. Run `knowledge rebuild` to reindex.\n' +
-      `  Store: provider=${metaProvider}, model=${metaModel}, dimensions=${metaDimensions}\n` +
-      `  Config: provider=${cfg.provider}, model=${curModel}, dimensions=${curDimensions}`
-  );
+/**
+ * Turn a CLI filter value into an Orama where-clause term: a single value →
+ * { eq }, a comma-separated list → { in }. Every --flag that names a filterable
+ * dimension (phase, work-type, work-unit, topic) runs through this.
+ * @param {string} value
+ */
+function csv(value) {
+  const parts = value.split(',').map((s) => s.trim());
+  return parts.length === 1 ? { eq: parts[0] } : { in: parts };
 }
 
 async function cmdQuery(args, options, cfg, provider) {
@@ -1702,22 +1677,10 @@ async function cmdQuery(args, options, cfg, provider) {
   // Build where clause from hard filters. Every --flag that names a
   // dimension is a filter; re-ranking happens exclusively via --boost:<field>.
   const where = {};
-  if (options.phase) {
-    const phases = options.phase.split(',').map((s) => s.trim());
-    where.phase = phases.length === 1 ? { eq: phases[0] } : { in: phases };
-  }
-  if (options.workType) {
-    const types = options.workType.split(',').map((s) => s.trim());
-    where.work_type = types.length === 1 ? { eq: types[0] } : { in: types };
-  }
-  if (options.workUnit) {
-    const units = options.workUnit.split(',').map((s) => s.trim());
-    where.work_unit = units.length === 1 ? { eq: units[0] } : { in: units };
-  }
-  if (options.topic) {
-    const topics = options.topic.split(',').map((s) => s.trim());
-    where.topic = topics.length === 1 ? { eq: topics[0] } : { in: topics };
-  }
+  if (options.phase) where.phase = csv(options.phase);
+  if (options.workType) where.work_type = csv(options.workType);
+  if (options.workUnit) where.work_unit = csv(options.workUnit);
+  if (options.topic) where.topic = csv(options.topic);
 
   // ?? (not ||) so an explicit `similarity_threshold: 0` — a legitimate
   // "accept all vector matches, no filtering" setting — isn't silently
@@ -2001,9 +1964,14 @@ async function cmdStatus() {
     }
   }
 
+  // The manifest tree is read ONCE and shared by both the unindexed-artifact
+  // discovery (8) and the manifest-knowledge consistency checks (9). Before,
+  // each listed independently — two `manifest list` spawns per status call.
+  const workUnits = listWorkUnits('cmdStatus:list');
+
   // 8. Unindexed artifacts.
   try {
-    const artifacts = discoverArtifacts();
+    const artifacts = discoverArtifacts(workUnits);
     const unindexed = [];
     for (const a of artifacts) {
       const indexed = await isIndexed(db, a.workUnit, a.phase, a.topic);
@@ -2021,20 +1989,12 @@ async function cmdStatus() {
     process.stderr.write(`Warning: unindexed-artifact discovery failed: ${err.message}\n`);
   }
 
-  // 9. Manifest-knowledge consistency. Load all manifests once via
-  // `manifest list` rather than shelling out per spec topic — status was
-  // O(specs) processes before, which meant ~5s on 50-spec repos.
+  // 9. Manifest-knowledge consistency. Reuses the shared manifest tree (read
+  // once above) rather than shelling out per spec topic — status was O(specs)
+  // processes before, which meant ~5s on 50-spec repos.
   const consistency = [];
-  let allManifests = null;
-  try {
-    allManifests = JSON.parse(runManifest(['list']));
-  } catch (err) {
-    reportUnexpectedManifestError('cmdStatus:list', err);
-  }
   const manifestByName = new Map();
-  if (Array.isArray(allManifests)) {
-    for (const m of allManifests) if (m && m.name) manifestByName.set(m.name, m);
-  }
+  for (const m of workUnits) if (m && m.name) manifestByName.set(m.name, m);
 
   for (const wu of Object.keys(byWu)) {
     const m = manifestByName.get(wu);
@@ -2501,6 +2461,7 @@ module.exports = {
   AuthError,
   main,
   cmdIndexBulk,
+  discoverArtifacts,
   StubProvider,
   OpenAIProvider,
   store,

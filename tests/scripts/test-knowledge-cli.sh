@@ -1188,6 +1188,28 @@ output=$(run_kb index 2>&1)
 assert_eq "0 files indexed" "true" "$(echo "$output" | grep -q 'Indexed 0 files' && echo true || echo false)"
 teardown_project
 
+# --- Test 47b: Bulk index --work-unit scopes discovery to one unit ---
+# The lifecycle re-index path (reactivate/pivot) indexes exactly one unit's
+# artifacts in a single bulk spawn. --work-unit filters the discovered set so
+# sibling units are left untouched.
+echo "Test 47b: Bulk index --work-unit scopes to one unit"
+setup_project
+create_work_unit "auth-flow" "feature" "Auth"
+create_work_unit "payments" "epic" "Payments"
+write_stub_config
+create_discussion_file "auth-flow" "auth-flow"
+create_research_file "payments" "exploration"
+init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
+init_phase_topic "payments" "research" "exploration" "completed"
+output=$(run_kb index --work-unit auth-flow 2>&1)
+assert_eq "indexes the scoped unit" "true" "$(echo "$output" | grep -q 'Indexing .workflows/auth-flow/discussion/auth-flow.md' && echo true || echo false)"
+assert_eq "leaves the sibling unit untouched" "false" "$(echo "$output" | grep -q 'payments' && echo true || echo false)"
+assert_eq "summary counts only the scoped unit" "true" "$(echo "$output" | grep -q 'Indexed 1 files' && echo true || echo false)"
+# The sibling's completed artifact is now discoverable-but-unindexed.
+status_out=$(run_kb status 2>&1)
+assert_eq "sibling artifact still unindexed" "true" "$(echo "$status_out" | grep -q 'payments/research/exploration.md' && echo true || echo false)"
+teardown_project
+
 # ============================================================================
 # PENDING QUEUE TESTS
 # ============================================================================

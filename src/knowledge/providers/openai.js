@@ -5,18 +5,16 @@
 // the shared OpenAIEmbeddingsEngine. The wire logic lives in the engine so
 // it stays single-source across this and the openai-compatible driver.
 //
-// Re-exports AuthError, DEFAULT_MODEL, DEFAULT_DIMENSIONS, MAX_BATCH_SIZE and
-// OPENAI_EMBEDDINGS_URL so existing importers (config.js, setup.js, tests)
-// keep working unchanged.
+// Re-exports AuthError, DEFAULT_MODEL and DEFAULT_DIMENSIONS for the tests that
+// import them from this module.
 
 'use strict';
 
-const { OpenAIEmbeddingsEngine, AuthError, MAX_BATCH_SIZE } = require('./openai-engine');
+const { OpenAIEmbeddingsEngine, AuthError } = require('./openai-engine');
 
 const DEFAULT_MODEL = 'text-embedding-3-small';
 const DEFAULT_DIMENSIONS = 1536;
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
-const OPENAI_EMBEDDINGS_URL = `${OPENAI_BASE_URL}/embeddings`;
 
 // Cloud error context — keeps the platform.openai.com remedies and the
 // `knowledge setup` hint that the existing tests assert on.
@@ -189,7 +187,5 @@ module.exports = {
   AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
-  MAX_BATCH_SIZE,
-  OPENAI_EMBEDDINGS_URL,
   SETUP_DESCRIPTOR,
 };
