@@ -30,7 +30,7 @@ const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
-const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
+const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 
 /** @param {string} msg @returns {never} */
@@ -118,6 +118,7 @@ Commands:
   discovery-map reroute <work-unit> <name> <research|discussion>
   discovery-map handle <work-unit> <name>
   discovery-map reactivate <work-unit> <name>
+  discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
@@ -369,32 +370,48 @@ function runDiscoveryMap(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// discovery-session — epic discovery-session finalisation. close is one
-// transaction: clear the active-session marker, index the finalised log
-// (warn-don't-block), commit scoped to the work unit with the caller's
-// message. The log's content is model-authored before the call — the engine
-// never writes prose.
+// discovery-session — the epic discovery-session lifecycle. open installs
+// the model-drafted log under the next session number and sets the
+// active-session marker — no commit (the session is live; the calling
+// flow's commit cadence picks the change up). close is one transaction:
+// clear the marker, index the finalised log (warn-don't-block), commit
+// scoped to the work unit with the caller's message. The log's content is
+// model-authored — the engine never writes prose.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
 function runDiscoverySession(argv) {
   const [command, ...rest] = argv;
   try {
-    if (command !== 'close') {
-      throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
+    if (command === 'open') {
+      /** @type {string|null} */ let workUnit = null;
+      /** @type {string|null} */ let sessionLogFile = null;
+      for (let i = 0; i < rest.length; i++) {
+        const a = rest[i];
+        if (a === '--session-log-file') sessionLogFile = rest[++i];
+        else if (workUnit === null) workUnit = a;
+        else throw new Error(`unexpected argument "${a}"`);
+      }
+      if (!workUnit || !sessionLogFile) {
+        throw new Error('Usage: engine discovery-session open <work-unit> --session-log-file <path>');
+      }
+      respond(openDiscoverySession(process.cwd(), workUnit, { sessionLogFile }));
+    } else if (command === 'close') {
+      /** @type {string|null} */ let workUnit = null;
+      /** @type {string|null} */ let message = null;
+      for (let i = 0; i < rest.length; i++) {
+        const a = rest[i];
+        if (a === '-m' || a === '--message') message = rest[++i];
+        else if (workUnit === null) workUnit = a;
+        else throw new Error(`unexpected argument "${a}"`);
+      }
+      if (!workUnit || !message) {
+        throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
+      }
+      respond(closeDiscoverySession(process.cwd(), workUnit, { message }));
+    } else {
+      throw new Error('Usage: engine discovery-session <open|close> …');
     }
-    /** @type {string|null} */ let workUnit = null;
-    /** @type {string|null} */ let message = null;
-    for (let i = 0; i < rest.length; i++) {
-      const a = rest[i];
-      if (a === '-m' || a === '--message') message = rest[++i];
-      else if (workUnit === null) workUnit = a;
-      else throw new Error(`unexpected argument "${a}"`);
-    }
-    if (!workUnit || !message) {
-      throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
-    }
-    respond(closeDiscoverySession(process.cwd(), workUnit, { message }));
   } catch (err) {
     failJson(err);
   }
