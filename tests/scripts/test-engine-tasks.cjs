@@ -259,7 +259,8 @@ describe('engine task fix-attempt', () => {
   beforeEach(() => {
     dir = setupFixture();
     const phases = planPhases();
-    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', fix_attempts: 0, fix_gate_mode: 'gated' } } };
+    // current_task is the id being fixed — a fix attempt records against it.
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', fix_attempts: 0, fix_gate_mode: 'gated', current_task: 'auth-flow-1-1' } } };
     createManifest(dir, 'auth', { phases });
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -320,6 +321,18 @@ describe('engine task fix-attempt', () => {
 
   it('rejects a missing --findings-file flag', () => {
     assert.match(engineFails(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1']).error, /Usage: engine task fix-attempt/);
+  });
+
+  it('rejects an id that is not current_task — no counter bump, no stray tracking file', () => {
+    const before = readManifest(dir);
+    // current_task is auth-flow-1-1; a fix attempt against a different id must
+    // not increment the item-level counter or write that id's tracking file.
+    const err = engineFails(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-2',
+      '--findings-file', writeFindings(dir, 'ISSUES:\n- stray\n')]);
+    assert.match(err.error, /"auth-flow-1-2" is not the current task \(current_task is "auth-flow-1-1"\) — run `task start auth-flow-1-2` first/);
+    assert.strictEqual(implItem(dir).fix_attempts, 0);
+    assert.ok(!fs.existsSync(trackingPath(dir, 'auth-flow-1-2')));
+    assert.deepStrictEqual(readManifest(dir), before, 'manifest untouched on a mismatched id');
   });
 });
 
@@ -637,7 +650,7 @@ describe('engine task gate sections', () => {
           fix_gate_mode: mode,
           analysis_gate_mode: mode,
           fix_attempts: attempts,
-          current_task: null,
+          current_task: 'auth-flow-1-1',
         },
       },
     };

@@ -238,9 +238,18 @@ function startTask(cwd, workUnit, topic, internalId) {
  */
 function fixAttempt(cwd, workUnit, topic, internalId, findingsFile) {
   safeName(internalId, 'internal id');
-  const { item, attempts, findings } = withWorkUnitLock(cwd, workUnit, () => {
+  const file = fixTrackingPath(cwd, workUnit, topic, internalId);
+  return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const found = implementationItem(manifest, topic);
+    // A fix attempt records against the item's `current_task`. A mismatched id
+    // would bump the item-level `fix_attempts` (misattributing threshold state)
+    // and write a stray tracking file for a task that was never started. Refuse
+    // and point at `task start`.
+    if (found.current_task !== internalId) {
+      const current = found.current_task == null ? 'none' : `"${found.current_task}"`;
+      throw new Error(`"${internalId}" is not the current task (current_task is ${current}) — run \`task start ${internalId}\` first`);
+    }
     let content;
     try {
       content = fs.readFileSync(path.resolve(cwd, findingsFile), 'utf8');
@@ -248,20 +257,23 @@ function fixAttempt(cwd, workUnit, topic, internalId, findingsFile) {
       throw new Error(`findings file not found: ${findingsFile}`);
     }
 
-    const n = counterOf(found, 'fix_attempts') + 1;
-    found.fix_attempts = n;
+    const attempts = counterOf(found, 'fix_attempts') + 1;
+
+    // Append the findings and bump the counter under the SAME lock: no other
+    // writer interleaves, and the file (which drives crash-resume via
+    // hasInFlightPair) is written before the counter save so a crash can never
+    // leave the counter ahead of the tracking file.
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    const lead = existing === '' ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
+    const body = content.endsWith('\n') ? content : content + '\n';
+    fs.writeFileSync(file, `${existing}${lead}## Attempt ${attempts}\n\n${body}`);
+
+    found.fix_attempts = attempts;
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { item: found, attempts: n, findings: content };
+
+    return { attempts, threshold_reached: attempts >= FIX_THRESHOLD, fix_gate_mode: gateOf(found, 'fix_gate_mode') };
   });
-
-  const file = fixTrackingPath(cwd, workUnit, topic, internalId);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-  const lead = existing === '' ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
-  const body = findings.endsWith('\n') ? findings : findings + '\n';
-  fs.writeFileSync(file, `${existing}${lead}## Attempt ${attempts}\n\n${body}`);
-
-  return { attempts, threshold_reached: attempts >= FIX_THRESHOLD, fix_gate_mode: gateOf(item, 'fix_gate_mode') };
 }
 
 /**
