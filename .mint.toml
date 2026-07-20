@@ -32,6 +32,10 @@ diff_exclude = [
 version_file = "skills/workflow-start/SKILL.md"
 version_pattern = "Agentic Engineering Workflows (v{version})"
 
+# Release-notes AI needs longer than the 60s default on big releases — the
+# v0.6.0 re-platforming diff (75 squashes) timed out twice at 60s. Seconds.
+timeout = 300
+
 [release.hooks]
 # Rebuild and commit the knowledge CLI bundle before the tag so every release ships
 # a fresh skills/workflow-knowledge/scripts/knowledge.cjs (AGNTC installs from tags
