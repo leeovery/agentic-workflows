@@ -276,7 +276,7 @@ Approve this task?
 - **`y`/`yes`** — Approve this task
 - **`a`/`auto`** — Approve this and all remaining tasks automatically
 - **`s`/`skip`** — Skip this task
-- **Comment** — Revise based on feedback
+- **Comment** — Tell me what to change
 · · · · · · · · · · · ·
 ```
 

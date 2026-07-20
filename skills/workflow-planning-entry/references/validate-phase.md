@@ -19,13 +19,21 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 Any additional context since the specification was completed?
 
 - **`c`/`continue`** — Continue with the specification as-is
-- Or provide additional context (priorities, constraints, new considerations)
+- **Add context** — Tell me the priorities, constraints, or new considerations
 · · · · · · · · · · · ·
 ```
 
 **STOP.** Wait for user response.
 
-Set source="fresh".
+**If `continue`:**
+
+Set source="fresh" with no additional context.
+
+→ Return to caller.
+
+**If add context:**
+
+Store the user's response as the additional context for the handoff. Set source="fresh".
 
 → Return to caller.
 

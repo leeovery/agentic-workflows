@@ -28,7 +28,10 @@ Complete the phase item:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} implementation {topic}
 ```
 
-Commit: `impl({work_unit}): complete implementation`
+Commit:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): complete implementation"
+```
 
 **Pipeline continuation**:
 

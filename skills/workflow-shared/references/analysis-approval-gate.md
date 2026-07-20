@@ -208,7 +208,7 @@ handled — fanned out, keep on the map but stop prompting to discuss it?
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{parent} handled true
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {work_unit} {parent}
 ```
 
 Set `fanout_offer: marked` on every block sharing this `parent`.

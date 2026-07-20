@@ -253,9 +253,19 @@ Ready to retry?
 
 #### If `done`
 
-Re-run the setup command that routed here and handle its result exactly as that branch prescribes (including routing back here if the key is still unresolvable).
+Re-run the setup command whose key failure routed here and handle its result exactly as its branch prescribes — including routing back to this section if the key is still unresolvable. Skip the originating branch's menus and questions; its values are already collected.
 
-→ Return to **B. Use Existing Configuration** when routed from **B**; otherwise → Return to **C. Choose a Mode**.
+**If routed from B's `yes` branch:**
+
+→ Return to **B. Use Existing Configuration** for the `yes` branch's setup command.
+
+**If routed from C's `openai` branch:**
+
+→ Return to **C. Choose a Mode** for the `openai` branch's setup command.
+
+**If routed from C's `compatible` branch:**
+
+→ Return to **C. Choose a Mode** for the `compatible` branch's setup command.
 
 #### If `keyword`
 

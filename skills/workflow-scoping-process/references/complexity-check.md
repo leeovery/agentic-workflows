@@ -53,16 +53,17 @@ How would you like to proceed?
 
 #### If `feature`
 
-Update the work type in the manifest:
+Update the work type in the work-unit manifest and the project registry:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit} work_type feature
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.work_units.{work_unit}.work_type feature
 ```
 
-Commit:
+Commit both manifests:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "workflow({work_unit}): promote quick-fix to feature"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to feature"
 ```
 
 Invoke `/workflow-discussion-entry feature {work_unit}`.
@@ -71,16 +72,17 @@ Invoke `/workflow-discussion-entry feature {work_unit}`.
 
 #### If `bugfix`
 
-Update the work type in the manifest:
+Update the work type in the work-unit manifest and the project registry:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit} work_type bugfix
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.work_units.{work_unit}.work_type bugfix
 ```
 
-Commit:
+Commit both manifests:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "workflow({work_unit}): promote quick-fix to bugfix"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to bugfix"
 ```
 
 Invoke `/workflow-investigation-entry bugfix {work_unit}`.
