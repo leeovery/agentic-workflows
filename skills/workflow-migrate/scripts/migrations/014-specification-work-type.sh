@@ -64,13 +64,17 @@ for file in "$SPEC_DIR"/*/specification.md; do
 work_type: greenfield"
     fi
 
-    # Write updated file
+    # Write updated file to a temp file in the same directory then rename, so a
+    # mid-write kill can't leave a truncated file that the frontmatter
+    # skip-check would then treat as already migrated.
+    tmp_file="$file.tmp.$$"
     {
         echo "---"
         echo "$new_frontmatter"
         echo "---"
         echo "$content"
-    } > "$file"
+    } > "$tmp_file"
+    mv "$tmp_file" "$file"
 
     report_update
 done

@@ -135,6 +135,32 @@ test_archived_moved() {
   teardown
 }
 
+# --- Test 7: Merge branch carries dot-entries without . / .. pollution ---
+# When both inbox/ and .inbox/ exist, the merge must copy dot-prefixed entries
+# (e.g. .archived/) into .inbox/ WITHOUT copying `.` (self, nesting .inbox/.inbox)
+# or `..` (parent tree). On bash 3.2 the `.*` glob matches `.` and `..`; the
+# guard must exclude them.
+test_merge_dotentry_no_pollution() {
+  setup
+
+  mkdir -p "$TEST_DIR/.workflows/inbox/.archived/ideas"
+  mkdir -p "$TEST_DIR/.workflows/.inbox/ideas"
+  echo "# Archived" > "$TEST_DIR/.workflows/inbox/.archived/ideas/2026-03-17--old.md"
+  echo "# Existing" > "$TEST_DIR/.workflows/.inbox/ideas/2026-03-19--keep.md"
+  # Sentinel in the parent tree — must never be dragged in via `..`.
+  echo "PARENT" > "$TEST_DIR/.workflows/PARENT_SENTINEL.md"
+
+  source "$MIGRATION"
+
+  assert_eq "dot-entry merged" "true" "$([ -f "$TEST_DIR/.workflows/.inbox/.archived/ideas/2026-03-17--old.md" ] && echo true || echo false)"
+  assert_eq "existing preserved" "true" "$([ -f "$TEST_DIR/.workflows/.inbox/ideas/2026-03-19--keep.md" ] && echo true || echo false)"
+  assert_eq "no self-nesting (.inbox/.inbox)" "false" "$([ -e "$TEST_DIR/.workflows/.inbox/.inbox" ] && echo true || echo false)"
+  assert_eq "no parent pollution" "false" "$([ -e "$TEST_DIR/.workflows/.inbox/PARENT_SENTINEL.md" ] && echo true || echo false)"
+  assert_eq "old inbox removed" "false" "$([ -d "$TEST_DIR/.workflows/inbox" ] && echo true || echo false)"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 033 tests..."
 echo ""
@@ -145,6 +171,7 @@ test_already_migrated
 test_merge
 test_merge_no_overwrite
 test_archived_moved
+test_merge_dotentry_no_pollution
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

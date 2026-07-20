@@ -14,6 +14,9 @@ FAIL=0
 report_update() { : ; }
 report_skip() { : ; }
 
+# Portable inode read: GNU coreutils (stat -c) or BSD/macOS (stat -f).
+_file_inode() { stat -c %i "$1" 2>/dev/null || stat -f %i "$1" 2>/dev/null; }
+
 assert_eq() {
   local label="$1" expected="$2" actual="$3"
   if [ "$expected" = "$actual" ]; then
@@ -673,10 +676,92 @@ TESTEOF
   teardown
 }
 
+# --- Hostile: no H1 heading — must not crash the chain ---
+# An inline-metadata plan with no `# ` heading used to abort the run at the
+# unguarded H1 grep under `set -eo pipefail`.
+test_no_h1_no_crash() {
+  setup
+
+  cat > "$PLAN_DIR/no-h1.md" << 'EOF'
+**Status**: draft
+**Date**: 2024-03-01
+
+## Overview
+
+Plan content.
+EOF
+
+  run_migration
+  content=$(cat "$PLAN_DIR/no-h1.md")
+
+  assert_eq "no-h1: migrated to frontmatter" "---" "$(head -1 "$PLAN_DIR/no-h1.md")"
+  assert_eq "no-h1: status mapped to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "no-h1: body section preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
+
+  teardown
+}
+
+# --- Hostile: no ## heading, but a body — the body must be preserved ---
+# The old no-section fallback set content="" and deleted the document body.
+test_no_section_preserves_body() {
+  setup
+
+  cat > "$PLAN_DIR/no-section.md" << 'EOF'
+# Implementation Plan: No Section
+
+**Status**: draft
+**Date**: 2024-03-02
+
+Body prose with no section heading.
+
+More plan content that must survive migration.
+EOF
+
+  run_migration
+  content=$(cat "$PLAN_DIR/no-section.md")
+
+  assert_eq "no-section: first body line preserved" "true" "$(echo "$content" | grep -qF 'Body prose with no section heading.' && echo true || echo false)"
+  assert_eq "no-section: later body line preserved" "true" "$(echo "$content" | grep -qF 'More plan content that must survive migration.' && echo true || echo false)"
+  assert_eq "no-section: H1 preserved" "true" "$(echo "$content" | grep -q '^# Implementation Plan: No Section$' && echo true || echo false)"
+
+  teardown
+}
+
+# --- Hostile (crash-safety): file replaced via tmp + atomic rename ---
+test_atomic_write_new_inode() {
+  setup
+
+  cat > "$PLAN_DIR/atomic.md" << 'EOF'
+# Implementation Plan: Atomic
+
+**Status**: draft
+**Date**: 2024-01-15
+**Specification**: `atomic.md`
+
+## Overview
+
+Content.
+EOF
+  local f="$PLAN_DIR/atomic.md"
+  local ib ia
+  ib=$(_file_inode "$f")
+  run_migration
+  ia=$(_file_inode "$f")
+
+  assert_eq "atomic: file replaced via tmp+rename (inode changes)" "true" "$([ "$ib" != "$ia" ] && echo true || echo false)"
+  assert_eq "atomic: no temp residue left" "false" "$(ls "$PLAN_DIR"/*.tmp.* >/dev/null 2>&1 && echo true || echo false)"
+  assert_eq "atomic: content migrated" "---" "$(head -1 "$f")"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 003 tests..."
 echo ""
 
+test_no_h1_no_crash
+test_no_section_preserves_body
+test_atomic_write_new_inode
 test_draft_with_partial_frontmatter
 test_ready_status
 test_in_progress_status

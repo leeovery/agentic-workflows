@@ -175,13 +175,17 @@ ${new_sources_block}"
     # Uses awk to skip only the first two --- delimiters, preserving any --- in body content
     content=$(awk '/^---$/ && c<2 {c++; next} c>=2 {print}' "$file")
 
-    # Write new file
+    # Write new file to a temp file in the same directory then rename, so a
+    # mid-write kill can't leave a truncated file that the frontmatter
+    # skip-check would then treat as already migrated.
+    tmp_file="$file.tmp.$$"
     {
         echo "---"
         echo "$new_frontmatter"
         echo "---"
         echo "$content"
-    } > "$file"
+    } > "$tmp_file"
+    mv "$tmp_file" "$file"
 
     # Report appropriate message based on what was done
     if $has_sources_field; then

@@ -534,8 +534,8 @@ while IFS= read -r name; do
         var fs = require('fs');
         var path = require('path');
 
-        var name = '$name';
-        var workType = '$wt';
+        var name = process.argv[1];
+        var workType = process.argv[2];
         var workDir = '.workflows/' + name;
 
         // Helper to extract frontmatter from a file
@@ -805,7 +805,7 @@ while IFS= read -r name; do
             path.join(workDir, 'manifest.json'),
             JSON.stringify(manifest, null, 2) + '\n'
         );
-    "
+    " "$name" "$wt"
     report_update
 
 done < "$_016_TMPDIR/wu_list"

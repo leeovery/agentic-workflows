@@ -32,7 +32,7 @@ for manifest in .workflows/*/manifest.json; do
     # Use node to convert array → object in-place
     node -e "
         const fs = require('fs');
-        const data = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
+        const data = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
         let changed = false;
 
         if (data.phases) {
@@ -66,16 +66,16 @@ for manifest in .workflows/*/manifest.json; do
         }
 
         if (changed) {
-            fs.writeFileSync('$manifest', JSON.stringify(data, null, 2) + '\n');
+            fs.writeFileSync(process.argv[1], JSON.stringify(data, null, 2) + '\n');
             process.stdout.write('changed');
         }
-    " 2>/dev/null
+    " "$manifest" 2>/dev/null
 
     if [ $? -eq 0 ]; then
         # Check if node reported a change (it writes 'changed' to stdout)
         result=$(node -e "
             const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
+            const data = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
             let hasArray = false;
             if (data.phases) {
                 for (const [phase, pdata] of Object.entries(data.phases)) {
@@ -88,7 +88,7 @@ for manifest in .workflows/*/manifest.json; do
                 }
             }
             process.stdout.write(hasArray ? 'has_array' : 'ok');
-        " 2>/dev/null)
+        " "$manifest" 2>/dev/null)
 
         if [ "$result" = "ok" ]; then
             report_skip

@@ -14,6 +14,9 @@ FAIL=0
 report_update() { : ; }
 report_skip() { : ; }
 
+# Portable inode read: GNU coreutils (stat -c) or BSD/macOS (stat -f).
+_file_inode() { stat -c %i "$1" 2>/dev/null || stat -f %i "$1" 2>/dev/null; }
+
 assert_eq() {
   local label="$1" expected="$2" actual="$3"
   if [ "$expected" = "$actual" ]; then
@@ -734,10 +737,47 @@ TESTEOF
   teardown
 }
 
+# --- Hostile (crash-safety): file replaced via tmp + atomic rename ---
+# The old `> "$file"` truncates in place; tmp-then-mv replaces the file with a
+# new inode atomically, so a mid-write kill can't leave a truncated file the
+# frontmatter skip-check would treat as migrated.
+test_atomic_write_new_inode() {
+  setup
+
+  cat > "$SPEC_DIR/atomic.md" << 'EOF'
+---
+topic: atomic
+status: concluded
+type: feature
+date: 2024-01-15
+sources:
+  - auth-flow
+---
+
+# Specification: Atomic
+
+## Overview
+
+Content.
+EOF
+  local f="$SPEC_DIR/atomic.md"
+  local ib ia
+  ib=$(_file_inode "$f")
+  run_migration
+  ia=$(_file_inode "$f")
+
+  assert_eq "atomic: file replaced via tmp+rename (inode changes)" "true" "$([ "$ib" != "$ia" ] && echo true || echo false)"
+  assert_eq "atomic: no temp residue left" "false" "$(ls "$SPEC_DIR"/*.tmp.* >/dev/null 2>&1 && echo true || echo false)"
+  assert_eq "atomic: sources converted to object" "true" "$(grep -qF -- '- name: auth-flow' "$f" && echo true || echo false)"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 004 tests..."
 echo ""
 
+test_atomic_write_new_inode
 test_single_source
 test_multiple_sources
 test_quoted_sources

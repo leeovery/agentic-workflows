@@ -69,11 +69,20 @@ for manifest in "$WORKFLOWS_DIR"/*/manifest.json; do
       continue
     fi
 
-    # Sort qa-task files numerically
+    # Sort qa-task files numerically by the N in qa-task-{N}.md. The basename
+    # number is the only reliable key: sorting dash-split full paths keys on a
+    # field that shifts with kebab-case directory names, so >=10 tasks would
+    # sort lexicographically (qa-task-10 before qa-task-2). Emit "N<TAB>path",
+    # sort by the numeric key, then strip it.
     sorted_qa=()
     while IFS= read -r f; do
       sorted_qa+=("$f")
-    done < <(printf '%s\n' "${qa_files[@]}" | sort -t- -k3 -n)
+    done < <(
+      for f in "${qa_files[@]}"; do
+        n=$(basename "$f" | sed -n 's/^qa-task-\([0-9][0-9]*\)\.md$/\1/p')
+        printf '%s\t%s\n' "$n" "$f"
+      done | sort -n -k1,1 | cut -f2-
+    )
 
     # Validate counts match
     if [ ${#sorted_qa[@]} -ne ${#internal_ids[@]} ]; then

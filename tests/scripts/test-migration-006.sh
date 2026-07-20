@@ -379,6 +379,64 @@ EOF
   teardown
 }
 
+# --- Test 11: Tracking file is not made a phantom spec topic ---
+# {topic}-review-tracking-*.md sorts before {topic}.md, so the outer loop used
+# to visit it first and manufacture a phantom topic dir. It must instead be
+# relocated into the real topic's directory by the inner tracking loop.
+test_spec_tracking_not_phantom() {
+  setup
+
+  cat > "$SPEC_DIR/auth.md" << 'EOF'
+---
+topic: auth
+status: concluded
+type: feature
+date: 2024-01-15
+---
+
+# Specification: Auth
+EOF
+  echo "# QA tracking c1" > "$SPEC_DIR/auth-review-tracking-c1.md"
+
+  cd "$TEST_DIR"
+  source "$MIGRATION"
+
+  assert_eq "real topic migrated" "true" "$([ -f "$SPEC_DIR/auth/specification.md" ] && echo true || echo false)"
+  assert_eq "tracking file relocated into topic dir" "true" "$([ -f "$SPEC_DIR/auth/review-tracking-c1.md" ] && echo true || echo false)"
+  assert_eq "no phantom topic directory" "false" "$([ -d "$SPEC_DIR/auth-review-tracking-c1" ] && echo true || echo false)"
+  assert_eq "original tracking file removed" "false" "$([ -f "$SPEC_DIR/auth-review-tracking-c1.md" ] && echo true || echo false)"
+
+  teardown
+}
+
+# --- Test 12: Planning tracking file is not made a phantom plan topic ---
+test_plan_tracking_not_phantom() {
+  setup
+
+  cat > "$PLAN_DIR/auth.md" << 'EOF'
+---
+topic: auth
+status: in-progress
+date: 2024-02-20
+format: local-markdown
+specification: auth.md
+---
+
+# Implementation Plan: Auth
+EOF
+  echo "# QA tracking c1" > "$PLAN_DIR/auth-review-tracking-c1.md"
+
+  cd "$TEST_DIR"
+  source "$MIGRATION"
+
+  assert_eq "real topic migrated" "true" "$([ -f "$PLAN_DIR/auth/plan.md" ] && echo true || echo false)"
+  assert_eq "tracking file relocated into topic dir" "true" "$([ -f "$PLAN_DIR/auth/review-tracking-c1.md" ] && echo true || echo false)"
+  assert_eq "no phantom topic directory" "false" "$([ -d "$PLAN_DIR/auth-review-tracking-c1" ] && echo true || echo false)"
+  assert_eq "original tracking file removed" "false" "$([ -f "$PLAN_DIR/auth-review-tracking-c1.md" ] && echo true || echo false)"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 006 tests..."
 echo ""
@@ -393,6 +451,8 @@ test_spec_field_updated
 test_spec_field_already_updated
 test_multiple_restructured
 test_idempotency
+test_spec_tracking_not_phantom
+test_plan_tracking_not_phantom
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

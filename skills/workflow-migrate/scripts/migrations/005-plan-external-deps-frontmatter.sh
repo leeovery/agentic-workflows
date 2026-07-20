@@ -208,13 +208,17 @@ ${planning_block}"
 ${new_deps_block}"
     fi
 
-    # Write the updated file
+    # Write the updated file to a temp file in the same directory then rename,
+    # so a mid-write kill can't leave a truncated file that the skip-check would
+    # then treat as already migrated.
+    tmp_file="$file.tmp.$$"
     {
         echo "---"
         echo "$final_frontmatter"
         echo "---"
         echo "$new_body"
-    } > "$file"
+    } > "$tmp_file"
+    mv "$tmp_file" "$file"
 
     if $has_deps; then
         report_update

@@ -134,6 +134,28 @@ test_no_claude_dir() {
   teardown
 }
 
+# --- Unparseable settings.json (trailing comma) — skip, never crash ---
+# A hand-edited settings.json with a trailing comma must not brick the migration
+# chain. The migration skips (leaving the file untouched) rather than crashing.
+test_unparseable_settings_skips() {
+  setup
+
+  mkdir -p "$TEST_DIR/.claude"
+  printf '{\n  "permissions": {\n    "allow": ["Bash(git status:*)"],\n  }\n}\n' > "$TEST_DIR/.claude/settings.json"
+  local before
+  before=$(cat "$TEST_DIR/.claude/settings.json")
+
+  local rc=0
+  ( source "$MIGRATION" ) || rc=$?
+  assert_eq "unparseable settings skipped without error" "0" "$rc"
+
+  local after
+  after=$(cat "$TEST_DIR/.claude/settings.json")
+  assert_eq "unparseable settings left byte-identical" "$before" "$after"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 044 tests..."
 echo ""
@@ -143,6 +165,7 @@ test_existing_settings_preserved
 test_already_present_skips
 test_idempotent
 test_no_claude_dir
+test_unparseable_settings_skips
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

@@ -31,7 +31,7 @@ for manifest in .workflows/*/manifest.json; do
 
     result=$(node -e "
         const fs = require('fs');
-        const data = JSON.parse(fs.readFileSync('$manifest', 'utf8'));
+        const data = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
         let changed = false;
 
         if (data.phases) {
@@ -53,12 +53,12 @@ for manifest in .workflows/*/manifest.json; do
         }
 
         if (changed) {
-            fs.writeFileSync('$manifest', JSON.stringify(data, null, 2) + '\n');
+            fs.writeFileSync(process.argv[1], JSON.stringify(data, null, 2) + '\n');
             process.stdout.write('updated');
         } else {
             process.stdout.write('skip');
         }
-    " 2>/dev/null)
+    " "$manifest" 2>/dev/null)
 
     if [ "$result" = "updated" ]; then
         report_update

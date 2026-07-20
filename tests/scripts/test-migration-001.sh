@@ -14,6 +14,9 @@ FAIL=0
 report_update() { : ; }
 report_skip() { : ; }
 
+# Portable inode read: GNU coreutils (stat -c) or BSD/macOS (stat -f).
+_file_inode() { stat -c %i "$1" 2>/dev/null || stat -f %i "$1" 2>/dev/null; }
+
 assert_eq() {
   local label="$1" expected="$2" actual="$3"
   if [ "$expected" = "$actual" ]; then
@@ -521,6 +524,89 @@ TESTEOF
   teardown
 }
 
+# --- Hostile: Date present but no Status line — must not crash the chain ---
+# The file matches the legacy check on **Date** but has no **Status**. Under
+# `set -eo pipefail` the unguarded status grep used to abort the run.
+test_date_only_no_status() {
+  setup
+
+  cat > "$DISCUSSION_DIR/date-only.md" << 'EOF'
+# Discussion: Date Only
+
+**Date**: 2024-03-01
+
+## Context
+
+Some content.
+EOF
+
+  run_migration
+  content=$(cat "$DISCUSSION_DIR/date-only.md")
+
+  assert_eq "date-only: migrated to frontmatter" "---" "$(head -1 "$DISCUSSION_DIR/date-only.md")"
+  assert_eq "date-only: status defaulted to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "date-only: date preserved" "true" "$(echo "$content" | grep -q '^date: 2024-03-01$' && echo true || echo false)"
+  assert_eq "date-only: body section preserved" "true" "$(echo "$content" | grep -q '^## Context$' && echo true || echo false)"
+
+  teardown
+}
+
+# --- Hostile: no ## heading, but a body — the body must be preserved ---
+# The old no-section fallback set content="" and rewrote the file as
+# frontmatter + H1 only, deleting the document body.
+test_no_section_preserves_body() {
+  setup
+
+  cat > "$DISCUSSION_DIR/no-section.md" << 'EOF'
+# Discussion: No Section
+
+**Date**: 2024-03-02
+**Status**: Concluded
+
+This is body prose with no section heading.
+
+More body content that must survive migration.
+EOF
+
+  run_migration
+  content=$(cat "$DISCUSSION_DIR/no-section.md")
+
+  assert_eq "no-section: first body line preserved" "true" "$(echo "$content" | grep -qF 'This is body prose with no section heading.' && echo true || echo false)"
+  assert_eq "no-section: later body line preserved" "true" "$(echo "$content" | grep -qF 'More body content that must survive migration.' && echo true || echo false)"
+  assert_eq "no-section: H1 preserved" "true" "$(echo "$content" | grep -q '^# Discussion: No Section$' && echo true || echo false)"
+
+  teardown
+}
+
+# --- Hostile (crash-safety): file replaced via tmp + atomic rename ---
+# The old `> "$file"` truncates in place (a mid-write kill leaves a truncated
+# file the skip-check treats as migrated). tmp-then-mv replaces the file with a
+# new inode atomically — the destination is never observed half-written.
+test_atomic_write_new_inode() {
+  setup
+
+  cat > "$DISCUSSION_DIR/atomic.md" << 'EOF'
+# Discussion: Atomic
+
+**Status**: Exploring
+
+## Context
+
+Body.
+EOF
+
+  local inode_before inode_after
+  inode_before=$(_file_inode "$DISCUSSION_DIR/atomic.md")
+  run_migration
+  inode_after=$(_file_inode "$DISCUSSION_DIR/atomic.md")
+
+  assert_eq "atomic: file replaced via tmp+rename (inode changes)" "true" "$([ "$inode_before" != "$inode_after" ] && echo true || echo false)"
+  assert_eq "atomic: no temp residue left" "false" "$(ls "$DISCUSSION_DIR"/*.tmp.* >/dev/null 2>&1 && echo true || echo false)"
+  assert_eq "atomic: content migrated" "---" "$(head -1 "$DISCUSSION_DIR/atomic.md")"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 001 tests..."
 echo ""
@@ -541,6 +627,9 @@ test_kebab_case_topic
 test_body_horizontal_rules
 test_special_chars
 test_exact_body_preservation
+test_date_only_no_status
+test_no_section_preserves_body
+test_atomic_write_new_inode
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

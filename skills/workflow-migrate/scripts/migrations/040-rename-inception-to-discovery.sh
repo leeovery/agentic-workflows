@@ -47,10 +47,17 @@ for (const entry of entries) {
       let updated = false;
 
       if (Object.prototype.hasOwnProperty.call(m.phases, 'inception')) {
-        const merged = Object.assign({}, m.phases.inception, m.phases.discovery || {});
-        m.phases.discovery = merged;
-        delete m.phases.inception;
-        updated = true;
+        if (m.phases.discovery) {
+          // Partial prior run — both phases present. A shallow Object.assign
+          // would let discovery's items/dismissed/cache subtrees clobber
+          // inception's. Leave both in place for the admin to reconcile,
+          // mirroring the directory rename's skip-if-target-exists below.
+        } else {
+          const merged = Object.assign({}, m.phases.inception, m.phases.discovery || {});
+          m.phases.discovery = merged;
+          delete m.phases.inception;
+          updated = true;
+        }
       }
 
       const disc = m.phases.discovery;

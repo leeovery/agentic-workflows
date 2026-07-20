@@ -14,6 +14,9 @@ FAIL=0
 report_update() { : ; }
 report_skip() { : ; }
 
+# Portable inode read: GNU coreutils (stat -c) or BSD/macOS (stat -f).
+_file_inode() { stat -c %i "$1" 2>/dev/null || stat -f %i "$1" 2>/dev/null; }
+
 assert_eq() {
   local label="$1" expected="$2" actual="$3"
   if [ "$expected" = "$actual" ]; then
@@ -619,10 +622,97 @@ TESTEOF
   teardown
 }
 
+# --- Hostile: Type present but no Status line — must not crash the chain ---
+# The file matches the legacy check on **Type** but has no **Status**. Under
+# `set -eo pipefail` the unguarded status grep used to abort the run.
+test_type_only_no_status() {
+  setup
+
+  cat > "$SPEC_DIR/type-only.md" << 'EOF'
+# Specification: Type Only
+
+**Type**: feature
+**Last Updated**: 2024-03-01
+
+## Overview
+
+Spec content.
+EOF
+
+  run_migration
+  content=$(cat "$SPEC_DIR/type-only.md")
+
+  assert_eq "type-only: migrated to frontmatter" "---" "$(head -1 "$SPEC_DIR/type-only.md")"
+  assert_eq "type-only: status defaulted to in-progress" "true" "$(echo "$content" | grep -q '^status: in-progress$' && echo true || echo false)"
+  assert_eq "type-only: type preserved" "true" "$(echo "$content" | grep -q '^type: feature$' && echo true || echo false)"
+  assert_eq "type-only: body section preserved" "true" "$(echo "$content" | grep -q '^## Overview$' && echo true || echo false)"
+
+  teardown
+}
+
+# --- Hostile: no ## heading, but a body — the body must be preserved ---
+# The old no-section fallback set content="" and rewrote the file as
+# frontmatter + H1 only, deleting the document body.
+test_no_section_preserves_body() {
+  setup
+
+  cat > "$SPEC_DIR/no-section.md" << 'EOF'
+# Specification: No Section
+
+**Status**: Complete
+**Type**: feature
+**Last Updated**: 2024-03-02
+
+This is spec body prose with no section heading.
+
+More requirements that must survive migration.
+EOF
+
+  run_migration
+  content=$(cat "$SPEC_DIR/no-section.md")
+
+  assert_eq "no-section: first body line preserved" "true" "$(echo "$content" | grep -qF 'This is spec body prose with no section heading.' && echo true || echo false)"
+  assert_eq "no-section: later body line preserved" "true" "$(echo "$content" | grep -qF 'More requirements that must survive migration.' && echo true || echo false)"
+  assert_eq "no-section: H1 preserved" "true" "$(echo "$content" | grep -q '^# Specification: No Section$' && echo true || echo false)"
+
+  teardown
+}
+
+# --- Hostile (crash-safety): file replaced via tmp + atomic rename ---
+test_atomic_write_new_inode() {
+  setup
+
+  cat > "$SPEC_DIR/atomic.md" << 'EOF'
+# Specification: Atomic
+
+**Status**: Building specification
+**Type**: feature
+**Last Updated**: 2024-01-15
+
+## Overview
+
+Content.
+EOF
+  local f="$SPEC_DIR/atomic.md"
+  local ib ia
+  ib=$(_file_inode "$f")
+  run_migration
+  ia=$(_file_inode "$f")
+
+  assert_eq "atomic: file replaced via tmp+rename (inode changes)" "true" "$([ "$ib" != "$ia" ] && echo true || echo false)"
+  assert_eq "atomic: no temp residue left" "false" "$(ls "$SPEC_DIR"/*.tmp.* >/dev/null 2>&1 && echo true || echo false)"
+  assert_eq "atomic: content migrated" "---" "$(head -1 "$f")"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 002 tests..."
 echo ""
 
+test_type_only_no_status
+test_no_section_preserves_body
+test_atomic_write_new_inode
 test_building_specification
 test_complete_status
 test_completed_status

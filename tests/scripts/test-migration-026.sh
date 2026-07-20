@@ -324,6 +324,37 @@ test_skips_dot_dirs() {
   teardown
 }
 
+# --- Test 14: >=10 tasks sort numerically, not lexicographically ---
+# qa-task-{N}.md files map positionally to plan tasks in table order, so they
+# must be sorted numerically. A lexicographic sort puts qa-task-10 before
+# qa-task-2, mismapping every renamed report. Content assertions pin the
+# mapping: report-1-N.md must carry qa-task-N's content.
+test_ge_ten_tasks_numeric_order() {
+  setup
+
+  local wu="big-review" topic="auto-cascade-parent-status"
+  create_manifest "$wu" "{\"name\":\"$wu\",\"work_type\":\"epic\",\"status\":\"in-progress\",\"phases\":{}}"
+
+  local ids=() args=() i
+  for i in 1 2 3 4 5 6 7 8 9 10 11; do
+    ids+=("$topic-1-$i")
+    args+=("t$i")
+  done
+  create_plan_with_tasks "$wu" "$topic" "${ids[@]}"
+  create_review_files "$wu" "$topic" "${args[@]}"
+
+  run_migration > /dev/null
+
+  local base="$TEST_DIR/.workflows/$wu/review/$topic"
+  assert_eq "report-1-2 carries task 2 (not task 10)" "QA findings for task 2" "$(cat "$base/report-1-2.md" 2>/dev/null)"
+  assert_eq "report-1-9 carries task 9" "QA findings for task 9" "$(cat "$base/report-1-9.md" 2>/dev/null)"
+  assert_eq "report-1-10 carries task 10" "QA findings for task 10" "$(cat "$base/report-1-10.md" 2>/dev/null)"
+  assert_eq "report-1-11 carries task 11" "QA findings for task 11" "$(cat "$base/report-1-11.md" 2>/dev/null)"
+  assert_eq "no qa-task files left" "false" "$([ -f "$base/qa-task-1.md" ] && echo true || echo false)"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 026 tests..."
 echo ""
@@ -341,6 +372,7 @@ test_no_workflows_dir
 test_no_review_dir
 test_review_only
 test_skips_dot_dirs
+test_ge_ten_tasks_numeric_order
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

@@ -301,7 +301,11 @@ JSON
   teardown
 }
 
-# --- Test 8: phases.discovery already exists — merged without loss ---
+# --- Test 8: phases.discovery already exists (partial prior run) — no clobber ---
+# A shallow Object.assign would let discovery's items overwrite inception's,
+# silently dropping inception's items (here: foo). The fix skips the merge when
+# discovery already exists, leaving both phases intact for the admin to
+# reconcile — no data loss either way.
 test_partial_already_migrated() {
   setup
 
@@ -320,17 +324,23 @@ JSON
 
   source "$MIGRATION"
 
-  local has_old=$(node -e "
+  local has_inception=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
     console.log(!!m.phases.inception);
   ")
-  assert_eq "inception removed after merge" "false" "$has_old"
+  assert_eq "inception left in place (not clobbered)" "true" "$has_inception"
 
-  local has_bar=$(node -e "
+  local foo_survives=$(node -e "
     const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
-    console.log(!!(m.phases.discovery.items && m.phases.discovery.items.bar));
+    console.log(!!(m.phases.inception && m.phases.inception.items && m.phases.inception.items.foo));
   ")
-  assert_eq "discovery items preserved" "true" "$has_bar"
+  assert_eq "inception item 'foo' survives (no data loss)" "true" "$foo_survives"
+
+  local bar_survives=$(node -e "
+    const m = JSON.parse(require('fs').readFileSync('$wu_dir/manifest.json', 'utf8'));
+    console.log(!!(m.phases.discovery && m.phases.discovery.items && m.phases.discovery.items.bar));
+  ")
+  assert_eq "discovery item 'bar' survives" "true" "$bar_survives"
 
   teardown
 }

@@ -14,6 +14,9 @@ FAIL=0
 report_update() { : ; }
 report_skip() { : ; }
 
+# Portable inode read: GNU coreutils (stat -c) or BSD/macOS (stat -f).
+_file_inode() { stat -c %i "$1" 2>/dev/null || stat -f %i "$1" 2>/dev/null; }
+
 assert_eq() {
   local label="$1" expected="$2" actual="$3"
   if [ "$expected" = "$actual" ]; then
@@ -491,10 +494,51 @@ EOF
   teardown
 }
 
+# --- Hostile (crash-safety): file replaced via tmp + atomic rename ---
+# The old `> "$file"` truncates in place; tmp-then-mv replaces the file with a
+# new inode atomically, so a mid-write kill can't leave a truncated file the
+# skip-check would treat as migrated.
+test_atomic_write_new_inode() {
+  setup
+
+  cat > "$PLAN_DIR/atomic.md" << 'EOF'
+---
+topic: atomic
+status: in-progress
+date: 2024-01-15
+format: local-markdown
+specification: atomic.md
+---
+
+# Implementation Plan: Atomic
+
+## External Dependencies
+
+- payment-gateway: Payment processing for checkout
+
+## Phase 1: Setup
+
+Setup tasks.
+EOF
+  local f="$PLAN_DIR/atomic.md"
+  local ib ia
+  ib=$(_file_inode "$f")
+  cd "$TEST_DIR"
+  source "$MIGRATION"
+  ia=$(_file_inode "$f")
+
+  assert_eq "atomic: file replaced via tmp+rename (inode changes)" "true" "$([ "$ib" != "$ia" ] && echo true || echo false)"
+  assert_eq "atomic: no temp residue left" "false" "$(ls "$PLAN_DIR"/*.tmp.* >/dev/null 2>&1 && echo true || echo false)"
+  assert_eq "atomic: deps moved to frontmatter" "true" "$(grep -q '^external_dependencies:' "$f" && echo true || echo false)"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 005 tests..."
 echo ""
 
+test_atomic_write_new_inode
 test_unresolved_dep
 test_resolved_dep
 test_resolved_suffix

@@ -157,28 +157,43 @@ specification: $spec_value
 ---"
     fi
 
-    # Extract H1 heading (preserve original)
-    h1_heading=$(grep -m1 "^# " "$file")
+    # Extract H1 heading (preserve original). Guarded so a heading-less file
+    # can't abort the run under `set -eo pipefail`.
+    h1_heading=$(grep -m1 "^# " "$file" || true)
 
-    # Find line number of first ## heading (start of real content after metadata)
-    first_section_line=$(grep -n "^## " "$file" | head -1 | cut -d: -f1)
+    # Find line number of first ## heading (start of real content after metadata).
+    # Guarded: a file with no ## section must not fail the pipeline under pipefail.
+    first_section_line=$(grep -n "^## " "$file" | head -1 | cut -d: -f1 || true)
 
     # Get content from first ## onwards (preserves all content)
     if [ -n "$first_section_line" ]; then
-        content=$(tail -n +$first_section_line "$file")
+        content=$(tail -n +"$first_section_line" "$file")
     else
-        # No ## found - might be empty or malformed
-        content=""
+        # No ## found — preserve the body verbatim instead of dropping it.
+        # Skip the leading H1, the legacy **…** metadata lines, and blank lines,
+        # then emit everything from the first real body line onward.
+        content=$(awk '
+            seen { print; next }
+            /^# / { next }
+            /^\*\*/ { next }
+            /^[[:space:]]*$/ { next }
+            { seen = 1; print }
+        ' "$file")
     fi
 
-    # Write new content: frontmatter + H1 + blank line + content
+    # Write new content: frontmatter + H1 + blank line + content.
+    # Write to a temp file in the same directory then rename, so a mid-write
+    # kill can't leave a truncated file that the skip-check would then treat as
+    # already migrated.
+    tmp_file="$file.tmp.$$"
     {
         echo "$frontmatter"
         echo ""
         echo "$h1_heading"
         echo ""
         echo "$content"
-    } > "$file"
+    } > "$tmp_file"
+    mv "$tmp_file" "$file"
 
     report_update
 done

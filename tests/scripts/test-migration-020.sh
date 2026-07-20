@@ -324,9 +324,26 @@ test_no_workflows() {
   setup
   rm -rf "$TEST_DIR/.workflows"
 
-  PROJECT_DIR="$TEST_DIR" bash "$MIGRATION"
+  # The orchestrator sources migrations; mirror that here.
+  ( source "$MIGRATION" )
 
   assert_eq "exits cleanly" "true" "true"
+
+  teardown
+}
+
+# --- Sourced with no .workflows — returns, does not exit the caller ---
+# The orchestrator sources each migration; a top-level `exit` in the early guard
+# would kill the whole chain. `return` must bow out of just this migration.
+test_sourced_missing_workflows_does_not_exit_caller() {
+  setup
+  rm -rf "$TEST_DIR/.workflows"
+
+  local after="not-reached"
+  source "$MIGRATION"
+  after="reached"
+
+  assert_eq "caller continues past a sourced no-op migration" "reached" "$after"
 
   teardown
 }
@@ -404,6 +421,7 @@ test_skip_dot_dirs
 test_idempotent
 test_preserves_fields
 test_no_workflows
+test_sourced_missing_workflows_does_not_exit_caller
 test_multiple_work_units
 test_mixed_epic
 

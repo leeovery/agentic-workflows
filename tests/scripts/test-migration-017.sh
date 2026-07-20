@@ -233,6 +233,39 @@ EOF
   teardown
 }
 
+# --- Test 7: Work-unit dir name with a single quote — no node injection ---
+# The manifest path is passed to node via process.argv, so a quote in the dir
+# name (interpolated into the source string previously) no longer breaks it.
+test_quote_in_work_unit_name() {
+  setup
+
+  mkdir -p "$TEST_DIR/.workflows/user's-auth"
+  cat > "$TEST_DIR/.workflows/user's-auth/manifest.json" << 'EOF'
+{
+  "name": "user's-auth",
+  "work_type": "feature",
+  "status": "active",
+  "phases": {
+    "planning": {
+      "status": "concluded",
+      "external_dependencies": [
+        { "topic": "billing", "state": "unresolved" }
+      ]
+    }
+  }
+}
+EOF
+
+  cd "$TEST_DIR"
+  source "$MIGRATION"
+
+  content=$(cat "$TEST_DIR/.workflows/user's-auth/manifest.json")
+  assert_eq "quoted-name: array converted to object" "true" "$(echo "$content" | grep -qF '"billing"' && echo true || echo false)"
+  assert_eq "quoted-name: topic field removed from values" "false" "$(echo "$content" | grep -qF '"topic"' && echo true || echo false)"
+
+  teardown
+}
+
 # --- Run all tests ---
 echo "Running migration 017 tests..."
 echo ""
@@ -243,6 +276,7 @@ test_epic_items
 test_idempotent
 test_skip_dot_dirs
 test_no_deps_unchanged
+test_quote_in_work_unit_name
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
