@@ -412,6 +412,35 @@ describe('epic projections: menu', () => {
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
   });
 
+  it('implementation continue label names the task in flight, not the completed count', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { roles: { status: 'completed' } } },
+        specification: { items: { roles: { status: 'completed', sources: { roles: { status: 'incorporated' } } } } },
+        planning: { items: { roles: { status: 'completed' } } },
+        implementation: { items: { roles: { status: 'in-progress', current_phase: 2, current_task: 'r-2-2', completed_tasks: ['r-1-1', 'r-1-2', 'r-2-1'] } } },
+      },
+    });
+    const { rendered } = epicMenu('v1', d);
+    assert.ok(rendered.includes('— Continue "Roles" — implementation (Phase 2, Task r-2-2)'), rendered);
+    assert.ok(!rendered.includes('Task 3'), 'completed count must not masquerade as a task position');
+  });
+
+  it('implementation continue label falls back to the completed count when no task is in flight', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { roles: { status: 'completed' } } },
+        specification: { items: { roles: { status: 'completed', sources: { roles: { status: 'incorporated' } } } } },
+        planning: { items: { roles: { status: 'completed' } } },
+        implementation: { items: { roles: { status: 'in-progress', current_phase: 2, current_task: null, completed_tasks: ['r-1-1', 'r-1-2', 'r-2-1'] } } },
+      },
+    });
+    const { rendered } = epicMenu('v1', d);
+    assert.ok(rendered.includes('— Continue "Roles" — implementation (Phase 2, 3 task(s) completed)'), rendered);
+  });
+
   it('brand-new epic menu offers only the always-present command options', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const { keys, rendered } = epicMenu('fresh', d);

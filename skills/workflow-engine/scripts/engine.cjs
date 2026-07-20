@@ -122,6 +122,7 @@ Commands:
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
+  topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>

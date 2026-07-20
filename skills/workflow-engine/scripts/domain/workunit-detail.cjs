@@ -74,6 +74,8 @@ const WORK_UNIT_TYPES = {
  * @property {string} name
  * @property {string} next_phase
  * @property {string} phase_label
+ * @property {boolean} finalising      pipeline finished (`next_phase: done`) but the unit is
+ *                                     still in-progress — `workunit complete` never ran
  * @property {string[]} completed_phases
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
@@ -145,12 +147,15 @@ function workUnitDetail(cwd, type) {
   for (const m of loadActiveManifests(cwd)) {
     if (m.work_type !== cfg.workType) continue;
     const state = computeNextPhase(m);
-    if (state.next_phase === 'done') continue;
+    // A finished pipeline on a still-in-progress unit is surfaced, never
+    // hidden: the unit sat between the last topic completion and `workunit
+    // complete` when the flow stopped, and finalising is its only way out.
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
       next_phase: state.next_phase,
       phase_label: state.phase_label,
+      finalising: state.next_phase === 'done',
       completed_phases: completedPhases(cfg, m),
     };
     if (cfg.surfacesSeeds) {
@@ -200,7 +205,7 @@ function workUnitIndex(type, detail) {
   const lines = [];
   lines.push(`=== ${cfg.header} (${detail.count}) ===`);
   for (const u of unitsOf(cfg, detail)) {
-    lines.push(`  ${u.name}: ${u.phase_label}`);
+    lines.push(`  ${u.name}: ${u.finalising ? `finalising — ${u.phase_label}` : u.phase_label}`);
   }
   lines.push(`=== COMPLETED (${detail.completed_count}) ===`);
   for (const u of detail.completed) {

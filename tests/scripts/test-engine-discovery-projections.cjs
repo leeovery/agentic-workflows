@@ -76,7 +76,7 @@ describe('discoveryMapView', () => {
       '  ├─ ✓ Ordering Flow [decided]',
       '  ├─ ○ Loyalty [fresh]',
       '  ├─ ○ Operator Analytics [fresh · routed to research]',
-      '  ├─ ⊙ Umbrella [handled · research fanned out]',
+      '  ├─ ⊙ Umbrella [handled]',
       '  └─ ⊘ Legacy Import [cancelled]',
       '',
     ].join('\n'));
@@ -115,6 +115,38 @@ describe('discoveryMapView', () => {
       '',
       '  Discovery Map (0 topics)',
       '  (empty)',
+      '',
+    ].join('\n'));
+  });
+
+  it('tags derive from the actual research state — fan-out claimed only when research exists, superseded named', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            'umbrella': { routing: 'research', source: 'discovery', handled: true },
+            'no-research': { routing: 'discussion', source: 'discovery', handled: true },
+            'split-parent': { routing: 'research', source: 'discovery' },
+          },
+        },
+        research: {
+          items: {
+            'umbrella': { status: 'completed' },
+            'split-parent': { status: 'superseded' },
+          },
+        },
+      },
+    });
+    assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
+      '●───────────────────────────────────────────────●',
+      '  Discovery — V1',
+      '●───────────────────────────────────────────────●',
+      '',
+      '  Discovery Map (3 topics — 1 ready · 2 handled)',
+      '  ├─ → Split Parent [research superseded · ready for discussion]',
+      '  ├─ ⊙ No Research [handled]',
+      '  └─ ⊙ Umbrella [handled · research fanned out]',
       '',
     ].join('\n'));
   });

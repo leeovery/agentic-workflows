@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const { box, renderTree, wrap } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase, SPEC_LEGEND } = require('../conventions.cjs');
+const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -54,6 +54,11 @@ const STALE_CACHE_MSG =
 /** @param {string[]} names */
 function bullets(names) {
   return names.map((n) => `  • ${n}`).join('\n');
+}
+
+/** `N noun` with plural agreement (`1 spec` / `2 specs`). @param {number} n @param {string} noun */
+function counted(n, noun) {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`;
 }
 
 /** ⚑ block for in-progress discussions, or '' when none. @param {string[]} names */
@@ -193,7 +198,7 @@ function groupingsDisplay(detail) {
 /** @param {SpecificationDetail} detail */
 function analyzeDisplay(detail) {
   return compose([
-    `${detail.counts.completed_count} completed discussions found. No specifications exist yet.`,
+    `${counted(detail.counts.completed_count, 'completed discussion')} found. No specifications exist yet.`,
     'Completed discussions:\n' + bullets(detail.completed_discussions),
     notReadyBlock(detail.in_progress_discussions),
   ]);
@@ -202,7 +207,8 @@ function analyzeDisplay(detail) {
 /** @param {SpecificationDetail} detail */
 function specsMenuDisplay(detail) {
   const cs = detail.counts;
-  const blocks = [`${cs.completed_count} completed discussions found. ${cs.spec_count} specifications exist.`];
+  const blocks = [`${counted(cs.completed_count, 'completed discussion')} found. `
+    + `${counted(cs.spec_count, 'specification')} exist${cs.spec_count === 1 ? 's' : ''}.`];
   if (detail.actionable.length > 0) {
     blocks.push('Existing specifications:');
     detail.actionable.forEach((row, i) => blocks.push(itemBlock(i + 1, row)));
@@ -347,8 +353,9 @@ function specificationMenu(detail) {
 }
 
 /**
- * The concluded-specs sub-view (`c`/`completed`): flat Refine entries — no
- * tree, the specs have no pending work.
+ * The concluded-specs sub-view (`c`/`completed`): the heading with one row per
+ * concluded spec, and flat Refine entries — no source detail, the specs have
+ * no pending work.
  * @param {SpecificationDetail} detail
  * @returns {{keys: SpecMenuKey[], display: string, rendered: string}}
  */
@@ -368,7 +375,10 @@ function specificationCompletedMenu(detail) {
   }
   lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
 
-  return { keys, display: 'Completed Specifications\n', rendered: lines.join('\n') };
+  const display = 'Completed Specifications\n'
+    + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name), tag: 'completed' }) })), { width: TREE_WIDTH });
+
+  return { keys, display, rendered: lines.join('\n') };
 }
 
 module.exports = { specificationDisplay, specificationMenu, specificationCompletedMenu };

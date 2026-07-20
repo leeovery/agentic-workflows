@@ -36,7 +36,7 @@ describe('workflow-continue-feature discovery', () => {
     assert.strictEqual(r.features[0].name, 'auth');
   });
 
-  it('excludes done features', () => {
+  it('surfaces a finished pipeline still in-progress as finalising', () => {
     createManifest(dir, 'done', {
       work_type: 'feature',
       phases: {
@@ -48,7 +48,10 @@ describe('workflow-continue-feature discovery', () => {
       },
     });
     const r = discover(dir);
-    assert.strictEqual(r.count, 0);
+    assert.strictEqual(r.count, 1);
+    assert.strictEqual(r.features[0].next_phase, 'done');
+    assert.strictEqual(r.features[0].finalising, true);
+    assert.ok(format(r).includes('  done: finalising — pipeline complete\n'));
   });
 
   it('includes phase_label and completed_phases', () => {

@@ -341,6 +341,24 @@ describe('specification projections: display goldens', () => {
     ].join('\n'));
   });
 
+  it('specs-menu: a single spec renders with singular agreement — "1 specification exists"', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
+        specification: {
+          items: {
+            's1': { status: 'completed', sources: { a: { status: 'incorporated' }, b: { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/s1/specification.md', '# S1');
+    const out = specificationDisplay(detailOf(dir, 'v1'));
+    assert.ok(out.includes('\n2 completed discussions found. 1 specification exists.\n'), out);
+    assert.ok(!out.includes('1 specifications'), out);
+  });
+
   it('single no-spec: ready row, no spec line, ready-only key', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -646,7 +664,12 @@ describe('specification projections: menu goldens', () => {
     createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# A');
     createFile(dir, '.workflows/v1/specification/data-model/specification.md', '# D');
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
-    assert.strictEqual(sub.display, 'Completed Specifications\n');
+    assert.strictEqual(sub.display, [
+      'Completed Specifications',
+      '  ├─ Auth Flow [completed]',
+      '  └─ Data Model [completed]',
+      '',
+    ].join('\n'));
     assert.strictEqual(sub.rendered, [
       '· · · · · · · · · · · ·',
       'Which completed specification would you like to refine?',

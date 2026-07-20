@@ -231,46 +231,50 @@ function computeNeedsSequencing(mapItems) {
   return mapItems.some(it => it.tier !== '⊘' && it.tier !== '⊙' && it.order == null);
 }
 
+// `research_state` rides along on every result — the research item's raw
+// status (null when no research item exists), so labels can be derived from
+// the actual per-phase state (a handled topic without research, superseded
+// research) rather than assumed from the lifecycle alone.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
+  const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
+  const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
+
+  const rs = research ? research.status ?? null : null;
+  const ds = discussion ? discussion.status : null;
+
   // Stored marker wins over name-matching: a research topic that fanned out
   // into differently-named discussions is terminal, with no next action. Read
   // only the item's own field — never inspect siblings or provenance.
   if (discovery && discovery.handled === true) {
-    return { lifecycle: 'handled', tier: '⊙', current_phase: null };
+    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs };
   }
-
-  const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
-  const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
-
-  const rs = research ? research.status : null;
-  const ds = discussion ? discussion.status : null;
 
   if (ds === 'completed') {
-    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion' };
+    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs };
   }
   if (ds === 'in-progress') {
-    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion' };
+    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs };
   }
   if (rs === 'completed') {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs };
   }
   if (rs === 'in-progress') {
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research' };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs };
   }
   // All attempted phase items are cancelled (both research and discussion items exist
   // and are cancelled). Single-cancelled (only research, or only discussion) falls
   // through to fresh — the alternate path remains open.
   if (rs === 'cancelled' && ds === 'cancelled') {
-    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null };
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs };
   }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
   // — the next available action is to discuss.
   if (rs === 'superseded' && !ds) {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research' };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs };
   }
-  return { lifecycle: 'fresh', tier: '○', current_phase: null };
+  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs };
 }
 
 function computeNextAction(routing, lifecycle) {

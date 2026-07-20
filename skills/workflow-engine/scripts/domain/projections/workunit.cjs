@@ -91,15 +91,18 @@ function workUnitStatus(type, unit) {
   if (callouts.length > 0) out += callouts.join('\n') + '\n\n';
   out += `  PIPELINE (${cfg.workType})\n`;
   out += renderTree(pipelineNodes(cfg, unit), { width: TREE_WIDTH });
+  if (unit.finalising) out += '\n  ⚑ All phases complete — ready to finalise.\n';
   return out.replace(/\n+$/, '\n');
 }
 
 /**
  * Section B — the proceed/revisit menu. `keys` carries the machine action keys
- * (skills route on these): the `continue` entry always, plus `revisit` and one
- * `revisit_phase` entry per earlier completed phase when any exist. `rendered`
- * is the dotted-gate markdown block — empty when there is nothing to revisit
- * (the calling skill routes straight through, no stop).
+ * (skills route on these): the `continue` entry always (a `finalise` entry on
+ * a finalising unit — the skill runs `workunit complete`, no route), plus
+ * `revisit` and one `revisit_phase` entry per earlier completed phase when any
+ * exist. `rendered` is the dotted-gate markdown block — empty when there is
+ * nothing to revisit and nothing to finalise (the calling skill routes
+ * straight through, no stop).
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
  * @returns {{keys: WorkUnitMenuKey[], rendered: string}}
@@ -109,11 +112,16 @@ function workUnitMenu(type, unit) {
   const revisitable = earlierCompleted(cfg, unit);
 
   /** @type {WorkUnitMenuKey[]} */
-  const keys = [{
-    key: 'y', word: 'yes', action: 'continue', topic: unit.name,
-    route: entryRoute(cfg, unit.next_phase, unit.name),
-    label: `Proceed to ${unit.next_phase}`,
-  }];
+  const keys = [unit.finalising
+    ? {
+      key: 'y', word: 'yes', action: 'finalise', topic: unit.name, route: null,
+      label: 'Mark the work unit completed',
+    }
+    : {
+      key: 'y', word: 'yes', action: 'continue', topic: unit.name,
+      route: entryRoute(cfg, unit.next_phase, unit.name),
+      label: `Proceed to ${unit.next_phase}`,
+    }];
 
   if (revisitable.length > 0) {
     keys.push({ key: 'r', word: 'revisit', action: 'revisit', topic: unit.name, route: null, label: 'Revisit an earlier phase' });
@@ -127,13 +135,14 @@ function workUnitMenu(type, unit) {
   }
 
   let rendered = '';
-  if (revisitable.length > 0) {
+  if (unit.finalising || revisitable.length > 0) {
+    const options = [`- **\`y\`/\`yes\`** — ${keys[0].label}`];
+    if (revisitable.length > 0) options.push('- **`r`/`revisit`** — Revisit an earlier phase');
     rendered = [
       '· · · · · · · · · · · ·',
-      `Continuing "${titlecase(unit.name)}" — ${unit.phase_label}.`,
+      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — ${unit.phase_label}.`,
       '',
-      `- **\`y\`/\`yes\`** — Proceed to ${unit.next_phase}`,
-      '- **`r`/`revisit`** — Revisit an earlier phase',
+      ...options,
       '· · · · · · · · · · · ·',
     ].join('\n');
   }
@@ -156,6 +165,7 @@ function workUnitData(type, unit, menu) {
   lines.push(`work_type: ${cfg.workType}`);
   lines.push(`next_phase: ${unit.next_phase}`);
   lines.push(`phase_label: ${unit.phase_label}`);
+  lines.push(`finalising: ${unit.finalising === true}`);
   lines.push(`completed_phases: ${unit.completed_phases.join(', ') || '(none)'}`);
   lines.push(`revisit_available: ${menu.keys.some((k) => k.action === 'revisit')}`);
   if (cfg.surfacesSeeds) {

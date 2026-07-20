@@ -76,13 +76,15 @@ function inboxHint(inbox) {
 }
 
 // The └─ sub-row: epics show their active phases (phase_label when nothing has
-// started yet); every other type shows the titlecased phase label.
+// started yet); every other type shows the titlecased phase label — prefixed
+// `Finalising —` when the pipeline finished but `workunit complete` never ran.
 /** @param {WorkUnitEntry} unit @param {TypeSection['type']} type */
 function subRow(unit, type) {
   if (type === 'epic') {
     const phases = unit.active_phases || [];
     if (phases.length > 0) return phases.map(titlecase).join(', ');
   }
+  if (unit.finalising) return titlecaseLabel(`finalising — ${unit.phase_label}`);
   return titlecaseLabel(unit.phase_label);
 }
 
@@ -126,10 +128,13 @@ function startOverview(detail) {
 // Menu
 // ---------------------------------------------------------------------------
 
+// A finalising unit's entry reads `Finalise …` — the continue skill it routes
+// to presents the completion gate.
 /** @param {WorkUnitEntry} unit @param {TypeSection['type']} type */
 function continueLabel(unit, type) {
   const t = titlecase(unit.name);
   if (type === 'epic') return `Continue "${t}" — epic`;
+  if (unit.finalising) return `Finalise "${t}" — ${type}, ${unit.phase_label}`;
   return `Continue "${t}" — ${type}, ${unit.phase_label}`;
 }
 
