@@ -30,6 +30,11 @@ const VALID_PHASE_STATUSES = {
   review:         ['in-progress', 'completed', 'cancelled'],
 };
 
+// Where a discovery-map item routes when work starts on it. Also the legal
+// `--phase` choices when a topic spawn seeds its first phase item — the
+// routable phases ARE the routing vocabulary.
+const VALID_ROUTINGS = ['research', 'discussion'];
+
 const VALID_GATE_MODES = ['gated', 'auto'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
@@ -42,6 +47,7 @@ module.exports = {
   VALID_WORK_TYPES,
   VALID_PHASES,
   VALID_PHASE_STATUSES,
+  VALID_ROUTINGS,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   RESERVED_WORK_UNIT_NAMES,

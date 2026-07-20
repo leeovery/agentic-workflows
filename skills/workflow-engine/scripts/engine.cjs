@@ -20,7 +20,8 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { commitScoped } = require('./kernel/git.cjs');
 const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
-const { sequenceMap } = require('./domain/discovery-map.cjs');
+const { VALID_ROUTINGS } = require('../../workflow-shared/scripts/manifest-schema.cjs');
+const { sequenceMap, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
 const { startTopic, completeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -89,6 +90,12 @@ Commands:
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
   discussion-map set <work-unit> <topic> <subtopic> <state>
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
+  discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
+  discovery-map remove <work-unit> <name>
+  discovery-map rename <work-unit> <old> <new>
+  discovery-map reroute <work-unit> <name> <research|discussion>
+  discovery-map handle <work-unit> <name>
+  discovery-map reactivate <work-unit> <name>
   topic start <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
   topic cancel <work-unit> <phase> <topic>
@@ -189,37 +196,69 @@ function respondDiscussionMap(manifest, topic, subtopic, status) {
 }
 
 // ---------------------------------------------------------------------------
-// discovery-map — the Discovery Map's ordering. sequence records it as one
-// transaction with its own scoped commit — the judgment (choosing the order)
-// stays with the caller.
+// discovery-map — the Discovery Map's writes. sequence records the suggested
+// execution order as one transaction with its own scoped commit; the per-item
+// map operations (edit/remove/rename/reroute/handle/reactivate) write the
+// manifest with no git commit — the calling session's commit cadence picks
+// the change up. Judgment (what to change) stays with the caller; lifecycle
+// gates are enforced in the domain op.
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
 function runDiscoveryMap(argv) {
   const [command, ...rest] = argv;
-  const { positional } = parseArgs(rest);
   const cwd = process.cwd();
 
   try {
+    const { opts, positional } = parseArgs(rest);
     const [workUnit] = positional;
-    if (command !== 'sequence' || !workUnit || positional.length < 2) {
-      throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-    }
-    /** @type {Record<string, number>} */
-    const orders = {};
-    for (const pair of positional.slice(1)) {
-      const eq = pair.indexOf('=');
-      const name = eq > 0 ? pair.slice(0, eq) : '';
-      const value = eq > 0 ? pair.slice(eq + 1) : '';
-      if (!name || !/^[1-9][0-9]*$/.test(value)) {
-        throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
+    if (command === 'sequence') {
+      if (!workUnit || positional.length < 2) {
+        throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
       }
-      if (name in orders) {
-        throw new Error(`topic "${name}" assigned twice`);
+      /** @type {Record<string, number>} */
+      const orders = {};
+      for (const pair of positional.slice(1)) {
+        const eq = pair.indexOf('=');
+        const name = eq > 0 ? pair.slice(0, eq) : '';
+        const value = eq > 0 ? pair.slice(eq + 1) : '';
+        if (!name || !/^[1-9][0-9]*$/.test(value)) {
+          throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
+        }
+        if (name in orders) {
+          throw new Error(`topic "${name}" assigned twice`);
+        }
+        orders[name] = parseInt(value, 10);
       }
-      orders[name] = parseInt(value, 10);
+      respond(sequenceMap(cwd, workUnit, orders));
+    } else if (command === 'edit') {
+      // Strict positional count: an unquoted payload would spill into
+      // positionals and silently truncate the text — refuse instead.
+      const summary = typeof opts.summary === 'string' ? opts.summary : undefined;
+      const description = typeof opts.description === 'string' ? opts.description : undefined;
+      if (!workUnit || positional.length !== 2 || (summary === undefined && description === undefined)) {
+        throw new Error('Usage: engine discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>] (at least one flag required)');
+      }
+      respond(editItem(cwd, workUnit, positional[1], { summary, description }));
+    } else if (command === 'remove' || command === 'handle' || command === 'reactivate') {
+      if (!workUnit || positional.length !== 2) {
+        throw new Error(`Usage: engine discovery-map ${command} <work-unit> <name>`);
+      }
+      const fn = command === 'remove' ? removeItem : command === 'handle' ? handleItem : reactivateItem;
+      respond(fn(cwd, workUnit, positional[1]));
+    } else if (command === 'rename') {
+      if (!workUnit || positional.length !== 3) {
+        throw new Error('Usage: engine discovery-map rename <work-unit> <old> <new>');
+      }
+      respond(renameItem(cwd, workUnit, positional[1], positional[2]));
+    } else if (command === 'reroute') {
+      if (!workUnit || positional.length !== 3) {
+        throw new Error(`Usage: engine discovery-map reroute <work-unit> <name> <${VALID_ROUTINGS.join('|')}>`);
+      }
+      respond(rerouteItem(cwd, workUnit, positional[1], positional[2]));
+    } else {
+      throw new Error('Usage: engine discovery-map <sequence|edit|remove|rename|reroute|handle|reactivate> …');
     }
-    respond(sequenceMap(cwd, workUnit, orders));
   } catch (err) {
     failJson(err);
   }
