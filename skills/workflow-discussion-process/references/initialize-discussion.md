@@ -26,7 +26,7 @@
 
 5. Seed the Discussion Map — record each initial subtopic (kebab-case name; new subtopics start `pending`):
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs map add {work_unit} {topic} {subtopic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}
    ```
 6. Commit the discussion file and manifest
 

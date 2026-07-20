@@ -6,10 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
-const os = require('os');
-
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/map.cjs');
+const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
 const { discussionMap } = require('../../skills/workflow-engine/scripts/domain/projections/discussion.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../../skills/workflow-engine/scripts/kernel/manifest.cjs');
 
@@ -23,7 +21,7 @@ function manifestWith(subtopics) {
   return { name: 'auth', work_type: 'epic', phases: { discussion: { items: { 'auth-flow': item } } } };
 }
 
-describe('map domain: addSubtopic', () => {
+describe('discussion-map domain: addSubtopic', () => {
   it('adds a pending top-level subtopic', () => {
     const m = manifestWith();
     const sub = addSubtopic(m, 'auth-flow', 'token-refresh');
@@ -69,7 +67,7 @@ describe('map domain: addSubtopic', () => {
   });
 });
 
-describe('map domain: setSubtopicState', () => {
+describe('discussion-map domain: setSubtopicState', () => {
   it('records any state from the enum, in any order', () => {
     const m = manifestWith({ a: { status: 'pending', parent: null } });
     for (const state of ['decided', 'exploring', 'deferred', 'converging', 'pending']) {
@@ -92,7 +90,7 @@ describe('map domain: setSubtopicState', () => {
   });
 });
 
-describe('map domain: mapState', () => {
+describe('discussion-map domain: mapState', () => {
   it('derives counts, total, and unresolved in insertion order', () => {
     const m = manifestWith({
       a: { status: 'decided', parent: null },
@@ -219,28 +217,28 @@ describe('kernel manifest IO', () => {
   });
 });
 
-describe('engine CLI: map round-trip', () => {
+describe('engine CLI: discussion-map round-trip', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  function engineMap(args) {
-    return JSON.parse(execFileSync('node', [ENGINE, 'map', ...args], { cwd: dir, encoding: 'utf8' }).trim());
+  function engineDiscussionMap(args) {
+    return JSON.parse(execFileSync('node', [ENGINE, 'discussion-map', ...args], { cwd: dir, encoding: 'utf8' }).trim());
   }
 
   it('add → set, decision-ready JSON each step, manifest persisted', () => {
     createManifest(dir, 'auth', manifestWith());
 
-    assert.deepStrictEqual(engineMap(['add', 'auth', 'auth-flow', 'token-refresh']), {
+    assert.deepStrictEqual(engineDiscussionMap(['add', 'auth', 'auth-flow', 'token-refresh']), {
       ok: true, subtopic: 'token-refresh', status: 'pending', all_decided: false, unresolved_count: 1,
     });
-    assert.deepStrictEqual(engineMap(['add', 'auth', 'auth-flow', 'refresh-rotation', '--parent', 'token-refresh']), {
+    assert.deepStrictEqual(engineDiscussionMap(['add', 'auth', 'auth-flow', 'refresh-rotation', '--parent', 'token-refresh']), {
       ok: true, subtopic: 'refresh-rotation', status: 'pending', all_decided: false, unresolved_count: 2,
     });
-    assert.deepStrictEqual(engineMap(['set', 'auth', 'auth-flow', 'refresh-rotation', 'decided']), {
+    assert.deepStrictEqual(engineDiscussionMap(['set', 'auth', 'auth-flow', 'refresh-rotation', 'decided']), {
       ok: true, subtopic: 'refresh-rotation', status: 'decided', all_decided: false, unresolved_count: 1,
     });
-    assert.deepStrictEqual(engineMap(['set', 'auth', 'auth-flow', 'token-refresh', 'deferred']), {
+    assert.deepStrictEqual(engineDiscussionMap(['set', 'auth', 'auth-flow', 'token-refresh', 'deferred']), {
       ok: true, subtopic: 'token-refresh', status: 'deferred', all_decided: true, unresolved_count: 0,
     });
 
@@ -255,107 +253,20 @@ describe('engine CLI: map round-trip', () => {
     createManifest(dir, 'auth', manifestWith());
     const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
 
-    const res = spawnSync('node', [ENGINE, 'map', 'set', 'auth', 'auth-flow', 'ghost', 'decided'], { cwd: dir, encoding: 'utf8' });
+    const res = spawnSync('node', [ENGINE, 'discussion-map', 'set', 'auth', 'auth-flow', 'ghost', 'decided'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(res.status, 1);
     assert.strictEqual(res.stdout, '');
     assert.deepStrictEqual(JSON.parse(res.stderr.trim()), { ok: false, error: 'subtopic "ghost" not found under "auth-flow"' });
 
-    const missing = spawnSync('node', [ENGINE, 'map', 'add', 'ghost-unit', 'auth-flow', 'x'], { cwd: dir, encoding: 'utf8' });
+    const missing = spawnSync('node', [ENGINE, 'discussion-map', 'add', 'ghost-unit', 'auth-flow', 'x'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(missing.status, 1);
     assert.match(JSON.parse(missing.stderr.trim()).error, /manifest not found/);
 
-    const usage = spawnSync('node', [ENGINE, 'map', 'add', 'auth'], { cwd: dir, encoding: 'utf8' });
+    const usage = spawnSync('node', [ENGINE, 'discussion-map', 'add', 'auth'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(usage.status, 1);
-    assert.match(JSON.parse(usage.stderr.trim()).error, /Usage: engine map add/);
+    assert.match(JSON.parse(usage.stderr.trim()).error, /Usage: engine discussion-map add/);
 
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
-  });
-});
-
-describe('engine CLI: map sequence', () => {
-  // Hermetic git: no user/system config leaks into the engine's spawned git.
-  process.env.GIT_CONFIG_GLOBAL = '/dev/null';
-  process.env.GIT_CONFIG_SYSTEM = '/dev/null';
-
-  /** @param {string} dir @param {string[]} args */
-  function git(dir, args) {
-    return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
-  }
-
-  /** A temp-dir git repo holding one epic with a two-topic discovery map. */
-  function setupGitFixture() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-seq-'));
-    git(dir, ['init', '-q', '-b', 'main']);
-    git(dir, ['config', 'user.email', 'test@example.com']);
-    git(dir, ['config', 'user.name', 'Test']);
-    git(dir, ['config', 'commit.gpgsign', 'false']);
-    createManifest(dir, 'payments', {
-      work_type: 'epic',
-      phases: {
-        discovery: {
-          items: {
-            'auth-flow': { routing: 'discussion', source: 'discovery' },
-            'session-model': { routing: 'research', source: 'discovery', order: 1 },
-          },
-        },
-      },
-    });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
-    return dir;
-  }
-
-  function readManifest(dir) {
-    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'));
-  }
-
-  let dir;
-  beforeEach(() => { dir = setupGitFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('sets every order, commits scoped with the sequence message, reports the assignment', () => {
-    fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
-    const res = JSON.parse(execFileSync('node', [ENGINE, 'map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' }).trim());
-
-    assert.strictEqual(res.ok, true);
-    assert.deepStrictEqual(res.ordered, { 'auth-flow': 1, 'session-model': 2 });
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'discovery(payments): sequence topic map');
-    // Scoped: the unrelated file stays uncommitted.
-    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
-
-    const items = readManifest(dir).phases.discovery.items;
-    assert.strictEqual(items['auth-flow'].order, 1);
-    assert.strictEqual(items['session-model'].order, 2);
-  });
-
-  it('re-applying the same orders is a no-op commit: committed null, note, exit 0', () => {
-    execFileSync('node', [ENGINE, 'map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' });
-    const res = JSON.parse(execFileSync('node', [ENGINE, 'map', 'sequence', 'payments', 'auth-flow=1', 'session-model=2'], { cwd: dir, encoding: 'utf8' }).trim());
-    assert.deepStrictEqual(res, { ok: true, ordered: { 'auth-flow': 1, 'session-model': 2 }, committed: null, note: 'nothing to commit' });
-  });
-
-  it('rejects unknown topics before writing anything', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
-    const res = spawnSync('node', [ENGINE, 'map', 'sequence', 'payments', 'auth-flow=1', 'ghost=2'], { cwd: dir, encoding: 'utf8' });
-    assert.strictEqual(res.status, 1);
-    assert.match(JSON.parse(res.stderr.trim()).error, /no discovery item "ghost"/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'init');
-  });
-
-  it('rejects bad orders and malformed assignments — loud and specific', () => {
-    for (const pair of ['auth-flow=0', 'auth-flow=-1', 'auth-flow=abc', 'auth-flow=1.5', 'auth-flow']) {
-      const res = spawnSync('node', [ENGINE, 'map', 'sequence', 'payments', pair], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(res.status, 1, pair);
-      assert.match(JSON.parse(res.stderr.trim()).error, /bad assignment/, pair);
-    }
-    const dup = spawnSync('node', [ENGINE, 'map', 'sequence', 'payments', 'auth-flow=1', 'auth-flow=2'], { cwd: dir, encoding: 'utf8' });
-    assert.match(JSON.parse(dup.stderr.trim()).error, /assigned twice/);
-    const usage = spawnSync('node', [ENGINE, 'map', 'sequence', 'payments'], { cwd: dir, encoding: 'utf8' });
-    assert.match(JSON.parse(usage.stderr.trim()).error, /Usage: engine map sequence/);
-    const noMap = spawnSync('node', [ENGINE, 'map', 'sequence', 'ghost-unit', 'auth-flow=1'], { cwd: dir, encoding: 'utf8' });
-    assert.match(JSON.parse(noMap.stderr.trim()).error, /manifest not found/);
   });
 });
 

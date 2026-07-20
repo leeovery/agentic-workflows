@@ -19,8 +19,9 @@ const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { commitScoped } = require('./kernel/git.cjs');
-const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/map.cjs');
-const { cancelTopic, reactivateTopic, sequenceMap } = require('./domain/transitions.cjs');
+const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
+const { sequenceMap } = require('./domain/discovery-map.cjs');
+const { cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -70,9 +71,9 @@ const USAGE = `Usage: engine <command> [args]
 
 Commands:
   boot
-  map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
-  map set <work-unit> <topic> <subtopic> <state>
-  map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
+  discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
+  discussion-map set <work-unit> <topic> <subtopic> <state>
+  discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   topic cancel <work-unit> <phase> <topic>
   topic reactivate <work-unit> <phase> <topic>
   task init <work-unit> <topic>
@@ -94,58 +95,37 @@ Commands:
   render tree [--width N]            (reads a JSON TreeNode array on stdin)`;
 
 // ---------------------------------------------------------------------------
-// map — map transitions. add/set are discussion-map subtopic writes: load
-// (kernel) → apply (domain) → save → one decision-ready JSON line, no git
-// commit (the session's commit cadence picks the manifest change up).
-// sequence records a discovery-map ordering as one transaction with its own
-// scoped commit — the judgment (choosing the order) stays with the caller.
+// discussion-map — Discussion Map subtopic writes. add/set: load (kernel) →
+// apply (domain) → save → one decision-ready JSON line, no git commit (the
+// session's commit cadence picks the manifest change up).
 // ---------------------------------------------------------------------------
 
 /** @param {string[]} argv */
-function runMap(argv) {
+function runDiscussionMap(argv) {
   const [command, ...rest] = argv;
   const { opts, positional } = parseArgs(rest);
   const cwd = process.cwd();
 
   try {
     const [workUnit, topic, subtopic, state] = positional;
-    if (command === 'sequence') {
-      if (!workUnit || positional.length < 2) {
-        throw new Error('Usage: engine map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-      }
-      /** @type {Record<string, number>} */
-      const orders = {};
-      for (const pair of positional.slice(1)) {
-        const eq = pair.indexOf('=');
-        const name = eq > 0 ? pair.slice(0, eq) : '';
-        const value = eq > 0 ? pair.slice(eq + 1) : '';
-        if (!name || !/^[1-9][0-9]*$/.test(value)) {
-          throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
-        }
-        if (name in orders) {
-          throw new Error(`topic "${name}" assigned twice`);
-        }
-        orders[name] = parseInt(value, 10);
-      }
-      respond(sequenceMap(cwd, workUnit, orders));
-    } else if (command === 'add') {
+    if (command === 'add') {
       if (!workUnit || !topic || !subtopic) {
-        throw new Error('Usage: engine map add <work-unit> <topic> <subtopic> [--parent <subtopic>]');
+        throw new Error('Usage: engine discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]');
       }
       const manifest = loadWorkUnitManifest(cwd, workUnit);
       const sub = addSubtopic(manifest, topic, subtopic, { parent: opts.parent ?? null });
       saveWorkUnitManifest(cwd, workUnit, manifest);
-      respondMap(manifest, topic, subtopic, sub.status);
+      respondDiscussionMap(manifest, topic, subtopic, sub.status);
     } else if (command === 'set') {
       if (!workUnit || !topic || !subtopic || !state) {
-        throw new Error(`Usage: engine map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}>`);
+        throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}>`);
       }
       const manifest = loadWorkUnitManifest(cwd, workUnit);
       const sub = setSubtopicState(manifest, topic, subtopic, state);
       saveWorkUnitManifest(cwd, workUnit, manifest);
-      respondMap(manifest, topic, subtopic, sub.status);
+      respondDiscussionMap(manifest, topic, subtopic, sub.status);
     } else {
-      throw new Error('Usage: engine map <add|set> …');
+      throw new Error('Usage: engine discussion-map <add|set> …');
     }
   } catch (err) {
     failJson(err);
@@ -153,7 +133,7 @@ function runMap(argv) {
 }
 
 /** @param {object} manifest @param {string} topic @param {string} subtopic @param {string} status */
-function respondMap(manifest, topic, subtopic, status) {
+function respondDiscussionMap(manifest, topic, subtopic, status) {
   const state = mapState(manifest, topic);
   respond({
     subtopic,
@@ -161,6 +141,43 @@ function respondMap(manifest, topic, subtopic, status) {
     all_decided: state.all_decided,
     unresolved_count: state.unresolved.length,
   });
+}
+
+// ---------------------------------------------------------------------------
+// discovery-map — the Discovery Map's ordering. sequence records it as one
+// transaction with its own scoped commit — the judgment (choosing the order)
+// stays with the caller.
+// ---------------------------------------------------------------------------
+
+/** @param {string[]} argv */
+function runDiscoveryMap(argv) {
+  const [command, ...rest] = argv;
+  const { positional } = parseArgs(rest);
+  const cwd = process.cwd();
+
+  try {
+    const [workUnit] = positional;
+    if (command !== 'sequence' || !workUnit || positional.length < 2) {
+      throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
+    }
+    /** @type {Record<string, number>} */
+    const orders = {};
+    for (const pair of positional.slice(1)) {
+      const eq = pair.indexOf('=');
+      const name = eq > 0 ? pair.slice(0, eq) : '';
+      const value = eq > 0 ? pair.slice(eq + 1) : '';
+      if (!name || !/^[1-9][0-9]*$/.test(value)) {
+        throw new Error(`bad assignment "${pair}" (expected {topic}={order}, order a positive integer)`);
+      }
+      if (name in orders) {
+        throw new Error(`topic "${name}" assigned twice`);
+      }
+      orders[name] = parseInt(value, 10);
+    }
+    respond(sequenceMap(cwd, workUnit, orders));
+  } catch (err) {
+    failJson(err);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -380,8 +397,11 @@ function runCli(argv) {
     case 'boot':
       runBoot();
       break;
-    case 'map':
-      runMap(rest);
+    case 'discussion-map':
+      runDiscussionMap(rest);
+      break;
+    case 'discovery-map':
+      runDiscoveryMap(rest);
       break;
     case 'topic':
       runTopic(rest);
