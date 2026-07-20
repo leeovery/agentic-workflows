@@ -874,6 +874,19 @@ describe('engine inbox archive / restore / delete', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.match(engineFails(dir, ['inbox', 'archive']).error, /Usage: engine inbox/);
   });
+
+  it('refuses a duplicate path in the set before any move — no half-applied state', () => {
+    const err = engineFails(dir, [
+      'inbox', 'archive',
+      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+    ]);
+    assert.match(err.error, /duplicate inbox path/);
+    // The one real file never moved — the transaction refused up front.
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
+  });
 });
 
 describe('engine commit', () => {
