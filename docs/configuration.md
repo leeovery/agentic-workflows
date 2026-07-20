@@ -1,53 +1,31 @@
 # Configuration
 
-The system configures itself the way it does everything else: conversationally, once, with the answers recorded where the next session finds them. There is no config file to author by hand. This page maps where each kind of setting lives and how it got there.
+The system configures itself the way it does everything else: conversationally, once, with the answer recorded where the next session will find it. There is no configuration file to author by hand and no setup procedure to follow. This page describes where each kind of setting comes from and how it behaves, so nothing surprises you.
 
-## Installation
+## Installing and updating
 
 ```bash
 npx agntc add leeovery/agentic-workflows
 ```
 
-installs the skills and agents into the project's `.claude/` directory. Commit them to share with your team (and to use them in Claude Code for Web); `npx agntc update` pulls the latest, `npx agntc remove leeovery/agentic-workflows` uninstalls. On the first `/workflow-start`, `engine boot`'s [migration pass](engine.md#boot-and-migrations) creates `.workflows/` and brings it to the current layout; the same mechanism upgrades existing projects in place after every update.
+This installs the workflow skills into the project. Commit the installed files to share the workflows with your team and to use them in Claude Code for the Web. `npx agntc update` pulls the latest version, and `npx agntc remove leeovery/agentic-workflows` uninstalls. Updates carry themselves forward: the first run after an update brings your existing work into line with the new version automatically, so there is nothing to migrate by hand.
 
-## Project defaults
+The only requirement is Node 18 or newer. The first `/workflow-start` sets everything else up in conversation. Optionally, if you want search-by-meaning over your past work, you will be offered a one-time setup for it — including an option that needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
 
-`.workflows/manifest.json` (the project manifest) carries a `defaults` block, addressed through the reserved `project` prefix on the [engine's field surface](engine.md):
+## Settings that fill themselves in
 
-```bash
-engine manifest get project.defaults.plan_format
-engine manifest set project.defaults.linters '["vendor/bin/pint --dirty"]'
-```
+A few settings exist, but you never set them in advance. Each is asked the first time it is needed and remembered thereafter. There is where your plan's tasks get stored (asked during [planning](planning.md)), the project-specific skills that guide the building and reviewing agents (asked during [implementation](implementation.md)), and the linters that run through the build (also discovered during implementation).
 
-Three defaults exist today, each written the first time its question is answered:
+These stored values are suggestions, not standing decisions. When a setting is relevant again, the remembered value pre-fills the question, but you still confirm or override it, and the value you confirm is what actually gets used for that piece of work. Nothing reads a stored default at the moment of execution, so changing one never silently rewrites work already in flight. This is the same discipline the system applies everywhere: a value that was right last time is a suggestion for this time, never consent given in advance.
 
-| Default | Set during | Used by |
-|---|---|---|
-| `plan_format` | [planning's](planning.md) format selection | planning, quick-fix scoping |
-| `project_skills` | [implementation's](implementation.md) skills discovery | executor, reviewer, and review verifier agents |
-| `linters` | implementation's linter discovery | the executor's LINT step |
+## Handing over the gates
 
-The cascade has exactly two levels and a firm rule: **defaults are suggestions, the topic level records the value in use**. A stored default pre-fills the question; the user confirms or overrides per topic; the confirmed value lands on the topic's manifest item. Nothing reads a project default at execution time, so changing it never silently rewrites in-flight work. The STOP-gate discipline names this exact temptation as a failure mode: "the user already set this, confirmation is redundant" is the auto-answer the rules forbid.
-
-## Gate modes
-
-Every approval loop's `a`/auto option persists as a `*_gate_mode: auto` field on the relevant manifest item: `construction_gate_mode` and `finding_gate_mode` on specs, `task_list_gate_mode` and `author_gate_mode` on plans, `task_gate_mode`, `fix_gate_mode`, and `analysis_gate_mode` on implementation items. Two properties make them safe:
-
-- **Only the user's explicit choice at a gate sets them.** No session directive, harness auto mode, or hook-injected text can; the skills say so verbatim.
-- **They are scoped and re-gated.** Implementation's `task init` resets all three of its gate modes to `gated` at each session start, so auto is an opt-in per sitting, not a permanent state. Escalations override auto anyway: the fix-loop threshold and the analysis cycle cap stop and ask regardless of mode.
+Every approval loop offers an auto option, and choosing it is how you hand that particular gate over — from then on the system proceeds there without stopping to ask. This is scoped and reversible rather than a global switch. Some gates reset to asking at the start of each session, so auto is an opt-in for a sitting rather than a permanent setting; and certain escalations override auto entirely — when a fix loop or an analysis loop hits its limit, it stops and asks regardless, because those are the moments a human needs to look. Auto is always something you choose at a gate, never something the system infers from a past choice or a stored preference. The reasoning is covered in [the collaboration model](collaboration.md).
 
 ## Environment setup
 
-`.workflows/.state/environment-setup.md` holds natural-language, project-specific setup instructions (copy `.env`, run migrations, install extensions) that implementation executes before its first task. Missing file? The session asks once, saves the answer, and never asks again; "No special setup required" is a recorded answer too.
+The first time [implementation](implementation.md) runs, it asks whether there are any project-specific steps it should carry out before writing code — copying an environment file, running migrations, installing an extension. It saves your answer and never asks again; "no special setup required" is a perfectly good saved answer. The steps are run exactly as you wrote them, before the first task.
 
 ## Knowledge configuration
 
-Two layers, covered in detail in [knowledge base setup](knowledge-base.md#setup): `~/.config/workflows/config.json` for system-wide defaults (provider, model), `.workflows/.knowledge/` for the per-project store and its config, and `~/.config/workflows/credentials.json` (mode 0600) for keys, which never transit chat, argv, or stdout. A project can pin `provider: null` to run keyword-only regardless of the system default.
-
-## State that is not configuration
-
-`.workflows/.state/migrations` (which migrations have run) and the per-work-unit `.state/` analysis caches are bookkeeping the system maintains for itself. The only human-relevant operation is deleting the migrations log to force a full re-run, safe because [migrations are idempotent](engine.md#boot-and-migrations).
-
----
-
-*That completes the reference pages. For where this system came from: [history](history.md).*
+The [knowledge base](knowledge-base.md) has two layers of settings, both established through its one-time setup rather than by hand: system-wide defaults that apply across your projects, and per-project settings for this project's store. If a cloud embedding service is involved, its key is stored securely on your machine and never travels through the chat. A project can also choose to run in keyword-only mode regardless of any system default, if you would rather it not depend on an external service. None of this needs revisiting once set; it is described in full on the knowledge base page.

@@ -1,0 +1,19 @@
+# The collaboration model
+
+The amount of you a phase needs is not constant. It is widest at the start and narrows toward the end — a cone, from a conversation where you shape everything to a delivery loop that mostly runs itself. This is deliberate, and understanding the shape of it explains why some phases stop constantly and others barely stop at all.
+
+## Why it narrows
+
+Early phases are conversation-heavy because early decisions are the ones where being wrong is cheap to fix now and expensive to discover later. Settling whether something is a feature or an epic, exploring whether an approach is even feasible, arguing a design decision to a conclusion — these set the direction everything downstream follows. A wrong turn here, caught here, costs a sentence. The same wrong turn caught during review costs a rebuild. So the system spends your attention where it buys the most: up front, in [discovery](discovery.md), [research and discussion](research-and-discussion.md), and [investigation](investigation-and-scoping.md), talking things through before committing to them.
+
+As the work moves forward, certainty accumulates — not in anyone's memory, but in the documents you approve. By the time a [specification](specification.md) is signed off, the decisions are written down and validated. By the time a [plan](planning.md) is approved, the how is fixed. So [implementation](implementation.md) can run largely on its own, executing choices already made, and your role shifts from author to reviewer: approving finished tasks at gates, weighing in when an agent flags a problem, unblocking when a genuine decision surfaces. By [review](review.md), the work is agent-led entirely, and you are deciding what to do with findings rather than producing them. Less is asked of you at the end not because your judgement matters less, but because the hard judgements were already made and captured while they were cheap.
+
+## How the stops work
+
+Everywhere the system needs a decision from you, it stops and waits — and it means it. These stops are structured decision points, not the assistant checking in for reassurance, and a few rules keep them honest.
+
+The system will not answer a gate for you, even under pressure to keep going. A stored preference from a previous session, a project default, "the reasonable call" — none of these count as your consent for *this* decision. Stored values pre-fill a question; they never skip it. The reasoning "the user already decided this, asking again is redundant" is exactly the shortcut the design forbids, because a value that was right last time is a suggestion, not a standing authorisation.
+
+When you want to hand over more, you say so explicitly. Most approval loops offer an auto option: choose it and the system stops asking at that particular gate and proceeds on its own. This is graduated autonomy — you hand over as much of the loop as you trust, at the point you trust it, and no more. It is reversible and scoped rather than a global switch; implementation, for instance, resets its gates to asking at the start of each session, so auto is an opt-in for a sitting rather than a permanent state of the project. And some gates never yield to auto at all: editing content you have already approved, or resolving a genuine deviation from the spec, always comes back to you, because those are the moments where proceeding on an assumption would quietly overwrite a real decision.
+
+The through-line is that the system is eager to do the work and unwilling to make your decisions. It will draft, analyse, build, and check tirelessly, and it will stop dead at the line where a choice is yours — handing that line over only when you deliberately choose to hand it. Front-load your attention on the conversations and the spec, where it shapes everything; let the loop carry the rest.
