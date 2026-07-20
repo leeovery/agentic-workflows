@@ -95,10 +95,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} s
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
 ```
 
-Commit all scoping artifacts:
+Commit all scoping artifacts with raw git — the project default lands in `.workflows/manifest.json` and the format's task storage may live outside the work unit, so the scoped helper cannot cover them:
 
-```
-scoping({work_unit}): specification and plan
+```bash
+git add -- .workflows/manifest.json .workflows/{work_unit} {format task storage paths}
+git commit -m "scoping({work_unit}): specification and plan"
 ```
 
 → Return to caller.

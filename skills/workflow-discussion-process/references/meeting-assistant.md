@@ -90,7 +90,7 @@ The file on disk is the work product. Context compaction will destroy conversati
 
 **Write to the file at natural pauses** — when a decision lands, a subtopic is resolved (even provisionally), or the discussion is about to branch. Don't wait for finality. Partial documentation is expected.
 
-**Then git commit.** Each write should be followed by a commit. This creates recovery points against context loss.
+**Then commit** (`engine commit {work_unit} -m "discussion({work_unit}/{topic}): {what changed}"`). Each write should be followed by a commit. This creates recovery points against context loss.
 
 **Don't transcribe** — capture the reasoning, options, and outcome. Keep it contextual, not verbatim.
 

@@ -136,8 +136,7 @@ Skip items where the relevant derived field is null (source file was missing) â€
 Single commit covering all writes:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json
-git commit -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery provenance field(s) from source files"
 ```
 
 â†’ Return to caller.

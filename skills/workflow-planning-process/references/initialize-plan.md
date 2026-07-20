@@ -71,10 +71,9 @@ Project default format is **{format}**. Use the same format?
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map '{}'
    ```
 
-5. Commit with raw git — the project default lands in `.workflows/manifest.json`, outside the work unit, so the scoped helper cannot cover it. Stage both directly:
+5. Commit — the project default lands in `.workflows/manifest.json`, outside the work unit, so use the whole-tree scope:
    ```bash
-   git add -- .workflows/manifest.json .workflows/{work_unit}
-   git commit -m "planning({work_unit}): initialize plan"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "planning({work_unit}): initialize plan"
    ```
 
 → Return to caller.

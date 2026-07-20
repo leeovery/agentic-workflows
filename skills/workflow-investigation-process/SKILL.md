@@ -65,7 +65,7 @@ The investigation file is your memory. Context compaction is lossy — what's no
 - Root cause is identified
 - Each significant finding
 
-**After writing, git commit.** Commits let you track and recover after compaction. Don't batch — commit each time you write.
+**After writing, commit** (`node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}"`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
 
 **Create the file early.** After understanding the initial symptoms, create the investigation file with the symptoms section.
 
