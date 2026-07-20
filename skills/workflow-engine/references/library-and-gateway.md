@@ -33,6 +33,7 @@ engine.conventions.tag('decided')                 // → "[decided]"
 engine.conventions.derivedFrom('from exploration')// → "↳ From exploration"
 engine.conventions.discoveryGlyph('researching')  // → "◐"
 engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
+engine.conventions.kebabcase('Auth Flow')         // → "auth-flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
 // domain: generic reads (reads.cjs — no phase semantics)
@@ -50,7 +51,7 @@ engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] fro
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
 engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, generated, files[, reason] }
-engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase }
+engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
@@ -63,16 +64,21 @@ engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_de
 
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
+engine.detail.EPIC_PHASES                         // string[] — the seven epic phases, in pipeline order
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
 engine.detail.workUnitDetail(cwd, type)           // → WorkUnitDetail (single-topic types: feature | bugfix | quick-fix | cross-cutting)
 engine.detail.workUnitIndex(type, detail)         // → labelled dump for the head-of-skill insert (thin DATA index)
+engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.detail.specificationDetail(wu, result, { consultHints }) // → SpecificationDetail (entry scenario + grouping rows over one discover() result)
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' for a brand-new epic)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
+engine.project.epicCompletedMenu(wu, detail)      // → { keys, display, rendered } — Completed Topics resume sub-view
+engine.project.epicCancelMenu(detail)             // → { keys, display, rendered } — Cancellable Topics pick menu
+engine.project.epicReactivateMenu(detail)         // → { keys, display, rendered } — Cancelled Topics reactivate menu
 engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (box + tier header + rows)
 engine.project.discoverySynthesisView(wu, map, proposed) // → harvest proposal block (proposed set over the existing map)
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
@@ -111,7 +117,6 @@ Each skill's adapter script registers handlers and calls `runGateway`:
 ```js
 engine.gateway.runGateway({
   index: () => ...,          // no-args call — the head-of-skill `!` insert
-  data:  (wu) => ...,        // reasoning-only flags for housekeeping steps
   view:  (wu) => ...,        // one snapshot: DATA + DISPLAY + MENU
   // skill-specific sub-views by verb; `fallback` catches unmatched argv
 });

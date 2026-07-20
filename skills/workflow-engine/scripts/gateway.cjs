@@ -8,7 +8,6 @@
 // names the verb, so the script never guesses what a call is for:
 //
 //   gateway.cjs                → index()        head-of-skill `!` insert
-//   gateway.cjs data <wu>      → data(wu)       reasoning-only flags
 //   gateway.cjs view <wu>      → view(wu)       DATA + DISPLAY + MENU snapshot
 //   gateway.cjs <verb> <args…> → handlers[verb] skill-specific sub-views
 //
