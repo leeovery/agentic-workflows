@@ -1,6 +1,6 @@
 # Epic Phase Design
 
-*Context guidance for **[phase-design.md](../phase-design.md)** — new system builds*
+*Reference for **[phase-design.md](../phase-design.md)** — new system builds*
 
 ---
 

@@ -1,6 +1,6 @@
 # Feature Phase Design
 
-*Context guidance for **[phase-design.md](../phase-design.md)** — feature additions to existing systems*
+*Reference for **[phase-design.md](../phase-design.md)** — feature additions to existing systems*
 
 ---
 

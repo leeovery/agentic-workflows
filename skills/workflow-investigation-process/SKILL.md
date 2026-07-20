@@ -20,7 +20,7 @@ The output becomes source material for a specification focused on the fix approa
 
 - **Topic** (required) - Bug identifier or short description
 - **Bug context** (optional) - Initial symptoms, error messages, reproduction steps
-- **Work type** - Always "bugfix" for investigation
+- **Work type** — Always "bugfix" for investigation
 
 ---
 

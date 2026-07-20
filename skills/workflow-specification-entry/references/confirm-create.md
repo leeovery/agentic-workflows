@@ -82,7 +82,7 @@ Proceed?
 
 ## B. Handle Response
 
-#### If user confirms (y)
+#### If `yes`
 
 **If any source discussions have individual specs:**
 
@@ -92,7 +92,7 @@ Proceed?
 
 → Load **[create.md](handoffs/create.md)** and follow its instructions as written.
 
-#### If user declines (n)
+#### If `no`
 
 **If single discussion (no menu to return to):**
 

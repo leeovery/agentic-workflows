@@ -4,7 +4,7 @@
 
 ---
 
-→ Load **[../../workflow-shared/references/seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+→ Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
 1. Create the investigation directory: `.workflows/{work_unit}/investigation/`
 2. Load **[template.md](template.md)** — use it to create `.workflows/{work_unit}/investigation/{topic}.md`

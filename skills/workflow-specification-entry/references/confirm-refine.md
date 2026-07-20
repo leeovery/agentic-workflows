@@ -36,11 +36,11 @@ Proceed?
 
 **STOP.** Wait for user response.
 
-#### If user confirms (y)
+#### If `yes`
 
 → Load **[continue.md](handoffs/continue.md)** and follow its instructions as written.
 
-#### If user declines (n)
+#### If `no`
 
 **If single discussion (no menu to return to):**
 

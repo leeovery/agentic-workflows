@@ -4,9 +4,9 @@
 
 ---
 
-→ Load **[../../workflow-shared/references/seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+→ Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
 
-→ Load **[../../workflow-shared/references/read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 1. Ensure the discussion directory exists: `.workflows/{work_unit}/discussion/`
 2. Register the discussion in the manifest (the map commands below require the item to exist):

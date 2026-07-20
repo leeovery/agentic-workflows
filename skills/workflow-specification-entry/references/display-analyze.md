@@ -57,7 +57,7 @@ Proceed with analysis?
 
 ## B. Handle Response
 
-#### If user confirms (y)
+#### If `yes`
 
 If `cache_status` is `stale`, delete the cache first:
 ```bash
@@ -66,7 +66,7 @@ rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
 
 → Load **[analysis-flow.md](analysis-flow.md)** and follow its instructions as written.
 
-#### If user declines (n)
+#### If `no`
 
 > *Output the next fenced block as a code block:*
 

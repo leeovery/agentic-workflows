@@ -76,7 +76,7 @@ Proceed?
 
 ## B. Handle Response
 
-#### If user confirms (y)
+#### If `yes`
 
 **If existing specifications will be superseded:**
 
@@ -86,6 +86,6 @@ Proceed?
 
 → Load **[unify.md](handoffs/unify.md)** and follow its instructions as written.
 
-#### If user declines (n)
+#### If `no`
 
 → Return to caller.
