@@ -1,10 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: epic topic transitions — cancel and reactivate as single
-// transactions. Each call is one atomic state change from the caller's
-// perspective: manifest write, knowledge-base sync (where applicable),
-// scoped git commit.
+// Domain ring: topic transitions — start, complete, cancel, and reactivate,
+// each a single transaction from the caller's perspective.
+//
+// start/complete are phase-item lifecycle bookkeeping: manifest write plus,
+// for complete in an indexed phase, a knowledge-base index. No git commit —
+// the calling session's commit cadence picks the manifest change up.
+// cancel/reactivate are the epic transactions: manifest write, knowledge-base
+// sync, scoped git commit.
 //
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
@@ -19,7 +23,26 @@ const { commitScoped } = require('../kernel/git.cjs');
 // Resolved against this file so it works wherever the skill tree is installed.
 const KNOWLEDGE_CLI = path.resolve(__dirname, '..', '..', '..', 'workflow-knowledge', 'scripts', 'knowledge.cjs');
 
-const PHASES = ['discovery', 'research', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review'];
+const { VALID_PHASES, VALID_PHASE_STATUSES } = require('../../../workflow-shared/scripts/manifest-schema.cjs');
+
+// Phase-item lifecycle operates on WORK phases only. Discovery items are map
+// items (no lifecycle status — computed at render time); they are created and
+// edited by the discovery tooling, never by topic commands.
+const LIFECYCLE_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
+
+// Refuse any status write the manifest CLI would refuse — the two enforcers
+// share one schema (workflow-shared/scripts/manifest-schema.cjs), so the
+// engine can never be the permissive path around a validation refusal.
+/** @param {string} phase @param {string} status */
+function assertLegalWrite(phase, status) {
+  if (!LIFECYCLE_PHASES.includes(phase)) {
+    throw new Error(`unknown or non-lifecycle phase "${phase}" (${LIFECYCLE_PHASES.join('|')}) — discovery items are map items; use the discovery tooling`);
+  }
+  const valid = VALID_PHASE_STATUSES[/** @type {keyof typeof VALID_PHASE_STATUSES} */ (phase)];
+  if (!valid || !valid.includes(status)) {
+    throw new Error(`Invalid status "${status}" for phase "${phase}". Must be one of: ${(valid || []).join(', ')}`);
+  }
+}
 
 /** Phases whose completed artifact is knowledge-base indexed, with the artifact path per topic. */
 const INDEXED_ARTIFACTS = {
@@ -45,9 +68,7 @@ const INDEXED_ARTIFACTS = {
  * @returns {{status?: string, previous_status?: string}}
  */
 function phaseItem(manifest, phase, topic) {
-  if (!PHASES.includes(phase)) {
-    throw new Error(`unknown phase "${phase}" (${PHASES.join('|')})`);
-  }
+  assertLegalWrite(phase, 'cancelled');
   const phases = manifest && manifest.phases;
   const ph = phases && typeof phases === 'object' ? phases[phase] : undefined;
   const items = ph && typeof ph === 'object' ? ph.items : undefined;
@@ -74,6 +95,90 @@ function knowledge(cwd, args, label, warnings) {
       : (res.stderr || res.stdout || `exit ${res.status}`).trim();
     warnings.push(`${label} failed: ${detail}`);
   }
+}
+
+/**
+ * @typedef {object} TopicStartResult
+ * @property {string} topic
+ * @property {string} phase
+ * @property {string} status   always `in-progress`
+ * @property {boolean} created true when the phase item was created, false when resumed
+ */
+
+/**
+ * @typedef {object} TopicCompleteResult
+ * @property {string} topic
+ * @property {string} phase
+ * @property {string} status   always `completed`
+ * @property {string[]} warnings non-blocking failures (knowledge-base index)
+ */
+
+/**
+ * Start a phase item: create it with `status: in-progress` when absent
+ * (init-phase semantics), or set an existing item back to `in-progress`.
+ * A completed item is not startable — resuming is not starting — and a
+ * cancelled item must go through reactivate. No git commit.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase
+ * @param {string} topic
+ * @returns {TopicStartResult}
+ */
+function startTopic(cwd, workUnit, phase, topic) {
+  assertLegalWrite(phase, 'in-progress');
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  if (!manifest.phases || typeof manifest.phases !== 'object') manifest.phases = {};
+  if (!manifest.phases[phase] || typeof manifest.phases[phase] !== 'object') manifest.phases[phase] = {};
+  const ph = manifest.phases[phase];
+  if (!ph.items || typeof ph.items !== 'object') ph.items = {};
+
+  const existing = ph.items[topic];
+  let created = false;
+  if (!existing || typeof existing !== 'object') {
+    ph.items[topic] = { status: 'in-progress' };
+    created = true;
+  } else if (existing.status === 'completed') {
+    throw new Error(`${phase} item "${topic}" is already completed — start cannot resume it`);
+  } else if (existing.status === 'cancelled') {
+    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+  } else {
+    existing.status = 'in-progress';
+  }
+
+  saveWorkUnitManifest(cwd, workUnit, manifest);
+  return { topic, phase, status: 'in-progress', created };
+}
+
+/**
+ * Complete a phase item: set `status: completed` and, when the phase's
+ * artifact is knowledge-base indexed, index it (warn-don't-block). The item
+ * must exist; a cancelled item must go through reactivate first. No git
+ * commit.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase
+ * @param {string} topic
+ * @returns {TopicCompleteResult}
+ */
+function completeTopic(cwd, workUnit, phase, topic) {
+  assertLegalWrite(phase, 'completed');
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  const item = phaseItem(manifest, phase, topic);
+  if (item.status === 'cancelled') {
+    throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+  }
+  item.status = 'completed';
+
+  saveWorkUnitManifest(cwd, workUnit, manifest);
+
+  /** @type {string[]} */
+  const warnings = [];
+  const artifact = INDEXED_ARTIFACTS[/** @type {keyof typeof INDEXED_ARTIFACTS} */ (phase)];
+  if (artifact) {
+    knowledge(cwd, ['index', artifact(workUnit, topic)], 'knowledge index', warnings);
+  }
+
+  return { topic, phase, status: 'completed', warnings };
 }
 
 /**
@@ -133,6 +238,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   if (!restored) {
     throw new Error(`${phase} item "${topic}" has no previous_status to restore`);
   }
+  assertLegalWrite(phase, restored);
   item.status = restored;
   delete item.previous_status;
 
@@ -152,4 +258,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { cancelTopic, reactivateTopic };
+module.exports = { startTopic, completeTopic, cancelTopic, reactivateTopic };

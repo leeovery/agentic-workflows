@@ -46,19 +46,11 @@ Specification written: .workflows/{work_unit}/specification/{topic}/specificatio
 ## B. Register in Manifest
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.specification.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} specification {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
 ```
 
-Commit: `spec({work_unit}): quick-fix specification`
-
-Index the completed specification into the knowledge base:
-
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/specification/{topic}/specification.md
-```
-
-If the index command fails, display the error but do not block — the artifact is already saved:
+The `complete` call indexes the specification into the knowledge base. If its response carries `warnings`, display them but do not block — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
@@ -66,6 +58,12 @@ If the index command fails, display the error but do not block — the artifact 
 ⚑ Knowledge indexing warning
   {error details}
   The artifact is saved. Indexing can be retried later.
+```
+
+Commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): quick-fix specification"
 ```
 
 → Return to caller.

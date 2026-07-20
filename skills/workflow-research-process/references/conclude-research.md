@@ -21,18 +21,16 @@ A concern was rerouted into this topic after drain ran this session. It must be 
 
 **If `## Triage` is `(none)`:**
 
-1. Set research status to completed:
+1. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.research.{topic} status completed
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} research {topic}
    ```
-2. Final commit: `research({work_unit}): complete {topic} research`
-3. Index the completed artifact into the knowledge base:
+2. Final commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): complete {topic} research"
+   ```
 
-```bash
-node .claude/skills/workflow-knowledge/scripts/knowledge.cjs index .workflows/{work_unit}/research/{topic}.md
-```
-
-If the index command fails, display the error but do not block — the artifact is already saved:
+If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
 
 > *Output the next fenced block as a code block:*
 
@@ -42,7 +40,7 @@ If the index command fails, display the error but do not block — the artifact 
   The artifact is saved. Indexing can be retried later.
 ```
 
-4. Closure signpost:
+3. Closure signpost:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -51,7 +49,7 @@ If the index command fails, display the error but do not block — the artifact 
 > to make decisions about architecture and approach.
 ```
 
-5. Invoke the `/workflow-bridge` skill:
+4. Invoke the `/workflow-bridge` skill:
    ```
    Pipeline bridge for: {work_unit}
    Completed phase: research

@@ -65,7 +65,7 @@ Load the chosen format's **authoring.md** from `skills/workflow-planning-process
 Capture the current git commit hash: `git rev-parse HEAD`
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} format {chosen-format}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set project.defaults.plan_format {chosen-format}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} spec_commit {commit-hash}
@@ -77,7 +77,7 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.plann
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task '~'
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} task_map '{}'
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} external_id {external_id}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.planning.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
 ```
 
 Register the task_map entries. For each task, map internal_id to external_id:
@@ -91,8 +91,8 @@ Both the plan-level `external_id` and per-task external IDs are determined by th
 ## D. Mark Scoping Complete
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.scoping.{topic}
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.scoping.{topic} status completed
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} scoping {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
 ```
 
 Commit all scoping artifacts:

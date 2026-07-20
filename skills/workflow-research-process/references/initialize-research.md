@@ -12,8 +12,11 @@
 2. Populate the Starting Point section with context from the handoff's `Context:` section and the seed. If restarting (no `Context:` in handoff), leave the Starting Point section empty — the session will gather context naturally.
 3. Register in manifest:
    ```bash
-   node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.research.{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {topic}
    ```
-4. Commit: `research({work_unit}): initialize {topic} research`
+4. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}): initialize {topic} research"
+   ```
 
 → Return to caller.

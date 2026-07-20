@@ -63,9 +63,15 @@ Subtopic names are kebab-case slugs; `--parent` nests under an existing top-leve
 engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # suggested execution order, scoped commit
 ```
 
-**`topic`** — epic topic cancel / reactivate, each one transaction: manifest write (stash/restore `previous_status`, cancel also drops the topic's discovery-map `order`), knowledge-base sync (remove on cancel; re-index on reactivate when the restored status is `completed` in research/discussion/investigation/specification), and a commit scoped to `.workflows/{wu}` (`workflow({wu}): cancel {topic} ({phase})` / `… reactivate …`). The knowledge base is a derived index — its failures land in `warnings`, never block. Response: `{"ok": true, "topic": "…", "phase": "…", "status": "…", "committed": "<short-sha>", "warnings": []}` (`committed: null` plus a note when nothing was staged).
+**`topic`** — phase-item transitions. `start` and `complete` are lifecycle bookkeeping with no git commit — the calling flow's commit cadence picks the manifest change up. `start` creates the phase item with `status: in-progress` when absent (init-phase semantics: `phases.{phase}.items.{topic}`, status only) or sets an existing item back to `in-progress`; a completed item errors — resuming is not starting — and a cancelled item must go through `reactivate`. Response: `{"ok": true, "phase": "…", "topic": "…", "status": "in-progress", "created": bool}`. `complete` sets `status: completed` on an existing item and, when the phase is research/discussion/investigation/specification, indexes the phase artifact into the knowledge base. Response: `{"ok": true, "phase": "…", "topic": "…", "status": "completed", "warnings": []}`.
+
+`cancel` and `reactivate` are the epic transactions, each one transaction: manifest write (stash/restore `previous_status`, cancel also drops the topic's discovery-map `order`), knowledge-base sync (remove on cancel; re-index on reactivate when the restored status is `completed` in an indexed phase), and a commit scoped to `.workflows/{wu}` (`workflow({wu}): cancel {topic} ({phase})` / `… reactivate …`). Response: `{"ok": true, "topic": "…", "phase": "…", "status": "…", "committed": "<short-sha>", "warnings": []}` (`committed: null` plus a note when nothing was staged).
+
+Across all four, the knowledge base is a derived index — its failures land in `warnings`, never block.
 
 ```bash
+engine topic start <work-unit> <phase> <topic>
+engine topic complete <work-unit> <phase> <topic>
 engine topic cancel <work-unit> <phase> <topic>
 engine topic reactivate <work-unit> <phase> <topic>
 ```

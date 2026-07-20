@@ -54,8 +54,7 @@ Abandon this thread and continue the loop with the next.
 Once all accepted threads have been processed, single commit covering the manifest writes and the new research files:
 
 ```bash
-git add -- .workflows/{work_unit}/manifest.json .workflows/{work_unit}/research/
-git commit -m "research({work_unit}/{parent_topic}): split into {N} topic(s)"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{parent_topic}): split into {N} topic(s)"
 ```
 
 Then offer the user a choice of which topic to continue with:

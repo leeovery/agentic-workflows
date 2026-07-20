@@ -106,8 +106,7 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 4. Commit the conversion and the landing:
 
    ```bash
-   git add -- .workflows/{work_unit}/
-   git commit -m "research({work_unit}/{topic}): pivot to epic"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "research({work_unit}/{topic}): pivot to epic"
    ```
 
 > *Output the next fenced block as markdown (not a code block):*
