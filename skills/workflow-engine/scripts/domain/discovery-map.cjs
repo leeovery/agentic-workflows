@@ -5,7 +5,7 @@
 // `phases.discovery.items`. Sequencing records a suggested execution order
 // across its topics as a single transaction: manifest write, scoped git
 // commit. The Tier-2 map operations (add/edit/remove/rename/reroute/handle/
-// reactivate) are per-item writes with NO git commit — the calling session's
+// unhandle) are per-item writes with NO git commit — the calling session's
 // commit cadence picks the manifest change up. An added item is
 // `{routing, source, summary[, description]}` — never a `status` field:
 // map-item lifecycle is computed at render time, not stored.
@@ -47,7 +47,7 @@ const LIFECYCLE_PHRASES = {
  * @typedef {object} MapOpResult
  * @property {string} work_unit
  * @property {string} name       the item's (current) map name
- * @property {string} op         add|edit|remove|rename|reroute|handle|reactivate
+ * @property {string} op         add|edit|remove|rename|reroute|handle|unhandle
  * @property {string} lifecycle  the item's lifecycle after the op (pre-removal for remove)
  * @property {string} [summary]           add/edit: the value written
  * @property {string} [description]       add/edit: the value written
@@ -57,7 +57,7 @@ const LIFECYCLE_PHRASES = {
  * @property {boolean} [matches_dismissed] rename: new name matches a dismissed entry (left alone)
  * @property {string} [routing]           add/reroute: the value written
  * @property {string} [source]            add: the provenance tag written
- * @property {boolean} [handled]          handle/reactivate: the marker after the op
+ * @property {boolean} [handled]          handle/unhandle: the marker after the op
  * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
  * @property {boolean} [backfill]         add: item landed without summary/description for summary-backfill
  * @property {number} [map_total]         add: items on the map after the add
@@ -100,7 +100,7 @@ function assertFresh(manifest, name, verbPhrase) {
   const { lifecycle } = computeTopicLifecycle(manifest, name);
   if (lifecycle === 'fresh') return;
   const recovery = lifecycle === 'handled'
-    ? 'reactivate it to make it actionable again'
+    ? 'unhandle it to make it actionable again'
     : 'cancel from the epic menu instead';
   throw new Error(`"${name}" can't be ${verbPhrase} — ${LIFECYCLE_PHRASES[/** @type {keyof typeof LIFECYCLE_PHRASES} */ (lifecycle)]}; ${recovery}`);
 }
@@ -389,20 +389,20 @@ function handleItem(cwd, workUnit, name) {
  * @param {string} name
  * @returns {MapOpResult}
  */
-function reactivateItem(cwd, workUnit, name) {
+function unhandleItem(cwd, workUnit, name) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = mapItem(manifest, name);
     const { lifecycle } = computeTopicLifecycle(manifest, name);
     if (lifecycle !== 'handled') {
-      throw new Error(`"${name}" can't be reactivated — it isn't marked handled, so there's nothing to reactivate`);
+      throw new Error(`"${name}" can't be unhandled — it isn't marked handled, so there's nothing to unhandle`);
     }
     delete item.handled;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
     const after = computeTopicLifecycle(manifest, name);
-    return { work_unit: workUnit, name, op: 'reactivate', handled: false, lifecycle: after.lifecycle };
+    return { work_unit: workUnit, name, op: 'unhandle', handled: false, lifecycle: after.lifecycle };
   });
 }
 
-module.exports = { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem };
+module.exports = { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem };

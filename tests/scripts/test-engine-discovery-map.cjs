@@ -392,7 +392,7 @@ describe('engine CLI: discovery-map operations', () => {
       'ready-topic': /research has completed and discussion is queued.*cancel from the epic menu instead/,
       'discussing-topic': /discussion is in flight on it.*cancel from the epic menu instead/,
       'decided-topic': /discussion has concluded.*cancel from the epic menu instead/,
-      'handled-topic': /fanned out into discussions.*reactivate it to make it actionable again/,
+      'handled-topic': /fanned out into discussions.*unhandle it to make it actionable again/,
       'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
     };
 
@@ -443,30 +443,30 @@ describe('engine CLI: discovery-map operations', () => {
     });
   });
 
-  describe('reactivate', () => {
+  describe('unhandle', () => {
     it('clears the marker and reports the name-matched lifecycle', () => {
-      const res = runOk(dir, ['reactivate', 'payments', 'handled-topic']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'reactivate', handled: false, lifecycle: 'fresh' });
+      const res = runOk(dir, ['unhandle', 'payments', 'handled-topic']);
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'unhandle', handled: false, lifecycle: 'fresh' });
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['handled-topic'], false);
     });
 
     it('reports the recomputed lifecycle when phase work exists under the name', () => {
       runOk(dir, ['handle', 'payments', 'researching-topic']);
-      const res = runOk(dir, ['reactivate', 'payments', 'researching-topic']);
+      const res = runOk(dir, ['unhandle', 'payments', 'researching-topic']);
       assert.strictEqual(res.lifecycle, 'researching');
     });
 
     it('refuses any non-handled item', () => {
       for (const topic of ['fresh-topic', 'researching-topic', 'decided-topic', 'cancelled-topic']) {
-        const err = runFail(dir, ['reactivate', 'payments', topic]);
-        assert.match(err.error, /isn't marked handled, so there's nothing to reactivate/, topic);
+        const err = runFail(dir, ['unhandle', 'payments', topic]);
+        assert.match(err.error, /isn't marked handled, so there's nothing to unhandle/, topic);
       }
     });
   });
 
   describe('argument validation', () => {
     it('rejects unknown verbs and malformed arg counts with usage errors', () => {
-      assert.match(runFail(dir, ['frobnicate', 'payments', 'x']).error, /Usage: engine discovery-map <sequence\|add\|edit\|remove\|rename\|reroute\|handle\|reactivate>/);
+      assert.match(runFail(dir, ['frobnicate', 'payments', 'x']).error, /Usage: engine discovery-map <sequence\|add\|edit\|remove\|rename\|reroute\|handle\|unhandle>/);
       assert.match(runFail(dir, ['remove', 'payments']).error, /Usage: engine discovery-map remove/);
       assert.match(runFail(dir, ['remove', 'payments', 'fresh-topic', 'extra']).error, /Usage: engine discovery-map remove/);
       assert.match(runFail(dir, ['rename', 'payments', 'fresh-topic']).error, /Usage: engine discovery-map rename/);
@@ -491,7 +491,7 @@ describe('engine CLI: discovery-map operations', () => {
       runOk(dir, ['rename', 'payments', 'rich-fresh', 'renamed-rich']);
       runOk(dir, ['reroute', 'payments', 'renamed-rich', 'discussion']);
       runOk(dir, ['handle', 'payments', 'renamed-rich']);
-      runOk(dir, ['reactivate', 'payments', 'renamed-rich']);
+      runOk(dir, ['unhandle', 'payments', 'renamed-rich']);
 
       assert.strictEqual(execFileSync('git', ['log', '--pretty=%s'], { cwd: dir, encoding: 'utf8' }).trim(), 'init');
       assert.match(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }), / M \.workflows\/payments\/manifest\.json/);

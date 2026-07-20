@@ -20,7 +20,7 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
-const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, reactivateItem } = require('./domain/discovery-map.cjs');
+const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -117,7 +117,7 @@ Commands:
   discovery-map rename <work-unit> <old> <new>
   discovery-map reroute <work-unit> <name> <research|discussion>
   discovery-map handle <work-unit> <name>
-  discovery-map reactivate <work-unit> <name>
+  discovery-map unhandle <work-unit> <name>
   discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
@@ -289,7 +289,7 @@ function runDiscussionMap(argv) {
 // ---------------------------------------------------------------------------
 // discovery-map — the Discovery Map's writes. sequence records the suggested
 // execution order as one transaction with its own scoped commit; the per-item
-// map operations (add/edit/remove/rename/reroute/handle/reactivate) write the
+// map operations (add/edit/remove/rename/reroute/handle/unhandle) write the
 // manifest with no git commit — the calling session's commit cadence picks
 // the change up. Judgment (what to change) stays with the caller; lifecycle
 // gates are enforced in the domain op.
@@ -345,11 +345,11 @@ function runDiscoveryMap(argv) {
         throw new Error('Usage: engine discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>] (at least one flag required)');
       }
       respond(editItem(cwd, workUnit, positional[1], { summary, description }));
-    } else if (command === 'remove' || command === 'handle' || command === 'reactivate') {
+    } else if (command === 'remove' || command === 'handle' || command === 'unhandle') {
       if (!workUnit || positional.length !== 2) {
         throw new Error(`Usage: engine discovery-map ${command} <work-unit> <name>`);
       }
-      const fn = command === 'remove' ? removeItem : command === 'handle' ? handleItem : reactivateItem;
+      const fn = command === 'remove' ? removeItem : command === 'handle' ? handleItem : unhandleItem;
       respond(fn(cwd, workUnit, positional[1]));
     } else if (command === 'rename') {
       if (!workUnit || positional.length !== 3) {
@@ -362,7 +362,7 @@ function runDiscoveryMap(argv) {
       }
       respond(rerouteItem(cwd, workUnit, positional[1], positional[2]));
     } else {
-      throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|reroute|handle|reactivate> …');
+      throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|reroute|handle|unhandle> …');
     }
   } catch (err) {
     failJson(err);
