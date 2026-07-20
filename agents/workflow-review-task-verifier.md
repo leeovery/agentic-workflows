@@ -123,7 +123,7 @@ TASK: [Task name/description]
 
 ACCEPTANCE CRITERIA: [List from plan]
 
-STATUS: Complete | Incomplete | Issues Found
+STATUS: complete | incomplete | issues_found
 
 SPEC CONTEXT: [Brief summary of relevant spec context]
 
@@ -157,7 +157,7 @@ NON-BLOCKING NOTES:
 Return a brief status to the orchestrator:
 
 ```
-STATUS: Complete | Incomplete | Issues Found
+STATUS: complete | incomplete | issues_found
 FINDINGS_COUNT: {N blocking issues}
 SUMMARY: {1 sentence}
 ```

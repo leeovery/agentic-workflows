@@ -79,7 +79,7 @@ Background review dispatched. Results will be surfaced when available.
 The review agent returns:
 
 ```
-STATUS: gaps_found | thorough
+STATUS: gaps_found | clean
 GAPS_COUNT: {N}
 ASSUMPTIONS_COUNT: {N}
 SUMMARY: {1 sentence}
