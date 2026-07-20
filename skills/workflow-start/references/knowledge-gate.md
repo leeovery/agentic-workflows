@@ -49,19 +49,7 @@ Run:
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --from-system
 ```
 
-**If the command succeeded:**
-
-→ Proceed to **E. Confirm and Continue**.
-
-**If the command failed with "no OpenAI API key found" or an authentication error (HTTP 401/403 — the stored key is missing, revoked, or wrong for this endpoint):**
-
-→ Proceed to **D. Store the API Key**.
-
-**If the command failed for any other reason:**
-
-Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
-
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **G. Handle Setup Result** with origin = `B`.
 
 #### If `different`
 
@@ -133,19 +121,7 @@ Run with the chosen model (`text-embedding-3-small` for "default"):
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider openai --model {model}
 ```
 
-**If the command succeeded:**
-
-→ Proceed to **E. Confirm and Continue**.
-
-**If the command failed with "no OpenAI API key found" or an authentication error (HTTP 401/403):**
-
-→ Proceed to **D. Store the API Key**.
-
-**If the command failed for any other reason:**
-
-Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
-
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **G. Handle Setup Result** with origin = `C-openai`.
 
 #### If `compatible`
 
@@ -169,21 +145,7 @@ node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --provider op
 
 Keyless endpoints are fine — a key stored in the credentials file is picked up automatically.
 
-**If the command succeeded:**
-
-→ Proceed to **E. Confirm and Continue**.
-
-**If the command failed with an authentication error (HTTP 401/403):**
-
-The endpoint wants a key.
-
-→ Proceed to **D. Store the API Key**.
-
-**If the command failed for any other reason:**
-
-Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
-
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **G. Handle Setup Result** with origin = `C-compatible`.
 
 #### If `keyword`
 
@@ -193,15 +155,7 @@ Run:
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-only
 ```
 
-**If the command succeeded:**
-
-→ Proceed to **E. Confirm and Continue**.
-
-**If the command failed:**
-
-Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
-
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **G. Handle Setup Result** with origin = `keyword`.
 
 #### If `terminal`
 
@@ -253,17 +207,17 @@ Ready to retry?
 
 #### If `done`
 
-Re-run the setup command whose key failure routed here and handle its result exactly as its branch prescribes — including routing back to this section if the key is still unresolvable. Skip the originating branch's menus and questions; its values are already collected.
+Re-run the setup command whose key failure routed here — `origin` names it — skipping the originating branch's menus and questions; its values are already collected. The re-run lands back at **G** to handle the fresh result.
 
-**If routed from B's `yes` branch:**
+**If `origin` is `B`:**
 
 → Return to **B. Use Existing Configuration** for the `yes` branch's setup command.
 
-**If routed from C's `openai` branch:**
+**If `origin` is `C-openai`:**
 
 → Return to **C. Choose a Mode** for the `openai` branch's setup command.
 
-**If routed from C's `compatible` branch:**
+**If `origin` is `C-compatible`:**
 
 → Return to **C. Choose a Mode** for the `compatible` branch's setup command.
 
@@ -275,15 +229,7 @@ Run:
 node .claude/skills/workflow-knowledge/scripts/knowledge.cjs setup --keyword-only
 ```
 
-**If the command succeeded:**
-
-→ Proceed to **E. Confirm and Continue**.
-
-**If the command failed:**
-
-Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
-
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **G. Handle Setup Result** with origin = `keyword`.
 
 ## E. Confirm and Continue
 
@@ -360,3 +306,23 @@ Knowledge base ready — {provider} · {model}.
 The wizard did not complete. Surface the boot response's detail.
 
 → Return to **A. Route**.
+
+## G. Handle Setup Result
+
+The setup command just ran. Branch on its result. `origin` names the branch that ran it — the authentication path routes back through **D** to that origin's command.
+
+#### If the command succeeded
+
+→ Return to **E. Confirm and Continue**.
+
+#### If the command failed with an authentication error (HTTP 401/403), or — for an openai provider — with "no OpenAI API key found"
+
+The stored key is missing, revoked, or wrong for this endpoint. Keyword-only origins never reach here: `--keyword-only` performs no authentication, so its only failure is the "any other reason" path below.
+
+→ Return to **D. Store the API Key** with origin = `{origin}`.
+
+#### If the command failed for any other reason
+
+Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
+
+**STOP.** Do not proceed — terminal condition.
