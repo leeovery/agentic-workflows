@@ -18,7 +18,6 @@ Pass via the orchestrator's prompt:
 2. **Work unit** — the work unit name (for path construction)
 3. **Topic name** — the implementation topic
 4. **Cycle number** — the current analysis cycle number
-5. **Specification path** — from the specification (if available)
 
 The agent locates findings files and writes output files using the work unit and topic name.
 

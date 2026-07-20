@@ -17,7 +17,6 @@ You receive via the orchestrator's prompt:
 2. **Work unit** — the work unit name (for path construction)
 3. **Topic name** — the implementation topic
 4. **Cycle number** — which analysis cycle this is
-5. **Specification path** — the validated specification
 
 ## Your Process
 

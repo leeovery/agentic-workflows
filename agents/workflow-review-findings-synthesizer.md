@@ -16,8 +16,7 @@ You receive via the orchestrator's prompt:
 1. **Work unit** — the work unit name (for path construction)
 2. **Plan topic** — the plan being synthesized
 3. **Review path** — path to `review/{topic}/` directory containing review summary and QA files
-4. **Specification path** — the validated specification for context
-5. **Cycle number** — which review remediation cycle this is
+4. **Cycle number** — which review remediation cycle this is
 
 ## Your Process
 
