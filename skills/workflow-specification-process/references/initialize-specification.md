@@ -18,32 +18,27 @@ Write the file **before** any manifest change. If a crash interrupts here the it
 
 ## B. Register or Flip the Item
 
-Read the manifest item status:
+Start the phase item — the engine creates it with `status: in-progress` when absent, or flips an existing proposed (or restarted) item to in-progress:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs get {work_unit}.specification.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} specification {topic}
 ```
 
-#### If the output is empty
+Branch on the response's `created` flag:
 
-The item is genuinely new (feature/bugfix, or a fresh single-discussion create). Register it, then add every source with `status: pending`:
+#### If `created` is `true`
+
+The item is genuinely new (feature/bugfix, or a fresh single-discussion create). Add every source with `status: pending`:
 
 ```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs init-phase {work_unit}.specification.{topic}
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status pending
 ```
 
 → Proceed to **C. Set Review State**.
 
-#### If the status is `proposed`
+#### If `created` is `false`
 
-The grouping already exists as a proposed item — flip it to in-progress. Never run `init-phase`; the item exists and `init-phase` errors on an existing item:
-
-```bash
-node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} status in-progress
-```
-
-The proposed item already carries its grouping's sources as `pending` rows. For any source in this session not already present, add it — never overwrite an existing row:
+The item already existed (a proposed grouping, or a restart) and already carries its sources. For any source in this session not already present, add it — never overwrite an existing row:
 
 ```bash
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} sources.{source-name}.status pending
@@ -64,6 +59,10 @@ node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.speci
 node .claude/skills/workflow-manifest/scripts/manifest.cjs set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
-Commit: `spec({work_unit}): initialize specification`
+Commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): initialize specification"
+```
 
 → Return to caller.

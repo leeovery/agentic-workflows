@@ -109,7 +109,11 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
 
 Record its STATUS as `phase_1_status`.
 
-**If the agent created a tracking file**, commit it: `spec({work_unit}): input review cycle {N}`
+**If the agent created a tracking file**, commit it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): input review cycle {N}"
+```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
@@ -131,7 +135,11 @@ Dispatch the `workflow-specification-review-gap-analysis` agent via the Task too
 
 Record its STATUS as `phase_2_status`.
 
-**If the agent created a tracking file**, commit it: `spec({work_unit}): gap analysis cycle {N}`
+**If the agent created a tracking file**, commit it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): gap analysis cycle {N}"
+```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
@@ -219,7 +227,11 @@ Run another review cycle?
 
 > **CHECKPOINT**: Do not confirm completion if any tracking files still show `status: in-progress`. They indicate incomplete review work.
 
-2. **Commit** all review tracking files: `spec({work_unit}): complete specification review (cycle {N})`
+2. **Commit** all review tracking files:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): complete specification review (cycle {N})"
+```
 
 > *Output the next fenced block as a code block:*
 

@@ -45,9 +45,9 @@ Proceed?
 
 #### If any source discussion has an individual spec
 
-`has_individual_spec` is computed proposed-blind — a discussion that appears only in a proposed grouping does not count as having an individual spec, so a proposed item never lands here for supersession.
+The DATA `discussions:` lines mark this (`individual spec: {status}`). It is computed proposed-blind — a discussion that appears only in a proposed grouping does not count as having an individual spec, so a proposed item never lands here for supersession.
 
-Note the supersession (`has_individual_spec: true`):
+Note the supersession:
 
 > *Output the next fenced block as a code block:*
 

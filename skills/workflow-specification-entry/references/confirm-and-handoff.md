@@ -6,10 +6,11 @@
 
 ## Verb Rule
 
-- No spec exists → **"Creating"**
-- Spec is `in-progress` → **"Continuing"**
-- Spec is `completed` with pending sources → **"Continuing"**
-- Spec is `completed` with all sources extracted → **"Refining"**
+The verb rides on the flow's context — the selected `ACTIONS` entry's `verb`, or the DATA `verb` on the single-discussion path:
+
+- **"Creating"** — no spec exists (proposed grouping or fresh single discussion)
+- **"Continuing"** — spec is `in-progress`, or `completed` with pending sources
+- **"Refining"** — spec is `completed` with all sources extracted
 
 ## Route
 
