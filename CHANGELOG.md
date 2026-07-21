@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-07-21
+
+✨ Added
+- Investigation now includes a collaborative fix-exploration phase — after root cause sign-off, the agent proposes fix options and discusses direction with you before an independent agent pressure-tests it for side effects and risks.
+- Investigation gains an upfront planning step — a quick recon pass proposes hypotheses and a checkpoint depth (straight-through or check-ins) for you to confirm before deep tracing starts.
+- A live hypothesis ledger tracks each suspected cause through `suspected` → `tracing` → `confirmed`/`ruled-out` as the investigation proceeds, with optional check-in gates when a hypothesis resolves.
+- Findings now get a dedicated sign-off step, separated from the fix discussion that follows it.
+
+🔧 Changed
+- Step markers (the `── Name ──` headers) now appear only on steps with real user-facing activity — pure plumbing steps render silently, cutting visual noise from routing-heavy skills.
+- Root cause validation is now a standalone agent focused solely on the root cause, run before findings sign-off — fix-direction risk assessment moved to the new dedicated fix-validation agent that runs after a direction is agreed.
+- Step routing footers now distinguish "on return" hand-offs (after a loaded reference completes) from immediate next-step transitions, clarifying control flow across nearly every skill.
+
 ## [0.6.1] - 2026-07-20
 
 ✨ Added
