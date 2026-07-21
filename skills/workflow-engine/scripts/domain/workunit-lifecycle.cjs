@@ -1,5 +1,8 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
 // ---------------------------------------------------------------------------
 // Domain ring: work-unit lifecycle transitions — complete, cancel,
 // reactivate, and pivot, each a single transaction from the caller's
@@ -69,6 +72,16 @@ function assertLegalStatus(status) {
  *   completion vs pipeline-terminal vs review-skipped), so it arrives via -m
  * @returns {WorkUnitLifecycleResult}
  */
+
+// Cache is work-unit-lifetime scratch: load-bearing while the unit is open
+// (it survives context refresh mid-loop), garbage the moment it closes.
+// Purging at close also protects reactivation — stale tracking files would
+// poison reopened gates. Disk-only: the cache is gitignored.
+/** @param {string} cwd @param {string} workUnit */
+function purgeCache(cwd, workUnit) {
+  fs.rmSync(path.join(cwd, '.workflows', '.cache', workUnit), { recursive: true, force: true });
+}
+
 function completeWorkUnit(cwd, workUnit, { message }) {
   assertLegalStatus('completed');
   const { completedAt, previous } = withWorkUnitLock(cwd, workUnit, () => {
@@ -87,6 +100,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
     saveWorkUnitManifest(cwd, workUnit, loaded);
     return { completedAt: stamped, previous: from };
   });
+  purgeCache(cwd, workUnit);
 
   /** @type {string[]} */
   const warnings = [];
@@ -124,6 +138,7 @@ function cancelWorkUnit(cwd, workUnit) {
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
   });
+  purgeCache(cwd, workUnit);
 
   /** @type {string[]} */
   const warnings = [];

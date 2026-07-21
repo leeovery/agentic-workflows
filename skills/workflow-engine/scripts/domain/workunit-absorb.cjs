@@ -279,6 +279,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   });
 
   fs.rmSync(path.join(cwd, '.workflows', feature), { recursive: true, force: true });
+  fs.rmSync(path.join(cwd, '.workflows', '.cache', feature), { recursive: true, force: true });
 
   // KB: drop the feature's chunks, index the moved artifacts at their epic
   // identities (completed phase artifacts; imports and seeds always).

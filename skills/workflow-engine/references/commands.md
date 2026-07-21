@@ -92,6 +92,7 @@ The per-item map operations write the manifest with no git commit (the calling s
 ```bash
 engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]   # suggested execution order, scoped commit
 engine discovery-map add <work-unit> <name> <research|discussion> (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]
+engine discovery-map add-batch <work-unit> --file <topics.json>   # whole topic set, one lock/save — atomic; entries {name, routing, summary, description?, brief_path?, force_dismissed?}; source always `discovery`
 engine discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
 engine discovery-map remove <work-unit> <name>       # fresh only; name lands on the dismissed list
 engine discovery-map rename <work-unit> <old> <new>  # fresh only; every field preserved, brief file + brief_path follow

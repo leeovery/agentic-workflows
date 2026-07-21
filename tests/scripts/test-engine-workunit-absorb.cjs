@@ -176,7 +176,10 @@ describe('engine workunit absorb — happy path', () => {
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', () => {
     fix = setupFixture();
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
+    fs.mkdirSync(path.join(fix.project, '.workflows', '.cache', 'auth-flow'), { recursive: true });
+    fs.writeFileSync(path.join(fix.project, '.workflows', '.cache', 'auth-flow', 'scratch.json'), '{}');
     const res = engine(fix, ABSORB);
+    assert.strictEqual(fs.existsSync(path.join(fix.project, '.workflows', '.cache', 'auth-flow')), false, "absorbed feature's cache purged");
 
     assert.deepStrictEqual(res, {
       ok: true,

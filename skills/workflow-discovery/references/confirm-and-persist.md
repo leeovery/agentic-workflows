@@ -20,26 +20,29 @@ No new topics — this is an edits-only or browse-only session.
 
 #### Otherwise
 
-For each topic on the working list, in synthesised order:
+Write the whole topic set to `.workflows/.cache/{work_unit}/discovery/topics.json` with the Write tool — one entry per topic, in synthesised order:
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} {research|discussion} --summary "{one-line summary}" --description "{paragraphs}"
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{topic} brief_path "discovery/briefs/{topic}.md"
+```json
+[{"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{paragraphs}", "brief_path": "discovery/briefs/{topic}.md"}]
 ```
 
-Append `--force-dismissed` for a name the synthesis DATA flagged `matches_dismissed=true` — the user's confirmation at the synthesis gate is the re-add decision; the engine clears the dismissed entry as part of the add.
+Set `"force_dismissed": true` on an entry whose name the synthesis DATA flagged `matches_dismissed=true` — the user's confirmation at the synthesis gate is the re-add decision; the engine clears the dismissed entry as part of the add.
 
-Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~`. Description may span paragraphs.
+Persist the set in one transaction:
 
-If any command fails, surface the error and stop before the commit so the user can recover.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add-batch {work_unit} --file .workflows/.cache/{work_unit}/discovery/topics.json
+```
+
+The batch is atomic — a failing entry means nothing was persisted; fix the payload and re-run. Surface any error and stop before the commit so the user can recover.
 
 Notes:
 
 - The topic name is the manifest dict key (the `{topic}` path segment). There is no separate `name` field to set.
 - `routing` is the value confirmed by the user at the synthesis gate.
-- `--source` defaults to `discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`). Omit it here.
-- The last map-operation response's `map_total` is `{T}` for the Conclusion line in **C** — no re-read needed.
-- `brief_path` is an opaque field set by a post-create `set` — never an `add` flag. It records where the topic's brief lives; the brief file itself was written at harvest by [brief-synthesis.md](brief-synthesis.md).
+- Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
+- The response's `map_total` is `{T}` for the Conclusion line in **C**, and `added` lists every persisted topic — no re-read needed.
+- `brief_path` records where the topic's brief lives; the brief file itself was written at harvest by [brief-synthesis.md](brief-synthesis.md).
 
 → Proceed to **B. Write Topics Identified**.
 

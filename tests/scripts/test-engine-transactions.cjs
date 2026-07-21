@@ -580,6 +580,15 @@ describe('engine workunit complete', () => {
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
   });
 
+  it('purges the work unit\'s cache dir wholesale — and only its own', () => {
+    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'auth-flow', 'planning', 'auth-flow'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'auth-flow', 'planning', 'auth-flow', 'tracking.md'), 'scratch');
+    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'other-unit'), { recursive: true });
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'auth-flow')), false, 'own cache purged');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'other-unit')), true, 'sibling cache untouched');
+  });
+
   it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
     engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): mark as completed']);
     assert.match(
@@ -629,6 +638,13 @@ describe('engine workunit cancel', () => {
   let dir;
   beforeEach(() => { dir = setupFeatureFixture(); });
   afterEach(() => { cleanupFixture(dir); });
+
+  it('purges the work unit\'s cache dir', () => {
+    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'auth-flow'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'auth-flow', 'scratch.json'), '{}');
+    engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'auth-flow')), false);
+  });
 
   it('sets status cancelled, removes KB chunks (failure is a warning), commits the fixed message', () => {
     const res = engine(dir, ['workunit', 'cancel', 'auth-flow']);

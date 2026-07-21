@@ -245,6 +245,88 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
 }
 
 /**
+ * Add a whole topic set in one transaction — one lock, one load, one save.
+ * The batch form for the harvest (D7: one task, one call): every entry is
+ * validated before anything is applied, so a failing entry means nothing
+ * persisted — never a partial map. Entries may carry `brief_path` (recorded
+ * on the item, replacing the per-topic follow-up set) and `force_dismissed`
+ * (per-entry re-add confirmation). No git commit — the calling flow's commit
+ * covers the batch.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {{name: string, routing: string, summary: string, description?: string, brief_path?: string, force_dismissed?: boolean}[]} entries
+ * @returns {{work_unit: string, op: string, added: {name: string, routing: string, lifecycle: string}[], undismissed: string[], map_total: number}}
+ */
+function addItemsBatch(cwd, workUnit, entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error('add-batch: entries must be a non-empty array of {name, routing, summary, description?, brief_path?, force_dismissed?}');
+  }
+  entries.forEach((e, i) => {
+    const at = `entry ${i + 1}`;
+    if (!e || typeof e !== 'object') throw new Error(`add-batch: ${at} must be an object`);
+    if (!e.name || /[./]/.test(e.name)) {
+      throw new Error(`add-batch: ${at} — "${e.name}" is not a legal topic name (dots and slashes break manifest addressing)`);
+    }
+    if (!e.routing || !VALID_ROUTINGS.includes(e.routing)) {
+      throw new Error(`add-batch: ${at} ("${e.name}") — unknown routing ${JSON.stringify(e.routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
+    }
+    if (typeof e.summary !== 'string' || e.summary.trim() === '') {
+      throw new Error(`add-batch: ${at} ("${e.name}") — "summary" must be a non-empty string`);
+    }
+    for (const opt of ['description', 'brief_path']) {
+      if (e[opt] !== undefined && (typeof e[opt] !== 'string' || e[opt].trim() === '')) {
+        throw new Error(`add-batch: ${at} ("${e.name}") — "${opt}" must be a non-empty string when present`);
+      }
+    }
+  });
+  const names = entries.map((e) => e.name);
+  const dupe = names.find((n, i) => names.indexOf(n) !== i);
+  if (dupe) throw new Error(`add-batch: "${dupe}" appears more than once in the batch`);
+
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const phases = ensureContainer(manifest, 'phases', 'phases');
+    const discovery = ensureContainer(phases, 'discovery', 'phases.discovery');
+    ensureContainer(discovery, 'items', 'phases.discovery.items');
+    const dismissed = Array.isArray(discovery.dismissed) ? discovery.dismissed : [];
+
+    // Validate the whole batch against current state before applying any of it.
+    for (const e of entries) {
+      if (discovery.items[e.name]) {
+        throw new Error(`add-batch: "${e.name}" is already on the map — nothing was added; edit it, or pick a different name`);
+      }
+      if (dismissed.includes(e.name) && !e.force_dismissed) {
+        throw new Error(`add-batch: "${e.name}" was previously dismissed from this map — nothing was added; confirm the re-add with the user, then set force_dismissed on the entry`);
+      }
+    }
+
+    /** @type {string[]} */
+    const undismissed = [];
+    for (const e of entries) {
+      if (dismissed.includes(e.name)) undismissed.push(e.name);
+      /** @type {Record<string, unknown>} */
+      const item = { routing: e.routing, source: 'discovery', summary: e.summary };
+      if (e.description !== undefined) item.description = e.description;
+      if (e.brief_path !== undefined) item.brief_path = e.brief_path;
+      discovery.items[e.name] = item;
+    }
+    if (undismissed.length > 0) {
+      discovery.dismissed = dismissed.filter((n) => !undismissed.includes(n));
+    }
+
+    saveWorkUnitManifest(cwd, workUnit, manifest);
+
+    return {
+      work_unit: workUnit,
+      op: 'add-batch',
+      added: entries.map((e) => ({ name: e.name, routing: e.routing, lifecycle: computeTopicLifecycle(manifest, e.name).lifecycle })),
+      undismissed,
+      map_total: Object.keys(discovery.items).length,
+    };
+  });
+}
+
+/**
  * Set `summary` and/or `description` on a map item — at least one required.
  * Allowed at any lifecycle. No git commit.
  * @param {string} cwd project root
@@ -472,4 +554,4 @@ function unhandleItem(cwd, workUnit, name) {
   });
 }
 
-module.exports = { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem };
+module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem };
