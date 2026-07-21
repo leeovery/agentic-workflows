@@ -10,7 +10,7 @@ State-driven branches in **A. Open** pick the opening shape; **B. Session Loop**
 
 ## A. Open
 
-Read `discovery_map` and `dismissed` from the most recent discovery output. `imports` was read from the manifest and is already held in conversation memory (Step 8). Read `session_number` and any active file path from the resume state set at Step 6.
+Read `discovery_map` and `dismissed` from the most recent discovery output. `description`, `seeds`, and `imports` are carried in the same output and already held in conversation memory (Step 8). Read `session_number` and any active file path from the resume state set at Step 6.
 
 #### If `macro_continuation` is set (new epic, just confirmed)
 

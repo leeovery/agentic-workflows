@@ -577,6 +577,51 @@ describe('workflow-discovery format', () => {
     assert.match(out, /=== DISCOVERY: payments ===/);
   });
 
+  // --- description / seeds / imports (manifest context carried in the dump) ---
+
+  it('renders the work-unit description beneath the header', () => {
+    createManifest(dir, 'payments', { work_type: 'epic', description: 'Payments overhaul epic' });
+    const out = format(discover(dir, 'payments'));
+    assert.match(out, /=== DISCOVERY: payments ===\ndescription: Payments overhaul epic/);
+  });
+
+  it('renders "(none)" for a missing or empty description', () => {
+    createManifest(dir, 'payments', { work_type: 'epic', description: '' });
+    const out = format(discover(dir, 'payments'));
+    assert.match(out, /description: \(none\)/);
+    assert.strictEqual(discover(dir, 'payments').description, null);
+  });
+
+  it('renders seeds entries with path and source, imports with path', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      seeds: [{ path: 'seeds/2026-07-01--pay-idea.md', source: 'inbox:idea' }],
+      imports: [{ path: 'imports/notes.md' }],
+    });
+    const result = discover(dir, 'payments');
+    assert.deepStrictEqual(result.seeds, [{ path: 'seeds/2026-07-01--pay-idea.md', source: 'inbox:idea' }]);
+    assert.deepStrictEqual(result.imports, [{ path: 'imports/notes.md' }]);
+    const out = format(result);
+    assert.match(out, /seeds \(1\):\n {2}- seeds\/2026-07-01--pay-idea\.md \(source: inbox:idea\)/);
+    assert.match(out, /imports \(1\):\n {2}- imports\/notes\.md/);
+  });
+
+  it('renders "(none)" seeds/imports and defaults to empty arrays when the fields are absent', () => {
+    createManifest(dir, 'payments', { work_type: 'epic' });
+    const result = discover(dir, 'payments');
+    assert.deepStrictEqual(result.seeds, []);
+    assert.deepStrictEqual(result.imports, []);
+    const out = format(result);
+    assert.match(out, /seeds \(0\):\n {2}\(none\)/);
+    assert.match(out, /imports \(0\):\n {2}\(none\)/);
+  });
+
+  it('a seed entry without a source renders bare', () => {
+    createManifest(dir, 'payments', { work_type: 'epic', seeds: [{ path: 'seeds/x.md' }] });
+    const out = format(discover(dir, 'payments'));
+    assert.match(out, /seeds \(1\):\n {2}- seeds\/x\.md\n/);
+  });
+
   // --- map_summary line ---
 
   it('map_summary line includes total and all six counts', () => {
@@ -767,10 +812,15 @@ describe('workflow-discovery format', () => {
     const out = format(discover(dir, 'payments'));
     assert.strictEqual(out, [
       '=== DISCOVERY: payments ===',
+      'description: Test: payments',
       'map_summary: 0 topics — 0 decided, 0 in-flight, 0 ready, 0 fresh, 0 handled, 0 cancelled',
       'discovery_map (0):',
       '  (empty)',
       'dismissed (0):',
+      '  (none)',
+      'seeds (0):',
+      '  (none)',
+      'imports (0):',
       '  (none)',
       'session_logs (0):',
       '  (none)',
@@ -799,12 +849,17 @@ describe('workflow-discovery format', () => {
     const out = format(discover(dir, 'payments'));
     assert.strictEqual(out, [
       '=== DISCOVERY: payments ===',
+      'description: Test: payments',
       'map_summary: 2 topics — 0 decided, 1 in-flight, 0 ready, 1 fresh, 0 handled, 0 cancelled',
       'discovery_map (2):',
       '  - ◐ auth-flow [researching] routing=research phase=research — OAuth vs sessions',
       '  - ○ billing [fresh] routing=discussion source=gap-analysis',
       'dismissed (1):',
       '  - old-thing',
+      'seeds (0):',
+      '  (none)',
+      'imports (0):',
+      '  (none)',
       'session_logs (2):',
       '  - 001 .workflows/payments/discovery/sessions/session-001.md',
       '  - 002 .workflows/payments/discovery/sessions/session-002.md',
