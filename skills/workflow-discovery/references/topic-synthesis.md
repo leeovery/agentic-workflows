@@ -54,7 +54,7 @@ Every candidate folded into an existing map item, or the exploration surfaced no
 
 For each topic in the synthesised set, propose `research` or `discussion` based on cues from how the user framed it during exploration. The proposal is tentative — the user can flip it at the confirmation gate in **E**.
 
-→ Proceed to **E. Render Proposal**.
+→ On return, proceed to **E. Render Proposal**.
 
 ## E. Render Proposal
 

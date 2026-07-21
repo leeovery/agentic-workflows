@@ -78,7 +78,7 @@ Assign each candidate a `routing` value.
 
 A single analysis may emit a mix of routings — apply the criteria per candidate.
 
-→ Proceed to **D. Filter and Stage**.
+→ On return, proceed to **D. Filter and Stage**.
 
 ## D. Filter and Stage
 

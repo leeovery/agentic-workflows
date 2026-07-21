@@ -200,7 +200,7 @@ Notes (non-blocking):
 {NOTES from reviewer}
 ```
 
-→ Proceed to **F. Fix Approval Gate**.
+→ On return, proceed to **F. Fix Approval Gate**.
 
 #### If the response's `threshold_reached` is `false`
 

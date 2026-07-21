@@ -12,7 +12,7 @@ Inputs held from earlier steps: committed `work_type`, shaped one-line `descript
 
 Load **[name-resolution.md](name-resolution.md)** and follow its instructions as written. On return, `work_unit` is confirmed and collision-free.
 
-→ Proceed to **B. Author the Session Log**.
+→ On return, proceed to **B. Author the Session Log**.
 
 ## B. Author the Session Log
 

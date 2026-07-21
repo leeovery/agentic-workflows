@@ -135,7 +135,7 @@ Starting investigation: {work_unit:(titlecase)}
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 

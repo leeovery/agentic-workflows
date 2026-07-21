@@ -64,7 +64,7 @@ For each candidate theme, build a tentative entry:
 
 Hold these in working memory. Do NOT write any cache files yet.
 
-→ Proceed to **D. Confirm Theme List**.
+→ On return, proceed to **D. Confirm Theme List**.
 
 ## D. Confirm Theme List
 

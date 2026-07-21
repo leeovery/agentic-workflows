@@ -149,7 +149,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): exploration notes — session-{session_number:03d}"
    ```
 
-→ Proceed to **C. Harvest** when the user pulls the harvest (a harvest pull recognised in step 2). Otherwise loop within **B** — convergence (step 4) cues the nudge but stays in the loop.
+→ On return, proceed to **C. Harvest** when the user pulls the harvest (a harvest pull recognised in step 2). Otherwise loop within **B** — convergence (step 4) cues the nudge but stays in the loop.
 
 ## C. Harvest
 

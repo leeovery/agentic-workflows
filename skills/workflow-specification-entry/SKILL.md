@@ -105,7 +105,7 @@ A section is everything beneath its `===` marker up to the next marker — the m
 
 Load **[validate-source.md](references/validate-source.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -126,7 +126,7 @@ Load **[validate-source.md](references/validate-source.md)** and follow its inst
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -166,7 +166,7 @@ Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructio
 
 Load **[check-prerequisites.md](references/check-prerequisites.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 

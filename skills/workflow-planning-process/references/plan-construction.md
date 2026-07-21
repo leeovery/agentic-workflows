@@ -32,7 +32,7 @@ and designing or authoring anything still pending. You'll approve at
 every stage.
 ```
 
-→ Proceed to **B. Process Current Phase**.
+→ On return, proceed to **B. Process Current Phase**.
 
 ---
 
@@ -49,7 +49,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 → Load **[define-tasks.md](define-tasks.md)** and follow its instructions as written.
 
-→ Proceed to **C. Author Phase Tasks**.
+→ On return, proceed to **C. Author Phase Tasks**.
 
 #### If the phase has a task table and `task_list_gate_mode` is `auto`
 
@@ -97,7 +97,7 @@ Approve this task list?
 
 → Load **[define-tasks.md](define-tasks.md)** and follow its instructions as written.
 
-→ Proceed to **C. Author Phase Tasks**.
+→ On return, proceed to **C. Author Phase Tasks**.
 
 **If the user navigates:**
 

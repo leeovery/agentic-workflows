@@ -50,7 +50,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
-→ Proceed to **Step 1**.
+→ On return, proceed to **Step 1**.
 
 ---
 
@@ -150,7 +150,7 @@ Store the work_unit.
 
 Load **[select-quickfix.md](references/select-quickfix.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -170,7 +170,7 @@ Load **[select-quickfix.md](references/select-quickfix.md)** and follow its inst
 
 Load **[validate-selection.md](references/validate-selection.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -190,7 +190,7 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 
 Load **[quickfix-display-and-menu.md](references/quickfix-display-and-menu.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 

@@ -113,7 +113,7 @@ New work — nothing is on disk yet; pre-confirmation shaping is ephemeral.
 
 Load **[detection-core.md](references/detection-core.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -134,7 +134,7 @@ Load **[detection-core.md](references/detection-core.md)** and follow its instru
 
 Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -155,7 +155,7 @@ Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instru
 
 Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -195,7 +195,7 @@ Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its inst
 
 Load **[resume-detection.md](references/resume-detection.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ On return, proceed to **Step 7**.
 
 ---
 
@@ -255,7 +255,7 @@ If `session_number` was not already set (no resume at Step 6, no `macro_continua
 
 Load **[initialize-discovery.md](references/initialize-discovery.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 
@@ -276,7 +276,7 @@ Load **[initialize-discovery.md](references/initialize-discovery.md)** and follo
 
 Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follow its instructions as written.
 
-→ Proceed to **Step 10**.
+→ On return, proceed to **Step 10**.
 
 ---
 
@@ -298,7 +298,7 @@ Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follo
 
 Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
 
-→ Proceed to **Step 11**.
+→ On return, proceed to **Step 11**.
 
 ---
 
@@ -320,7 +320,7 @@ Load **[session-loop.md](references/session-loop.md)** and follow its instructio
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 12**.
+→ On return, proceed to **Step 12**.
 
 ---
 
@@ -341,7 +341,7 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
 
-→ Proceed to **Step 14**.
+→ On return, proceed to **Step 14**.
 
 ---
 
@@ -365,7 +365,7 @@ Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix
 
 Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.
 
-→ Proceed to **Step 14**.
+→ On return, proceed to **Step 14**.
 
 ---
 
@@ -388,7 +388,7 @@ Reached before concluding by both paths — the epic topic path from Step 12, th
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 15**.
+→ On return, proceed to **Step 15**.
 
 ---
 

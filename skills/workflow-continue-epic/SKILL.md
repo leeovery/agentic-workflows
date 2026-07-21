@@ -50,7 +50,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
-→ Proceed to **Step 1**.
+→ On return, proceed to **Step 1**.
 
 ---
 
@@ -150,7 +150,7 @@ Store the work_unit.
 
 Load **[select-epic.md](references/select-epic.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -170,7 +170,7 @@ Load **[select-epic.md](references/select-epic.md)** and follow its instructions
 
 Load **[validate-selection.md](references/validate-selection.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -228,7 +228,7 @@ Read `analysis_caches` from the most recent discovery output. Load **[topic-disc
 
 On return, `new_arrivals` is populated for Step 8 to render the callout.
 
-→ Proceed to **Step 7**.
+→ On return, proceed to **Step 7**.
 
 ---
 
@@ -258,7 +258,7 @@ On return, re-run discovery so the display sees the new order:
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
-→ Proceed to **Step 8**.
+→ On return, proceed to **Step 8**.
 
 #### Otherwise
 
@@ -284,7 +284,7 @@ The map is already sequenced.
 
 Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 

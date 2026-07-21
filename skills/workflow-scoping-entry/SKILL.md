@@ -79,7 +79,7 @@ Store work_unit for the handoff.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 

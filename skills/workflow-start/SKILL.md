@@ -64,7 +64,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
-→ Proceed to **Step 0.2**.
+→ On return, proceed to **Step 0.2**.
 
 ### Step 0.2: Boot
 

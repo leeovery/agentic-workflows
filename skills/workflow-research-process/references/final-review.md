@@ -144,7 +144,7 @@ When the agent returns:
 
 → Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
 
-→ Proceed to **D. Route Next**.
+→ On return, proceed to **D. Route Next**.
 
 ---
 

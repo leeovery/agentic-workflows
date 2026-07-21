@@ -440,7 +440,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 
 ### Step 0.1: Casing Conventions
 Load **[casing-conventions.md](...)** and follow its instructions as written.
-→ Proceed to **Step 0.2**.
+→ On return, proceed to **Step 0.2**.
 
 ### Step 0.2: Boot
 
@@ -640,7 +640,7 @@ Step 0: Run Migrations (always inline)
 ---
 Step 1: {Name}
 Load directive → reference file
-→ Proceed to Step 2.
+→ On return, proceed to Step 2.
 ---
 Step 2: {Name}
 Load directive → reference file
@@ -657,14 +657,15 @@ Load directive → reference file
 
 Load **[name.md](references/name.md)** and follow its instructions as written.
 
-→ Proceed to **Step N+1**.
+→ On return, proceed to **Step N+1**.
 ```
 
 Rules:
 - No arrow (`→`) before the Load line — it's the step's content, not a routing instruction
 - Bold the markdown link: `**[name.md](path)**`
-- `→ Proceed to` appears after the Load directive, separated by a blank line
-- The final step has no `→ Proceed to` (it's terminal)
+- `→ On return, proceed to` is the footer after a Load directive, separated by a blank line — the loaded reference runs to completion (its STOP gates and loops included) before the proceed applies. A bare `→ Proceed to` here reads as the immediate next action and overshoots the reference
+- When a `**STOP.**` gate or a bold conditional sits between the Load directive and the routing line, the routing is keyed to the user's response or the branch, not the return — those use the bare `→ Proceed to`
+- The final step has no routing footer (it's terminal)
 - Within reference files routing to other reference files, use `→` before Load (it IS a routing instruction in that context)
 
 **Parameter passing**: When a shared reference needs context from the caller, append `with` followed by named assignments. String literals and variable values are both backtick-wrapped; variables use curly brace placeholders:
@@ -704,6 +705,7 @@ No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continu
 |---|---|
 | `→ Proceed to **Step N**.` | Next step in the backbone |
 | `→ Proceed to **B. Section Name**.` | Next lettered section in a reference file |
+| `→ On return, proceed to **Step N**.` | Footer after a Load directive — applies when the loaded reference returns (see Load Directive Format) |
 
 
 #### Backward (within a file)

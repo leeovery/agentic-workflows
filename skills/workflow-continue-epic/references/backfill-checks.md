@@ -38,7 +38,7 @@ Re-filter `discovery_map` for rows where `summary=absent` or `description=absent
 
 Load **[summary-backfill.md](summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
 
-→ Proceed to **C. Advise Restart**.
+→ On return, proceed to **C. Advise Restart**.
 
 #### If `items_to_recover` is empty
 

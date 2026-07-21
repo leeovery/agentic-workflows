@@ -138,7 +138,7 @@ Store the result as `phase_status`.
 
 Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -178,7 +178,7 @@ No usable carrier — the log is missing or has no **Exploration**. Gather conte
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 #### If `work_type` is `epic`
 
@@ -194,7 +194,7 @@ The topic was started fresh, not shaped on the map — there is no curated carri
 
 Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 **Otherwise:**
 
@@ -204,7 +204,7 @@ Load **[read-brief-context.md](../workflow-shared/references/read-brief-context.
 
 Do not re-ask; live conversation context, when present, supplements the carrier.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 

@@ -96,7 +96,7 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 
 Load **[initialize-research.md](references/initialize-research.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ On return, proceed to **Step 2**.
 
 ---
 
@@ -117,7 +117,7 @@ Load **[initialize-research.md](references/initialize-research.md)** and follow 
 
 Load **[file-strategy.md](references/file-strategy.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -138,7 +138,7 @@ Load **[file-strategy.md](references/file-strategy.md)** and follow its instruct
 
 Load **[research-guidelines.md](references/research-guidelines.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -159,7 +159,7 @@ Load **[research-guidelines.md](references/research-guidelines.md)** and follow 
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -180,7 +180,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 

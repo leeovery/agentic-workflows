@@ -220,7 +220,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} r
 
 Load **[read-plans.md](references/read-plans.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -241,7 +241,7 @@ Load **[read-plans.md](references/read-plans.md)** and follow its instructions a
 
 Load **[load-project-skills.md](references/load-project-skills.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -264,7 +264,7 @@ Load **[load-project-skills.md](references/load-project-skills.md)** and follow 
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -288,7 +288,7 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 *Knowledge-base nudge — use only for cross-work-unit consistency checks ("does this mirror how similar decisions were made elsewhere?"). Consistency with the current spec is already in scope — no KB needed. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 
@@ -309,7 +309,7 @@ Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and fol
 
 Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ On return, proceed to **Step 7**.
 
 ---
 
@@ -330,7 +330,7 @@ Load **[produce-review.md](references/produce-review.md)** and follow its instru
 
 Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ On return, proceed to **Step 8**.
 
 ---
 
@@ -350,7 +350,7 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 

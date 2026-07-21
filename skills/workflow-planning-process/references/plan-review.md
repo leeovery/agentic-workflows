@@ -97,7 +97,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
-→ Proceed to **D. Plan Integrity Review**.
+→ On return, proceed to **D. Plan Integrity Review**.
 
 ---
 
@@ -115,7 +115,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
-→ Proceed to **E. Re-Loop Prompt**.
+→ On return, proceed to **E. Re-Loop Prompt**.
 
 ---
 
