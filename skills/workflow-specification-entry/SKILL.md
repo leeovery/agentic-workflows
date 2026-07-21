@@ -44,19 +44,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 
 ## Step 1: Parse Arguments
 
-> *Output the next fenced block as a code block:*
-
-```
-── Parse Arguments ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reading the handoff context and determining which
-> specification to work with.
-```
-
 Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
 Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
@@ -90,19 +77,6 @@ A section is everything beneath its `===` marker up to the next marker — the m
 
 ## Step 2: Validate Source Material
 
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Source Material ─────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking that the required source material is ready
-> — completed discussions or investigations.
-```
-
 Load **[validate-source.md](references/validate-source.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 3**.
@@ -110,19 +84,6 @@ Load **[validate-source.md](references/validate-source.md)** and follow its inst
 ---
 
 ## Step 3: Validate Phase
-
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Phase ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking whether a specification already exists
-> for this topic.
-```
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
@@ -132,37 +93,11 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ## Step 4: Invoke the Skill
 
-> *Output the next fenced block as a code block:*
-
-```
-── Invoke Specification ─────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Handing off to the specification process with all
-> gathered context.
-```
-
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.
 
 ---
 
 ## Step 5: Check Prerequisites
-
-> *Output the next fenced block as a code block:*
-
-```
-── Check Prerequisites ──────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Verifying that completed discussions are available
-> to build specifications from.
-```
 
 Load **[check-prerequisites.md](references/check-prerequisites.md)** and follow its instructions as written.
 

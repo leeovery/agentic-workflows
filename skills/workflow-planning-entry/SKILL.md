@@ -43,19 +43,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 
 ## Step 1: Parse Arguments
 
-> *Output the next fenced block as a code block:*
-
-```
-── Parse Arguments ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reading the handoff context to identify which
-> topic to plan.
-```
-
 Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
 Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
@@ -67,19 +54,6 @@ Store work_unit for the handoff.
 
 ## Step 2: Validate Specification
 
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Specification ───────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking that a completed specification exists
-> for this topic.
-```
-
 Load **[validate-spec.md](references/validate-spec.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 3**.
@@ -87,19 +61,6 @@ Load **[validate-spec.md](references/validate-spec.md)** and follow its instruct
 ---
 
 ## Step 3: Validate Phase
-
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Phase ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking whether a plan already exists for this
-> topic.
-```
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
@@ -115,19 +76,6 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 ## Step 4: Cross-Cutting Context
 
-> *Output the next fenced block as a code block:*
-
-```
-── Cross-Cutting Context ────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading any cross-cutting specifications that apply
-> to this plan.
-```
-
 Load **[cross-cutting-context.md](references/cross-cutting-context.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
@@ -135,18 +83,5 @@ Load **[cross-cutting-context.md](references/cross-cutting-context.md)** and fol
 ---
 
 ## Step 5: Invoke the Skill
-
-> *Output the next fenced block as a code block:*
-
-```
-── Invoke Planning ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Handing off to the planning process with
-> specification and context.
-```
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

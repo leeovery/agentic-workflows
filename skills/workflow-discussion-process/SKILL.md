@@ -53,6 +53,14 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Resume Detection
 
+Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
+
+#### If no file exists
+
+→ Proceed to **Step 1**.
+
+#### If file exists
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -62,17 +70,9 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an existing discussion. If one exists, you can
-> pick up where you left off or start fresh.
+> An in-progress discussion file exists for this topic — choose
+> whether to pick it up or start fresh.
 ```
-
-Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
-
-#### If no file exists
-
-→ Proceed to **Step 1**.
-
-#### If file exists
 
 Show the current map state so the continue-or-restart choice is informed:
 
@@ -88,19 +88,6 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 
 ## Step 1: Initialize Discussion
 
-> *Output the next fenced block as a code block:*
-
-```
-── Initialize Discussion ────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Creating the discussion file and seeding the Discussion Map
-> with initial subtopics from your context.
-```
-
 Load **[initialize-discussion.md](references/initialize-discussion.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 2**.
@@ -108,19 +95,6 @@ Load **[initialize-discussion.md](references/initialize-discussion.md)** and fol
 ---
 
 ## Step 2: Load Discussion Guidelines
-
-> *Output the next fenced block as a code block:*
-
-```
-── Load Discussion Guidelines ───────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading the guidelines that shape how the discussion
-> is structured and documented.
-```
 
 Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and follow its instructions as written.
 
@@ -130,19 +104,6 @@ Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and fol
 
 ## Step 3: Knowledge Usage
 
-> *Output the next fenced block as a code block:*
-
-```
-── Knowledge Usage ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading the usage guide for the knowledge base so
-> proactive querying is available throughout the discussion.
-```
-
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
@@ -150,19 +111,6 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 ---
 
 ## Step 4: Contextual Query
-
-> *Output the next fenced block as a code block:*
-
-```
-── Contextual Query ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the knowledge base for prior work that relates
-> to this discussion topic before the session begins.
-```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
@@ -239,18 +187,6 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 ---
 
 ## Step 8: Compliance Self-Check
-
-> *Output the next fenced block as a code block:*
-
-```
-── Compliance Self-Check ────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Verifying the discussion file follows workflow conventions.
-```
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
