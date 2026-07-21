@@ -124,6 +124,14 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 ## Step 3: Symptom Gathering
 
+#### If the Symptoms section is already populated
+
+Resuming — don't re-interview. Fold in anything new the user has mentioned this session (commit if the file changed).
+
+→ Proceed to **Step 4**.
+
+#### Otherwise
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -166,9 +174,9 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> A quick recon pass to form hypotheses, then agreement on where
-> to look and how collaboratively to work before deep tracing
-> begins.
+> Forming hypotheses and agreeing where to look and how
+> collaboratively to work — or re-confirming the existing plan
+> when resuming — before deep tracing begins.
 ```
 
 Load **[investigation-plan.md](references/investigation-plan.md)** and follow its instructions as written.
