@@ -44,7 +44,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 
 Hold the refreshed output as the most recent discovery output for the remaining sections.
 
-→ Proceed to **D. Check All-Done**.
+→ On return, proceed to **D. Check All-Done**.
 
 #### Otherwise
 
@@ -109,7 +109,7 @@ Epic Completed
 
 > **CHECKPOINT**: Do not proceed until the above has returned with the user's selection.
 
-→ Proceed to **F. Enter Plan Mode**.
+→ On return, proceed to **F. Enter Plan Mode**.
 
 ---
 

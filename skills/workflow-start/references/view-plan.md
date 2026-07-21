@@ -55,7 +55,7 @@ Use `external_id` as the plan-level parent identifier when following the format 
 
 → Load **[reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.
 
-→ Proceed to **C. Display Summary**.
+→ On return, proceed to **C. Display Summary**.
 
 ---
 

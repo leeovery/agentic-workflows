@@ -249,7 +249,7 @@ function checkBannedNav(files) {
 
 function checkRouting(files) {
   const out = [];
-  const routeRe = /→\s*(?:Proceed to|Return to)\s+\*\*([^*]+)\*\*/g;
+  const routeRe = /→\s*(?:Proceed to|On return, proceed to|Return to)\s+\*\*([^*]+)\*\*/g;
   for (const file of files) {
     const lines = readLines(file);
     // Headings are collected from every line (not fence-filtered): a heading
@@ -423,6 +423,44 @@ function checkAttribution(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 11 — Load-directive footers state the return condition. Within a
+// heading-delimited segment (fences excluded), a Load **[...]** directive
+// followed by a bare "→ Proceed to **" footer must use the conditional
+// "→ On return, proceed to **" form — the bare form reads as the immediate
+// next action and overshoots the reference. An intervening **STOP.** gate or
+// bold conditional breaks the seam: the routing there is keyed to the user's
+// response or a sibling branch, so the bare form is sanctioned.
+// ---------------------------------------------------------------------------
+
+function checkLoadFooters(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    let loadSeen = false;
+    lines.forEach((line, i) => {
+      if (inFence[i] || /^\s*```/.test(line)) return;
+      if (/^#{1,6}\s/.test(line) || /\*\*STOP\.\*\*/.test(line) || /^\*\*If /.test(line)) {
+        loadSeen = false;
+        return;
+      }
+      if (/Load \*\*\[/.test(line)) {
+        loadSeen = true;
+        return;
+      }
+      if (loadSeen && /^\s*→ Proceed to \*\*/.test(line)) {
+        out.push({
+          file,
+          line: i + 1,
+          message: 'bare "→ Proceed to" after a Load directive — use "→ On return, proceed to"',
+        });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -437,6 +475,7 @@ const CHECKS = [
   ['8: H1 category rule', checkH1Category],
   ['9: Zero Output Rule byte-identity', checkZeroOutput],
   ['10: reference-file attribution', checkAttribution],
+  ['11: load-directive footers (On return)', checkLoadFooters],
 ];
 
 function report(violations) {
@@ -583,6 +622,9 @@ test('check 6 (routing) — catches dangling targets, skips exempt shapes', () =
     const badStep = write(dir, 'skills/x/a.md', '## Step 1: Start\n\n→ Proceed to **Step 9**.\n');
     assert.strictEqual(checkRouting([badStep]).length, 1, 'dangling Step target must be caught');
 
+    const badOnReturn = write(dir, 'skills/x/ar.md', '## Step 1: Start\n\n→ On return, proceed to **Step 9**.\n');
+    assert.strictEqual(checkRouting([badOnReturn]).length, 1, 'dangling On-return target must be caught');
+
     const badLettered = write(dir, 'skills/x/b.md', '## A. First\n\n→ Proceed to **Z. Missing**.\n');
     assert.strictEqual(checkRouting([badLettered]).length, 1, 'dangling lettered target must be caught');
 
@@ -657,5 +699,44 @@ test('check 10 (attribution) — catches missing/wrong attribution, skips output
 
     const of = write(dir, 'skills/workflow-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
     assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
+  });
+});
+
+test('check 11 (load footers) — catches bare proceed after a load, permits gated/branch/fenced shapes', () => {
+  withTemp((dir) => {
+    const bad = write(
+      dir,
+      'skills/x/SKILL.md',
+      '## Step 1: A\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n→ Proceed to **Step 2**.\n\n## Step 2: B\n'
+    );
+    assert.strictEqual(checkLoadFooters([bad]).length, 1, 'bare proceed after a load must be caught');
+
+    const good = write(
+      dir,
+      'skills/x/ok.md',
+      '## Step 1: A\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: B\n\n→ Proceed to **Step 1**.\n'
+    );
+    assert.strictEqual(checkLoadFooters([good]).length, 0, 'conditional footer and load-free proceed must pass');
+
+    const gated = write(
+      dir,
+      'skills/x/gated.md',
+      '## A. First\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n**STOP.** Wait for user response.\n\n→ Proceed to **B. Next**.\n\n## B. Next\n'
+    );
+    assert.strictEqual(checkLoadFooters([gated]).length, 0, 'STOP between load and proceed re-keys the footer — bare must pass');
+
+    const branch = write(
+      dir,
+      'skills/x/branch.md',
+      '## A. First\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n**If nothing to recover:**\n\n→ Proceed to **B. Next**.\n\n## B. Next\n'
+    );
+    assert.strictEqual(checkLoadFooters([branch]).length, 0, 'bold conditional between load and proceed must pass');
+
+    const fenced = write(
+      dir,
+      'skills/x/fenced.md',
+      '```\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n→ Proceed to **Step 2**.\n```\n'
+    );
+    assert.strictEqual(checkLoadFooters([fenced]).length, 0, 'fenced illustrative seam must be exempt');
   });
 });

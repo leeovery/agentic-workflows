@@ -176,7 +176,7 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
 
 Load **[initialize-plan.md](references/initialize-plan.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ On return, proceed to **Step 2**.
 
 ---
 
@@ -197,7 +197,7 @@ Load **[initialize-plan.md](references/initialize-plan.md)** and follow its inst
 
 Load **[session-setup.md](references/session-setup.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -219,7 +219,7 @@ Load **[session-setup.md](references/session-setup.md)** and follow its instruct
 
 Load **[planning-principles.md](references/planning-principles.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -241,7 +241,7 @@ Load **[planning-principles.md](references/planning-principles.md)** and follow 
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -262,7 +262,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 Load **[verify-source-material.md](references/verify-source-material.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 
@@ -284,7 +284,7 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 
 Load **[plan-construction.md](references/plan-construction.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ On return, proceed to **Step 7**.
 
 ---
 
@@ -305,7 +305,7 @@ Load **[plan-construction.md](references/plan-construction.md)** and follow its 
 
 Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ On return, proceed to **Step 8**.
 
 ---
 
@@ -332,7 +332,7 @@ Load **[analyze-task-graph.md](references/analyze-task-graph.md)** and follow it
 
 Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 
@@ -354,7 +354,7 @@ Load **[resolve-dependencies.md](references/resolve-dependencies.md)** and follo
 
 Load **[plan-review.md](references/plan-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 10**.
+→ On return, proceed to **Step 10**.
 
 ---
 
@@ -374,7 +374,7 @@ Load **[plan-review.md](references/plan-review.md)** and follow its instructions
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 11**.
+→ On return, proceed to **Step 11**.
 
 ---
 

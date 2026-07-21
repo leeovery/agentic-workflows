@@ -358,7 +358,7 @@ git add -- .workflows/{work_unit} {format task storage paths}
 git commit -m "review({work_unit}): add review remediation ({K} tasks)"
 ```
 
-→ Proceed to **G. Re-open Implementation**.
+→ On return, proceed to **G. Re-open Implementation**.
 
 ---
 

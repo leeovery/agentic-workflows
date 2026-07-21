@@ -12,7 +12,7 @@ Create the file at `.workflows/{work_unit}/specification/{topic}/specification.m
 
 Write the file **before** any manifest change. If a crash interrupts here the item stays `proposed` with a file on disk — the resume path recovers it on the next run via restart.
 
-→ Proceed to **B. Register or Flip the Item**.
+→ On return, proceed to **B. Register or Flip the Item**.
 
 ---
 

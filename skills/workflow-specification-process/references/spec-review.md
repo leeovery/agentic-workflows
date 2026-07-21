@@ -120,7 +120,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
-→ Proceed to **D. Phase 2 — Gap Analysis**.
+→ On return, proceed to **D. Phase 2 — Gap Analysis**.
 
 ---
 
@@ -147,7 +147,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
 
-→ Proceed to **E. Re-Loop Prompt**.
+→ On return, proceed to **E. Re-Loop Prompt**.
 
 ---
 

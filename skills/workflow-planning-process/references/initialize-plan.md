@@ -45,7 +45,7 @@ Project default format is **{format}**. Use the same format?
 
 → Load **[output-formats.md](output-formats.md)** and follow its instructions as written.
 
-→ Proceed to **C. Register Plan**.
+→ On return, proceed to **C. Register Plan**.
 
 ---
 

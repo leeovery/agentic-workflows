@@ -122,7 +122,7 @@ Found existing implementation for "{topic:(titlecase)}". Resuming from previous 
 
 Load **[environment-setup.md](references/environment-setup.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ On return, proceed to **Step 2**.
 
 ---
 
@@ -143,7 +143,7 @@ Load **[environment-setup.md](references/environment-setup.md)** and follow its 
 
 Load **[load-plan-adapter.md](references/load-plan-adapter.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -164,7 +164,7 @@ Load **[load-plan-adapter.md](references/load-plan-adapter.md)** and follow its 
 
 Load **[project-skills-discovery.md](references/project-skills-discovery.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -185,7 +185,7 @@ Load **[project-skills-discovery.md](references/project-skills-discovery.md)** a
 
 Load **[linter-setup.md](references/linter-setup.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -208,7 +208,7 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 
@@ -290,7 +290,7 @@ Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instruct
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 

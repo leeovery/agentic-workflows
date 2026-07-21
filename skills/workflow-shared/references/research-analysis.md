@@ -52,7 +52,7 @@ Assign each candidate a `routing` value.
 
 A single analysis may emit a mix of routings — apply the criteria per candidate.
 
-→ Proceed to **C. Anchor to Existing Discussions**.
+→ On return, proceed to **C. Anchor to Existing Discussions**.
 
 ## C. Anchor to Existing Discussions
 

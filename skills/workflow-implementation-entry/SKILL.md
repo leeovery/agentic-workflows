@@ -83,7 +83,7 @@ Store work_unit for the handoff.
 
 Load **[validate-phase.md](references/validate-phase.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -104,7 +104,7 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 
 Load **[validate-dependencies.md](references/validate-dependencies.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -125,7 +125,7 @@ Load **[validate-dependencies.md](references/validate-dependencies.md)** and fol
 
 Load **[environment-check.md](references/environment-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 

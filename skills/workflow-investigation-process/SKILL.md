@@ -117,7 +117,7 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 
 Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ On return, proceed to **Step 2**.
 
 ---
 
@@ -138,7 +138,7 @@ Load **[initialize-investigation.md](references/initialize-investigation.md)** a
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -163,7 +163,7 @@ Document symptoms in the investigation file as you gather them. Commit after eac
 
 When symptoms are sufficiently understood to begin code analysis:
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -184,7 +184,7 @@ When symptoms are sufficiently understood to begin code analysis:
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -207,7 +207,7 @@ Load **[analysis-patterns.md](references/analysis-patterns.md)** and use its tec
 
 Document findings in the investigation file as you analyze. Commit after each significant finding.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 
@@ -258,7 +258,7 @@ Document in the investigation file and commit.
 
 Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ On return, proceed to **Step 8**.
 
 ---
 
@@ -279,7 +279,7 @@ Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its inst
 
 Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 
@@ -299,7 +299,7 @@ Load **[findings-review.md](references/findings-review.md)** and follow its inst
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 10**.
+→ On return, proceed to **Step 10**.
 
 ---
 

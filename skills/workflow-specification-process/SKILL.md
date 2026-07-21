@@ -121,7 +121,7 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 
 Load **[verify-source-material.md](references/verify-source-material.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ On return, proceed to **Step 2**.
 
 ---
 
@@ -142,7 +142,7 @@ Load **[verify-source-material.md](references/verify-source-material.md)** and f
 
 Load **[initialize-specification.md](references/initialize-specification.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -164,7 +164,7 @@ Load **[initialize-specification.md](references/initialize-specification.md)** a
 
 Load **[session-setup.md](references/session-setup.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -185,7 +185,7 @@ Load **[session-setup.md](references/session-setup.md)** and follow its instruct
 
 Load **[specification-principles.md](references/specification-principles.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -207,7 +207,7 @@ Load **[specification-principles.md](references/specification-principles.md)** a
 
 Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 
@@ -234,7 +234,7 @@ Load **[spec-construction.md](references/spec-construction.md)** and follow its 
 
 Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ On return, proceed to **Step 7**.
 
 ---
 
@@ -256,7 +256,7 @@ Load **[dependencies.md](references/dependencies.md)** and follow its instructio
 
 Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ On return, proceed to **Step 8**.
 
 ---
 
@@ -277,7 +277,7 @@ Load **[spec-review.md](references/spec-review.md)** and follow its instructions
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 

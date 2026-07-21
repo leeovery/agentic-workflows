@@ -103,7 +103,7 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 
 Load **[initialize-discussion.md](references/initialize-discussion.md)** and follow its instructions as written.
 
-→ Proceed to **Step 2**.
+→ On return, proceed to **Step 2**.
 
 ---
 
@@ -124,7 +124,7 @@ Load **[initialize-discussion.md](references/initialize-discussion.md)** and fol
 
 Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and follow its instructions as written.
 
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
@@ -145,7 +145,7 @@ Load **[discussion-guidelines.md](references/discussion-guidelines.md)** and fol
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
-→ Proceed to **Step 4**.
+→ On return, proceed to **Step 4**.
 
 ---
 
@@ -166,7 +166,7 @@ Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
-→ Proceed to **Step 5**.
+→ On return, proceed to **Step 5**.
 
 ---
 
@@ -192,7 +192,7 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 
 *Knowledge-base nudge — before committing to a direction on a new subtopic, or when a decision might echo one made elsewhere, run a quick query. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
 
-→ Proceed to **Step 6**.
+→ On return, proceed to **Step 6**.
 
 ---
 
@@ -213,7 +213,7 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 
 Load **[final-review.md](references/final-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 7**.
+→ On return, proceed to **Step 7**.
 
 ---
 
@@ -234,7 +234,7 @@ Load **[final-review.md](references/final-review.md)** and follow its instructio
 
 Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
 
-→ Proceed to **Step 8**.
+→ On return, proceed to **Step 8**.
 
 ---
 
@@ -254,7 +254,7 @@ Load **[document-review.md](references/document-review.md)** and follow its inst
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Proceed to **Step 9**.
+→ On return, proceed to **Step 9**.
 
 ---
 

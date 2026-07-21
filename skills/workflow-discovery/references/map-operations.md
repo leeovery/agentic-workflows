@@ -114,7 +114,7 @@ Branch on `result`:
 - `matches-dismissed` — allowed. A Rename target that matches a dismissed name leaves the dismissed entry alone; the new active item simply exists alongside it as historical record.
 - `ok` — proceed.
 
-→ Proceed to **C. Apply**.
+→ On return, proceed to **C. Apply**.
 
 ## C. Apply
 
