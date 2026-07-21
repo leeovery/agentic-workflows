@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, callout } = require('./projections/surfaces.cjs');
+const { section, menu, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -143,9 +143,14 @@ function taskList(cwd, { dotpath, file }) {
   const count = payload.tasks.length;
   const lines = [`Phase ${payload.phase}: ${payload.phase_name} — ${count} task${count === 1 ? '' : 's'}.`, ''];
   payload.tasks.forEach((t, i) => {
-    lines.push(`${i + 1}. ${t.name} — ${t.summary}`);
-    const edges = t.edge_cases && t.edge_cases.length > 0 ? t.edge_cases.join(', ') : 'none';
-    lines.push(`   └─ Edge cases: ${edges}`);
+    lines.push(`${i + 1}. ${t.name}`);
+    lines.push(subDetail(t.summary));
+    if (t.edge_cases && t.edge_cases.length > 0) {
+      lines.push('   · Edge cases');
+      lines.push(treeList(t.edge_cases));
+    } else {
+      lines.push('   · Edge cases: none');
+    }
     if (i < count - 1) lines.push('');
   });
 

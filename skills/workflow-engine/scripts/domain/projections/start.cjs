@@ -17,6 +17,7 @@
 
 const { box } = require('../../kernel/render.cjs');
 const { titlecase, capitalise } = require('../conventions.cjs');
+const { dotFrame: dotMenu } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -24,13 +25,6 @@ const { titlecase, capitalise } = require('../conventions.cjs');
 /** @typedef {import('../inbox-set.cjs').PickupItem} PickupItem */
 /** @typedef {import('../inbox-set.cjs').WorkingSetDetail} WorkingSetDetail */
 /** @typedef {import('../workunit-manage.cjs').ManageDetail} ManageDetail */
-
-const DOTS = '· · · · · · · · · · · ·';
-
-/** Dot-framed menu block. @param {string[]} lines @returns {string} */
-function dotMenu(lines) {
-  return [DOTS, ...lines, DOTS].join('\n');
-}
 
 /** One labelled `=== NAME (instruction) ===` deferred section. @param {string} name @param {string} instruction @param {string} body */
 function labelled(name, instruction, body) {
@@ -200,7 +194,7 @@ function startMenu(detail) {
   }
   options.push({ key: 'm', word: 'manage', action: 'manage', route: null, label: "Manage a work unit's lifecycle" });
 
-  const lines = ['· · · · · · · · · · · ·', 'What would you like to do?', ''];
+  const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
     lines.push(`- **\`${e.key}\`** — ${e.label}`);
   }
@@ -208,9 +202,9 @@ function startMenu(detail) {
   for (const o of options) {
     lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
   }
-  lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+  lines.push('', 'Select an option:');
 
-  return { keys: [...numbered, ...options], rendered: lines.join('\n') };
+  return { keys: [...numbered, ...options], rendered: dotMenu(lines) };
 }
 
 // ---------------------------------------------------------------------------

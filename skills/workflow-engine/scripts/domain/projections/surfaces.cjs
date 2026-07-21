@@ -6,6 +6,8 @@
 // frames) exist in code exactly once, here; restyling a surface class is a
 // one-place change.
 
+const { wrap } = require('../../kernel/render.cjs');
+
 const DOTS = '· · · · · · · · · · · ·';
 
 /**
@@ -18,27 +20,71 @@ function section(name, instruction, body) {
 }
 
 /**
- * Dot-framed menu: contextual label, blank line, options, optional trailing
- * prompt line (`Select an option:`) separated by a blank line.
+ * The menu frame: content lines between the canonical dot rules. Projections
+ * with bespoke option grouping build their lines and frame them here.
+ * @param {string[]} lines @returns {string}
+ */
+function dotFrame(lines) {
+  return [DOTS, ...lines, DOTS].join('\n');
+}
+
+/**
+ * Dot-framed menu for the common shape: contextual label, blank line,
+ * options, optional trailing prompt line separated by a blank line.
  * @param {string} label @param {string[]} options
  * @param {{prompt?: string}} [opts]
  * @returns {string}
  */
 function menu(label, options, { prompt } = {}) {
-  const lines = [DOTS, label, '', ...options];
+  const lines = [label, '', ...options];
   if (prompt) lines.push('', prompt);
-  lines.push(DOTS);
-  return lines.join('\n');
+  return dotFrame(lines);
 }
 
 /**
  * `⚑` callout block: flag at 2-space indent, continuation lines aligned
- * beneath the text (4-space).
- * @param {string[]} lines pre-wrapped text lines
+ * beneath the text. A string wraps to `width` (flag gutter subtracted);
+ * a pre-wrapped array renders as given.
+ * @param {string | string[]} text
+ * @param {{width?: number}} [opts]
  * @returns {string}
  */
-function callout(lines) {
-  return lines.map((l, i) => (i === 0 ? `  ⚑ ${l}` : `    ${l}`)).join('\n');
+function callout(text, { width = 72 } = {}) {
+  const segs = Array.isArray(text) ? text : wrap(text, width - 4);
+  return segs.map((l, i) => (i === 0 ? `  ⚑ ${l}` : `    ${l}`)).join('\n');
+}
+
+/**
+ * Glyphed sub-detail (`· `) within a numbered item: quiet marker on the
+ * first line, continuations aligned under the text — never column zero.
+ * @param {string} text
+ * @param {{indent?: string, width?: number}} [opts]
+ * @returns {string}
+ */
+function subDetail(text, { indent = '   ', width = 72 } = {}) {
+  const segs = wrap(text, width - indent.length - 2);
+  return segs.map((s, i) => (i === 0 ? `${indent}· ${s}` : `${indent}  ${s}`)).join('\n');
+}
+
+/**
+ * Flat wrapped tree list (`├─`/`└─`): one item per branch, item text wrapped
+ * with continuations aligned under the text column (gutter `│` while
+ * siblings remain, blank under the last).
+ * @param {string[]} items
+ * @param {{indent?: string, width?: number}} [opts]
+ * @returns {string}
+ */
+function treeList(items, { indent = '     ', width = 72 } = {}) {
+  const budget = width - indent.length - 3;
+  const out = [];
+  items.forEach((item, i) => {
+    const isLast = i === items.length - 1;
+    const segs = wrap(item, budget);
+    out.push(`${indent}${isLast ? '└─' : '├─'} ${segs[0]}`);
+    const cont = `${indent}${isLast ? '   ' : '│  '}`;
+    for (const seg of segs.slice(1)) out.push(cont + seg);
+  });
+  return out.join('\n');
 }
 
 /**
@@ -60,4 +106,4 @@ function boxedFrame(title, contentLines, { minWidth = 53 } = {}) {
   return [top, ...contentLines, bottom].join('\n');
 }
 
-module.exports = { DOTS, section, menu, callout, boxedFrame };
+module.exports = { DOTS, section, dotFrame, menu, callout, subDetail, treeList, boxedFrame };

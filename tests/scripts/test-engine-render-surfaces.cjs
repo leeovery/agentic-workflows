@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, menu, callout, boxedFrame } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, dotFrame, menu, callout, subDetail, treeList, boxedFrame } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
 
 function setup() {
@@ -64,6 +64,34 @@ describe('surfaces primitives', () => {
   it('boxedFrame never renders below the minimum width', () => {
     const out = boxedFrame('T', ['x']);
     assert.strictEqual([...out.split('\n')[0]].length, 53);
+  });
+
+  it('dotFrame wraps arbitrary lines in the canonical dot rules', () => {
+    assert.strictEqual(dotFrame(['a', '', 'b']), [DOTS, 'a', '', 'b', DOTS].join('\n'));
+  });
+
+  it('callout wraps a string to the width with the flag gutter subtracted', () => {
+    const out = callout('word '.repeat(30).trim(), { width: 40 });
+    const lines = out.split('\n');
+    assert.ok(lines[0].startsWith('  ⚑ ') && lines[1].startsWith('    '));
+    assert.ok(lines.every((l) => [...l].length <= 40));
+  });
+
+  it('subDetail glyphs the first line and aligns continuations under the text', () => {
+    const out = subDetail('alpha '.repeat(30).trim(), { width: 40 });
+    const lines = out.split('\n');
+    assert.ok(lines[0].startsWith('   · alpha') && lines[1].startsWith('     alpha'));
+    assert.ok(lines.every((l) => [...l].length <= 40));
+  });
+
+  it('treeList branches each item, gutters continuations, blanks under the last', () => {
+    const out = treeList(['one '.repeat(12).trim(), 'two '.repeat(12).trim()], { width: 40 });
+    const lines = out.split('\n');
+    assert.ok(lines[0].startsWith('     ├─ one'));
+    assert.ok(lines[1].startsWith('     │  one'), 'non-last continuation carries the gutter');
+    const lastBranch = lines.findIndex((l) => l.startsWith('     └─ two'));
+    assert.ok(lastBranch > 0);
+    assert.ok(lines[lastBranch + 1].startsWith('        two'), 'last continuation is blank-guttered');
   });
 
   it('boxedFrame widens for a long title even with short content', () => {
@@ -141,11 +169,15 @@ describe('render task-list', () => {
       '=== DISPLAY: task list (emit verbatim as a code block) ===',
       'Phase 1: Adapter Wrapper — 2 tasks.',
       '',
-      '1. Wrap command — Wrap the argv in a shell fallback',
-      '   └─ Edge cases: quotes, attach passthrough',
+      '1. Wrap command',
+      '   · Wrap the argv in a shell fallback',
+      '   · Edge cases',
+      '     ├─ quotes',
+      '     └─ attach passthrough',
       '',
-      '2. Drop wait — Remove wait-after-command',
-      '   └─ Edge cases: none',
+      '2. Drop wait',
+      '   · Remove wait-after-command',
+      '   · Edge cases: none',
       '',
       "=== MENU: task list gate (emit verbatim as markdown, then STOP for the user's response) ===",
       DOTS,
@@ -195,10 +227,63 @@ describe('render task-list', () => {
   it('requires --file', () => {
     assert.throws(() => renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal' }), /--file <payload\.json> is required/);
   });
+
+  it('wraps long summaries and edge cases with hanging indents — nothing lands at column zero', () => {
+    const file = writePayload(dir, 'tl.json', {
+      phase: 1,
+      phase_name: 'X',
+      tasks: [{
+        name: 'Long task',
+        summary: 'wrap '.repeat(40).trim(),
+        edge_cases: ['edge '.repeat(30).trim()],
+      }],
+    });
+    const out = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file });
+    const display = out.split('=== MENU')[0].split('\n').slice(1);
+    for (const line of display) {
+      if (line === '' || line.startsWith('Phase 1:') || /^\d+\. /.test(line)) continue;
+      assert.match(line, /^ {3,}/, `display line must be indented, got: "${line}"`);
+      assert.ok([...line].length <= 72, `display line must fit the wrap width, got ${[...line].length}`);
+    }
+  });
 });
 
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
     assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list\)/);
+  });
+});
+
+describe('single-source invariants', () => {
+  it('the menu dot rule literal exists in exactly one module — surfaces.cjs', () => {
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && p.endsWith('.cjs') && fs.readFileSync(p, 'utf8').includes('· · · · · · · · · · · ·')) {
+          offenders.push(path.relative(scriptsRoot, p));
+        }
+      }
+    })(scriptsRoot);
+    assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
+      'menus must frame through surfaces.dotFrame — inline dot rules reintroduce the pre-consolidation drift class');
+  });
+
+  it('the flag-callout gutter exists in exactly one module — surfaces.cjs', () => {
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && p.endsWith('.cjs') && /'  ⚑ '/.test(fs.readFileSync(p, 'utf8'))) {
+          offenders.push(path.relative(scriptsRoot, p));
+        }
+      }
+    })(scriptsRoot);
+    assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
+      'wrapped callouts must render through surfaces.callout');
   });
 });

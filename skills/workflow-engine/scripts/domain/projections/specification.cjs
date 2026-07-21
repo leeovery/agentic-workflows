@@ -13,6 +13,7 @@
 
 const { box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
+const { dotFrame } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -339,7 +340,7 @@ function specificationMenu(detail) {
     });
   }
 
-  const lines = ['· · · · · · · · · · · ·'];
+  const lines = [];
   for (const e of numbered) {
     lines.push(`- **\`${e.key}\`** — ${e.label}`);
     if (e.desc) lines.push(...e.desc);
@@ -347,9 +348,9 @@ function specificationMenu(detail) {
   for (const o of options) {
     lines.push('', `- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
   }
-  lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+  lines.push('', 'Select an option:');
 
-  return { keys: [...numbered, ...options], rendered: lines.join('\n') };
+  return { keys: [...numbered, ...options], rendered: dotFrame(lines) };
 }
 
 /**
@@ -370,18 +371,19 @@ function specificationCompletedMenu(detail) {
   }));
   keys.push({ key: 'b', word: 'back', action: 'back', topic: null, verb: null, label: 'Return to the specifications menu' });
 
-  const lines = ['· · · · · · · · · · · ·', 'Which completed specification would you like to refine?', ''];
+  const lines = ['Which completed specification would you like to refine?', ''];
   for (const k of keys) {
     lines.push(k.word
       ? `- **\`${k.key}\`/\`${k.word}\`** — ${k.label}`
       : `- **\`${k.key}\`** — ${k.label}`);
   }
-  lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+  lines.push('', 'Select an option:');
+  const rendered = dotFrame(lines);
 
   const display = 'Completed Specifications\n'
     + renderTree(detail.concluded.map((row) => ({ title: title({ label: titlecase(row.name), tag: 'completed' }) })), { width: TREE_WIDTH });
 
-  return { keys, display, rendered: lines.join('\n') };
+  return { keys, display, rendered };
 }
 
 module.exports = { specificationDisplay, specificationMenu, specificationCompletedMenu };
