@@ -36,18 +36,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-── Initialisation ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading shared display conventions for this session.
-```
-
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 1**.
@@ -55,18 +43,6 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 ---
 
 ## Step 1: Discovery State
-
-> *Output the next fenced block as a code block:*
-
-```
-── Run Discovery ────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Scanning for active epics and their current progress.
-```
 
 !`node .claude/skills/workflow-continue-epic/scripts/gateway.cjs`
 
@@ -97,18 +73,6 @@ The per-epic state surface (`all_done`, `analysis_caches`, `needs_sequencing`, t
 ---
 
 ## Step 2: Check Count and Arguments
-
-> *Output the next fenced block as a code block:*
-
-```
-── Check State ──────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking if there are any epics in progress.
-```
 
 #### If `count` is 0
 
@@ -156,18 +120,6 @@ Load **[select-epic.md](references/select-epic.md)** and follow its instructions
 
 ## Step 4: Validate Selection
 
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Selection ───────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Confirming the selected epic exists and is active.
-```
-
 Load **[validate-selection.md](references/validate-selection.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
@@ -175,19 +127,6 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 ---
 
 ## Step 5: Backfill
-
-> *Output the next fenced block as a code block:*
-
-```
-── Backfill ─────────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking for one-time recovery work — legacy research splits
-> or discovery-map rows missing a summary or description.
-```
 
 ```bash
 node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}
@@ -203,6 +142,19 @@ Then read `discovery_map` from the most recent discovery output and filter for r
 
 #### Otherwise
 
+> *Output the next fenced block as a code block:*
+
+```
+── Backfill ─────────────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> One-time recovery work found — legacy research splits or
+> discovery-map rows missing a summary or description.
+```
+
 Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`.
 
 backfill-checks is terminal when it fires — it commits the recovery work and stops, advising the user to `/clear` and re-run `/workflow-start`. Do not proceed to Step 6 on this branch.
@@ -210,19 +162,6 @@ backfill-checks is terminal when it fires — it commits the recovery work and s
 ---
 
 ## Step 6: Topic Discovery
-
-> *Output the next fenced block as a code block:*
-
-```
-── Topic Discovery ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking whether completed research or discussion has new themes
-> to surface onto the discovery map.
-```
 
 Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
@@ -234,6 +173,10 @@ On return, `new_arrivals` is populated for Step 8 to render the callout.
 
 ## Step 7: Sequence Map
 
+Read `needs_sequencing` from the most recent discovery output.
+
+#### If `needs_sequencing` is true
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -243,12 +186,8 @@ On return, `new_arrivals` is populated for Step 8 to render the callout.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Assigning a suggested execution order to the discovery map's topics.
+> Assigning a suggested execution order to the map's topics.
 ```
-
-Read `needs_sequencing` from the most recent discovery output.
-
-#### If `needs_sequencing` is true
 
 Load **[sequence-discovery-map.md](../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
 
@@ -262,8 +201,6 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 
 #### Otherwise
 
-The map is already sequenced.
-
 → Proceed to **Step 8**.
 
 ---
@@ -273,7 +210,7 @@ The map is already sequenced.
 > *Output the next fenced block as a code block:*
 
 ```
-── Display State and Menu ───────────────────────
+── Epic State ───────────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -289,18 +226,6 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with ne
 ---
 
 ## Step 9: Route Selection
-
-> *Output the next fenced block as a code block:*
-
-```
-── Route Selection ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Handing off to the selected phase for this epic.
-```
 
 Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from epic-display-and-menu.md (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). Selections with route `(internal)` resolve inside that reference and never reach this step.
 
