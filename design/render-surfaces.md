@@ -110,6 +110,16 @@ cache paths. Genuine this-turn judgment payloads are rare.
   mock). Multi-phase displays (phase-structure approval, plan summary,
   task-graph view — stage 3) render as trees: numbered phase nodes with
   task/goal children, same primitives, one visual grammar.
+- **D7 (2026-07-21)**: **one task, one call.** A flow must never prescribe a
+  long run of sequential engine calls for one logical operation: Claude will
+  always try to one-line repetition (shell variables, functions, python,
+  `&&` chains) and those improvisations are where the failures live — the
+  fumi harvest aliased 24 `discovery-map add` calls into `$E add …` and every
+  call died on zsh's no-word-split (exit 127; PR #494 tried a prose guardrail
+  in never-loaded authoring docs and was closed as the wrong layer). Where a
+  task is N-ary, the engine offers the batch form (payload file, validated
+  loudly, one lock, one commit — atomic, unlike a sequential run that can die
+  mid-way leaving partial state). Canonical.
 - **D6 (2026-07-21)**: assembly idioms live in `projections/surfaces.cjs` —
   the sanctioned middle layer between the mechanism kernel and per-surface
   projections that the campaign's two-layer doctrine lacked (which is where
@@ -131,8 +141,16 @@ cache paths. Genuine this-turn judgment payloads are rare.
    (byte-identical task displays today), plan-construction's twin gate.
 4. **Bridge + continue-*** — merges with the clone-family consolidation
    ledger item (same files, same factoring).
-5. **Entry validation + transaction folds.**
-6. **Static sweep + closing lint** (D3/D4 decided).
+5. **One-call operations (D7)** — `discovery-map add-batch {wu} --file
+   <topics.json>` (the harvest persists atomically in one call; the
+   confirm-and-persist swap); **cache purge at work-unit close** (settled
+   design: `workunit complete`/`cancel`/`absorb` remove
+   `.workflows/.cache/{wu}/` wholesale — disk-only, reactivation-safe); and
+   the **call-chain audit** — sub-agent sweep for every prose site
+   prescribing long runs of sequential engine calls, each fixed with a
+   batch form, not a warning.
+6. **Entry validation + transaction folds.**
+7. **Static sweep + closing lint** (D3/D4 decided).
 
 Each stage is a stacked PR; stack driven per the pr-stacked skill
 (author → chain PR bases → `safe-stack sync` → review → `safe-stack merge`).
