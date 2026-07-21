@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, boxedFrame } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -178,10 +178,151 @@ function taskList(cwd, { dotpath, file }) {
   return parts.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// findings-summary / finding — the review-findings loop shared by the
+// planning and specification review flows. Findings live in markdown tracking
+// files, which the model reads (the engine never parses markdown) and hands
+// over as a JSON payload; the gate mode is manifest state at the address.
+// The diff presentation splits the boxed frame around the diff body so the
+// host's `diff` fence colouring survives — frame borders are computed from
+// the actual content width.
+// ---------------------------------------------------------------------------
+
+/** @param {string} cwd @param {string} file @param {string} surface @returns {any} */
+function readJsonPayload(cwd, file, surface) {
+  let raw;
+  try {
+    raw = fs.readFileSync(path.resolve(cwd, file), 'utf8');
+  } catch {
+    throw new Error(`render ${surface}: payload file not found: ${file}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`render ${surface}: payload is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/** @param {unknown} v @returns {v is string} */
+function isFilled(v) {
+  return typeof v === 'string' && v.trim() !== '';
+}
+
+/** @param {unknown} v @param {string} surface @param {string} field @returns {string[]} */
+function stringLines(v, surface, field) {
+  if (!Array.isArray(v) || v.some((l) => typeof l !== 'string')) {
+    throw new Error(`render ${surface}: "${field}" must be an array of strings`);
+  }
+  return v;
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function findingsSummary(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render findings-summary: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'findings-summary');
+  const p = readJsonPayload(cwd, file, 'findings-summary');
+  if (!isFilled(p.review_label)) throw new Error('render findings-summary: "review_label" must be a non-empty string');
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error('render findings-summary: "items" must be a non-empty array of {title, tag, summary}');
+  }
+  const lines = [`${p.review_label} — ${p.items.length} item${p.items.length === 1 ? '' : 's'} found`, ''];
+  p.items.forEach((it, i) => {
+    for (const field of ['title', 'tag', 'summary']) {
+      if (!isFilled(it[field])) throw new Error(`render findings-summary: item ${i + 1} is missing "${field}"`);
+    }
+    lines.push(`${i + 1}. ${it.title} (${it.tag})`);
+    lines.push(subDetail(it.summary));
+    if (i < p.items.length - 1) lines.push('');
+  });
+  lines.push('', "Let's work through these one at a time, starting with #1.");
+  return section('DISPLAY: findings summary', 'emit verbatim as a code block', lines.join('\n'));
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function finding(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render finding: --file <payload.json> is required');
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'finding');
+  const p = readJsonPayload(cwd, file, 'finding');
+
+  if (!Number.isInteger(p.n) || p.n < 1) throw new Error('render finding: "n" must be a positive integer');
+  if (!Number.isInteger(p.total) || p.total < p.n) throw new Error('render finding: "total" must be an integer ≥ "n"');
+  if (!isFilled(p.title)) throw new Error('render finding: "title" must be a non-empty string');
+  if (!Array.isArray(p.meta) || p.meta.some((m) => !Array.isArray(m) || m.length !== 2 || !isFilled(m[0]) || !isFilled(String(m[1])))) {
+    throw new Error('render finding: "meta" must be an array of [label, value] pairs');
+  }
+  if (!isFilled(p.details)) throw new Error('render finding: "details" must be a non-empty string');
+  if (p.diff && p.content) throw new Error('render finding: pass "diff" or "content", not both');
+
+  const applyLabel = isFilled(p.apply_label) ? p.apply_label : 'Apply verbatim';
+  const appliedLabel = isFilled(p.applied_label) ? p.applied_label : 'approved. Applied.';
+  const feedbackHint = isFilled(p.feedback_hint) ? p.feedback_hint : 'Tell me what to change before approving';
+
+  const parts = [];
+
+  const head = [`**Finding ${p.n} of ${p.total}: ${p.title}**`, ''];
+  for (const [label, value] of p.meta) head.push(`- **${label}**: ${value}`);
+  head.push('', `**Details**: ${p.details}`);
+  parts.push(section('DISPLAY: finding', 'emit verbatim as markdown', head.join('\n')));
+
+  if (p.diff) {
+    const body = [
+      ...stringLines(p.diff.context_above || [], 'finding', 'diff.context_above').map((l) => ` ${l}`),
+      ...stringLines(p.diff.current || [], 'finding', 'diff.current').map((l) => `-${l}`),
+      ...stringLines(p.diff.proposed || [], 'finding', 'diff.proposed').map((l) => `+${l}`),
+      ...stringLines(p.diff.context_below || [], 'finding', 'diff.context_below').map((l) => ` ${l}`),
+    ];
+    if (body.length === 0) throw new Error('render finding: "diff" must carry at least one current/proposed line');
+    const framed = boxedFrame(`Finding ${p.n}: ${p.title}`, body).split('\n');
+    parts.push(section('DISPLAY: diff frame open', 'emit verbatim as a code block, directly above the diff', framed[0]));
+    parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', framed.slice(1, -1).join('\n')));
+    parts.push(section('DISPLAY: diff frame close', 'emit verbatim as a code block, directly below the diff', framed[framed.length - 1]));
+  } else if (p.content) {
+    if (!isFilled(p.content.label)) throw new Error('render finding: "content.label" must be a non-empty string');
+    const lines = stringLines(p.content.lines, 'finding', 'content.lines');
+    if (lines.length === 0) throw new Error('render finding: "content.lines" must be non-empty');
+    parts.push(section('DISPLAY: finding content', 'emit verbatim as markdown', [`**${p.content.label}**:`, ...lines].join('\n')));
+  }
+
+  const items = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
+  const gateMode = items.finding_gate_mode === 'auto' ? 'auto' : 'gated';
+
+  if (gateMode === 'auto') {
+    parts.push(section(
+      'DISPLAY: finding auto-approved',
+      'emit verbatim as a code block after applying the fix',
+      `Finding ${p.n} of ${p.total}: ${p.title} — ${appliedLabel}`,
+    ));
+  } else {
+    const options = [cmdOption('y', 'yes', applyLabel)];
+    if (p.diff) options.push(cmdOption('v', 'view full', 'Show full Current and Proposed content'));
+    options.push(
+      cmdOption('a', 'auto', 'Approve this and all remaining findings automatically'),
+      cmdOption('s', 'skip', 'Leave as-is, move to next finding'),
+      promptOption('Provide feedback', feedbackHint),
+    );
+    parts.push(section(
+      'MENU: finding gate',
+      'emit verbatim as markdown, then STOP for the user\'s response',
+      menu(`**Finding ${p.n} of ${p.total}: ${p.title}**`, options),
+    ));
+  }
+  return parts.join('\n');
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
   'task-list': taskList,
+  'findings-summary': findingsSummary,
+  'finding': finding,
 };
 
 /**

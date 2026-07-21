@@ -248,9 +248,125 @@ describe('render task-list', () => {
   });
 });
 
+describe('render findings-summary', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the numbered overview with subDetail summaries byte-exactly', () => {
+    const file = writePayload(dir, 's.json', {
+      review_label: 'Integrity Review',
+      items: [
+        { title: 'Missing Outcome field', tag: 'Minor — add-to-task', summary: 'Task 1-1 lacks the required Outcome field.' },
+        { title: 'Orphaned dependency', tag: 'Important — update-task', summary: 'Task 2-3 depends on a removed task.' },
+      ],
+    });
+    const out = renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: findings summary (emit verbatim as a code block) ===',
+      'Integrity Review — 2 items found',
+      '',
+      '1. Missing Outcome field (Minor — add-to-task)',
+      '   · Task 1-1 lacks the required Outcome field.',
+      '',
+      '2. Orphaned dependency (Important — update-task)',
+      '   · Task 2-3 depends on a removed task.',
+      '',
+      "Let's work through these one at a time, starting with #1.",
+      '',
+    ].join('\n'));
+  });
+
+  it('validates loudly', () => {
+    assert.throws(() => renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'a.json', { review_label: 'X', items: [] }) }), /"items" must be a non-empty array/);
+    assert.throws(() => renderSurface(dir, 'findings-summary', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'b.json', { review_label: 'X', items: [{ title: 't', tag: 'g' }] }) }), /item 1 is missing "summary"/);
+  });
+});
+
+describe('render finding', () => {
+  let dir;
+  const base = {
+    n: 1, total: 2, title: 'Missing Outcome field',
+    meta: [['Severity', 'Minor'], ['Change Type', 'add-to-task']],
+    details: 'The canonical template requires Outcome.',
+  };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders meta, framed diff (open/body/close), and the gate menu when gated', () => {
+    const file = writePayload(dir, 'f.json', {
+      ...base,
+      diff: { context_above: ['**Solution**: shared adapter.'], current: [], proposed: ['**Outcome**: lands at a live shell.'], context_below: ['**Do**:'] },
+      apply_label: 'Apply to the plan verbatim',
+    });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    assert.ok(out.startsWith([
+      '=== DISPLAY: finding (emit verbatim as markdown) ===',
+      '**Finding 1 of 2: Missing Outcome field**',
+      '',
+      '- **Severity**: Minor',
+      '- **Change Type**: add-to-task',
+      '',
+      '**Details**: The canonical template requires Outcome.',
+      '',
+    ].join('\n')));
+    const frameOpen = out.split('\n').find((l) => l.startsWith('╭─ Finding 1: Missing Outcome field '));
+    assert.ok(frameOpen && frameOpen.endsWith('╮'));
+    assert.strictEqual([...frameOpen].length, 53, 'short content renders at the minimum frame width');
+    assert.ok(out.includes('=== DISPLAY: diff (emit verbatim as a diff code block (```diff fence)) ===\n **Solution**: shared adapter.\n+**Outcome**: lands at a live shell.\n **Do**:'));
+    assert.ok(out.includes('=== MENU: finding gate'));
+    assert.ok(out.includes('- **`v`/`view full`** — Show full Current and Proposed content'), 'diff findings offer view full');
+    assert.ok(out.includes('- **`y`/`yes`** — Apply to the plan verbatim'));
+    assert.ok(out.includes('- **Provide feedback** — Tell me what to change before approving'));
+  });
+
+  it('caps the frame border at maxWidth for unwrappable content', () => {
+    const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: ['x'.repeat(150)] } });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    const frameOpen = out.split('\n').find((l) => l.startsWith('╭─'));
+    assert.strictEqual([...frameOpen].length, 100, 'frame borders never exceed the cap');
+  });
+
+  it('content variant renders as markdown without view full; auto mode returns the applied line', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+    const file = writePayload(dir, 'f.json', {
+      ...base,
+      content: { label: 'Proposed Addition', lines: ['New spec section body.'] },
+      applied_label: 'approved. Added to specification.',
+    });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('=== DISPLAY: finding content (emit verbatim as markdown) ===\n**Proposed Addition**:\nNew spec section body.'));
+    assert.ok(out.includes('=== DISPLAY: finding auto-approved (emit verbatim as a code block after applying the fix) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
+    assert.ok(!out.includes('MENU: finding gate'));
+    assert.ok(!out.includes('view full'));
+  });
+
+  it('validates loudly: shape, exclusivity, and empty diff', () => {
+    const cases = [
+      [{ ...base, n: 0 }, /"n" must be a positive integer/],
+      [{ ...base, total: 0 }, /"total" must be an integer/],
+      [{ ...base, meta: [['x']] }, /"meta" must be an array of \[label, value\] pairs/],
+      [{ ...base, details: ' ' }, /"details" must be a non-empty string/],
+      [{ ...base, diff: { current: [], proposed: [] }, content: { label: 'X', lines: ['y'] } }, /pass "diff" or "content", not both/],
+      [{ ...base, diff: { current: [], proposed: [] } }, /"diff" must carry at least one/],
+      [{ ...base, content: { label: 'X', lines: [] } }, /"content.lines" must be non-empty/],
+    ];
+    cases.forEach(([payload, re], i) => {
+      const file = writePayload(dir, `bad-${i}.json`, payload);
+      assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file }), re);
+    });
+  });
+});
+
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding\)/);
   });
 });
 

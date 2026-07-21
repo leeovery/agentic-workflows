@@ -154,6 +154,8 @@ Commands:
   commit --workflows -m <message>
   render resume-gate <wu.phase.topic> [--triage N]
   render task-list   <wu.planning.topic> --file <payload.json>
+  render findings-summary <wu.phase.topic> --file <payload.json>
+  render finding          <wu.phase.topic> --file <payload.json>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

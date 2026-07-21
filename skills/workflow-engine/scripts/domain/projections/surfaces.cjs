@@ -122,16 +122,18 @@ function treeList(items, { indent = '     ', width = 72 } = {}) {
  * Boxed content frame (`╭─ Title ──…──╮` / `╰──…──╯`): top and bottom rules
  * whose width is computed from the actual content, so the border always
  * reaches the frame's widest line — never a fixed-length rule stopping short.
+ * Capped at `maxWidth` so the border itself never wraps in a terminal:
+ * unwrappable content (diff lines) may overflow past a capped border.
  * Content lines render as-is between the rules (no side walls).
  * @param {string} title
  * @param {string[]} contentLines pre-wrapped content
- * @param {{minWidth?: number}} [opts]
+ * @param {{minWidth?: number, maxWidth?: number}} [opts]
  * @returns {string}
  */
-function boxedFrame(title, contentLines, { minWidth = 53 } = {}) {
+function boxedFrame(title, contentLines, { minWidth = 53, maxWidth = 100 } = {}) {
   const head = `╭─ ${title} `;
   const contentMax = contentLines.reduce((m, l) => Math.max(m, [...l].length), 0);
-  const width = Math.max(minWidth, [...head].length + 1, contentMax);
+  const width = Math.min(maxWidth, Math.max(minWidth, [...head].length + 1, contentMax));
   const top = head + '─'.repeat(Math.max(1, width - [...head].length - 1)) + '╮';
   const bottom = '╰' + '─'.repeat(width - 2) + '╯';
   return [top, ...contentLines, bottom].join('\n');
