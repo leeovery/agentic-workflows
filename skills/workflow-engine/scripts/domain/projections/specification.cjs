@@ -13,7 +13,7 @@
 
 const { box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { dotFrame } = require('./surfaces.cjs');
+const { dotFrame, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -342,11 +342,11 @@ function specificationMenu(detail) {
 
   const lines = [];
   for (const e of numbered) {
-    lines.push(`- **\`${e.key}\`** — ${e.label}`);
+    lines.push(cmdOption(e.key, null, e.label));
     if (e.desc) lines.push(...e.desc);
   }
   for (const o of options) {
-    lines.push('', `- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
+    lines.push('', cmdOption(o.key, o.word, o.label));
   }
   lines.push('', 'Select an option:');
 
@@ -373,9 +373,7 @@ function specificationCompletedMenu(detail) {
 
   const lines = ['Which completed specification would you like to refine?', ''];
   for (const k of keys) {
-    lines.push(k.word
-      ? `- **\`${k.key}\`/\`${k.word}\`** — ${k.label}`
-      : `- **\`${k.key}\`** — ${k.label}`);
+    lines.push(cmdOption(k.key, k.word, k.label));
   }
   lines.push('', 'Select an option:');
   const rendered = dotFrame(lines);

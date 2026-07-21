@@ -42,6 +42,27 @@ function menu(label, options, { prompt } = {}) {
 }
 
 /**
+ * Command option line — a discrete input the user types verbatim
+ * (CONVENTIONS.md option grammar): `- **`k`/`word`** — label`, word omitted
+ * for bare-key options (numbered entries).
+ * @param {string} key @param {string | null | undefined} word @param {string} label
+ * @returns {string}
+ */
+function cmdOption(key, word, label) {
+  return word ? `- **\`${key}\`/\`${word}\`** — ${label}` : `- **\`${key}\`** — ${label}`;
+}
+
+/**
+ * Prompt option line — the user responds naturally; the description directs
+ * the user's response: `- **Label** — description`.
+ * @param {string} label @param {string} description
+ * @returns {string}
+ */
+function promptOption(label, description) {
+  return `- **${label}** — ${description}`;
+}
+
+/**
  * `⚑` callout block: flag at 2-space indent, continuation lines aligned
  * beneath the text. A string wraps to `width` (flag gutter subtracted);
  * a pre-wrapped array renders as given.
@@ -106,4 +127,4 @@ function boxedFrame(title, contentLines, { minWidth = 53 } = {}) {
   return [top, ...contentLines, bottom].join('\n');
 }
 
-module.exports = { DOTS, section, dotFrame, menu, callout, subDetail, treeList, boxedFrame };
+module.exports = { DOTS, section, dotFrame, menu, cmdOption, promptOption, callout, subDetail, treeList, boxedFrame };

@@ -13,7 +13,7 @@
 
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title } = require('../conventions.cjs');
-const { dotFrame } = require('./surfaces.cjs');
+const { dotFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -205,7 +205,7 @@ function revisitPhasesSection(phases) {
   const body = dotFrame([
     'Which phase would you like to revisit?',
     '',
-    ...phases.map((phase, i) => `- **\`${i + 1}\`** — ${titlecase(phase)} — completed`),
+    ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — completed`)),
     '- **`b`/`back`** — Return to the previous menu',
     '',
     'Select an option:',

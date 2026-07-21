@@ -12,7 +12,7 @@
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
-const { dotFrame, callout } = require('./surfaces.cjs');
+const { dotFrame, cmdOption, callout } = require('./surfaces.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -632,11 +632,11 @@ function epicMenu(workUnit, detail) {
 
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
-    lines.push(`- **\`${e.key}\`** — ${e.label}${e.recommended ? ' (recommended)' : ''}`);
+    lines.push(cmdOption(e.key, null, `${e.label}${e.recommended ? ' (recommended)' : ''}`));
   }
   if (hasMap && numbered.length > 0 && options.length > 0) lines.push('');
   for (const o of options) {
-    lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}${o.recommended ? ' (recommended)' : ''}`);
+    lines.push(cmdOption(o.key, o.word, `${o.label}${o.recommended ? ' (recommended)' : ''}`));
   }
   lines.push('', 'Select an option:');
 
@@ -703,9 +703,7 @@ function selectionSubView(heading, question, action, rows, opts = {}) {
 
   const menuLines = [question, ''];
   for (const k of keys) {
-    menuLines.push(k.word
-      ? `- **\`${k.key}\`/\`${k.word}\`** — ${k.label}`
-      : `- **\`${k.key}\`** — ${k.label}`);
+    menuLines.push(cmdOption(k.key, k.word, k.label));
   }
   menuLines.push('', 'Select an option:');
 

@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -66,8 +66,8 @@ function resumeGate(cwd, { dotpath, triage }) {
     'MENU: resume gate',
     'emit verbatim as markdown, then STOP for the user\'s response',
     menu(`Found existing ${phase} for **${titlecase(topic)}**.`, [
-      '- **`c`/`continue`** — Pick up where you left off',
-      `- **\`r\`/\`restart\`** — Delete the ${phase} and start fresh`,
+      cmdOption('c', 'continue', 'Pick up where you left off'),
+      cmdOption('r', 'restart', `Delete the ${phase} and start fresh`),
     ]),
   ));
   return parts.join('\n');
@@ -168,10 +168,10 @@ function taskList(cwd, { dotpath, file }) {
       'MENU: task list gate',
       'emit verbatim as markdown, then STOP for the user\'s response',
       menu('Approve this task list?', [
-        '- **`y`/`yes`** — Proceed to authoring',
-        '- **`a`/`auto`** — Approve this and all remaining task list gates automatically',
-        '- **Tell me what to change** — which tasks to reorder, split, merge, add, edit, or remove',
-        '- **Navigate** — Tell me where to go: a different phase or task, or the leading edge',
+        cmdOption('y', 'yes', 'Proceed to authoring'),
+        cmdOption('a', 'auto', 'Approve this and all remaining task list gates automatically'),
+        promptOption('Tell me what to change', 'which tasks to reorder, split, merge, add, edit, or remove'),
+        promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
       ]),
     ));
   }

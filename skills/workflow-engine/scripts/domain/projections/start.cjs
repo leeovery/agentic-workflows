@@ -17,7 +17,7 @@
 
 const { box } = require('../../kernel/render.cjs');
 const { titlecase, capitalise } = require('../conventions.cjs');
-const { dotFrame: dotMenu } = require('./surfaces.cjs');
+const { dotFrame: dotMenu, cmdOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -196,11 +196,11 @@ function startMenu(detail) {
 
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
-    lines.push(`- **\`${e.key}\`** — ${e.label}`);
+    lines.push(cmdOption(e.key, null, e.label));
   }
   if (numbered.length > 0) lines.push('');
   for (const o of options) {
-    lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
+    lines.push(cmdOption(o.key, o.word, o.label));
   }
   lines.push('', 'Select an option:');
 
@@ -251,7 +251,7 @@ function emptyMenu(detail) {
 
   const lines = ['What would you like to start?', ''];
   for (const o of options) {
-    lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
+    lines.push(cmdOption(o.key, o.word, o.label));
   }
   lines.push('', 'Select an option:');
 
@@ -504,7 +504,7 @@ function manageUnitView(md) {
       dotMenu([
         'Select a target epic:',
         '',
-        ...md.available_epics.map((name, i) => `- **\`${i + 1}\`** — ${titlecase(name)}`),
+        ...md.available_epics.map((name, i) => cmdOption(String(i + 1), null, titlecase(name))),
         '',
         '- **`b`/`back`** — Return',
       ]),
@@ -517,7 +517,7 @@ function manageUnitView(md) {
       dotMenu([
         'Which plan would you like to view?',
         '',
-        ...md.planning_topics.map((t, i) => `- **\`${i + 1}\`** — ${titlecase(t.name)} — ${t.status}`),
+        ...md.planning_topics.map((t, i) => cmdOption(String(i + 1), null, `${titlecase(t.name)} — ${t.status}`)),
       ]),
     ));
   }

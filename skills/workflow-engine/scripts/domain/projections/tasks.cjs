@@ -27,7 +27,7 @@ const { SESSION_CYCLE_LIMIT } = require('../tasks.cjs');
 /** @typedef {import('../tasks.cjs').FixAttemptResult} FixAttemptResult */
 /** @typedef {import('../tasks.cjs').AnalysisCycleResult} AnalysisCycleResult */
 
-const { section, menu } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption } = require('./surfaces.cjs');
 
 // The blocked-tasks stop menu. Static by design: the blocked-task list is
 // plan-format state the engine never reads — the session renders the list,
@@ -36,9 +36,9 @@ const BLOCKED_TASKS_MENU = section(
   'MENU: blocked tasks',
   "emit verbatim as markdown only at the task loop's blocked-tasks stop",
   menu('How would you like to proceed?', [
-    '- **`p`/`proceed`** — Continue with the first blocked task anyway (its blocker will not be completed)',
-    '- **`s`/`skip`** — Skip the blocked tasks and conclude the loop',
-    '- **`t`/`stop`** — Stop implementation entirely',
+    cmdOption('p', 'proceed', 'Continue with the first blocked task anyway (its blocker will not be completed)'),
+    cmdOption('s', 'skip', 'Skip the blocked tasks and conclude the loop'),
+    cmdOption('t', 'stop', 'Stop implementation entirely'),
   ]),
 );
 
@@ -59,10 +59,10 @@ function startSections(result) {
     'MENU: task gate',
     'emit verbatim as markdown at the task gate — never before',
     menu(`Approve task ${result.task}?`, [
-      '- **`y`/`yes`** — Commit and continue to next task',
-      '- **`a`/`auto`** — Approve this and all future tasks automatically',
-      "- **Ask** — Ask questions about the implementation (doesn't approve or reject)",
-      '- **Comment** — Request changes (triggers a fix round)',
+      cmdOption('y', 'yes', 'Commit and continue to next task'),
+      cmdOption('a', 'auto', 'Approve this and all future tasks automatically'),
+      promptOption('Ask', "Ask questions about the implementation (doesn't approve or reject)"),
+      promptOption('Comment', 'Request changes (triggers a fix round)'),
     ]),
   );
 }
@@ -79,11 +79,11 @@ function fixAttemptSections(result, internalId) {
   }
   if (result.threshold_reached || result.fix_gate_mode === 'gated') {
     const options = [
-      '- **`y`/`yes`** — Pass to executor',
-      '- **`a`/`auto`** — Accept and auto-approve future fix analyses',
-      '- **`s`/`skip`** — Override the reviewer and proceed as-is',
-      "- **Ask** — Ask questions about the review (doesn't accept or reject)",
-      '- **Comment** — Accept with adjustments — pass your own direction alongside the review',
+      cmdOption('y', 'yes', 'Pass to executor'),
+      cmdOption('a', 'auto', 'Accept and auto-approve future fix analyses'),
+      cmdOption('s', 'skip', 'Override the reviewer and proceed as-is'),
+      promptOption('Ask', "Ask questions about the review (doesn't accept or reject)"),
+      promptOption('Comment', 'Accept with adjustments — pass your own direction alongside the review'),
     ];
     // An auto gate only reaches this menu via the threshold — offering auto
     // again would be a no-op option.
@@ -110,8 +110,8 @@ function analysisCycleSections(result) {
       'MENU: cycle gate',
       'emit verbatim as markdown at the cycle gate',
       menu('Continue with analysis?', [
-        '- **`p`/`proceed`** — Continue analysis',
-        '- **`s`/`skip`** — Skip analysis, proceed to completion',
+        cmdOption('p', 'proceed', 'Continue analysis'),
+        cmdOption('s', 'skip', 'Skip analysis, proceed to completion'),
       ]),
     ),
   ].join('\n');
