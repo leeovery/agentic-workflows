@@ -36,18 +36,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-── Initialisation ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading shared display conventions for this session.
-```
-
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 1**.
@@ -55,18 +43,6 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 ---
 
 ## Step 1: Discovery State
-
-> *Output the next fenced block as a code block:*
-
-```
-── Run Discovery ────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Scanning for active quick-fixes and their current progress.
-```
 
 !`node .claude/skills/workflow-continue-quickfix/scripts/gateway.cjs`
 
@@ -97,18 +73,6 @@ Anything richer (next phase, completed phases, revisit routes) comes from the `v
 ---
 
 ## Step 2: Check Count and Arguments
-
-> *Output the next fenced block as a code block:*
-
-```
-── Check State ──────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking if there are any quick-fixes in progress.
-```
 
 #### If `count` is 0
 
@@ -156,18 +120,6 @@ Load **[select-quickfix.md](references/select-quickfix.md)** and follow its inst
 
 ## Step 4: Validate Selection
 
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Selection ───────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Confirming the selected quick-fix exists and is active.
-```
-
 Load **[validate-selection.md](references/validate-selection.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
@@ -179,7 +131,7 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 > *Output the next fenced block as a code block:*
 
 ```
-── Display State and Menu ───────────────────────
+── Quick-Fix State ──────────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -195,18 +147,6 @@ Load **[quickfix-display-and-menu.md](references/quickfix-display-and-menu.md)**
 ---
 
 ## Step 6: Route Selection
-
-> *Output the next fenced block as a code block:*
-
-```
-── Route Selection ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Handing off to the selected phase for this quick-fix.
-```
 
 Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from quickfix-display-and-menu.md (e.g. `/workflow-implementation-entry quick-fix {work_unit}`).
 

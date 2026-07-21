@@ -36,18 +36,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-── Initialisation ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading shared display conventions for this session.
-```
-
 Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 1**.
@@ -55,18 +43,6 @@ Load **[casing-conventions.md](../workflow-shared/references/casing-conventions.
 ---
 
 ## Step 1: Discovery State
-
-> *Output the next fenced block as a code block:*
-
-```
-── Run Discovery ────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Scanning for active cross-cutting concerns and their progress.
-```
 
 !`node .claude/skills/workflow-continue-cross-cutting/scripts/gateway.cjs`
 
@@ -97,18 +73,6 @@ Anything richer (next phase, completed phases, revisit routes) comes from the `v
 ---
 
 ## Step 2: Check Count and Arguments
-
-> *Output the next fenced block as a code block:*
-
-```
-── Check State ──────────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking if there are any cross-cutting concerns in progress.
-```
 
 #### If `count` is 0
 
@@ -156,18 +120,6 @@ Load **[select-cross-cutting.md](references/select-cross-cutting.md)** and follo
 
 ## Step 4: Validate Selection
 
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Selection ───────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Confirming the selected concern exists and is active.
-```
-
 Load **[validate-selection.md](references/validate-selection.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
@@ -179,7 +131,7 @@ Load **[validate-selection.md](references/validate-selection.md)** and follow it
 > *Output the next fenced block as a code block:*
 
 ```
-── Display State and Menu ───────────────────────
+── Cross-Cutting State ──────────────────────────
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -195,18 +147,6 @@ Load **[cross-cutting-display-and-menu.md](references/cross-cutting-display-and-
 ---
 
 ## Step 6: Route Selection
-
-> *Output the next fenced block as a code block:*
-
-```
-── Route Selection ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Handing off to the selected phase for this concern.
-```
 
 Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from cross-cutting-display-and-menu.md (e.g. `/workflow-discussion-entry cross-cutting {work_unit}`).
 
