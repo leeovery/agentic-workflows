@@ -205,6 +205,13 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   plan-construction's twin gate. Stack synced: main → #490 → #491 → #492.
   Remaining: stage 4 (bridge + continue-* = clone-family), stage 5 (entry
   validation + transaction folds), stage 6 (static sweep + D4 lint).
+- 2026-07-21 — Stage 6a up (#496): transaction confirmation sections —
+  workunit complete/cancel/reactivate/absorb/promote/pivot and topic
+  cancel/reactivate carry their own confirmation and kb-warning sections
+  (pivot also its continuation MENU); six references swapped. Inbox
+  confirmations deliberately excluded (titles are markdown-held — D2);
+  they fall to the static-sweep decision. Stage 6b (entry validation)
+  next; then stage 7 (static sweep + D4 lint).
 - 2026-07-21 — Stage 5a (#495) built and CLOSED unmerged: built backwards.
   add-batch was implemented from the one known site before the audit results
   were folded in (census-first is this programme's own discipline), and the
