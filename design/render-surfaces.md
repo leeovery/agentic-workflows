@@ -149,6 +149,30 @@ cache paths. Genuine this-turn judgment payloads are rare.
    the **call-chain audit** — sub-agent sweep for every prose site
    prescribing long runs of sequential engine calls, each fixed with a
    batch form, not a warning.
+5b. **Call-chain audit results (2026-07-21, two sub-agent sweeps)** — to scope
+   with Lee. Audit A found 15 further repeated-engine-call sites; worst by
+   multiplicity: (1) specification-entry analysis-flow.md reconcile step 7 —
+   nested manifest set fan-out (proposed specs × grouping members); (2)
+   planning resolve-dependencies.md — nested topics × external deps, set
+   pairs per match; (3) planning author-tasks.md G — per-task task_map set +
+   per-task git commit across a whole plan (highest real-run volume); (4)
+   sequence-discovery-map.md — 2×N manifest gets per live topic (summary is
+   already in the discovery dump; description could ride too — a #488-style
+   read fold). Also: analysis-approval-gate per-candidate adds,
+   brief-synthesis per-brief gets/sets, consult-reference per-ref sets
+   (spec session-setup + spec-construction), review-actions per-plan
+   reopen/set/commit, map-operations per-name edits, drain-triage per-entry
+   discussion-map adds, read-plans per-plan gets, summary-backfill per-item
+   sets, process-review-findings per-id task_map writes, topic-splitting
+   per-topic creates. Audit B (shell constructions) found three clusters:
+   multi-stage read pipelines whose stdout must be hand-carried into agent
+   dispatch (implementation invoke-analysis, review invoke-task-verifiers /
+   invoke-review-synthesizer); dynamic `git add -- … {format task storage
+   paths}` argv assembly (11 sites — invites `git add -A` improvisation);
+   and read-value-then-paste restart flows (planning + scoping SKILL.md).
+   Fix shapes: batch verbs for the write fan-outs, dump/read folds for the
+   get runs, and possibly an engine commit extension for the dynamic-path
+   git adds. Prioritise with Lee before building.
 6. **Entry validation + transaction folds.**
 7. **Static sweep + closing lint** (D3/D4 decided).
 
@@ -179,6 +203,10 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   plan-construction's twin gate. Stack synced: main → #490 → #491 → #492.
   Remaining: stage 4 (bridge + continue-* = clone-family), stage 5 (entry
   validation + transaction folds), stage 6 (static sweep + D4 lint).
+- 2026-07-21 — Stage 5a up (#495): discovery-map add-batch (the fumi
+  harvest's 48 calls → 1, atomic) + cache purge at work-unit close
+  (complete/cancel/absorb). Call-chain audits run by two sub-agents; raw
+  results folded into stage 5b for scoping.
 - 2026-07-21 — Stage 4 up (#493): selection projection (one composition,
   five type configs — the clone-family factory for the select step; all five
   gateways append deferred selection sections, select-*.md templates gone);
