@@ -43,19 +43,6 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them. Presen
 
 ## Step 1: Parse Arguments
 
-> *Output the next fenced block as a code block:*
-
-```
-── Parse Arguments ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reading the handoff context and determining which
-> research topic to work with.
-```
-
 Arguments: work_type = `$0`, work_unit = `$1`, topic = `$2` (optional).
 Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, topic = `$1`.
 
@@ -89,18 +76,6 @@ Silently derive `direct_entry_summary` (one-line) and `direct_entry_description`
 
 ## Step 2: Check Phase Entry
 
-> *Output the next fenced block as a code block:*
-
-```
-── Check Phase Entry ────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking if research already exists for this topic.
-```
-
 Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`. On the direct-entry path (no topic supplied as `$2`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. When the topic was provided by the caller, omit both — the caller didn't derive them.
 
 Read the research phase status:
@@ -122,19 +97,6 @@ Store the result as `phase_status`.
 ---
 
 ## Step 3: Validate Phase
-
-> *Output the next fenced block as a code block:*
-
-```
-── Validate Phase ───────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the status of this research — in progress
-> or completed.
-```
 
 Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
@@ -209,18 +171,5 @@ Do not re-ask; live conversation context, when present, supplements the carrier.
 ---
 
 ## Step 5: Invoke the Skill
-
-> *Output the next fenced block as a code block:*
-
-```
-── Invoke Research ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Handing off to the research process with all
-> gathered context.
-```
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

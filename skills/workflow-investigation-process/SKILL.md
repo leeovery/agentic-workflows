@@ -81,6 +81,14 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 ## Step 0: Resume Detection
 
+Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
+
+#### If no file exists
+
+→ Proceed to **Step 1**.
+
+#### If file exists
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -90,36 +98,15 @@ The investigation file is your memory. Context compaction is lossy — what's no
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Checking for an existing investigation. If one exists, you can
-> pick up where you left off or start fresh.
+> An in-progress investigation file exists for this topic —
+> choose whether to pick it up or start fresh.
 ```
-
-Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
-
-#### If no file exists
-
-→ Proceed to **Step 1**.
-
-#### If file exists
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file`, commit = `investigation({work_unit}): restart investigation`.
 
 ---
 
 ## Step 1: Initialize Investigation
-
-> *Output the next fenced block as a code block:*
-
-```
-── Initialize Investigation ─────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Creating the investigation file and recording the initial
-> bug context.
-```
 
 Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
 
@@ -128,19 +115,6 @@ Load **[initialize-investigation.md](references/initialize-investigation.md)** a
 ---
 
 ## Step 2: Knowledge Usage
-
-> *Output the next fenced block as a code block:*
-
-```
-── Knowledge Usage ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading the usage guide for the knowledge base so
-> proactive querying is available throughout the investigation.
-```
 
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
@@ -174,19 +148,6 @@ When symptoms are sufficiently understood to begin code analysis:
 ---
 
 ## Step 4: Contextual Query
-
-> *Output the next fenced block as a code block:*
-
-```
-── Contextual Query ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the knowledge base for prior investigations or
-> related work that matches the symptoms just gathered.
-```
 
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
@@ -357,18 +318,6 @@ Load **[fix-validation.md](references/fix-validation.md)** and follow its instru
 ---
 
 ## Step 12: Compliance Self-Check
-
-> *Output the next fenced block as a code block:*
-
-```
-── Compliance Self-Check ────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Verifying the investigation file follows workflow conventions.
-```
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 

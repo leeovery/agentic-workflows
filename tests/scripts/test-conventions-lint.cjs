@@ -461,6 +461,85 @@ function checkLoadFooters(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 12 — earned chrome, decidable slice. A backbone step whose only
+// substance is a single Load directive must not carry a step marker when the
+// loaded reference is inert (no STOP gate, no rendering instruction) — pure
+// plumbing earns no chrome. Steps with conditional structure (H4), extra
+// substance, interactive references, or unresolvable/parameterised targets
+// are out of scope: those are the judgment tier.
+// ---------------------------------------------------------------------------
+
+// A reference is inert iff it shows the user nothing and does nothing
+// watchable: no STOP gate, no rendering instruction, no bash fence — and
+// every reference it Loads (resolvable, non-parameterised) is inert too.
+// Anything unresolvable is conservatively treated as not inert.
+function isInertRef(p, visited) {
+  if (visited.has(p)) return true; // cycle: no new activity on this path
+  visited.add(p);
+  if (!fs.existsSync(p)) return false;
+  const text = fs.readFileSync(p, 'utf8');
+  if (/\*\*STOP\.\*\*/.test(text) || /Output the next fenced block/.test(text) || /^```bash/m.test(text)) return false;
+  const loadRe = /Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
+  let m;
+  while ((m = loadRe.exec(text))) {
+    const target = m[1].split('#')[0];
+    if (target.includes('{')) return false;
+    if (!isInertRef(path.resolve(path.dirname(p), target), visited)) return false;
+  }
+  return true;
+}
+
+function checkInertLoadChrome(files) {
+  const out = [];
+  for (const file of files) {
+    if (!file.endsWith('SKILL.md')) continue;
+    const dir = path.dirname(file);
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    const starts = [];
+    lines.forEach((line, i) => {
+      if (!inFence[i] && /^## Step /.test(line)) starts.push(i);
+    });
+    for (const start of starts) {
+      let end = lines.length;
+      for (let j = start + 1; j < lines.length; j++) {
+        if (!inFence[j] && /^## /.test(lines[j])) { end = j; break; }
+      }
+      let markerLine = -1;
+      for (let j = start; j < end; j++) {
+        if (inFence[j] && /^── .+ ─+$/.test(lines[j])) markerLine = j;
+      }
+      if (markerLine === -1) continue;
+      const substance = [];
+      let structured = false;
+      for (let j = start + 1; j < end; j++) {
+        if (inFence[j] || /^\s*```/.test(lines[j])) continue;
+        const t = lines[j].trim();
+        if (t === '' || t === '---') continue;
+        if (/^> \*Output the next fenced block/.test(t)) continue;
+        if (/^→ /.test(t)) continue;
+        if (/^#{3,4} /.test(t)) { structured = true; break; }
+        substance.push(t);
+      }
+      if (structured || substance.length !== 1) continue;
+      const lm = substance[0].match(/^Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/);
+      if (!lm) continue;
+      const target = lm[1].split('#')[0];
+      if (target.includes('{')) continue;
+      const p = path.resolve(dir, target);
+      if (!fs.existsSync(p)) continue;
+      if (!isInertRef(p, new Set())) continue;
+      out.push({
+        file,
+        line: markerLine + 1,
+        message: `marker on a load-only step whose reference (${target}) renders nothing — chrome is earned, not automatic`,
+      });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -476,6 +555,7 @@ const CHECKS = [
   ['9: Zero Output Rule byte-identity', checkZeroOutput],
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
+  ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
 ];
 
 function report(violations) {
@@ -738,5 +818,41 @@ test('check 11 (load footers) — catches bare proceed after a load, permits gat
       '```\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n→ Proceed to **Step 2**.\n```\n'
     );
     assert.strictEqual(checkLoadFooters([fenced]).length, 0, 'fenced illustrative seam must be exempt');
+  });
+});
+
+test('check 12 (inert load chrome) — catches unearned markers, skips interactive/structured shapes', () => {
+  withTemp((dir) => {
+    const marker = ('── Load Things ').padEnd(49, '─');
+    const step = (body) =>
+      '## Step 1: Load Things\n\n> *Output the next fenced block as a code block:*\n\n```\n' +
+      marker +
+      '\n```\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n> Loading things.\n```\n\n' +
+      body +
+      '\n→ On return, proceed to **Step 2**.\n\n## Step 2: Next\n';
+
+    write(dir, 'skills/x/references/inert.md', '# Inert\n\nRead the file. Hold values in memory.\n');
+    write(dir, 'skills/x/references/interactive.md', '# Interactive\n\n**STOP.** Wait for user response.\n');
+
+    const bad = write(dir, 'skills/x/SKILL.md', step('Load **[inert.md](references/inert.md)** and follow its instructions as written.\n'));
+    const v = checkInertLoadChrome([bad]);
+    assert.strictEqual(v.length, 1, 'marker on inert load-only step must be caught');
+    assert.match(v[0].message, /inert\.md/);
+
+    const good = write(dir, 'skills/y/SKILL.md', step('Load **[interactive.md](../x/references/interactive.md)** and follow its instructions as written.\n'));
+    assert.strictEqual(checkInertLoadChrome([good]).length, 0, 'interactive reference keeps its marker');
+
+    const silent = write(
+      dir,
+      'skills/z/SKILL.md',
+      '## Step 1: Load Things\n\nLoad **[inert.md](../x/references/inert.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: Next\n'
+    );
+    assert.strictEqual(checkInertLoadChrome([silent]).length, 0, 'silent load-only step must pass');
+
+    const structured = write(dir, 'skills/w/SKILL.md', step('#### If ready\n\nLoad **[inert.md](../x/references/inert.md)** and follow its instructions as written.\n'));
+    assert.strictEqual(checkInertLoadChrome([structured]).length, 0, 'H4-structured step is judgment tier — skipped');
+
+    const unresolvable = write(dir, 'skills/v/SKILL.md', step('Load **[gone.md](references/gone.md)** and follow its instructions as written.\n'));
+    assert.strictEqual(checkInertLoadChrome([unresolvable]).length, 0, 'unresolvable target must be skipped');
   });
 });

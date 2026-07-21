@@ -60,20 +60,6 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Resume Detection
 
-> *Output the next fenced block as a code block:*
-
-```
-── Resume Detection ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking for existing scoping work. If a spec and plan
-> already exist, you can adjust them, rescope from scratch,
-> or skip ahead.
-```
-
 Check if a specification already exists:
 
 ```bash
@@ -85,6 +71,19 @@ ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && 
 → Proceed to **Step 1**.
 
 #### If specification exists
+
+> *Output the next fenced block as a code block:*
+
+```
+── Resume Detection ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> An in-progress scoping specification exists — choose whether
+> to pick it up or start fresh.
+```
 
 Read the plan and scoping statuses:
 
@@ -217,19 +216,6 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
 
 ## Step 1: Knowledge Usage
 
-> *Output the next fenced block as a code block:*
-
-```
-── Knowledge Usage ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Loading the usage guide for the knowledge base so
-> proactive querying is available while scoping the change.
-```
-
 Load **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 2**.
@@ -261,19 +247,6 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 ## Step 3: Contextual Query
 
-> *Output the next fenced block as a code block:*
-
-```
-── Contextual Query ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Checking the knowledge base for prior discussions, investigations,
-> or specs that touch the area being changed.
-```
-
 Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
@@ -281,19 +254,6 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 ---
 
 ## Step 4: Complexity Check
-
-> *Output the next fenced block as a code block:*
-
-```
-── Complexity Check ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Assessing whether this change fits the quick-fix model.
-> If it's too complex, it should be promoted to a feature.
-```
 
 Load **[complexity-check.md](references/complexity-check.md)** and follow its instructions as written.
 
