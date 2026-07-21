@@ -27,17 +27,7 @@ const { SESSION_CYCLE_LIMIT } = require('../tasks.cjs');
 /** @typedef {import('../tasks.cjs').FixAttemptResult} FixAttemptResult */
 /** @typedef {import('../tasks.cjs').AnalysisCycleResult} AnalysisCycleResult */
 
-const DOTS = '· · · · · · · · · · · ·';
-
-/** One `=== NAME (instruction) ===` section. @param {string} name @param {string} instruction @param {string} body */
-function section(name, instruction, body) {
-  return `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
-}
-
-/** Dot-framed menu: contextual label, blank line, options. @param {string} label @param {string[]} options */
-function menu(label, options) {
-  return [DOTS, label, '', ...options, DOTS].join('\n');
-}
+const { section, menu } = require('./surfaces.cjs');
 
 // The blocked-tasks stop menu. Static by design: the blocked-task list is
 // plan-format state the engine never reads — the session renders the list,

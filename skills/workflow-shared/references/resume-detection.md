@@ -6,25 +6,15 @@
 
 Read `{file}`.
 
-**If the file has a `## Triage` section that is not `(none)`:** it holds concerns rerouted here from other topics — their origin sessions recorded them as landed, and restart destroys them. Render this warning before the menu ({N} = the count of `### {title}` entries):
+**If the file has a `## Triage` section that is not `(none)`:** it holds concerns rerouted here from other topics — their origin sessions recorded them as landed, and restart destroys them. Set `{N}` = the count of `### {title}` entries and pass `--triage {N}` below; omit the flag otherwise.
 
-> *Output the next fenced block as a code block:*
+Render the gate:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.{artifact}.{topic} [--triage {N}]
 ```
-  ⚑ {N} rerouted concern(s) from other topics sit undrained in this
-    file's Triage section. Restarting deletes them permanently.
-```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Found existing {artifact} for **{topic:(titlecase)}**.
-
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Delete the {artifact} and start fresh
-· · · · · · · · · · · ·
-```
+Emit each returned section verbatim at its marked instruction — the triage warning (when present) directly above the menu.
 
 **STOP.** Wait for user response.
 
