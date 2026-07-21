@@ -161,3 +161,10 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   plan-construction's twin gate. Stack synced: main → #490 → #491 → #492.
   Remaining: stage 4 (bridge + continue-* = clone-family), stage 5 (entry
   validation + transaction folds), stage 6 (static sweep + D4 lint).
+- 2026-07-21 — Stage 4 up (#493): selection projection (one composition,
+  five type configs — the clone-family factory for the select step; all five
+  gateways append deferred selection sections, select-*.md templates gone);
+  five work-unit-addressed bridge surfaces (pipeline-complete,
+  phase-completed, early-completion-gate, revisit-gate, epic-all-done-gate);
+  titlecaseLabel promoted to conventions. Bare work-unit addressing joins
+  the grammar. Stack: main → #490 → #491 → #492 → #493.
