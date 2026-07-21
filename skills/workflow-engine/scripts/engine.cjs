@@ -160,6 +160,11 @@ Commands:
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
+  render pipeline-complete <wu> [--skipped-review]
+  render phase-completed   <wu> --phase <phase>
+  render early-completion-gate <wu>
+  render revisit-gate      <wu> --prev <phase> --next <phase>
+  render epic-all-done-gate <wu>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -653,7 +658,7 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -661,6 +666,7 @@ function runRender(argv) {
       /** @type {{dotpath: string} & Record<string, string|undefined>} */
       const args = { dotpath: positional[0], ...opts };
       if (flags.has('approve')) args.approve = '1';
+      if (flags.has('skipped-review')) args['skipped-review'] = '1';
       respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);

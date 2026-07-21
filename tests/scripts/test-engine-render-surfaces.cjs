@@ -8,6 +8,7 @@ const path = require('path');
 
 const { DOTS, section, dotFrame, menu, callout, subDetail, treeList, boxedFrame } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+const { selectionSections } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
 
 function setup() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'render-surfaces-'));
@@ -558,9 +559,99 @@ describe('render task-list --variant existing', () => {
   });
 });
 
+describe('selection projection', () => {
+  it('renders the bugfix pick list byte-exactly', () => {
+    const out = selectionSections('bugfix',
+      [{ name: 'crash', phase_label: 'specification (in-progress)' }, { name: 'leak', phase_label: 'investigation (in-progress)' }],
+      { completed: 1, cancelled: 1 });
+    assert.strictEqual(out, [
+      '=== DISPLAY: selection (emit verbatim as a code block only at the select step) ===',
+      '2 bugfix(es) in progress:',
+      '',
+      '  1. Crash',
+      '     └─ Specification (In-Progress)',
+      '',
+      '  2. Leak',
+      '     └─ Investigation (In-Progress)',
+      '',
+      '1 completed, 1 cancelled.',
+      '',
+      "=== MENU: selection (emit verbatim as markdown only at the select step, then STOP for the user's response) ===",
+      DOTS,
+      'Which bugfix would you like to continue?',
+      '',
+      '- **`1`** — Continue "Crash" — specification (in-progress)',
+      '- **`2`** — Continue "Leak" — investigation (in-progress)',
+      '- **`3`** — View completed & cancelled bugfixes',
+      "- **`m`/`manage`** — Manage a bugfix's lifecycle",
+      '',
+      'Select an option:',
+      DOTS,
+      '',
+    ].join('\n'));
+  });
+
+  it('epic variant sub-rows active phases and drops the phase label from options', () => {
+    const out = selectionSections('epic', [{ name: 'payments', active_phases: ['discussion', 'specification'] }], { completed: 0, cancelled: 0 });
+    assert.ok(out.includes('     └─ Discussion, Specification'));
+    assert.ok(out.includes('- **`1`** — Continue "Payments"'));
+    assert.ok(!out.includes('Continue "Payments" —'));
+    assert.ok(!out.includes('View completed'), 'no closed units, no view option');
+  });
+
+  it('empty units render nothing; unknown type throws', () => {
+    assert.strictEqual(selectionSections('feature', [], { completed: 3, cancelled: 0 }), '');
+    assert.throws(() => selectionSections('nope', [{ name: 'x' }], { completed: 0, cancelled: 0 }), /unknown type "nope"/);
+  });
+});
+
+describe('bridge continuation surfaces', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { work_type: 'feature' });
+  });
+  afterEach(() => teardown(dir));
+
+  it('pipeline-complete varies body by work_type and skip flag', () => {
+    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'pay' })
+      .includes('Feature Completed\n\n"Pay" has completed all pipeline phases.'));
+    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'pay', 'skipped-review': '1' })
+      .includes('"Pay" completed — review skipped.'));
+    writeManifest(dir, 'ep', { work_type: 'epic' });
+    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'ep' })
+      .includes('Epic Completed\n\n"Ep" has completed all topics through review.'));
+    writeManifest(dir, 'qf', { work_type: 'quick-fix' });
+    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'qf' }).includes('Quick-Fix Completed'));
+  });
+
+  it('gates render byte-stable menus', () => {
+    const early = renderSurface(dir, 'early-completion-gate', { dotpath: 'pay' });
+    assert.ok(early.includes('Implementation completed for "Pay".'));
+    assert.ok(early.includes('- **`d`/`done`** — Complete without review'));
+
+    const revisit = renderSurface(dir, 'revisit-gate', { dotpath: 'pay', prev: 'specification', next: 'planning' });
+    assert.ok(revisit.includes('Specification completed for "Pay".'));
+    assert.ok(revisit.includes('- **`y`/`yes`** — Proceed to planning'));
+
+    const allDone = renderSurface(dir, 'epic-all-done-gate', { dotpath: 'pay' });
+    assert.ok(allDone.includes('All topics have completed review for "Pay".'));
+
+    const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'discussion' });
+    assert.ok(note.includes('Discussion completed for "Pay".'));
+  });
+
+  it('work-unit addressing is loud on dotted paths, unknown units, and missing flags', () => {
+    assert.throws(() => renderSurface(dir, 'pipeline-complete', { dotpath: 'pay.review.pay' }), /must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'pipeline-complete', { dotpath: 'nope' }), /work unit "nope" not found/);
+    assert.throws(() => renderSurface(dir, 'revisit-gate', { dotpath: 'pay', next: 'planning' }), /--prev is required/);
+    assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay' }), /--phase is required/);
+  });
+});
+
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree, pipeline-complete, phase-completed, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

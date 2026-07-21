@@ -8,43 +8,7 @@
 
 Display active epics and let the user select one.
 
-> *Output the next fenced block as a code block:*
-
-```
-{count} epic(s) in progress:
-
-@foreach(epic in epics)
-  {N}. {epic.name:(titlecase)}
-     └─ {epic.active_phases:(titlecase, comma-separated)}
-
-@endforeach
-
-@if(completed_count > 0 || cancelled_count > 0)
-{completed_count} completed, {cancelled_count} cancelled.
-@endif
-```
-
-Build from the discovery output's `=== EPICS (N) ===` section. Each epic shows `name` (titlecased) and a comma-separated list of `active_phases` (titlecased). Blank line between each numbered item.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which epic would you like to continue?
-
-- **`1`** — Continue "{epic.name:(titlecase)}"
-- **`2`** — ...
-
-@if(completed_count > 0 || cancelled_count > 0)
-- **`{N+1}`** — View completed & cancelled epics
-@endif
-- **`m`/`manage`** — Manage an epic's lifecycle
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-Recreate with actual epics from discovery. No auto-select, even with one item.
+The index dump already carries the selection surfaces. Emit its `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker. No auto-select, even with one item.
 
 **STOP.** Wait for user response.
 

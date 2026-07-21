@@ -105,7 +105,8 @@ function format(result) {
   for (const u of result.cancelled) {
     lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
   }
-  return lines.join('\n') + '\n';
+  return lines.join('\n') + '\n'
+    + engine.project.selectionSections('epic', result.epics, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
 /**

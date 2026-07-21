@@ -58,15 +58,10 @@ The scoped discovery derives `all_done` — true only when at least one non-canc
 
 #### If `all_done` is `true`
 
-> *Output the next fenced block as markdown (not a code block):*
+Render and emit the section verbatim:
 
-```
-· · · · · · · · · · · ·
-All topics have completed review for "{work_unit:(titlecase)}".
-
-- **`y`/`yes`** — Mark this epic as completed
-- **`n`/`no`** — Return to the epic menu
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render epic-all-done-gate {work_unit}
 ```
 
 **STOP.** Wait for user response.
@@ -79,12 +74,10 @@ Complete the work unit — one command sets `status: completed`, stamps `complet
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete epic pipeline"
 ```
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Epic Completed
-
-"{work_unit:(titlecase)}" has completed all topics through review.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render pipeline-complete {work_unit}
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -99,10 +92,10 @@ Epic Completed
 
 ## E. Display and Menu
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-{completed_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {work_unit} --phase {completed_phase}
 ```
 
 → Load **[epic-display-and-menu.md](../../workflow-continue-epic/references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}` (or empty when section B did not load the orchestrator).
