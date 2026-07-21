@@ -146,4 +146,18 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   catalogue, resume-gate + task-list pilots, consumer swaps. Lee's review
   drove the subsection grammar (D5), surfaced the assembly-idiom duplication
   (D6 — four projections adopted, byte-identity by golden pins), and the
-  boxed-frame width fix landed in the primitive.
+  boxed-frame width fix landed in the primitive. Option grammar became
+  builders (cmdOption/promptOption/rangeOption) with a third single-source
+  invariant; 22 legacy literals converted.
+- 2026-07-21 — Stage 2 up (#491): finding + findings-summary unify the two
+  near-identical process-review-findings references; diff frame ships as
+  three sections so ```diff colouring survives; frame borders computed from
+  content, capped at 100 so a border never wraps. Banked separately: cache
+  purge at work-unit close (design settled).
+- 2026-07-21 — Stage 3 up (#492): proposed-task (analysis + review loops'
+  byte-identical twins unified; gate mode as a flag — mode ownership differs
+  per consumer), tasks-overview, author-task-gate, phase-tree (D5 delivered;
+  define-phases gains shaped output), task-list --variant existing for
+  plan-construction's twin gate. Stack synced: main → #490 → #491 → #492.
+  Remaining: stage 4 (bridge + continue-* = clone-family), stage 5 (entry
+  validation + transaction folds), stage 6 (static sweep + D4 lint).
