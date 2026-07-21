@@ -6,15 +6,16 @@ allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs
 
 # Investigation Process
 
-Act as **expert debugger** tracing through code, **documentation assistant** capturing findings, AND **collaborative advisor** presenting analysis and discussing fix direction with the user. These are equally important — the investigation drives understanding, the documentation preserves it, and the collaboration validates findings and aligns on approach. Dig deep: trace code paths, challenge assumptions, explore related areas. Then capture what you found.
+Act as **expert debugger** tracing through code, **documentation assistant** capturing findings, AND **collaborative advisor** involving the user from investigation plan to fix direction. These are equally important — the investigation drives understanding, the documentation preserves it, and the collaboration validates findings and aligns on approach. Dig deep: trace code paths, challenge assumptions, explore related areas. Then capture what you found.
 
 ## Purpose in the Workflow
 
 Investigation combines:
 - **Symptom gathering**: What's broken, how it manifests, reproduction steps
 - **Code analysis**: Tracing paths, finding root cause, understanding blast radius
+- **Fix direction**: Agreeing what the fix should do, validated against the root cause
 
-The output becomes source material for a specification focused on the fix approach.
+The user collaborates throughout — the investigation plan, the findings, and the fix direction are each agreed, not announced. The output becomes source material for a specification focused on the fix approach.
 
 ### What This Skill Needs
 
@@ -46,7 +47,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely.** Do not rely on your summary of it. The full process, steps, and rules must be reloaded.
-2. **Read the investigation file** at `.workflows/{work_unit}/investigation/{topic}.md` — this is your source of truth for what's been discovered.
+2. **Read the investigation file** at `.workflows/{work_unit}/investigation/{topic}.md` — this is your source of truth for what's been discovered. The hypothesis ledger in its Analysis section shows exactly where the analysis stands.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Announce your position** to the user before continuing: what you've found so far, what's still to investigate, and what comes next. Wait for confirmation.
 
@@ -61,11 +62,16 @@ The investigation file is your memory. Context compaction is lossy — what's no
 **Write to the file at natural moments:**
 
 - Symptoms are gathered
+- The investigation plan is agreed
+- A hypothesis changes status
 - A code path is traced
 - Root cause is identified
+- Fix direction is agreed
 - Each significant finding
 
 **After writing, commit** (`node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}"`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
+
+**Draft decisions to cache.** Anything still under discussion — fix options, validation output — lives in `.workflows/.cache/{work_unit}/investigation/{topic}/` until agreed. The investigation file records only what is agreed; a crash mid-discussion loses nothing.
 
 **Create the file early.** After understanding the initial symptoms, create the investigation file with the symptoms section.
 
@@ -188,7 +194,29 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 
 ---
 
-## Step 5: Code Analysis
+## Step 5: Investigation Plan
+
+> *Output the next fenced block as a code block:*
+
+```
+── Investigation Plan ───────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> A quick recon pass to form hypotheses, then agreement on where
+> to look and how collaboratively to work before deep tracing
+> begins.
+```
+
+Load **[investigation-plan.md](references/investigation-plan.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 6**.
+
+---
+
+## Step 6: Code Analysis
 
 > *Output the next fenced block as a code block:*
 
@@ -203,15 +231,17 @@ Load **[contextual-query.md](../workflow-knowledge/references/contextual-query.m
 > paths, checking state, and narrowing down the root cause.
 ```
 
-Load **[analysis-patterns.md](references/analysis-patterns.md)** and use its techniques to trace the bug through the code.
+Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques and **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol — both govern this step.
 
-Document findings in the investigation file as you analyze. Commit after each significant finding.
+Trace the bug through the code along the agreed plan. Document findings in the investigation file as you analyze, keep the hypothesis ledger current, and commit after each significant finding.
 
-→ On return, proceed to **Step 6**.
+When the root cause is identified and every hypothesis is resolved:
+
+→ On return, proceed to **Step 7**.
 
 ---
 
-## Step 6: Root Cause Synthesis
+## Step 7: Root Cause Synthesis
 
 > *Output the next fenced block as a code block:*
 
@@ -223,7 +253,7 @@ Document findings in the investigation file as you analyze. Commit after each si
 
 ```
 > Synthesising findings into a clear root cause statement,
-> contributing factors, and fix direction.
+> contributing factors, and blast radius.
 ```
 
 Synthesize findings into a clear root cause:
@@ -231,17 +261,19 @@ Synthesize findings into a clear root cause:
 1. **Root cause statement**: Clear, precise description of the bug's cause
 2. **Contributing factors**: What conditions enable the bug?
 3. **Why it wasn't caught**: Testing gaps, edge cases, etc.
-4. **Fix direction**: High-level approach (detailed in specification)
+4. **Blast radius**: What's directly affected; what shares the code or pattern
+
+Do not draft fix direction here — it is explored with the user after the findings are signed off.
 
 Document in the investigation file and commit.
 
 *Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../workflow-knowledge/references/knowledge-usage.md)**.*
 
-→ Proceed to **Step 7**.
+→ Proceed to **Step 8**.
 
 ---
 
-## Step 7: Root Cause Validation
+## Step 8: Root Cause Validation
 
 > *Output the next fenced block as a code block:*
 
@@ -252,38 +284,79 @@ Document in the investigation file and commit.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Reviewing the findings and optionally validating the root
-> cause against the codebase.
+> Offering an independent validation pass on the root cause
+> before the findings are presented.
 ```
 
-Load **[synthesis-agent.md](references/synthesis-agent.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 8**.
-
----
-
-## Step 8: Findings Review & Fix Discussion
-
-> *Output the next fenced block as a code block:*
-
-```
-── Findings Review ──────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Confirming the findings and discussing the fix approach
-> with you.
-```
-
-Load **[findings-review.md](references/findings-review.md)** and follow its instructions as written.
+Load **[root-cause-validation.md](references/root-cause-validation.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 9**.
 
 ---
 
-## Step 9: Compliance Self-Check
+## Step 9: Findings Sign-off
+
+> *Output the next fenced block as a code block:*
+
+```
+── Findings Sign-off ────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Presenting the investigation findings for your sign-off
+> before we explore the fix.
+```
+
+Load **[findings-signoff.md](references/findings-signoff.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 10**.
+
+---
+
+## Step 10: Fix Exploration & Discussion
+
+> *Output the next fenced block as a code block:*
+
+```
+── Fix Exploration ──────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Exploring fix approaches and agreeing the direction with you.
+```
+
+Load **[fix-exploration.md](references/fix-exploration.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 11**.
+
+---
+
+## Step 11: Fix Validation
+
+> *Output the next fenced block as a code block:*
+
+```
+── Fix Validation ───────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Offering an independent pressure-test of the agreed fix
+> direction before wrapping up.
+```
+
+Load **[fix-validation.md](references/fix-validation.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 12**.
+
+---
+
+## Step 12: Compliance Self-Check
 
 > *Output the next fenced block as a code block:*
 
@@ -299,11 +372,11 @@ Load **[findings-review.md](references/findings-review.md)** and follow its inst
 
 Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 10**.
+→ On return, proceed to **Step 13**.
 
 ---
 
-## Step 10: Conclude Investigation
+## Step 13: Conclude Investigation
 
 > *Output the next fenced block as a code block:*
 

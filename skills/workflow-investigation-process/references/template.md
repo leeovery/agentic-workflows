@@ -58,9 +58,13 @@ Use this structure for investigation documents.
 
 ## Analysis
 
-### Initial Hypotheses
+### Hypotheses
 
-{What the user or team initially suspected}
+**Checkpoint depth:** {straight-through | check-ins}
+
+{Live ledger — statuses evolve through the analysis:}
+- **{hypothesis}** [{suspected | tracing | confirmed | ruled-out}]
+  {basis, then evidence as it accumulates}
 
 ### Code Trace
 
@@ -119,7 +123,7 @@ Use this structure for investigation documents.
 
 ### Discussion
 
-{Journey notes from the findings review — user priorities, concerns raised, edge cases surfaced, what shifted thinking. Brief for simple bugs, detailed for complex.}
+{Journey notes from the fix discussion — user priorities, concerns raised, edge cases surfaced, what shifted thinking. Brief for simple bugs, detailed for complex.}
 
 ### Testing Recommendations
 
@@ -148,8 +152,8 @@ Gather all observable information about the bug before analyzing code. This crea
 
 ### Analysis Section
 
-Document your investigation journey. Even dead ends are valuable — they show what's NOT the cause and help others avoid the same paths.
+Document your investigation journey. Even dead ends are valuable — they show what's NOT the cause and help others avoid the same paths. The Hypotheses ledger is live state — keep statuses current as the analysis moves.
 
 ### Fix Direction Section
 
-Don't detail the implementation here — that's for the specification. Focus on high-level direction, options explored, and risk assessment. The chosen approach and discussion notes reflect the collaborative findings review — capture the decision journey, not just the outcome.
+Don't detail the implementation here — that's for the specification. Focus on high-level direction, options explored, and risk assessment. This section is written only when the fix discussion concludes — drafts live in cache until the direction is agreed. Capture the decision journey, not just the outcome.
