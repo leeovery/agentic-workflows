@@ -139,8 +139,8 @@ function workUnitMenu(type, unit) {
 
   let rendered = '';
   if (unit.finalising || revisitable.length > 0) {
-    const options = [`- **\`y\`/\`yes\`** — ${keys[0].label}`];
-    if (revisitable.length > 0) options.push('- **`r`/`revisit`** — Revisit an earlier phase');
+    const options = [cmdOption('y', 'yes', keys[0].label)];
+    if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
     rendered = dotFrame([
       `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — ${unit.phase_label}.`,
       '',
@@ -206,7 +206,7 @@ function revisitPhasesSection(phases) {
     'Which phase would you like to revisit?',
     '',
     ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — completed`)),
-    '- **`b`/`back`** — Return to the previous menu',
+    cmdOption('b', 'back', 'Return to the previous menu'),
     '',
     'Select an option:',
   ]);

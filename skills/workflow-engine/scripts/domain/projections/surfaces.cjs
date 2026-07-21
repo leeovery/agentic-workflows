@@ -63,6 +63,16 @@ function promptOption(label, description) {
 }
 
 /**
+ * Numbered-range option line — a span of selectable numbers:
+ * `- **`1`–`N`** — label`.
+ * @param {number|string} first @param {number|string} last @param {string} label
+ * @returns {string}
+ */
+function rangeOption(first, last, label) {
+  return `- **\`${first}\`–\`${last}\`** — ${label}`;
+}
+
+/**
  * `⚑` callout block: flag at 2-space indent, continuation lines aligned
  * beneath the text. A string wraps to `width` (flag gutter subtracted);
  * a pre-wrapped array renders as given.
@@ -127,4 +137,4 @@ function boxedFrame(title, contentLines, { minWidth = 53 } = {}) {
   return [top, ...contentLines, bottom].join('\n');
 }
 
-module.exports = { DOTS, section, dotFrame, menu, cmdOption, promptOption, callout, subDetail, treeList, boxedFrame };
+module.exports = { DOTS, section, dotFrame, menu, cmdOption, promptOption, rangeOption, callout, subDetail, treeList, boxedFrame };

@@ -17,7 +17,7 @@
 
 const { box } = require('../../kernel/render.cjs');
 const { titlecase, capitalise } = require('../conventions.cjs');
-const { dotFrame: dotMenu, cmdOption } = require('./surfaces.cjs');
+const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -295,12 +295,12 @@ function inboxPickupView(items, hasArchived) {
 
   const options = [];
   if (items.length === 1) {
-    options.push('- **`1`** — Select the item to work on');
+    options.push(cmdOption('1', null, 'Select the item to work on'));
   } else if (items.length > 1) {
-    options.push(`- **\`1\`–\`${items.length}\`** — Select item(s) to work on (comma-separated for several)`);
+    options.push(rangeOption(1, items.length, 'Select item(s) to work on (comma-separated for several)'));
   }
-  if (hasArchived) options.push('- **`a`/`archived`** — View archived items (restore or delete)');
-  options.push('- **`b`/`back`** — Return');
+  if (hasArchived) options.push(cmdOption('a', 'archived', 'View archived items (restore or delete)'));
+  options.push(cmdOption('b', 'back', 'Return'));
 
   return { data, display, menu: dotMenu(['What would you like to do?', '', ...options]) };
 }
@@ -350,14 +350,14 @@ function workingSetView(ws) {
   ].join('\n');
 
   const options = [];
-  if (ws.uniform) options.push('- **`w`/`work`** — Proceed to discovery with this set');
+  if (ws.uniform) options.push(cmdOption('w', 'work', 'Proceed to discovery with this set'));
   options.push(
-    '- **`a`/`add`** — Add another inbox item to the set',
-    '- **`d`/`drop`** — Drop item(s) from the set (keeps them in the inbox)',
-    '- **`r`/`archive`** — Archive the whole set out of the inbox',
-    '- **`v`/`view`** — View full content of the set',
-    '- **`b`/`back`** — Return to the inbox list',
-    '- **Ask** — Ask about the set',
+    cmdOption('a', 'add', 'Add another inbox item to the set'),
+    cmdOption('d', 'drop', 'Drop item(s) from the set (keeps them in the inbox)'),
+    cmdOption('r', 'archive', 'Archive the whole set out of the inbox'),
+    cmdOption('v', 'view', 'View full content of the set'),
+    cmdOption('b', 'back', 'Return to the inbox list'),
+    promptOption('Ask', 'Ask about the set'),
   );
   const menu = dotMenu([
     'What would you like to do? Type a shortcut, or just tell me in',
@@ -454,25 +454,25 @@ function manageUnitView(md) {
   const options = [];
   if (md.implementation_completed) {
     actions.push(['d', 'mark_completed']);
-    options.push('- **`d`/`done`** — Mark as completed');
+    options.push(cmdOption('d', 'done', 'Mark as completed'));
   }
   if (md.work_type === 'feature') {
     actions.push(['p', 'pivot']);
-    options.push('- **`p`/`pivot`** — Convert to epic (enables multiple topics)');
+    options.push(cmdOption('p', 'pivot', 'Convert to epic (enables multiple topics)'));
   }
   if (md.absorb_available) {
     actions.push(['a', 'absorb']);
-    options.push('- **`a`/`absorb`** — Merge into an existing epic');
+    options.push(cmdOption('a', 'absorb', 'Merge into an existing epic'));
   }
   if (md.has_plan) {
     actions.push(['v', 'view_plan']);
-    options.push('- **`v`/`view-plan`** — View the implementation plan');
+    options.push(cmdOption('v', 'view-plan', 'View the implementation plan'));
   }
   actions.push(['c', 'cancel'], ['b', 'back']);
   options.push(
-    '- **`c`/`cancel`** — Mark as cancelled',
-    '- **`b`/`back`** — Return',
-    '- **Ask** — Ask a question about this work unit',
+    cmdOption('c', 'cancel', 'Mark as cancelled'),
+    cmdOption('b', 'back', 'Return'),
+    promptOption('Ask', 'Ask a question about this work unit'),
   );
 
   const data = [
@@ -506,7 +506,7 @@ function manageUnitView(md) {
         '',
         ...md.available_epics.map((name, i) => cmdOption(String(i + 1), null, titlecase(name))),
         '',
-        '- **`b`/`back`** — Return',
+        cmdOption('b', 'back', 'Return'),
       ]),
     ));
   }
