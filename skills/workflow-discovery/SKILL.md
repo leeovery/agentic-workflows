@@ -173,6 +173,8 @@ Hold the output in conversation context as **the most recent discovery output**.
 - `discovery_map` — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`
 - `map_summary` — counts string used for the opener render
 - `dismissed` — names previously removed from the map
+- `description` — the work-unit one-liner
+- `seeds` / `imports` — the work unit's seed material entries (paths relative to `.workflows/{work_unit}/`), read by Step 8 and the session loop's launchpad branch
 - `session_logs` — every session log's number + path (ascending); read from this rather than re-globbing (used by continuity-load.md)
 - `next_session_number` — used to set `session_number` for fresh entries
 

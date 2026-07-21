@@ -51,11 +51,14 @@ function discover(cwd, workUnit) {
   };
   return {
     work_unit: workUnit,
+    description: typeof manifest.description === 'string' && manifest.description !== '' ? manifest.description : null,
     discovery_map: map,
     map_summary: summary,
     needs_sequencing,
     dismissed,
     active_session: activeSession,
+    seeds: Array.isArray(manifest.seeds) ? manifest.seeds : [],
+    imports: Array.isArray(manifest.imports) ? manifest.imports : [],
     session_logs: listSessionLogs(cwd, workUnit),
     analysis_caches: analysisCaches,
     next_session_number: nextSessionNumber,
@@ -63,8 +66,9 @@ function discover(cwd, workUnit) {
 }
 
 // The thin scoped dump: the map (rows + counts), the dismissed list, the
-// session-log index, analysis-cache statuses, and the next session number —
-// exactly what the session loop, map operations, continuity load, and the
+// work unit's manifest context (description, seeds, imports), the session-log
+// index, analysis-cache statuses, and the next session number — exactly what
+// the session loop, initialize step, map operations, continuity load, and the
 // shared topic-discovery dispatch read. Rendering is map-view's concern.
 function format(result) {
   if (result.error) {
@@ -72,6 +76,7 @@ function format(result) {
   }
   const lines = [];
   lines.push(`=== DISCOVERY: ${result.work_unit} ===`);
+  lines.push(`description: ${result.description === null ? '(none)' : result.description}`);
 
   const s = result.map_summary;
   lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled`);
@@ -96,6 +101,26 @@ function format(result) {
   } else {
     for (const name of result.dismissed) {
       lines.push(`  - ${name}`);
+    }
+  }
+
+  const seeds = result.seeds || [];
+  lines.push(`seeds (${seeds.length}):`);
+  if (seeds.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const entry of seeds) {
+      lines.push(`  - ${entry.path}${entry.source ? ` (source: ${entry.source})` : ''}`);
+    }
+  }
+
+  const imports = result.imports || [];
+  lines.push(`imports (${imports.length}):`);
+  if (imports.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const entry of imports) {
+      lines.push(`  - ${entry.path}`);
     }
   }
 
