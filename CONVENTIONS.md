@@ -78,7 +78,14 @@ Status displays use the phase title at the top of the same code block, followed 
 
 ### Step Markers
 
-Em-dash framed progress indicators. Embedded at each step boundary — never instructed once at the top of a file. Short left side, long right side to fill width. Every step in a skill gets a marker, even if the step has no explicit output — Claude's visible processing (reading files, running commands, thinking) IS the user experience, and the marker labels that activity. Every step marker must be followed by a signpost blockquote explaining what the step does and why — the marker names the step, the signpost explains it.
+Em-dash framed progress indicators. Embedded at the step boundaries that earn them — never instructed once at the top of a file. Short left side, long right side to fill width.
+
+**Markers are earned, not automatic.** A step carries a marker only when the user gets something between it and the next visible output: an interaction (menu, `**STOP.**` gate), substantive watchable activity (analysis, agent dispatch, engine transactions, multi-file work), or rendered content. Consecutive markers with nothing between them read as step-by-step progress that isn't happening — noise, not orientation.
+
+- **Silent step**: a step whose body is plumbing — loading a reference, one quick command, evaluating a branch — keeps its `## Step N` heading (routing target, load boundary) but authors no marker and no signpost. The step renders nothing.
+- **Conditional chrome**: a step whose common path is a no-op places its marker and signpost inside the branch that acts, not at step entry. The no-op path renders nothing — a header announcing a non-event is the noise this rule exists to prevent.
+
+Every step marker must be followed by a signpost blockquote explaining what the step does and why — the marker names the step, the signpost explains it.
 
 ```
 ── Construct Specification ─────────────────────
@@ -427,7 +434,8 @@ Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
 - **Step 0** hosts initialisation; `workflow-start` runs migrations and the knowledge gate via `engine boot`
 - Steps are separated by `---` horizontal rules
 - Each step completes fully before the next begins
-- User-facing step markers (see Display & Output Conventions → Step Markers) use names only — no numbers. They are embedded at each step boundary, including steps with no explicit output (Claude's visible processing labels the activity for the user)
+- User-facing step markers (see Display & Output Conventions → Step Markers) use names only — no numbers. Only steps that earn chrome carry them; silent steps produce no user-facing output
+- When consecutive steps always run together — nothing routes into the later step and no gate sits between them — they are one step; author them as one
 
 ### Sub-Steps (Early Setup Steps Only)
 
