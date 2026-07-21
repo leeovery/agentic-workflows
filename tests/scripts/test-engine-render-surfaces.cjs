@@ -364,9 +364,203 @@ describe('render finding', () => {
   });
 });
 
+describe('render proposed-task', () => {
+  let dir;
+  const payload = {
+    current: 2, total: 3, title: 'Fix adapter leak', severity: 'Important',
+    sources: 'reviewer cycle 1',
+    problem: 'The adapter never closes.', solution: 'Close on detach.', outcome: 'No leaked handles.',
+    steps: ['1. Add Close()', '2. Call it on detach'],
+    criteria: ['- no leaked handles after detach'],
+    tests: ['- detach closes the adapter'],
+  };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the task detail plus the approval menu when gated, byte-exactly', () => {
+    const file = writePayload(dir, 'p.json', payload);
+    const out = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated' });
+    assert.strictEqual(out, [
+      '=== DISPLAY: proposed task (emit verbatim as markdown) ===',
+      '**Task 2/3: Fix adapter leak** (Important)',
+      'Sources: reviewer cycle 1',
+      '',
+      '**Problem**: The adapter never closes.',
+      '**Solution**: Close on detach.',
+      '**Outcome**: No leaked handles.',
+      '',
+      '**Do**:',
+      '1. Add Close()',
+      '2. Call it on detach',
+      '',
+      '**Acceptance Criteria**:',
+      '- no leaked handles after detach',
+      '',
+      '**Tests**:',
+      '- detach closes the adapter',
+      '',
+      "=== MENU: task approval (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      'Approve this task?',
+      '',
+      '- **`y`/`yes`** — Approve this task',
+      '- **`a`/`auto`** — Approve this and all remaining tasks automatically',
+      '- **`s`/`skip`** — Skip this task',
+      '- **Comment** — Tell me what to change',
+      DOTS,
+      '',
+    ].join('\n'));
+  });
+
+  it('honours a custom comment hint and the auto gate', () => {
+    const file = writePayload(dir, 'p.json', payload);
+    const gated = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'gated', 'comment-hint': 'Provide feedback to adjust' });
+    assert.ok(gated.includes('- **Comment** — Provide feedback to adjust'));
+    const auto = renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file, gate: 'auto' });
+    assert.ok(auto.includes('=== DISPLAY: task auto-approved (emit verbatim as a code block after recording the approval) ===\nTask 2 of 3: Fix adapter leak — approved [auto].'));
+    assert.ok(!auto.includes('MENU: task approval'));
+  });
+
+  it('requires --gate and validates the payload loudly', () => {
+    const file = writePayload(dir, 'p.json', payload);
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file }), /--gate must be "gated" or "auto"/);
+    const noTests = writePayload(dir, 'bad.json', { ...payload, tests: [] });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noTests, gate: 'gated' }), /"tests" must be non-empty/);
+    const noProblem = writePayload(dir, 'bad2.json', { ...payload, problem: '' });
+    assert.throws(() => renderSurface(dir, 'proposed-task', { dotpath: 'pay.implementation.portal', file: noProblem, gate: 'gated' }), /"problem" must be a non-empty string/);
+  });
+});
+
+describe('render tasks-overview', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the cycle overview byte-exactly', () => {
+    const file = writePayload(dir, 'o.json', { label: 'Analysis cycle 2', tasks: [{ title: 'Fix leak', severity: 'Important' }, { title: 'Add test', severity: 'Minor' }] });
+    const out = renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: tasks overview (emit verbatim as a code block) ===',
+      'Analysis cycle 2: 2 proposed tasks',
+      '',
+      '  1. Fix leak (Important)',
+      '  2. Add test (Minor)',
+      '',
+    ].join('\n'));
+  });
+
+  it('validates loudly', () => {
+    const file = writePayload(dir, 'o.json', { label: 'X', tasks: [{ title: 't' }] });
+    assert.throws(() => renderSurface(dir, 'tasks-overview', { dotpath: 'pay.implementation.portal', file }), /task 1 needs "title" and "severity"/);
+  });
+});
+
+describe('render author-task-gate', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the authoring menu byte-exactly', () => {
+    const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command' });
+    assert.strictEqual(out, [
+      "=== MENU: author task gate (emit verbatim as markdown, then STOP for the user's response) ===",
+      DOTS,
+      '**Task 2 of 5: Wrap command**',
+      '',
+      '- **`y`/`yes`** — Write it to the plan',
+      '- **`a`/`auto`** — Approve this and all remaining tasks automatically',
+      '- **Tell me what to change** — what to revise in this task',
+      '- **Navigate** — Tell me where to go: a different phase or task, or the leading edge',
+      DOTS,
+      '',
+    ].join('\n'));
+  });
+
+  it('validates the scalars loudly', () => {
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '0', total: '5', title: 'X' }), /--m must be a positive integer/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '1', title: 'X' }), /--total must be an integer/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2' }), /--title is required/);
+  });
+});
+
+describe('render phase-tree', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders numbered phase nodes with wrapped tree detail, byte-exactly', () => {
+    const file = writePayload(dir, 'ph.json', {
+      phases: [
+        { name: 'Adapter Wrapper', detail: [['Goal', 'burst windows land at a live shell'], ['Criteria', 'no dead-end prompt']] },
+        { name: 'Regression Net', detail: [['Goal', 'attach flows pinned by tests']] },
+      ],
+    });
+    const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file });
+    assert.strictEqual(out, [
+      '=== DISPLAY: phase tree (emit verbatim as a code block) ===',
+      'Phase structure — 2 phases.',
+      '',
+      '1. Adapter Wrapper',
+      '   ├─ Goal: burst windows land at a live shell',
+      '   └─ Criteria: no dead-end prompt',
+      '',
+      '2. Regression Net',
+      '   └─ Goal: attach flows pinned by tests',
+      '',
+    ].join('\n'));
+  });
+
+  it('appends the structure gate with --approve; long detail wraps with the gutter', () => {
+    const file = writePayload(dir, 'ph.json', {
+      phases: [{ name: 'X', detail: [['Goal', 'goal '.repeat(30).trim()], ['Criteria', 'done']] }],
+    });
+    const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
+    assert.ok(out.includes('MENU: phase structure gate'));
+    assert.ok(out.includes('- **`y`/`yes`** — Proceed to task breakdown'));
+    const lines = out.split('\n');
+    const goalIdx = lines.findIndex((l) => l.startsWith('   ├─ Goal:'));
+    assert.ok(lines[goalIdx + 1].startsWith('   │  goal'), 'wrapped detail carries the gutter');
+  });
+
+  it('validates loudly', () => {
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'a.json', { phases: [] }) }), /"phases" must be a non-empty array/);
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: writePayload(dir, 'b.json', { phases: [{ name: 'X', detail: [] }] }) }), /"detail" must be a non-empty array/);
+  });
+});
+
+describe('render task-list --variant existing', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('gated menu drops the auto option; auto mode says confirmed', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', task_list_gate_mode: 'gated' } } } } });
+    const file = writePayload(dir, 'tl.json', { phase: 1, phase_name: 'X', tasks: [{ name: 'A', summary: 'b' }] });
+    const gated = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file, variant: 'existing' });
+    assert.ok(gated.includes('- **Tell me what to change** — which tasks to revise in this phase'));
+    assert.ok(!gated.includes('`a`/`auto`'), 'existing variant offers no auto opt-in');
+
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', task_list_gate_mode: 'auto' } } } } });
+    const auto = renderSurface(dir, 'task-list', { dotpath: 'pay.planning.portal', file, variant: 'existing' });
+    assert.ok(auto.includes('Phase 1: X — task list confirmed. Proceeding to authoring.'));
+  });
+});
+
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree\)/);
   });
 });
 

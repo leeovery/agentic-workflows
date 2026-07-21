@@ -129,14 +129,15 @@ function readTaskListPayload(cwd, file) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
+ * @param {{dotpath: string, file?: string, variant?: string}} args
  * @returns {string} sections
  */
-function taskList(cwd, { dotpath, file }) {
+function taskList(cwd, { dotpath, file, variant: variantArg }) {
   if (!file) throw new Error('render task-list: --file <payload.json> is required');
   const { topic, manifest } = resolveAddress(cwd, dotpath, 'task-list');
   const payload = readTaskListPayload(cwd, file);
 
+  const variant = variantArg === 'existing' ? 'existing' : 'fresh';
   const items = (((manifest.phases || {}).planning || {}).items || {})[topic] || {};
   const gateMode = items.task_list_gate_mode === 'auto' ? 'auto' : 'gated';
 
@@ -161,16 +162,199 @@ function taskList(cwd, { dotpath, file }) {
     parts.push(section(
       'DISPLAY: task list auto-approved',
       'emit verbatim as a code block, then proceed without a gate',
-      `Phase ${payload.phase}: ${payload.phase_name} — task list approved. Proceeding to authoring.`,
+      variant === 'existing'
+        ? `Phase ${payload.phase}: ${payload.phase_name} — task list confirmed. Proceeding to authoring.`
+        : `Phase ${payload.phase}: ${payload.phase_name} — task list approved. Proceeding to authoring.`,
     ));
   } else {
+    const options = variant === 'existing'
+      ? [
+          cmdOption('y', 'yes', 'Proceed to authoring'),
+          promptOption('Tell me what to change', 'which tasks to revise in this phase'),
+          promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
+        ]
+      : [
+          cmdOption('y', 'yes', 'Proceed to authoring'),
+          cmdOption('a', 'auto', 'Approve this and all remaining task list gates automatically'),
+          promptOption('Tell me what to change', 'which tasks to reorder, split, merge, add, edit, or remove'),
+          promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
+        ];
     parts.push(section(
       'MENU: task list gate',
       'emit verbatim as markdown, then STOP for the user\'s response',
-      menu('Approve this task list?', [
-        cmdOption('y', 'yes', 'Proceed to authoring'),
-        cmdOption('a', 'auto', 'Approve this and all remaining task list gates automatically'),
-        promptOption('Tell me what to change', 'which tasks to reorder, split, merge, add, edit, or remove'),
+      menu('Approve this task list?', options),
+    ));
+  }
+  return parts.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// proposed-task / tasks-overview — the analysis and review synthesis loops'
+// shared task presentation (their prose templates were byte-identical twins).
+// Gate mode rides as a flag, not an address read: one consumer carries it in
+// the cycle response, the other in staging-file frontmatter — the surface
+// guarantees the form of both outputs, the flow owns the mode.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, gate?: string, 'comment-hint'?: string}} args
+ * @returns {string}
+ */
+function proposedTask(cwd, args) {
+  const { dotpath, file, gate } = args;
+  if (!file) throw new Error('render proposed-task: --file <payload.json> is required');
+  if (gate !== 'gated' && gate !== 'auto') throw new Error('render proposed-task: --gate must be "gated" or "auto"');
+  resolveAddress(cwd, dotpath, 'proposed-task');
+  const p = readJsonPayload(cwd, file, 'proposed-task');
+
+  if (!Number.isInteger(p.current) || p.current < 1) throw new Error('render proposed-task: "current" must be a positive integer');
+  if (!Number.isInteger(p.total) || p.total < p.current) throw new Error('render proposed-task: "total" must be an integer ≥ "current"');
+  for (const field of ['title', 'severity', 'sources', 'problem', 'solution', 'outcome']) {
+    if (!isFilled(p[field])) throw new Error(`render proposed-task: "${field}" must be a non-empty string`);
+  }
+  const blocks = {};
+  for (const field of ['steps', 'criteria', 'tests']) {
+    const lines = stringLines(p[field], 'proposed-task', field);
+    if (lines.length === 0) throw new Error(`render proposed-task: "${field}" must be non-empty`);
+    blocks[field] = lines;
+  }
+
+  const body = [
+    `**Task ${p.current}/${p.total}: ${p.title}** (${p.severity})`,
+    `Sources: ${p.sources}`,
+    '',
+    `**Problem**: ${p.problem}`,
+    `**Solution**: ${p.solution}`,
+    `**Outcome**: ${p.outcome}`,
+    '',
+    '**Do**:',
+    ...blocks.steps,
+    '',
+    '**Acceptance Criteria**:',
+    ...blocks.criteria,
+    '',
+    '**Tests**:',
+    ...blocks.tests,
+  ];
+  const parts = [section('DISPLAY: proposed task', 'emit verbatim as markdown', body.join('\n'))];
+
+  if (gate === 'auto') {
+    parts.push(section(
+      'DISPLAY: task auto-approved',
+      'emit verbatim as a code block after recording the approval',
+      `Task ${p.current} of ${p.total}: ${p.title} — approved [auto].`,
+    ));
+  } else {
+    const hint = isFilled(args['comment-hint']) ? args['comment-hint'] : 'Tell me what to change';
+    parts.push(section(
+      'MENU: task approval',
+      'emit verbatim as markdown, then STOP for the user\'s response',
+      menu('Approve this task?', [
+        cmdOption('y', 'yes', 'Approve this task'),
+        cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
+        cmdOption('s', 'skip', 'Skip this task'),
+        promptOption('Comment', hint),
+      ]),
+    ));
+  }
+  return parts.join('\n');
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function tasksOverview(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render tasks-overview: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'tasks-overview');
+  const p = readJsonPayload(cwd, file, 'tasks-overview');
+  if (!isFilled(p.label)) throw new Error('render tasks-overview: "label" must be a non-empty string');
+  if (!Array.isArray(p.tasks) || p.tasks.length === 0) {
+    throw new Error('render tasks-overview: "tasks" must be a non-empty array of {title, severity}');
+  }
+  const lines = [`${p.label}: ${p.tasks.length} proposed task${p.tasks.length === 1 ? '' : 's'}`, ''];
+  p.tasks.forEach((t, i) => {
+    if (!isFilled(t.title) || !isFilled(t.severity)) {
+      throw new Error(`render tasks-overview: task ${i + 1} needs "title" and "severity"`);
+    }
+    lines.push(`  ${i + 1}. ${t.title} (${t.severity})`);
+  });
+  return section('DISPLAY: tasks overview', 'emit verbatim as a code block', lines.join('\n'));
+}
+
+// ---------------------------------------------------------------------------
+// author-task-gate — the planning task-authoring per-task menu. The task
+// detail itself is a verbatim file emission the flow owns; only the gate
+// renders here. Scalars ride as flags.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, m?: string, total?: string, title?: string}} args
+ * @returns {string}
+ */
+function authorTaskGate(cwd, { dotpath, m, total, title }) {
+  resolveAddress(cwd, dotpath, 'author-task-gate');
+  const mN = parseInt(m || '', 10);
+  const totalN = parseInt(total || '', 10);
+  if (!Number.isInteger(mN) || mN < 1) throw new Error('render author-task-gate: --m must be a positive integer');
+  if (!Number.isInteger(totalN) || totalN < mN) throw new Error('render author-task-gate: --total must be an integer ≥ --m');
+  if (!isFilled(title)) throw new Error('render author-task-gate: --title is required');
+  return section(
+    'MENU: author task gate',
+    'emit verbatim as markdown, then STOP for the user\'s response',
+    menu(`**Task ${mN} of ${totalN}: ${title}**`, [
+      cmdOption('y', 'yes', 'Write it to the plan'),
+      cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
+      promptOption('Tell me what to change', 'what to revise in this task'),
+      promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
+    ]),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// phase-tree — the multi-phase structure display (D5): numbered phase nodes
+// with wrapped tree children, one visual grammar with the task list beneath.
+// `--approve` appends the phase-structure approval menu.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string, approve?: string}} args
+ * @returns {string}
+ */
+function phaseTree(cwd, args) {
+  const { dotpath, file } = args;
+  if (!file) throw new Error('render phase-tree: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'phase-tree');
+  const p = readJsonPayload(cwd, file, 'phase-tree');
+  if (!Array.isArray(p.phases) || p.phases.length === 0) {
+    throw new Error('render phase-tree: "phases" must be a non-empty array of {name, detail?}');
+  }
+  const count = p.phases.length;
+  const lines = [`Phase structure — ${count} phase${count === 1 ? '' : 's'}.`, ''];
+  p.phases.forEach((ph, i) => {
+    if (!isFilled(ph.name)) throw new Error(`render phase-tree: phase ${i + 1} needs "name"`);
+    lines.push(`${i + 1}. ${ph.name}`);
+    if (ph.detail !== undefined) {
+      if (!Array.isArray(ph.detail) || ph.detail.length === 0
+        || ph.detail.some((d) => !Array.isArray(d) || d.length !== 2 || !isFilled(d[0]) || !isFilled(String(d[1])))) {
+        throw new Error(`render phase-tree: phase ${i + 1} "detail" must be a non-empty array of [label, value] pairs`);
+      }
+      lines.push(treeList(ph.detail.map(([label, value]) => `${label}: ${value}`), { indent: '   ' }));
+    }
+    if (i < count - 1) lines.push('');
+  });
+  const parts = [section('DISPLAY: phase tree', 'emit verbatim as a code block', lines.join('\n'))];
+  if ('approve' in args) {
+    parts.push(section(
+      'MENU: phase structure gate',
+      'emit verbatim as markdown, then STOP for the user\'s response',
+      menu('Approve this phase structure?', [
+        cmdOption('y', 'yes', 'Proceed to task breakdown'),
+        promptOption('Tell me what to change', 'which phases to reorder, split, merge, add, edit, or remove'),
         promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
       ]),
     ));
@@ -323,6 +507,10 @@ const SURFACES = {
   'task-list': taskList,
   'findings-summary': findingsSummary,
   'finding': finding,
+  'proposed-task': proposedTask,
+  'tasks-overview': tasksOverview,
+  'author-task-gate': authorTaskGate,
+  'phase-tree': phaseTree,
 };
 
 /**

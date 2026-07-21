@@ -133,17 +133,10 @@ Present the full task content:
 {task detail from task detail file}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Render the gate and emit the section verbatim:
 
-```
-· · · · · · · · · · · ·
-**Task {M} of {total}: {Task Name}**
-
-- **`y`/`yes`** — Write it to the plan
-- **`a`/`auto`** — Approve this and all remaining tasks automatically
-- **Tell me what to change** — what to revise in this task
-- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --m {M} --total {total} --title "{Task Name}"
 ```
 
 **STOP.** Wait for user response.

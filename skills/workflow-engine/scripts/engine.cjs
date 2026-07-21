@@ -156,6 +156,10 @@ Commands:
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json>
+  render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
+  render tasks-overview   <wu.phase.topic> --file <payload.json>
+  render author-task-gate <wu.planning.topic> --m N --total N --title STR
+  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -649,12 +653,15 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, positional } = parseArgs(rest);
+  const { opts, flags, positional } = parseArgs(rest, ['approve']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
     try {
-      respondSections(renderSurface(process.cwd(), command, { dotpath: positional[0], ...opts }));
+      /** @type {{dotpath: string} & Record<string, string|undefined>} */
+      const args = { dotpath: positional[0], ...opts };
+      if (flags.has('approve')) args.approve = '1';
+      respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);
     }

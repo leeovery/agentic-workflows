@@ -167,9 +167,13 @@ engine render resume-gate <wu>.<phase>.<topic> [--triage <N>]     # shared conti
 engine render task-list <wu>.planning.<topic> --file <payload>    # planning task-list gate; payload {phase, phase_name, tasks: [{name, summary, edge_cases?}]}
 engine render findings-summary <wu>.<phase>.<topic> --file <payload>  # review-findings overview; payload {review_label, items: [{title, tag, summary}]}
 engine render finding <wu>.<phase>.<topic> --file <payload>       # one finding + its gate; payload {n, total, title, meta, details, diff|content, apply_label?, applied_label?, feedback_hint?}
+engine render proposed-task <wu>.<phase>.<topic> --file <payload> --gate gated|auto [--comment-hint STR]  # analysis/review synthesis task + its gate; payload {current, total, title, severity, sources, problem, solution, outcome, steps, criteria, tests}
+engine render tasks-overview <wu>.<phase>.<topic> --file <payload>    # proposed-tasks cycle overview; payload {label, tasks: [{title, severity}]}
+engine render author-task-gate <wu>.planning.<topic> --m N --total N --title STR   # task-authoring approval menu (the detail itself is a verbatim file emission the flow owns)
+engine render phase-tree <wu>.planning.<topic> --file <payload> [--approve]        # D5 phase structure tree; payload {phases: [{name, detail?: [[label, value]]}]}; --approve appends the structure gate
 ```
 
-The `finding` surface serves both review-findings loops (planning and specification) with per-consumer labels in the payload. Its diff presentation returns the boxed frame as three sections — frame open, diff body (emitted as a ` ```diff ` fence so the host's colouring survives), frame close — with the frame borders computed from the content width.
+The `finding` surface serves both review-findings loops (planning and specification) with per-consumer labels in the payload; `proposed-task` serves both synthesis loops (implementation analysis, review actions) the same way — its gate mode rides as a flag because one consumer carries the mode in the cycle response and the other in staging-file frontmatter. `task-list` takes `--variant existing` for plan-construction's review-of-existing-tables gate (no auto-opt-in option; "confirmed" phrasing). The `finding` surface's diff presentation returns the boxed frame as three sections — frame open, diff body (emitted as a ` ```diff ` fence so the host's colouring survives), frame close — with the frame borders computed from the content width.
 
 The `render` group also keeps its dev/debug primitives (`signpost`, `box`, `wrap`, `tree`) — authoring aids only, never called from skill flows.
 
