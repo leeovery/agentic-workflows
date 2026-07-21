@@ -104,6 +104,19 @@ cache paths. Genuine this-turn judgment payloads are rare.
   Leaning (a); Lee to decide by the static-sweep stage.
 - **D4 — open**: closing lint — "a templated menu/display fence in prose is a
   violation" once the sweep completes (mechanically decidable).
+- **D5 (2026-07-21)**: task-shaped displays use the subsection grammar — name
+  line, `·`-glyphed wrapped summary, `· Edge cases` header owning a flat
+  wrapped tree; continuations never fall to column zero (Lee, from the A′
+  mock). Multi-phase displays (phase-structure approval, plan summary,
+  task-graph view — stage 3) render as trees: numbered phase nodes with
+  task/goal children, same primitives, one visual grammar.
+- **D6 (2026-07-21)**: assembly idioms live in `projections/surfaces.cjs` —
+  the sanctioned middle layer between the mechanism kernel and per-surface
+  projections that the campaign's two-layer doctrine lacked (which is where
+  the five dot-frame copies accumulated). The dot-rule literal is pinned to
+  one module by a single-source invariant test; the callout idiom is
+  structurally single-sourced (no mechanical invariant — inline ⚑ headers
+  make a content grep false-positive-prone).
 
 ## Staged plan
 
@@ -129,3 +142,8 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 - 2026-07-21 — Census run (473 sites), families table drawn, contract and
   layering agreed in session with Lee. Portal incidents recorded as
   motivation. Doc branch opened; stage 1 begins.
+- 2026-07-21 — Stage 1 up (#490): surfaces primitives, `engine render`
+  catalogue, resume-gate + task-list pilots, consumer swaps. Lee's review
+  drove the subsection grammar (D5), surfaced the assembly-idiom duplication
+  (D6 — four projections adopted, byte-identity by golden pins), and the
+  boxed-frame width fix landed in the primitive.
