@@ -22,6 +22,19 @@ No prior session is in progress. `session_number` will be set at Step 7 from dis
 
 The output is the in-progress session number string (e.g. `002`) — the prior session was interrupted before finalisation.
 
+> *Output the next fenced block as a code block:*
+
+```
+── Resume Detection ─────────────────────────────
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> An earlier discovery session for this epic was left unfinished —
+> choose whether to pick it up or start fresh.
+```
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
