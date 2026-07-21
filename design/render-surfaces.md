@@ -141,7 +141,9 @@ cache paths. Genuine this-turn judgment payloads are rare.
    (byte-identical task displays today), plan-construction's twin gate.
 4. **Bridge + continue-*** — merges with the clone-family consolidation
    ledger item (same files, same factoring).
-5. **One-call operations (D7)** — `discovery-map add-batch {wu} --file
+5. **One-call operations (D7) — MOVED out of this stack** (see log entry:
+   #495 closed; census-first batching programme runs after the stack lands).
+   Original scope for reference: — `discovery-map add-batch {wu} --file
    <topics.json>` (the harvest persists atomically in one call; the
    confirm-and-persist swap); **cache purge at work-unit close** (settled
    design: `workunit complete`/`cancel`/`absorb` remove
@@ -203,10 +205,17 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   plan-construction's twin gate. Stack synced: main → #490 → #491 → #492.
   Remaining: stage 4 (bridge + continue-* = clone-family), stage 5 (entry
   validation + transaction folds), stage 6 (static sweep + D4 lint).
-- 2026-07-21 — Stage 5a up (#495): discovery-map add-batch (the fumi
-  harvest's 48 calls → 1, atomic) + cache purge at work-unit close
-  (complete/cancel/absorb). Call-chain audits run by two sub-agents; raw
-  results folded into stage 5b for scoping.
+- 2026-07-21 — Stage 5a (#495) built and CLOSED unmerged: built backwards.
+  add-batch was implemented from the one known site before the audit results
+  were folded in (census-first is this programme's own discipline), and the
+  unrelated cache purge was conflated into the same PR mid-stack. Lesson
+  recorded. Batching returns AFTER this stack lands as its own census-first
+  programme: classify all 16 audited sites (batch verb / dump fold /
+  structural), design the general batch contract (payload shape, validation,
+  atomicity, response), agree with Lee, then implement — the harvest
+  add-batch re-cut as one instance of the contract. Cache purge ships then
+  too, as its own standalone PR (design settled; code recoverable from the
+  closed #495 branch history or recut).
 - 2026-07-21 — Stage 4 up (#493): selection projection (one composition,
   five type configs — the clone-family factory for the select step; all five
   gateways append deferred selection sections, select-*.md templates gone);
