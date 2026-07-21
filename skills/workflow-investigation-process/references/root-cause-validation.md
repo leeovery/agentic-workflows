@@ -52,19 +52,19 @@ Determine the next set number by checking existing files:
 ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
 ```
 
-Use the next available `{NNN}` for `synthesis-*` files (zero-padded, e.g., `001`, `002`).
+Use the next available `{NNN}` for `root-cause-validation-*` files (zero-padded, e.g., `001`, `002`).
 
-Write the skeleton cache file at `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
+Write the skeleton cache file at `.workflows/.cache/{work_unit}/investigation/{topic}/root-cause-validation-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
 
 ```yaml
 ---
-type: synthesis
+type: root-cause-validation
 status: in-flight
 created: {date}
 ---
 ```
 
-**Agent path**: `../../../agents/workflow-investigation-synthesis.md`
+**Agent path**: `../../../agents/workflow-investigation-root-cause-validation.md`
 
 > *Output the next fenced block as a code block:*
 
@@ -77,7 +77,7 @@ Dispatch **one agent** via the Task tool (**synchronous** — do not use `run_in
 The validation agent receives:
 
 1. **Investigation file path** — `.workflows/{work_unit}/investigation/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` (the skeleton above is already on disk there)
+2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/root-cause-validation-{NNN}.md` (the skeleton above is already on disk there)
 
 The validation agent returns:
 
@@ -122,7 +122,7 @@ Validation: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
   {gap 1}
   {gap 2}
 
-Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md
+Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/root-cause-validation-{NNN}.md
 ```
 
 The gaps live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them:

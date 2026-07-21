@@ -16,7 +16,7 @@ A bounded first pass — enough to form hypotheses, never the investigation itse
 
 Form the initial hypotheses. Each needs a one-line basis (what points at it), not proof. If the seed material already pinpoints the cause, say so — a single near-confirmed hypothesis is a valid plan.
 
-Deep tracing belongs to code analysis. If recon starts confirming rather than forming, stop and plan.
+Deep tracing belongs to code analysis. If recon starts confirming rather than forming, stop — that work belongs after the plan is agreed.
 
 → Proceed to **B. Present Plan**.
 

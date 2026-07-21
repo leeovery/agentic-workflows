@@ -40,6 +40,7 @@ Next: {what will be traced next}
 ```
 · · · · · · · · · · · ·
 Continue as planned?
+
 - **`y`/`yes`** — Continue with the next trace line
 - **Steer** — Tell me what to look at instead, or what this changes
 · · · · · · · · · · · ·
@@ -72,6 +73,7 @@ Proposed direction:
 ```
 · · · · · · · · · · · ·
 Proceed on the new direction?
+
 - **`y`/`yes`** — Proceed as proposed
 - **Adjust** — Tell me what to change
 · · · · · · · · · · · ·
@@ -94,3 +96,5 @@ Any depth. When blocked on something only the user knows — reproduction fails,
 ```
 
 **STOP.** Wait for user response.
+
+Once answered, fold the answer into the trace and continue the analysis.

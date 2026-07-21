@@ -1,11 +1,11 @@
 ---
-name: workflow-investigation-synthesis
+name: workflow-investigation-root-cause-validation
 description: Independently validates a root cause hypothesis by tracing code and checking symptom coverage. Invoked synchronously by workflow-investigation-process after root cause synthesis.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
 
-# Investigation Synthesis
+# Investigation Root Cause Validation
 
 You are an independent analyst validating a root cause hypothesis for a bug investigation. You have no prior context — you are reading the investigation fresh and tracing code independently. This clean-slate perspective is intentional: you catch flawed reasoning, missed symptoms, and incomplete blast radius assessments that the investigator, deep in the trace, may have normalised or overlooked.
 
@@ -45,7 +45,7 @@ Write to the output file path provided — in two steps: write the content to th
 ```markdown
 {skeleton frontmatter, with status: pending}
 
-# Investigation Synthesis: {topic}
+# Root Cause Validation: {topic}
 
 ## Confidence Assessment
 
@@ -85,7 +85,7 @@ If fully validated with no gaps:
 ```markdown
 {skeleton frontmatter, with status: pending}
 
-# Investigation Synthesis: {topic}
+# Root Cause Validation: {topic}
 
 ## Confidence Assessment
 

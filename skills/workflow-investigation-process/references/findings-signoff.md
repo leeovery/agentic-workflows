@@ -65,4 +65,4 @@ Do these findings match your understanding?
 
 Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit.
 
-→ Return to **A. Present & Confirm** — the re-render guarantees the gate always sits beneath current content.
+→ Return to **A. Present & Confirm**.

@@ -24,7 +24,7 @@ ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
 
 Use the next available `{NNN}` for `fix-options-*` files (zero-padded, e.g., `001`, `002`).
 
-Write the draft to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-options-{NNN}.md` — the options, trade-offs, and any recommendation:
+Write the draft to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-options-{NNN}.md` — this frontmatter, then the options, trade-offs, and any recommendation as the body:
 
 ```yaml
 ---
@@ -63,7 +63,7 @@ multiple approaches benefit from comparison structure.}
 What are your thoughts?
 
 - **`y`/`yes`** — Agree with this direction
-- **Provide feedback** — Discuss, challenge, or suggest alternatives
+- **Provide feedback** — Tell me your thoughts: discuss, challenge, or suggest alternatives
 · · · · · · · · · · · ·
 ```
 
@@ -91,7 +91,7 @@ Do not go into implementation detail — that belongs in the specification.
 
 Update the cache draft as the option space shifts — new options, killed options, changed trade-offs — so a crash never loses the discussion.
 
-→ Return to **B. Present & Discuss** — re-render the updated option space so the gate sits beneath current content.
+→ Return to **B. Present & Discuss**.
 
 ---
 
