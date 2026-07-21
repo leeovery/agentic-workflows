@@ -165,7 +165,11 @@ engine commit --workflows -m "<message>"
 ```bash
 engine render resume-gate <wu>.<phase>.<topic> [--triage <N>]     # shared continue/restart gate; --triage adds the undrained-concerns warning above the menu
 engine render task-list <wu>.planning.<topic> --file <payload>    # planning task-list gate; payload {phase, phase_name, tasks: [{name, summary, edge_cases?}]}
+engine render findings-summary <wu>.<phase>.<topic> --file <payload>  # review-findings overview; payload {review_label, items: [{title, tag, summary}]}
+engine render finding <wu>.<phase>.<topic> --file <payload>       # one finding + its gate; payload {n, total, title, meta, details, diff|content, apply_label?, applied_label?, feedback_hint?}
 ```
+
+The `finding` surface serves both review-findings loops (planning and specification) with per-consumer labels in the payload. Its diff presentation returns the boxed frame as three sections — frame open, diff body (emitted as a ` ```diff ` fence so the host's colouring survives), frame close — with the frame borders computed from the content width.
 
 The `render` group also keeps its dev/debug primitives (`signpost`, `box`, `wrap`, `tree`) — authoring aids only, never called from skill flows.
 

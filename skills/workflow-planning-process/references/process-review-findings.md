@@ -30,21 +30,16 @@ Read the tracking file at the path returned by the agent (`TRACKING_FILE`).
 
 ## A. Summary
 
-> *Output the next fenced block as a code block:*
+Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
-```
-{Review type} Review — {N} items found
-
-1. {title} ({type or severity}) — {change_type}
-   {1-2 line summary from the Details field}
-
-2. ...
+```json
+{"review_label": "{Review type} Review", "items": [{"title": "…", "tag": "{type or severity} — {change_type}", "summary": "{1-2 line summary from the Details field}"}]}
 ```
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Let's work through these one at a time, starting with #1.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json
 ```
 
 → Proceed to **B. Process One Item at a Time**.
@@ -57,79 +52,24 @@ Work through each finding **sequentially**. For each finding: present it, show t
 
 ### Present Finding
 
-Show the finding metadata, read directly from the tracking file:
+Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
-> *Output the next fenced block as markdown (not a code block):*
+- `n`, `total`, `title` — the finding's position and Brief Title.
+- `meta` — `[label, value]` pairs: for traceability, Type / Spec Reference / Plan Reference / Change Type; for integrity, Severity / Plan Reference / Category / Change Type.
+- `details` — the Details field.
+- For Change Type `update-task`, `add-to-task`, or `remove-from-task`: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side.
+- For Change Type `add-task`, `add-phase`, `remove-task`, or `remove-phase`: `content` — `{"label": "Proposed" | "Current", "lines": […]}` with the full content as written by the review agent.
+- `apply_label`: `"Apply to the plan verbatim"` · `applied_label`: `"approved. Applied to plan."`
 
-```
-**Finding {N} of {total}: {Brief Title}**
+Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence between the frame rules:
 
-@if(review_type = traceability)
-- **Type**: Missing from plan | Hallucinated content | Incomplete coverage
-- **Spec Reference**: {from tracking file}
-- **Plan Reference**: {from tracking file}
-- **Change Type**: {from tracking file}
-@else
-- **Severity**: Critical | Important | Minor
-- **Plan Reference**: {from tracking file}
-- **Category**: {from tracking file}
-- **Change Type**: {from tracking file}
-@endif
-
-**Details**: {from tracking file}
-```
-
-Then present the content based on **Change Type**:
-
-**If Change Type is `update-task`, `add-to-task`, or `remove-from-task`:**
-
-Present the changes as a diff. Read Current and Proposed from the tracking file. Show only the changed lines with 2 lines of context above and below:
-
-> *Output the next fenced block as a code block:*
-
-```
-╭─ Finding {N}: {Brief Title} ──────────────────────╮
-```
-
-> *Output the next fenced block as a code block:*
-
-```diff
- {2 context lines above}
--{lines from Current}
-+{lines from Proposed}
- {2 context lines below}
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-╰───────────────────────────────────────────────────╯
-```
-
-**If Change Type is `add-task`, `add-phase`, `remove-task`, or `remove-phase`:**
-
-Present full content from the tracking file. Include **Proposed** for additions, **Current** for removals — as written by the review agent:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-@if(Change Type is add-task or add-phase)
-**Proposed**:
-{from tracking file — the new content}
-@else
-**Current**:
-{from tracking file — the content being removed}
-@endif
-```
-
-### Check Gate Mode
-
-Check `finding_gate_mode` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json
 ```
 
-#### If `finding_gate_mode` is `auto`
+The response carries the finding presentation plus the surface for the current gate mode.
+
+#### If the response carried `DISPLAY: finding auto-approved`
 
 1. Apply the fix to the plan (use **Proposed** content exactly as in tracking file)
 2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry:
@@ -139,12 +79,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
    ```
 3. Update the tracking file: set resolution to "Fixed"
 4. Commit the tracking file and plan changes
-
-> *Output the next fenced block as a code block:*
-
-```
-Finding {N} of {total}: {Brief Title} — approved. Applied to plan.
-```
+5. Emit the `DISPLAY: finding auto-approved` section now, per its marker.
 
 **If pending findings remain:**
 
@@ -154,35 +89,19 @@ Finding {N} of {total}: {Brief Title} — approved. Applied to plan.
 
 → Proceed to **C. After All Findings Processed**.
 
-#### If `finding_gate_mode` is `gated`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**Finding {N} of {total}: {Brief Title}**
-
-- **`y`/`yes`** — Apply to the plan verbatim
-@if(Change Type is update-task, add-to-task, or remove-from-task)
-- **`v`/`view full`** — Show full Current and Proposed content
-@endif
-- **`a`/`auto`** — Approve this and all remaining findings automatically
-- **`s`/`skip`** — Leave as-is, move to next finding
-- **Provide feedback** — Tell me what to change before approving
-· · · · · · · · · · · ·
-```
+#### If the response carried `MENU: finding gate`
 
 **STOP.** Wait for user response.
 
 #### If `view full`
 
-Re-present the finding's **Current** and **Proposed** content in full from the tracking file. Then re-present the approval menu.
+Re-present the finding's **Current** and **Proposed** content in full from the tracking file. Then re-emit the `MENU: finding gate` section.
 
-→ Return to **B. Process One Item at a Time**.
+**STOP.** Wait for user response.
 
 #### If the user provides feedback
 
-Incorporate feedback and update the tracking file with the revised content. Re-present the finding using the same presentation format (diff or full) as the original.
+Incorporate feedback and update the tracking file with the revised content. Rewrite the payload to match and re-render the finding.
 
 → Return to **B. Process One Item at a Time**.
 
