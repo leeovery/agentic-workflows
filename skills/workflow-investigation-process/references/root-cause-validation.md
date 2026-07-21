@@ -1,56 +1,28 @@
-# Synthesis Agent
+# Root Cause Validation
 
 *Reference for **[workflow-investigation-process](../SKILL.md)***
 
 ---
 
-An independent synthesis agent validates the root cause hypothesis by tracing code fresh. This step is optional — the user chooses whether to run it.
+An independent agent validates the root cause hypothesis by tracing the code fresh. This step is optional — offered before the findings are presented, so anything it surfaces is folded in ahead of sign-off.
 
-## A. Present Findings
-
-Summarize the investigation findings in a structured display. Pull from the investigation file — do not invent or embellish.
-
-> *Output the next fenced block as a code block:*
-
-```
-Investigation Findings: {work_unit}
-
-Root Cause:
-  {clear, precise root cause statement}
-
-Contributing Factors:
-  {factor 1}
-  {factor 2}
-
-Blast Radius:
-  Directly affected:  {components}
-  Potentially affected: {components sharing code/patterns}
-
-Why It Wasn't Caught:
-  {testing gap, edge case, recent change}
-```
-
-→ Proceed to **B. Offer Validation**.
-
----
-
-## B. Offer Validation
+## A. Offer Validation
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> An independent agent will trace the code to validate the
-> root cause hypothesis before confirming.
+> An independent agent can trace the code fresh to validate the
+> root cause before the findings are presented for sign-off.
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Root cause documented. Run synthesis validation?
+Root cause documented. Run validation?
 
-- **`y`/`yes`** — Run synthesis validation
-- **`s`/`skip`** — Skip straight to findings review
+- **`y`/`yes`** — Run root cause validation
+- **`s`/`skip`** — Skip straight to findings sign-off
 · · · · · · · · · · · ·
 ```
 
@@ -62,11 +34,11 @@ Root cause documented. Run synthesis validation?
 
 #### If `yes`
 
-→ Proceed to **C. Dispatch**.
+→ Proceed to **B. Dispatch**.
 
 ---
 
-## C. Dispatch
+## B. Dispatch
 
 Ensure the cache directory exists:
 
@@ -80,7 +52,7 @@ Determine the next set number by checking existing files:
 ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
 ```
 
-Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
+Use the next available `{NNN}` for `synthesis-*` files (zero-padded, e.g., `001`, `002`).
 
 Write the skeleton cache file at `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
 
@@ -97,17 +69,17 @@ created: {date}
 > *Output the next fenced block as a code block:*
 
 ```
-Validating root cause hypothesis... (synthesis agent running)
+Validating root cause hypothesis... (validation agent running)
 ```
 
 Dispatch **one agent** via the Task tool (**synchronous** — do not use `run_in_background`).
 
-The synthesis agent receives:
+The validation agent receives:
 
 1. **Investigation file path** — `.workflows/{work_unit}/investigation/{topic}.md`
 2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/synthesis-{NNN}.md` (the skeleton above is already on disk there)
 
-The synthesis agent returns:
+The validation agent returns:
 
 ```
 STATUS: validated | gaps_found
@@ -116,13 +88,13 @@ GAPS_COUNT: {N}
 SUMMARY: {1 sentence}
 ```
 
-→ Proceed to **D. Process Results**.
+→ Proceed to **C. Process Results**.
 
 ---
 
-## D. Process Results
+## C. Process Results
 
-Read the synthesis output file.
+Read the validation output file.
 
 #### If `validated`
 
@@ -131,7 +103,7 @@ Update the output file frontmatter to `status: read`.
 > *Output the next fenced block as a code block:*
 
 ```
-Synthesis: Root cause validated ({CONFIDENCE} confidence). No gaps found.
+Validation: Root cause validated ({CONFIDENCE} confidence). No gaps found.
 ```
 
 → Return to caller.
@@ -140,12 +112,12 @@ Synthesis: Root cause validated ({CONFIDENCE} confidence). No gaps found.
 
 Update the output file frontmatter to `status: read`.
 
-Extract the key gaps from the synthesis file. Present a brief summary — do not dump the full output.
+Extract the key gaps from the validation file. Present a brief summary — do not dump the full output.
 
 > *Output the next fenced block as a code block:*
 
 ```
-Synthesis: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
+Validation: {CONFIDENCE} confidence. {GAPS_COUNT} gap(s) identified.
 
   {gap 1}
   {gap 2}
@@ -176,6 +148,6 @@ Work through each gap with the user — re-trace code where needed — and updat
 
 **If `dismiss`:**
 
-Record the gaps under a short "Synthesis gaps (dismissed)" note in the investigation file's Analysis section so the record shows they were considered. Commit.
+Record the gaps under a short "Validation gaps (dismissed)" note in the investigation file's Analysis section so the record shows they were considered. Commit.
 
 → Return to caller.
