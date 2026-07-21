@@ -71,11 +71,7 @@ Run the complete transaction — one command sets `status: completed`, stamps `c
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-"{selected.name:(titlecase)}" marked as completed.
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 → Return to caller.
 
@@ -83,16 +79,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {select
 
 Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**{selected.name:(titlecase)}** converted from feature to epic.
-
-- **`c`/`continue`** — Continue {selected.name:(titlecase)} as epic
-- **`b`/`back`** — Return to previous view
-· · · · · · · · · · · ·
-```
+Emit the pivot response's `MENU: pivot continuation` section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -126,21 +113,7 @@ Run the cancel transaction — one command sets `status: cancelled`, removes the
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {selected.name}
 ```
 
-The JSON response reports `status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the cancellation is already recorded:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge removal warning
-  {warning}
-  The work unit is cancelled. The removal has been queued and will retry automatically on the next `knowledge remove` or `knowledge compact` call.
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-"{selected.name:(titlecase)}" marked as cancelled.
-```
+Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
 
 → Return to caller.
 

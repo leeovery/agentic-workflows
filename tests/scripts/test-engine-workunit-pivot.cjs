@@ -96,8 +96,12 @@ function engine(fix, args, env = {}) {
     encoding: 'utf8',
     env: { ...process.env, ...env },
   });
-  return JSON.parse(out.trim());
+  const nl = out.indexOf('\n');
+  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
+  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  return res;
 }
+engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 function engineFails(fix, args, env = {}) {
@@ -157,6 +161,7 @@ describe('engine workunit pivot — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
+    assert.match(engine.lastSections, /MENU: pivot continuation[\s\S]*converted from feature to epic/);
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');

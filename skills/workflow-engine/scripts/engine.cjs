@@ -26,6 +26,7 @@ const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, han
 const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
+const txSections = require('./domain/projections/transactions.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -250,28 +251,38 @@ function runWorkunit(argv) {
       if (!workUnit || !message) {
         throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
       }
-      respond(completeWorkUnit(process.cwd(), workUnit, { message }));
+      const res = completeWorkUnit(process.cwd(), workUnit, { message });
+      respond(res);
+      respondSections(txSections.workunitLifecycleSections('complete', res));
     } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
         throw new Error(`Usage: engine workunit ${command} <work-unit>`);
       }
       const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
-      respond(fn(process.cwd(), workUnit));
+      const res = fn(process.cwd(), workUnit);
+      respond(res);
+      respondSections(command === 'pivot'
+        ? txSections.pivotSections(res)
+        : txSections.workunitLifecycleSections(command, res));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
       if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
-      respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
+      const res = absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic });
+      respond(res);
+      respondSections(txSections.absorbSections(res));
     } else if (command === 'promote') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit, topic] = positional;
       if (!workUnit || !topic || positional.length !== 2 || !opts.to || !opts.description) {
         throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
       }
-      respond(promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description }));
+      const res = promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description });
+      respond(res);
+      respondSections(txSections.promoteSections(res));
     } else {
       throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb|promote> …');
     }
@@ -478,7 +489,11 @@ function runTopic(argv) {
     if (!workUnit || !phase || !topic) {
       throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
     }
-    respond(fn(process.cwd(), workUnit, phase, topic));
+    const res = fn(process.cwd(), workUnit, phase, topic);
+    respond(res);
+    if (command === 'cancel' || command === 'reactivate') {
+      respondSections(txSections.topicLifecycleSections(command, res));
+    }
   } catch (err) {
     failJson(err);
   }

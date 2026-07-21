@@ -160,6 +160,8 @@ engine commit --inbox -m "<message>"
 engine commit --workflows -m "<message>"
 ```
 
+**Transaction confirmation sections.** The lifecycle verbs append labelled sections after their JSON line, the same pattern as the `task` gate sections: `workunit complete`/`cancel`/`reactivate` carry `DISPLAY: confirmation` (cancel/reactivate preceded by `DISPLAY: kb warning` when `warnings` is non-empty); `topic cancel`/`reactivate` likewise; `workunit absorb` carries the post-absorption summary, `promote` the promotion summary, and `pivot` a `DISPLAY: kb warning` (when warranted) plus `MENU: pivot continuation`. The JSON line stays the machine contract; the calling flow emits each section verbatim at its marker's named moment and never parses it for decisions.
+
 **`render`** — the surface catalogue (`domain/render.cjs`): named runtime surfaces returning demarcated `=== DISPLAY: … ===` / `=== MENU: … ===` sections the calling flow emits verbatim at each marker's named moment. Address-backed values come from the manifest (JSON state only — the engine never parses markdown artifacts); judgment content arrives as a JSON payload file written to the phase cache with the Write tool and validated loudly per-field. Gate-mode branching happens inside the surface: the response carries the menu when the mode is `gated` and the auto-proceed line when it is `auto` — the calling flow branches on which section arrived, never on the mode itself. No git commit; nothing is written.
 
 ```bash

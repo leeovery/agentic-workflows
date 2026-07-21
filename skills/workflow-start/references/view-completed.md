@@ -70,21 +70,7 @@ Run the reactivate transaction — one command restores `status: in-progress`, c
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit reactivate {selected.name}
 ```
 
-The JSON response reports `previous_status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the reactivation is already recorded:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {warning}
-  Indexing can be retried later.
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-"{selected.name:(titlecase)}" reactivated.
-```
+Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
 
 → Return to caller.
 

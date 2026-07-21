@@ -61,8 +61,13 @@ function readManifest(dir, wu) {
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(dir, args) {
-  return JSON.parse(execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' }).trim());
+  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+  const nl = out.indexOf('\n');
+  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
+  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  return res;
 }
+engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 function engineFails(dir, args) {
@@ -124,6 +129,7 @@ describe('engine topic cancel', () => {
       source: 'discovery',
     });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (research)');
+    assert.match(engine.lastSections, /Cancelled "Auth Flow" in research\./);
   });
 
   it('rejects cancelling an already-cancelled topic', () => {
@@ -169,6 +175,7 @@ describe('engine topic reactivate', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
     assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate session-model (discussion)');
+    assert.match(engine.lastSections, /⚑ Knowledge indexing warning[\s\S]*Reactivated "Session Model" in discussion\. Status restored to completed\./);
   });
 
   it('rejects reactivating a non-cancelled topic', () => {
@@ -645,6 +652,9 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(m.status, 'cancelled');
     assert.strictEqual(m.completed_at, undefined);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): mark as cancelled');
+    // Sections: warning above confirmation, both after the JSON line.
+    assert.match(engine.lastSections, /⚑ Knowledge removal warning[\s\S]*The work unit is cancelled\./);
+    assert.match(engine.lastSections, /"Auth Flow" marked as cancelled\./);
   });
 
   it('rejects an already-cancelled unit and routes a completed unit through reactivate', () => {

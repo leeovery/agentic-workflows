@@ -18,14 +18,6 @@ The caller provides this via context before loading:
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit}
 ```
 
-If the JSON response's `warnings` is non-empty, display them — the conversion is already recorded and committed:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {warning}
-  The pivot is complete. Indexing can be retried later.
-```
+Emit the response's `DISPLAY: kb warning` section when present, verbatim per its marker. (The response's `MENU: pivot continuation` section is emitted by the caller at its menu step.)
 
 → Return to caller.

@@ -34,33 +34,11 @@ One engine transaction owns the promotion: it creates the cross-cutting work uni
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_unit} {topic} --to {cc_work_unit} --description "{one-line summary from spec}"
 ```
 
-If the response's `warnings` is non-empty, display them but do not block — the promotion is already recorded and committed; knowledge-base removals are queued automatically (retry on the next `knowledge remove` / `knowledge compact`), and failed indexing can be retried later:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge warning
-  {warnings}
-  The promotion is committed. The knowledge base will catch up on the next sync.
-```
-
 → Proceed to **C. Display**.
 
 ## C. Display
 
-> *Output the next fenced block as a code block:*
-
-```
-Promoted to Cross-Cutting
-
-"{topic:(titlecase)}" has been promoted to its own cross-cutting work unit.
-
-  Work unit: {cc_work_unit}
-  Source: {work_unit}
-  Discussion files: moved
-  Specification: moved
-  Epic status: promoted
-```
+Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
 
 Invoke the bridge for the EPIC (not the cc work unit — the epic continues its pipeline):
 

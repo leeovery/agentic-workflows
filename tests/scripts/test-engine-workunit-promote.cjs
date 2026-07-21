@@ -116,8 +116,12 @@ function engine(fix, args, env = {}) {
     encoding: 'utf8',
     env: { ...process.env, ...env },
   });
-  return JSON.parse(out.trim());
+  const nl = out.indexOf('\n');
+  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
+  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  return res;
 }
+engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 function engineFails(fix, args, env = {}) {
@@ -196,6 +200,7 @@ describe('engine workunit promote — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
+    assert.match(engine.lastSections, /Promoted to Cross-Cutting[\s\S]*Epic status: promoted/);
 
     // The spec directory moved whole — tracking file included — and the
     // source discussions landed at their cc identities; the epic keeps

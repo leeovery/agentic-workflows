@@ -213,47 +213,13 @@ The refusal names the blocking condition; nothing was touched — relay the erro
 
 → Return to caller.
 
-#### If `warnings` is non-empty
-
-Display them — the absorption is already recorded and committed:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge sync warning
-  {warning}
-  The feature is absorbed. Indexing can be retried later.
-```
-
-→ Proceed to **H. Post-Absorption**.
-
-#### Otherwise
-
 → Proceed to **H. Post-Absorption**.
 
 ---
 
 ## H. Post-Absorption
 
-> *Output the next fenced block as a code block:*
-
-```
-Absorbed into Epic
-
-  Topic "{topic:(titlecase)}" added to {target_epic:(titlecase)}.
-
-  • Discussion: moved
-@if(has_research)
-  • Research: moved
-@endif
-@if(has_seeds)
-  • Seed: moved
-@endif
-@if(has_imports)
-  • Imports: moved
-@endif
-  • Feature: removed
-```
+Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
 
 > *Output the next fenced block as markdown (not a code block):*
 
