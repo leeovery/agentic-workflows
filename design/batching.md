@@ -61,9 +61,9 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 | process-review-findings (task_map writes) | per-finding set | DONE (#507) — one set (adds) / apply (removals) per finding |
 | drain-triage | per-entry `discussion-map add` | BV — `discussion-map add --file` |
 | map-operations E/H/I/J loops (192/302/411) | per-name edit/rename/handle | BV — `discovery-map edit --file` (or OK if typical N=1 — measure first) |
-| brief-synthesis 50/70 | per-brief gets/sets | DF/BV — split: reads fold into discovery dump, writes batch |
-| sequence-discovery-map 39/52 | 2×N `manifest get` + N-ary sequence call | DF — summary/description already ride the dump (#488); finish the fold |
-| read-plans 13 | per-plan gets | DF — bulk read or dump extension |
+| brief-synthesis 50/70 | per-brief gets/sets | DONE (#509) — subtree reads ×2 + one apply each for cleanup and flags |
+| sequence-discovery-map 39/52 | 2×N `manifest get` + N-ary sequence call | DONE (#509) — one subtree get |
+| read-plans 13 | per-plan gets | DONE (#509) — one planning subtree get |
 | analyze-task-graph 21 | 3 gets in one fence | OK — 3 distinct fields, one fence, no loop |
 | project-skills-discovery 182 | 3 calls | OK — distinct one-time setup |
 | linear/authoring 15/33 | 3 calls + per-team persist | OK — external-format setup, N=1 |
@@ -91,6 +91,11 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
+
+- 2026-07-22 — Stage 5 up (#509): the dump/read folds — zero engine code
+  (the whole-subtree get was always there). sequence-discovery-map and
+  read-plans onto single subtree reads; brief-synthesis cleanup and
+  propagation onto collect-then-apply.
 
 - 2026-07-22 — Stage 4 up (#508, from Lee's #507 review): manifest set's
   mixed grammar retired — positional three-arg single OR uniform
