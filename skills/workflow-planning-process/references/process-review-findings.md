@@ -72,10 +72,12 @@ The response carries the finding presentation plus the surface for the current g
 #### If the response carried `DISPLAY: finding auto-approved`
 
 1. Apply the fix to the plan (use **Proposed** content exactly as in tracking file)
-2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry:
+2. Keep `task_map` current in ONE call for the whole finding — for `add-task`/`add-phase`, batch every new mapping as field pairs in a single `set`; for `remove-task`/`remove-phase` (or a mixed change), write the finding's ops to `.workflows/.cache/{work_unit}/planning/{topic}/task-map-ops.json` with the Write tool and apply once:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} task_map.{internal_id}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id} task_map.{internal_id_2}={external_id_2}
+   ```
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/planning/{topic}/task-map-ops.json
    ```
 3. Update the tracking file: set resolution to "Fixed"
 4. Commit the tracking file and plan changes

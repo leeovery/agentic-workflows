@@ -66,25 +66,17 @@ Capture the current git commit hash: `git rev-parse HEAD`
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format {chosen-format}
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} spec_commit {commit-hash}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_list_gate_mode auto
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} author_gate_mode auto
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode auto
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle 0
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase 1
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task '~'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map '{}'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_id {external_id}
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
 ```
 
-Register the task_map entries. Map the phase's internal ID (`{topic}-1`) to its external ID, then each task's internal_id to external_id:
+Then register everything — settings, position, and the whole task map — in ONE batched set (one lock, one write): the fixed fields, the phase mapping (`task_map.{topic}-1` = the phase's external ID), and one `task_map.{internal_id}={external_id}` pair per task:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{topic}-1 {phase_external_id}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format {chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id}
+```
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
 ```
 
 The plan-level `external_id`, the phase external ID, and per-task external IDs are all determined by the format's authoring instructions (see the Plan Structure, Phase Structure, and Task Storage sections).
