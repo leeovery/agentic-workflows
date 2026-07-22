@@ -744,9 +744,109 @@ describe('CLI boundary — engine render via subprocess', () => {
   });
 });
 
+describe('render phase-note', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { 'auth-flow': { status: 'completed' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('renders the one-liner with the phase noun by default and an override when given', () => {
+    assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow', verb: 'Resuming' }),
+      '=== DISPLAY: phase note (emit verbatim as a code block) ===\nResuming research: Auth Flow\n');
+    assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.planning.auth-flow', verb: 'Reopening', noun: 'plan' })
+      .includes('Reopening plan: Auth Flow'));
+    assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow' }), /--verb is required/);
+  });
+});
+
+describe('render entry-gate', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  function manifestWith(phases, workType = 'feature') {
+    writeManifest(dir, 'pay', { work_type: workType, phases });
+  }
+
+  it('planning: every specification state maps to its blocker; completed is clear', () => {
+    manifestWith({});
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Missing\n\nNo specification found for "Auth"\./);
+    manifestWith({ specification: { items: { auth: { status: 'in-progress' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification In Progress/);
+    manifestWith({ specification: { items: { auth: { status: 'proposed' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Not Started[\s\S]*proposed grouping/);
+    manifestWith({ specification: { items: { auth: { status: 'superseded', superseded_by: 'core-auth' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Superseded[\s\S]*"Core Auth"/);
+    manifestWith({ specification: { items: { auth: { status: 'promoted', promoted_to: 'cc-auth' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /Specification Promoted[\s\S]*"cc-auth"/);
+    manifestWith({ specification: { items: { auth: { status: 'completed' } } } });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), '');
+  });
+
+  it('implementation and review derive their plan/implementation blockers', () => {
+    manifestWith({});
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /Plan Missing[\s\S]*A completed plan is required for implementation\./);
+    manifestWith({ planning: { items: { auth: { status: 'in-progress' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /Plan Not Completed/);
+    manifestWith({ planning: { items: { auth: { status: 'completed' } } } });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), '');
+
+    manifestWith({});
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /Plan Missing[\s\S]*plan and completed implementation are required for review\./);
+    manifestWith({ planning: { items: { auth: { status: 'completed' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /Implementation Missing/);
+    manifestWith({ planning: { items: { auth: { status: 'completed' } } }, implementation: { items: { auth: { status: 'in-progress' } } } });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /Implementation Not Complete/);
+    manifestWith({ planning: { items: { auth: { status: 'completed' } } }, implementation: { items: { auth: { status: 'completed' } } } });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), '');
+  });
+
+  it('specification is work-type-aware: feature discussion, bugfix investigation, epic any-completed', () => {
+    manifestWith({}, 'feature');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /Source Material Missing\n\nNo discussion found for "Pay"\./);
+    manifestWith({ discussion: { items: { auth: { status: 'in-progress' } } } }, 'feature');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /Discussion In Progress/);
+    manifestWith({ discussion: { items: { auth: { status: 'completed' } } } }, 'feature');
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
+
+    manifestWith({}, 'bugfix');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /No investigation found/);
+    manifestWith({ investigation: { items: { auth: { status: 'in-progress' } } } }, 'bugfix');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /Investigation In Progress/);
+
+    manifestWith({}, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /No discussions found/);
+    manifestWith({ discussion: { items: { a: { status: 'in-progress' }, b: { status: 'in-progress' } } } }, 'epic');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /No Completed Discussions[\s\S]*continue an in-progress discussion/);
+    manifestWith({ discussion: { items: { a: { status: 'completed' } } } }, 'epic');
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
+  });
+
+  it('an unsupported phase is a loud error', () => {
+    manifestWith({});
+    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /no prerequisite rules for phase "discussion"/);
+  });
+});
+
+describe('selection not-found display', () => {
+  const { selectionNotFound } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
+  it('renders the per-type terminal byte-exactly', () => {
+    assert.strictEqual(selectionNotFound('cross-cutting', 'ghost'), [
+      '=== DISPLAY: not found (emit verbatim as a code block, then STOP — terminal condition) ===',
+      'No active cross-cutting concern named "ghost" found.',
+      '',
+      'Run /workflow-start to see available concerns or begin a new one.',
+      '',
+    ].join('\n'));
+    assert.ok(selectionNotFound('quick-fix', 'x').includes('available quick-fixes'));
+  });
+});
+
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-note, entry-gate, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

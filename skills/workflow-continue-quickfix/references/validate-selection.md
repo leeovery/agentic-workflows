@@ -8,13 +8,7 @@ Validate the selected work unit against the discovery output.
 
 #### If `work_unit` not found in the `=== QUICK-FIXES (N) ===` section
 
-> *Output the next fenced block as a code block:*
-
-```
-No active quick-fix named "{work_unit}" found.
-
-Run /workflow-start to see available quick-fixes or begin a new one.
-```
+The `view` snapshot for an unknown name carries the terminal display. Emit its `DISPLAY: not found` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 

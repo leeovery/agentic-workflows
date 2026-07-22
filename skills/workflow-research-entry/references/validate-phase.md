@@ -14,10 +14,10 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} research {topic}
 ```
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Reopening research: {topic:(titlecase)}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.research.{topic} --verb Reopening
 ```
 
 Set source="continue".
@@ -28,10 +28,10 @@ Set source="continue".
 
 #### If status is `in-progress`
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Resuming research: {topic:(titlecase)}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.research.{topic} --verb Resuming
 ```
 
 Set source="continue".

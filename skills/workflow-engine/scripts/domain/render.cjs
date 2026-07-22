@@ -607,6 +607,201 @@ function epicAllDoneGate(cwd, { dotpath }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// phase-note — the entry skills' one-line status notes (Resuming / Starting /
+// Reopening …). Address-backed; the verb is the caller's word, the noun
+// defaults to the phase segment (planning overrides with "plan").
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, verb?: string, noun?: string}} args
+ * @returns {string}
+ */
+function phaseNote(cwd, { dotpath, verb, noun }) {
+  const { phase, topic } = resolveAddress(cwd, dotpath, 'phase-note');
+  if (!isFilled(verb)) throw new Error('render phase-note: --verb is required (e.g. Resuming, Reopening, Starting)');
+  return section(
+    'DISPLAY: phase note',
+    'emit verbatim as a code block',
+    `${verb} ${isFilled(noun) ? noun : phase}: ${titlecase(topic)}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// entry-gate — the entry skills' prerequisite check. The engine derives the
+// verdict from manifest state (the reads and the branch leave the prose):
+// an empty response means clear — proceed; a blocked response carries the
+// terminal blocker display.
+// ---------------------------------------------------------------------------
+
+/** @param {any} manifest @param {string} phase @param {string} topic */
+function itemOf(manifest, phase, topic) {
+  return (((manifest.phases || {})[phase] || {}).items || {})[topic];
+}
+
+/** @param {string} title @param {string[]} bodyLines */
+function blocker(title, bodyLines) {
+  return section(
+    'DISPLAY: entry blocker',
+    'emit verbatim as a code block, then STOP — terminal condition',
+    [title, '', ...bodyLines].join('\n'),
+  );
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string} blocker sections, or '' when the entry is clear
+ */
+function entryGate(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'entry-gate');
+  const t = titlecase(topic);
+
+  if (phase === 'planning') {
+    const spec = itemOf(manifest, 'specification', topic);
+    const status = spec && spec.status;
+    if (!status) {
+      return blocker('Specification Missing', [
+        `No specification found for "${t}".`,
+        '',
+        'The specification must be completed before planning can begin.',
+      ]);
+    }
+    if (status === 'in-progress') {
+      return blocker('Specification In Progress', [
+        `The specification for "${t}" is not yet completed.`,
+        '',
+        'The specification must be completed before planning can begin.',
+      ]);
+    }
+    if (status === 'proposed') {
+      return blocker('Specification Not Started', [
+        `"${t}" is a proposed grouping — the specification`,
+        "hasn't been started yet.",
+        '',
+        'Start the specification first, then return to planning once it',
+        'completes.',
+      ]);
+    }
+    if (status === 'superseded') {
+      return blocker('Specification Superseded', [
+        `The specification for "${t}" was consolidated into`,
+        `"${titlecase(String(spec.superseded_by || ''))}".`,
+        '',
+        'Plan the superseding specification instead.',
+      ]);
+    }
+    if (status === 'promoted') {
+      return blocker('Specification Promoted', [
+        `"${t}" was promoted to the cross-cutting work unit`,
+        `"${spec.promoted_to}". Cross-cutting specifications inform other plans —`,
+        'they are not planned directly.',
+      ]);
+    }
+    return '';
+  }
+
+  if (phase === 'implementation') {
+    const plan = itemOf(manifest, 'planning', topic);
+    if (!plan || !plan.status) {
+      return blocker('Plan Missing', [
+        `No plan found for "${t}".`,
+        '',
+        'A completed plan is required for implementation.',
+      ]);
+    }
+    if (plan.status !== 'completed') {
+      return blocker('Plan Not Completed', [`The plan for "${t}" is not yet completed.`]);
+    }
+    return '';
+  }
+
+  if (phase === 'review') {
+    if (!itemOf(manifest, 'planning', topic)) {
+      return blocker('Plan Missing', [
+        `No plan found for "${t}".`,
+        '',
+        'A completed plan and completed implementation are required for review.',
+      ]);
+    }
+    const impl = itemOf(manifest, 'implementation', topic);
+    if (!impl) {
+      return blocker('Implementation Missing', [
+        `No implementation found for "${t}".`,
+        '',
+        'A completed implementation is required for review.',
+      ]);
+    }
+    if (impl.status !== 'completed') {
+      return blocker('Implementation Not Complete', [`The implementation for "${t}" is not yet completed.`]);
+    }
+    return '';
+  }
+
+  if (phase === 'specification') {
+    const wu = titlecase(manifest.name || topic);
+    const workType = manifest.work_type;
+    if (workType === 'bugfix') {
+      const inv = itemOf(manifest, 'investigation', topic);
+      if (!inv) {
+        return blocker('Source Material Missing', [
+          `No investigation found for "${wu}".`,
+          '',
+          'A completed investigation is required before specification can begin.',
+        ]);
+      }
+      if (inv.status !== 'completed') {
+        return blocker('Investigation In Progress', [
+          `The investigation for "${wu}" is not yet completed.`,
+          '',
+          'The investigation must be completed before specification can begin.',
+        ]);
+      }
+      return '';
+    }
+    if (workType === 'epic') {
+      const items = ((manifest.phases || {}).discussion || {}).items || {};
+      const names = Object.keys(items);
+      if (names.length === 0) {
+        return blocker('Source Material Missing', [
+          `No discussions found for "${wu}".`,
+          '',
+          'At least one completed discussion is required before specification can begin.',
+        ]);
+      }
+      if (!names.some((n) => items[n] && items[n].status === 'completed')) {
+        return blocker('No Completed Discussions', [
+          `No completed discussions found for "${wu}".`,
+          '',
+          'At least one completed discussion is required before specification can begin.',
+          'Run /workflow-start to continue an in-progress discussion.',
+        ]);
+      }
+      return '';
+    }
+    // feature / cross-cutting: the topic's own discussion.
+    const disc = itemOf(manifest, 'discussion', topic);
+    if (!disc) {
+      return blocker('Source Material Missing', [
+        `No discussion found for "${wu}".`,
+        '',
+        'A completed discussion is required before specification can begin.',
+      ]);
+    }
+    if (disc.status !== 'completed') {
+      return blocker('Discussion In Progress', [
+        `The discussion for "${wu}" is not yet completed.`,
+        '',
+        'The discussion must be completed before specification can begin.',
+      ]);
+    }
+    return '';
+  }
+
+  throw new Error(`render entry-gate: no prerequisite rules for phase "${phase}" (planning|implementation|review|specification)`);
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -618,6 +813,8 @@ const SURFACES = {
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,
   'phase-completed': phaseCompleted,
+  'phase-note': phaseNote,
+  'entry-gate': entryGate,
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,
   'epic-all-done-gate': epicAllDoneGate,

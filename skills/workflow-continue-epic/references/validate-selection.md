@@ -8,13 +8,7 @@ Validate the selected work unit against the discovery output, then load its stat
 
 #### If `work_unit` not found in the `=== EPICS (N) ===` section
 
-> *Output the next fenced block as a code block:*
-
-```
-No active epic named "{work_unit}" found.
-
-Run /workflow-start to see available epics or begin a new one.
-```
+The scoped snapshot for an unknown name carries the terminal display. Emit its `DISPLAY: not found` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 

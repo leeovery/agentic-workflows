@@ -93,4 +93,27 @@ function selectionSections(type, units, counts) {
     + section('MENU: selection', "emit verbatim as markdown only at the select step, then STOP for the user's response", dotFrame(menuLines));
 }
 
-module.exports = { selectionSections, SELECT_CONFIG };
+/** Per-type wording for the invalid-selection terminal display. */
+const NOT_FOUND = {
+  feature: ['feature', 'features'],
+  bugfix: ['bugfix', 'bugfixes'],
+  'quick-fix': ['quick-fix', 'quick-fixes'],
+  'cross-cutting': ['cross-cutting concern', 'concerns'],
+  epic: ['epic', 'epics'],
+};
+
+/**
+ * The view verb's invalid-selection terminal display.
+ * @param {string} type @param {string} workUnit
+ * @returns {string}
+ */
+function selectionNotFound(type, workUnit) {
+  const [singular, plural] = NOT_FOUND[type] || [type, `${type}s`];
+  return section(
+    'DISPLAY: not found',
+    'emit verbatim as a code block, then STOP — terminal condition',
+    `No active ${singular} named "${workUnit}" found.\n\nRun /workflow-start to see available ${plural} or begin a new one.`,
+  );
+}
+
+module.exports = { selectionSections, selectionNotFound, SELECT_CONFIG };

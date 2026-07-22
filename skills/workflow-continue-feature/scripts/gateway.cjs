@@ -37,7 +37,8 @@ function view(workUnit) {
   const result = discover(process.cwd());
   const unit = (result.features || []).find((u) => u.name === workUnit);
   if (!unit) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active feature with this name' });
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active feature with this name' })
+      + engine.project.selectionNotFound(TYPE, workUnit || '(missing)');
   }
   const menu = engine.project.workUnitMenu(TYPE, unit);
   return [
