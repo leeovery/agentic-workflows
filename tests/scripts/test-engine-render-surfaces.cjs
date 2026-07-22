@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { DOTS, section, dotFrame, menu, callout, subDetail, treeList, boxedFrame } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, dotFrame, menu, callout, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
 const { selectionSections } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
 
@@ -51,22 +51,6 @@ describe('surfaces primitives', () => {
     assert.strictEqual(callout(['first line', 'second line']), '  ⚑ first line\n    second line');
   });
 
-  it('boxedFrame borders reach the widest content line', () => {
-    const long = 'x'.repeat(90);
-    const out = boxedFrame('Finding 1: Title', ['short', long]);
-    const [top, ...rest] = out.split('\n');
-    const bottom = rest[rest.length - 1];
-    assert.strictEqual([...top].length, 90, 'top border must span the widest content line');
-    assert.strictEqual([...bottom].length, 90, 'bottom border must match');
-    assert.ok(top.startsWith('╭─ Finding 1: Title ') && top.endsWith('╮'));
-    assert.ok(bottom.startsWith('╰') && bottom.endsWith('╯'));
-  });
-
-  it('boxedFrame never renders below the minimum width', () => {
-    const out = boxedFrame('T', ['x']);
-    assert.strictEqual([...out.split('\n')[0]].length, 53);
-  });
-
   it('dotFrame wraps arbitrary lines in the canonical dot rules', () => {
     assert.strictEqual(dotFrame(['a', '', 'b']), [DOTS, 'a', '', 'b', DOTS].join('\n'));
   });
@@ -95,11 +79,6 @@ describe('surfaces primitives', () => {
     assert.ok(lines[lastBranch + 1].startsWith('        two'), 'last continuation is blank-guttered');
   });
 
-  it('boxedFrame widens for a long title even with short content', () => {
-    const title = 'Finding 12: A very long finding title that outruns the minimum frame width';
-    const top = boxedFrame(title, ['x']).split('\n')[0];
-    assert.ok(top.includes(title) && top.endsWith('╮'));
-  });
 });
 
 describe('render resume-gate', () => {
@@ -300,7 +279,7 @@ describe('render finding', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders meta, framed diff (open/body/close), and the gate menu when gated', () => {
+  it('renders meta, the diff as one fenced section, and the gate menu when gated', () => {
     const file = writePayload(dir, 'f.json', {
       ...base,
       diff: { context_above: ['**Solution**: shared adapter.'], current: [], proposed: ['**Outcome**: lands at a live shell.'], context_below: ['**Do**:'] },
@@ -317,24 +296,22 @@ describe('render finding', () => {
       '**Details**: The canonical template requires Outcome.',
       '',
     ].join('\n')));
-    const frameOpen = out.split('\n').find((l) => l.startsWith('╭─ Finding 1: Missing Outcome field '));
-    assert.ok(frameOpen && frameOpen.endsWith('╮'));
-    assert.strictEqual([...frameOpen].length, 53, 'short content renders at the minimum frame width');
     assert.ok(out.includes('=== DISPLAY: diff (emit verbatim as a diff code block (```diff fence)) ===\n **Solution**: shared adapter.\n+**Outcome**: lands at a live shell.\n **Do**:'));
+    assert.ok(!/frame|╭|╰/.test(out), 'the fence is the frame — no drawn borders, no frame sections');
     assert.ok(out.includes('=== MENU: finding gate'));
     assert.ok(out.includes('- **`v`/`view full`** — Show full Current and Proposed content'), 'diff findings offer view full');
     assert.ok(out.includes('- **`y`/`yes`** — Apply to the plan verbatim'));
     assert.ok(out.includes('- **Provide feedback** — Tell me what to change before approving'));
   });
 
-  it('caps the frame border at maxWidth for unwrappable content', () => {
-    const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: ['x'.repeat(150)] } });
+  it('wide diff lines pass through untouched — no border, no wrap', () => {
+    const long = 'x'.repeat(150);
+    const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: [long] } });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
-    const frameOpen = out.split('\n').find((l) => l.startsWith('╭─'));
-    assert.strictEqual([...frameOpen].length, 100, 'frame borders never exceed the cap');
+    assert.ok(out.includes(`\n+${long}\n`), 'the fence re-flows in the host; the engine never wraps diff lines');
   });
 
-  it('content variant renders as markdown without view full; auto mode returns the applied line', () => {
+  it('content variant renders as a code block without view full; auto mode returns the applied line', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
     const file = writePayload(dir, 'f.json', {
       ...base,
@@ -342,7 +319,7 @@ describe('render finding', () => {
       applied_label: 'approved. Added to specification.',
     });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('=== DISPLAY: finding content (emit verbatim as markdown) ===\n**Proposed Addition**:\nNew spec section body.'));
+    assert.ok(out.includes('=== DISPLAY: finding content (emit verbatim as a code block) ===\nProposed Addition:\n\nNew spec section body.'));
     assert.ok(out.includes('=== DISPLAY: finding auto-approved (emit verbatim as a code block after applying the fix) ===\nFinding 1 of 2: Missing Outcome field — approved. Added to specification.'));
     assert.ok(!out.includes('MENU: finding gate'));
     assert.ok(!out.includes('view full'));
@@ -655,10 +632,11 @@ describe('review fixes — gap coverage', () => {
     assert.ok(!out.includes('view full'), 'content findings offer no view-full option');
   });
 
-  it('finding diff × auto renders the framed diff plus the applied line, no menu', () => {
+  it('finding diff × auto renders the diff fence plus the applied line, no menu', () => {
     const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: ['new line'] } });
     const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('DISPLAY: diff frame open'));
+    assert.ok(out.includes('=== DISPLAY: diff ('));
+    assert.ok(!/frame/.test(out), 'no frame sections survive the D8 retirement');
     assert.ok(out.includes('DISPLAY: finding auto-approved'));
     assert.ok(!out.includes('MENU: finding gate'));
   });
@@ -888,4 +866,20 @@ describe('single-source invariants', () => {
   // a content grep cannot isolate the wrapped-callout idiom without false
   // positives. Single-sourcing there is enforced structurally — flaggedCallout
   // delegates to surfaces.callout — and guarded by review.
+
+  it('box-glyph frames are retired everywhere — the fence is the frame (D8)', () => {
+    const skillsRoot = path.join(__dirname, '..', '..', 'skills');
+    const offenders = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (entry.isFile() && (p.endsWith('.cjs') || p.endsWith('.md')) && /[╭╰]/.test(fs.readFileSync(p, 'utf8'))) {
+          offenders.push(path.relative(skillsRoot, p));
+        }
+      }
+    })(skillsRoot);
+    assert.deepStrictEqual(offenders, [],
+      'artefact content is framed by its emission fence, never drawn borders — a box glyph reintroduces a fixed-width commitment the terminal cannot honour');
+  });
 });

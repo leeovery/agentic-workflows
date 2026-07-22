@@ -31,27 +31,21 @@ When extraction reveals information that affects **already-logged topics**, resu
 
 If it does: summarize what's changing in the chat, then present the changes as a diff view. The summary is for discussion only — the specification just gets the clean replacement.
 
-Read the current approved content from the specification file. Prepare the updated version. Present only the changed lines with 2 lines of context above and below, wrapped in a visual border:
+Read the current approved content from the specification file. Prepare the updated version. Present only the changed lines with 2 lines of context above and below:
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as markdown (not a code block):*
 
 ```
-╭─ Resurfacing: {section name} ─────────────────────╮
+**Resurfacing: {section name}**
 ```
 
-> *Output the next fenced block as a code block:*
+> *Output the next fenced block as a ` ```diff ` code block:*
 
 ```diff
  {2 context lines above}
 -{removed/changed lines}
 +{new/replacement lines}
  {2 context lines below}
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-╰───────────────────────────────────────────────────╯
 ```
 
 Then, **separately from the diff above** (clear visual break):

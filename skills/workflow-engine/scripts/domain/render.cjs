@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, menu, cmdOption, promptOption, callout, subDetail, treeList, boxedFrame } = require('./projections/surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, subDetail, treeList } = require('./projections/surfaces.cjs');
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
@@ -368,9 +368,10 @@ function phaseTree(cwd, args) {
 // planning and specification review flows. Findings live in markdown tracking
 // files, which the model reads (the engine never parses markdown) and hands
 // over as a JSON payload; the gate mode is manifest state at the address.
-// The diff presentation splits the boxed frame around the diff body so the
-// host's `diff` fence colouring survives — frame borders are computed from
-// the actual content width.
+// Artefact content is framed by its emission fence (D8): a diff renders as
+// one ```diff-fenced section — colouring keys on the column-0 markers, and
+// space-prefixed context lines place the change — prose content as a plain
+// code block. No drawn borders anywhere.
 // ---------------------------------------------------------------------------
 
 /** @param {string} cwd @param {string} file @param {string} surface @returns {any} */
@@ -472,15 +473,12 @@ function finding(cwd, { dotpath, file }) {
     if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
       throw new Error('render finding: "diff" must carry at least one current/proposed line');
     }
-    const framed = boxedFrame(`Finding ${p.n}: ${p.title}`, body).split('\n');
-    parts.push(section('DISPLAY: diff frame open', 'emit verbatim as a code block, directly above the diff', framed[0]));
-    parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', framed.slice(1, -1).join('\n')));
-    parts.push(section('DISPLAY: diff frame close', 'emit verbatim as a code block, directly below the diff', framed[framed.length - 1]));
+    parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', body.join('\n')));
   } else if (p.content) {
     if (!isFilled(p.content.label)) throw new Error('render finding: "content.label" must be a non-empty string');
     const lines = stringLines(p.content.lines, 'finding', 'content.lines');
     if (lines.length === 0) throw new Error('render finding: "content.lines" must be non-empty');
-    parts.push(section('DISPLAY: finding content', 'emit verbatim as markdown', [`**${p.content.label}**:`, ...lines].join('\n')));
+    parts.push(section('DISPLAY: finding content', 'emit verbatim as a code block', [`${p.content.label}:`, '', ...lines].join('\n')));
   }
 
   const items = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};

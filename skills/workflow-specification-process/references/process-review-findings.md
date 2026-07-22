@@ -61,7 +61,7 @@ Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic
 - Otherwise: `content` — `{"label": "Proposed Addition", "lines": […]}` with the content to add.
 - `apply_label`: `"Add to the specification verbatim"` · `applied_label`: `"approved. Added to specification."` · `feedback_hint`: `"Adjust before approving"`
 
-Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence between the frame rules:
+Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
