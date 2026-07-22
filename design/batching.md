@@ -92,6 +92,25 @@ Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
 
+- 2026-07-23 — System-wide round 3 (#514): six slices, wide — epic
+  journey, adversarial CLI hammering, engine state-machine audit,
+  quickfix/bugfix journeys, crash/resume seams, corpus-wide reference
+  sweep (328 load-links, 691 local links, 113 menus, engine response
+  fields — all clean). Engine majors: empty dotpath segments aliased
+  the PROJECT manifest under a work-unit lock; `commit ''` swept all
+  of .workflows; `workunit create` reuse could silently cross work
+  types; phaseStatus's non-live filter was order-dependent; a topic
+  with every attempted phase cancelled rendered fresh with a dead-end
+  action; cancel lost the map item's order; promoted items weren't
+  terminal. Crash-resume seams sealed in prose: task-loop
+  reconciliation, verifier-push dedupe (+ distinct-count in the
+  resume gate), actions-loop staging resume, author-tasks re-author
+  guard, analysis-loop cycle resume, spec-extraction re-read.
+  Ambiguities parked for Lee: promote paths bypass the bridge and
+  force discussion; bugfix spec source-name unpinned; review prose
+  names a non-existent upstream; gate-mode boilerplate on gate-less
+  phases.
+
 - 2026-07-22 — Deep-dive round 2 (#513): three literal-executor
   walkthroughs + textual forensics + dual-authority rules audit +
   engine mutation-check. Majors: the planning backbone's Hard Rule #2
