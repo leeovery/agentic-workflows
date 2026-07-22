@@ -89,6 +89,16 @@ Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
 
+- 2026-07-22 — Stage 2 up (#506): manifest apply --file — batched
+  set/delete across one work unit, native-JSON values, per-entry loud
+  validation, all-or-nothing. Four families swapped: spec-entry reconcile
+  (collect-then-apply, crash can't half-reconcile), resolve-dependencies
+  (working-list collect, one apply), summary-backfill, session-setup
+  consult refs (whole-map read + missing-only payload). Census
+  corrections: spec-completion 87/97 are single whole-map gets — OK;
+  resolve-dependencies' per-match pairs were also same-dotpath (EF) but
+  the loop across matches made BV the right class anyway.
+
 - 2026-07-22 — Stage 1 up (#505): discovery-map add-batch, recovered from
   the closed #495 tip and re-landed census-first; harvest swapped to one
   Write + one call, zsh-quoting guidance deleted. C1 wording adjusted:
