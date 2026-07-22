@@ -61,7 +61,7 @@ Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 - For Change Type `add-task`, `add-phase`, `remove-task`, or `remove-phase`: `content` — `{"label": "Proposed" | "Current", "lines": […]}` with the full content as written by the review agent.
 - `apply_label`: `"Apply to the plan verbatim"` · `applied_label`: `"approved. Applied to plan."`
 
-Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence between the frame rules:
+Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json

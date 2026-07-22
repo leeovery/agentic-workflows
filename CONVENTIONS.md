@@ -258,7 +258,9 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
 
 ### Content Dividers & Frames
 
-Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing. Boxed frames (`╭─ … ─╮` / `╰─ … ─╯`) are sanctioned for before/after diff presentation in review-findings flows.
+Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing.
+
+**The fence is the frame.** Artefact content — a proposed diff, spec-bound prose, anything the user is approving as the thing itself — is framed by its own fenced block, never by drawn borders: a ` ```diff ` fence for change content (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), a plain code block for prose. Narration stays outside the fence. Hand-drawn boxes are not used — fixed-width borders cannot know the terminal width, while fences re-flow.
 
 ### Cross-Plan References
 
