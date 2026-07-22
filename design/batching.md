@@ -21,8 +21,9 @@ sequential engine calls for one logical operation.
 ## The contract
 
 - **C1 — per-verb batch forms, never a command-runner.** A batch is the
-  N-ary form of an existing verb (`<verb> … --file <payload.json>`), with
-  the single form retained. No generic "run these commands" verb.
+  N-ary form of an existing verb — `<verb>-batch` or `<verb> --file`,
+  whichever the verb's grammar carries cleanly — with the single form
+  retained. No generic "run these commands" verb.
 - **C2 — payload by file, validated loudly, before any mutation.** The
   model writes JSON with the Write tool (no shell quoting), the engine
   validates every entry per-field before touching anything; a bad entry
@@ -87,6 +88,12 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
+
+- 2026-07-22 — Stage 1 up (#505): discovery-map add-batch, recovered from
+  the closed #495 tip and re-landed census-first; harvest swapped to one
+  Write + one call, zsh-quoting guidance deleted. C1 wording adjusted:
+  the pilot uses a `-batch` subcommand — overloading `add --file` would
+  muddy its positional grammar.
 
 - 2026-07-22 — Programme opened. Census merged from the stage-5b audits,
   a fresh mechanical scan (35 flagged, classified above — new finds:
