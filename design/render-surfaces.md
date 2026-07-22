@@ -227,6 +227,13 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — Stage 7b up (#500): the existing-surface swaps. resume-gate
+  becomes the resume-menu family (--variant plan/review/scoping/session —
+  position, coverage, and marker state all derived engine-side); entry-gate
+  --own renders specification's own superseded/promoted terminals;
+  phase-completed --paths carries scoping's conclusion; the four continue-*
+  "Completed" blocks ride the workunit complete --pipeline banner. Ten prose
+  sites deleted.
 - 2026-07-22 — Stage 7a up (#499): topic complete + discovery-session close
   append DISPLAY: kb warning; six prose blocks deleted. Classification
   census run and recorded (stage 7 re-cut as 7a-7d, agreed with Lee).
