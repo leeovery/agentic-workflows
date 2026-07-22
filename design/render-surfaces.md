@@ -233,6 +233,19 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — End-of-stack logic-trace review (Lee's path-solidity gate
+  before landing): two mechanical traces (44 render call sites vs catalogue —
+  clean; 102 prose section-name references vs emitters — clean) + six agent
+  slices (planning resume incl. reader/writer field parity, review/scoping,
+  spec-entry gates, finalise/session folds, engine-diff correctness,
+  test adequacy), findings adversarially verified. Confirmed and fixed on
+  #501: two ratchet holes (diff-form instruction trigger; narrow placeholder
+  class), plan-variant phase-only anchor, promoted_to guards, pivot warning
+  instruction, orphaned JSDoc; coverage added for the CLI boolean-flag path
+  (--own/--paths), the pipeline-banner matrix, the no-sections inverse
+  guard. Everything else traced clean. Banked for 7d: topic supersede
+  warning fold (spec-completion renders it manually — correct today, same
+  class as 7a).
 - 2026-07-22 — Stage 7c up (#501): D3 decided (static menus stay prose), D4
   landed as the templated-fence ratchet (check 13, 174 sites pinned across
   81 files, shrink-only). The in-stack programme is complete: stack runs
