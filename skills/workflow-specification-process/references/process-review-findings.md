@@ -30,21 +30,16 @@ Read the tracking file and count pending findings.
 
 ## A. Summary
 
-> *Output the next fenced block as a code block:*
+Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
-```
-{review_type} — {N} items found
-
-1. {title} ({category})
-   {1-2 line summary from the Details field}
-
-2. ...
+```json
+{"review_label": "{review_type}", "items": [{"title": "…", "tag": "{category}", "summary": "{1-2 line summary from the Details field}"}]}
 ```
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Let's work through these one at a time, starting with #1.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
 ```
 
 → Proceed to **B. Process One Item at a Time**.
@@ -57,76 +52,31 @@ Work through each finding **sequentially**. For each finding: present it, show t
 
 ### Present Finding
 
-Show the finding metadata, read directly from the tracking file:
+Write the finding payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, from the tracking file:
 
-> *Output the next fenced block as markdown (not a code block):*
+- `n`, `total`, `title` — the finding's position and titlecased brief title.
+- `meta` — `[label, value]` pairs: Source / Category / Affects, plus Priority for Gap Analysis findings.
+- `details` — the Details field.
+- If Category is `Enhancement to existing topic` and a Current field is present: `diff` — `{"context_above": […], "current": […], "proposed": […], "context_below": […]}` with only the changed lines and 2 context lines each side (Proposed Addition as the proposed lines).
+- Otherwise: `content` — `{"label": "Proposed Addition", "lines": […]}` with the content to add.
+- `apply_label`: `"Add to the specification verbatim"` · `applied_label`: `"approved. Added to specification."` · `feedback_hint`: `"Adjust before approving"`
 
-```
-**Finding {N} of {total}: {brief_title:(titlecase)}**
+Render, then emit each returned section verbatim at its marked instruction — the diff body as a ` ```diff ` fence between the frame rules:
 
-- **Source**: {from tracking file}
-- **Category**: {from tracking file}
-@if(review_type = Gap Analysis)
-- **Priority**: Critical | Important | Minor
-@endif
-- **Affects**: {from tracking file}
-
-**Details**: {from tracking file}
-```
-
-Then present the content based on **Category**:
-
-**If Category is `Enhancement to existing topic` and Current field is present:**
-
-Present the changes as a diff. Read Current and Proposed Addition from the tracking file. Show only the changed lines with 2 lines of context above and below:
-
-> *Output the next fenced block as a code block:*
-
-```
-╭─ Finding {N}: {brief_title:(titlecase)} ──────────╮
-```
-
-> *Output the next fenced block as a code block:*
-
-```diff
- {2 context lines above}
--{lines from Current}
-+{lines from Proposed Addition}
- {2 context lines below}
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-╰───────────────────────────────────────────────────╯
-```
-
-**Otherwise:**
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**Proposed Addition**:
-{from tracking file — the content to add to the specification}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
 
 **For potential gaps** (items not directly from source material): you're asking questions rather than proposing content. If the user wants to address a gap, discuss it, then present what you'd add for approval.
 
-### Check Gate Mode
+The response carries the finding presentation plus the surface for the current gate mode.
 
-Check `finding_gate_mode` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode`).
-
-#### If `finding_gate_mode` is `auto`
+#### If the response carried `DISPLAY: finding auto-approved`
 
 1. Log the proposed content to the specification verbatim
 2. Update the tracking file: set resolution to "Approved"
 3. Commit
-
-> *Output the next fenced block as a code block:*
-
-```
-Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specification.
-```
+4. Emit the `DISPLAY: finding auto-approved` section now, per its marker.
 
 **If pending findings remain:**
 
@@ -136,35 +86,19 @@ Finding {N} of {total}: {brief_title:(titlecase)} — approved. Added to specifi
 
 → Proceed to **C. After All Findings Processed**.
 
-#### If `finding_gate_mode` is `gated`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-**Finding {N} of {total}: {brief_title:(titlecase)}**
-
-- **`y`/`yes`** — Add to the specification verbatim
-@if(Category is Enhancement to existing topic and Current field is present)
-- **`v`/`view full`** — Show full Current and Proposed Addition content
-@endif
-- **`a`/`auto`** — Approve this and all remaining findings automatically
-- **`s`/`skip`** — Leave as-is, move to next finding
-- **Provide feedback** — Adjust before approving
-· · · · · · · · · · · ·
-```
+#### If the response carried `MENU: finding gate`
 
 **STOP.** Wait for user response.
 
 #### If `view full`
 
-Re-present the finding's **Current** and **Proposed Addition** content in full from the tracking file. Then re-present the approval menu.
+Re-present the finding's **Current** and **Proposed Addition** content in full from the tracking file. Then re-emit the `MENU: finding gate` section.
 
-→ Return to **B. Process One Item at a Time**.
+**STOP.** Wait for user response.
 
 #### If the user provides feedback
 
-Incorporate feedback and update the tracking file with the revised content. Re-present the finding using the same presentation format (diff or full) as the original.
+Incorporate feedback and update the tracking file with the revised content. Rewrite the payload to match and re-render the finding.
 
 → Return to **B. Process One Item at a Time**.
 
