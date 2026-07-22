@@ -32,6 +32,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 > step in a clean context.
 ```
 
-**If `next_phase` is set:** Invoke `/workflow-bridge {work_unit} discovery {next_phase}`.
+`next_phase` is the destination the endpoint supplied, or the literal `none` when it supplied nothing (the bridge treats `none` as absent and computes the destination itself).
 
-**If not:** Invoke `/workflow-bridge {work_unit} discovery`.
+Invoke `/workflow-bridge {work_unit} discovery {next_phase}` via the Skill tool.

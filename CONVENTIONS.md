@@ -696,7 +696,7 @@ Three mechanisms move a flow forward; never blur them:
 
 - **Loading a reference** reads a file into the running context — progressive disclosure, nothing more. No parameters pass mechanically: state the variables in prose before the Load (`with topic = `{topic}``) and the loaded file references them, already in context.
 - **Invoking a skill** is a Skill tool call at a boundary (entry → process, phase end → bridge). It adds the skill's instructions to the running context — **nothing is cleared**. Two argument forms, by what the skill declares:
-  - **Positional arguments** (the skill declares `$0`/`$1`/… — entry skills, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, write the whole command per branch — two complete commands beat one annotated one.
+  - **Positional arguments** (the skill declares `$0`/`$1`/… — entry skills, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, resolve it in prose first — absence as the literal `none` where the receiving skill declares that convention — then show one literal command with every argument in place.
   - **Handoff context block** (process-skill handoffs): an imperative **before** the payload fence, the fence as pure content, nothing after it (a skill-invoking exit is terminal — no STOP, no routing):
 
     ```
