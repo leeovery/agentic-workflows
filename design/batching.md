@@ -33,6 +33,9 @@ sequential engine calls for one logical operation.
   The response reports per-entry outcomes on the one JSON line.
 - **C4 — prose swaps ride the verb's PR.** A batch form lands together
   with the call sites it collapses — the verb is earned by its sites.
+- **C6 — uniform batch grammar.** A batch's arguments are all one shape:
+  every pair `<field>=<value>`, or a payload file. Never a positional
+  first pair with assigned extras — asymmetry is a misfire surface.
 - **C5 — prefer the cheaper class.** Before a new batch form: can the
   site use an existing multi-field/batch shape (existing-form fold)? Can
   the data ride a response the flow already has (dump/read fold)? A new
@@ -88,6 +91,13 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
+
+- 2026-07-22 — Stage 4 up (#508, from Lee's #507 review): manifest set's
+  mixed grammar retired — positional three-arg single OR uniform
+  <field>=<value> batch, never mixed (refused loudly). Nine prose sites,
+  the legacy-split apply script (its suite caught it), both test suites
+  swept in the same change. Contract addendum C6: batch argument grammars
+  are uniform — a batch never mixes positional and assigned forms.
 
 - 2026-07-22 — Stage 3 up (#507): the task-map family folds onto existing
   forms — ZERO engine code (C5 in action). write-tasks 13+N calls → 3;
