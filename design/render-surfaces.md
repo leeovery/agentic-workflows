@@ -206,6 +206,12 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — Stage 6c up (#498): boxedFrame retired. finding's diff is one
+  ```diff-fenced section (the frame-open/diff/frame-close sandwich gone);
+  prose content renders as a code block; spec-construction's resurfacing
+  borders and the twins' frame-rules wording swapped; CONVENTIONS.md carries
+  the fence-is-the-frame rule; a retirement invariant pins box glyphs out of
+  skills/ entirely. Suite 1516/1516.
 - 2026-07-22 — D8 settled (the fence is the frame) from Lee's Portal finding
   screenshots: a fully-enclosed box was prototyped (side rails, padding,
   verbatim-aware width) and rejected on two structural constraints — diff
