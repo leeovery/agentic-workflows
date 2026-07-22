@@ -138,9 +138,9 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-6. Commit with raw git — the format's cleanup may remove task storage outside the work unit, so the scoped helper cannot cover it. Stage the work unit and every path the cleanup touched, then commit:
+6. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit and the plan's `storage_paths` (from the manifest subtree read during resume detection), then commit:
    ```bash
-   git add -- .workflows/{work_unit} {paths the format cleanup touched}
+   git add -- .workflows/{work_unit} {storage_paths}
    git commit -m "planning({work_unit}): restart planning"
    ```
 

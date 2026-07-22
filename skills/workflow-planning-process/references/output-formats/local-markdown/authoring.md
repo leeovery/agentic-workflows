@@ -1,5 +1,9 @@
 # Local Markdown: Authoring
 
+## Storage Pathspecs
+
+`[]` — every artifact lives inside the work unit; the scoped commit covers it.
+
 ## Plan Structure
 
 The plan is represented by the `tasks/` directory at `.workflows/{work_unit}/planning/{topic}/tasks/`. Create this directory when authoring the first task. The external identifier is the topic name (`{topic}`).

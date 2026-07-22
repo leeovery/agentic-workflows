@@ -219,10 +219,9 @@ For each approved task in the task detail file, in order:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id}={external_id} task={next_task_id} task_map.{phase_internal_id}={phase_external_id} external_id={plan_external_id}
    ```
-4. Commit with raw git — the format's task storage may live outside the work unit, so the scoped helper cannot cover it. Stage the format's storage and the work unit, then commit:
+4. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call:
    ```bash
-   git add -- .workflows/{work_unit} {format task storage paths}
-   git commit -m "planning({work_unit}): author task {internal_id} ({task name})"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): author task {internal_id} ({task name})" --plan {topic}
    ```
 
 > *Output the next fenced block as a code block:*

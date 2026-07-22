@@ -57,15 +57,15 @@ Project default format is **{format}**. Use the same format?
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
    ```
-4. Set the planning metadata — every same-path field in one batched write, then the project default (a different path, so its own call):
+4. Set the planning metadata — every same-path field in one batched write, then the project default (a different path, so its own call). `storage_paths` is the format's declared pathspec array from its **[authoring.md](output-formats/{chosen-format}/authoring.md)** Storage Pathspecs section (`'[]'` when the format stores inside the work unit or off-disk):
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=gated author_gate_mode=gated finding_gate_mode=gated review_cycle=0 phase=1 task='~' task_map='{}'
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=gated author_gate_mode=gated finding_gate_mode=gated review_cycle=0 phase=1 task='~' task_map='{}' storage_paths='{format storage pathspecs}'
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
    ```
 
-5. Commit — the project default lands in `.workflows/manifest.json`, outside the work unit, so use the whole-tree scope:
+5. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "planning({work_unit}): initialize plan"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): initialize plan" --plan {topic}
    ```
 
 → Return to caller.

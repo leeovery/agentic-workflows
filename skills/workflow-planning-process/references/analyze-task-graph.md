@@ -79,11 +79,10 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `yes`:**
 
-Commit with raw git — the graph data lands in the format's task storage, which may live outside the work unit, so the scoped helper cannot cover it:
+Commit — `--plan` stages the work unit and the plan's declared storage in one scoped call:
 
 ```bash
-git add -- .workflows/{work_unit} {format task storage paths}
-git commit -m "planning({work_unit}): analyze task dependencies and priorities"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
 ```
 
 → Return to caller.
@@ -151,11 +150,10 @@ The agent will clear all existing graph data and re-analyze from scratch.
 
 **If `yes`:**
 
-Commit with raw git — the graph data lands in the format's task storage, which may live outside the work unit, so the scoped helper cannot cover it:
+Commit — `--plan` stages the work unit and the plan's declared storage in one scoped call:
 
 ```bash
-git add -- .workflows/{work_unit} {format task storage paths}
-git commit -m "planning({work_unit}): analyze task dependencies and priorities"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
 ```
 
 → Return to caller.

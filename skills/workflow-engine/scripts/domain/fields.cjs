@@ -237,6 +237,27 @@ function validateSet(segments, value) {
       validatePhaseStatus(phase, value);
       return;
     }
+
+    // phases.<phase>.items.<item>.storage_paths — the format's declared
+    // pathspecs, staged by `engine commit --plan`. Guarded at write time so a
+    // bad entry can never reach a commit: relative, no traversal, never the
+    // whole tree.
+    if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'storage_paths') {
+      validateStoragePaths(value);
+      return;
+    }
+  }
+}
+
+/** @param {*} value */
+function validateStoragePaths(value) {
+  if (!Array.isArray(value) || value.some((p) => typeof p !== 'string')) {
+    fail(`Invalid storage_paths ${JSON.stringify(value)}. Must be an array of relative pathspec strings (may be empty)`);
+  }
+  for (const p of value) {
+    if (p === '' || p === '.' || p.startsWith('/') || p.split('/').includes('..')) {
+      fail(`Invalid storage_paths entry ${JSON.stringify(p)}: pathspecs are relative, never ".", "..", or absolute`);
+    }
   }
 }
 

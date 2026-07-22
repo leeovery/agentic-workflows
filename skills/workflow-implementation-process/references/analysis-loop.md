@@ -261,7 +261,7 @@ impl({work_unit}): analysis cycle {N} — tasks skipped
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-Commit all analysis and plan changes:
+Commit all analysis and plan changes with raw git — stage the analysis outputs, the plan's `storage_paths` (recorded on the planning item), and the work unit, then commit:
 
 ```
 impl({work_unit}): add analysis phase {N} ({K} tasks)
