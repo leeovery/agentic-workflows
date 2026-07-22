@@ -76,7 +76,8 @@ cache paths. Genuine this-turn judgment payloads are rare.
 6. **One builder.** Every surface renders through shared primitives in
    `domain/projections` (menu, dot frame, callout, key, boxed frame). Boxed
    frames compute borders from content width — fixing the findings-frame
-   defect by construction. Restyle in one place.
+   defect by construction. Restyle in one place. *(Superseded for artefact
+   content by D8 — the fence is the frame; boxedFrame retires in stage 6c.)*
 
 ## Layering
 
@@ -120,6 +121,23 @@ cache paths. Genuine this-turn judgment payloads are rare.
   task is N-ary, the engine offers the batch form (payload file, validated
   loudly, one lock, one commit — atomic, unlike a sequential run that can die
   mid-way leaving partial state). Canonical.
+- **D8 (2026-07-22)**: **the fence is the frame.** Artefact demarcation for
+  the *user* mirrors the demarcation system for the model: content outside a
+  fence is narration; content inside a fence is artefact. The TUI's code
+  fence is the native container — adaptive width (re-flows on resize),
+  background tint, and syntax colour — and it dominates hand-drawn box
+  glyphs, which commit to a fixed width the engine cannot know (stdout is a
+  pipe; the render happens later in the user's TUI, so terminal width is
+  structurally undetectable — resize shatter is unfixable for walls).
+  Consequences: `boxedFrame` retires; diff-bearing artefacts render as
+  ` ```diff ` fences (colour is keyed on `+`/`-` at column 0 — a left wall
+  kills it, and ANSI cannot transit the model path), with space-prefixed
+  context lines showing the insertion point; prose artefacts render in plain
+  fences; surfaces carrying fenced artefacts emit in markdown mode (the mode
+  menus already use) with meta as markdown. The only widths that remain are
+  the conservative pre-wraps (72) we already bake in. Agreed with Lee from
+  the Portal finding screenshots (enclosed-frame prototype rejected after
+  the colour constraint and narrow-terminal shatter surfaced).
 - **D6 (2026-07-21)**: assembly idioms live in `projections/surfaces.cjs` —
   the sanctioned middle layer between the mechanism kernel and per-surface
   projections that the campaign's two-layer doctrine lacked (which is where
@@ -176,6 +194,11 @@ cache paths. Genuine this-turn judgment payloads are rare.
    get runs, and possibly an engine commit extension for the dynamic-path
    git adds. Prioritise with Lee before building.
 6. **Entry validation + transaction folds.**
+6c. **Artefact fences (D8)** — retire `boxedFrame`; `finding` and
+   `proposed-task` move to markdown-mode emission: meta as markdown, the
+   artefact in a fence (` ```diff ` from the payload's context/diff fields,
+   plain fence for prose content); goldens and the single-source invariants
+   updated. Slots before the sweep so stage 7 audits the final form.
 7. **Static sweep + closing lint** (D3/D4 decided).
 
 Each stage is a stacked PR; stack driven per the pr-stacked skill
@@ -183,6 +206,15 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — D8 settled (the fence is the frame) from Lee's Portal finding
+  screenshots: a fully-enclosed box was prototyped (side rails, padding,
+  verbatim-aware width) and rejected on two structural constraints — diff
+  colour needs `+`/`-` at column 0 (walls kill it; ANSI can't transit the
+  model path) and terminal width is undetectable engine-side, so fixed-width
+  walls shatter on narrow terminals while fences re-flow. Diff presentation
+  kept deliberately (add/remove polarity + context either side is the right
+  reviewer format at the highest-stakes approval moment). Stage 6c slotted
+  before the sweep.
 - 2026-07-21 — Census run (473 sites), families table drawn, contract and
   layering agreed in session with Lee. Portal incidents recorded as
   motivation. Doc branch opened; stage 1 begins.
