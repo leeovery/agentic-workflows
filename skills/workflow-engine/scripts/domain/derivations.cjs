@@ -15,11 +15,16 @@ function phaseStatus(manifest, phase) {
   if (p.items && typeof p.items === 'object') {
     const keys = Object.keys(p.items);
     if (keys.length === 0) return null;
+    // Non-live statuses drop out of aggregation: cancelled/superseded/proposed
+    // and promoted alike — a promoted spec continues in its cross-cutting unit
+    // and must not mask the siblings' state (unfiltered, the label went
+    // insertion-order-dependent).
+    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'promoted'];
     if (keys.length === 1) {
       const status = (p.items[keys[0]] || {}).status || null;
-      return (status === 'cancelled' || status === 'superseded' || status === 'proposed') ? null : status;
+      return NON_LIVE.includes(status) ? null : status;
     }
-    const statuses = keys.map(k => (p.items[k] || {}).status).filter(s => s && s !== 'cancelled' && s !== 'superseded' && s !== 'proposed');
+    const statuses = keys.map(k => (p.items[k] || {}).status).filter(s => s && !NON_LIVE.includes(s));
     if (statuses.length === 0) return null;
     if (statuses.every(s => s === 'completed')) return 'completed';
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
@@ -315,10 +320,15 @@ function computeTopicLifecycle(manifest, topicName) {
   if (rs === 'in-progress') {
     return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs };
   }
-  // All attempted phase items are cancelled (both research and discussion items exist
-  // and are cancelled). Single-cancelled (only research, or only discussion) falls
-  // through to fresh — the alternate path remains open.
-  if (rs === 'cancelled' && ds === 'cancelled') {
+  // Every attempted phase item is cancelled (and at least one was attempted):
+  // the topic is cancelled-tier. A dual-attempt topic with one live item never
+  // reaches here — the live path's branches above already rendered it — so
+  // cancelling one of two still leaves the alternate open. A single-routed
+  // topic whose only item is cancelled must NOT fall through to fresh: its
+  // phase item blocks `topic start` (the "fresh" next action would dead-end),
+  // and the recovery route is reactivate.
+  const attempted = [rs, ds].filter((s) => s != null);
+  if (attempted.length > 0 && attempted.every((s) => s === 'cancelled')) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs };
   }
   // Superseded research with no discussion: the topic's research lineage is

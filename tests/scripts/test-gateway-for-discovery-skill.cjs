@@ -219,7 +219,7 @@ describe('workflow-discovery discovery', () => {
     assert.strictEqual(r.discovery_map[0].tier, '⊘');
   });
 
-  it('falls through to fresh when only research is cancelled (alternate path open)', () => {
+  it('marks cancelled when every attempted phase is cancelled (research only)', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
@@ -228,7 +228,21 @@ describe('workflow-discovery discovery', () => {
       },
     });
     const r = discover(dir, 'payments');
-    assert.strictEqual(r.discovery_map[0].lifecycle, 'fresh');
+    assert.strictEqual(r.discovery_map[0].lifecycle, 'cancelled');
+    assert.strictEqual(r.discovery_map[0].tier, '⊘');
+  });
+
+  it('keeps a live lifecycle when a cancelled research has a live discussion sibling', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { 'a': { status: 'in-progress', routing: 'research', source: 'discovery' } } },
+        research:  { items: { 'a': { status: 'cancelled' } } },
+        discussion: { items: { 'a': { status: 'in-progress' } } },
+      },
+    });
+    const r = discover(dir, 'payments');
+    assert.strictEqual(r.discovery_map[0].lifecycle, 'discussing');
   });
 
   it('reflects handled lifecycle when the discovery item carries the handled marker', () => {

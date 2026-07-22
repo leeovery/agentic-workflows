@@ -11,6 +11,7 @@ One engine transaction converts the feature: flips `work_type: epic` in the work
 The caller provides this via context before loading:
 
 - `work_unit` — the feature being converted. Its single topic shares the work unit's name.
+- `continuation_menu` (optional) — `true` when the caller's flow has a menu step for the pivot response's continuation section; omitted otherwise.
 
 ## A. Run the Pivot
 

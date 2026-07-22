@@ -205,6 +205,9 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
           phases: {},
         }
       : loadWorkUnitManifest(cwd, workUnit);
+    if (!created && manifest.work_type !== workType) {
+      throw new Error(`work unit "${workUnit}" already exists as ${manifest.work_type ?? 'an untyped unit'} — create cannot change a work type (pivot owns feature→epic)`);
+    }
 
     // Destination names, deduped against each directory and within the batch.
     const importsDir = path.join(wuDir, 'imports');

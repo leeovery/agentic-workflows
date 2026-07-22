@@ -168,6 +168,15 @@ describe('render resume-gate variants', () => {
     assert.ok(out.includes('- **`r`/`restart`** — Delete review, re-review all 3 tasks'));
   });
 
+  it('review coverage counts distinct ids — duplicate pushes never inflate it', () => {
+    writeManifest(dir, 'pay', { phases: {
+      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b', 'c'] } } },
+      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a', 'a', 'b'] } } },
+    } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
+    assert.ok(out.includes('Review covered 2 of 3 tasks. 1 task(s) not yet reviewed.'));
+  });
+
   it('review renders the all-reviewed menu when coverage is complete, and the bare menu with no tracking', () => {
     writeManifest(dir, 'pay', { phases: {
       implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b'] } } },

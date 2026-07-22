@@ -124,6 +124,9 @@ function startTopic(cwd, workUnit, phase, topic) {
     } else if (existing.status === 'superseded') {
       const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
+    } else if (existing.status === 'promoted') {
+      const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
+      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     } else {
       existing.status = 'in-progress';
     }
@@ -155,6 +158,10 @@ function completeTopic(cwd, workUnit, phase, topic) {
     if (item.status === 'superseded') {
       const by = 'superseded_by' in item ? ` (by "${item.superseded_by}")` : '';
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
+    }
+    if (item.status === 'promoted') {
+      const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
+      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
     }
     item.status = 'completed';
 
@@ -251,6 +258,10 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     }
+    if (item.status === 'promoted') {
+      const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
+      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+    }
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
@@ -290,7 +301,12 @@ function cancelTopic(cwd, workUnit, phase, topic) {
 
     const discovery = manifest.phases && manifest.phases.discovery;
     const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
-    if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) delete mapItem.order;
+    if (mapItem && typeof mapItem === 'object' && 'order' in mapItem) {
+      // Stash rather than drop — reactivate restores the execution position,
+      // so a cancel/reactivate round-trip never forces a re-sequence.
+      mapItem.previous_order = mapItem.order;
+      delete mapItem.order;
+    }
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
   });
@@ -331,6 +347,13 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
     assertLegalWrite(phase, previous);
     item.status = previous;
     delete item.previous_status;
+
+    const discovery = manifest.phases && manifest.phases.discovery;
+    const mapItem = discovery && discovery.items ? discovery.items[topic] : undefined;
+    if (mapItem && typeof mapItem === 'object' && 'previous_order' in mapItem) {
+      mapItem.order = mapItem.previous_order;
+      delete mapItem.previous_order;
+    }
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return previous;

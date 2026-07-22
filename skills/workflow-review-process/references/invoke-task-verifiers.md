@@ -112,9 +112,10 @@ Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phas
 
 ## F. Update Reviewed Tasks
 
-After all verifiers complete, push each verified task's internal ID to the review manifest:
+After all verifiers complete, read `reviewed_tasks` once and push each verified task's internal ID that is not already recorded — `push` appends unconditionally, so a crash-resume re-run must not double-record:
 
 ```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
 ```
 

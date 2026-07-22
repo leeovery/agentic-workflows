@@ -105,7 +105,7 @@ describe('engine topic cancel', () => {
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('stashes status, cancels, drops the discovery order, commits — KB failure is a warning', () => {
+  it('stashes status, cancels, stashes the discovery order, commits — KB failure is a warning', () => {
     const res = engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
 
     assert.strictEqual(res.ok, true);
@@ -123,10 +123,12 @@ describe('engine topic cancel', () => {
       status: 'cancelled',
       previous_status: 'in-progress',
     });
-    // `order` deleted; the rest of the map item preserved.
+    // `order` stashed as previous_order — reactivate restores it, so a
+    // cancel/reactivate round-trip never forces a re-sequence.
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], {
       routing: 'discussion',
       source: 'discovery',
+      previous_order: 2,
     });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (research)');
     assert.match(engine.lastSections, /Cancelled "Auth Flow" in research\./);
@@ -152,9 +154,12 @@ describe('engine topic reactivate', () => {
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('round-trips a cancel: status restored, previous_status removed, commit recorded', () => {
+  it('round-trips a cancel: status restored, previous_status removed, order restored, commit recorded', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'research', 'auth-flow']);
+    const mapItem = readManifest(dir, 'payments').phases.discovery.items['auth-flow'];
+    assert.strictEqual(mapItem.order, 2, 'execution position restored');
+    assert.strictEqual(mapItem.previous_order, undefined, 'stash cleared');
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'in-progress');
