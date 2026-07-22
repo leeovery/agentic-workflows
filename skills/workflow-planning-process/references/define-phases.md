@@ -64,19 +64,23 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 ## B. Review and Approve
 
-Present the phase structure to the user as rendered markdown (not in a code block). Then, separately, present the choices:
+Write the phase-tree payload to `.workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json` with the Write tool — one entry per phase from the planning file, each with its goal (and other one-line detail rows worth surfacing, e.g. acceptance criteria):
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```json
+{"phases": [{"name": "…", "detail": [["Goal", "…"], ["Criteria", "…"]]}]}
 ```
-· · · · · · · · · · · ·
-Approve this phase structure?
 
-- **`y`/`yes`** — Proceed to task breakdown
-- **Tell me what to change** — which phases to reorder, split, merge, add, edit, or remove
-- **Navigate** — Tell me where to go: a different phase or task, or the leading edge
-· · · · · · · · · · · ·
+Render and emit each section verbatim at its marked instruction:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json --approve
 ```
+
+**STOP.** Wait for user response.
+
+#### If `view full`
+
+Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Then re-emit the `MENU: phase structure gate` section.
 
 **STOP.** Wait for user response.
 

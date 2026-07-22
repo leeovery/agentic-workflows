@@ -26,7 +26,9 @@ function discover(cwd) {
 }
 
 function format(result) {
-  return engine.detail.workUnitIndex(TYPE, result);
+  const units = engine.detail.unitsOf(engine.detail.typeConfig(TYPE), result);
+  return engine.detail.workUnitIndex(TYPE, result)
+    + engine.project.selectionSections(TYPE, units, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
 // One snapshot for Step 5: reasoning DATA (flow flags + the ACTIONS table),
@@ -35,7 +37,8 @@ function view(workUnit) {
   const result = discover(process.cwd());
   const unit = (result.features || []).find((u) => u.name === workUnit);
   if (!unit) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active feature with this name' });
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active feature with this name' })
+      + engine.project.selectionNotFound(TYPE, workUnit || '(missing)');
   }
   const menu = engine.project.workUnitMenu(TYPE, unit);
   return [

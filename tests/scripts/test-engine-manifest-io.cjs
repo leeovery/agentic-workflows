@@ -72,7 +72,9 @@ function makeStale(file) {
 
 /** Run the engine expecting success; returns the parsed JSON response. */
 function engine(dir, args) {
-  return JSON.parse(execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' }).trim());
+  const out = execFileSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
+  const nl = out.indexOf('\n');
+  return JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
 }
 
 /** @param {number} ms */

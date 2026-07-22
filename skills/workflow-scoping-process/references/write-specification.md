@@ -50,15 +50,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} s
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
 ```
 
-The `complete` call indexes the specification into the knowledge base. If its response carries `warnings`, display them but do not block — the artifact is already saved:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {error details}
-  The artifact is saved. Indexing can be retried later.
-```
+The `complete` call indexes the specification into the knowledge base. Emit its response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
 Commit:
 

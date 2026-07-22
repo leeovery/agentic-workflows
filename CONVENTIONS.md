@@ -258,7 +258,9 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
 
 ### Content Dividers & Frames
 
-Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing. Boxed frames (`╭─ … ─╮` / `╰─ … ─╯`) are sanctioned for before/after diff presentation in review-findings flows.
+Inside a single DISPLAY/code block, centered `── {Title} ──` dividers separate grouped content (the epic dashboard's stage dividers, per-item boundaries in inbox views). They are content dividers, not step markers — no width rule, no signpost pairing.
+
+**The fence is the frame.** Artefact content — a proposed diff, spec-bound prose, anything the user is approving as the thing itself — is framed by its own fenced block, never by drawn borders: a ` ```diff ` fence for change content (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), a plain code block for prose. Narration stays outside the fence. Hand-drawn boxes are not used — fixed-width borders cannot know the terminal width, while fences re-flow.
 
 ### Cross-Plan References
 
@@ -387,6 +389,8 @@ The planning phase requires a completed specification.
 ### Bullet Characters
 
 Use `•` for all bulleted lists (sources, files, not-ready items, etc.).
+
+Within a numbered item, `·` marks quiet sub-detail: a wrapped summary paragraph or a subsection header (`· Edge cases`) whose tree hangs beneath it. Continuation lines always align under the text — never column zero.
 
 ### Spacing Rules
 
@@ -537,6 +541,10 @@ Rules:
 - H4 for top-level conditionals inside lettered sections, bold text for nested or for prelude/post-STOP positions — never use H5/H6 for conditional nesting
 - If double-nesting would occur, flatten by combining the parent and child conditions into a single bold conditional
 - Every conditional branch must include its own routing instruction (`→ Proceed to` or `→ Return to`). Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
+
+### Command Preludes
+
+Any decision an invocation depends on — a flag choice, a derived parameter, a value to substitute — is stated **before** the fenced command, never after. A step-executing reader runs the command when it reaches it; guidance placed below the fence arrives too late.
 
 ### Navigation Arrows
 

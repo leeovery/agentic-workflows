@@ -40,6 +40,7 @@ const discussionProjections = require('./domain/projections/discussion-map.cjs')
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
 const specificationProjections = require('./domain/projections/specification.cjs');
+const selectionProjections = require('./domain/projections/selection.cjs');
 
 module.exports = {
   render,
@@ -87,10 +88,14 @@ module.exports = {
     manageDetail: workunitManage.manageDetail,
     workUnitDetail: workunit.workUnitDetail,
     workUnitIndex: workunit.workUnitIndex,
+    typeConfig: workunit.typeConfig,
+    unitsOf: workunit.unitsOf,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
     specificationDetail: specification.specificationDetail,
   },
   project: {
+    selectionSections: selectionProjections.selectionSections,
+    selectionNotFound: selectionProjections.selectionNotFound,
     epicDashboard: epicProjections.epicDashboard,
     epicKey: epicProjections.epicKey,
     epicMenu: epicProjections.epicMenu,

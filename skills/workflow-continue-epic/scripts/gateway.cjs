@@ -105,7 +105,8 @@ function format(result) {
   for (const u of result.cancelled) {
     lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
   }
-  return lines.join('\n') + '\n';
+  return lines.join('\n') + '\n'
+    + engine.project.selectionSections('epic', result.epics, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
 /**
@@ -164,7 +165,8 @@ function view(workUnit, newArrivalsJson) {
   const result = discover(process.cwd(), workUnit);
   const e = result.epics[0];
   if (!e) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' })
+      + engine.project.selectionNotFound('epic', workUnit || '(missing)');
   }
   const d = e.detail;
 
@@ -221,7 +223,8 @@ function subView(workUnit, projection) {
   const result = discover(process.cwd(), workUnit);
   const e = result.epics[0];
   if (!e) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
+    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' })
+      + engine.project.selectionNotFound('epic', workUnit || '(missing)');
   }
   const view = projection(e.name, e.detail);
 

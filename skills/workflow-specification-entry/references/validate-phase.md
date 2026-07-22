@@ -24,10 +24,10 @@ The grouping exists as a proposed item; the process skill flips it to in-progres
 
 #### If the status is `in-progress`
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Resuming specification: {work_unit:(titlecase)}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb Resuming
 ```
 
 Set verb = "Continuing".
@@ -42,10 +42,10 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} specification {topic}
 ```
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Reopening specification: {work_unit:(titlecase)}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb Reopening
 ```
 
 Set verb = "Continuing".

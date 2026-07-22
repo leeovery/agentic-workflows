@@ -118,8 +118,12 @@ function engine(fix, args, env = {}) {
     encoding: 'utf8',
     env: { ...process.env, ...env },
   });
-  return JSON.parse(out.trim());
+  const nl = out.indexOf('\n');
+  const res = JSON.parse((nl === -1 ? out : out.slice(0, nl)).trim());
+  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  return res;
 }
+engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 function engineFails(fix, args, env = {}) {
@@ -194,6 +198,17 @@ describe('engine workunit absorb — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
+    assert.match(engine.lastSections, new RegExp([
+      'Absorbed into Epic',
+      '',
+      '  Topic "Auth" added to Payments\\.',
+      '',
+      '  • Discussion: moved',
+      '  • Research: moved',
+      '  • Seed: moved',
+      '  • Imports: moved',
+      '  • Feature: removed',
+    ].join('\\n')));
 
     // Files landed at their epic identities; the feature directory is gone.
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/auth.md'), 'utf8'), '# Discussion\n');

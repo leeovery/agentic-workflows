@@ -8,10 +8,12 @@
 // in-process library (lib.cjs). Domain commands (transitions, queries) land
 // here as they're built.
 //
-// The `render` command group is a DEV/DEBUG utility only (authoring aid for
-// prose literals, layout inspection). Skill flows never call it at runtime:
-// static chrome stays literal in prose; parameterised chrome is rendered
-// in-process by projections.
+// The `render` command group serves two audiences: the surface catalogue
+// (domain/render.cjs) — named runtime surfaces skill flows call at prescribed
+// points, returning demarcated sections emitted verbatim — and the dev/debug
+// primitives (signpost, box, wrap, tree), which remain authoring aids only.
+// Static chrome stays literal in prose; anything parameterised or
+// state-branching renders here.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -24,6 +26,7 @@ const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, han
 const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
+const txSections = require('./domain/projections/transactions.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -33,6 +36,7 @@ const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
 const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
+const { renderSurface, SURFACES } = require('./domain/render.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -110,10 +114,10 @@ Commands:
   manifest resolve <work-unit>.<phase>[.<topic>]
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
                   [--import <path> …] [--seed <path> …]
-  workunit complete <work-unit> -m <message>
+  workunit complete <work-unit> -m <message> [--pipeline [--skipped-review]]
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
-  workunit pivot <work-unit>
+  workunit pivot <work-unit> [--continuation-menu]
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
@@ -149,10 +153,24 @@ Commands:
   commit <work-unit> -m <message>
   commit --inbox -m <message>
   commit --workflows -m <message>
-  render signpost <label> [--style step|substep] [--width N]
-  render box <title> [--width N]
-  render wrap <text> [--width N] [--prefix STR]
-  render tree [--width N]            (reads a JSON TreeNode array on stdin)`;
+  render resume-gate <wu.phase.topic> [--triage N]
+  render task-list   <wu.planning.topic> --file <payload.json>
+  render findings-summary <wu.phase.topic> --file <payload.json>
+  render finding          <wu.phase.topic> --file <payload.json>
+  render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
+  render tasks-overview   <wu.phase.topic> --file <payload.json>
+  render author-task-gate <wu.planning.topic> --m N --total N --title STR
+  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
+  render phase-completed   <wu> --phase <phase>
+  render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
+  render entry-gate        <wu.phase.topic>      (planning|implementation|review|specification)
+  render early-completion-gate <wu>
+  render revisit-gate      <wu> --prev <phase> --next <phase>
+  render epic-all-done-gate <wu>
+  render signpost <label> [--style step|substep] [--width N]     (dev aid)
+  render box <title> [--width N]                                 (dev aid)
+  render wrap <text> [--width N] [--prefix STR]                  (dev aid)
+  render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
 
 // ---------------------------------------------------------------------------
 // manifest — the field surface (domain/fields.cjs): dot-path addressing over
@@ -225,37 +243,52 @@ function runWorkunit(argv) {
     } else if (command === 'complete') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
+      const completeFlags = new Set();
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '-m' || a === '--message') message = rest[++i];
+        else if (a === '--pipeline' || a === '--skipped-review') completeFlags.add(a.slice(2));
         else if (workUnit === null) workUnit = a;
         else throw new Error(`unexpected argument "${a}"`);
       }
       if (!workUnit || !message) {
-        throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
+        throw new Error('Usage: engine workunit complete <work-unit> -m <message> [--pipeline [--skipped-review]]');
       }
-      respond(completeWorkUnit(process.cwd(), workUnit, { message }));
+      const res = completeWorkUnit(process.cwd(), workUnit, { message });
+      respond(res);
+      respondSections(txSections.workunitLifecycleSections('complete', res, {
+        pipeline: completeFlags.has('pipeline'),
+        skippedReview: completeFlags.has('skipped-review'),
+      }));
     } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
-      if (!workUnit || extra.length > 0) {
-        throw new Error(`Usage: engine workunit ${command} <work-unit>`);
+      if (!workUnit || (extra.length > 0 && !(command === 'pivot' && extra.every((a) => a === '--continuation-menu')))) {
+        throw new Error(`Usage: engine workunit ${command} <work-unit>${command === 'pivot' ? ' [--continuation-menu]' : ''}`);
       }
       const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
-      respond(fn(process.cwd(), workUnit));
+      const res = fn(process.cwd(), workUnit);
+      respond(res);
+      respondSections(command === 'pivot'
+        ? txSections.pivotSections(res, { continuationMenu: extra.includes('--continuation-menu') })
+        : txSections.workunitLifecycleSections(command, res));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
       if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
-      respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
+      const res = absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic });
+      respond(res);
+      respondSections(txSections.absorbSections(res));
     } else if (command === 'promote') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit, topic] = positional;
       if (!workUnit || !topic || positional.length !== 2 || !opts.to || !opts.description) {
         throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
       }
-      respond(promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description }));
+      const res = promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description });
+      respond(res);
+      respondSections(txSections.promoteSections(res));
     } else {
       throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb|promote> …');
     }
@@ -419,7 +452,9 @@ function runDiscoverySession(argv) {
       if (!workUnit || !message) {
         throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
       }
-      respond(closeDiscoverySession(process.cwd(), workUnit, { message }));
+      const res = closeDiscoverySession(process.cwd(), workUnit, { message });
+      respond(res);
+      respondSections(txSections.discoverySessionCloseSections(res));
     } else {
       throw new Error('Usage: engine discovery-session <open|close> …');
     }
@@ -462,7 +497,11 @@ function runTopic(argv) {
     if (!workUnit || !phase || !topic) {
       throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
     }
-    respond(fn(process.cwd(), workUnit, phase, topic));
+    const res = fn(process.cwd(), workUnit, phase, topic);
+    respond(res);
+    if (command === 'complete' || command === 'cancel' || command === 'reactivate') {
+      respondSections(txSections.topicLifecycleSections(command, res));
+    }
   } catch (err) {
     failJson(err);
   }
@@ -642,8 +681,21 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, positional } = parseArgs(rest);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
+
+  if (Object.hasOwn(SURFACES, command)) {
+    try {
+      /** @type {{dotpath: string} & Record<string, string|undefined>} */
+      const args = { dotpath: positional[0], ...opts };
+      if (flags.has('approve')) args.approve = '1';
+      if (flags.has('skipped-review')) args['skipped-review'] = '1';
+      respondSections(renderSurface(process.cwd(), command, args));
+    } catch (err) {
+      failJson(err);
+    }
+    return;
+  }
 
   switch (command) {
     case 'signpost':

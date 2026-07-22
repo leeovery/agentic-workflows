@@ -15,16 +15,10 @@ Feature pipeline: (Research) → Discussion → Specification → Planning → I
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete feature pipeline"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete feature pipeline" --pipeline
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-Feature Completed
-
-"{work_unit:(titlecase)}" has completed all pipeline phases.
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -40,15 +34,10 @@ Set `target_phase` = `next_phase`.
 
 Implementation has just completed. Offer the user a choice to skip review and complete early.
 
-> *Output the next fenced block as markdown (not a code block):*
+Render and emit the section verbatim:
 
-```
-· · · · · · · · · · · ·
-Implementation completed for "{work_unit:(titlecase)}".
-
-- **`y`/`yes`** — Proceed to review
-- **`d`/`done`** — Complete without review
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render early-completion-gate {work_unit}
 ```
 
 **STOP.** Wait for user response.
@@ -58,16 +47,10 @@ Implementation completed for "{work_unit:(titlecase)}".
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete feature pipeline (review skipped)"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete feature pipeline (review skipped)" --pipeline --skipped-review
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-Feature Completed
-
-"{work_unit:(titlecase)}" completed — review skipped.
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -93,15 +76,10 @@ Read the discovery output's `revisitable_phases` — the completed phases the us
 
 ## D. Offer Revisit
 
-> *Output the next fenced block as markdown (not a code block):*
+Render and emit the section verbatim:
 
-```
-· · · · · · · · · · · ·
-{previous_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
-
-- **`y`/`yes`** — Proceed to {next_phase}
-- **`r`/`revisit`** — Revisit an earlier phase
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-gate {work_unit} --prev {previous_phase} --next {next_phase}
 ```
 
 **STOP.** Wait for user response.

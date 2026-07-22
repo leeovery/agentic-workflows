@@ -15,16 +15,10 @@ Cross-cutting pipeline: (Research) → Discussion → Specification (terminal)
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete cross-cutting pipeline"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete cross-cutting pipeline" --pipeline
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-Cross-Cutting Completed
-
-"{work_unit:(titlecase)}" has completed all pipeline phases.
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -48,15 +42,10 @@ Read the discovery output's `revisitable_phases` — the completed phases the us
 
 ## C. Offer Revisit
 
-> *Output the next fenced block as markdown (not a code block):*
+Render and emit the section verbatim:
 
-```
-· · · · · · · · · · · ·
-{previous_phase:(titlecase)} completed for "{work_unit:(titlecase)}".
-
-- **`y`/`yes`** — Proceed to {next_phase}
-- **`r`/`revisit`** — Revisit an earlier phase
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-gate {work_unit} --prev {previous_phase} --next {next_phase}
 ```
 
 **STOP.** Wait for user response.

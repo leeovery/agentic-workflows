@@ -8,43 +8,11 @@
 
 Display active features and let the user select one.
 
-> *Output the next fenced block as a code block:*
+Read the most recent index dump (re-run after any loop-back that changed state).
 
-```
-{count} feature(s) in progress:
+**If it carries no selection sections** (no active features remain — possible after a loop-back cancelled or completed the last one): render the caller's no-features-in-progress terminal from its Step 2 and stop there.
 
-@foreach(feature in features)
-  {N}. {feature.name:(titlecase)}
-     └─ {feature.phase_label:(titlecase)}
-
-@endforeach
-
-@if(completed_count > 0 || cancelled_count > 0)
-{completed_count} completed, {cancelled_count} cancelled.
-@endif
-```
-
-Build from the discovery output's `=== FEATURES (N) ===` section. Each feature shows `name` (titlecased) and `phase_label` (titlecased). Blank line between each numbered item.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Which feature would you like to continue?
-
-- **`1`** — Continue "{feature.name:(titlecase)}" — {feature.phase_label}
-- **`2`** — ...
-
-@if(completed_count > 0 || cancelled_count > 0)
-- **`{N+1}`** — View completed & cancelled features
-@endif
-- **`m`/`manage`** — Manage a feature's lifecycle
-
-Select an option:
-· · · · · · · · · · · ·
-```
-
-Recreate with actual features and `phase_label` values from discovery. No auto-select, even with one item.
+Otherwise emit its `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker — from the most recent dump only, never a stale earlier one. No auto-select, even with one item.
 
 **STOP.** Wait for user response.
 
