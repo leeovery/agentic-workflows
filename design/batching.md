@@ -71,7 +71,7 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 | task-loop 25 | 1 call, "once at loop entry" | OK — explicitly hoisted already |
 | gap/research-analysis stamp | 1 call | OK |
 | inbox-working-set 154 | one command, many args | OK — already batched |
-| shell cluster: 11 dynamic `git add {format task paths}` sites | model-assembled argv | ST — candidate `engine commit {wu} --also <path>…`; decide at its PR |
+| shell cluster: 11 dynamic `git add {format task paths}` sites | model-assembled argv | DONE (#510) — storage_paths recorded at init, engine commit --plan derives; 2 restart cleanups raw-git-from-state (item deleted pre-commit); code-led commits OK-by-design |
 | shell cluster: read-then-paste restarts (planning/scoping SKILL) | value read → pasted into later call | ST — restructure or dump-fold; decide at its PR |
 | shell cluster: read pipelines into agent dispatch | multi-stage stdout carries | ST — likely OK (judgment content); revisit last |
 
@@ -91,6 +91,15 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
+
+- 2026-07-22 — Stage 6 up (#510): commit --plan, per the plan agreed with
+  Lee — formats declare Storage Pathspecs in authoring.md (tick [".tick/"],
+  others []), init records storage_paths on the planning item (validated at
+  write), the engine derives the commit scope (wu + project manifest +
+  declared paths, exists-or-tracked guarded). Six sites swapped; the two
+  restart cleanups stay raw git (planning item deleted pre-commit) staging
+  {storage_paths} from state; code-led commits stay with the session by
+  design. Pre-upgrade plans fail loudly with a one-line repair.
 
 - 2026-07-22 — Stage 5 up (#509): the dump/read folds — zero engine code
   (the whole-subtree get was always there). sequence-discovery-map and
