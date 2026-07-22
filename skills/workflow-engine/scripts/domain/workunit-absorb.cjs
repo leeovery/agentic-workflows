@@ -29,6 +29,7 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge, INDEXED_ARTIFACTS } = require('./kb.cjs');
 const { dedupe } = require('./workunit-create.cjs');
 const { addItem } = require('./discovery-map.cjs');
@@ -300,9 +301,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     knowledge(cwd, ['index', `.workflows/${into}/seeds/${move.dest}`], `knowledge index (seeds/${move.dest})`, warnings);
   }
 
+  const cacheSpec = purgeWorkUnitCache(cwd, feature);
   const committed = commitScopedWithKb(
     cwd,
-    [`.workflows/${feature}`, `.workflows/${into}`, '.workflows/manifest.json'],
+    [`.workflows/${feature}`, `.workflows/${into}`, '.workflows/manifest.json', ...(cacheSpec ? [cacheSpec] : [])],
     `workflow(${feature}): absorb into ${into}`);
 
   /** @type {WorkUnitAbsorbResult} */

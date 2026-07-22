@@ -84,7 +84,7 @@ Work-unit-first directory structure with uniform `{topic}` in all paths (`{topic
 - Review: `.workflows/{work_unit}/review/{topic}/report.md`
 - State: `.workflows/{work_unit}/.state/` (per-work-unit analysis files)
 - Global state: `.workflows/.state/` (migrations, environment-setup.md)
-- Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase)
+- Cache: `.workflows/.cache/{work_unit}/{phase}/{topic}/` (scratch files for any phase; gitignored via `.workflows/.gitignore`, purged when the work unit closes — complete/cancel/absorb — and backfilled for already-closed units by migration 050)
 - Imports: `.workflows/{work_unit}/imports/` (user-shared reference files copied in during discovery's opener; tracked via the `imports[]` manifest field; KB-indexed at copy time)
 - Seeds: `.workflows/{work_unit}/seeds/` (the work unit's **origin** — the promoted inbox item, or several items of one type, *moved* here at the work-type commit; tracked via the `seeds[]` manifest field, one entry per item, each with a `source: inbox:{idea|bug|quickfix}` tag; KB-indexed under the `seeds` phase. Distinct from imports: the trigger the work was spawned from, not reference material it pulled in)
 - Inbox: `.workflows/.inbox/{ideas,bugs,quickfixes}/` (pre-pipeline capture. The inbox pickup is a **working set** — select one or more items *of a single type* to promote, moving them into the work unit's `seeds/`; or archive any selection, regardless of type, to `.archived/{type}/`. The `.archived/` store is live: archived items can be restored to the inbox or hard-deleted (`git rm`) from the archived sub-view. It holds *declined* items, never promoted ones)

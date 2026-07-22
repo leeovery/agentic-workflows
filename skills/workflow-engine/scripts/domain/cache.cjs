@@ -12,7 +12,9 @@
 // commit — the calling flow's commit cadence picks the manifest change up.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
+const { git } = require('../kernel/git.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { collectAnalysisInputs } = require('./derivations.cjs');
 const { filesChecksum } = require('./reads.cjs');
@@ -92,4 +94,23 @@ function stampAnalysisCache(cwd, workUnit, kind) {
   return { ...stamped, warnings };
 }
 
-module.exports = { stampAnalysisCache };
+/**
+ * Remove the work unit's scratch cache (`.workflows/.cache/{wu}`) at
+ * lifecycle close. Caches are rebuildable per-phase scratch — reactivation
+ * regenerates them on demand — but analysis flows commit tracking files
+ * there, so when the index holds entries the caller must include the
+ * returned pathspec in its transaction commit to stage the deletions.
+ * A purely-untracked dir purges disk-only (returns null; `git add` on a
+ * pathspec matching nothing is fatal).
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @returns {string|null} pathspec for the caller's commit, or null
+ */
+function purgeWorkUnitCache(cwd, workUnit) {
+  const rel = `.workflows/.cache/${workUnit}`;
+  const tracked = git(cwd, ['ls-files', '--', rel]).trim() !== '';
+  fs.rmSync(path.join(cwd, rel), { recursive: true, force: true });
+  return tracked ? rel : null;
+}
+
+module.exports = { stampAnalysisCache, purgeWorkUnitCache };
