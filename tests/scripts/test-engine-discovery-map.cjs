@@ -278,6 +278,69 @@ describe('engine CLI: discovery-map operations', () => {
     });
   });
 
+  describe('add-batch', () => {
+    /** Write a payload file and return its relative path. */
+    function payload(dir, entries) {
+      fs.writeFileSync(path.join(dir, 'topics.json'), JSON.stringify(entries));
+      return 'topics.json';
+    }
+
+    it('adds the whole set in one transaction — brief_path recorded, source always discovery, one map_total', () => {
+      const file = payload(dir, [
+        { name: 'menu-management', routing: 'research', summary: 's1', description: 'd1', brief_path: 'discovery/briefs/menu-management.md' },
+        { name: 'pricing', routing: 'discussion', summary: 's2' },
+      ]);
+      const res = runOk(dir, ['add-batch', 'payments', '--file', file]);
+      assert.deepStrictEqual(res, {
+        ok: true, work_unit: 'payments', op: 'add-batch',
+        added: [
+          { name: 'menu-management', routing: 'research', lifecycle: 'fresh' },
+          { name: 'pricing', routing: 'discussion', lifecycle: 'fresh' },
+        ],
+        undismissed: [], map_total: 10,
+      });
+      const m = readManifest(dir);
+      assert.deepStrictEqual(m.phases.discovery.items['menu-management'], {
+        routing: 'research', source: 'discovery', summary: 's1', description: 'd1', brief_path: 'discovery/briefs/menu-management.md',
+      });
+      assert.deepStrictEqual(m.phases.discovery.items['pricing'], {
+        routing: 'discussion', source: 'discovery', summary: 's2',
+      });
+    });
+
+    it('is atomic — a collision on any entry means nothing is added', () => {
+      const before = JSON.stringify(readManifest(dir).phases.discovery.items);
+      const file = payload(dir, [
+        { name: 'brand-new-topic', routing: 'research', summary: 's' },
+        { name: 'fresh-topic', routing: 'research', summary: 'collides with an existing item' },
+      ]);
+      const res = runFail(dir, ['add-batch', 'payments', '--file', file]);
+      assert.match(res.error, /"fresh-topic" is already on the map — nothing was added/);
+      assert.strictEqual(JSON.stringify(readManifest(dir).phases.discovery.items), before, 'no partial writes');
+    });
+
+    it('honours per-entry force_dismissed and refuses a dismissed name without it', () => {
+      runOk(dir, ['add', 'payments', 'doomed', 'research', '--summary', 's']);
+      runOk(dir, ['remove', 'payments', 'doomed']);
+      const refuse = runFail(dir, ['add-batch', 'payments', '--file', payload(dir, [{ name: 'doomed', routing: 'research', summary: 's' }])]);
+      assert.match(refuse.error, /previously dismissed .* set force_dismissed/);
+      const res = runOk(dir, ['add-batch', 'payments', '--file', payload(dir, [{ name: 'doomed', routing: 'research', summary: 's', force_dismissed: true }])]);
+      assert.deepStrictEqual(res.undismissed, ['doomed']);
+      assert.ok(!(readManifest(dir).phases.discovery.dismissed || []).includes('doomed'));
+    });
+
+    it('validates loudly before touching state: routing, names, summaries, in-batch dupes, payload shape', () => {
+      assert.match(runFail(dir, ['add-batch', 'payments', '--file', payload(dir, [])]).error, /non-empty array/);
+      assert.match(runFail(dir, ['add-batch', 'payments', '--file', payload(dir, [{ name: 'a.b', routing: 'research', summary: 's' }])]).error, /not a legal topic name/);
+      assert.match(runFail(dir, ['add-batch', 'payments', '--file', payload(dir, [{ name: 'ok', routing: 'nope', summary: 's' }])]).error, /unknown routing/);
+      assert.match(runFail(dir, ['add-batch', 'payments', '--file', payload(dir, [{ name: 'ok', routing: 'research', summary: ' ' }])]).error, /"summary" must be a non-empty string/);
+      assert.match(runFail(dir, ['add-batch', 'payments', '--file', payload(dir, [
+        { name: 'twice', routing: 'research', summary: 's' }, { name: 'twice', routing: 'research', summary: 's' },
+      ])]).error, /"twice" appears more than once/);
+      assert.match(runFail(dir, ['add-batch', 'payments', '--file', 'missing.json']).error, /cannot read payload/);
+    });
+  });
+
   describe('edit', () => {
     it('sets summary, echoes it with the lifecycle and map_total', () => {
       const res = runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'new blurb']);

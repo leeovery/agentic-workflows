@@ -22,7 +22,7 @@ const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/r
 const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
-const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
+const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
@@ -126,6 +126,7 @@ Commands:
   discovery-map add <work-unit> <name> <research|discussion>
                 (--summary <text> [--description <text>] | --backfill)
                 [--source <tag>] [--force-dismissed]
+  discovery-map add-batch <work-unit> --file <topics.json>
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
   discovery-map remove <work-unit> <name>
   discovery-map rename <work-unit> <old> <new>
@@ -347,6 +348,18 @@ function runDiscoveryMap(argv) {
   try {
     const { opts, flags, positional } = parseArgs(rest, ['force-dismissed', 'backfill']);
     const [workUnit] = positional;
+    if (command === 'add-batch') {
+      if (!workUnit) throw new Error('Usage: engine discovery-map add-batch <work-unit> --file <topics.json>');
+      if (!opts.file) throw new Error('discovery-map add-batch: --file <topics.json> is required');
+      let parsed;
+      try {
+        parsed = JSON.parse(fs.readFileSync(path.resolve(cwd, opts.file), 'utf8'));
+      } catch (err) {
+        throw new Error(`discovery-map add-batch: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      respond(addItemsBatch(cwd, workUnit, parsed));
+      return;
+    }
     if (command === 'sequence') {
       if (!workUnit || positional.length < 2) {
         throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
