@@ -13,6 +13,7 @@
 
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title } = require('../conventions.cjs');
+const { dotFrame, cmdOption } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -138,15 +139,13 @@ function workUnitMenu(type, unit) {
 
   let rendered = '';
   if (unit.finalising || revisitable.length > 0) {
-    const options = [`- **\`y\`/\`yes\`** — ${keys[0].label}`];
-    if (revisitable.length > 0) options.push('- **`r`/`revisit`** — Revisit an earlier phase');
-    rendered = [
-      '· · · · · · · · · · · ·',
+    const options = [cmdOption('y', 'yes', keys[0].label)];
+    if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
+    rendered = dotFrame([
       `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — ${unit.phase_label}.`,
       '',
       ...options,
-      '· · · · · · · · · · · ·',
-    ].join('\n');
+    ]);
   }
 
   return { keys, rendered };
@@ -203,16 +202,14 @@ function revisitablePhases(type, unit) {
  */
 function revisitPhasesSection(phases) {
   if (phases.length === 0) return '';
-  const body = [
-    '· · · · · · · · · · · ·',
+  const body = dotFrame([
     'Which phase would you like to revisit?',
     '',
-    ...phases.map((phase, i) => `- **\`${i + 1}\`** — ${titlecase(phase)} — completed`),
-    '- **`b`/`back`** — Return to the previous menu',
+    ...phases.map((phase, i) => cmdOption(String(i + 1), null, `${titlecase(phase)} — completed`)),
+    cmdOption('b', 'back', 'Return to the previous menu'),
     '',
     'Select an option:',
-    '· · · · · · · · · · · ·',
-  ].join('\n');
+  ]);
   const marker = '=== MENU: revisit phases (emit verbatim as markdown only at the revisit phase gate — never at the call) ===';
   return `${marker}\n${body}\n`;
 }

@@ -388,6 +388,8 @@ The planning phase requires a completed specification.
 
 Use `•` for all bulleted lists (sources, files, not-ready items, etc.).
 
+Within a numbered item, `·` marks quiet sub-detail: a wrapped summary paragraph or a subsection header (`· Edge cases`) whose tree hangs beneath it. Continuation lines always align under the text — never column zero.
+
 ### Spacing Rules
 
 **Between blocks**: One blank line after the phase title closing border before any content (code block, blockquote, or step marker). No `---` separators between code blocks (overview → not-ready → key → menu) — just natural block separation.

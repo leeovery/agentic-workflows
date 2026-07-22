@@ -17,6 +17,7 @@
 
 const { box } = require('../../kernel/render.cjs');
 const { titlecase, capitalise } = require('../conventions.cjs');
+const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -24,13 +25,6 @@ const { titlecase, capitalise } = require('../conventions.cjs');
 /** @typedef {import('../inbox-set.cjs').PickupItem} PickupItem */
 /** @typedef {import('../inbox-set.cjs').WorkingSetDetail} WorkingSetDetail */
 /** @typedef {import('../workunit-manage.cjs').ManageDetail} ManageDetail */
-
-const DOTS = '· · · · · · · · · · · ·';
-
-/** Dot-framed menu block. @param {string[]} lines @returns {string} */
-function dotMenu(lines) {
-  return [DOTS, ...lines, DOTS].join('\n');
-}
 
 /** One labelled `=== NAME (instruction) ===` deferred section. @param {string} name @param {string} instruction @param {string} body */
 function labelled(name, instruction, body) {
@@ -200,17 +194,17 @@ function startMenu(detail) {
   }
   options.push({ key: 'm', word: 'manage', action: 'manage', route: null, label: "Manage a work unit's lifecycle" });
 
-  const lines = ['· · · · · · · · · · · ·', 'What would you like to do?', ''];
+  const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
-    lines.push(`- **\`${e.key}\`** — ${e.label}`);
+    lines.push(cmdOption(e.key, null, e.label));
   }
   if (numbered.length > 0) lines.push('');
   for (const o of options) {
-    lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
+    lines.push(cmdOption(o.key, o.word, o.label));
   }
-  lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+  lines.push('', 'Select an option:');
 
-  return { keys: [...numbered, ...options], rendered: lines.join('\n') };
+  return { keys: [...numbered, ...options], rendered: dotMenu(lines) };
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +251,7 @@ function emptyMenu(detail) {
 
   const lines = ['What would you like to start?', ''];
   for (const o of options) {
-    lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}`);
+    lines.push(cmdOption(o.key, o.word, o.label));
   }
   lines.push('', 'Select an option:');
 
@@ -301,12 +295,12 @@ function inboxPickupView(items, hasArchived) {
 
   const options = [];
   if (items.length === 1) {
-    options.push('- **`1`** — Select the item to work on');
+    options.push(cmdOption('1', null, 'Select the item to work on'));
   } else if (items.length > 1) {
-    options.push(`- **\`1\`–\`${items.length}\`** — Select item(s) to work on (comma-separated for several)`);
+    options.push(rangeOption(1, items.length, 'Select item(s) to work on (comma-separated for several)'));
   }
-  if (hasArchived) options.push('- **`a`/`archived`** — View archived items (restore or delete)');
-  options.push('- **`b`/`back`** — Return');
+  if (hasArchived) options.push(cmdOption('a', 'archived', 'View archived items (restore or delete)'));
+  options.push(cmdOption('b', 'back', 'Return'));
 
   return { data, display, menu: dotMenu(['What would you like to do?', '', ...options]) };
 }
@@ -356,14 +350,14 @@ function workingSetView(ws) {
   ].join('\n');
 
   const options = [];
-  if (ws.uniform) options.push('- **`w`/`work`** — Proceed to discovery with this set');
+  if (ws.uniform) options.push(cmdOption('w', 'work', 'Proceed to discovery with this set'));
   options.push(
-    '- **`a`/`add`** — Add another inbox item to the set',
-    '- **`d`/`drop`** — Drop item(s) from the set (keeps them in the inbox)',
-    '- **`r`/`archive`** — Archive the whole set out of the inbox',
-    '- **`v`/`view`** — View full content of the set',
-    '- **`b`/`back`** — Return to the inbox list',
-    '- **Ask** — Ask about the set',
+    cmdOption('a', 'add', 'Add another inbox item to the set'),
+    cmdOption('d', 'drop', 'Drop item(s) from the set (keeps them in the inbox)'),
+    cmdOption('r', 'archive', 'Archive the whole set out of the inbox'),
+    cmdOption('v', 'view', 'View full content of the set'),
+    cmdOption('b', 'back', 'Return to the inbox list'),
+    promptOption('Ask', 'Ask about the set'),
   );
   const menu = dotMenu([
     'What would you like to do? Type a shortcut, or just tell me in',
@@ -460,25 +454,25 @@ function manageUnitView(md) {
   const options = [];
   if (md.implementation_completed) {
     actions.push(['d', 'mark_completed']);
-    options.push('- **`d`/`done`** — Mark as completed');
+    options.push(cmdOption('d', 'done', 'Mark as completed'));
   }
   if (md.work_type === 'feature') {
     actions.push(['p', 'pivot']);
-    options.push('- **`p`/`pivot`** — Convert to epic (enables multiple topics)');
+    options.push(cmdOption('p', 'pivot', 'Convert to epic (enables multiple topics)'));
   }
   if (md.absorb_available) {
     actions.push(['a', 'absorb']);
-    options.push('- **`a`/`absorb`** — Merge into an existing epic');
+    options.push(cmdOption('a', 'absorb', 'Merge into an existing epic'));
   }
   if (md.has_plan) {
     actions.push(['v', 'view_plan']);
-    options.push('- **`v`/`view-plan`** — View the implementation plan');
+    options.push(cmdOption('v', 'view-plan', 'View the implementation plan'));
   }
   actions.push(['c', 'cancel'], ['b', 'back']);
   options.push(
-    '- **`c`/`cancel`** — Mark as cancelled',
-    '- **`b`/`back`** — Return',
-    '- **Ask** — Ask a question about this work unit',
+    cmdOption('c', 'cancel', 'Mark as cancelled'),
+    cmdOption('b', 'back', 'Return'),
+    promptOption('Ask', 'Ask a question about this work unit'),
   );
 
   const data = [
@@ -510,9 +504,9 @@ function manageUnitView(md) {
       dotMenu([
         'Select a target epic:',
         '',
-        ...md.available_epics.map((name, i) => `- **\`${i + 1}\`** — ${titlecase(name)}`),
+        ...md.available_epics.map((name, i) => cmdOption(String(i + 1), null, titlecase(name))),
         '',
-        '- **`b`/`back`** — Return',
+        cmdOption('b', 'back', 'Return'),
       ]),
     ));
   }
@@ -523,7 +517,7 @@ function manageUnitView(md) {
       dotMenu([
         'Which plan would you like to view?',
         '',
-        ...md.planning_topics.map((t, i) => `- **\`${i + 1}\`** — ${titlecase(t.name)} — ${t.status}`),
+        ...md.planning_topics.map((t, i) => cmdOption(String(i + 1), null, `${titlecase(t.name)} — ${t.status}`)),
       ]),
     ));
   }

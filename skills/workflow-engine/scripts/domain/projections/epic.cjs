@@ -12,6 +12,7 @@
 
 const { signpost, box, renderTree, wrap } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
+const { dotFrame, cmdOption, callout } = require('./surfaces.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -150,9 +151,7 @@ function phaseBlock(phase, items) {
 
 /** ⚑ callout wrapped under the flag — continuation lines align with the text. @param {string} text */
 function flaggedCallout(text) {
-  return wrap(text, TREE_WIDTH - 4)
-    .map((seg, i) => (i === 0 ? '  ⚑ ' : '    ') + seg)
-    .join('\n');
+  return callout(text, { width: TREE_WIDTH });
 }
 
 // ---------------------------------------------------------------------------
@@ -631,17 +630,17 @@ function epicMenu(workUnit, detail) {
 
   numbered.forEach((e, i) => { e.key = String(i + 1); });
 
-  const lines = ['· · · · · · · · · · · ·', 'What would you like to do?', ''];
+  const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
-    lines.push(`- **\`${e.key}\`** — ${e.label}${e.recommended ? ' (recommended)' : ''}`);
+    lines.push(cmdOption(e.key, null, `${e.label}${e.recommended ? ' (recommended)' : ''}`));
   }
   if (hasMap && numbered.length > 0 && options.length > 0) lines.push('');
   for (const o of options) {
-    lines.push(`- **\`${o.key}\`/\`${o.word}\`** — ${o.label}${o.recommended ? ' (recommended)' : ''}`);
+    lines.push(cmdOption(o.key, o.word, `${o.label}${o.recommended ? ' (recommended)' : ''}`));
   }
-  lines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+  lines.push('', 'Select an option:');
 
-  return { keys: [...numbered, ...options], rendered: lines.join('\n') };
+  return { keys: [...numbered, ...options], rendered: dotFrame(lines) };
 }
 
 // ---------------------------------------------------------------------------
@@ -702,15 +701,13 @@ function selectionSubView(heading, question, action, rows, opts = {}) {
   });
   keys.push(backKey());
 
-  const menuLines = ['· · · · · · · · · · · ·', question, ''];
+  const menuLines = [question, ''];
   for (const k of keys) {
-    menuLines.push(k.word
-      ? `- **\`${k.key}\`/\`${k.word}\`** — ${k.label}`
-      : `- **\`${k.key}\`** — ${k.label}`);
+    menuLines.push(cmdOption(k.key, k.word, k.label));
   }
-  menuLines.push('', 'Select an option:', '· · · · · · · · · · · ·');
+  menuLines.push('', 'Select an option:');
 
-  return { keys, display: displayLines.join('\n') + '\n', rendered: menuLines.join('\n') };
+  return { keys, display: displayLines.join('\n') + '\n', rendered: dotFrame(menuLines) };
 }
 
 /** Group ItemRefs by phase in pipeline order. @param {ItemRef[]} items @returns {ItemRef[]} */

@@ -8,10 +8,12 @@
 // in-process library (lib.cjs). Domain commands (transitions, queries) land
 // here as they're built.
 //
-// The `render` command group is a DEV/DEBUG utility only (authoring aid for
-// prose literals, layout inspection). Skill flows never call it at runtime:
-// static chrome stays literal in prose; parameterised chrome is rendered
-// in-process by projections.
+// The `render` command group serves two audiences: the surface catalogue
+// (domain/render.cjs) — named runtime surfaces skill flows call at prescribed
+// points, returning demarcated sections emitted verbatim — and the dev/debug
+// primitives (signpost, box, wrap, tree), which remain authoring aids only.
+// Static chrome stays literal in prose; anything parameterised or
+// state-branching renders here.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -33,6 +35,7 @@ const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
 const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
+const { renderSurface, SURFACES } = require('./domain/render.cjs');
 
 /** @param {string} msg @returns {never} */
 function die(msg) {
@@ -149,10 +152,12 @@ Commands:
   commit <work-unit> -m <message>
   commit --inbox -m <message>
   commit --workflows -m <message>
-  render signpost <label> [--style step|substep] [--width N]
-  render box <title> [--width N]
-  render wrap <text> [--width N] [--prefix STR]
-  render tree [--width N]            (reads a JSON TreeNode array on stdin)`;
+  render resume-gate <wu.phase.topic> [--triage N]
+  render task-list   <wu.planning.topic> --file <payload.json>
+  render signpost <label> [--style step|substep] [--width N]     (dev aid)
+  render box <title> [--width N]                                 (dev aid)
+  render wrap <text> [--width N] [--prefix STR]                  (dev aid)
+  render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
 
 // ---------------------------------------------------------------------------
 // manifest — the field surface (domain/fields.cjs): dot-path addressing over
@@ -644,6 +649,15 @@ function runRender(argv) {
   const [command, ...rest] = argv;
   const { opts, positional } = parseArgs(rest);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
+
+  if (Object.hasOwn(SURFACES, command)) {
+    try {
+      respondSections(renderSurface(process.cwd(), command, { dotpath: positional[0], ...opts }));
+    } catch (err) {
+      failJson(err);
+    }
+    return;
+  }
 
   switch (command) {
     case 'signpost':

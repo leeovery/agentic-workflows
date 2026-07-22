@@ -160,4 +160,13 @@ engine commit --inbox -m "<message>"
 engine commit --workflows -m "<message>"
 ```
 
+**`render`** — the surface catalogue (`domain/render.cjs`): named runtime surfaces returning demarcated `=== DISPLAY: … ===` / `=== MENU: … ===` sections the calling flow emits verbatim at each marker's named moment. Address-backed values come from the manifest (JSON state only — the engine never parses markdown artifacts); judgment content arrives as a JSON payload file written to the phase cache with the Write tool and validated loudly per-field. Gate-mode branching happens inside the surface: the response carries the menu when the mode is `gated` and the auto-proceed line when it is `auto` — the calling flow branches on which section arrived, never on the mode itself. No git commit; nothing is written.
+
+```bash
+engine render resume-gate <wu>.<phase>.<topic> [--triage <N>]     # shared continue/restart gate; --triage adds the undrained-concerns warning above the menu
+engine render task-list <wu>.planning.<topic> --file <payload>    # planning task-list gate; payload {phase, phase_name, tasks: [{name, summary, edge_cases?}]}
+```
+
+The `render` group also keeps its dev/debug primitives (`signpost`, `box`, `wrap`, `tree`) — authoring aids only, never called from skill flows.
+
 **Rendering is not a runtime CLI concern.** Static chrome (signposts, boxes, gate rules) lives as literal blocks in skill prose; parameterised chrome is rendered in-process by projections. No skill flow calls a render command at runtime — the `render` command group in `engine.cjs` is a development/debugging utility only (e.g. generating a correct literal while authoring prose).
