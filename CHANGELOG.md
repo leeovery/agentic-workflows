@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-07-22
+
+✨ Added
+- New `engine render` surface catalogue — shared runtime rendering for gates, menus, task lists, findings, and confirmations, generated in code instead of assembled per-skill.
+- Conventions gained a templated-fence ratchet lint (check 13) that fails the test suite if a new hand-assembled menu/display fence sneaks in.
+
+🔧 Changed
+- Diff and content presentations (findings, plan resurfacing) now render inside plain fenced code/diff blocks instead of hand-drawn box borders — no more clipped or misaligned frames on narrow terminals.
+- Resume, revisit, early-completion, and epic-all-done gates across all work types (feature, bugfix, quick-fix, cross-cutting, epic) now render consistently through the shared engine surface rather than duplicated prose templates.
+- Work-unit and topic selection menus (continue-feature/bugfix/quickfix/cross-cutting/epic) are now generated from a single shared projection instead of five near-duplicate hand-written templates.
+- Completion, cancellation, reactivation, pivot, absorb, and promote confirmations (including knowledge-base warnings) now render as structured sections appended to the engine's transaction response.
+- Planning task lists, phase-structure trees, and task-authoring gates now render via the engine, including one-line task summaries with `·`-marked edge cases instead of prose dumps.
+- Entry-phase prerequisite checks (planning, implementation, review, specification) now derive their blocker/clear verdict from manifest state via the engine instead of long manual if/else chains in each skill.
+- `workunit complete` gained a `--pipeline` flag so bridge completions render the full "{Type} Completed" banner distinct from the plain one-line confirmation used elsewhere.
+
 ## [0.6.3] - 2026-07-21
 
 🔧 Changed

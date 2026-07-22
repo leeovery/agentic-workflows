@@ -43,7 +43,7 @@ Follow these steps EXACTLY as written. Do not skip steps or combine them.
 |__/|__/\____/_/ |_/_/ |_/_/   /_____/\____/ |__/|__//____/
 
 ●─────────────────────────────────────────────────────────────────●
-  Agentic Engineering Workflows (v0.6.3)
+  Agentic Engineering Workflows (v0.6.4)
 ●─────────────────────────────────────────────────────────────────●
 ```
 
