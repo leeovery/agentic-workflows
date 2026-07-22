@@ -695,11 +695,13 @@ Rules:
 Three mechanisms move a flow forward; never blur them:
 
 - **Loading a reference** reads a file into the running context — progressive disclosure, nothing more. No parameters pass mechanically: state the variables in prose before the Load (`with topic = `{topic}``) and the loaded file references them, already in context.
-- **Invoking a skill** is a Skill tool call at a boundary (entry → process, phase end → bridge). It adds the skill's instructions to the running context — **nothing is cleared**. Arguments pass only when the skill expects them; context already holds the rest. The canonical form is an imperative **before** the payload fence, naming the skill and the mechanism, with the fence as pure arguments and nothing after it (a skill-invoking exit is terminal — no STOP, no routing):
+- **Invoking a skill** is a Skill tool call at a boundary (entry → process, phase end → bridge). It adds the skill's instructions to the running context — **nothing is cleared**. Two argument forms, by what the skill declares:
+  - **Positional arguments** (the skill declares `$0`/`$1`/… — entry skills, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, write the whole command per branch — two complete commands beat one annotated one.
+  - **Handoff context block** (process-skill handoffs): an imperative **before** the payload fence, the fence as pure content, nothing after it (a skill-invoking exit is terminal — no STOP, no routing):
 
-  ```
-  Invoke the **workflow-x** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
-  ```
+    ```
+    Invoke the **workflow-x** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+    ```
 
   Never place the imperative after the fence (it arrives too late — the command-prelude rule), and never inside it (a fence is payload; an instruction buried there gets printed, not executed).
 - **The bridge** (`workflow-bridge`) owns the only context-clearing handoff: phase → phase via plan mode. Within a phase, context is never cleared. The bridge's plan content is a verbatim template — see the bridge skill; enrichment poisons the fresh context it is designed to feed.

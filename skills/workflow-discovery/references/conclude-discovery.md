@@ -32,4 +32,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 > step in a clean context.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} discovery`@if(next_phase is set) plus the third argument `{next_phase}` @endif.
+**If `next_phase` is set:** Invoke `/workflow-bridge {work_unit} discovery {next_phase}`.
+
+**If not:** Invoke `/workflow-bridge {work_unit} discovery`.

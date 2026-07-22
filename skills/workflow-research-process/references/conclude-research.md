@@ -41,4 +41,4 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 > to make decisions about architecture and approach.
 ```
 
-4. Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} research`.
+4. Invoke `/workflow-bridge {work_unit} research`.

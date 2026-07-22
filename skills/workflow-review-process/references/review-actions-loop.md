@@ -44,7 +44,7 @@ Commit the completion:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
-**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} review`.
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -90,7 +90,7 @@ Commit the completion:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
-**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} review`.
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -136,7 +136,7 @@ Commit the completion:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
-**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} review`.
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -168,7 +168,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 No actionable tasks synthesized. Review complete.
 ```
 
-**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} review`.
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -262,7 +262,7 @@ Commit the staging file updates:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks skipped"
 ```
 
-**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} review`.
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 

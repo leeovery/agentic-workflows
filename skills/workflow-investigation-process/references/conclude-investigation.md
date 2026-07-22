@@ -58,4 +58,4 @@ The investigation is completed. Root cause and fix direction are documented.
 > the fix approach into a document that drives planning.
 ```
 
-5. Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} investigation`.
+5. Invoke `/workflow-bridge {work_unit} investigation`.

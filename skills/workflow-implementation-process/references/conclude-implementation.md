@@ -42,4 +42,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 > your work against the specification and plan.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} implementation`.
+Invoke `/workflow-bridge {work_unit} implementation`.

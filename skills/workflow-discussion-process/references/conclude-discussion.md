@@ -57,7 +57,7 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 > synthesise your decisions into a formal document.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} discussion`.
+Invoke `/workflow-bridge {work_unit} discussion`.
 
 #### If `no`
 

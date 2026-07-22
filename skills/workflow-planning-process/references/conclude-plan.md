@@ -58,4 +58,4 @@ Status has been marked as `completed`. The plan is ready for implementation.
 > these tasks using TDD — tests first, then code.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} planning`.
+Invoke `/workflow-bridge {work_unit} planning`.

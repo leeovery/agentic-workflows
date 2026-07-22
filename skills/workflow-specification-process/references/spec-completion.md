@@ -209,7 +209,7 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 > for a cross-cutting concern — the pipeline completes here.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} specification`.
+Invoke `/workflow-bridge {work_unit} specification`.
 
 #### Otherwise
 
@@ -220,4 +220,4 @@ Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} s
 > implementable tasks with dependencies and acceptance criteria.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} specification`.
+Invoke `/workflow-bridge {work_unit} specification`.

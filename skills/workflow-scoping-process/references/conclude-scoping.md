@@ -17,6 +17,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 > these tasks using the verification workflow.
 ```
 
-**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} scoping`.
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} scoping`.
 
 **STOP.** Do not proceed — terminal condition.
