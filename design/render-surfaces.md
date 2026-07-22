@@ -205,6 +205,20 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
   plan-construction's twin gate. Stack synced: main → #490 → #491 → #492.
   Remaining: stage 4 (bridge + continue-* = clone-family), stage 5 (entry
   validation + transaction folds), stage 6 (static sweep + D4 lint).
+- 2026-07-22 — Five-dimension stack review (parity, flow logic, conventions,
+  code correctness, test adequacy) over #490–#496; all findings fixed on
+  #496: pivot menu opt-in (reroute derail), pipeline banner folded into
+  workunit complete --pipeline (double-confirmation gone, pipeline-complete
+  surface retired), selection zero-guard + blank line + stale-dump rule,
+  loud-validator holes closed, conventions callout for warnings, absorb H4,
+  stale doctrine paragraph, grammar carve-out, CLI-boundary subprocess
+  suite. Command-prelude rule codified (decisions before the fence).
+- 2026-07-22 — Stage 6b up (#497): entry-gate (prerequisite verdicts derived
+  engine-side — planning/implementation/review/specification state machines;
+  validate-spec and validate-source collapse to one call each), phase-note
+  (entry one-liners), selection not-found on the view snapshot. The surface
+  census families are now all codified; stage 7 (static sweep + D4 lint)
+  closes the programme.
 - 2026-07-21 — Stage 6a up (#496): transaction confirmation sections —
   workunit complete/cancel/reactivate/absorb/promote/pivot and topic
   cancel/reactivate carry their own confirmation and kb-warning sections
