@@ -92,6 +92,19 @@ Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
 
+- 2026-07-22 — End-of-stack review (Lee's full-analysis gate): six slices
+  (harvest, spec-entry, task-map+commit-plan, engine code, test adequacy,
+  conventions), findings adversarially verified, fixed on #510's branch:
+  two MAJORs (resolve-dependencies' stale re-resolve orphaned by the
+  working-list swap — corrected pair now feeds the list; write-tasks'
+  storage_paths derivation missing from its prelude) plus symmetric
+  empty-batch guards, display-groupings' own unify-ops.json, the
+  process-review-findings file-level commit rule (missed by both earlier
+  sweeps) onto --plan, restart-cleanup expansion guidance, engine
+  hardening (dangling --plan, malformed-vs-missing storage_paths,
+  non-string batch names), and the validateStoragePaths test gap closed
+  on both write paths. Everything else traced clean with evidence.
+
 - 2026-07-22 — Stage 6 up (#510): commit --plan, per the plan agreed with
   Lee — formats declare Storage Pathspecs in authoring.md (tick [".tick/"],
   others []), init records storage_paths on the planning item (validated at
