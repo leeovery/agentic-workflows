@@ -94,15 +94,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 **If plan status is `completed` and scoping status is `in-progress`** (reopened for revisit):
 
-> *Output the next fenced block as markdown (not a code block):*
+Render the resume menu and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-Found completed scoping for **{topic:(titlecase)}** — spec and plan are in place.
-
-- **`c`/`continue`** — Adjust the existing spec and plan
-- **`r`/`restart`** — Erase the spec, plan, and task files, then rescope from scratch
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.scoping.{topic} --variant scoping
 ```
 
 **STOP.** Wait for user response.

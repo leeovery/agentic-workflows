@@ -4,13 +4,10 @@
 
 ---
 
-> *Output the next fenced block as a code block:*
+Render the completion display — the artifact paths derive from the work unit — and emit its section verbatim per its marker:
 
-```
-Scoping complete for "{topic:(titlecase)}".
-
-  Spec: .workflows/{work_unit}/specification/{topic}/specification.md
-  Plan: .workflows/{work_unit}/planning/{topic}/
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {work_unit} --phase scoping --paths
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
