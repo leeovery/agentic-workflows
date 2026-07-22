@@ -76,7 +76,7 @@ Set `target_phase` = the number's phase in `revisitable_phases`.
 
 ## E. Enter Plan Mode
 
-Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file **verbatim — this is the complete plan**. Plan mode's usual job does not apply here: nothing to investigate, verify, or design, and nothing learned this session is added — the next context is designed to start empty, and additions bias it. The one sanctioned addition: anything the user explicitly asked to carry forward goes under a final `## User instructions` heading, after the template:
+Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file — resolve the conditionals and placeholders, then output the result **verbatim: it is the complete plan**. Plan mode's usual job does not apply here: nothing to investigate, verify, or design, and nothing learned this session is added — the next context is designed to start empty, and additions bias it. The one sanctioned addition: anything the user explicitly asked to carry forward goes under a final `## User instructions` heading, after the template:
 
 ```
 # Continue Cross-Cutting: {work_unit}
