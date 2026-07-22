@@ -190,6 +190,7 @@ describe('workflow-continue-bugfix format', () => {
       '',
       '- **`1`** — Continue "Crash" — specification (in-progress)',
       '- **`2`** — Continue "Leak" — investigation (in-progress)',
+      '',
       '- **`3`** — View completed & cancelled bugfixes',
       "- **`m`/`manage`** — Manage a bugfix's lifecycle",
       '',

@@ -340,7 +340,7 @@ function phaseTree(cwd, args) {
     lines.push(`${i + 1}. ${ph.name}`);
     if (ph.detail !== undefined) {
       if (!Array.isArray(ph.detail) || ph.detail.length === 0
-        || ph.detail.some((d) => !Array.isArray(d) || d.length !== 2 || !isFilled(d[0]) || !isFilled(String(d[1])))) {
+        || ph.detail.some((d) => !Array.isArray(d) || d.length !== 2 || !isFilled(d[0]) || !(typeof d[1] === 'number' || isFilled(d[1])))) {
         throw new Error(`render phase-tree: phase ${i + 1} "detail" must be a non-empty array of [label, value] pairs`);
       }
       lines.push(treeList(ph.detail.map(([label, value]) => `${label}: ${value}`), { indent: '   ' }));
@@ -354,6 +354,7 @@ function phaseTree(cwd, args) {
       'emit verbatim as markdown, then STOP for the user\'s response',
       menu('Approve this phase structure?', [
         cmdOption('y', 'yes', 'Proceed to task breakdown'),
+        cmdOption('v', 'view full', 'Show the full phase structure — goals, ordering rationale, acceptance criteria'),
         promptOption('Tell me what to change', 'which phases to reorder, split, merge, add, edit, or remove'),
         promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
       ]),
@@ -380,11 +381,16 @@ function readJsonPayload(cwd, file, surface) {
   } catch {
     throw new Error(`render ${surface}: payload file not found: ${file}`);
   }
+  let parsed;
   try {
-    return JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch (err) {
     throw new Error(`render ${surface}: payload is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
+  if (parsed === null || typeof parsed !== 'object') {
+    throw new Error(`render ${surface}: payload must be a JSON object or array`);
+  }
+  return parsed;
 }
 
 /** @param {unknown} v @returns {v is string} */
@@ -439,7 +445,7 @@ function finding(cwd, { dotpath, file }) {
   if (!Number.isInteger(p.n) || p.n < 1) throw new Error('render finding: "n" must be a positive integer');
   if (!Number.isInteger(p.total) || p.total < p.n) throw new Error('render finding: "total" must be an integer ≥ "n"');
   if (!isFilled(p.title)) throw new Error('render finding: "title" must be a non-empty string');
-  if (!Array.isArray(p.meta) || p.meta.some((m) => !Array.isArray(m) || m.length !== 2 || !isFilled(m[0]) || !isFilled(String(m[1])))) {
+  if (!Array.isArray(p.meta) || p.meta.some((m) => !Array.isArray(m) || m.length !== 2 || !isFilled(m[0]) || !(typeof m[1] === 'number' || isFilled(m[1])))) {
     throw new Error('render finding: "meta" must be an array of [label, value] pairs');
   }
   if (!isFilled(p.details)) throw new Error('render finding: "details" must be a non-empty string');
@@ -463,7 +469,9 @@ function finding(cwd, { dotpath, file }) {
       ...stringLines(p.diff.proposed || [], 'finding', 'diff.proposed').map((l) => `+${l}`),
       ...stringLines(p.diff.context_below || [], 'finding', 'diff.context_below').map((l) => ` ${l}`),
     ];
-    if (body.length === 0) throw new Error('render finding: "diff" must carry at least one current/proposed line');
+    if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
+      throw new Error('render finding: "diff" must carry at least one current/proposed line');
+    }
     const framed = boxedFrame(`Finding ${p.n}: ${p.title}`, body).split('\n');
     parts.push(section('DISPLAY: diff frame open', 'emit verbatim as a code block, directly above the diff', framed[0]));
     parts.push(section('DISPLAY: diff', 'emit verbatim as a diff code block (```diff fence)', framed.slice(1, -1).join('\n')));
@@ -529,28 +537,6 @@ function resolveWorkUnit(cwd, dotpath, surface) {
   if (!manifest) throw new Error(`render ${surface}: work unit "${dotpath}" not found`);
   const typeLabel = TYPE_LABELS[manifest.work_type] || titlecase(String(manifest.work_type || ''));
   return { workUnit: dotpath, manifest, typeLabel };
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string} & Record<string, string|undefined>} args
- * @returns {string}
- */
-function pipelineComplete(cwd, args) {
-  const { workUnit, manifest, typeLabel } = resolveWorkUnit(cwd, args.dotpath, 'pipeline-complete');
-  const wu = titlecase(workUnit);
-  const body = 'skipped-review' in args
-    ? `"${wu}" completed — review skipped.`
-    : manifest.work_type === 'epic'
-      ? `"${wu}" has completed all topics through review.`
-      : `"${wu}" has completed all pipeline phases.`;
-  return section(
-    'DISPLAY: pipeline complete',
-    'emit verbatim as a code block after the workunit complete command',
-    `${typeLabel} Completed
-
-${body}`,
-  );
 }
 
 /**
@@ -631,7 +617,6 @@ const SURFACES = {
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,
-  'pipeline-complete': pipelineComplete,
   'phase-completed': phaseCompleted,
   'early-completion-gate': earlyCompletionGate,
   'revisit-gate': revisitGate,

@@ -1,14 +1,16 @@
 'use strict';
 
-// Transaction confirmation sections — the DISPLAY/MENU blocks that follow a
+// ---------------------------------------------------------------------------
+// Domain ring: transaction confirmation sections — the DISPLAY/MENU blocks that follow a
 // lifecycle verb's JSON response (the labelled-section pattern the task verbs
 // established). The response line stays the machine contract; these sections
 // are the user-facing confirmation the calling flow emits verbatim at its
 // prescribed moment. Warnings render above confirmations, exactly as the
 // prose templates they replace.
+// ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
-const { section } = require('./surfaces.cjs');
+const { section, callout, menu, cmdOption } = require('./surfaces.cjs');
 
 /**
  * The ⚑ warning block: label line, one indented line per warning, and the
@@ -18,8 +20,8 @@ const { section } = require('./surfaces.cjs');
  */
 function warningBlock(label, warnings, tail) {
   if (!Array.isArray(warnings) || warnings.length === 0) return null;
-  const lines = [`⚑ ${label}`, ...warnings.map((w) => `  ${w}`), `  ${tail}`];
-  return section('DISPLAY: kb warning', 'emit verbatim as a code block, above the confirmation', lines.join('\n'));
+  const lines = [label, ...warnings.flatMap((w) => String(w).split('\n')), tail];
+  return section('DISPLAY: kb warning', 'emit verbatim as a code block, above the confirmation', callout(lines));
 }
 
 /** @param {string} body @param {string} [instruction] */
@@ -32,16 +34,35 @@ function joined(parts) {
   return parts.filter(Boolean).join('\n');
 }
 
+/** @type {Record<string, string>} */
+const TYPE_LABELS = {
+  feature: 'Feature',
+  bugfix: 'Bugfix',
+  'quick-fix': 'Quick-Fix',
+  'cross-cutting': 'Cross-Cutting',
+  epic: 'Epic',
+};
+
 /**
- * workunit complete / cancel / reactivate.
+ * workunit complete / cancel / reactivate. `complete` in pipeline context
+ * (the bridge) renders the full "{Type} Completed" banner instead of the
+ * one-line confirmation — one transaction, its own chrome.
  * @param {'complete'|'cancel'|'reactivate'} verb
- * @param {{work_unit: string, warnings?: string[]}} result
+ * @param {{work_unit: string, work_type?: string, warnings?: string[]}} result
+ * @param {{pipeline?: boolean, skippedReview?: boolean}} [opts]
  * @returns {string}
  */
-function workunitLifecycleSections(verb, result) {
+function workunitLifecycleSections(verb, result, { pipeline = false, skippedReview = false } = {}) {
   const name = titlecase(result.work_unit);
   if (verb === 'complete') {
-    return confirmation(`"${name}" marked as completed.`);
+    if (!pipeline) return confirmation(`"${name}" marked as completed.`);
+    const typeLabel = TYPE_LABELS[result.work_type || ''] || titlecase(String(result.work_type || ''));
+    const body = skippedReview
+      ? `"${name}" completed — review skipped.`
+      : result.work_type === 'epic'
+        ? `"${name}" has completed all topics through review.`
+        : `"${name}" has completed all pipeline phases.`;
+    return confirmation(`${typeLabel} Completed\n\n${body}`);
   }
   if (verb === 'cancel') {
     return joined([
@@ -125,23 +146,28 @@ function promoteSections(result) {
 }
 
 /**
- * workunit pivot — warning plus the continuation menu.
+ * workunit pivot — the kb warning, plus the continuation menu only when the
+ * caller asked for it (`--continuation-menu`, the manage flow's menu step).
+ * The off-topic reroute paths pivot mid-session with no menu step — an
+ * unconditional menu would derail them.
  * @param {{work_unit: string, warnings?: string[]}} result
+ * @param {{continuationMenu?: boolean}} [opts]
  * @returns {string}
  */
-function pivotSections(result) {
+function pivotSections(result, { continuationMenu = false } = {}) {
   const name = titlecase(result.work_unit);
-  const { menu, cmdOption } = require('./surfaces.cjs');
   return joined([
     warningBlock('Knowledge indexing warning', result.warnings, 'The pivot is complete. Indexing can be retried later.'),
-    section(
-      'MENU: pivot continuation',
-      "emit verbatim as markdown, then STOP for the user's response",
-      menu(`**${name}** converted from feature to epic.`, [
-        cmdOption('c', 'continue', `Continue ${name} as epic`),
-        cmdOption('b', 'back', 'Return to previous view'),
-      ]),
-    ),
+    continuationMenu
+      ? section(
+          'MENU: pivot continuation',
+          "emit verbatim as markdown, then STOP for the user's response",
+          menu(`**${name}** converted from feature to epic.`, [
+            cmdOption('c', 'continue', `Continue ${name} as epic`),
+            cmdOption('b', 'back', 'Return to previous view'),
+          ]),
+        )
+      : null,
   ]);
 }
 

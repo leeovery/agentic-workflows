@@ -213,6 +213,10 @@ The refusal names the blocking condition; nothing was touched — relay the erro
 
 → Return to caller.
 
+#### Otherwise
+
+The command succeeded.
+
 → Proceed to **H. Post-Absorption**.
 
 ---

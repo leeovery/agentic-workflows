@@ -161,7 +161,9 @@ describe('engine workunit pivot — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    assert.match(engine.lastSections, /MENU: pivot continuation[\s\S]*converted from feature to epic/);
+    // The continuation menu is opt-in (--continuation-menu, the manage flow);
+    // the off-topic reroute paths run the bare verb and must see no menu.
+    assert.ok(!engine.lastSections.includes('MENU: pivot continuation'), 'bare pivot must not emit the continuation menu');
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');

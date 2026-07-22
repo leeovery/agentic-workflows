@@ -77,7 +77,7 @@ Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 #### If user chose `p`/`pivot`
 
-Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
+Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`, continuation_menu = `true` (pass `--continuation-menu` on the pivot command).
 
 Emit the pivot response's `MENU: pivot continuation` section verbatim per its marker.
 

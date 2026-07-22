@@ -198,7 +198,17 @@ describe('engine workunit absorb — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    assert.match(engine.lastSections, /Absorbed into Epic[\s\S]*• Discussion: moved[\s\S]*• Feature: removed/);
+    assert.match(engine.lastSections, new RegExp([
+      'Absorbed into Epic',
+      '',
+      '  Topic "Auth" added to Payments\\.',
+      '',
+      '  • Discussion: moved',
+      '  • Research: moved',
+      '  • Seed: moved',
+      '  • Imports: moved',
+      '  • Feature: removed',
+    ].join('\\n')));
 
     // Files landed at their epic identities; the feature directory is gone.
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/auth.md'), 'utf8'), '# Discussion\n');

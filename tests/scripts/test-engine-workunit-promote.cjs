@@ -200,7 +200,17 @@ describe('engine workunit promote — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    assert.match(engine.lastSections, /Promoted to Cross-Cutting[\s\S]*Epic status: promoted/);
+    assert.match(engine.lastSections, new RegExp([
+      'Promoted to Cross-Cutting',
+      '',
+      '"[^"]+" has been promoted to its own cross-cutting work unit\\.',
+      '',
+      '  Work unit: .+',
+      '  Source: .+',
+      '  Discussion files: moved',
+      '  Specification: moved',
+      '  Epic status: promoted',
+    ].join('\\n')));
 
     // The spec directory moved whole — tracking file included — and the
     // source discussions landed at their cc identities; the epic keeps

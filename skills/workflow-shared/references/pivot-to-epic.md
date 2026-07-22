@@ -15,9 +15,11 @@ The caller provides this via context before loading:
 ## A. Run the Pivot
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit}
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit} [--continuation-menu]
 ```
 
-Emit the response's `DISPLAY: kb warning` section when present, verbatim per its marker. (The response's `MENU: pivot continuation` section is emitted by the caller at its menu step.)
+Pass `--continuation-menu` only when the caller's flow has a menu step for the response's `MENU: pivot continuation` section (the manage flow does; the off-topic reroute paths do not — they continue their session and must omit the flag).
+
+Emit the response's `DISPLAY: kb warning` section when present, verbatim per its marker. (With `--continuation-menu`, the response also carries `MENU: pivot continuation` — the caller emits it at its menu step.)
 
 → Return to caller.

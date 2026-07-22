@@ -71,14 +71,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render epic-all-done-gate
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete epic pipeline"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete epic pipeline" --pipeline
 ```
 
-Render and emit the section verbatim:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render pipeline-complete {work_unit}
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 

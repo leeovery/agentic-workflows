@@ -71,11 +71,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render task-list {work_un
 
 The response carries the task-list display plus the surface for the current gate mode. Emit each section verbatim at its marked instruction.
 
-#### If the response carries `DISPLAY: task list auto-approved`
+#### If the response carried `DISPLAY: task list auto-approved`
 
 → Proceed to **C. Finalize Approval**.
 
-#### If the response carries `MENU: task list gate`
+#### If the response carried `MENU: task list gate`
 
 **STOP.** Wait for user response.
 

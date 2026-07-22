@@ -585,6 +585,25 @@ describe('engine workunit complete', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): complete feature pipeline');
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
+    // Confirmation section rides after the JSON line; work_type now in the response.
+    assert.strictEqual(res.work_type, 'feature');
+    assert.match(engine.lastSections, /=== DISPLAY: confirmation \(emit verbatim as a code block after the response\) ===\n"Auth Flow" marked as completed\./);
+  });
+
+  it('--pipeline renders the "{Type} Completed" banner instead of the one-liner; --skipped-review varies the body', () => {
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline', '--pipeline']);
+    assert.match(engine.lastSections, /Feature Completed\n\n"Auth Flow" has completed all pipeline phases\./);
+    assert.ok(!engine.lastSections.includes('marked as completed'));
+
+    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): re-complete (review skipped)', '--pipeline', '--skipped-review']);
+    assert.match(engine.lastSections, /Feature Completed\n\n"Auth Flow" completed — review skipped\./);
+  });
+
+  it('reactivate carries its confirmation section', () => {
+    engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    engine(dir, ['workunit', 'reactivate', 'auth-flow']);
+    assert.match(engine.lastSections, /"Auth Flow" reactivated\./);
   });
 
   it('rejects an already-completed unit and routes a cancelled unit through reactivate', () => {
@@ -653,7 +672,8 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(m.completed_at, undefined);
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): mark as cancelled');
     // Sections: warning above confirmation, both after the JSON line.
-    assert.match(engine.lastSections, /⚑ Knowledge removal warning[\s\S]*The work unit is cancelled\./);
+    // Conventions-form callout: 2-space flag, 4-space continuations.
+    assert.match(engine.lastSections, /  ⚑ Knowledge removal warning\n(    .+\n)+    The work unit is cancelled\./);
     assert.match(engine.lastSections, /"Auth Flow" marked as cancelled\./);
   });
 

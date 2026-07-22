@@ -1,10 +1,12 @@
 'use strict';
 
-// Shared render-surface primitives — the single builder every engine-rendered
+// ---------------------------------------------------------------------------
+// Domain ring: shared render-surface primitives — the single builder every engine-rendered
 // menu, callout, and content frame flows through. The skill-visible formatting
 // rules (CONVENTIONS.md: dot frames, option syntax, callout flags, boxed
 // frames) exist in code exactly once, here; restyling a surface class is a
 // one-place change.
+// ---------------------------------------------------------------------------
 
 const { wrap } = require('../../kernel/render.cjs');
 

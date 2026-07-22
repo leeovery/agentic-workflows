@@ -114,10 +114,10 @@ Commands:
   manifest resolve <work-unit>.<phase>[.<topic>]
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
                   [--import <path> …] [--seed <path> …]
-  workunit complete <work-unit> -m <message>
+  workunit complete <work-unit> -m <message> [--pipeline [--skipped-review]]
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
-  workunit pivot <work-unit>
+  workunit pivot <work-unit> [--continuation-menu]
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
@@ -161,7 +161,6 @@ Commands:
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
-  render pipeline-complete <wu> [--skipped-review]
   render phase-completed   <wu> --phase <phase>
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
@@ -242,28 +241,33 @@ function runWorkunit(argv) {
     } else if (command === 'complete') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
+      const completeFlags = new Set();
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '-m' || a === '--message') message = rest[++i];
+        else if (a === '--pipeline' || a === '--skipped-review') completeFlags.add(a.slice(2));
         else if (workUnit === null) workUnit = a;
         else throw new Error(`unexpected argument "${a}"`);
       }
       if (!workUnit || !message) {
-        throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
+        throw new Error('Usage: engine workunit complete <work-unit> -m <message> [--pipeline [--skipped-review]]');
       }
       const res = completeWorkUnit(process.cwd(), workUnit, { message });
       respond(res);
-      respondSections(txSections.workunitLifecycleSections('complete', res));
+      respondSections(txSections.workunitLifecycleSections('complete', res, {
+        pipeline: completeFlags.has('pipeline'),
+        skippedReview: completeFlags.has('skipped-review'),
+      }));
     } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
-      if (!workUnit || extra.length > 0) {
-        throw new Error(`Usage: engine workunit ${command} <work-unit>`);
+      if (!workUnit || (extra.length > 0 && !(command === 'pivot' && extra.every((a) => a === '--continuation-menu')))) {
+        throw new Error(`Usage: engine workunit ${command} <work-unit>${command === 'pivot' ? ' [--continuation-menu]' : ''}`);
       }
       const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
       const res = fn(process.cwd(), workUnit);
       respond(res);
       respondSections(command === 'pivot'
-        ? txSections.pivotSections(res)
+        ? txSections.pivotSections(res, { continuationMenu: extra.includes('--continuation-menu') })
         : txSections.workunitLifecycleSections(command, res));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
