@@ -501,6 +501,126 @@ function finding(cwd, { dotpath, file }) {
   return parts.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Bridge continuation surfaces — work-unit-level: pipeline completion
+// displays and the continuation gates the bridge presents between phases.
+// Address-backed (work_type from the manifest); phases ride as flags.
+// ---------------------------------------------------------------------------
+
+/** @type {Record<string, string>} */
+const TYPE_LABELS = {
+  feature: 'Feature',
+  bugfix: 'Bugfix',
+  'quick-fix': 'Quick-Fix',
+  'cross-cutting': 'Cross-Cutting',
+  epic: 'Epic',
+};
+
+/**
+ * Resolve a 1-segment work-unit address.
+ * @param {string} cwd @param {string} dotpath @param {string} surface
+ * @returns {{workUnit: string, manifest: any, typeLabel: string}}
+ */
+function resolveWorkUnit(cwd, dotpath, surface) {
+  if (!dotpath || dotpath.includes('.')) {
+    throw new Error(`render ${surface}: address must be a bare <work_unit>, got "${dotpath}"`);
+  }
+  const manifest = loadManifest(cwd, dotpath);
+  if (!manifest) throw new Error(`render ${surface}: work unit "${dotpath}" not found`);
+  const typeLabel = TYPE_LABELS[manifest.work_type] || titlecase(String(manifest.work_type || ''));
+  return { workUnit: dotpath, manifest, typeLabel };
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string} & Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function pipelineComplete(cwd, args) {
+  const { workUnit, manifest, typeLabel } = resolveWorkUnit(cwd, args.dotpath, 'pipeline-complete');
+  const wu = titlecase(workUnit);
+  const body = 'skipped-review' in args
+    ? `"${wu}" completed — review skipped.`
+    : manifest.work_type === 'epic'
+      ? `"${wu}" has completed all topics through review.`
+      : `"${wu}" has completed all pipeline phases.`;
+  return section(
+    'DISPLAY: pipeline complete',
+    'emit verbatim as a code block after the workunit complete command',
+    `${typeLabel} Completed
+
+${body}`,
+  );
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, phase?: string}} args
+ * @returns {string}
+ */
+function phaseCompleted(cwd, { dotpath, phase }) {
+  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'phase-completed');
+  if (!isFilled(phase)) throw new Error('render phase-completed: --phase is required');
+  return section(
+    'DISPLAY: phase completed',
+    'emit verbatim as a code block',
+    `${titlecase(phase)} completed for "${titlecase(workUnit)}".`,
+  );
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function earlyCompletionGate(cwd, { dotpath }) {
+  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'early-completion-gate');
+  return section(
+    'MENU: early completion gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`Implementation completed for "${titlecase(workUnit)}".`, [
+      cmdOption('y', 'yes', 'Proceed to review'),
+      cmdOption('d', 'done', 'Complete without review'),
+    ]),
+  );
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, prev?: string, next?: string}} args
+ * @returns {string}
+ */
+function revisitGate(cwd, { dotpath, prev, next }) {
+  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'revisit-gate');
+  if (!isFilled(prev)) throw new Error('render revisit-gate: --prev is required');
+  if (!isFilled(next)) throw new Error('render revisit-gate: --next is required');
+  return section(
+    'MENU: revisit gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`${titlecase(prev)} completed for "${titlecase(workUnit)}".`, [
+      cmdOption('y', 'yes', `Proceed to ${next}`),
+      cmdOption('r', 'revisit', 'Revisit an earlier phase'),
+    ]),
+  );
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function epicAllDoneGate(cwd, { dotpath }) {
+  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'epic-all-done-gate');
+  return section(
+    'MENU: epic all-done gate',
+    "emit verbatim as markdown, then STOP for the user's response",
+    menu(`All topics have completed review for "${titlecase(workUnit)}".`, [
+      cmdOption('y', 'yes', 'Mark this epic as completed'),
+      cmdOption('n', 'no', 'Return to the epic menu'),
+    ]),
+  );
+}
+
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
   'resume-gate': resumeGate,
@@ -511,6 +631,11 @@ const SURFACES = {
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,
+  'pipeline-complete': pipelineComplete,
+  'phase-completed': phaseCompleted,
+  'early-completion-gate': earlyCompletionGate,
+  'revisit-gate': revisitGate,
+  'epic-all-done-gate': epicAllDoneGate,
 };
 
 /**

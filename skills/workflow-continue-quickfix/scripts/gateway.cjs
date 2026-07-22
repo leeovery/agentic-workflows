@@ -26,7 +26,9 @@ function discover(cwd) {
 }
 
 function format(result) {
-  return engine.detail.workUnitIndex(TYPE, result);
+  const units = engine.detail.unitsOf(engine.detail.typeConfig(TYPE), result);
+  return engine.detail.workUnitIndex(TYPE, result)
+    + engine.project.selectionSections(TYPE, units, { completed: result.completed_count, cancelled: result.cancelled_count });
 }
 
 // One snapshot for Step 5: reasoning DATA (flow flags + the ACTIONS table),

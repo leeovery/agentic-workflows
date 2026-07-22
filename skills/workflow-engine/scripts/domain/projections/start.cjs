@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------
 
 const { box } = require('../../kernel/render.cjs');
-const { titlecase, capitalise } = require('../conventions.cjs');
+const { titlecase, capitalise, titlecaseLabel } = require('../conventions.cjs');
 const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
@@ -71,14 +71,6 @@ const CONTINUE_SKILL = {
 // ---------------------------------------------------------------------------
 // Shared composition helpers
 // ---------------------------------------------------------------------------
-
-// Titlecase a phase label without disturbing its punctuation: every alphabetic
-// run is capitalised in place, so parentheses and hyphens survive.
-// `discussion (in-progress)` → `Discussion (In-Progress)`.
-/** @param {string} s */
-function titlecaseLabel(s) {
-  return String(s).replace(/[a-z]+/gi, (w) => capitalise(w));
-}
 
 /** One-line inbox count hint — non-zero categories, pluralised. @param {InboxDetail} inbox */
 function inboxHint(inbox) {

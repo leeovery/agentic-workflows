@@ -171,7 +171,14 @@ engine render proposed-task <wu>.<phase>.<topic> --file <payload> --gate gated|a
 engine render tasks-overview <wu>.<phase>.<topic> --file <payload>    # proposed-tasks cycle overview; payload {label, tasks: [{title, severity}]}
 engine render author-task-gate <wu>.planning.<topic> --m N --total N --title STR   # task-authoring approval menu (the detail itself is a verbatim file emission the flow owns)
 engine render phase-tree <wu>.planning.<topic> --file <payload> [--approve]        # D5 phase structure tree; payload {phases: [{name, detail?: [[label, value]]}]}; --approve appends the structure gate
+engine render pipeline-complete <wu> [--skipped-review]           # work-unit-level: "{Type} Completed" display, body by work_type / skip flag
+engine render phase-completed <wu> --phase <phase>                # one-line phase-completed display
+engine render early-completion-gate <wu>                          # bridge gate: proceed to review / complete without review
+engine render revisit-gate <wu> --prev <phase> --next <phase>     # bridge gate: proceed to next / revisit an earlier phase
+engine render epic-all-done-gate <wu>                             # bridge gate: mark epic completed / return to menu
 ```
+
+The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: each navigation gateway's index dump appends `DISPLAY: selection` / `MENU: selection` sections from the shared selection projection — emitted only at the select step, per their markers.
 
 The `finding` surface serves both review-findings loops (planning and specification) with per-consumer labels in the payload; `proposed-task` serves both synthesis loops (implementation analysis, review actions) the same way — its gate mode rides as a flag because one consumer carries the mode in the cycle response and the other in staging-file frontmatter. `task-list` takes `--variant existing` for plan-construction's review-of-existing-tables gate (no auto-opt-in option; "confirmed" phrasing). The `finding` surface's diff presentation returns the boxed frame as three sections — frame open, diff body (emitted as a ` ```diff ` fence so the host's colouring survives), frame close — with the frame borders computed from the content width.
 

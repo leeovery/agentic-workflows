@@ -39,6 +39,14 @@ function capitalise(s) {
 // hyphens and underscores, capitalise the first letter of each word, join
 // with spaces. `auth-flow` → `Auth Flow`.
 /** @param {string} s */
+// Titlecase a phase label without disturbing its punctuation: every
+// alphabetic run is capitalised in place, so parentheses and hyphens
+// survive. `discussion (in-progress)` → `Discussion (In-Progress)`.
+/** @param {string} s */
+function titlecaseLabel(s) {
+  return String(s).replace(/[a-z]+/gi, (w) => capitalise(w));
+}
+
 function titlecase(s) {
   return String(s).split(/[-_\s]+/).filter(Boolean).map(capitalise).join(' ');
 }
@@ -156,6 +164,7 @@ const SPEC_LEGEND = {
 };
 
 module.exports = {
+  titlecaseLabel,
   TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, title,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
   discussionGlyph, DISCUSSION_GLYPH, SPEC_LEGEND,
