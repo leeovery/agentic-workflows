@@ -42,5 +42,3 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 ```
 
 4. Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} research`.
-
-**STOP.** Do not proceed — terminal condition.

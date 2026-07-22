@@ -59,5 +59,3 @@ Status has been marked as `completed`. The plan is ready for implementation.
 ```
 
 Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} planning`.
-
-**STOP.** Do not proceed — terminal condition.

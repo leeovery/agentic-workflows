@@ -59,5 +59,3 @@ The investigation is completed. Root cause and fix direction are documented.
 ```
 
 5. Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} investigation`.
-
-**STOP.** Do not proceed — terminal condition.

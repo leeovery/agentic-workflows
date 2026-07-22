@@ -211,8 +211,6 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 
 Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} specification`.
 
-**STOP.** Do not proceed — terminal condition.
-
 #### Otherwise
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -223,5 +221,3 @@ Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} s
 ```
 
 Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} specification`.
-
-**STOP.** Do not proceed — terminal condition.

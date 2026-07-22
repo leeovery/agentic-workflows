@@ -43,5 +43,3 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 ```
 
 Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} implementation`.
-
-**STOP.** Do not proceed — terminal condition.
