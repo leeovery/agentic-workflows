@@ -49,13 +49,13 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 | discovery harvest (confirm-and-persist B) | N× `discovery-map add` | BV — `add --file` (pilot; recovered from #495 tip b683fea7) |
 | spec-entry reconcile (analysis-flow 101-116, display-groupings 50) | delete/create fan-out over proposed specs × members | BV — `specification reconcile --file` or manifest apply |
 | resolve-dependencies 104-149 | per-match `manifest set` pairs (two topics per match) | BV — manifest apply (multi-dotpath) |
-| author-tasks G (219) | per-task `manifest set task_map.{id}` + per-task commit | BV — task-map batch + ONE commit (portal transcript's loop) |
-| scoping write-tasks C (67) | 11× `manifest set` SAME dotpath + 2 lifecycle | EF — multi-field `set` exists today; task_map entries ride it |
-| scoping write-tasks task_map (85) | per-task `manifest set task_map.{id}` | BV — same task-map batch as author-tasks |
+| author-tasks G (219) | per-task batched set + per-task commit | OK — reclassified (stage 3): the per-task commit is a durability boundary (resume gate reads the position it advances); the set was already batched. Dynamic git-add → stage 5 |
+| scoping write-tasks C (67) | 11× `manifest set` SAME dotpath + 2 lifecycle | DONE (#507) — one multi-field set |
+| scoping write-tasks task_map (85) | per-task `manifest set task_map.{id}` | DONE (#507) — folded into the same set |
 | summary-backfill 148 | per-item `manifest set` | BV — manifest apply |
 | session-setup 19 (consult refs) | per-ref `manifest set` | BV — manifest apply |
 | spec-completion 87/97 | per-source/per-ref exists+set loops | BV — manifest apply |
-| process-review-findings (task_map writes) | per-finding set | BV — task-map batch |
+| process-review-findings (task_map writes) | per-finding set | DONE (#507) — one set (adds) / apply (removals) per finding |
 | drain-triage | per-entry `discussion-map add` | BV — `discussion-map add --file` |
 | map-operations E/H/I/J loops (192/302/411) | per-name edit/rename/handle | BV — `discovery-map edit --file` (or OK if typical N=1 — measure first) |
 | brief-synthesis 50/70 | per-brief gets/sets | DF/BV — split: reads fold into discovery dump, writes batch |
@@ -88,6 +88,11 @@ pattern) · **ST** structural (the loop itself is wrong) · **OK** fine.
 Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
+
+- 2026-07-22 — Stage 3 up (#507): the task-map family folds onto existing
+  forms — ZERO engine code (C5 in action). write-tasks 13+N calls → 3;
+  review-findings upkeep one call per finding. author-tasks G reclassified
+  OK: per-task commit is a durability boundary, its set already batched.
 
 - 2026-07-22 — Stage 2 up (#506): manifest apply --file — batched
   set/delete across one work unit, native-JSON values, per-entry loud
