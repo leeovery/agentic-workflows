@@ -110,21 +110,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 The subtree carries the current `phase` and `task` position (for the resume prompt below) and the `spec_commit` baseline (for spec-change detection).
 
-Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the user with an informed choice:
+Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then present the informed choice — emit the spec-change summary as markdown, then render the resume menu (the position parenthetical derives from the planning item) and emit its section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found existing plan for **{topic:(titlecase)}** (previously reached phase {N}, task {M}).
-
-{spec change summary from spec-change-detection.md}
-
-· · · · · · · · · · · ·
-How would you like to proceed?
-
-- **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.
-- **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.planning.{topic} --variant plan
 ```
 
 **STOP.** Wait for user response.

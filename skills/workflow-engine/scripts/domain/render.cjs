@@ -45,8 +45,85 @@ function resolveAddress(cwd, dotpath, surface) {
  * @param {{dotpath: string, triage?: string}} args
  * @returns {string} sections
  */
-function resumeGate(cwd, { dotpath, triage }) {
-  const { phase, topic } = resolveAddress(cwd, dotpath, 'resume-gate');
+const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
+
+/**
+ * The resume-menu family. The default renders the shared phase-resume menu;
+ * variants derive their consumer's label and options from state at the same
+ * address: `plan` (position parenthetical from the planning item), `review`
+ * (coverage counts from reviewed/completed task arrays), `scoping` (the
+ * revisit wording), `session` (bare work-unit address, the interrupted
+ * discovery session).
+ * @param {string} cwd
+ * @param {{dotpath: string, triage?: string, variant?: string}} args
+ * @returns {string}
+ */
+function resumeGate(cwd, args) {
+  const { dotpath, triage, variant } = args;
+  if (variant !== undefined && !['plan', 'review', 'scoping', 'session'].includes(variant)) {
+    throw new Error(`render resume-gate: --variant must be "plan", "review", "scoping", or "session", got "${variant}"`);
+  }
+  if (variant !== undefined && triage !== undefined) {
+    throw new Error('render resume-gate: --triage only applies to the default variant');
+  }
+  if (variant === 'session') {
+    const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'resume-gate');
+    const active = ((manifest.phases || {}).discovery || {}).active_session;
+    if (active === undefined || active === null || String(active).trim() === '') {
+      throw new Error('render resume-gate: no active discovery session to resume');
+    }
+    return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+      `Found an in-progress discovery session for **${titlecase(workUnit)}** at \`session-${active}.md\`.`,
+      [
+        cmdOption('c', 'continue', 'Pick up where you left off'),
+        cmdOption('r', 'restart', 'Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)'),
+      ],
+    ));
+  }
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
+  const t = titlecase(topic);
+  if (variant === 'plan') {
+    const item = itemOf(manifest, 'planning', topic) || {};
+    const pos = isFilled(String(item.phase ?? '')) && isFilled(String(item.task ?? ''))
+      ? ` (previously reached phase ${item.phase}, task ${item.task})` : '';
+    return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+      `Found existing plan for **${t}**${pos}.`,
+      [
+        cmdOption('c', 'continue', 'Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.'),
+        cmdOption('r', 'restart', 'Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.'),
+      ],
+    ));
+  }
+  if (variant === 'review') {
+    const reviewItem = itemOf(manifest, 'review', topic) || {};
+    const implItem = itemOf(manifest, 'implementation', topic) || {};
+    const reviewed = Array.isArray(reviewItem.reviewed_tasks) ? reviewItem.reviewed_tasks.length : null;
+    const completed = Array.isArray(implItem.completed_tasks) ? implItem.completed_tasks.length : 0;
+    if (reviewed !== null && completed - reviewed > 0) {
+      const unreviewed = completed - reviewed;
+      return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+        `Found existing review for **${t}**.\nReview covered ${reviewed} of ${completed} tasks. ${unreviewed} task(s) not yet reviewed.`,
+        [
+          cmdOption('c', 'continue', `Review the ${unreviewed} unreviewed tasks`),
+          cmdOption('r', 'restart', `Delete review, re-review all ${completed} tasks`),
+        ],
+      ));
+    }
+    const label = `Found existing review for **${t}**.` + (reviewed !== null ? `\nAll ${completed} tasks have been reviewed.` : '');
+    return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(label, [
+      cmdOption('c', 'continue', 'Continue from current review state'),
+      cmdOption('r', 'restart', 'Delete review, start fresh'),
+    ]));
+  }
+  if (variant === 'scoping') {
+    return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
+      `Found completed scoping for **${t}** — spec and plan are in place.`,
+      [
+        cmdOption('c', 'continue', 'Adjust the existing spec and plan'),
+        cmdOption('r', 'restart', 'Erase the spec, plan, and task files, then rescope from scratch'),
+      ],
+    ));
+  }
   const parts = [];
   if (triage !== undefined) {
     const n = parseInt(triage, 10);
@@ -539,16 +616,19 @@ function resolveWorkUnit(cwd, dotpath, surface) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, phase?: string}} args
+ * @param {{dotpath: string, phase?: string, paths?: string}} args
  * @returns {string}
  */
-function phaseCompleted(cwd, { dotpath, phase }) {
+function phaseCompleted(cwd, { dotpath, phase, paths }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'phase-completed');
   if (!isFilled(phase)) throw new Error('render phase-completed: --phase is required');
+  const artefacts = paths
+    ? `\n\n  Spec: .workflows/${workUnit}/specification/${workUnit}/specification.md\n  Plan: .workflows/${workUnit}/planning/${workUnit}/`
+    : '';
   return section(
     'DISPLAY: phase completed',
     'emit verbatim as a code block',
-    `${titlecase(phase)} completed for "${titlecase(workUnit)}".`,
+    `${titlecase(phase)} completed for "${titlecase(workUnit)}".${artefacts}`,
   );
 }
 
@@ -649,12 +729,34 @@ function blocker(title, bodyLines) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, own?: string}} args
  * @returns {string} blocker sections, or '' when the entry is clear
  */
-function entryGate(cwd, { dotpath }) {
+function entryGate(cwd, { dotpath, own }) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'entry-gate');
   const t = titlecase(topic);
+
+  if (own) {
+    // --own checks the topic's OWN terminal statuses at phase entry, not its
+    // prerequisites — the entry flow's routing handles the live statuses.
+    if (phase !== 'specification') {
+      throw new Error(`render entry-gate: --own is only supported for specification, got "${phase}"`);
+    }
+    const spec = itemOf(manifest, 'specification', topic) || {};
+    if (spec.status === 'superseded') {
+      return blocker('Specification Superseded', [
+        `The specification for "${t}" was consolidated into`,
+        `"${titlecase(String(spec.superseded_by || ''))}". Work on that specification instead.`,
+      ]);
+    }
+    if (spec.status === 'promoted') {
+      return blocker('Specification Promoted', [
+        `"${t}" was promoted to the cross-cutting work unit`,
+        `"${spec.promoted_to}". Continue it from that work unit.`,
+      ]);
+    }
+    return '';
+  }
 
   if (phase === 'planning') {
     const spec = itemOf(manifest, 'specification', topic);

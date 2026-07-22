@@ -167,7 +167,7 @@ engine commit --workflows -m "<message>"
 **`render`** — the surface catalogue (`domain/render.cjs`): named runtime surfaces returning demarcated `=== DISPLAY: … ===` / `=== MENU: … ===` sections the calling flow emits verbatim at each marker's named moment. Address-backed values come from the manifest (JSON state only — the engine never parses markdown artifacts); judgment content arrives as a JSON payload file written to the phase cache with the Write tool and validated loudly per-field. Gate-mode branching happens inside the surface: the response carries the menu when the mode is `gated` and the auto-proceed line when it is `auto` — the calling flow branches on which section arrived, never on the mode itself. No git commit; nothing is written.
 
 ```bash
-engine render resume-gate <wu>.<phase>.<topic> [--triage <N>]     # shared continue/restart gate; --triage adds the undrained-concerns warning above the menu
+engine render resume-gate <wu>.<phase>.<topic> [--triage <N>] [--variant plan|review|scoping|session]  # the resume-menu family: default = shared continue/restart gate (--triage adds the undrained-concerns warning); plan derives the position parenthetical from the planning item; review derives coverage from reviewed/completed task arrays; scoping renders the revisit wording; session takes a bare <wu> and renders the interrupted-discovery-session menu
 engine render task-list <wu>.planning.<topic> --file <payload>    # planning task-list gate; payload {phase, phase_name, tasks: [{name, summary, edge_cases?}]}
 engine render findings-summary <wu>.<phase>.<topic> --file <payload>  # review-findings overview; payload {review_label, items: [{title, tag, summary}]}
 engine render finding <wu>.<phase>.<topic> --file <payload>       # one finding + its gate; payload {n, total, title, meta, details, diff|content, apply_label?, applied_label?, feedback_hint?}
@@ -175,12 +175,12 @@ engine render proposed-task <wu>.<phase>.<topic> --file <payload> --gate gated|a
 engine render tasks-overview <wu>.<phase>.<topic> --file <payload>    # proposed-tasks cycle overview; payload {label, tasks: [{title, severity}]}
 engine render author-task-gate <wu>.planning.<topic> --m N --total N --title STR   # task-authoring approval menu (the detail itself is a verbatim file emission the flow owns)
 engine render phase-tree <wu>.planning.<topic> --file <payload> [--approve]        # D5 phase structure tree; payload {phases: [{name, detail?: [[label, value]]}]}; --approve appends the structure gate
-engine render phase-completed <wu> --phase <phase>                # one-line phase-completed display
+engine render phase-completed <wu> --phase <phase> [--paths]      # one-line phase-completed display; --paths appends the derived spec/plan artifact paths (scoping's conclusion)
 engine render early-completion-gate <wu>                          # bridge gate: proceed to review / complete without review
 engine render revisit-gate <wu> --prev <phase> --next <phase>     # bridge gate: proceed to next / revisit an earlier phase
 engine render epic-all-done-gate <wu>                             # bridge gate: mark epic completed / return to menu
 engine render phase-note <wu>.<phase>.<topic> --verb <Word> [--noun <word>]   # entry one-liner: "{Word} {noun|phase}: {Topic}"
-engine render entry-gate <wu>.<phase>.<topic>                     # prerequisite verdict, engine-derived: empty = clear; blocked = the terminal DISPLAY: entry blocker (planning: spec status incl. superseded/promoted; implementation: plan; review: plan+implementation; specification: work-type-aware source material)
+engine render entry-gate <wu>.<phase>.<topic> [--own]             # prerequisite verdict, engine-derived: empty = clear; blocked = the terminal DISPLAY: entry blocker (planning: spec status incl. superseded/promoted; implementation: plan; review: plan+implementation; specification: work-type-aware source material). --own (specification only) checks the topic's OWN terminal statuses instead — superseded/promoted at phase entry
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: each navigation gateway's index dump appends `DISPLAY: selection` / `MENU: selection` sections from the shared selection projection — emitted only at the select step, per their markers.

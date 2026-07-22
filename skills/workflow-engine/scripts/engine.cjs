@@ -153,7 +153,7 @@ Commands:
   commit <work-unit> -m <message>
   commit --inbox -m <message>
   commit --workflows -m <message>
-  render resume-gate <wu.phase.topic> [--triage N]
+  render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json>
@@ -161,9 +161,9 @@ Commands:
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
-  render phase-completed   <wu> --phase <phase>
+  render phase-completed   <wu> --phase <phase> [--paths]
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
-  render entry-gate        <wu.phase.topic>      (planning|implementation|review|specification)
+  render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render epic-all-done-gate <wu>
@@ -681,7 +681,7 @@ function runCommit(argv) {
 /** @param {string[]} argv */
 function runRender(argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -690,6 +690,8 @@ function runRender(argv) {
       const args = { dotpath: positional[0], ...opts };
       if (flags.has('approve')) args.approve = '1';
       if (flags.has('skipped-review')) args['skipped-review'] = '1';
+      if (flags.has('own')) args.own = '1';
+      if (flags.has('paths')) args.paths = '1';
       respondSections(renderSurface(process.cwd(), command, args));
     } catch (err) {
       failJson(err);
