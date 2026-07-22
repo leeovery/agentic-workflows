@@ -668,10 +668,17 @@ function manifestTarget(cwd, isProject, workUnit) {
   };
 }
 
+const SET_USAGE =
+  'Usage: engine manifest set <path> <field> <value>  (single field)\n' +
+  '       engine manifest set <path> <field>=<value> [<field>=<value> …]  (uniform batch)';
+
 /**
- * `set <path> <field> <value> [<field>=<value> …]` — batched writes land in
- * one lock/read/write. Project paths embed the first field in the dot-path:
- * `set project.<field.path> <value> [<field.path>=<value> …]`.
+ * Two grammars, never mixed: the three-arg positional form is the
+ * single-field shorthand; a batch is uniform `<field>=<value>` pairs
+ * (routed on `=` in the first field argument — field names never carry
+ * one). Batched writes land in one lock/read/write. Project paths embed
+ * the field in the dot-path and take the single form only:
+ * `set project.<field.path> <value>`.
  * @param {string} cwd @param {string[]} args
  * @returns {object}
  */
@@ -679,13 +686,10 @@ function cmdSet(cwd, args) {
   // Project manifest routing
   const proj = parseProjectPath(args[0] || '');
   if (proj.isProject) {
-    if (proj.fieldSegments.length === 0 || args.length < 2) {
-      fail('Usage: engine manifest set project.<field.path> <value> [<field.path>=<value> …]');
+    if (proj.fieldSegments.length === 0 || args.length !== 2) {
+      fail('Usage: engine manifest set project.<field.path> <value>');
     }
-    const writes = [
-      { field: proj.fieldSegments.join('.'), value: parseValue(args[1]) },
-      ...parseFieldValuePairs(args.slice(2)),
-    ];
+    const writes = [{ field: proj.fieldSegments.join('.'), value: parseValue(args[1]) }];
     manifestTarget(cwd, true).transact((manifest, save) => {
       for (const write of writes) {
         setByPath(manifest, write.field.split('.'), write.value);
@@ -695,13 +699,19 @@ function cmdSet(cwd, args) {
     return { path: 'project', set: Object.fromEntries(writes.map(w => [w.field, w.value])) };
   }
 
-  if (args.length < 3) fail('Usage: engine manifest set <path> <field> <value> [<field>=<value> …]');
+  if (args.length < 2) fail(SET_USAGE);
 
   const { workUnit, phase, topic } = parsePath(args[0]);
-  const writes = [
-    { field: args[1], value: parseValue(args[2]) },
-    ...parseFieldValuePairs(args.slice(3)),
-  ];
+  const rest = args.slice(1);
+  /** @type {{field: string, value: *}[]} */
+  let writes;
+  if (rest[0].includes('=')) {
+    writes = parseFieldValuePairs(rest);
+  } else if (rest.length === 2) {
+    writes = [{ field: rest[0], value: parseValue(rest[1]) }];
+  } else {
+    fail(`set: positional and assigned pairs never mix — one field is \`set <path> <field> <value>\`, a batch is uniform \`<field>=<value>\` pairs\n${SET_USAGE}`);
+  }
 
   requireWorkUnit(cwd, workUnit);
 

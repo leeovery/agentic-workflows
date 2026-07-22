@@ -175,7 +175,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
 
   it('set batches <field>=<value> pairs: one write, one response listing all fields', () => {
     writeWorkUnit(dir, 'auth', 'feature');
-    const res = runJson(dir, ['set', 'auth', 'status', 'completed', 'completed_at=2026-07-18', 'reviewed=true']);
+    const res = runJson(dir, ['set', 'auth', 'status=completed', 'completed_at=2026-07-18', 'reviewed=true']);
     assert.deepStrictEqual(res.set, { status: 'completed', completed_at: '2026-07-18', reviewed: true });
     const manifest = readWorkUnit(dir, 'auth');
     assert.strictEqual(manifest.status, 'completed');
@@ -185,13 +185,13 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
 
   it('batch values split on the FIRST = only', () => {
     writeWorkUnit(dir, 'auth', 'feature');
-    runJson(dir, ['set', 'auth', 'note', 'plain', 'formula=a=b=c']);
+    runJson(dir, ['set', 'auth', 'note=plain', 'formula=a=b=c']);
     assert.strictEqual(readWorkUnit(dir, 'auth').formula, 'a=b=c');
   });
 
   it('a refused value fails the whole batch — nothing written', () => {
     writeWorkUnit(dir, 'auth', 'feature');
-    const err = runFails(dir, ['set', 'auth', 'description', 'updated', 'status=bogus']);
+    const err = runFails(dir, ['set', 'auth', 'description=updated', 'status=bogus']);
     assert.match(err.error, /Invalid status "bogus"/);
     assert.strictEqual(readWorkUnit(dir, 'auth').description, 'Fixture', 'batch must be all-or-nothing');
   });
@@ -224,7 +224,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
 
   it('a NON-string status inside a batch fails the whole batch — nothing written', () => {
     writeWorkUnit(dir, 'auth', 'feature');
-    const err = runFails(dir, ['set', 'auth', 'description', 'updated', 'status=99']);
+    const err = runFails(dir, ['set', 'auth', 'description=updated', 'status=99']);
     assert.match(err.error, /Invalid status 99\b/);
     assert.strictEqual(readWorkUnit(dir, 'auth').description, 'Fixture', 'batch must be all-or-nothing');
   });
@@ -332,7 +332,7 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
     const lock = path.join(dir, '.workflows/auth/.lock');
     fs.writeFileSync(lock, '12345');
 
-    const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle', '2', 'date=2026-07-18'], { cwd: dir });
+    const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle=2', 'date=2026-07-18'], { cwd: dir });
     let stdout = '';
     child.stdout.on('data', (c) => { stdout += c; });
     // 'close', not 'exit': stdout must be fully flushed before it is parsed.
@@ -434,5 +434,38 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.match(runFails(dir, ['apply', 'payments', '--file', 'nope.json']).error, /cannot read payload/);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([])]).error, /non-empty array/);
     assert.match(runFails(dir, ['apply', 'ghost', '--file', payload([{ op: 'set', path: 'ghost', fields: { a: 1 } }])]).error, /Work unit "ghost" not found/);
+  });
+});
+
+describe('engine manifest set — two grammars, never mixed', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-grammar-'));
+    writeWorkUnit(dir, 'auth', 'feature');
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it('uniform batch: every pair assigned, first pair included', () => {
+    const res = runJson(dir, ['set', 'auth', 'status=completed', 'note=hello']);
+    assert.deepStrictEqual(res.set, { status: 'completed', note: 'hello' });
+    const m = readWorkUnit(dir, 'auth');
+    assert.strictEqual(m.status, 'completed');
+    assert.strictEqual(m.note, 'hello');
+  });
+
+  it('positional single still works, including a value containing "="', () => {
+    runJson(dir, ['set', 'auth', 'note', 'a=b']);
+    assert.strictEqual(readWorkUnit(dir, 'auth').note, 'a=b');
+  });
+
+  it('the mixed form is refused loudly, naming both grammars', () => {
+    const err = runFails(dir, ['set', 'auth', 'status', 'completed', 'note=hello']);
+    assert.match(err.error, /positional and assigned pairs never mix/);
+    assert.strictEqual(readWorkUnit(dir, 'auth').status, 'in-progress', 'nothing written');
+  });
+
+  it('project set is single-form only', () => {
+    const err = runFails(dir, ['set', 'project.defaults.plan_format', 'tick', 'other=x']);
+    assert.match(err.error, /Usage: engine manifest set project/);
   });
 });
