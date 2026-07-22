@@ -2,7 +2,13 @@
 
 ## Storage Pathspecs
 
-`[]` — every artifact lives inside the work unit; the scoped commit covers it.
+The git pathspecs this format writes **outside the work unit**. The array below is recorded verbatim as `storage_paths` on the planning item at plan init; workflow commits (`engine commit --plan`) stage every entry, and restart cleanups stage the same entries when removing authored tasks. Relative pathspecs only — `[]` when the format writes nothing outside the work unit.
+
+```json
+[]
+```
+
+Task files live under `.workflows/{work_unit}/planning/{topic}/tasks/` — inside the work unit; the scoped commit already covers them.
 
 ## Plan Structure
 

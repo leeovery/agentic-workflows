@@ -20,7 +20,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 ## Storage Pathspecs
 
-`[]` — tasks live in Linear; nothing lands on disk.
+The git pathspecs this format writes **outside the work unit**. The array below is recorded verbatim as `storage_paths` on the planning item at plan init; workflow commits (`engine commit --plan`) stage every entry, and restart cleanups stage the same entries when removing authored tasks. Relative pathspecs only — `[]` when the format writes nothing outside the work unit.
+
+```json
+[]
+```
+
+Tasks live in Linear; nothing lands on disk.
 
 ## Plan Structure
 
