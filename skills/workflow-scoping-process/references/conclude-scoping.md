@@ -17,13 +17,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 > these tasks using the verification workflow.
 ```
 
-**Pipeline continuation** — Invoke the bridge:
+**Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
 Pipeline bridge for: {work_unit}
 Completed phase: scoping
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
 
 **STOP.** Do not proceed — terminal condition.

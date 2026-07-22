@@ -22,12 +22,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 Construct the handoff:
 
+Invoke the **workflow-scoping-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Scoping session for: {topic}
 Work unit: {work_unit}
 Description: {description}
-
-Invoke the workflow-scoping-process skill.
-```
-
-Invoke the [workflow-scoping-process](../../workflow-scoping-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

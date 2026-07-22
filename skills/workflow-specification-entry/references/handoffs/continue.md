@@ -4,7 +4,11 @@
 
 ---
 
-This skill's purpose is now fulfilled. Invoke the [workflow-specification-process](../../../workflow-specification-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled.
+
+Omit the `Consult references` block when the grouping owes none.
+
+Invoke the **workflow-specification-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Specification session for: {Title Case Name}
@@ -19,9 +23,4 @@ Consult references (read narrowly — do not extract):
 - .workflows/{work_unit}/discussion/{ref-topic}.md — {slice hint}
 
 Context: This specification already exists. Review and refine it based on the source discussions.
-
----
-Invoke the workflow-specification-process skill.
 ```
-
-Omit the `Consult references` block when the grouping owes none.

@@ -20,7 +20,7 @@ The destination is **given, not derived** — discovery is the first phase, so t
 
 ## B. Return to the Epic Menu
 
-Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file:
+Call the `EnterPlanMode` tool to enter plan mode. Then write the following content to the plan file **verbatim — this is the complete plan**. Plan mode's usual job does not apply here: nothing to investigate, verify, or design, and nothing learned this session is added — the next context is designed to start empty, and additions bias it. The one sanctioned addition: anything the user explicitly asked to carry forward goes under a final `## User instructions` heading, after the template:
 
 ```
 # Continue Epic: {work_unit}
@@ -35,14 +35,14 @@ The epic menu will render the discovery map and let you start, continue, or refi
 
 ## How to proceed
 
-Clear context and continue.
+**To the human**: approve with **"Clear context and continue"** — this project's setup keeps that plan-mode option enabled. A fresh context will follow the Next Step above.
 ```
 
 Call the `ExitPlanMode` tool to present the plan to the user for approval.
 
 ## C. Hand Off to the First Phase
 
-The discovery endpoint supplied `next_phase` (`research` / `discussion` / `investigation` / `scoping`). Call the `EnterPlanMode` tool, then write the following content to the plan file:
+The discovery endpoint supplied `next_phase` (`research` / `discussion` / `investigation` / `scoping`). Call the `EnterPlanMode` tool, then write the following content to the plan file **verbatim — this is the complete plan**. Plan mode's usual job does not apply here: nothing to investigate, verify, or design, and nothing learned this session is added — the next context is designed to start empty, and additions bias it. The one sanctioned addition: anything the user explicitly asked to carry forward goes under a final `## User instructions` heading, after the template:
 
 ```
 # Start {next_phase:(titlecase)}: {work_unit}
@@ -57,7 +57,7 @@ The entry skill reads the durable carrier — the discovery session log and the 
 
 ## How to proceed
 
-Clear context and continue.
+**To the human**: approve with **"Clear context and continue"** — this project's setup keeps that plan-mode option enabled. A fresh context will follow the Next Step above.
 ```
 
 Call the `ExitPlanMode` tool to present the plan to the user for approval.

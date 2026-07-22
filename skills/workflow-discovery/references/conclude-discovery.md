@@ -32,12 +32,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 > step in a clean context.
 ```
 
+Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
+
 ```
 Pipeline bridge for: {work_unit}
 Completed phase: discovery
 @if(next_phase is set) Next phase: {next_phase} @endif
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
-
-**STOP.** Do not proceed — terminal condition.

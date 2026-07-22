@@ -32,19 +32,23 @@ When the read returns non-empty, append the Description block shown in each sour
 
 #### If source is `continue`
 
+No description load for `continue` — resuming an existing session, no need to re-prime.
+
+The `Description:` block is omitted when `description` is null or empty.
+
+Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Research session for: {topic}
 Work unit: {work_unit}
 
 Source: existing research
 Output: .workflows/{work_unit}/research/{resolved_filename}
-
-Invoke the workflow-research-process skill.
 ```
 
-No description load for `continue` — resuming an existing session, no need to re-prime. Invoke the [workflow-research-process](../../workflow-research-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
-
 #### Otherwise
+
+Invoke the **workflow-research-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Research session for: {topic}
@@ -60,8 +64,5 @@ Context:
 
 Description:
 {description text — paragraph or two, preserved as-is}
-
-Invoke the workflow-research-process skill.
 ```
 
-The `Description:` block is omitted when `description` is null or empty. Invoke the [workflow-research-process](../../workflow-research-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

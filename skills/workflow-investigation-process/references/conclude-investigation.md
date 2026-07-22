@@ -58,13 +58,11 @@ The investigation is completed. Root cause and fix direction are documented.
 > the fix approach into a document that drives planning.
 ```
 
-5. Invoke the bridge:
+5. Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
 Pipeline bridge for: {work_unit}
 Completed phase: investigation
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
 
 **STOP.** Do not proceed — terminal condition.

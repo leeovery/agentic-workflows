@@ -45,8 +45,6 @@ Invoke the bridge for the EPIC (not the cc work unit — the epic continues its 
 ```
 Pipeline bridge for: {work_unit}
 Completed phase: specification
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
 ```
 
 **STOP.** Do not proceed — terminal condition.

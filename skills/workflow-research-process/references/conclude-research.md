@@ -45,8 +45,6 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
    ```
    Pipeline bridge for: {work_unit}
    Completed phase: research
-
-   Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
    ```
 
 **STOP.** Do not proceed — terminal condition.
