@@ -157,10 +157,10 @@ engine inbox delete <path> [<path> …]    # git rm archived items
 engine cache stamp <work-unit> (research-analysis|gap-analysis)
 ```
 
-**`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (`.workflows/.inbox` with `--inbox`, or the whole `.workflows` tree with `--workflows` — migrations touch many work units plus `.workflows/.state`) plus commit. Every engine-made commit — this helper and every transaction — also stages `.workflows/.knowledge` when it exists (exists-guarded, `domain/commit.cjs`): transactions dirty the store as a side effect of their knowledge sync, and that dirt belongs with the write that produced it. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0.
+**`commit`** — the scoped commit helper: `git add -- .workflows/{wu}` (`.workflows/.inbox` with `--inbox`, or the whole `.workflows` tree with `--workflows` — migrations touch many work units plus `.workflows/.state`) plus commit. Every engine-made commit — this helper and every transaction — also stages `.workflows/.knowledge` when it exists (exists-guarded, `domain/commit.cjs`): transactions dirty the store as a side effect of their knowledge sync, and that dirt belongs with the write that produced it. A clean tree is fine: `{"ok": true, "committed": null, "note": "nothing to commit"}`, exit 0. `--plan <topic>` widens the scope with the plan's declared storage: it stages `.workflows/manifest.json` and every `storage_paths` entry recorded on the planning item at plan init (the format's authoring doc declares them; entries are validated relative-only and skipped when neither on disk nor tracked, while deleted-but-tracked paths still stage their deletions). A planning item without `storage_paths` (pre-upgrade plan) fails loudly with the one-line repair. Code never rides a `--plan` commit — implementation's code commits stay with the session and raw git.
 
 ```bash
-engine commit <work-unit> -m "<message>"
+engine commit <work-unit> -m "<message>" [--plan <topic>]
 engine commit --inbox -m "<message>"
 engine commit --workflows -m "<message>"
 ```
