@@ -92,6 +92,19 @@ Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
 
+- 2026-07-22 — Deep-dive round 2 (#513): three literal-executor
+  walkthroughs + textual forensics + dual-authority rules audit +
+  engine mutation-check. Majors: the planning backbone's Hard Rule #2
+  contradicted its own references (still commanding raw git for the
+  --plan'd operations); pre-upgrade plans hit unrouted mid-session
+  --plan throws on three resume paths — each now carries a routed
+  backfill guard at entry. Also: resolve-dependencies' pre-existing
+  missing per-dependency loop (improve-doctrine fix), the unify
+  anchor-collision guard, the restored synthesis sourcing note, and a
+  spread of literal-executor tightenings. Forensics clean across 47
+  files; every round-1 engine guard proven load-bearing by mutation
+  reasoning.
+
 - 2026-07-22 — End-of-stack review (Lee's full-analysis gate): six slices
   (harvest, spec-entry, task-map+commit-plan, engine code, test adequacy,
   conventions), findings adversarially verified, fixed on #510's branch:
