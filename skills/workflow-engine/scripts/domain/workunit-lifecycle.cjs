@@ -46,6 +46,7 @@ function assertLegalStatus(status) {
 /**
  * @typedef {object} WorkUnitLifecycleResult
  * @property {string} work_unit
+ * @property {string} [work_type]  complete: the unit's work type (drives the pipeline banner)
  * @property {string} status     the work unit's status after the transition
  * @property {string} [completed_at]      complete: the stamped date
  * @property {string} [previous_status]   reactivate: the status the unit came from
@@ -71,7 +72,7 @@ function assertLegalStatus(status) {
  */
 function completeWorkUnit(cwd, workUnit, { message }) {
   assertLegalStatus('completed');
-  const { completedAt, previous } = withWorkUnitLock(cwd, workUnit, () => {
+  const { completedAt, previous, workType } = withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.status === 'completed') {
       throw new Error(`work unit "${workUnit}" is already completed`);
@@ -85,7 +86,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
     loaded.completed_at = stamped;
 
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { completedAt: stamped, previous: from };
+    return { completedAt: stamped, previous: from, workType: loaded.work_type };
   });
 
   /** @type {string[]} */
@@ -96,7 +97,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
 
   const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, status: 'completed', completed_at: completedAt, committed, warnings };
+  const result = { work_unit: workUnit, work_type: workType, status: 'completed', completed_at: completedAt, committed, warnings };
   noteIfNothingCommitted(result, committed);
   return result;
 }

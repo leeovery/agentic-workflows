@@ -8,7 +8,11 @@
 
 Display active features and let the user select one.
 
-The index dump already carries the selection surfaces. Emit its `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker. No auto-select, even with one item.
+Read the most recent index dump (re-run after any loop-back that changed state).
+
+**If it carries no selection sections** (no active features remain — possible after a loop-back cancelled or completed the last one): render the caller's no-features-in-progress terminal from its Step 2 and stop there.
+
+Otherwise emit its `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker — from the most recent dump only, never a stale earlier one. No auto-select, even with one item.
 
 **STOP.** Wait for user response.
 

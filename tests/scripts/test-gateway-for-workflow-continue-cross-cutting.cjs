@@ -165,6 +165,7 @@ describe('workflow-continue-cross-cutting format', () => {
       '',
       '- **`1`** — Continue "Caching" — specification (in-progress)',
       '- **`2`** — Continue "Error Handling" — discussion (in-progress)',
+      '',
       '- **`3`** — View completed & cancelled cross-cutting concerns',
       "- **`m`/`manage`** — Manage a cross-cutting concern's lifecycle",
       '',

@@ -582,6 +582,7 @@ describe('selection projection', () => {
       '',
       '- **`1`** — Continue "Crash" — specification (in-progress)',
       '- **`2`** — Continue "Leak" — investigation (in-progress)',
+      '',
       '- **`3`** — View completed & cancelled bugfixes',
       "- **`m`/`manage`** — Manage a bugfix's lifecycle",
       '',
@@ -613,18 +614,6 @@ describe('bridge continuation surfaces', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('pipeline-complete varies body by work_type and skip flag', () => {
-    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'pay' })
-      .includes('Feature Completed\n\n"Pay" has completed all pipeline phases.'));
-    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'pay', 'skipped-review': '1' })
-      .includes('"Pay" completed — review skipped.'));
-    writeManifest(dir, 'ep', { work_type: 'epic' });
-    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'ep' })
-      .includes('Epic Completed\n\n"Ep" has completed all topics through review.'));
-    writeManifest(dir, 'qf', { work_type: 'quick-fix' });
-    assert.ok(renderSurface(dir, 'pipeline-complete', { dotpath: 'qf' }).includes('Quick-Fix Completed'));
-  });
-
   it('gates render byte-stable menus', () => {
     const early = renderSurface(dir, 'early-completion-gate', { dotpath: 'pay' });
     assert.ok(early.includes('Implementation completed for "Pay".'));
@@ -642,16 +631,122 @@ describe('bridge continuation surfaces', () => {
   });
 
   it('work-unit addressing is loud on dotted paths, unknown units, and missing flags', () => {
-    assert.throws(() => renderSurface(dir, 'pipeline-complete', { dotpath: 'pay.review.pay' }), /must be a bare <work_unit>/);
-    assert.throws(() => renderSurface(dir, 'pipeline-complete', { dotpath: 'nope' }), /work unit "nope" not found/);
+    assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay.review.pay', phase: 'review' }), /must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'nope', phase: 'review' }), /work unit "nope" not found/);
     assert.throws(() => renderSurface(dir, 'revisit-gate', { dotpath: 'pay', next: 'planning' }), /--prev is required/);
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay' }), /--phase is required/);
   });
 });
 
+describe('review fixes — gap coverage', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } }, specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const base = { n: 1, total: 1, title: 'T', meta: [['Severity', 'Minor']], details: 'D' };
+
+  it('finding content × gated renders the menu WITHOUT view full', () => {
+    const file = writePayload(dir, 'f.json', { ...base, content: { label: 'Proposed Addition', lines: ['x'] } });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
+    assert.ok(out.includes('MENU: finding gate'));
+    assert.ok(!out.includes('view full'), 'content findings offer no view-full option');
+  });
+
+  it('finding diff × auto renders the framed diff plus the applied line, no menu', () => {
+    const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: ['new line'] } });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    assert.ok(out.includes('DISPLAY: diff frame open'));
+    assert.ok(out.includes('DISPLAY: finding auto-approved'));
+    assert.ok(!out.includes('MENU: finding gate'));
+  });
+
+  it('null payload is a loud named error, not a TypeError', () => {
+    const file = writePayload(dir, 'n.json', 'null');
+    for (const surface of ['finding', 'findings-summary', 'proposed-task', 'tasks-overview', 'phase-tree']) {
+      assert.throws(
+        () => renderSurface(dir, surface, { dotpath: 'pay.planning.portal', file, gate: 'gated' }),
+        /payload must be a JSON object or array/,
+        surface,
+      );
+    }
+  });
+
+  it('a context-only diff is refused loudly', () => {
+    const file = writePayload(dir, 'f.json', { ...base, diff: { context_above: ['ctx'], current: [], proposed: [] } });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file }), /"diff" must carry at least one current\/proposed line/);
+  });
+
+  it('null meta values and null phase-tree detail values are refused', () => {
+    const bad = writePayload(dir, 'm.json', { ...base, meta: [['Severity', null]] });
+    assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file: bad }), /"meta" must be an array of \[label, value\] pairs/);
+    const badTree = writePayload(dir, 'pt.json', { phases: [{ name: 'X', detail: [['Goal', null]] }] });
+    assert.throws(() => renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file: badTree }), /"detail" must be a non-empty array of \[label, value\] pairs/);
+  });
+
+  it('phase-tree --approve menu offers view full', () => {
+    const file = writePayload(dir, 'pt.json', { phases: [{ name: 'X' }] });
+    const out = renderSurface(dir, 'phase-tree', { dotpath: 'pay.planning.portal', file, approve: '1' });
+    assert.ok(out.includes('- **`v`/`view full`** — Show the full phase structure — goals, ordering rationale, acceptance criteria'));
+  });
+});
+
+describe('titlecaseLabel', () => {
+  const { titlecaseLabel } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
+  it('capitalises runs in place, preserving punctuation', () => {
+    assert.strictEqual(titlecaseLabel('discussion (in-progress)'), 'Discussion (In-Progress)');
+    assert.strictEqual(titlecaseLabel('finalising — quick-fix'), 'Finalising — Quick-Fix');
+    assert.strictEqual(titlecaseLabel('phase 2 (done)'), 'Phase 2 (Done)');
+  });
+});
+
+describe('CLI boundary — engine render via subprocess', () => {
+  const { execFileSync, spawnSync } = require('child_process');
+  const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      work_type: 'feature',
+      phases: {
+        discussion: { items: { pay: { status: 'in-progress' } } },
+        planning: { items: { pay: { status: 'in-progress', task_list_gate_mode: 'auto' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  function run(args) {
+    return execFileSync('node', [ENGINE, 'render', ...args], { cwd: dir, encoding: 'utf8' });
+  }
+
+  it('flags survive argv: --triage, --variant, --approve, --gate, scalar flags', () => {
+    assert.ok(run(['resume-gate', 'pay.discussion.pay', '--triage', '2']).includes('2 rerouted concern(s)'));
+    const tl = writePayload(dir, 'tl.json', { phase: 1, phase_name: 'X', tasks: [{ name: 'A', summary: 's' }] });
+    assert.ok(run(['task-list', 'pay.planning.pay', '--file', tl, '--variant', 'existing']).includes('task list confirmed'));
+    const pt = writePayload(dir, 'pt.json', { phases: [{ name: 'P' }] });
+    assert.ok(run(['phase-tree', 'pay.planning.pay', '--file', pt, '--approve']).includes('MENU: phase structure gate'));
+    const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'], tests: ['t'] });
+    assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
+    assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
+    assert.ok(run(['revisit-gate', 'pay', '--prev', 'discussion', '--next', 'specification']).includes('Discussion completed for "Pay".'));
+    assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
+    assert.ok(run(['early-completion-gate', 'pay']).includes('Complete without review'));
+    assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
+  });
+
+  it('surface errors surface as failJson on stderr with exit 1', () => {
+    const res = spawnSync('node', [ENGINE, 'render', 'proposed-task', 'pay.planning.pay', '--file', 'missing.json', '--gate', 'nope'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(res.status, 1);
+    assert.match(JSON.parse(res.stderr.trim()).error, /--gate must be "gated" or "auto"/);
+  });
+});
+
 describe('catalogue dispatch', () => {
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree, pipeline-complete, phase-completed, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, early-completion-gate, revisit-gate, epic-all-done-gate\)/);
   });
 });
 

@@ -19,6 +19,8 @@ Every command follows six rules — new commands must too:
 5. **Mappings are `key=value` pairs** (`discovery-map sequence {wu} {topic}={order} …`).
 6. **A reserved word sharing a slot with user-named values must be a flag** — why `commit --inbox`/`--workflows` are flags beside positional `commit {work-unit}`.
 
+One carve-out: the **`render` surface catalogue** passes every non-address scalar as a flag (`--gate`, `--phase`, `--m`, `--variant`, …), including required closed vocabularies — the address is the only positional. Uniformity across the thirteen surfaces beats rule 2 there.
+
 ## Commands
 
 **`boot`** — the entry pipeline: runs `workflow-migrate/scripts/migrate.cjs` (resolved relative to the engine, cwd = project root), then `knowledge check`, then `knowledge compact` when ready — one call in place of the sequential Step 0 commands. Response: `{"ok": true, "migrations": {"changed": false, "output": "<trimmed report>"}, "knowledge": "ready"|"not-ready", "compacted": false, "kb_committed": null, "warnings": []}`. `migrations.changed` mirrors the orchestrator's own files-updated signal; `output` is the report with the prose stop-gate lines stripped (update counts kept). A failing migrate.cjs is a hard error (`{ok:false}` on stderr, exit 1) — migrations must never half-run silently. A failing `check` reports `not-ready`, and boot never initialises anything itself: a not-ready response additionally carries `"system_config": {"status": "valid"|"absent"|"invalid", "provider": <name|null>, "model": <name|null>}` — read from `~/.config/workflows/config.json` only, never the credentials file, so no secret can enter the response — which the calling skill's knowledge gate branches on to drive `knowledge setup` conversationally. A failing `compact` lands in `warnings`, never blocks. When the store is ready, knowledge-store dirt boot finds is committed scoped to `.workflows/.knowledge` (`chore(knowledge): initialise store` for untracked store files — the first boot after a `knowledge setup` run; `chore(knowledge): compact store` otherwise; sha in `kb_committed`, commit failure a warning). The conversational pieces (migration summary, review gate, the knowledge gate) stay in the calling skill.
@@ -68,7 +70,7 @@ engine manifest resolve <work-unit>.<phase>[.<topic>]    # artifact paths for KB
 
 ```bash
 engine workunit create <work-unit> <work-type> --description <text> (--session-log-file <path> | --no-session-log) [--import <path> …] [--seed <path> …]
-engine workunit complete <work-unit> -m "<message>"
+engine workunit complete <work-unit> -m "<message>" [--pipeline [--skipped-review]]   # --pipeline: the bridge context — the confirmation section is the "{Type} Completed" banner
 engine workunit cancel <work-unit>
 engine workunit reactivate <work-unit>
 engine workunit pivot <work-unit>
@@ -160,6 +162,8 @@ engine commit --inbox -m "<message>"
 engine commit --workflows -m "<message>"
 ```
 
+**Transaction confirmation sections.** The lifecycle verbs append labelled sections after their JSON line, the same pattern as the `task` gate sections: `workunit complete`/`cancel`/`reactivate` carry `DISPLAY: confirmation` (cancel/reactivate preceded by `DISPLAY: kb warning` when `warnings` is non-empty); `topic cancel`/`reactivate` likewise; `workunit absorb` carries the post-absorption summary, `promote` the promotion summary, and `pivot` a `DISPLAY: kb warning` (when warranted) plus `MENU: pivot continuation`. The JSON line stays the machine contract; the calling flow emits each section verbatim at its marker's named moment and never parses it for decisions.
+
 **`render`** — the surface catalogue (`domain/render.cjs`): named runtime surfaces returning demarcated `=== DISPLAY: … ===` / `=== MENU: … ===` sections the calling flow emits verbatim at each marker's named moment. Address-backed values come from the manifest (JSON state only — the engine never parses markdown artifacts); judgment content arrives as a JSON payload file written to the phase cache with the Write tool and validated loudly per-field. Gate-mode branching happens inside the surface: the response carries the menu when the mode is `gated` and the auto-proceed line when it is `auto` — the calling flow branches on which section arrived, never on the mode itself. No git commit; nothing is written.
 
 ```bash
@@ -171,7 +175,6 @@ engine render proposed-task <wu>.<phase>.<topic> --file <payload> --gate gated|a
 engine render tasks-overview <wu>.<phase>.<topic> --file <payload>    # proposed-tasks cycle overview; payload {label, tasks: [{title, severity}]}
 engine render author-task-gate <wu>.planning.<topic> --m N --total N --title STR   # task-authoring approval menu (the detail itself is a verbatim file emission the flow owns)
 engine render phase-tree <wu>.planning.<topic> --file <payload> [--approve]        # D5 phase structure tree; payload {phases: [{name, detail?: [[label, value]]}]}; --approve appends the structure gate
-engine render pipeline-complete <wu> [--skipped-review]           # work-unit-level: "{Type} Completed" display, body by work_type / skip flag
 engine render phase-completed <wu> --phase <phase>                # one-line phase-completed display
 engine render early-completion-gate <wu>                          # bridge gate: proceed to review / complete without review
 engine render revisit-gate <wu> --prev <phase> --next <phase>     # bridge gate: proceed to next / revisit an earlier phase
@@ -184,4 +187,4 @@ The `finding` surface serves both review-findings loops (planning and specificat
 
 The `render` group also keeps its dev/debug primitives (`signpost`, `box`, `wrap`, `tree`) — authoring aids only, never called from skill flows.
 
-**Rendering is not a runtime CLI concern.** Static chrome (signposts, boxes, gate rules) lives as literal blocks in skill prose; parameterised chrome is rendered in-process by projections. No skill flow calls a render command at runtime — the `render` command group in `engine.cjs` is a development/debugging utility only (e.g. generating a correct literal while authoring prose).
+**Static chrome stays literal in skill prose; everything parameterised or state-branching renders in code** — adapter-side via projections, shared runtime surfaces via the `render` catalogue above, transaction chrome via the verbs' own appended sections. Only the `render` group's dev primitives (`signpost`, `box`, `wrap`, `tree`) are authoring aids never called from flows.

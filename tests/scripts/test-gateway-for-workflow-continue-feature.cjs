@@ -278,6 +278,7 @@ describe('workflow-continue-feature format', () => {
       '',
       '- **`1`** — Continue "Auth" — specification (in-progress)',
       '- **`2`** — Continue "Dark Mode" — discussion (in-progress)',
+      '',
       '- **`3`** — View completed & cancelled features',
       "- **`m`/`manage`** — Manage a feature's lifecycle",
       '',

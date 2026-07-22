@@ -220,21 +220,7 @@ Run the cancel transaction — one command stashes the current status, marks the
 node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
 ```
 
-The JSON response reports `status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the cancellation is already recorded:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge removal warning
-  {warning}
-  The topic is cancelled. You can run knowledge remove manually later.
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-Cancelled "{topic:(titlecase)}" in {phase}.
-```
+Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
 
 → Return to **A. State Display and Menu**.
 
@@ -264,20 +250,6 @@ Store the selected entry's `phase` and `topic`. Run the reactivate transaction �
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}
 ```
 
-The JSON response reports the restored `status`, `committed`, and `warnings`. If `warnings` is non-empty, display them — the reactivation is already recorded:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {warning}
-  The artifact is saved. Indexing can be retried later.
-```
-
-> *Output the next fenced block as a code block:*
-
-```
-Reactivated "{topic:(titlecase)}" in {phase}. Status restored to {status}.
-```
+Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLAY: confirmation` section — each verbatim per its marker.
 
 → Return to **A. State Display and Menu**.

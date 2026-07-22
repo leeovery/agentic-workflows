@@ -16,8 +16,8 @@
 // ---------------------------------------------------------------------------
 
 const { box } = require('../../kernel/render.cjs');
-const { titlecase, capitalise, titlecaseLabel } = require('../conventions.cjs');
-const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption } = require('./surfaces.cjs');
+const { titlecase, titlecaseLabel } = require('../conventions.cjs');
+const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption, section: labelled } = require('./surfaces.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -26,10 +26,6 @@ const { dotFrame: dotMenu, cmdOption, promptOption, rangeOption } = require('./s
 /** @typedef {import('../inbox-set.cjs').WorkingSetDetail} WorkingSetDetail */
 /** @typedef {import('../workunit-manage.cjs').ManageDetail} ManageDetail */
 
-/** One labelled `=== NAME (instruction) ===` deferred section. @param {string} name @param {string} instruction @param {string} body */
-function labelled(name, instruction, body) {
-  return `=== ${name} (${instruction}) ===\n${body.replace(/\n+$/, '')}\n`;
-}
 
 /**
  * @typedef {object} StartMenuKey

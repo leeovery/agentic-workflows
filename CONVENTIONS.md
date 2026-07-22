@@ -540,6 +540,10 @@ Rules:
 - If double-nesting would occur, flatten by combining the parent and child conditions into a single bold conditional
 - Every conditional branch must include its own routing instruction (`→ Proceed to` or `→ Return to`). Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
 
+### Command Preludes
+
+Any decision an invocation depends on — a flag choice, a derived parameter, a value to substitute — is stated **before** the fenced command, never after. A step-executing reader runs the command when it reaches it; guidance placed below the fence arrives too late.
+
 ### Navigation Arrows
 
 Use `→` for flow control between steps or to external files:

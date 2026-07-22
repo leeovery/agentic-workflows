@@ -26,6 +26,7 @@ const { sequenceMap, addItem, editItem, removeItem, renameItem, rerouteItem, han
 const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
+const txSections = require('./domain/projections/transactions.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -113,10 +114,10 @@ Commands:
   manifest resolve <work-unit>.<phase>[.<topic>]
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
                   [--import <path> …] [--seed <path> …]
-  workunit complete <work-unit> -m <message>
+  workunit complete <work-unit> -m <message> [--pipeline [--skipped-review]]
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
-  workunit pivot <work-unit>
+  workunit pivot <work-unit> [--continuation-menu]
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
@@ -160,7 +161,6 @@ Commands:
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
-  render pipeline-complete <wu> [--skipped-review]
   render phase-completed   <wu> --phase <phase>
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
@@ -241,37 +241,52 @@ function runWorkunit(argv) {
     } else if (command === 'complete') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
+      const completeFlags = new Set();
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '-m' || a === '--message') message = rest[++i];
+        else if (a === '--pipeline' || a === '--skipped-review') completeFlags.add(a.slice(2));
         else if (workUnit === null) workUnit = a;
         else throw new Error(`unexpected argument "${a}"`);
       }
       if (!workUnit || !message) {
-        throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
+        throw new Error('Usage: engine workunit complete <work-unit> -m <message> [--pipeline [--skipped-review]]');
       }
-      respond(completeWorkUnit(process.cwd(), workUnit, { message }));
+      const res = completeWorkUnit(process.cwd(), workUnit, { message });
+      respond(res);
+      respondSections(txSections.workunitLifecycleSections('complete', res, {
+        pipeline: completeFlags.has('pipeline'),
+        skippedReview: completeFlags.has('skipped-review'),
+      }));
     } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
-      if (!workUnit || extra.length > 0) {
-        throw new Error(`Usage: engine workunit ${command} <work-unit>`);
+      if (!workUnit || (extra.length > 0 && !(command === 'pivot' && extra.every((a) => a === '--continuation-menu')))) {
+        throw new Error(`Usage: engine workunit ${command} <work-unit>${command === 'pivot' ? ' [--continuation-menu]' : ''}`);
       }
       const fn = command === 'cancel' ? cancelWorkUnit : command === 'reactivate' ? reactivateWorkUnit : pivotWorkUnit;
-      respond(fn(process.cwd(), workUnit));
+      const res = fn(process.cwd(), workUnit);
+      respond(res);
+      respondSections(command === 'pivot'
+        ? txSections.pivotSections(res, { continuationMenu: extra.includes('--continuation-menu') })
+        : txSections.workunitLifecycleSections(command, res));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
       if (!feature || positional.length !== 1 || !opts.into || !opts.topic) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
-      respond(absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic }));
+      const res = absorbWorkUnit(process.cwd(), feature, { into: opts.into, topic: opts.topic });
+      respond(res);
+      respondSections(txSections.absorbSections(res));
     } else if (command === 'promote') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit, topic] = positional;
       if (!workUnit || !topic || positional.length !== 2 || !opts.to || !opts.description) {
         throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
       }
-      respond(promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description }));
+      const res = promoteWorkUnit(process.cwd(), workUnit, topic, { to: opts.to, description: opts.description });
+      respond(res);
+      respondSections(txSections.promoteSections(res));
     } else {
       throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb|promote> …');
     }
@@ -478,7 +493,11 @@ function runTopic(argv) {
     if (!workUnit || !phase || !topic) {
       throw new Error(`Usage: engine topic ${command} <work-unit> <phase> <topic>`);
     }
-    respond(fn(process.cwd(), workUnit, phase, topic));
+    const res = fn(process.cwd(), workUnit, phase, topic);
+    respond(res);
+    if (command === 'cancel' || command === 'reactivate') {
+      respondSections(txSections.topicLifecycleSections(command, res));
+    }
   } catch (err) {
     failJson(err);
   }

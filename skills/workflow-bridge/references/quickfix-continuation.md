@@ -15,14 +15,10 @@ Quick-fix pipeline: Scoping → Implementation → Review
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline" --pipeline
 ```
 
-Render and emit the section verbatim:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render pipeline-complete {work_unit}
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -51,14 +47,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render early-completion-g
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline (review skipped)"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline (review skipped)" --pipeline --skipped-review
 ```
 
-Render and emit the section verbatim:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render pipeline-complete {work_unit} --skipped-review
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 

@@ -1,9 +1,11 @@
 'use strict';
 
-// Shared selection projection for the continue-* navigation skills — the
+// ---------------------------------------------------------------------------
+// Domain ring: shared selection projection for the continue-* navigation skills — the
 // pick-list DISPLAY and MENU sections every type's gateway appends to its
 // index dump. One composition, five type configs: the clone-family factory
 // for the selection step.
+// ---------------------------------------------------------------------------
 
 const { titlecase, titlecaseLabel } = require('../conventions.cjs');
 const { section, dotFrame, cmdOption } = require('./surfaces.cjs');
@@ -82,6 +84,7 @@ function selectionSections(type, units, counts) {
       ? `Continue "${titlecase(u.name)}"`
       : `Continue "${titlecase(u.name)}" — ${u.phase_label}`));
   });
+  menuLines.push('');
   if (closed) menuLines.push(cmdOption(String(units.length + 1), null, cfg.view));
   menuLines.push(cmdOption('m', 'manage', cfg.manage), '', 'Select an option:');
 
