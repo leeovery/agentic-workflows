@@ -173,13 +173,10 @@ impl({work_unit}): analysis cycle {N} — synthesis
 
 Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md`.
 
-> *Output the next fenced block as a code block:*
+Write the overview payload to `.workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json` with the Write tool (`{"label": "Analysis cycle {N}", "tasks": [{"title": "…", "severity": "…"}]}`), render, and emit the section verbatim:
 
-```
-Analysis cycle {N}: {K} proposed tasks
-
-  1. {title} ({severity})
-  2. {title} ({severity})
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json
 ```
 
 → Proceed to **F. Process Task**.
@@ -194,56 +191,19 @@ Analysis cycle {N}: {K} proposed tasks
 
 #### Otherwise
 
-Present the next pending task:
+Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file — then render with the gate mode carried by this cycle's response (or `auto` if the user opted in at a previous task this cycle), and emit each section verbatim at its marked instruction:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**Task {current}/{total}: {title}** ({severity})
-Sources: {sources}
-
-**Problem**: {problem}
-**Solution**: {solution}
-**Outcome**: {outcome}
-
-**Do**:
-{steps}
-
-**Acceptance Criteria**:
-{criteria}
-
-**Tests**:
-{tests}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {analysis_gate_mode} --comment-hint "Provide feedback to adjust"
 ```
 
-Branch on the `analysis_gate_mode` carried by this cycle's response (or `auto` if the user opted in at a previous task this cycle).
+#### If the response carried `DISPLAY: task auto-approved`
 
-#### If `analysis_gate_mode` is `auto`
-
-Update `status: approved` in the staging file.
-
-> *Output the next fenced block as a code block:*
-
-```
-Task {current} of {total}: {title} — approved [auto].
-```
+Update `status: approved` in the staging file, then emit the section per its marker.
 
 → Return to **F. Process Task**.
 
-#### If `analysis_gate_mode` is `gated`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-Approve this task?
-
-- **`y`/`yes`** — Approve this task
-- **`a`/`auto`** — Approve this and all remaining tasks automatically
-- **`s`/`skip`** — Skip this task
-- **Comment** — Provide feedback to adjust
-· · · · · · · · · · · ·
-```
+#### If the response carried `MENU: task approval`
 
 **STOP.** Wait for user response.
 
