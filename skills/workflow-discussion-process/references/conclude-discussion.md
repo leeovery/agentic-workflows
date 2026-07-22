@@ -48,7 +48,7 @@ Conclude this discussion and mark as completed?
 
 Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
-4. Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
+4. Hand off to the pipeline bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -57,11 +57,7 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 > synthesise your decisions into a formal document.
 ```
 
-```
-work_unit={work_unit} completed_phase=discussion
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} discussion`.
 
 #### If `no`
 

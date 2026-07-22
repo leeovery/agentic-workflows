@@ -41,9 +41,6 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 > to make decisions about architecture and approach.
 ```
 
-4. Invoke the `/workflow-bridge` skill:
-   ```
-   work_unit={work_unit} completed_phase=research
-   ```
+4. Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} research`.
 
 **STOP.** Do not proceed — terminal condition.

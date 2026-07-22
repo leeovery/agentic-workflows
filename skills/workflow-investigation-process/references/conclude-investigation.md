@@ -58,10 +58,6 @@ The investigation is completed. Root cause and fix direction are documented.
 > the fix approach into a document that drives planning.
 ```
 
-5. Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
-
-```
-work_unit={work_unit} completed_phase=investigation
-```
+5. Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} investigation`.
 
 **STOP.** Do not proceed — terminal condition.

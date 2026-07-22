@@ -58,10 +58,6 @@ Status has been marked as `completed`. The plan is ready for implementation.
 > these tasks using TDD — tests first, then code.
 ```
 
-Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
-
-```
-work_unit={work_unit} completed_phase=planning
-```
+Invoke the **workflow-bridge** skill (Skill tool) with arguments: `{work_unit} planning`.
 
 **STOP.** Do not proceed — terminal condition.
