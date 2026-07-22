@@ -35,15 +35,10 @@ The output is the in-progress session number string (e.g. `002`) — the prior s
 > choose whether to pick it up or start fresh.
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Render the resume menu and emit its section verbatim per its marker:
 
-```
-· · · · · · · · · · · ·
-Found an in-progress discovery session for **{work_unit:(titlecase)}** at `session-{active_session}.md`.
-
-- **`c`/`continue`** — Pick up where you left off
-- **`r`/`restart`** — Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit} --variant session
 ```
 
 **STOP.** Wait for user response.

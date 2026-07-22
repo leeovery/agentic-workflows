@@ -97,36 +97,10 @@ Read `reviewed_tasks` from the review manifest — empty stdout means it was nev
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
 ```
 
-Compare `completed_tasks` against `reviewed_tasks`. Let {C} = total completed, {R} = reviewed, {U} = unreviewed ({C} − {R}).
+Render the resume menu — the engine derives review coverage from the two arrays — and emit its section verbatim per its marker:
 
-**If `reviewed_tasks` exists and unreviewed tasks remain:**
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found existing review for **{topic:(titlecase)}**.
-Review covered {R} of {C} tasks. {U} task(s) not yet reviewed.
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Review the {U} unreviewed tasks
-- **`r`/`restart`** — Delete review, re-review all {C} tasks
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**Otherwise** (all tasks reviewed, or no tracking data):
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Found existing review for **{topic:(titlecase)}**.
-@if(reviewed_tasks exists) All {C} tasks have been reviewed. @endif
-
-· · · · · · · · · · · ·
-- **`c`/`continue`** — Continue from current review state
-- **`r`/`restart`** — Delete review, start fresh
-· · · · · · · · · · · ·
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.review.{topic} --variant review
 ```
 
 **STOP.** Wait for user response.

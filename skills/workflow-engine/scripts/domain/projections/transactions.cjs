@@ -166,7 +166,8 @@ function promoteSections(result) {
 function pivotSections(result, { continuationMenu = false } = {}) {
   const name = titlecase(result.work_unit);
   return joined([
-    warningBlock('Knowledge indexing warning', result.warnings, 'The pivot is complete. Indexing can be retried later.'),
+    warningBlock('Knowledge indexing warning', result.warnings,
+      'The pivot is complete. Indexing can be retried later.', 'emit verbatim as a code block'),
     continuationMenu
       ? section(
           'MENU: pivot continuation',

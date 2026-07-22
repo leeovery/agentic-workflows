@@ -58,16 +58,10 @@ Store the entry's `action` and `route`.
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete cross-cutting pipeline"
+node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete cross-cutting pipeline" --pipeline
 ```
 
-> *Output the next fenced block as a code block:*
-
-```
-Cross-Cutting Completed
-
-"{work_unit:(titlecase)}" has completed all pipeline phases.
-```
+Emit the response's `DISPLAY: confirmation` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 

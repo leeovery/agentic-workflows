@@ -124,6 +124,84 @@ describe('render resume-gate', () => {
     assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion' }), /address must be <work_unit>\.<phase>\.<topic>/);
     assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'nope.discussion.x' }), /work unit "nope" not found/);
   });
+
+  it('rejects an unknown variant and --triage combined with a variant', () => {
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', variant: 'nope' }), /--variant must be "plan", "review", "scoping", or "session"/);
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.auth-flow', variant: 'scoping', triage: '2' }), /--triage only applies to the default variant/);
+  });
+});
+
+describe('render resume-gate variants', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  it('plan derives the position parenthetical from the planning item', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
+    assert.ok(out.includes('- **`c`/`continue`** — Walk through the plan from the start. You can review, amend, or navigate at any point — including straight to the leading edge.'));
+    assert.ok(out.includes('- **`r`/`restart`** — Erase all planning work for this topic and start fresh. This deletes the planning file, authored tasks, and clears manifest state. Other topics are unaffected.'));
+  });
+
+  it('plan omits the parenthetical when the position fields are absent', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    assert.ok(out.includes('Found existing plan for **Portal**.\n'));
+    assert.ok(!out.includes('previously reached'));
+  });
+
+  it('plan keeps the phase anchor when only the phase is known (post-advance interrupt)', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: null } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3).'));
+  });
+
+  it('review renders the coverage menu while unreviewed tasks remain', () => {
+    writeManifest(dir, 'pay', { phases: {
+      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b', 'c'] } } },
+      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a'] } } },
+    } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
+    assert.ok(out.includes('Found existing review for **Portal**.\nReview covered 1 of 3 tasks. 2 task(s) not yet reviewed.'));
+    assert.ok(out.includes('- **`c`/`continue`** — Review the 2 unreviewed tasks'));
+    assert.ok(out.includes('- **`r`/`restart`** — Delete review, re-review all 3 tasks'));
+  });
+
+  it('review renders the all-reviewed menu when coverage is complete, and the bare menu with no tracking', () => {
+    writeManifest(dir, 'pay', { phases: {
+      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b'] } } },
+      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a', 'b'] } } },
+    } });
+    const all = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
+    assert.ok(all.includes('Found existing review for **Portal**.\nAll 2 tasks have been reviewed.'));
+    assert.ok(all.includes('- **`c`/`continue`** — Continue from current review state'));
+
+    writeManifest(dir, 'pay', { phases: { review: { items: { portal: { status: 'in-progress' } } } } });
+    const bare = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
+    assert.ok(bare.includes('Found existing review for **Portal**.\n\n'), 'no tracking — label only, no coverage line');
+    assert.ok(bare.includes('- **`r`/`restart`** — Delete review, start fresh'));
+  });
+
+  it('scoping renders the revisit wording', () => {
+    writeManifest(dir, 'pay', { phases: { scoping: { items: { pay: { status: 'in-progress' } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.pay', variant: 'scoping' });
+    assert.ok(out.includes('Found completed scoping for **Pay** — spec and plan are in place.'));
+    assert.ok(out.includes('- **`c`/`continue`** — Adjust the existing spec and plan'));
+    assert.ok(out.includes('- **`r`/`restart`** — Erase the spec, plan, and task files, then rescope from scratch'));
+  });
+
+  it('session takes a bare work-unit address and reads the active-session marker', () => {
+    writeManifest(dir, 'pay', { phases: { discovery: { active_session: '002', items: {} } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay', variant: 'session' });
+    assert.ok(out.includes('Found an in-progress discovery session for **Pay** at `session-002.md`.'));
+    assert.ok(out.includes('- **`r`/`restart`** — Discard the interrupted log and start a new session (map edits already applied stay applied — only their session record is lost)'));
+  });
+
+  it('session is loud when no active session exists', () => {
+    writeManifest(dir, 'pay', { phases: { discovery: { items: {} } } });
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay', variant: 'session' }), /no active discovery session to resume/);
+  });
 });
 
 describe('render task-list', () => {
@@ -691,6 +769,7 @@ describe('CLI boundary — engine render via subprocess', () => {
       phases: {
         discussion: { items: { pay: { status: 'in-progress' } } },
         planning: { items: { pay: { status: 'in-progress', task_list_gate_mode: 'auto' } } },
+        specification: { items: { pay: { status: 'superseded', superseded_by: 'core' } } },
       },
     });
   });
@@ -713,6 +792,10 @@ describe('CLI boundary — engine render via subprocess', () => {
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
     assert.ok(run(['early-completion-gate', 'pay']).includes('Complete without review'));
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
+    assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('Specification Superseded'),
+      '--own must survive boolean-flag registration through argv');
+    assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes('  Spec: .workflows/pay/specification/pay/specification.md'),
+      '--paths must survive boolean-flag registration through argv');
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {
@@ -805,6 +888,72 @@ describe('render entry-gate', () => {
   it('an unsupported phase is a loud error', () => {
     manifestWith({});
     assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /no prerequisite rules for phase "discussion"/);
+  });
+});
+
+describe('render entry-gate --own', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  function specWith(item) {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: { specification: { items: { auth: item } } } });
+  }
+
+  it('renders the superseded and promoted terminals byte-exactly', () => {
+    specWith({ status: 'superseded', superseded_by: 'core-auth' });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), [
+      '=== DISPLAY: entry blocker (emit verbatim as a code block, then STOP — terminal condition) ===',
+      'Specification Superseded',
+      '',
+      'The specification for "Auth" was consolidated into',
+      '"Core Auth". Work on that specification instead.',
+      '',
+    ].join('\n'));
+    specWith({ status: 'promoted', promoted_to: 'auth-platform' });
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }),
+      /Specification Promoted\n\n"Auth" was promoted to the cross-cutting work unit\n"auth-platform"\. Continue it from that work unit\./);
+  });
+
+  it('is clear for live statuses and a missing item', () => {
+    for (const item of [{ status: 'in-progress' }, { status: 'completed' }, { status: 'proposed' }]) {
+      specWith(item);
+      assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), '');
+    }
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {} });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), '');
+  });
+
+  it('is loud outside specification', () => {
+    writeManifest(dir, 'pay', { work_type: 'feature', phases: {} });
+    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth', own: '1' }), /--own is only supported for specification/);
+  });
+
+  it('a promoted item missing its target degrades to an empty quoted name, never "undefined"', () => {
+    specWith({ status: 'promoted' });
+    const out = renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' });
+    assert.ok(out.includes('"". Continue it from that work unit.'));
+    assert.ok(!out.includes('undefined'));
+  });
+});
+
+describe('render phase-completed --paths', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hotfix', { work_type: 'quick-fix', phases: {} });
+  });
+  afterEach(() => teardown(dir));
+
+  it('appends the derived spec and plan paths', () => {
+    assert.strictEqual(renderSurface(dir, 'phase-completed', { dotpath: 'hotfix', phase: 'scoping', paths: '1' }), [
+      '=== DISPLAY: phase completed (emit verbatim as a code block) ===',
+      'Scoping completed for "Hotfix".',
+      '',
+      '  Spec: .workflows/hotfix/specification/hotfix/specification.md',
+      '  Plan: .workflows/hotfix/planning/hotfix/',
+      '',
+    ].join('\n'));
   });
 });
 
