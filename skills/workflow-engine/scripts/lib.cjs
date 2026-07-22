@@ -95,6 +95,7 @@ module.exports = {
   },
   project: {
     selectionSections: selectionProjections.selectionSections,
+    selectionNotFound: selectionProjections.selectionNotFound,
     epicDashboard: epicProjections.epicDashboard,
     epicKey: epicProjections.epicKey,
     epicMenu: epicProjections.epicMenu,

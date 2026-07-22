@@ -97,10 +97,10 @@ Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `
 
 The bug was shaped in discovery. Read the durable carrier as the seed — the manifest `description` and the latest discovery session log (`.workflows/{work_unit}/discovery/sessions/session-NNN.md`, highest-numbered) — and seed the investigation from it. Do not re-ask; live conversation context, when present, supplements the carrier.
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Starting investigation: {work_unit:(titlecase)}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
 ```
 
 → Proceed to **Step 4**.

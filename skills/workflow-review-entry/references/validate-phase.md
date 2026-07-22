@@ -4,71 +4,25 @@
 
 ---
 
-Check if plan and implementation exist and are ready via `engine manifest`.
+Check if plan and implementation exist and are ready.
 
-## A. Existence Checks
+## A. Prerequisite Gate
+
+The engine derives the verdict from manifest state:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.review.{topic}
 ```
 
-#### If plan doesn't exist (`false`)
+#### If the response carried `DISPLAY: entry blocker`
 
-> *Output the next fenced block as a code block:*
-
-```
-Plan Missing
-
-No plan found for "{topic:(titlecase)}".
-
-A completed plan and completed implementation are required for review.
-```
+Emit the section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan exists (`true`)
+#### If the response is empty
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.implementation.{topic}
-```
-
-**If implementation doesn't exist (`false`):**
-
-> *Output the next fenced block as a code block:*
-
-```
-Implementation Missing
-
-No implementation found for "{topic:(titlecase)}".
-
-A completed implementation is required for review.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-**If implementation exists (`true`):**
-
-→ Proceed to **B. Implementation Status**.
-
-## B. Implementation Status
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} status
-```
-
-#### If implementation status is not `completed`
-
-> *Output the next fenced block as a code block:*
-
-```
-Implementation Not Complete
-
-The implementation for "{topic:(titlecase)}" is not yet completed.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If implementation status is `completed`
+Plan and implementation are completed.
 
 → Proceed to **C. Review State**.
 

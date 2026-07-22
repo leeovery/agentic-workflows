@@ -8,37 +8,21 @@ Check if plan exists and is ready.
 
 ## A. Plan Check
 
+The engine derives the verdict from manifest state:
+
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.implementation.{topic}
 ```
 
-#### If output is empty (plan doesn't exist)
+#### If the response carried `DISPLAY: entry blocker`
 
-> *Output the next fenced block as a code block:*
-
-```
-Plan Missing
-
-No plan found for "{topic:(titlecase)}".
-
-A completed plan is required for implementation.
-```
+Emit the section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If plan status is not `completed`
+#### If the response is empty
 
-> *Output the next fenced block as a code block:*
-
-```
-Plan Not Completed
-
-The plan for "{topic:(titlecase)}" is not yet completed.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If plan status is `completed`
+The plan is completed.
 
 → Proceed to **B. Implementation Check**.
 
@@ -62,10 +46,10 @@ Reopen it:
 node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}
 ```
 
-> *Output the next fenced block as a code block:*
+Render and emit the section verbatim:
 
-```
-Reopening implementation: {topic:(titlecase)}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.implementation.{topic} --verb Reopening
 ```
 
 → Return to caller.

@@ -179,6 +179,8 @@ engine render phase-completed <wu> --phase <phase>                # one-line pha
 engine render early-completion-gate <wu>                          # bridge gate: proceed to review / complete without review
 engine render revisit-gate <wu> --prev <phase> --next <phase>     # bridge gate: proceed to next / revisit an earlier phase
 engine render epic-all-done-gate <wu>                             # bridge gate: mark epic completed / return to menu
+engine render phase-note <wu>.<phase>.<topic> --verb <Word> [--noun <word>]   # entry one-liner: "{Word} {noun|phase}: {Topic}"
+engine render entry-gate <wu>.<phase>.<topic>                     # prerequisite verdict, engine-derived: empty = clear; blocked = the terminal DISPLAY: entry blocker (planning: spec status incl. superseded/promoted; implementation: plan; review: plan+implementation; specification: work-type-aware source material)
 ```
 
 The bridge continuation surfaces take a bare `<work_unit>` address (work-unit-level, type read from the manifest). The continue-* selection step is not a `render` surface: each navigation gateway's index dump appends `DISPLAY: selection` / `MENU: selection` sections from the shared selection projection — emitted only at the select step, per their markers.

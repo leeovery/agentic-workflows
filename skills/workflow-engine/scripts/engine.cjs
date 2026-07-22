@@ -162,6 +162,8 @@ Commands:
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve]
   render phase-completed   <wu> --phase <phase>
+  render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
+  render entry-gate        <wu.phase.topic>      (planning|implementation|review|specification)
   render early-completion-gate <wu>
   render revisit-gate      <wu> --prev <phase> --next <phase>
   render epic-all-done-gate <wu>
