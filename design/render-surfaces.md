@@ -199,12 +199,37 @@ cache paths. Genuine this-turn judgment payloads are rare.
    artefact in a fence (` ```diff ` from the payload's context/diff fields,
    plain fence for prose content); goldens and the single-source invariants
    updated. Slots before the sweep so stage 7 audits the final form.
-7. **Static sweep + closing lint** (D3/D4 decided).
+7. **Static sweep + closing lint** — re-cut after the classification census
+   (2026-07-22: five parallel classifiers over the 192 remaining templated
+   sites; totals: state-render 62, chrome 71, judgment 20, hybrid 20,
+   artefact-echo 19; agreed with Lee):
+   7a. **Transaction-fold stragglers** — topic complete (×5 prose sites) and
+      discovery-session close (×1) fold their kb warnings as sections.
+      (Census correction: the three map-operations blocks first grouped here
+      are pre-transaction proposals, not confirmations — moved to 7d's
+      preview family.)
+   7b. **Existing-surface swaps** — ~10 sites onto resume-gate / revisit-gate
+      / phase-completed / entry-gate; the four identical continue-*
+      "Completed" blocks onto one shared section.
+   7c. **D3 + D4 land** — D3 decided (a): the 83 static menus stay prose
+      (nothing to derive, nothing to misfill; grammar already linted).
+      D4 as a ratchet lint: any NEW templated menu/display fence fails the
+      suite; the remaining class-3 sites ride a pinned allowlist that only
+      shrinks. Census recorded here.
+   7d. **New-surface families → post-stack programme** (census-first, beside
+      batching): spec-entry confirm-* ×8, dependency trees, legacy-split
+      JSON blocks ×6, absorb preview, map-operations proposals, ~15 singles.
+      Chrome (71) stays prose — earned-surface rule; judgment/artefact-echo
+      sanctioned by doctrine.
 
 Each stage is a stacked PR; stack driven per the pr-stacked skill
 (author → chain PR bases → `safe-stack sync` → review → `safe-stack merge`).
 
 ## Log
+
+- 2026-07-22 — Stage 7a up (#499): topic complete + discovery-session close
+  append DISPLAY: kb warning; six prose blocks deleted. Classification
+  census run and recorded (stage 7 re-cut as 7a-7d, agreed with Lee).
 
 - 2026-07-22 — Stage 6c up (#498): boxedFrame retired. finding's diff is one
   ```diff-fenced section (the frame-open/diff/frame-close sandwich gone);
