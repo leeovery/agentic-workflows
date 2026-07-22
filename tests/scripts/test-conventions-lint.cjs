@@ -574,7 +574,7 @@ const RATCHET_PINS = {
   'skills/workflow-implementation-process/references/project-skills-discovery.md': 2,
   'skills/workflow-implementation-process/references/task-loop.md': 7,
   'skills/workflow-investigation-entry/references/gather-context.md': 1,
-  'skills/workflow-investigation-process/references/analysis-checkpoints.md': 2,
+  'skills/workflow-investigation-process/references/analysis-checkpoints.md': 3,
   'skills/workflow-investigation-process/references/conclude-investigation.md': 1,
   'skills/workflow-investigation-process/references/findings-signoff.md': 1,
   'skills/workflow-investigation-process/references/fix-exploration.md': 1,
@@ -625,7 +625,7 @@ const RATCHET_PINS = {
   'skills/workflow-specification-process/SKILL.md': 1,
   'skills/workflow-specification-process/references/process-review-findings.md': 4,
   'skills/workflow-specification-process/references/spec-completion.md': 1,
-  'skills/workflow-specification-process/references/spec-construction.md': 2,
+  'skills/workflow-specification-process/references/spec-construction.md': 3,
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/SKILL.md': 1,
   'skills/workflow-start/references/absorb-into-epic.md': 4,
@@ -639,11 +639,14 @@ const RATCHET_PINS = {
 // Count a file's templated menu/display fences: a rendering-instruction line,
 // its following fence, marker/signpost kinds excluded, templated = placeholder
 // syntax or an @if/@foreach directive (the render-surfaces census scanner).
+// The trigger matches ANY instruction form ("as a code block", "as markdown",
+// "as a ` ```diff ` code block", future variants) — an instruction-form miss
+// would silently exempt that family from the ratchet.
 function countTemplatedSites(file) {
   const lines = readLines(file);
   let n = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (!/^> \*Output the next fenced block as (a code block|markdown)/.test(lines[i])) continue;
+    if (!/^> \*Output the next fenced block as /.test(lines[i])) continue;
     let j = i + 1;
     while (j < lines.length && lines[j].trim() === '') j++;
     if (j >= lines.length || !/^\s*```/.test(lines[j])) continue;
@@ -654,7 +657,11 @@ function countTemplatedSites(file) {
     const text = content.join('\n');
     const isMarker = content.length === 1 && /^(── |·· )/.test(content[0]);
     const isSignpost = content.every((l) => l.trim() === '' || l.startsWith('>'));
-    const templated = /\{[a-z_][a-z0-9_.:|()\[\]\- ]*\}/i.test(text) || /@if|@foreach/.test(text);
+    // Templated = any single-line braced token or directive. Deliberately
+    // wider than the template-placeholder grammar: `{2 context lines}` and
+    // `{removed/changed lines}` are placeholders too, and a narrow class
+    // would let them slip the ratchet as "static".
+    const templated = /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
     if (!isMarker && !isSignpost && templated) n++;
     i = k;
   }
@@ -1040,5 +1047,12 @@ test('check 13 (templated-fence ratchet) — catches drift both ways, skips stat
         instr + '```\n> Working on {topic} — questions about gaps\n> and contradictions follow.\n```\n'
     );
     assert.strictEqual(checkTemplatedRatchet([chrome], {}).length, 0, 'templated markers and signposts are chrome, out of scope');
+
+    const diffForm = write(
+      dir,
+      'skills/x/e.md',
+      '> *Output the next fenced block as a ` ```diff ` code block:*\n\n```diff\n {context}\n-{removed lines}\n+{new lines}\n```\n'
+    );
+    assert.strictEqual(checkTemplatedRatchet([diffForm], {}).length, 1, 'the diff-form instruction is inside the ratchet');
   });
 });

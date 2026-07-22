@@ -263,6 +263,35 @@ describe('engine topic start', () => {
   });
 });
 
+describe('pipeline completion banner matrix', () => {
+  const { workunitLifecycleSections } = require('../../skills/workflow-engine/scripts/domain/projections/transactions.cjs');
+  const banner = (wt, opts) => workunitLifecycleSections('complete', { work_unit: 'pay-x', work_type: wt }, { pipeline: true, ...opts });
+
+  it('every work-type label and both body variants render', () => {
+    assert.ok(banner('feature').includes('Feature Completed\n\n"Pay X" has completed all pipeline phases.'));
+    assert.ok(banner('bugfix').includes('Bugfix Completed\n\n"Pay X" has completed all pipeline phases.'));
+    assert.ok(banner('quick-fix').includes('Quick-Fix Completed\n\n"Pay X" has completed all pipeline phases.'));
+    assert.ok(banner('cross-cutting').includes('Cross-Cutting Completed\n\n"Pay X" has completed all pipeline phases.'));
+    assert.ok(banner('epic').includes('Epic Completed\n\n"Pay X" has completed all topics through review.'));
+    assert.ok(banner('epic', { skippedReview: true }).includes('Epic Completed\n\n"Pay X" completed — review skipped.'));
+  });
+});
+
+describe('topic verbs without section folds', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('start, reopen, and supersede append nothing — only complete/cancel/reactivate fold sections', () => {
+    engine(dir, ['topic', 'start', 'payments', 'research', 'brand-new']);
+    assert.strictEqual(engine.lastSections, '', 'start appends no sections');
+    engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
+    assert.strictEqual(engine.lastSections, '', 'reopen appends no sections');
+    engine(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']);
+    assert.strictEqual(engine.lastSections, '', 'supersede appends no sections — its removal warning stays in the JSON');
+  });
+});
+
 describe('engine topic complete', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
