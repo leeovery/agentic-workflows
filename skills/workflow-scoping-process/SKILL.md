@@ -1,7 +1,7 @@
 ---
 name: workflow-scoping-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(tick), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git status), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git status), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
 ---
 
 # Scoping Process

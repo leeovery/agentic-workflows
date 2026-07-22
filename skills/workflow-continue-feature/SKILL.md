@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-feature
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-feature/scripts/gateway.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(tick)
+allowed-tools: Bash(node .claude/skills/workflow-continue-feature/scripts/gateway.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 Continue an in-progress feature. Determines current phase and routes to the appropriate phase skill.
