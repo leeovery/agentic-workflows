@@ -109,7 +109,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_uni
 
 Leave the dependency as `state: unresolved`. It will be resolved when that topic is planned.
 
-→ Proceed to **E. Reverse Check**.
+→ Return to **D. Resolve Current Plan's Dependencies** for the next unresolved dependency; when all have been checked, proceed to **E. Reverse Check**.
 
 #### Otherwise
 
@@ -119,7 +119,7 @@ Add the resolution to the working list — persisted in one batch at **E**'s end
 
 - `{work_unit}.planning.{topic}` → `external_dependencies.{dep_topic}.state: resolved`, `external_dependencies.{dep_topic}.internal_id: {internal_id}`
 
-→ Proceed to **E. Reverse Check**.
+→ Return to **D. Resolve Current Plan's Dependencies** for the next unresolved dependency; when all have been checked, proceed to **E. Reverse Check**.
 
 ---
 
@@ -148,6 +148,7 @@ For each dependency in the other topic's `external_dependencies`, route on state
 - **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference), find the correct task and add the corrected pair to the working list:
 
   - `{work_unit}.planning.{other_topic}` → `external_dependencies.{topic}.internal_id: {corrected_internal_id}`
+
 - **`state: satisfied_externally`** — skip.
 
 → Return to **E. Reverse Check** for the next topic.
@@ -155,7 +156,8 @@ For each dependency in the other topic's `external_dependencies`, route on state
 When all topics have been checked, persist the working list — if it is non-empty, write one `set` op per resolution to `.workflows/.cache/{work_unit}/planning/{topic}/dependency-ops.json` with the Write tool (fields grouped per path), then apply the batch in one atomic call:
 
 ```json
-[{"op": "set", "path": "{work_unit}.planning.{other_topic}", "fields": {"external_dependencies.{topic}.state": "resolved", "external_dependencies.{topic}.internal_id": "{internal_id}"}}]
+[{"op": "set", "path": "{work_unit}.planning.{topic}", "fields": {"external_dependencies.{dep_topic}.state": "resolved", "external_dependencies.{dep_topic}.internal_id": "{internal_id}"}},
+ {"op": "set", "path": "{work_unit}.planning.{other_topic}", "fields": {"external_dependencies.{topic}.state": "resolved", "external_dependencies.{topic}.internal_id": "{internal_id}"}}]
 ```
 
 ```bash

@@ -58,7 +58,7 @@ New topics with no prior brief need no cleanup. A `delete` op fails the whole ba
 
 ## C. Propagation
 
-Flag downstream work, never overwrite it. Read both downstream phases once — every topic's items in two calls, however many briefs regenerated:
+Flag downstream work, never overwrite it. When **A** recorded no regenerated briefs (all first-writes), skip this section entirely. Otherwise read both downstream phases once — every topic's items in two calls, however many briefs regenerated:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research

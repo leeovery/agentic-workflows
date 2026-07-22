@@ -145,11 +145,16 @@ The spec exists but the plan is incomplete — an interrupted prior run. Rebuild
 
 #### If `continue`
 
-Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the `format` and the plan's `external_id` from the manifest and locate and read the task files via the format's **[reading.md](../workflow-planning-process/references/output-formats/{format}/reading.md)**:
+Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the planning item once — `format`, `external_id`, and `storage_paths` all ride the subtree — and locate and read the task files via the format's **[reading.md](../workflow-planning-process/references/output-formats/{format}/reading.md)**:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
+```
+
+**If the subtree carries no `storage_paths`** (a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
 > *Output the next fenced block as a code block:*
@@ -197,7 +202,7 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store, and the `storage_paths` read in step 1, then commit: Each entry passes as a bare pathspec; when the array is `[]`, stage nothing extra.
+7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store (only when `.workflows/.knowledge` exists — staging a nonexistent path is a git error), and the `storage_paths` read in step 1, then commit. Each entry passes as a bare pathspec; when the array is `[]` or the field is absent, stage nothing extra.
    ```bash
    git add -- .workflows/{work_unit} .workflows/.knowledge {storage_paths}
    git commit -m "scoping({work_unit}): restart scoping"

@@ -26,6 +26,8 @@ Write the whole topic set to `.workflows/.cache/{work_unit}/discovery/topics.jso
 [{"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{paragraphs}", "brief_path": "discovery/briefs/{topic}.md"}]
 ```
 
+Summary and description come from the synthesis — derived from the exploration in topic-synthesis. Omit `description` for a topic whose synthesis produced none (the field is optional; never invent one).
+
 Set `"force_dismissed": true` on an entry whose name the synthesis DATA flagged `matches_dismissed=true` — the user's confirmation at the synthesis gate is the re-add decision; the engine clears the dismissed entry as part of the add.
 
 Persist the set in one transaction:
