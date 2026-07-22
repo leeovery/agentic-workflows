@@ -34,15 +34,7 @@ Investigation complete. Ready to conclude?
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): complete {topic} investigation"
    ```
 
-If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {error details}
-  The artifact is saved. Indexing can be retried later.
-```
+Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
 3. Display conclusion:
 

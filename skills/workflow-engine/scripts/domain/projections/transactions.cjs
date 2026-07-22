@@ -16,12 +16,13 @@ const { section, callout, menu, cmdOption } = require('./surfaces.cjs');
  * The ⚑ warning block: label line, one indented line per warning, and the
  * reassurance tail. Null when there are no warnings.
  * @param {string} label @param {string[] | undefined} warnings @param {string} tail
+ * @param {string} [instruction]
  * @returns {string | null}
  */
-function warningBlock(label, warnings, tail) {
+function warningBlock(label, warnings, tail, instruction = 'emit verbatim as a code block, above the confirmation') {
   if (!Array.isArray(warnings) || warnings.length === 0) return null;
   const lines = [label, ...warnings.flatMap((w) => String(w).split('\n')), tail];
-  return section('DISPLAY: kb warning', 'emit verbatim as a code block, above the confirmation', callout(lines));
+  return section('DISPLAY: kb warning', instruction, callout(lines));
 }
 
 /** @param {string} body @param {string} [instruction] */
@@ -78,13 +79,21 @@ function workunitLifecycleSections(verb, result, { pipeline = false, skippedRevi
 }
 
 /**
- * topic cancel / reactivate.
- * @param {'cancel'|'reactivate'} verb
+ * topic complete / cancel / reactivate. `complete` carries no confirmation
+ * line — the calling flow owns its own conclusion display; only the
+ * non-blocking indexing warning folds here.
+ * @param {'complete'|'cancel'|'reactivate'} verb
  * @param {{topic: string, phase: string, status?: string, warnings?: string[]}} result
  * @returns {string}
  */
 function topicLifecycleSections(verb, result) {
   const name = titlecase(result.topic);
+  if (verb === 'complete') {
+    return joined([
+      warningBlock('Knowledge indexing warning', result.warnings,
+        'The artifact is saved. Indexing can be retried later.', 'emit verbatim as a code block'),
+    ]);
+  }
   if (verb === 'cancel') {
     return joined([
       warningBlock('Knowledge removal warning', result.warnings,
@@ -171,4 +180,17 @@ function pivotSections(result, { continuationMenu = false } = {}) {
   ]);
 }
 
-module.exports = { workunitLifecycleSections, topicLifecycleSections, absorbSections, promoteSections, pivotSections };
+/**
+ * discovery-session close — the non-blocking indexing warning; the session
+ * is closed and committed either way.
+ * @param {{warnings?: string[]}} result
+ * @returns {string}
+ */
+function discoverySessionCloseSections(result) {
+  return joined([
+    warningBlock('Knowledge indexing warning', result.warnings,
+      'The session is closed. Indexing can be retried later.', 'emit verbatim as a code block'),
+  ]);
+}
+
+module.exports = { workunitLifecycleSections, topicLifecycleSections, absorbSections, promoteSections, pivotSections, discoverySessionCloseSections };

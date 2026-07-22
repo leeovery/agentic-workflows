@@ -452,7 +452,9 @@ function runDiscoverySession(argv) {
       if (!workUnit || !message) {
         throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
       }
-      respond(closeDiscoverySession(process.cwd(), workUnit, { message }));
+      const res = closeDiscoverySession(process.cwd(), workUnit, { message });
+      respond(res);
+      respondSections(txSections.discoverySessionCloseSections(res));
     } else {
       throw new Error('Usage: engine discovery-session <open|close> …');
     }
@@ -497,7 +499,7 @@ function runTopic(argv) {
     }
     const res = fn(process.cwd(), workUnit, phase, topic);
     respond(res);
-    if (command === 'cancel' || command === 'reactivate') {
+    if (command === 'complete' || command === 'cancel' || command === 'reactivate') {
       respondSections(txSections.topicLifecycleSections(command, res));
     }
   } catch (err) {

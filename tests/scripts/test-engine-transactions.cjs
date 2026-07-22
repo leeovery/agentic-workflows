@@ -278,6 +278,8 @@ describe('engine topic complete', () => {
     // No KB configured in the fixture — warn-don't-block.
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /knowledge index failed/);
+    assert.match(engine.lastSections, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n(    .+\n)+    The artifact is saved\. Indexing can be retried later\./);
+    assert.ok(!engine.lastSections.includes('confirmation'), 'complete folds the warning only — the flow owns its conclusion display');
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.research.items, {
@@ -297,6 +299,7 @@ describe('engine topic complete', () => {
     const res = engine(dir, ['topic', 'complete', 'payments', 'scoping', 'fee-model']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'fee-model', phase: 'scoping', status: 'completed', warnings: [] });
+    assert.strictEqual(engine.lastSections, '', 'no warnings — no sections');
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.scoping.items, {
       'auth-flow': { status: 'in-progress' },

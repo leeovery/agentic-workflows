@@ -86,15 +86,22 @@ function setupFixture({ epic = epicManifest() } = {}) {
   return { root, project, engine: path.join(skills, 'workflow-engine/scripts/engine.cjs') };
 }
 
-/** Run the engine expecting success; returns the parsed JSON response. */
+/**
+ * Run the engine expecting success; returns the first stdout line parsed as
+ * JSON (the machine contract). Any appended transaction sections are stashed
+ * in `engine.lastSections`.
+ */
 function engine(fix, args, env = {}) {
   const out = execFileSync('node', [fix.engine, ...args], {
     cwd: fix.project,
     encoding: 'utf8',
     env: { ...process.env, ...env },
   });
-  return JSON.parse(out.trim());
+  const nl = out.indexOf('\n');
+  engine.lastSections = nl === -1 ? '' : out.slice(nl + 1);
+  return JSON.parse(nl === -1 ? out : out.slice(0, nl));
 }
+engine.lastSections = '';
 
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 function engineFails(fix, args, env = {}) {
@@ -164,6 +171,7 @@ describe('engine discovery-session close — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
+    assert.strictEqual(engine.lastSections, '', 'a clean close appends no sections');
 
     // Marker gone, the rest of the discovery phase intact; the log content is
     // untouched — the engine never writes prose.
@@ -204,13 +212,14 @@ describe('engine discovery-session close — happy path', () => {
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
   });
 
-  it('KB failure is a warning, never a block — the close still lands and commits', () => {
+  it('KB failure is a warning, never a block — the close still lands, commits, and appends the kb-warning section', () => {
     fix = setupFixture();
     const res = engine(fix, CLOSE, { STUB_KNOWLEDGE_EXIT: '1' });
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /knowledge index \(discovery\/sessions\/session-002\.md\) failed/);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'payments').phases.discovery.active_session, undefined);
+    assert.match(engine.lastSections, /=== DISPLAY: kb warning \(emit verbatim as a code block\) ===\n  ⚑ Knowledge indexing warning\n(    .+\n)+    The session is closed\. Indexing can be retried later\./);
   });
 });
 

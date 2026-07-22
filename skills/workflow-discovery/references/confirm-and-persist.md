@@ -89,15 +89,7 @@ Close the session — one engine transaction clears the active-session marker (r
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session close {work_unit} -m "{message}"
 ```
 
-If the response's `warnings` is non-empty, display them but do not block — the session is closed and committed:
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ Knowledge indexing warning
-  {warnings}
-  The session is closed. Indexing can be retried later.
-```
+Emit the response's `DISPLAY: kb warning` section when present, verbatim per its marker — the session is closed and committed either way.
 
 → Return to caller.
 
