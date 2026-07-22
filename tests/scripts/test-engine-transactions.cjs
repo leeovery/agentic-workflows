@@ -622,6 +622,23 @@ describe('engine workunit complete', () => {
     assert.match(engine.lastSections, /=== DISPLAY: confirmation \(emit verbatim as a code block after the response\) ===\n"Auth Flow" marked as completed\./);
   });
 
+  it('purges the work unit\'s scratch cache on complete — untracked scratch leaves no dirt', () => {
+    writeFile(dir, '.workflows/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/auth-flow')), false, 'cache dir removed');
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
+  });
+
+  it('stages tracked pre-049 cache residue deletions into the completion commit', () => {
+    writeFile(dir, '.workflows/.cache/auth-flow/planning/auth-flow/stale.json', '{}\n');
+    git(dir, ['add', '.workflows/.cache/auth-flow']);
+    git(dir, ['commit', '-m', 'legacy: tracked cache residue']);
+    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/auth-flow')), false);
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'tracked deletion committed, not left as dirt');
+    assert.match(git(dir, ['show', '--name-only', 'HEAD']), /\.workflows\/\.cache\/auth-flow\/planning\/auth-flow\/stale\.json/);
+  });
+
   it('--pipeline renders the "{Type} Completed" banner instead of the one-liner; --skipped-review varies the body', () => {
     engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline', '--pipeline']);
     assert.match(engine.lastSections, /Feature Completed\n\n"Auth Flow" has completed all pipeline phases\./);
@@ -687,6 +704,13 @@ describe('engine workunit cancel', () => {
   let dir;
   beforeEach(() => { dir = setupFeatureFixture(); });
   afterEach(() => { cleanupFixture(dir); });
+
+  it('purges the work unit\'s scratch cache on cancel', () => {
+    writeFile(dir, '.workflows/.cache/auth-flow/research/auth-flow/deep-dive-1.md', 'scratch\n');
+    engine(dir, ['workunit', 'cancel', 'auth-flow']);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/auth-flow')), false, 'cache dir removed');
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
+  });
 
   it('sets status cancelled, removes KB chunks (failure is a warning), commits the fixed message', () => {
     const res = engine(dir, ['workunit', 'cancel', 'auth-flow']);

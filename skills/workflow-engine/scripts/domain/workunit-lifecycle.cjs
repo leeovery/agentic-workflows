@@ -27,6 +27,7 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitScopedWithKb, noteIfNothingCommitted } = require('./commit.cjs');
+const { purgeWorkUnitCache } = require('./cache.cjs');
 const { knowledge } = require('./kb.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -95,7 +96,8 @@ function completeWorkUnit(cwd, workUnit, { message }) {
     reindexWorkUnit(cwd, workUnit, warnings);
   }
 
-  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, message);
+  const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
+  const committed = commitScopedWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, message);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, work_type: workType, status: 'completed', completed_at: completedAt, committed, warnings };
   noteIfNothingCommitted(result, committed);
@@ -130,7 +132,8 @@ function cancelWorkUnit(cwd, workUnit) {
   const warnings = [];
   knowledge(cwd, ['remove', '--work-unit', workUnit], 'knowledge remove', warnings);
 
-  const committed = commitScopedWithKb(cwd, `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
+  const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
+  const committed = commitScopedWithKb(cwd, cacheSpec ? [`.workflows/${workUnit}`, cacheSpec] : `.workflows/${workUnit}`, `workflow(${workUnit}): mark as cancelled`);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed, warnings };
   noteIfNothingCommitted(result, committed);
