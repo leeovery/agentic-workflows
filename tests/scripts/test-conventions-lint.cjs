@@ -565,7 +565,7 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
   'skills/workflow-discussion-entry/references/gather-context.md': 1,
   'skills/workflow-discussion-process/references/conclude-discussion.md': 1,
-  'skills/workflow-discussion-process/references/discussion-session.md': 4,
+  'skills/workflow-discussion-process/references/discussion-session.md': 5,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
   'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
   'skills/workflow-implementation-process/SKILL.md': 1,
@@ -600,7 +600,7 @@ const RATCHET_PINS = {
   'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
   'skills/workflow-research-process/references/conclude-research.md': 1,
   'skills/workflow-research-process/references/deep-dive-agent.md': 2,
-  'skills/workflow-research-process/references/epic-session.md': 2,
+  'skills/workflow-research-process/references/epic-session.md': 3,
   'skills/workflow-research-process/references/feature-session.md': 2,
   'skills/workflow-research-process/references/topic-splitting.md': 2,
   'skills/workflow-review-process/references/present-review.md': 7,
@@ -624,7 +624,7 @@ const RATCHET_PINS = {
   'skills/workflow-specification-entry/references/display-single.md': 1,
   'skills/workflow-specification-process/SKILL.md': 1,
   'skills/workflow-specification-process/references/process-review-findings.md': 4,
-  'skills/workflow-specification-process/references/spec-completion.md': 1,
+  'skills/workflow-specification-process/references/spec-completion.md': 2,
   'skills/workflow-specification-process/references/spec-construction.md': 3,
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/SKILL.md': 1,
@@ -646,7 +646,9 @@ function countTemplatedSites(file) {
   const lines = readLines(file);
   let n = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (!/^> \*Output the next fenced block as /.test(lines[i])) continue;
+    // Leading whitespace allowed: instructions nested under list items are
+    // real render sites too (anchoring at column 0 hid three of them).
+    if (!/^\s*> \*Output the next fenced block as /.test(lines[i])) continue;
     let j = i + 1;
     while (j < lines.length && lines[j].trim() === '') j++;
     if (j >= lines.length || !/^\s*```/.test(lines[j])) continue;
