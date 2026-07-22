@@ -38,44 +38,41 @@ Drawn from discovery session(s) {coarse session range}.
 
 This section applies only to restructures **within the session's working list** — the set the harvest shaped and the user confirmed. Committed map items outside the working list are never restructured by a harvest (map edits go through map-operations, which owns its own log entries); their briefs are untouched here. When the confirmed working list restructured a topic that already carried a brief, keep brief files and `brief_path` pointers in step with the confirmed set. Apply whichever operations occurred — split, merge, and drop are independent, and more than one may apply in a single harvest. This section removes only what the restructuring orphaned.
 
-**Split** — a parent topic became two or more children. The children's briefs are written in **A**; remove the parent's:
+Collect the orphaned topics across every operation that occurred — **split** orphans the parent (children's briefs are written in **A**), **merge** orphans each absorbed topic (the merged topic's brief is written in **A**), **drop** orphans the removed topic — then clean them all up in two calls: one `rm -f` naming every orphaned brief file, and one `apply` deleting every `brief_path` pointer:
 
 ```bash
-rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{parent} brief_path
+rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md .workflows/{work_unit}/discovery/briefs/{absorbed}.md
 ```
 
-**Merge** — two or more topics were absorbed into one merged topic. The merged topic's brief is written in **A**; for each absorbed topic, remove its brief:
+```json
+[{"op": "delete", "path": "{work_unit}.discovery.{parent}", "field": "brief_path"}]
+```
 
 ```bash
-rm -f .workflows/{work_unit}/discovery/briefs/{absorbed}.md
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{absorbed} brief_path
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/brief-cleanup-ops.json
 ```
 
-**Drop** — a topic was removed from the set:
-
-```bash
-rm -f .workflows/{work_unit}/discovery/briefs/{topic}.md
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{topic} brief_path
-```
-
-New topics with no prior brief need no cleanup. `delete` fails loudly when the field is absent — run it only for a topic that actually carried a `brief_path` (a committed map topic with a prior brief); skip it otherwise. The `rm -f` is safe to run unconditionally.
+New topics with no prior brief need no cleanup. A `delete` op fails the whole batch when the field is absent — include only topics that actually carried a `brief_path` (committed map topics with a prior brief); the `rm -f` paths are safe to include unconditionally. Write the ops file with the Write tool.
 
 → Proceed to **C. Propagation**.
 
 ## C. Propagation
 
-Flag downstream work, never overwrite it. For each brief **regenerated** in **A** (the topic already had a brief before this harvest), check whether downstream research or discussion work exists for that topic:
+Flag downstream work, never overwrite it. Read both downstream phases once — every topic's items in two calls, however many briefs regenerated:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion
 ```
 
-A topic routes to one of the two. If either returns a non-empty item, flag it to reconcile:
+For each brief **regenerated** in **A** (the topic already had a brief before this harvest), check the subtrees for that topic's item — a topic routes to one of the two. Collect a flag op for every hit, then persist them in one call (skip when none; write the ops file with the Write tool):
+
+```json
+[{"op": "set", "path": "{work_unit}.{research|discussion}.{topic}", "fields": {"reconcile_needed": true}}]
+```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.{research|discussion}.{topic} reconcile_needed true
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/reconcile-ops.json
 ```
 
 This is a signal, not a rewrite — it never touches the downstream artifact's content. Soft can prompt re-examination; it can never overwrite hard. The downstream phase surfaces the flag when it next runs. First-write briefs have no prior downstream work — skip them.
