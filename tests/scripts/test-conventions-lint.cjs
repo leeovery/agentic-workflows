@@ -540,6 +540,167 @@ function checkInertLoadChrome(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 13 — Templated-fence ratchet (render-surfaces D4). A templated
+// menu/display fence in prose is a violation: state-derivable output renders
+// from the engine. The corpus's remaining sites — sanctioned judgment,
+// artefact echoes, chrome one-liners, and the not-yet-converted families —
+// are pinned per file below. Any drift fails: a NEW templated fence must
+// become an engine surface (or be pinned deliberately, with the PR saying
+// why); a converted site must shrink its pin, so the ratchet only tightens.
+// Markers and signposts are chrome, out of scope. Static fences (no
+// placeholders, no directives) are always fine.
+// ---------------------------------------------------------------------------
+
+/** @type {Record<string, number>} */
+const RATCHET_PINS = {
+  'skills/workflow-continue-epic/references/epic-display-and-menu.md': 3,
+  'skills/workflow-continue-epic/references/summary-backfill.md': 3,
+  'skills/workflow-discovery/references/confirm-trigger.md': 1,
+  'skills/workflow-discovery/references/map-operations.md': 9,
+  'skills/workflow-discovery/references/name-resolution.md': 2,
+  'skills/workflow-discovery/references/opener-pattern.md': 1,
+  'skills/workflow-discovery/references/session-loop.md': 1,
+  'skills/workflow-discovery/references/show-dismissed.md': 1,
+  'skills/workflow-discussion-entry/references/gather-context-continue.md': 1,
+  'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
+  'skills/workflow-discussion-entry/references/gather-context.md': 1,
+  'skills/workflow-discussion-process/references/conclude-discussion.md': 1,
+  'skills/workflow-discussion-process/references/discussion-session.md': 5,
+  'skills/workflow-discussion-process/references/perspective-agents.md': 2,
+  'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
+  'skills/workflow-implementation-process/SKILL.md': 1,
+  'skills/workflow-implementation-process/references/analysis-loop.md': 1,
+  'skills/workflow-implementation-process/references/linter-setup.md': 2,
+  'skills/workflow-implementation-process/references/project-skills-discovery.md': 2,
+  'skills/workflow-implementation-process/references/task-loop.md': 7,
+  'skills/workflow-investigation-entry/references/gather-context.md': 1,
+  'skills/workflow-investigation-process/references/analysis-checkpoints.md': 3,
+  'skills/workflow-investigation-process/references/conclude-investigation.md': 1,
+  'skills/workflow-investigation-process/references/findings-signoff.md': 1,
+  'skills/workflow-investigation-process/references/fix-exploration.md': 1,
+  'skills/workflow-investigation-process/references/fix-validation.md': 2,
+  'skills/workflow-investigation-process/references/investigation-plan.md': 2,
+  'skills/workflow-investigation-process/references/root-cause-validation.md': 2,
+  'skills/workflow-knowledge/references/knowledge-usage.md': 1,
+  'skills/workflow-legacy-research-split/SKILL.md': 3,
+  'skills/workflow-legacy-research-split/references/dialog.md': 7,
+  'skills/workflow-log-bug/SKILL.md': 1,
+  'skills/workflow-log-idea/SKILL.md': 1,
+  'skills/workflow-log-quickfix/SKILL.md': 1,
+  'skills/workflow-planning-entry/references/cross-cutting-context.md': 2,
+  'skills/workflow-planning-process/references/analyze-task-graph.md': 3,
+  'skills/workflow-planning-process/references/author-tasks.md': 6,
+  'skills/workflow-planning-process/references/conclude-plan.md': 1,
+  'skills/workflow-planning-process/references/define-tasks.md': 1,
+  'skills/workflow-planning-process/references/initialize-plan.md': 1,
+  'skills/workflow-planning-process/references/output-formats/linear/authoring.md': 1,
+  'skills/workflow-planning-process/references/plan-construction.md': 3,
+  'skills/workflow-planning-process/references/plan-review.md': 2,
+  'skills/workflow-planning-process/references/process-review-findings.md': 1,
+  'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
+  'skills/workflow-research-process/references/conclude-research.md': 1,
+  'skills/workflow-research-process/references/deep-dive-agent.md': 2,
+  'skills/workflow-research-process/references/epic-session.md': 3,
+  'skills/workflow-research-process/references/feature-session.md': 2,
+  'skills/workflow-research-process/references/topic-splitting.md': 2,
+  'skills/workflow-review-process/references/present-review.md': 7,
+  'skills/workflow-scoping-process/SKILL.md': 2,
+  'skills/workflow-scoping-process/references/complexity-check.md': 1,
+  'skills/workflow-scoping-process/references/gather-context.md': 1,
+  'skills/workflow-scoping-process/references/select-format.md': 1,
+  'skills/workflow-scoping-process/references/write-specification.md': 1,
+  'skills/workflow-shared/references/analysis-approval-gate.md': 4,
+  'skills/workflow-shared/references/background-agent-surfacing.md': 3,
+  'skills/workflow-shared/references/compliance-check.md': 1,
+  'skills/workflow-shared/references/convergence-analysis.md': 1,
+  'skills/workflow-shared/references/drain-triage.md': 1,
+  'skills/workflow-shared/references/final-review-menu.md': 1,
+  'skills/workflow-shared/references/topic-name-validation.md': 1,
+  'skills/workflow-shared/references/triage-landing.md': 2,
+  'skills/workflow-specification-entry/references/confirm-continue.md': 4,
+  'skills/workflow-specification-entry/references/confirm-create.md': 3,
+  'skills/workflow-specification-entry/references/confirm-refine.md': 2,
+  'skills/workflow-specification-entry/references/confirm-unify.md': 2,
+  'skills/workflow-specification-entry/references/display-single.md': 1,
+  'skills/workflow-specification-process/SKILL.md': 1,
+  'skills/workflow-specification-process/references/process-review-findings.md': 4,
+  'skills/workflow-specification-process/references/spec-completion.md': 2,
+  'skills/workflow-specification-process/references/spec-construction.md': 3,
+  'skills/workflow-specification-process/references/spec-review.md': 2,
+  'skills/workflow-start/SKILL.md': 1,
+  'skills/workflow-start/references/absorb-into-epic.md': 4,
+  'skills/workflow-start/references/inbox-archived.md': 5,
+  'skills/workflow-start/references/inbox-working-set.md': 3,
+  'skills/workflow-start/references/knowledge-gate.md': 4,
+  'skills/workflow-start/references/view-completed.md': 1,
+  'skills/workflow-start/references/view-plan.md': 2,
+};
+
+// Count a file's templated menu/display fences: a rendering-instruction line,
+// its following fence, marker/signpost kinds excluded, templated = placeholder
+// syntax or an @if/@foreach directive (the render-surfaces census scanner).
+// The trigger matches ANY instruction form ("as a code block", "as markdown",
+// "as a ` ```diff ` code block", future variants) — an instruction-form miss
+// would silently exempt that family from the ratchet.
+function countTemplatedSites(file) {
+  const lines = readLines(file);
+  let n = 0;
+  for (let i = 0; i < lines.length; i++) {
+    // Leading whitespace allowed: instructions nested under list items are
+    // real render sites too (anchoring at column 0 hid three of them).
+    if (!/^\s*> \*Output the next fenced block as /.test(lines[i])) continue;
+    let j = i + 1;
+    while (j < lines.length && lines[j].trim() === '') j++;
+    if (j >= lines.length || !/^\s*```/.test(lines[j])) continue;
+    const start = j + 1;
+    let k = start;
+    while (k < lines.length && !/^\s*```/.test(lines[k])) k++;
+    const content = lines.slice(start, k);
+    const text = content.join('\n');
+    const isMarker = content.length === 1 && /^(── |·· )/.test(content[0]);
+    const isSignpost = content.every((l) => l.trim() === '' || l.startsWith('>'));
+    // Templated = any single-line braced token or directive. Deliberately
+    // wider than the template-placeholder grammar: `{2 context lines}` and
+    // `{removed/changed lines}` are placeholders too, and a narrow class
+    // would let them slip the ratchet as "static".
+    const templated = /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
+    if (!isMarker && !isSignpost && templated) n++;
+    i = k;
+  }
+  return n;
+}
+
+function checkTemplatedRatchet(files, pins = RATCHET_PINS) {
+  const out = [];
+  const seen = new Set();
+  for (const file of files) {
+    const key = rel(file);
+    const expected = pins[key] || 0;
+    const actual = countTemplatedSites(file);
+    seen.add(key);
+    if (actual > expected) {
+      out.push({
+        file,
+        line: 1,
+        message: `${actual} templated menu/display fence(s), ${expected} pinned — render new output from the engine (render-surfaces D4); a genuinely judgment-only site is pinned deliberately, with the PR saying why`,
+      });
+    } else if (actual < expected) {
+      out.push({
+        file,
+        line: 1,
+        message: `${actual} templated menu/display fence(s), ${expected} pinned — a site was converted; shrink its pin (the ratchet only tightens)`,
+      });
+    }
+  }
+  for (const key of Object.keys(pins)) {
+    if (!seen.has(key)) {
+      out.push({ file: path.join(REPO, key), line: 1, message: 'pinned file no longer exists — remove its pin' });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -556,6 +717,7 @@ const CHECKS = [
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
   ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
+  ['13: templated-fence ratchet (render-surfaces D4)', checkTemplatedRatchet],
 ];
 
 function report(violations) {
@@ -854,5 +1016,45 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
 
     const unresolvable = write(dir, 'skills/v/SKILL.md', step('Load **[gone.md](references/gone.md)** and follow its instructions as written.\n'));
     assert.strictEqual(checkInertLoadChrome([unresolvable]).length, 0, 'unresolvable target must be skipped');
+  });
+});
+
+test('check 13 (templated-fence ratchet) — catches drift both ways, skips static/marker/signpost', () => {
+  withTemp((dir) => {
+    const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
+    const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y`/`yes`**\n· · · · · · · · · · · ·\n```\n';
+
+    const fresh = write(dir, 'skills/x/a.md', templatedMenu);
+    const v1 = checkTemplatedRatchet([fresh], {});
+    assert.strictEqual(v1.length, 1, 'unpinned templated fence must be caught');
+    assert.match(v1[0].message, /render new output from the engine/);
+
+    assert.strictEqual(checkTemplatedRatchet([fresh], { [rel(fresh)]: 1 }).length, 0, 'pinned site is sanctioned');
+
+    const v2 = checkTemplatedRatchet([fresh], { [rel(fresh)]: 2 });
+    assert.strictEqual(v2.length, 1, 'stale over-pin must be caught');
+    assert.match(v2[0].message, /shrink its pin/);
+
+    const v3 = checkTemplatedRatchet([fresh], { [rel(fresh)]: 1, 'skills/gone/b.md': 1 });
+    assert.strictEqual(v3.length, 1, 'pin for a deleted file must be caught');
+    assert.match(v3[0].message, /no longer exists/);
+
+    const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y`/`yes`**\n· · · · · · · · · · · ·\n```\n');
+    assert.strictEqual(checkTemplatedRatchet([statik], {}).length, 0, 'static menu is always fine');
+
+    const chrome = write(
+      dir,
+      'skills/x/d.md',
+      '> *Output the next fenced block as a code block:*\n\n```\n── Review (cycle {N}) ──────────────────────────\n```\n\n' +
+        instr + '```\n> Working on {topic} — questions about gaps\n> and contradictions follow.\n```\n'
+    );
+    assert.strictEqual(checkTemplatedRatchet([chrome], {}).length, 0, 'templated markers and signposts are chrome, out of scope');
+
+    const diffForm = write(
+      dir,
+      'skills/x/e.md',
+      '> *Output the next fenced block as a ` ```diff ` code block:*\n\n```diff\n {context}\n-{removed lines}\n+{new lines}\n```\n'
+    );
+    assert.strictEqual(checkTemplatedRatchet([diffForm], {}).length, 1, 'the diff-form instruction is inside the ratchet');
   });
 });

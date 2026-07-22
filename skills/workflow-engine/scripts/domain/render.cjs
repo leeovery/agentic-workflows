@@ -40,11 +40,6 @@ function resolveAddress(cwd, dotpath, surface) {
 // parses) and rides as a scalar flag.
 // ---------------------------------------------------------------------------
 
-/**
- * @param {string} cwd
- * @param {{dotpath: string, triage?: string}} args
- * @returns {string} sections
- */
 const RESUME_MENU_INSTRUCTION = "emit verbatim as markdown, then STOP for the user's response";
 
 /**
@@ -84,8 +79,16 @@ function resumeGate(cwd, args) {
   const t = titlecase(topic);
   if (variant === 'plan') {
     const item = itemOf(manifest, 'planning', topic) || {};
-    const pos = isFilled(String(item.phase ?? '')) && isFilled(String(item.task ?? ''))
-      ? ` (previously reached phase ${item.phase}, task ${item.task})` : '';
+    // Partial fill is a real state — define-phases advances `phase` and nulls
+    // `task`; keep the known phase anchor rather than dropping the whole
+    // parenthetical.
+    const hasPhase = isFilled(String(item.phase ?? ''));
+    const hasTask = isFilled(String(item.task ?? ''));
+    const pos = hasPhase
+      ? hasTask
+        ? ` (previously reached phase ${item.phase}, task ${item.task})`
+        : ` (previously reached phase ${item.phase})`
+      : '';
     return section('MENU: resume gate', RESUME_MENU_INSTRUCTION, menu(
       `Found existing plan for **${t}**${pos}.`,
       [
@@ -752,7 +755,7 @@ function entryGate(cwd, { dotpath, own }) {
     if (spec.status === 'promoted') {
       return blocker('Specification Promoted', [
         `"${t}" was promoted to the cross-cutting work unit`,
-        `"${spec.promoted_to}". Continue it from that work unit.`,
+        `"${String(spec.promoted_to || '')}". Continue it from that work unit.`,
       ]);
     }
     return '';
@@ -795,7 +798,7 @@ function entryGate(cwd, { dotpath, own }) {
     if (status === 'promoted') {
       return blocker('Specification Promoted', [
         `"${t}" was promoted to the cross-cutting work unit`,
-        `"${spec.promoted_to}". Cross-cutting specifications inform other plans —`,
+        `"${String(spec.promoted_to || '')}". Cross-cutting specifications inform other plans —`,
         'they are not planned directly.',
       ]);
     }

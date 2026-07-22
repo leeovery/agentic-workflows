@@ -151,6 +151,12 @@ describe('render resume-gate variants', () => {
     assert.ok(!out.includes('previously reached'));
   });
 
+  it('plan keeps the phase anchor when only the phase is known (post-advance interrupt)', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: null } } } } });
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
+    assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3).'));
+  });
+
   it('review renders the coverage menu while unreviewed tasks remain', () => {
     writeManifest(dir, 'pay', { phases: {
       implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b', 'c'] } } },
@@ -763,6 +769,7 @@ describe('CLI boundary — engine render via subprocess', () => {
       phases: {
         discussion: { items: { pay: { status: 'in-progress' } } },
         planning: { items: { pay: { status: 'in-progress', task_list_gate_mode: 'auto' } } },
+        specification: { items: { pay: { status: 'superseded', superseded_by: 'core' } } },
       },
     });
   });
@@ -785,6 +792,10 @@ describe('CLI boundary — engine render via subprocess', () => {
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
     assert.ok(run(['early-completion-gate', 'pay']).includes('Complete without review'));
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
+    assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('Specification Superseded'),
+      '--own must survive boolean-flag registration through argv');
+    assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes('  Spec: .workflows/pay/specification/pay/specification.md'),
+      '--paths must survive boolean-flag registration through argv');
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {
@@ -916,6 +927,13 @@ describe('render entry-gate --own', () => {
   it('is loud outside specification', () => {
     writeManifest(dir, 'pay', { work_type: 'feature', phases: {} });
     assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth', own: '1' }), /--own is only supported for specification/);
+  });
+
+  it('a promoted item missing its target degrades to an empty quoted name, never "undefined"', () => {
+    specWith({ status: 'promoted' });
+    const out = renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' });
+    assert.ok(out.includes('"". Continue it from that work unit.'));
+    assert.ok(!out.includes('undefined'));
   });
 });
 
