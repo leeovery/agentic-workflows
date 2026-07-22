@@ -108,6 +108,7 @@ Commands:
   manifest push   <dotpath> <field> <value>
   manifest pull   <dotpath> <field> <value>
   manifest delete <dotpath> <field.path>
+  manifest apply  <work-unit> --file <ops.json>
   manifest exists <dotpath> [<field.path>]
   manifest list   [--status <s>] [--work-type <t>]
   manifest key-of <dotpath> <field.path> <value>

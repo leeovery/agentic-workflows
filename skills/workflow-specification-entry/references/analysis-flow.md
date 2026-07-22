@@ -97,31 +97,29 @@ Work through these steps in order:
 
 2. **Map groupings to anchors.** For each freshly-formed grouping that substantially overlaps an anchor's sources (a majority of members shared), rename it in memory to the anchor's topic key. This splits the groupings into **maps-to-anchor** and **purely-proposed**.
 
-3. **Augment anchors.** For each grouping mapped to an anchor, add any member discussion not already in that anchor's sources:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{anchor} sources.{discussion}.status pending
-   ```
+3. **Augment anchors.** For each grouping mapped to an anchor, collect a `set` op for any member discussion not already in that anchor's sources:
+   - `{work_unit}.specification.{anchor}` → `sources.{discussion}.status: pending`
+
    Never change an anchor's `status`. Never prune or overwrite an anchor's existing sources.
 
 4. **Compute the target proposed set.** The target names are the kebab-case names of the **purely-proposed** groupings. An independent discussion is a grouping of one — it becomes a proposed item too, so it is startable and visible.
 
-5. **Delete stale proposed.** For each existing-proposed item whose name is not in the target set, remove the whole item:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{name}
-   ```
+5. **Delete stale proposed.** For each existing-proposed item whose name is not in the target set, collect a `delete` op removing the whole item:
+   - `{work_unit}.specification` → delete `items.{name}`
 
 6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it. Surface it as a **naming conflict** to the user and drop or rename the colliding target. This protects the invariant — an anchor is never overwritten by a proposed item.
 
-7. **Upsert proposed.** For each surviving target name:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{name} status proposed
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{name} sources.{discussion}.status pending
+7. **Upsert proposed.** For each surviving target name, collect `set` ops — `status: proposed` plus one `sources.{discussion}.status: pending` per grouping member — and, for an existing-proposed item being regenerated, a `delete` op per source no longer in the grouping (pruning is allowed only on proposed items, never anchors). A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
+
+8. **Apply the reconcile.** Write the collected ops, in the order gathered (augments, stale deletes, upserts, prunes), to `.workflows/.cache/{work_unit}/specification/reconcile-ops.json` with the Write tool:
+   ```json
+   [{"op": "set", "path": "{work_unit}.specification.{name}", "fields": {"status": "proposed", "sources.{discussion}.status": "pending"}},
+    {"op": "delete", "path": "{work_unit}.specification", "field": "items.{name}"}]
    ```
-   Set one `sources.{discussion}.status pending` per grouping member. For an existing-proposed item being regenerated, prune any source no longer in the grouping (allowed only on proposed items, never anchors):
+   Persist the whole reconcile in one atomic call — a failing op means the manifest is untouched, never half-reconciled:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification.{name} sources.{old-discussion}
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/reconcile-ops.json
    ```
-   A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
 
 → Proceed to **D. Write the Cache**.
 

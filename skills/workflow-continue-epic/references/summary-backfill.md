@@ -141,19 +141,17 @@ Update the in-memory summary for that item with the user's response. Re-render t
 
 **If `leave`:** the items stay out of the writes below and re-qualify on the next epic entry.
 
-For each item, write only the newly-drafted fields:
+Write the batch to `.workflows/.cache/{work_unit}/discovery/backfill-ops.json` with the Write tool — one `set` op per item, carrying only the newly-drafted fields (`summary` when `item.needs_summary` is true and `item.derived_summary` is non-null; `description` likewise):
 
-- If `item.needs_summary` is true and `item.derived_summary` is non-null:
+```json
+[{"op": "set", "path": "{work_unit}.discovery.{item.name}", "fields": {"summary": "{summary}", "description": "{description}"}}]
+```
 
-  ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{item.name} summary "{summary}"
-  ```
+Persist every item in one atomic call — a failing entry means nothing was written:
 
-- If `item.needs_description` is true and `item.derived_description` is non-null:
-
-  ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{item.name} description "{description}"
-  ```
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/backfill-ops.json
+```
 
 Single commit covering all writes:
 
