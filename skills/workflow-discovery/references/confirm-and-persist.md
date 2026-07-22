@@ -38,7 +38,7 @@ The batch is atomic — a failing entry means nothing was persisted; fix the pay
 
 Notes:
 
-- The topic name is the manifest dict key (the `{topic}` path segment). There is no separate `name` field to set.
+- Each entry's `name` becomes the manifest dict key (the `{topic}` path segment).
 - `routing` is the value confirmed by the user at the synthesis gate.
 - Batch entries always land with `source: discovery`, marking topics the user surfaced during discovery — distinct from items added later with other provenance (e.g. `research-analysis`, `gap-analysis`).
 - The response's `map_total` is `{T}` for the Conclusion line in **C**, and `added` lists every persisted topic — no re-read needed.

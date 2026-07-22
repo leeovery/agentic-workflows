@@ -1161,3 +1161,55 @@ describe('engine usage banner', () => {
     }
   });
 });
+
+describe('engine commit --plan — hardening', () => {
+  let dir;
+  beforeEach(() => { dir = setupFeatureFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  function planWith(storage) {
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth-flow/manifest.json'), 'utf8'));
+    m.phases = { ...(m.phases || {}), planning: { items: { 'auth-flow': { status: 'in-progress', ...(storage !== undefined ? { storage_paths: storage } : {}) } } } };
+    fs.writeFileSync(path.join(dir, '.workflows/auth-flow/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+  }
+
+  it('a dangling --plan is a usage error, not a ghost lookup', () => {
+    assert.match(engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan']).error, /Usage: engine commit/);
+  });
+
+  it('malformed storage_paths gets its own message — never the pre-upgrade hint', () => {
+    planWith([123]);
+    const err = engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan', 'auth-flow']);
+    assert.match(err.error, /malformed storage_paths/);
+    assert.ok(!err.error.includes('pre-upgrade'), 'present-but-wrong is not pre-upgrade');
+  });
+
+  it('the pre-upgrade repair hint names the exact command', () => {
+    planWith(undefined);
+    const err = engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan', 'auth-flow']);
+    assert.match(err.error, /engine manifest set auth-flow\.planning\.auth-flow storage_paths/);
+  });
+
+  it('multiple storage paths all stage', () => {
+    planWith(['.tick/', 'docs-tasks/']);
+    writeFile(dir, '.tick/t.jsonl', '{}\n');
+    writeFile(dir, 'docs-tasks/a.md', 'task\n');
+    engine(dir, ['commit', 'auth-flow', '-m', 'planning(auth-flow): author', '--plan', 'auth-flow']);
+    const staged = git(dir, ['show', '--name-only', 'HEAD']);
+    assert.match(staged, /\.tick\/t\.jsonl/);
+    assert.match(staged, /docs-tasks\/a\.md/);
+  });
+});
+
+describe('discovery-map add-batch — name typing', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('a non-string name is refused before anything persists', () => {
+    const p = path.join(dir, 'topics.json');
+    fs.writeFileSync(p, JSON.stringify([{ name: 5, routing: 'research', summary: 's' }]));
+    const err = engineFails(dir, ['discovery-map', 'add-batch', 'payments', '--file', p]);
+    assert.match(err.error, /not a legal topic name/);
+  });
+});

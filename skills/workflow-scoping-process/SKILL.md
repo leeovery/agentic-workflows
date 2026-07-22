@@ -197,7 +197,7 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store, and the `storage_paths` read in step 1, then commit:
+7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store, and the `storage_paths` read in step 1, then commit: Expand the array to bare pathspecs (`[\".tick/\"]` → `.tick/`); when it is `[]`, stage nothing extra.
    ```bash
    git add -- .workflows/{work_unit} .workflows/.knowledge {storage_paths}
    git commit -m "scoping({work_unit}): restart scoping"

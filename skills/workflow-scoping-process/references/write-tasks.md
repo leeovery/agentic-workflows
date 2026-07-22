@@ -69,7 +69,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} p
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
 ```
 
-Then register everything — settings, position, and the whole task map — in ONE batched set (one lock, one write): the fixed fields, the phase mapping (`task_map.{topic}-1` = the phase's external ID), and one `task_map.{internal_id}={external_id}` pair per task:
+Then register everything — settings, position, and the whole task map — in ONE batched set (one lock, one write): the fixed fields, the phase mapping (`task_map.{topic}-1` = the phase's external ID), one `task_map.{internal_id}={external_id}` pair per task, and `storage_paths` — the format's declared pathspec array from its authoring.md Storage Pathspecs section (`'[]'` when the format stores inside the work unit or off-disk):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id} storage_paths='{format storage pathspecs}'

@@ -8,7 +8,7 @@ Process findings from a review agent interactively with the user. The agent writ
 
 **Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (C or D in plan-review.md).
 
-**Commits in this file**: applying a finding writes through the format adapter, and the format's task storage may live outside the work unit. Commit with raw git — `git add -- .workflows/{work_unit} {format task storage paths}`, then `git commit` — never the scoped helper.
+**Commits in this file**: applying a finding writes through the format adapter; commit with `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "<message>" --plan {topic}` — it stages the work unit and the plan's declared storage.
 
 #### If `STATUS` is `clean`
 
@@ -110,7 +110,7 @@ Incorporate feedback and update the tracking file with the revised content. Rewr
 #### If `yes`
 
 1. Apply the fix to the plan — use the **Proposed** content exactly as shown, using the output format adapter to determine how it's written. Do not modify content between approval and writing.
-2. Keep `task_map` current — for `add-task`/`add-phase`, record each new internal ID → external ID mapping; for `remove-task`/`remove-phase`, delete each removed ID's entry (same commands as the auto flow above).
+2. Keep `task_map` current in ONE call for the whole finding (same commands as the auto flow above).
 3. Update the tracking file: set resolution to "Fixed", add any discussion notes.
 4. Commit the tracking file and any plan changes — ensures progress survives context refresh.
 5. > *Output the next fenced block as a code block:*
