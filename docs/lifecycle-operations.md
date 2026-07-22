@@ -6,7 +6,9 @@ Work does not always run cleanly from start to finish in the shape it began. A f
 
 Every work unit is in one of three states. It is **in-progress** by default while you are working on it. It becomes **completed** when its pipeline finishes — set automatically at the end of the last phase, or by hand when you decide it is done. It becomes **cancelled** when you abandon it. Active work is what you see by default; completed and cancelled work is kept behind a "view completed and cancelled" door so it does not clutter the day-to-day, but it is not lost. Cancelling a work unit also removes its material from the [knowledge base](knowledge-base.md), because an abandoned decision should not resurface as advice on future work.
 
-None of these states is a one-way door. A completed or cancelled work unit can be **reactivated** back to in-progress — and reactivating a cancelled one restores its material to the knowledge base, since it is live thinking again. Completed work can also be revisited phase by phase without reactivating the whole unit, when you just want to amend an earlier phase.
+Closing a work unit — completing it, cancelling it, or absorbing it into an epic — also clears its scratch working files: the per-phase working notes the system keeps only so an interrupted session can pick up where it left off. Finished work keeps its real artifacts and its history; the scaffolding goes.
+
+None of these states is a one-way door. A completed or cancelled work unit can be **reactivated** back to in-progress — and reactivating a cancelled one restores its material to the knowledge base, since it is live thinking again. Any working files it needs are simply rebuilt as you go. Completed work can also be revisited phase by phase without reactivating the whole unit, when you just want to amend an earlier phase.
 
 ## Pivot: a feature that grew
 
