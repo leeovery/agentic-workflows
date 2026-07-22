@@ -99,12 +99,18 @@ cache paths. Genuine this-turn judgment payloads are rare.
 - **D2 (2026-07-21)**: Markdown artifacts are never parsed by render surfaces
   (Lee). Task/finding content reaches the engine as parameters at authoring
   time or from JSON cache written at persist time.
-- **D3 — open**: the 88 static menus. Options: (a) fold the gate-coupled ones
-  into their surfaces, leave standalone confirms in prose under the existing
-  lint; (b) full purity — every menu a catalogue entry (~30 extra entries).
-  Leaning (a); Lee to decide by the static-sweep stage.
-- **D4 — open**: closing lint — "a templated menu/display fence in prose is a
-  violation" once the sweep completes (mechanically decidable).
+- **D3 (2026-07-22, decided (a))**: static menus stay prose. The 83 static
+  menus (conclude gates, y/n confirms, mode choices) carry none of the
+  failure class the programme kills — no placeholder to misfill, no state to
+  drift from — and their grammar sits under conventions-lint checks 3–5.
+  Full purity would be ~30 catalogue entries of fixed text: surfaces earned
+  by nothing. Agreed with Lee.
+- **D4 (2026-07-22, landed #501)**: the templated-fence ratchet —
+  conventions-lint check 13. The census scanner counts templated
+  menu/display fences per file against a pinned map (174 sites / 81 files at
+  landing); drift fails both directions, so no new templated fence lands
+  silently and every conversion shrinks the map. Markers/signposts are
+  chrome, out of scope; static fences always fine.
 - **D5 (2026-07-21)**: task-shaped displays use the subsection grammar — name
   line, `·`-glyphed wrapped summary, `· Edge cases` header owning a flat
   wrapped tree; continuations never fall to column zero (Lee, from the A′
@@ -227,6 +233,11 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — Stage 7c up (#501): D3 decided (static menus stay prose), D4
+  landed as the templated-fence ratchet (check 13, 174 sites pinned across
+  81 files, shrink-only). The in-stack programme is complete: stack runs
+  #490–#501; remaining conversion work (7d families) moves to the
+  post-stack census-first programme beside batching and the cache purge.
 - 2026-07-22 — Stage 7b up (#500): the existing-surface swaps. resume-gate
   becomes the resume-menu family (--variant plan/review/scoping/session —
   position, coverage, and marker state all derived engine-side); entry-gate
