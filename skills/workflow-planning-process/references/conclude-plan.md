@@ -61,8 +61,7 @@ Status has been marked as `completed`. The plan is ready for implementation.
 Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: planning
+work_unit={work_unit} completed_phase=planning
 ```
 
 **STOP.** Do not proceed — terminal condition.

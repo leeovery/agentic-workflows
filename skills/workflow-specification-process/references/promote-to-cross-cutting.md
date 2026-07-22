@@ -43,8 +43,7 @@ Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLA
 Invoke the bridge for the EPIC (not the cc work unit — the epic continues its pipeline):
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: specification
+work_unit={work_unit} completed_phase=specification
 ```
 
 **STOP.** Do not proceed — terminal condition.

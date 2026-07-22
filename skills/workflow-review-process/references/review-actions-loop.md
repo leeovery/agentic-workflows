@@ -47,8 +47,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 **Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: review
+work_unit={work_unit} completed_phase=review
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -98,8 +97,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 **Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: review
+work_unit={work_unit} completed_phase=review
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -149,8 +147,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 **Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: review
+work_unit={work_unit} completed_phase=review
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -186,8 +183,7 @@ No actionable tasks synthesized. Review complete.
 **Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: review
+work_unit={work_unit} completed_phase=review
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -285,8 +281,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 **Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: review
+work_unit={work_unit} completed_phase=review
 ```
 
 **STOP.** Do not proceed — terminal condition.

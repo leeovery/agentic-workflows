@@ -20,8 +20,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 **Pipeline continuation** — invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: scoping
+work_unit={work_unit} completed_phase=scoping
 ```
 
 **STOP.** Do not proceed — terminal condition.

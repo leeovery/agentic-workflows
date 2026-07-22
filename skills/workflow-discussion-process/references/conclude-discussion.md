@@ -58,8 +58,7 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 ```
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: discussion
+work_unit={work_unit} completed_phase=discussion
 ```
 
 **STOP.** Do not proceed — terminal condition.

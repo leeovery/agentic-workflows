@@ -43,8 +43,7 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 
 4. Invoke the `/workflow-bridge` skill:
    ```
-   Pipeline bridge for: {work_unit}
-   Completed phase: research
+   work_unit={work_unit} completed_phase=research
    ```
 
 **STOP.** Do not proceed — terminal condition.

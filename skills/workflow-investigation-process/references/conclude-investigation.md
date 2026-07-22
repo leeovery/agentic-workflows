@@ -61,8 +61,7 @@ The investigation is completed. Root cause and fix direction are documented.
 5. Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: investigation
+work_unit={work_unit} completed_phase=investigation
 ```
 
 **STOP.** Do not proceed — terminal condition.

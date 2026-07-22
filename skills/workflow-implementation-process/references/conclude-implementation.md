@@ -45,8 +45,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: implementation
+work_unit={work_unit} completed_phase=implementation
 ```
 
 **STOP.** Do not proceed — terminal condition.

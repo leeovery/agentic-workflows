@@ -35,7 +35,5 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: discovery
-@if(next_phase is set) Next phase: {next_phase} @endif
+work_unit={work_unit} completed_phase=discovery @if(next_phase is set) next_phase={next_phase} @endif
 ```

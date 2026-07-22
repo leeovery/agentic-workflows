@@ -212,8 +212,7 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: specification
+work_unit={work_unit} completed_phase=specification
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -230,8 +229,7 @@ Completed phase: specification
 Invoke the **workflow-bridge** skill (Skill tool) — the next fenced block is its arguments:
 
 ```
-Pipeline bridge for: {work_unit}
-Completed phase: specification
+work_unit={work_unit} completed_phase=specification
 ```
 
 **STOP.** Do not proceed — terminal condition.
