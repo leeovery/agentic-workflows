@@ -233,6 +233,13 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — STACK LANDED: #490–#501 squash-merged to main in order
+  (safe-stack; one transient GitHub mergeability failure at #500 recovered
+  by restoring #501's PR base to the git chain and resuming). The
+  render-surface programme's in-stack scope is complete. Remaining scope
+  lives in 7d (post-stack, census-first): the conversion families, the
+  batching programme, and the cache purge.
+
 - 2026-07-22 — Completeness sweep (Lee: "everything left is intentional?"):
   the templated population was already fully classified by the census +
   pinned by the ratchet, so no re-classification. Three blind spots checked
