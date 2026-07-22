@@ -233,6 +233,17 @@ Each stage is a stacked PR; stack driven per the pr-stacked skill
 
 ## Log
 
+- 2026-07-22 — Completeness sweep (Lee: "everything left is intentional?"):
+  the templated population was already fully classified by the census +
+  pinned by the ratchet, so no re-classification. Three blind spots checked
+  mechanically instead: (1) instruction-less plain fences (141 — all
+  model-facing by design: skill payloads, agent return formats, commit
+  templates); (2) indented rendering instructions — 3 sites the column-0
+  anchor hid from census AND ratchet (incl. the supersede warning); trigger
+  fixed, sites pinned; (3) cross-file byte-duplicate static fences — 3
+  groups (the confirm-* Proceed menu ×9 across 5 files, the "Understood.
+  Continue…" display ×4, the review menu twins ×2) — static drift class,
+  rides the 7d confirm-* family conversion.
 - 2026-07-22 — End-of-stack logic-trace review (Lee's path-solidity gate
   before landing): two mechanical traces (44 render call sites vs catalogue —
   clean; 102 prose section-name references vs emitters — clean) + six agent
