@@ -29,9 +29,11 @@ no workflow state is written to or read from file frontmatter again.
 - **S2 — durability picks the store.** Persisted state (gate decisions,
   approvals, tracking flips, anything that must survive sessions and
   machines) lives in the work-unit manifest. Ephemeral session machinery
-  lives in an engine-owned `state.json` under `.workflows/.cache/{wu}/`
-  — validated vocabularies, locked atomic writes, gitignored, purged by
-  the close purge. Two stores, one owner.
+  lives in an engine-owned `state.json` colocated with the state's
+  subject — `.workflows/.cache/{wu}/{phase}/{topic}/state.json` —
+  validated vocabularies, locked atomic writes, gitignored. Deleting a
+  scope's directory removes state and content together: cleanses are
+  structural. Two stores, one owner.
 - **S3 — content stays markdown.** Agent findings prose, staging task
   bodies, candidate descriptions, tracking narratives: files, committed
   where they are committed today. Only lifecycle moves.
@@ -88,6 +90,12 @@ stragglers).
    rule), CLAUDE.md, docs site.
 
 ## Log
+
+- 2026-07-23 — Lee: colocate the store with its topic
+  (`{phase}/{topic}/state.json`, one per topic) rather than one blob
+  per work unit — every verb is topic-scoped, so the wu blob bought
+  nothing, and colocation makes the restart cleanse structural. The
+  purge verb (round 2's procedural fix) deleted with it.
 
 - 2026-07-23 — #528 round 2 (behaviour inventory, crash/resume seams,
   fix-round cold review): the inventory answered Lee's deleted-prose
