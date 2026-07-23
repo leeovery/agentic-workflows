@@ -91,6 +91,14 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Stage 3 up (#529): the investigation family. Validations
+  walk dispatch → land → scan → incorporate (consumed inline, never
+  surfaced — the store's existing verbs fit with nothing new). The
+  fix-options draft turned out to be content, not state (its status
+  had no consumer) — lifecycle dropped entirely. Fix-tracking promoted
+  to committed history beside the analysis reports; the per-task
+  commit stages it. Net −43 lines.
+
 - 2026-07-23 — Lee: colocate the store with its topic
   (`{phase}/{topic}/state.json`, one per topic) rather than one blob
   per work unit — every verb is topic-scoped, so the wu blob bought
