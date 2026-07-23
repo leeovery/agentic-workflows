@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2026-07-23
+
+🔧 Changed
+- Discovery briefs now trigger the reconcile flag whether they're written for the first time or regenerated, not just on regeneration.
+- Manifest writes are transactional at every scale — a single field, a batched update, or a whole harvest lands as one atomic write.
+- Promoting a stalled quick-fix into the feature or bugfix pipeline now starts that pipeline fresh, with the feature path getting its own research-or-discussion choice.
+- The engine now rejects manifest dot-paths with empty segments and work-unit-level writes that alias a phase name, preventing shadow state trees from typos.
+
+🐛 Fixed
+- A first-written discovery brief for an existing topic now gets its pointer backfilled at the harvest, matching regenerated briefs.
+
 ## [0.6.6] - 2026-07-23
 
 ✨ Added
