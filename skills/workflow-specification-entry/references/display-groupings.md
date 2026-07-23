@@ -45,7 +45,7 @@ The entry's `topic` and `verb`, plus that item's DATA detail (sources, consult r
 #### If `action` is `unify`
 
 Reconcile the manifest to a single proposed grouping immediately, so it never lags the cache. The target proposed set is `{unified}`:
-1. Collect a `delete` op for every existing proposed item (reconcile step 5 — none survive into the target set).
+1. Collect a `delete` op for every existing proposed item (reconcile step 5 — none survive into the target set). If an **anchor** is keyed `unified` (a non-proposed spec already using the name), do NOT proceed — surface it as a naming conflict to the user (reconcile step 6's invariant: an anchor is never overwritten by a proposed item).
 2. Collect the `unified` upsert — `status: proposed` plus one `sources.{discussion}.status: pending` per completed discussion (reconcile step 7). Write the ops to `.workflows/.cache/{work_unit}/specification/unify-ops.json` with the Write tool, then persist deletes and upsert in one atomic call:
    ```json
    [{"op": "delete", "path": "{work_unit}.specification", "field": "items.{name}"},

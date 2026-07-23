@@ -65,7 +65,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}"
    ```
-2. **Raw git when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with raw git, staging explicitly (`git add -- .workflows/{work_unit} {format task storage paths}`) — never the scoped helper.
+2. **`--plan` when the plan format's storage is staged** — task authoring, graph writes, and applied review fixes write through the format adapter, whose task storage may live outside `.workflows/{work_unit}`. Commit those with `engine commit {work_unit} -m "{message}" --plan {topic}` — it stages the work unit, the project manifest, and the plan's recorded `storage_paths`. The one raw-git case is restart cleanup, where the planning item is already deleted: stage `{storage_paths}` (read before the deletion) explicitly.
 
 ---
 
@@ -120,6 +120,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_
 
 #### If `continue`
 
+**If the subtree carries no `storage_paths`** (a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
+```
+
 If spec-change-detection reported changes, carry them into the walkthrough: reconcile the changed spec content into the affected phases and tasks before concluding. The `spec_commit` baseline is re-stamped only at conclusion.
 
 → Proceed to **Step 2**.
@@ -138,7 +144,7 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-6. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit and the plan's `storage_paths` (from the manifest subtree read during resume detection), then commit: Each entry passes as a bare pathspec; when the array is `[]`, stage nothing extra.
+6. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit and the plan's `storage_paths` (from the manifest subtree read during resume detection), then commit. Each entry passes as a bare pathspec; when the array is `[]` or the field is absent, stage nothing extra.
    ```bash
    git add -- .workflows/{work_unit} {storage_paths}
    git commit -m "planning({work_unit}): restart planning"
