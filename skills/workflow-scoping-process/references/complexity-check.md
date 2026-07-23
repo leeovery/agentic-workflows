@@ -129,12 +129,4 @@ The promoted work unit re-enters the pipeline the way discovery hands off single
 > phase in a clean context.
 ```
 
-```
-Pipeline bridge for: {work_unit}
-Completed phase: discovery
-Next phase: {next_phase}
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} discovery {next_phase}` via the Skill tool.
