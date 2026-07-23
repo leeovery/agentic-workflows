@@ -33,7 +33,7 @@ TASKS_PROPOSED: {N}
 SUMMARY: {1-2 sentences}
 ```
 
-- `tasks_proposed`: tasks written to staging file — orchestrator should present for approval
+- `tasks_proposed`: tasks written to staging file — initialise the cycle's gate state (one batched write, one `pending` per task from `TASKS_PROPOSED`: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending`), then present for approval
 - `clean`: no actionable findings — orchestrator should proceed to completion
 
 → Return to caller.

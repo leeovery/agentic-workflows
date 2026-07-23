@@ -83,18 +83,10 @@ Categorize each finding by severity:
 - **Important**: Would force implementer to guess or make design decisions
 - **Minor**: Polish or improvement that strengthens the plan
 
-Tracking files are **never deleted**. After all findings are processed, the orchestrator marks `status: complete`. Previous cycles' files persist as review history.
+Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as review history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
 
 **Format**:
 ```markdown
----
-status: in-progress
-created: YYYY-MM-DD  # Use today's actual date
-cycle: {N}
-phase: Plan Integrity Review
-topic: {Topic Name}
----
-
 # Review Tracking: {Topic Name} - Integrity
 
 ## Findings

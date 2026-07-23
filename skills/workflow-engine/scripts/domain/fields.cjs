@@ -244,6 +244,35 @@ function validateSet(segments, value) {
       return;
     }
 
+    // Staging task decisions (phases.<phase>.items.<item>.staging.c<N>.tasks.<n>)
+    if (segments.length >= 2 && segments[segments.length - 2] === 'tasks'
+        && segments.includes('staging')) {
+      if (typeof value !== 'string' || !['pending', 'approved', 'skipped'].includes(value)) {
+        fail(`Invalid staging task status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped`);
+      }
+      return;
+    }
+
+    // Analysis candidate gate state (phases.discovery.analysis_staging.<analysis>.candidates.<name>.…)
+    if (segments.includes('analysis_staging') && segments.length >= 2) {
+      const leaf = segments[segments.length - 1];
+      if (leaf === 'status' && (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'resolved'].includes(value))) {
+        fail(`Invalid candidate status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, resolved`);
+      }
+      if (leaf === 'fanout_offer' && (typeof value !== 'string' || !['pending', 'marked', 'declined'].includes(value))) {
+        fail(`Invalid fanout_offer ${JSON.stringify(value)}. Must be one of: pending, marked, declined`);
+      }
+      return;
+    }
+
+    // Tracking-file completion state (phases.<phase>.items.<item>.tracking.<stem>)
+    if (segments.length >= 2 && segments[segments.length - 2] === 'tracking') {
+      if (typeof value !== 'string' || !['in-progress', 'complete'].includes(value)) {
+        fail(`Invalid tracking status ${JSON.stringify(value)}. Must be one of: in-progress, complete`);
+      }
+      return;
+    }
+
     // phases.<phase>.items.<item>.storage_paths — the format's declared
     // pathspecs, staged by `engine commit --plan`. Guarded at write time so a
     // bad entry can never reach a commit: relative, no traversal, never the

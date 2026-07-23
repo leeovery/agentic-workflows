@@ -89,7 +89,7 @@ Continue with review?
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
-**If the agent created a tracking file**, commit it:
+**If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}"
@@ -107,7 +107,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
-**If the agent created a tracking file**, commit it:
+**If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}"
@@ -213,9 +213,9 @@ Run another review round?
 
 1. **Verify tracking files are marked complete** — All traceability and integrity tracking files across all cycles must have `status: complete`.
 
-> **CHECKPOINT**: Do not confirm completion if any tracking files still show `status: in-progress`. They indicate incomplete review work.
+> **CHECKPOINT**: Do not confirm completion if the manifest's `tracking` subtree still holds an `in-progress` entry. It indicates incomplete review work.
 
-If any tracking file still shows `status: in-progress`, its findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
+Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-progress`, that file's findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
 
 2. **Commit** all review tracking files:
    ```bash
