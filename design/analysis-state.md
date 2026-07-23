@@ -91,6 +91,26 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Round 5 (#537), the confirmation round under the strict
+  fix process end to end. The ratchet slice is the round's spine: all
+  79 prior findings inventoried from the fix layers' commit messages
+  and re-proven on the tip — zero regressed, superseded fixes walked
+  against their original failure scenarios. The five slices' finds
+  clustered in fix-interaction and migration-composition surfaces:
+  the restart and the resume guard, each verified SOUND alone,
+  composed into the corruption both exist to prevent (delete-order
+  inversion fixed it); 051's skeleton handling deadlocked migrated
+  councils against the engine's legacy-file refusal (closed at the
+  migration, reproduced by execution); the analysis loop's unpinned
+  file-family guard misfired on its twin's committed staging. Every
+  fix cluster carried its own adversarial verify before commit; the
+  verifies again drew blood pre-commit (the two-branch drain arm's
+  successor round had proven this works — this round it caught the
+  restart's tick-format commit scope and the staging anchor B needed).
+  Standing lesson, now twice-proven: individually-verified fixes still
+  compose wrong; the interaction lens is a mandatory slice, not an
+  optional one.
+
 - 2026-07-23 — Round 4 (#536): the enumeration pass, after Lee rejected
   sampling as the done-criterion ("we can't stop until it's working").
   Five slices produced coverage artifacts instead of findings lists:
