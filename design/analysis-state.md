@@ -91,6 +91,15 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Stage 5 up (#531): the natural-language state. Plan
+  approvals become manifest dates (approvals.structure /
+  approvals.tasks.p{N}); the authoring loop's per-task heading
+  suffixes become staging.author-p{N} rows keyed by internal id
+  (rejected joins the staging vocabulary), cleared when the phase's
+  authoring completes. The task-author agent writes bare headings —
+  rejected tasks are named by the prompt and their feedback
+  blockquotes, content not state.
+
 - 2026-07-23 — Stage 4 up (#530): the durable half. Staging cycles
   record per cycle in the manifest (decisions double as convergence
   history); candidate gate state under analysis_staging, cleared when
