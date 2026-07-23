@@ -140,15 +140,22 @@ function auditState(dir, label) {
     derivations.computeNextPhase(manifest);
     derivations.computeUnitPhaseState(manifest, pipelineOf(manifest.work_type));
 
-    // The agent-state store, when present, is always schema-valid.
-    const storePath = path.join(dir, '.workflows', '.cache', wu, 'state.json');
-    if (fs.existsSync(storePath)) {
-      const store = JSON.parse(fs.readFileSync(storePath, 'utf8'));
-      for (const [key, row] of Object.entries(store.agents || {})) {
-        assert.ok(['in-flight', 'pending', 'acknowledged', 'incorporated'].includes(row.status),
-          ctx(`agent ${key}: status "${row.status}" not in vocabulary`));
-        assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
-          ctx(`agent ${key}: surfaced ids must be recorded findings`));
+    // Every agent-state store (one per topic, colocated) is schema-valid.
+    const cacheRoot = path.join(dir, '.workflows', '.cache', wu);
+    if (fs.existsSync(cacheRoot)) {
+      for (const ph of fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const phDir = path.join(cacheRoot, ph.name);
+        for (const tp of fs.readdirSync(phDir, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+          const storePath = path.join(phDir, tp.name, 'state.json');
+          if (!fs.existsSync(storePath)) continue;
+          const store = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+          for (const [key, row] of Object.entries(store.agents || {})) {
+            assert.ok(['in-flight', 'pending', 'acknowledged', 'incorporated'].includes(row.status),
+              ctx(`agent ${ph.name}/${tp.name}/${key}: status "${row.status}" not in vocabulary`));
+            assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
+              ctx(`agent ${ph.name}/${tp.name}/${key}: surfaced ids must be recorded findings`));
+          }
+        }
       }
     }
 

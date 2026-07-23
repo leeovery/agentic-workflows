@@ -82,7 +82,7 @@ node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_un
 
 Emit the DISPLAY section verbatim as a code block — never the `===` marker lines.
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file, the manifest's map state (node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discussion.{topic} subtopics), the phase cache directory (rm -rf .workflows/.cache/{work_unit}/discussion/{topic}/), and the topic's agent rows (node .claude/skills/workflow-engine/scripts/engine.cjs agent purge {work_unit} discussion {topic}) — stale agent results and rows would poison the restarted session's review gates`, commit = `discussion({work_unit}): restart discussion`.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `discussion`, file = `.workflows/{work_unit}/discussion/{topic}.md`, continue_step = `Step 2`, restart_targets = `the discussion file, the manifest's map state (node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discussion.{topic} subtopics), and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/discussion/{topic}/ — content and agent state together) — stale agent results would poison the restarted session's review gates`, commit = `discussion({work_unit}): restart discussion`.
 
 ---
 

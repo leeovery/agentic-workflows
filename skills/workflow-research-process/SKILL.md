@@ -75,7 +75,7 @@ Check if the research file exists at `.workflows/{work_unit}/research/{topic}.md
 > whether to pick it up or start fresh.
 ```
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file, the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/), and the topic's agent rows (node .claude/skills/workflow-engine/scripts/engine.cjs agent purge {work_unit} research {topic}) — stale agent results and rows would poison the restarted session's review gates`, commit = `research({work_unit}): restart research`.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `research`, file = `.workflows/{work_unit}/research/{topic}.md`, continue_step = `Step 2`, restart_targets = `the research file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/research/{topic}/ — content and agent state together) — stale agent results would poison the restarted session's review gates`, commit = `research({work_unit}): restart research`.
 
 ---
 

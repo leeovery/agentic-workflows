@@ -315,11 +315,11 @@ describe('discussion adapter: map verb', () => {
     const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
     // Store rows: one completed cycle, one still running.
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'auth', 'state.json'), JSON.stringify({
+    fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
       agents: {
-        'discussion/auth-flow/review-001': { id: 'review-001', kind: 'review', status: 'incorporated', findings: [], surfaced: [] },
-        'discussion/auth-flow/review-002': { id: 'review-002', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
-        'discussion/auth-flow/synthesis-001': { id: 'synthesis-001', kind: 'synthesis', status: 'incorporated', findings: [], surfaced: [] },
+        'review-001': { id: 'review-001', kind: 'review', status: 'incorporated', findings: ['F1'], surfaced: ['F1'] },
+        'review-002': { id: 'review-002', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
+        'synthesis-001': { id: 'synthesis-001', kind: 'synthesis', status: 'incorporated', findings: [], surfaced: [] },
       },
     }));
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'report');
@@ -333,9 +333,9 @@ describe('discussion adapter: map verb', () => {
     createManifest(dir, 'auth', manifestWith());
     const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'auth', 'state.json'), JSON.stringify({
+    fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
       agents: {
-        'discussion/auth-flow/review-001': { id: 'review-001', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
+        'review-001': { id: 'review-001', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
       },
     }));
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'the report landed');
