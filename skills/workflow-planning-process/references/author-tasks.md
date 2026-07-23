@@ -33,6 +33,7 @@ Invoke `workflow-planning-task-author` with these file paths:
 5. **All approved phases**: the complete phase structure from the planning file body
 6. **Task list for current phase**: the task table for this specific phase from the planning file
 7. **Task detail file path**: `.workflows/{work_unit}/planning/{topic}/phase-{N}-tasks.md`
+8. **Amendment context** (amendment runs only): the rejected internal ids being rewritten — their feedback blockquotes sit under their headings in the detail file
 
 The agent writes all tasks to the task detail file and returns.
 
@@ -90,7 +91,7 @@ Apply the user's correction.
 
 ## D. Check Gate Mode
 
-Register the phase's authoring state — one batched write, one row per task in the detail file, keyed by internal id (skip rows that already exist from a prior pass — a resume never resets decisions):
+Register the phase's authoring state. Read the subtree first (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} staging.author-p{N}` — `set` overwrites, so existing rows carry decisions a resume must keep), then batch-set `pending` for the ids not yet present; skip the call entirely when none are missing:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id}=pending …
@@ -205,7 +206,7 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 {N} tasks need revision. Re-invoking author agent...
 ```
 
-After the agent's rewrite lands, reset each rewritten task's row: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per rejected id.
+Reset each rejected row to `pending` now — the rewrite will re-present them: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per rejected id. Then re-invoke as an **amendment**, naming those ids in the prompt.
 
 → Return to **B. Invoke the Agent**.
 

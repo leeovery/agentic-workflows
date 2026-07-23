@@ -18,7 +18,6 @@ Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md
 {One-line goal — e.g., "Replace all occurrences of interface{} with any across Go source files"}
 
 #### Tasks
-status: approved
 
 | Internal ID | Name | Edge Cases |
 |-------------|------|------------|

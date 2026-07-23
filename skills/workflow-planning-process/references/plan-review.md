@@ -211,11 +211,11 @@ Run another review round?
 
 ## F. Completion
 
-1. **Verify tracking files are marked complete** — All traceability and integrity tracking files across all cycles must have `status: complete`.
+1. **Verify tracking is complete** — every `tracking` entry in the manifest, across all cycles, must be `complete`.
 
 > **CHECKPOINT**: Do not confirm completion if the manifest's `tracking` subtree still holds an `in-progress` entry. It indicates incomplete review work.
 
-Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-progress`, that file's findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
+Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-progress`, that file's findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify. A tracking file on disk with no manifest entry is a crash orphan (the session died before recording it) — record it `in-progress` and process it the same way.
 
 2. **Commit** all review tracking files:
    ```bash

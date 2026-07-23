@@ -35,7 +35,7 @@ Read tracking data from all available cycles. Extract only finding titles, key i
 
 #### If `loop_type` is `fix`
 
-Read the fix tracking cache file:
+Read the fix tracking file:
 ```
 .workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md
 ```
