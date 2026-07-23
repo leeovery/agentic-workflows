@@ -28,23 +28,27 @@ Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-
 
 #### Otherwise
 
-Take the highest-numbered `review` row and branch on its status below.
+→ Proceed to **B. Review Row State**.
+
+## B. Review Row State
+
+Take the highest-numbered `review` row from the **A** scan and branch on its status.
 
 #### If no review row exists
 
-→ Proceed to **B. Dispatch Final Review**.
+→ Proceed to **C. Dispatch Final Review**.
 
 #### If it is `incorporated`
 
 The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row):
 
 ```bash
-git log --oneline -- .workflows/{work_unit}/research/{topic}.md
+git log --format='%h %cI %s' -- .workflows/{work_unit}/research/{topic}.md
 ```
 
 **If a meaningful research commit landed after the prior review was dispatched** (new findings, folded threads — not typo fixes):
 
-→ Proceed to **B. Dispatch Final Review**.
+→ Proceed to **C. Dispatch Final Review**.
 
 **Otherwise:**
 
@@ -66,7 +70,7 @@ The wait was already declined for this row — do not watch it. Its results pers
 
 Watch for `agent scan` to promote the row to `pending`.
 
-→ Proceed to **C. Surface via Final Review Menu**.
+→ Proceed to **D. Surface via Final Review Menu**.
 
 **Otherwise** (an interrupted earlier session — no agent can still be running):
 
@@ -76,23 +80,23 @@ Close the abandoned row, then dispatch fresh:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} research {topic} {id}
 ```
 
-→ Proceed to **B. Dispatch Final Review**.
+→ Proceed to **C. Dispatch Final Review**.
 
 #### If it is `pending`
 
 A review returned but hasn't been read.
 
-→ Proceed to **C. Surface via Final Review Menu**.
+→ Proceed to **D. Surface via Final Review Menu**.
 
 #### If it is `acknowledged`
 
 Findings from the current review are still being drained.
 
-→ Proceed to **C. Surface via Final Review Menu**.
+→ Proceed to **D. Surface via Final Review Menu**.
 
 ---
 
-## B. Dispatch Final Review
+## C. Dispatch Final Review
 
 > *Output the next fenced block as a code block:*
 
@@ -124,23 +128,29 @@ The review agent receives:
 
 When the agent returns:
 
-→ Proceed to **C. Surface via Final Review Menu**.
+→ Proceed to **D. Surface via Final Review Menu**.
 
 ---
 
-## C. Surface via Final Review Menu
+## D. Surface via Final Review Menu
 
 → Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`.
 
-→ On return, proceed to **D. Route Next**.
+→ On return, proceed to **E. Route Next**.
 
 ---
 
-## D. Route Next
+## E. Route Next
 
 #### If the menu raised a finding (the `review` choice)
 
 Control belongs to the conversation — return the user to the research session so they can engage naturally, whether or not that was the last finding. When the user signals done again, this flow re-runs and either raises the next one or finds the row incorporated.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+#### If the row is still `in-flight` (the watched agent never returned)
+
+Nothing landed to drain — the session's own in-flight gate owns the wait-or-proceed decision.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 

@@ -131,7 +131,10 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('surface walks the findings; the last one incorporates the row; refusals are loud', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis']);
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    for (const a of pair.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
     writeContent(dir, d.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     runJson(dir, ['ack', 'pay', 'discussion', 'alpha', 'synthesis-001', '--findings', 'T1,T2']);
@@ -164,18 +167,62 @@ describe('engine agent — lifecycle store', () => {
       '--label', 'dup', '--label', 'dup']).error, /duplicates/);
   });
 
-  it('synthesis joins its set by number — one per set, set must exist', () => {
+  it('synthesis joins its landed set — required, complete, one live per set, name unoccupied', () => {
     const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
       '--label', 'a', '--label', 'b']);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]).error,
+      /not complete/, 'a half-landed council never synthesises');
+    for (const a of pair.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     const syn = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
     assert.strictEqual(syn.id, 'synthesis-001');
     assert.strictEqual(syn.set, '001');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']).error,
-      /already has a synthesis/);
+      /already has a live synthesis/);
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009']).error,
       /No perspective set/);
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review', '--set', '001']).error,
       /legal only with --kind synthesis/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis']).error,
+      /always joins a perspective set/);
+    // A dead synthesis closes and re-dispatches; a legacy file blocks the name.
+    runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', 'synthesis-001']);
+    const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
+    assert.strictEqual(again.id, 'synthesis-001', 'recovery re-dispatch after closing the dead row');
+    writeContent(dir, '.workflows/.cache/pay/discussion/beta/synthesis-001.md', 'stale legacy report');
+    const p2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'perspective', '--label', 'x', '--label', 'y']);
+    for (const a of p2.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'beta']);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'synthesis', '--set', p2.set]).error,
+      /legacy file/, 'a dead session file never becomes this council synthesis');
+  });
+
+  it('perspectives are never acknowledged; a mid-drain review outranks them in next', () => {
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    for (const a of pair.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.match(runFails(dir, ['ack', 'pay', 'discussion', 'alpha', pair.agents[0].id, '--clean']).error,
+      /synthesis input, never acknowledged/);
+    const r = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    writeContent(dir, r.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    runJson(dir, ['ack', 'pay', 'discussion', 'alpha', r.id, '--findings', 'F1,F2']);
+    runJson(dir, ['surface', 'pay', 'discussion', 'alpha', r.id, 'F1']);
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'surface', id: r.id, finding: 'F2' },
+      'pending perspectives never null out a mid-drain review');
+  });
+
+  it('purge removes one topic rows and nothing else', () => {
+    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
+    const purged = runJson(dir, ['purge', 'pay', 'research', 'alpha']);
+    assert.strictEqual(purged.purged, 1);
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, []);
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight, ['review-001'],
+      'the sibling topic is untouched');
+    const fresh = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    assert.strictEqual(fresh.id, 'review-001', 'a purged topic restarts its numbering');
   });
 
   it('scan.next never points at a perspective row even when one is oldest-pending', () => {

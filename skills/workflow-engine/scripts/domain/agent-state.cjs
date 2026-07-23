@@ -141,6 +141,12 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
   if (set !== undefined && kind !== 'synthesis') {
     throw new Error('--set names the perspective set a synthesis consumes — legal only with --kind synthesis');
   }
+  if (kind === 'synthesis' && set === undefined) {
+    throw new Error('a synthesis always joins a perspective set — dispatch with --set <NNN>');
+  }
+  if (kind === 'synthesis' && labels.length) {
+    throw new Error('a synthesis takes no --label — its identity is synthesis-{set}');
+  }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit);
     const dir = agentDir(cwd, workUnit, phase, topic);
@@ -154,11 +160,18 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
       if (!/^\d{3}$/.test(set)) {
         throw new Error(`Invalid set ${JSON.stringify(set)}: the three-digit set number from the perspective dispatch`);
       }
-      if (!inTopic.some((r) => r.kind === 'perspective' && r.set === set)) {
+      const members = inTopic.filter((r) => r.kind === 'perspective' && r.set === set);
+      if (!members.length) {
         throw new Error(`No perspective set "${set}" for ${phase}/${topic} — dispatch the perspectives first`);
       }
-      if (inTopic.some((r) => r.kind === 'synthesis' && r.set === set)) {
-        throw new Error(`Set "${set}" already has a synthesis — one synthesis per set`);
+      if (members.some((r) => r.status === 'in-flight')) {
+        throw new Error(`Set "${set}" is not complete — a perspective is still in flight; synthesis reads the whole council`);
+      }
+      if (inTopic.some((r) => r.kind === 'synthesis' && r.set === set && r.status !== 'incorporated')) {
+        throw new Error(`Set "${set}" already has a live synthesis — one per set (incorporate a dead one to re-dispatch)`);
+      }
+      if (fs.existsSync(path.join(dir, `synthesis-${set}.md`)) && !inTopic.some((r) => r.id === `synthesis-${set}`)) {
+        throw new Error(`A legacy file synthesis-${set}.md already occupies that name — ids never collide with files`);
       }
       nnn = set;
     } else {
@@ -273,13 +286,13 @@ function scanAgents(cwd, workUnit, phase, topic) {
 
     const byStatus = (/** @type {string} */ s) => rows.filter((r) => r.status === s);
     const acked = byStatus('acknowledged');
-    const surfacing = acked.find((r) => unsurfaced(r).length > 0);
+    const surfaceable = (/** @type {any} */ r) => !NEVER_SURFACED.includes(r.kind);
+    const surfacing = acked.find((r) => surfaceable(r) && unsurfaced(r).length > 0);
     const pending = byStatus('pending');
 
     /** @type {null | {action: string, id: string, finding?: string}} */
     let next = null;
-    const surfaceable = (/** @type {any} */ r) => !NEVER_SURFACED.includes(r.kind);
-    if (surfacing && surfaceable(surfacing)) {
+    if (surfacing) {
       next = { action: 'surface', id: surfacing.id, finding: unsurfaced(surfacing)[0] };
     } else {
       const first = pending.find(surfaceable);
@@ -317,6 +330,9 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit);
     const row = requireRow(state, phase, topic, id);
+    if (NEVER_SURFACED.includes(row.kind)) {
+      throw new Error(`Agent "${id}" is a ${row.kind} — a synthesis input, never acknowledged; incorporate it when its synthesis is dispatched`);
+    }
     if (row.status !== 'pending') {
       throw new Error(`Agent "${id}" is ${row.status} — only a pending row acknowledges (run \`agent scan\` to promote a finished agent)`);
     }
@@ -399,6 +415,26 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   });
 }
 
+/**
+ * Purge every row for one phase/topic — the restart cleanse. The caller's
+ * restart already deletes the topic's cache directory; this removes the rows
+ * that live above it in state.json, so a restarted session never sees the
+ * dead topic's reviews, sets, or drains.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function purgeAgents(cwd, workUnit, phase, topic) {
+  requireWorkUnit(cwd, workUnit);
+  validatePhase(phase);
+  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit);
+    const prefix = `${phase}/${topic}/`;
+    const victims = Object.keys(state.agents).filter((k) => k.startsWith(prefix));
+    for (const k of victims) delete state.agents[k];
+    if (victims.length) saveState(cwd, workUnit, state);
+    return { work_unit: workUnit, phase, topic, purged: victims.length };
+  });
+}
+
 module.exports = {
   AGENT_KINDS,
   AGENT_STATUSES,
@@ -408,4 +444,5 @@ module.exports = {
   announceAgent,
   surfaceFinding,
   incorporateAgent,
+  purgeAgents,
 };

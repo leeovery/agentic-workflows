@@ -35,7 +35,13 @@ function reviewCycles(cwd, workUnit, topic) {
     if (!key.startsWith(prefix) || row.kind !== 'review') continue;
     rowIds.add(`${row.id}.md`);
     if (row.status !== 'in-flight') {
-      fromRows += 1;
+      // A zero-finding row only counts if its report actually exists — an
+      // abandoned row closed by the dead-session arm never produced one.
+      let real = (row.findings || []).length > 0;
+      if (!real) {
+        try { real = fs.statSync(path.join(dir, `${row.id}.md`)).size > 0; } catch { real = false; }
+      }
+      if (real) fromRows += 1;
     } else {
       // Finished but not yet scanned: the agent's report landed, no scan has
       // promoted the row. Mirror scan's promotion read — the cycle happened.
