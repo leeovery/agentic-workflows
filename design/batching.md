@@ -103,6 +103,21 @@ Each PR: verb + tests + prose swaps + census row ticked here.
   backfills pointers in the cleanup ops file; C flags every in-flight
   downstream item a fresh brief post-dates, not just regenerations.
 
+- 2026-07-23 — Round 4, re-aimed at Lee's priorities (mainline paths,
+  engine state integrity, silent failures; legacy out of scope). Three
+  slices: (1) the pipeline simulation (#522) — a permanent suite
+  driving the engine end-to-end through prose-extracted call sequences
+  for every work type + edges, full state audit after every mutation;
+  now a standing gate in CLAUDE.md (workflow changes must update it).
+  (2) Executed contract audit: all 418 prose engine invocations run
+  live — zero drift; flags verified against source, all 14 render
+  surfaces match the catalogue both ways, response fields confirmed.
+  (3) Fresh-eyes review of the unreviewed tail (#515–#521): 3 minors,
+  0 majors, fixed as #523 — backfill keys on the pointer (self-heals
+  crash and pre-fix orphans), wrapped menu placeholders un-wrapped so
+  the ratchet counts them, pull joins the shadow guard. Engine/prose
+  seam certified tight; the model-reasoning seam remains review-only.
+
 - 2026-07-23 — Round-3 ambiguities resolved with Lee (#515–#520, six
   single-change PRs stacked on #514). Promotion predates discovery
   (03-28 vs 05-31) and never picked up its routing — promote now
