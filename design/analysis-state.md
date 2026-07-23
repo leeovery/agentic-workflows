@@ -87,6 +87,23 @@ stragglers).
    units; CONVENTIONS (staging exception dissolves; no-frontmatter
    rule), CLAUDE.md, docs site.
 
+## Log
+
+- 2026-07-23 — Stage 1 up (#527): the `engine agent` noun over
+  `.workflows/.cache/{wu}/state.json`. Skeleton files abolished —
+  dispatch records the row, the content file's non-empty existence is
+  completion. `scan` answers `next` (the one action to take). Eleven
+  tests + a simulation scenario and a standing store invariant.
+- 2026-07-23 — Stage 2 up (#528), merging planned stages 2+3: the
+  shared surfacing protocol is engine-driven, so research AND
+  discussion swap together (a one-family swap would leave the other
+  loading a half-converted protocol mid-stack). Five agent prompt
+  files now write pure markdown — the `## {ID}` headings are the
+  finding-id contract. `incorporate` widened to any live state for
+  synthesis-consumed perspectives and abandoned rows. The discussion
+  gateway's `review_cycles` reads store rows; legacy files count by
+  existence, frontmatter never read. Investigation becomes stage 3.
+
 ## Decisions
 
 - 2026-07-23 — Lee: net result is no frontmatter written or read
