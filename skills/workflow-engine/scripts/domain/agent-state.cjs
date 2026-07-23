@@ -124,53 +124,88 @@ function requireRow(state, phase, topic, id) {
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
  * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {{kind: string, label?: string}} opts
+ * @param {string} topic @param {{kind: string, labels?: string[], set?: string}} opts
  */
-function dispatchAgent(cwd, workUnit, phase, topic, { kind, label }) {
+function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateKind(kind);
-  if (label !== undefined && (typeof label !== 'string' || label === '' || /[\/.]/.test(label))) {
-    throw new Error(`Invalid label ${JSON.stringify(label)}: a short slash- and dot-free slug`);
+  for (const label of labels) {
+    if (typeof label !== 'string' || label === '' || /[\/.]/.test(label)) {
+      throw new Error(`Invalid label ${JSON.stringify(label)}: a short slash- and dot-free slug`);
+    }
+  }
+  if (new Set(labels).size !== labels.length) {
+    throw new Error('Invalid labels: duplicates in one dispatch');
+  }
+  if (set !== undefined && kind !== 'synthesis') {
+    throw new Error('--set names the perspective set a synthesis consumes — legal only with --kind synthesis');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit);
     const dir = agentDir(cwd, workUnit, phase, topic);
+    const inTopic = Object.entries(state.agents)
+      .filter(([k]) => k.startsWith(`${phase}/${topic}/`))
+      .map(([, r]) => r);
 
-    let max = 0;
-    for (const key of Object.keys(state.agents)) {
-      const row = state.agents[key];
-      if (key.startsWith(`${phase}/${topic}/`) && row.kind === kind) {
-        const m = /-(\d{3})(?:-|$)/.exec(row.id);
-        if (m) max = Math.max(max, Number(m[1]));
+    let nnn;
+    if (set !== undefined) {
+      // A synthesis joins an existing perspective set: same number, one per set.
+      if (!/^\d{3}$/.test(set)) {
+        throw new Error(`Invalid set ${JSON.stringify(set)}: the three-digit set number from the perspective dispatch`);
       }
-    }
-    if (fs.existsSync(dir)) {
-      for (const name of fs.readdirSync(dir)) {
-        const m = new RegExp(`^${kind}-(\\d{3})(?:-|\\.)`).exec(name);
-        if (m) max = Math.max(max, Number(m[1]));
+      if (!inTopic.some((r) => r.kind === 'perspective' && r.set === set)) {
+        throw new Error(`No perspective set "${set}" for ${phase}/${topic} — dispatch the perspectives first`);
       }
+      if (inTopic.some((r) => r.kind === 'synthesis' && r.set === set)) {
+        throw new Error(`Set "${set}" already has a synthesis — one synthesis per set`);
+      }
+      nnn = set;
+    } else {
+      let max = 0;
+      for (const row of inTopic) {
+        if (row.kind === kind) {
+          const m = /-(\d{3})(?:-|$)/.exec(row.id);
+          if (m) max = Math.max(max, Number(m[1]));
+        }
+      }
+      if (fs.existsSync(dir)) {
+        for (const name of fs.readdirSync(dir)) {
+          const m = new RegExp(`^${kind}-(\\d{3})(?:-|\\.)`).exec(name);
+          if (m) max = Math.max(max, Number(m[1]));
+        }
+      }
+      nnn = String(max + 1).padStart(3, '0');
     }
 
-    const nnn = String(max + 1).padStart(3, '0');
-    const id = label ? `${kind}-${nnn}-${label}` : `${kind}-${nnn}`;
-    const file = path.join(dir, `${id}.md`);
-
-    state.agents[rowKey(phase, topic, id)] = {
-      id,
-      kind,
-      phase,
-      topic,
-      ...(label ? { label } : {}),
-      status: 'in-flight',
-      announced: false,
-      findings: [],
-      surfaced: [],
-      created: new Date().toISOString(),
-    };
+    // Every row in one dispatch shares the number — that shared number IS the
+    // set identity a perspective pair and its synthesis are joined by.
+    const ids = labels.length
+      ? labels.map((label) => `${kind}-${nnn}-${label}`)
+      : [`${kind}-${nnn}`];
+    const created = new Date().toISOString();
+    const agents = ids.map((id, i) => {
+      state.agents[rowKey(phase, topic, id)] = {
+        id,
+        kind,
+        phase,
+        topic,
+        set: nnn,
+        ...(labels.length ? { label: labels[i] } : {}),
+        status: 'in-flight',
+        announced: false,
+        findings: [],
+        surfaced: [],
+        created,
+      };
+      return { id, file: path.relative(cwd, path.join(dir, `${id}.md`)) };
+    });
     fs.mkdirSync(dir, { recursive: true });
     saveState(cwd, workUnit, state);
-    return { work_unit: workUnit, phase, topic, id, kind, file: path.relative(cwd, file) };
+    if (agents.length === 1) {
+      return { work_unit: workUnit, phase, topic, kind, set: nnn, ...agents[0] };
+    }
+    return { work_unit: workUnit, phase, topic, kind, set: nnn, agents };
   });
 }
 
@@ -195,6 +230,8 @@ function publicRow(row) {
     id: row.id,
     kind: row.kind,
     status: row.status,
+    set: row.set,
+    created: row.created,
     announced: row.announced,
     findings: row.findings,
     surfaced: row.surfaced,
@@ -202,6 +239,10 @@ function publicRow(row) {
     ...(row.label ? { label: row.label } : {}),
   };
 }
+
+// Kinds that are consumed by another agent, never surfaced to the user —
+// scan's `next` must not point at them.
+const NEVER_SURFACED = ['perspective'];
 
 /**
  * Scan: promote every in-flight row whose content file now exists, then
@@ -237,8 +278,13 @@ function scanAgents(cwd, workUnit, phase, topic) {
 
     /** @type {null | {action: string, id: string, finding?: string}} */
     let next = null;
-    if (surfacing) next = { action: 'surface', id: surfacing.id, finding: unsurfaced(surfacing)[0] };
-    else if (pending.length) next = { action: 'acknowledge', id: pending[0].id };
+    const surfaceable = (/** @type {any} */ r) => !NEVER_SURFACED.includes(r.kind);
+    if (surfacing && surfaceable(surfacing)) {
+      next = { action: 'surface', id: surfacing.id, finding: unsurfaced(surfacing)[0] };
+    } else {
+      const first = pending.find(surfaceable);
+      if (first) next = { action: 'acknowledge', id: first.id };
+    }
 
     return {
       work_unit: workUnit,
@@ -247,7 +293,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
       in_flight: byStatus('in-flight').map((r) => r.id),
       pending: pending.map(publicRow),
       acknowledged: acked.map(publicRow),
-      incorporated: byStatus('incorporated').map((r) => r.id),
+      incorporated: byStatus('incorporated').map(publicRow),
       next,
     };
   });

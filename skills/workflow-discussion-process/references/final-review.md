@@ -6,7 +6,7 @@
 
 A final review ensures the discussion is thorough before moving to specification. Even if review agents ran during the session, the discussion may have progressed significantly since the last one.
 
-This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point Step 6 returns to the backbone to proceed toward conclusion.
+This step runs once per "user signals done" entry. It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the discussion session so the user can engage naturally. The next time the user signals done, Step 6 re-runs — eventually all findings are drained and the engine incorporates the review, at which point Step 6 returns to the backbone to proceed toward conclusion.
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
@@ -36,7 +36,7 @@ Take the highest-numbered `review` row and branch on its status below.
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch:
+The prior review was fully drained. A fresh one is warranted only when the discussion moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row):
 
 ```bash
 git log --oneline -- .workflows/{work_unit}/discussion/{topic}.md
@@ -120,7 +120,7 @@ Dispatch **one agent** as a foreground task (omit `run_in_background` — result
 The review agent receives:
 
 1. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `## {ID}` section per finding (`F1`, `F2`, …), never frontmatter.
+2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 
 When the agent returns:
 
@@ -138,16 +138,14 @@ When the agent returns:
 
 ## D. Route Next
 
-Re-run `agent scan` and take the highest-numbered `review` row's status.
+#### If the menu raised a finding (the `review` choice)
 
-#### If `incorporated`
-
-All findings have been raised (or the review came back with zero gaps). The final-review gate is satisfied.
-
-→ Return to caller.
-
-#### If `acknowledged`
-
-A finding was just raised. Control belongs to the conversation — return the user to the discussion session so they can engage naturally. When the user signals done again, Step 6 re-runs and either raises the next finding or the engine incorporates the row.
+Control belongs to the conversation — return the user to the discussion session so they can engage naturally, whether or not that was the last finding. When the user signals done again, Step 6 re-runs and either raises the next one or finds the row incorporated.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
+
+#### Otherwise
+
+No finding is awaiting engagement (the review was clean, fully drained, or skipped). The final-review gate is satisfied.
+
+→ Return to caller.

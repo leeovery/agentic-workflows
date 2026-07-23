@@ -25,7 +25,7 @@ Natural-break detection is guidance, not hard-enforced.
 
 ## LLM Turn Semantics (IMPORTANT)
 
-This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, or one raised finding), and exits back to the session loop. Once you raise a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Do NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check will re-enter here, scan again, and the response's `next` says exactly where things stand.
+This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, or one raised finding), and exits back to the session loop. Once you raise a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Do NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check will re-enter here and scan again; the row lists say exactly where things stand (the response's `next` is a default that ignores your `agent_type` — the kind filter below decides).
 
 **The engine store is the only state.** Never track surfacing progress in conversation memory, and never write it anywhere else.
 
@@ -37,7 +37,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {p
 
 Consider only rows whose `kind` matches `{agent_type}` (other kinds belong to their own loaded reference; perspective rows are synthesis inputs and are never surfaced here).
 
-#### If no matching row is pending or acknowledged
+#### If no matching row is `pending` or `acknowledged`
 
 Nothing to surface.
 
@@ -55,7 +55,7 @@ The report was first-read on an earlier iteration; the row carries `announced`, 
 
 ## B. First Read
 
-Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `## {ID}` section headings. Cross-check the count either way.
+Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
 #### If the report has no findings (zero-gap case)
 
@@ -160,7 +160,7 @@ Do not re-ask. The user has already committed to walking through the set.
 
 This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
 
-1. Pick the single most contextually relevant finding from the row's `remaining`. **Contextual relevance outranks the list order** (the scan's `next.finding` is only the default). If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
+1. Pick the single most contextually relevant finding from the row's `remaining` — never from `scan.next`, which may belong to another row. **Contextual relevance outranks the list order.** If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
 2. Record it — the response confirms what remains, and raising the last finding incorporates the row automatically:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}

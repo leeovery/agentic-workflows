@@ -672,6 +672,30 @@ describe('pipeline simulation', () => {
     assert.strictEqual(clean.status, 'incorporated');
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+
+    // A perspective council in discussion: the pair is one set, synthesis
+    // joins it by number, and a half-landed council is never synthesisable.
+    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+    const pair = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'user-centric', '--label', 'capability-first']);
+    assert.strictEqual(pair.agents.length, 2);
+    assert.ok(pair.agents.every((a) => a.id.includes(`-${pair.set}-`)), 'one shared set number');
+    sim.write(pair.agents[0].file, '# The user-centric case\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(scan.next, null, 'a half-landed council is not actionable');
+    assert.strictEqual(scan.pending.length + scan.in_flight.length, 2);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009'], /No perspective set/);
+
+    sim.write(pair.agents[1].file, '# The capability-first case\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    const syn = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
+    assert.strictEqual(syn.id, `synthesis-${pair.set}`);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /already has a synthesis/);
+    for (const a of pair.agents) sim.run(['agent', 'incorporate', wu, 'discussion', 'alpha', a.id]);
+    sim.write(syn.file, '# Landscape\n\n### T1: the tradeoff\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: syn.id },
+      'consumed perspectives never mask the synthesis');
   });
 
   it('guards hold mid-pipeline: shadow fields, empty segments, cross-type reuse, bad statuses', () => {

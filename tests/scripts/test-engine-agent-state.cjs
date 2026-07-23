@@ -149,6 +149,59 @@ describe('engine agent — lifecycle store', () => {
       /is incorporated — only an acknowledged row/);
   });
 
+  it('a multi-label dispatch is one set: shared number, per-label rows and files', () => {
+    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'formal-systems', '--label', 'incentive-realist']);
+    assert.strictEqual(d.set, '001');
+    assert.deepStrictEqual(d.agents.map((a) => a.id),
+      ['perspective-001-formal-systems', 'perspective-001-incentive-realist']);
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.ok(scan.next === null, 'perspective rows are never scan.next');
+    const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'ship-now', '--label', 'strategic-timing']);
+    assert.strictEqual(again.set, '002', 'the next council is the next set');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'dup', '--label', 'dup']).error, /duplicates/);
+  });
+
+  it('synthesis joins its set by number — one per set, set must exist', () => {
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'a', '--label', 'b']);
+    const syn = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
+    assert.strictEqual(syn.id, 'synthesis-001');
+    assert.strictEqual(syn.set, '001');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']).error,
+      /already has a synthesis/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009']).error,
+      /No perspective set/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review', '--set', '001']).error,
+      /legal only with --kind synthesis/);
+  });
+
+  it('scan.next never points at a perspective row even when one is oldest-pending', () => {
+    const p = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'lens']);
+    writeContent(dir, p.file);
+    const r = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    writeContent(dir, r.file);
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: 'review-001' },
+      'the older pending perspective is skipped');
+    assert.strictEqual(scan.pending.length, 2, 'both rows still listed for set checks');
+  });
+
+  it('rows expose set and created; incorporated rows come back whole', () => {
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    writeContent(dir, d.file);
+    runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--clean']);
+    const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    const row = scan.incorporated[0];
+    assert.strictEqual(row.id, 'review-001');
+    assert.strictEqual(row.set, '001');
+    assert.ok(typeof row.created === 'string' && row.created.length > 0,
+      'created rides every row for freshness checks');
+  });
+
   it('incorporate closes from any live state: pending set-members and abandoned in-flight rows', () => {
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'tail-risk']);
     writeContent(dir, a.file);

@@ -86,7 +86,7 @@ The deep-dive agent receives:
 
 1. **Research brief** — the self-contained investigation brief
 2. **Research file path** — `.workflows/{work_unit}/research/{topic}.md` (for background context)
-3. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `## {ID}` section per finding (`F1`, `F2`, …), never frontmatter.
+3. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 
 > *Output the next fenced block as a code block:*
 
@@ -100,6 +100,7 @@ The deep-dive agent returns:
 ```
 STATUS: complete
 THREAD: {thread name}
+FINDINGS: {F1,F2,… — every id in the report; omit when none}
 FINDINGS_COUNT: {N}
 SUMMARY: {1-2 sentences}
 ```
