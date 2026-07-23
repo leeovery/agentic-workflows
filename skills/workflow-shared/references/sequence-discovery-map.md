@@ -34,11 +34,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 Take the live topic names from the caller's most recent discovery output — every `discovery_map` row whose tier is neither `⊘` (cancelled) nor `⊙` (handled). Handled topics are non-actionable — a research umbrella that fanned out — so they get no execution order, the same as cancelled.
 
-For richer context, read each live topic's `summary` and `description` from the manifest:
+For richer context, read the whole discovery subtree once — every topic's `summary` and `description` arrive in one call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} summary
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} description
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery
 ```
 
 → Proceed to **C. Assign and Write Order**.
