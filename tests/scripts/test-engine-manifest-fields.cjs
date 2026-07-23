@@ -601,6 +601,15 @@ describe('storage_paths is guarded at write time — set and apply', () => {
     assert.strictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, undefined, 'nothing persisted');
   });
 
+  it('push validates the one entry it appends — the write-time guard covers every route', () => {
+    for (const bad of ['../evil', '/abs', '.', '']) {
+      const err = runFails(dir, ['push', 'pay.planning.pay', 'storage_paths', bad]);
+      assert.match(err.error, /Invalid storage_paths/);
+    }
+    runJson(dir, ['push', 'pay.planning.pay', 'storage_paths', '.tick/']);
+    assert.deepStrictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, ['.tick/']);
+  });
+
   it('apply handles set-then-delete on the same item in array order (reconcile shape)', () => {
     const p = path.join(dir, 'ops.json');
     fs.writeFileSync(p, JSON.stringify([

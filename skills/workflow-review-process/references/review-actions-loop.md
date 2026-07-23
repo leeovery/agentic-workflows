@@ -24,6 +24,12 @@ G. Re-open implementation + plan mode handoff
 
 Check the verdict(s) from the review(s) being analyzed.
 
+#### If a prior session's staging cycle is still mid-flight
+
+Read `manifest get {work_unit}.review.{topic} staging`. Mid-flight means any of: a cycle's `tasks` still hold a `pending` row; the latest cycle has approvals but the planning file carries no `Review Remediation (Cycle {N})` phase; or that phase exists and none of its task ids appear in `{work_unit}.implementation.{topic}` `completed_tasks` (the re-open never ran). The synthesis decision for that cycle was already made — do not re-ask; **B**'s guards resume it precisely.
+
+→ Proceed to **B. Dispatch Review Synthesizer**.
+
 #### If all verdicts are `Approve` with no required changes
 
 > *Output the next fenced block as a code block:*
@@ -163,6 +169,12 @@ The session died between the last gate decision and the plan write — the appro
 A crash between the synthesizer's write and the init — initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**).
 
 → Proceed to **C. Approval Overview**.
+
+#### If the latest cycle's remediation phase is in the plan and none of its tasks are in `completed_tasks`
+
+The session died between **F**'s plan write and **G**'s re-open — the remediation exists but implementation never resumed. (A fully-landed cycle's task ids appear in `{work_unit}.implementation.{topic}` `completed_tasks` once the re-opened implementation runs them, so this arm never fires on history.)
+
+→ Proceed to **G. Re-open Implementation**.
 
 #### Otherwise
 

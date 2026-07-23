@@ -124,15 +124,15 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 #### If `restart`
 
 1. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
-2. Clear review tracking (if it exists):
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} reviewed_tasks
-   ```
-   If `true`:
+2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run; a surviving one would resume the old cycle's approvals over the fresh review's findings. The synthesis reports (`review-report-c*.md`) stay — history, and the cycle counter reads them
+3. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks` and `… staging` first):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
    ```
-3. Commit:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} staging
+   ```
+4. Commit:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review"
    ```

@@ -272,8 +272,8 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 // proposed-task / tasks-overview — the analysis and review synthesis loops'
 // shared task presentation (their prose templates were byte-identical twins).
 // Gate mode rides as a flag, not an address read: one consumer carries it in
-// the cycle response, the other in staging-file frontmatter — the surface
-// guarantees the form of both outputs, the flow owns the mode.
+// the cycle response, the other in the manifest's staging.c{N} subtree — the
+// surface guarantees the form of both outputs, the flow owns the mode.
 // ---------------------------------------------------------------------------
 
 /**

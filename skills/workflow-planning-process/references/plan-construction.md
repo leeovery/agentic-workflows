@@ -93,6 +93,11 @@ All tasks already authored. Check via manifest:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
+If the manifest still carries a `staging.author-p{N}` subtree for this phase (check with `manifest exists {work_unit}.planning.{topic} staging.author-p{N}` — a crash landed the last task but not the clear), delete it — the plan's tasks are the record:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} staging.author-p{N}
+```
+
 > *Output the next fenced block as a code block:*
 
 ```

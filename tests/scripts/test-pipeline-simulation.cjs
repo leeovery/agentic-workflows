@@ -304,7 +304,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
-  // The amendment resets a rejected row to pending only after the rewrite lands (author-tasks B).
+  // The amendment resets a rejected row to pending only after the rewrite validates (author-tasks C).
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
@@ -536,6 +536,12 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
     sim.run(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.1', 'approved']);
     sim.refuses(['manifest', 'set', `${wu}.review.unified`, 'staging.c1.tasks.2', 'later'], /Invalid staging task status/);
+    // The review restart clears its staging subtree (exists-guarded delete) so a
+    // stale cycle can never hijack the post-restart loop's crash-resume guards.
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'true');
+    sim.run(['manifest', 'delete', `${wu}.review.unified`, 'staging']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.unified`, 'staging']).trim(), 'false');
+    sim.refuses(['manifest', 'delete', `${wu}.review.unified`, 'staging'], /not found/);
     sim.run(['manifest', 'set', `${wu}.discovery`,
       'analysis_staging.research-analysis.gate_mode=gated',
       'analysis_staging.research-analysis.candidates.gamma-prime.status=pending',

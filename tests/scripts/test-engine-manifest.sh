@@ -1069,7 +1069,16 @@ echo ""
 echo -e "${YELLOW}Test: get with wildcard topic on empty phase returns empty${NC}"
 setup_fixture
 create_wu wc-empty epic "Empty"
-run_cli set wc-empty phases.implementation '{}' >/dev/null 2>&1
+# The field surface refuses phases.-prefixed writes (shadow guard), so the
+# empty-phase fixture is written directly.
+node -e "
+const fs = require('fs');
+const p = process.argv[1];
+const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+m.phases = m.phases || {};
+m.phases.implementation = {};
+fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
+" "$TEST_DIR/.workflows/wc-empty/manifest.json"
 output=$(run_cli_stdout get wc-empty.implementation.* status)
 assert_equals "$output" "" "Wildcard on empty phase returns empty stdout"
 run_cli_stdout get wc-empty.implementation.* status >/dev/null
