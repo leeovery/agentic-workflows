@@ -200,6 +200,12 @@ Every migration has a matching test suite.
 
 Add or update a test alongside any change to engine scripts, adapters, migrations, or `src/knowledge/`.
 
+## Pipeline Simulation
+
+`tests/scripts/test-pipeline-simulation.cjs` (under `npm test`) drives the engine CLI end-to-end through the call sequences the skill prose prescribes — every work type's mainline plus the supported edges (reopen, supersession, cancel/reactivate, pivot, absorption, promotion, restarts) — auditing the whole state after every mutation: schema-valid manifests, no shadow roots, every derivation computes, every navigation gateway discovers and formats, render surfaces hold. It is the detector for silent state corruption — writes that succeed and only break a menu phases later.
+
+**Any change to the workflows must update the simulation** — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field: extend an existing scenario, add a new permutation, or re-pin changed expectations. A red simulation is the design speaking — decide deliberately whether the flow or the scenario is wrong, never paper over it. New permutations are cheap: a scenario is an ordered list of engine calls with assertions.
+
 ## Knowledge Base Subsystem
 
 Retrieval-augmented store of completed workflow artifacts (research, discussion, investigation, specification — never planning/implementation/review), plus epic discovery **session logs** (indexed under a `discovery` phase — the running exploration record) and seed material for early-phase context: user-shared `imports` and the inbox-promoted `seeds` (the work unit's origin). Every entry-point skill gates on knowledge base initialisation before any phase runs.
