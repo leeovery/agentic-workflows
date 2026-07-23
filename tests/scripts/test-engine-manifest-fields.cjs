@@ -507,6 +507,27 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
     assert.match(runFails(dir, ['set', 'pay.planning.pay', 'tracking.review-integrity-tracking-c1', 'done']).error,
       /Invalid tracking status/);
   });
+
+  it('the non-canonical spellings of guarded locations are refused, not silently unvalidated', () => {
+    // work-unit level via a phases.-prefixed field
+    assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.research-analysis.candidates.auth.status', 'bogus']).error,
+      /"phases" is the phase tree itself/);
+    // phase level via an items.-prefixed field — leaf and wholesale container alike
+    assert.match(runFails(dir, ['set', 'pay.review', 'items.pay.staging.c1.tasks.1', 'bogus']).error,
+      /"items" is the topic tree/);
+    assert.match(runFails(dir, ['set', 'pay.review', 'items.pay.staging', '{"c1":{"tasks":{"1":"bogus"}}}']).error,
+      /"items" is the topic tree/);
+    const m = readWorkUnit(dir, 'pay');
+    assert.strictEqual(m.phases.discovery.analysis_staging, undefined, 'nothing persisted');
+    assert.strictEqual(m.phases.review.items.pay.staging, undefined, 'nothing persisted');
+  });
+
+  it('push cannot seed a guarded container as an array', () => {
+    for (const field of ['staging', 'staging.c1.tasks', 'tracking.some-stem', 'analysis_staging.research-analysis']) {
+      assert.match(runFails(dir, ['push', 'pay.review.pay', field, 'x']).error, /guarded state container/);
+    }
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.review.items.pay.staging, undefined, 'nothing persisted');
+  });
 });
 
 describe('work-unit-level fields never shadow the phases tree', () => {

@@ -21,9 +21,7 @@ You receive file paths via the orchestrator's prompt:
 6. **Task list for current phase** — The task table (ALL tasks in the phase)
 7. **Task detail file path** — Where to write authored tasks
 
-On **amendment**, you also receive:
-- **Task detail file path** — Contains previously authored tasks (an amendment run's prompt names the rejected ids)
-- An amendment run's prompt names the rejected ids; their feedback blockquotes sit under their headings in the detail file
+On **amendment**, the task detail file already contains previously authored tasks and the prompt names the rejected ids.
 
 ## Your Process
 

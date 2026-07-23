@@ -144,13 +144,27 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 ## B. Dispatch Review Synthesizer
 
-**If an in-flight staging cycle exists** (read `manifest get {work_unit}.review.{topic} staging` — a cycle whose `tasks` still hold a `pending` — a crash-resume): do not re-dispatch — the manifest's `staging.c{N}` subtree carries `gate_mode` and the per-task decisions; its file is `review-tasks-c{N}.md`.
+Crash-resume guards — read `manifest get {work_unit}.review.{topic} staging` and check in order. On a resume, `{N}` is the resumed cycle's number and its file is `review-tasks-c{N}.md`.
+
+#### If a staging cycle's `tasks` still hold a `pending` row
+
+The cycle is mid-approval — do not re-dispatch. Its `staging.c{N}` subtree carries `gate_mode` and the per-task decisions.
 
 → Proceed to **C. Approval Overview**.
 
-**If a staging file exists on disk with no matching manifest cycle** (a crash between the synthesizer's write and the init): initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**).
+#### If the latest cycle holds no `pending` row and at least one `approved` and the planning file carries no `Review Remediation (Cycle {N})` phase
+
+The session died between the last gate decision and the plan write — the approvals are recorded but unrealised.
+
+→ Proceed to **F. Create Tasks in Plan**.
+
+#### If a staging file exists on disk with no matching manifest cycle
+
+A crash between the synthesizer's write and the init — initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**).
 
 → Proceed to **C. Approval Overview**.
+
+#### Otherwise
 
 → Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions as written.
 
@@ -188,7 +202,7 @@ No actionable tasks synthesized. Review complete.
 
 ## C. Approval Overview
 
-Read the staging file from `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle-number}.md` (task content) and the cycle's state from `manifest get {work_unit}.review.{topic} staging.c{cycle-number}` (statuses + `gate_mode`).
+Read the staging file from `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` (task content) and the cycle's state from `manifest get {work_unit}.review.{topic} staging.c{N}` (statuses + `gate_mode`).
 
 Write the overview payload to `.workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json` with the Write tool (`{"label": "Review synthesis cycle {N}", "tasks": [{"title": "…", "severity": "…"}]}`), render, and emit the section verbatim:
 

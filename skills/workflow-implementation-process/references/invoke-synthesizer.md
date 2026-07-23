@@ -34,12 +34,16 @@ SUMMARY: {1-2 sentences}
 ```
 
 - `tasks_proposed`: tasks written to staging file — present for approval
+- `clean`: no actionable findings — orchestrator should proceed to completion
+
+---
+
+## Initialise Gate State
 
 **If `STATUS` is `tasks_proposed`**, initialise the cycle's gate state — one batched write, one `pending` per task from `TASKS_PROPOSED`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending
 ```
-- `clean`: no actionable findings — orchestrator should proceed to completion
 
 → Return to caller.

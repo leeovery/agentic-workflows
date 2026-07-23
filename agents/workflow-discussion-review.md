@@ -72,8 +72,6 @@ The output file is pure markdown — no frontmatter, ever; the orchestrator's ow
 {Optional. Anything else notable — strong areas, potential risks, patterns. Keep brief.}
 ```
 
-Numbering is continuous across all sections.
-
 If no gaps or questions found:
 
 ```markdown

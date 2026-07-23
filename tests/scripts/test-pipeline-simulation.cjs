@@ -304,8 +304,15 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
+  // The amendment resets a rejected row to pending only after the rewrite lands (author-tasks B).
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
+  // Guarded containers refuse the writes no prose ever makes — wholesale, pushed, or non-canonically spelt.
+  sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, 'staging', '{}'], /guarded state container/);
+  sim.refuses(['manifest', 'push', `${wu}.planning.${topic}`, 'staging.author-p1.tasks', 'x'], /guarded state container/);
+  sim.refuses(['manifest', 'set', `${wu}.planning`, `items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"items" is the topic tree/);
+  sim.refuses(['manifest', 'set', wu, `phases.planning.items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"phases" is the phase tree/);
   sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
 
   sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
@@ -692,6 +699,8 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
 
     // Dispatch two agents; no files exist until the sub-agents write them.
+    // A traversal topic refuses at every verb — the colocation promise depends on it.
+    sim.refuses(['agent', 'dispatch', wu, 'research', '../../../escape', '--kind', 'review'], /Invalid topic/);
     const review = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
     sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);

@@ -75,7 +75,7 @@ No assessment needed — feature, bugfix, and cross-cutting work types always pr
 
 Before proceeding to sign-off, read `manifest get {work_unit}.specification.{topic} tracking` — every entry across all cycles must be `complete` (`review-input-tracking-c{N}` after each Phase 1, `review-gap-analysis-tracking-c{N}` after each Phase 2).
 
-If any entry is `in-progress`, that file's findings were not fully processed — work them per **[process-review-findings.md](process-review-findings.md)**, then re-verify.
+If any entry is `in-progress`, that file's findings were not fully processed — work them per **[process-review-findings.md](process-review-findings.md)**, then re-verify. A tracking file on disk with no manifest entry is a crash orphan (the session died before recording it) — record it `in-progress` and process it the same way.
 
 > **CHECKPOINT**: Do not proceed to sign-off while the manifest's `tracking` subtree holds an `in-progress` entry. It indicates incomplete review work.
 
