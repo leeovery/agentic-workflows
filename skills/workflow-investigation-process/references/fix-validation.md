@@ -41,28 +41,10 @@ Fix direction agreed. Run fix validation?
 
 ## B. Dispatch
 
-Ensure the cache directory exists:
+Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
 
 ```bash
-mkdir -p .workflows/.cache/{work_unit}/investigation/{topic}
-```
-
-Determine the next set number by checking existing files:
-
-```bash
-ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
-```
-
-Use the next available `{NNN}` for `fix-validation-*` files (zero-padded, e.g., `001`, `002`).
-
-Write the skeleton cache file at `.workflows/.cache/{work_unit}/investigation/{topic}/fix-validation-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
-
-```yaml
----
-type: fix-validation
-status: in-flight
-created: {date}
----
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {topic} --kind fix-validation
 ```
 
 **Agent path**: `../../../agents/workflow-investigation-fix-validation.md`
@@ -78,7 +60,7 @@ Dispatch **one agent** via the Task tool (**synchronous** — do not use `run_in
 The validation agent receives:
 
 1. **Investigation file path** — `.workflows/{work_unit}/investigation/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/investigation/{topic}/fix-validation-{NNN}.md` (the skeleton above is already on disk there)
+2. **Output file path** — the `file` from the dispatch response. The agent writes its completed verdict there — pure markdown, never frontmatter.
 
 The validation agent returns:
 
@@ -95,11 +77,16 @@ SUMMARY: {1 sentence}
 
 ## C. Process Results
 
-Read the validation output file.
+The agent ran in the foreground, so its report has landed. Promote and read it, then close the row — the verdict is consumed inline, never surfaced finding-by-finding:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} investigation {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} investigation {topic} {id}
+```
+
+Read the report at the row's content file.
 
 #### If `validated`
-
-Update the output file frontmatter to `status: read`.
 
 > *Output the next fenced block as a code block:*
 
@@ -111,8 +98,6 @@ Fix validation: Direction confirmed ({CONFIDENCE} confidence). No unaddressed ri
 
 #### If `risks_found`
 
-Update the output file frontmatter to `status: read`.
-
 Extract the key risks from the validation file. Present a brief summary — do not dump the full output. Each risk line states what could break in behaviour terms — code refs as anchors, not the lead.
 
 > *Output the next fenced block as a code block:*
@@ -123,7 +108,7 @@ Fix validation: {CONFIDENCE} confidence. {RISKS_COUNT} risk(s) identified.
   {risk 1}
   {risk 2}
 
-Full analysis: .workflows/.cache/{work_unit}/investigation/{topic}/fix-validation-{NNN}.md
+Full analysis: {the row's content file path}
 ```
 
 The risks live only in cache — each must land in the investigation file or be explicitly dismissed before the phase concludes over them:
