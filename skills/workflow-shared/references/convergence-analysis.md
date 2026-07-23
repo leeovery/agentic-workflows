@@ -37,7 +37,7 @@ Read tracking data from all available cycles. Extract only finding titles, key i
 
 Read the fix tracking cache file:
 ```
-.workflows/.cache/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md
+.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md
 ```
 
 For each `## Attempt {N}` section, extract:
