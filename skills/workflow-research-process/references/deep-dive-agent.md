@@ -107,7 +107,7 @@ SUMMARY: {1-2 sentences}
 
 The research session continues — do not wait for the agent to return.
 
-**Concurrency**: Before dispatching, count the `deep-dive` ids in `agent scan`'s `in_flight` list. Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
+**Concurrency**: Before dispatching, count the `deep-dive` ids in `agent scan`'s `in_flight` list — excluding rows an earlier session dispatched (those agents are dead; incorporate them instead of counting them). Limit to 3-4 in flight at once. If the limit is reached, note the thread for later dispatch.
 
 ---
 

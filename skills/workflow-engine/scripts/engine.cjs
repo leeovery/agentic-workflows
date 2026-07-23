@@ -160,6 +160,7 @@ Commands:
   agent announce <work-unit> <phase> <topic> <id>
   agent surface  <work-unit> <phase> <topic> <id> <finding>
   agent incorporate <work-unit> <phase> <topic> <id>
+  agent purge   <work-unit> <phase> <topic>
   commit <work-unit> -m <message> [--plan <topic>]
   commit --inbox -m <message>
   commit --workflows -m <message>
@@ -681,6 +682,13 @@ function runAgent(argv) {
       respond(fn(cwd, workUnit, phase, topic, id));
       return;
     }
+    if (command === 'purge') {
+      if (!workUnit || !phase || !topic || positional.length !== 3) {
+        throw new Error('Usage: engine agent purge <work-unit> <phase> <topic>');
+      }
+      respond(agentState.purgeAgents(cwd, workUnit, phase, topic));
+      return;
+    }
     if (command === 'surface') {
       if (!workUnit || !phase || !topic || !id || !finding || positional.length !== 5) {
         throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>');
@@ -688,7 +696,7 @@ function runAgent(argv) {
       respond(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
       return;
     }
-    throw new Error('Usage: engine agent <dispatch|scan|ack|announce|surface|incorporate> <work-unit> <phase> <topic> …');
+    throw new Error('Usage: engine agent <dispatch|scan|ack|announce|surface|incorporate|purge> <work-unit> <phase> <topic> …');
   } catch (err) {
     failJson(err);
   }

@@ -146,7 +146,7 @@ The discussion continues — do not wait for the agent to return.
 
 This section handles two responsibilities: promoting completed perspective sets to synthesis, and surfacing synthesis findings via the never-dump protocol.
 
-**Perspective completion check** — run `agent scan` and group the `perspective` rows by their `set` field. For each set, if every perspective row in the set is `pending` (one still `in-flight` is an agent still running) AND no `synthesis` row carries that `set`, proceed to **C. Dispatch Synthesis Agent** for that set.
+**Perspective completion check** — run `agent scan` and group the `perspective` rows by their `set` field. For each set, if every perspective row in the set is `pending` (one still `in-flight` is an agent still running) AND no `synthesis` row carries that `set`, proceed to **C. Dispatch Synthesis Agent** for that set. Rows an earlier session dispatched are dead, not running: incorporate a dead lens (its half-read council can no longer synthesise — re-offer the pair if the decision still matters) or a dead synthesis (the engine then permits a fresh `--kind synthesis --set {set}` for the council).
 
 **Synthesis surfacing** — a synthesis report carries tensions that must NOT be dumped. Delegate presentation to the shared surfacing protocol.
 

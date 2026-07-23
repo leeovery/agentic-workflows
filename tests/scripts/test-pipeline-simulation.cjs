@@ -684,13 +684,14 @@ describe('pipeline simulation', () => {
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     assert.strictEqual(scan.next, null, 'a half-landed council is not actionable');
     assert.strictEqual(scan.pending.length + scan.in_flight.length, 2);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /not complete/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009'], /No perspective set/);
 
     sim.write(pair.agents[1].file, '# The capability-first case\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     const syn = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
     assert.strictEqual(syn.id, `synthesis-${pair.set}`);
-    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /already has a synthesis/);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /already has a live synthesis/);
     for (const a of pair.agents) sim.run(['agent', 'incorporate', wu, 'discussion', 'alpha', a.id]);
     sim.write(syn.file, '# Landscape\n\n### T1: the tradeoff\n');
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
