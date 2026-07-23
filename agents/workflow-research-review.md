@@ -104,6 +104,7 @@ Return a brief status to the orchestrator:
 
 ```
 STATUS: gaps_found | clean
+FINDINGS: {F1,F2,… — every id in the report, comma-separated; omit when clean}
 GAPS_COUNT: {N}
 ASSUMPTIONS_COUNT: {N}
 SUMMARY: {1 sentence}

@@ -103,6 +103,7 @@ Return a brief status to the orchestrator:
 ```
 STATUS: complete
 DECISION: {topic}
-TENSIONS: {N}
+TENSIONS: {T1,T2,… — every id in the report, comma-separated; omit when none}
+TENSIONS_COUNT: {N}
 SUMMARY: {1-2 sentences — the key tradeoff}
 ```

@@ -26,7 +26,7 @@ Take the highest-numbered row of kind `review`.
 
 #### If it is `pending`
 
-Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md` — and collect its finding ids (the `## {ID}` section headings).
+Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `## {ID}` section headings. Cross-check the count either way.
 
 **If the report has no findings:**
 
