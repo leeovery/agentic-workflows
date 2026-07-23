@@ -70,9 +70,7 @@ Commit both manifests:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to feature"
 ```
 
-Invoke `/workflow-discussion-entry feature {work_unit}`.
-
-**STOP.** Do not proceed — terminal condition.
+→ Proceed to **C. First Phase**.
 
 #### If `bugfix`
 
@@ -89,6 +87,54 @@ Commit both manifests:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to bugfix"
 ```
 
-Invoke `/workflow-investigation-entry bugfix {work_unit}`.
+Set `next_phase` = `investigation`.
+
+→ Proceed to **D. Bridge**.
+
+## C. First Phase
+
+Propose research-vs-discussion — the concerns that triggered promotion are the strongest cue:
+
+- **research** — open feasibility / "how does X work" / "what's possible" unknowns the work hasn't resolved.
+- **discussion** — the shape is clear and the open questions are trade-offs and decisions, not unknowns.
+
+Lead with your read and one reason, then render the choice:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+{One-line read + reason, e.g. "The concern is an open unknown —
+I'd start with research."}
+
+- **`r`/`research`** — Explore feasibility and options first, no decisions yet
+- **`d`/`discussion`** — Ready to discuss and make decisions
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+Set `next_phase` to the choice (`research` or `discussion`).
+
+→ Proceed to **D. Bridge**.
+
+## D. Bridge
+
+The promoted work unit re-enters the pipeline the way discovery hands off single-phase work — the destination is supplied, not derived from state.
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Work type updated — entering plan mode to hand off the first
+> phase in a clean context.
+```
+
+```
+Pipeline bridge for: {work_unit}
+Completed phase: discovery
+Next phase: {next_phase}
+
+Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
+```
 
 **STOP.** Do not proceed — terminal condition.
