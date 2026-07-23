@@ -255,6 +255,20 @@ function validateSet(segments, value) {
   }
 }
 
+// A work-unit-level field whose first segment names a phase builds a shadow
+// tree beside `phases.*` that no read ever joins — a typo'd dot-path
+// (`set wu specification.x` for `set wu.specification.topic x`) must fail
+// loudly, not land silently. Mutation-only: reads and delete stay free so a
+// stray tree can still be inspected and repaired.
+/** @param {string|null} phase @param {string[]} fieldSegments */
+function refuseShadowField(phase, fieldSegments) {
+  if (phase !== null) return;
+  const head = fieldSegments[0];
+  if (VALID_PHASES.includes(head)) {
+    fail(`Invalid field "${fieldSegments.join('.')}" at work-unit level: "${head}" is a phase — use the dot-path (<work-unit>.${head}[.<topic>] <field>) so the write lands under phases with validation`);
+  }
+}
+
 /** @param {*} value */
 function validateStoragePaths(value) {
   if (!Array.isArray(value) || value.some((p) => typeof p !== 'string')) {
@@ -747,7 +761,9 @@ function cmdSet(cwd, args) {
   // checked whatever type that parse produced (a bare number/boolean/~ would
   // otherwise slip past a string-only guard and corrupt a typed field).
   const planned = writes.map((write) => {
-    const segments = resolveSegments(phase, topic, write.field.split('.'));
+    const fieldSegments = write.field.split('.');
+    refuseShadowField(phase, fieldSegments);
+    const segments = resolveSegments(phase, topic, fieldSegments);
     validateSet(segments, write.value);
     return { segments, value: write.value };
   });
@@ -801,6 +817,7 @@ function cmdPush(cwd, args) {
 
   requireWorkUnit(cwd, workUnit);
 
+  refuseShadowField(phase, fieldSegments);
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   const length = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
@@ -959,7 +976,9 @@ function cmdApply(cwd, args) {
         fail(`apply: ${at} — "fields" must be a non-empty object of {"<field.path>": value}`);
       }
       const writes = entries.map(([field, value]) => {
-        const segments = resolveSegments(phase, topic, field.split('.'));
+        const fieldSegments = field.split('.');
+        refuseShadowField(phase, fieldSegments);
+        const segments = resolveSegments(phase, topic, fieldSegments);
         validateSet(segments, value);
         return { segments, value };
       });
