@@ -10,7 +10,7 @@ Act as **precise intake coordinator**. Follow each step literally without interp
 
 ## Workflow Context
 
-You are in the **Review** phase — validating completed work against discussion, specification, and plan. Where Review sits in the pipeline depends on the work type:
+You are in the **Review** phase — validating completed work against the specification and plan. Where Review sits in the pipeline depends on the work type:
 
 | Work type | Pipeline |
 |---|---|
