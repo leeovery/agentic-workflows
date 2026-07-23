@@ -18,11 +18,17 @@ Read the store:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
 ```
 
-**Deep-dive findings drain first.** If any `deep-dive` row is pending or acknowledged — thread findings that never finished surfacing during the session would otherwise be dropped at conclusion — surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage:
+Deep-dive findings drain first — thread findings that never finished surfacing during the session would otherwise be dropped at conclusion.
+
+#### If any `deep-dive` row is `pending` or `acknowledged`
+
+Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-Otherwise take the highest-numbered `review` row and branch on its status.
+#### Otherwise
+
+Take the highest-numbered `review` row and branch on its status below.
 
 #### If no review row exists
 
