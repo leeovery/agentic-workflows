@@ -247,8 +247,8 @@ function validateSet(segments, value) {
     // Staging task decisions (phases.<phase>.items.<item>.staging.c<N>.tasks.<n>)
     if (segments.length >= 2 && segments[segments.length - 2] === 'tasks'
         && segments.includes('staging')) {
-      if (typeof value !== 'string' || !['pending', 'approved', 'skipped'].includes(value)) {
-        fail(`Invalid staging task status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped`);
+      if (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'rejected'].includes(value)) {
+        fail(`Invalid staging task status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, rejected`);
       }
       return;
     }

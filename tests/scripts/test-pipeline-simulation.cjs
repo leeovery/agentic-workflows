@@ -298,6 +298,16 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
     'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
     `task_map.${topic}-1-1=${topic}-1-1`, 'storage_paths=[]']);
+
+  // Approvals and authoring decisions are manifest state, vocabulary-guarded.
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
+  sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
+  sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
+
   sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
   sim.run(['topic', 'complete', wu, 'planning', topic]);
 
