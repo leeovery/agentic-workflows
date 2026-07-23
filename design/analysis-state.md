@@ -91,6 +91,22 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Review round 3 (#535), the same six lenses re-aimed at
+  round 2's tip after Lee called the find volume. The clustering
+  vindicated the repeat: nearly every find sat in code round 2 wrote.
+  Three highs — the resume guard I added to author-tasks swallowed the
+  amendment path (root cause: resetting rejected→pending before the
+  rewrite destroys the branchable marker; fixed by moving the guard to
+  A and the reset to after the agent returns), both gate loops lacked
+  a decided-cycle resume arm (a crash between last approval and plan
+  write minted a duplicate cycle — the round-2 idempotency rule had no
+  caller until now), and the topic path-guard missed dispatch/ack (the
+  write verb traversed; reproduced). Plus the field-relative validator
+  rewrite reopening non-canonical spellings, the zero-candidates gate
+  refusal, and the untested-guard debt now paid as refusal pins.
+  Lesson blunt and repeatable: each fix round seeds the next round's
+  highs — review rounds continue until a round comes back empty-handed.
+
 - 2026-07-23 — Review round 2 (#534), six fresh lenses over cleared
   ground per Lee's no-single-pass rule. The re-review of "clean"
   surfaces paid: the round-1 fix for the task-writer HIGH had placed
