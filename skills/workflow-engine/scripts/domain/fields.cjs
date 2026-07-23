@@ -258,8 +258,9 @@ function validateSet(segments, value) {
 // A work-unit-level field whose first segment names a phase builds a shadow
 // tree beside `phases.*` that no read ever joins — a typo'd dot-path
 // (`set wu specification.x` for `set wu.specification.topic x`) must fail
-// loudly, not land silently. Mutation-only: reads and delete stay free so a
-// stray tree can still be inspected and repaired.
+// loudly, not land silently. Mutations only (set, push, pull, apply set-ops);
+// reads and delete stay free so a stray tree can still be inspected and
+// repaired.
 /** @param {string|null} phase @param {string[]} fieldSegments */
 function refuseShadowField(phase, fieldSegments) {
   if (phase !== null) return;
@@ -872,6 +873,7 @@ function cmdPull(cwd, args) {
 
   requireWorkUnit(cwd, workUnit);
 
+  refuseShadowField(phase, fieldSegments);
   const segments = resolveSegments(phase, topic, fieldSegments);
 
   const result = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {

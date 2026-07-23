@@ -104,8 +104,7 @@ Lead with your read and one reason, then render the choice:
 
 ```
 · · · · · · · · · · · ·
-{One-line read + reason, e.g. "The concern is an open unknown —
-I'd start with research."}
+{One-line read + reason, e.g. "The concern is an open unknown — I'd start with research."}
 
 - **`r`/`research`** — Explore feasibility and options first, no decisions yet
 - **`d`/`discussion`** — Ready to discuss and make decisions

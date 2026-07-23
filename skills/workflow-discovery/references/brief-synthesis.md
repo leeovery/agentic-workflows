@@ -10,7 +10,7 @@ Loaded by [topic-synthesis.md](topic-synthesis.md) E on the confirmed harvest, w
 
 For each topic in the confirmed set — the working-list new topics **plus** any existing map topic this session's exploration materially deepened — extract that topic's slice from the whole exploration (all sessions in context) and (over)write `.workflows/{work_unit}/discovery/briefs/{topic}.md`.
 
-Note which written topics are existing committed map topics that had no brief before this write — **B**'s pointer backfill needs them.
+Note which written topics are existing committed map topics — **B**'s pointer backfill checks their pointers.
 
 The brief is a written artifact, not user output — write the file, do not render it. Word every decision plainly and naturally: softness is conferred by where the brief lives on the gradient, not by hedged wording. Empty sections get `(none)`.
 
@@ -54,7 +54,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit
 
 New topics with no prior brief need no cleanup. A `delete` op fails the whole batch when the field is absent — include only topics that actually carried a `brief_path` (committed map topics with a prior brief); the `rm -f` paths are safe to include unconditionally.
 
-**Pointer backfill** — the write direction of the same bookkeeping: a brief first-written in **A** for an existing committed topic has a file but no pointer (new working-list topics get `brief_path` from the persist batch; regenerated briefs already point). Add one set op per such topic to the same ops file:
+**Pointer backfill** — the write direction of the same bookkeeping: a brief written in **A** for an existing committed topic whose map item lacks `brief_path` has a file but no pointer (new working-list topics get theirs from the persist batch). Keying on the pointer, not the file, also heals briefs orphaned by an interrupted prior harvest. Read each written committed topic's pointer (`get` prints nothing when absent) and add one set op per lacking topic to the same ops file:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} brief_path
+```
 
 ```json
 [{"op": "set", "path": "{work_unit}.discovery.{topic}", "fields": {"brief_path": "discovery/briefs/{topic}.md"}}]
