@@ -159,6 +159,8 @@ Skill files use placeholders in fenced block templates. The syntax is:
 
 Casing hints: `titlecase`, `lowercase`, `kebabcase`. No hint means output the raw value.
 
+A placeholder never wraps across lines — long example text stays on one line inside its braces. The conventions lint's templated-fence ratchet classifies single-line placeholders only, so a wrapped one silently evades the pin count.
+
 Each part is optional — use only what's needed for clarity.
 
 **Conditional directives** for branches that render differently based on state:
