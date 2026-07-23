@@ -36,9 +36,9 @@ The session died between the last gate decision and the plan write — the appro
 
 → Proceed to **H. Create Tasks in Plan**.
 
-#### If a staging file exists on disk with no matching manifest cycle
+#### If an `analysis-tasks-c{N}.md` staging file exists on disk with no matching manifest cycle
 
-A crash between the synthesizer's write and the init — initialise the cycle from the file's task count.
+A crash between the synthesizer's write and the init — initialise the cycle from the file's task count. Only the `analysis-tasks-` family counts: `review-tasks-c*.md` files in the same directory belong to the review item.
 
 → Proceed to **E. Approval Overview**.
 
@@ -157,10 +157,10 @@ impl({work_unit}): pre-analysis checkpoint
 
 > **CHECKPOINT**: Do not proceed until all agents have returned.
 
-Commit the analysis findings:
+Commit the analysis findings — the scoped commit covers the findings files and the manifest's cycle counters:
 
-```
-impl({work_unit}): analysis cycle {N} — findings
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings"
 ```
 
 #### If all three agents returned `STATUS: clean`
@@ -179,10 +179,10 @@ impl({work_unit}): analysis cycle {N} — findings
 
 > **CHECKPOINT**: Do not proceed until the synthesizer has returned.
 
-Commit the synthesis output:
+Commit the synthesis output — the scoped commit covers the report, any staging file, and the manifest's gate state:
 
-```
-impl({work_unit}): analysis cycle {N} — synthesis
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — synthesis"
 ```
 
 #### If `STATUS` is `clean`
@@ -271,10 +271,10 @@ Revise the task content in the staging file based on the user's feedback.
 
 #### If all tasks were skipped
 
-Commit the cycle's decisions:
+Commit the cycle's decisions (the scoped commit covers the manifest):
 
-```
-impl({work_unit}): analysis cycle {N} — tasks skipped
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — tasks skipped"
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
@@ -293,10 +293,10 @@ impl({work_unit}): analysis cycle {N} — tasks skipped
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
 ```
 
-Commit all analysis and plan changes with raw git — stage the analysis outputs, the plan's `storage_paths` (recorded on the planning item), and the work unit, then commit:
+Commit all analysis and plan changes — `--plan` stages the work unit and the plan's declared storage in one scoped call:
 
-```
-impl({work_unit}): add analysis phase {N} ({K} tasks)
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add analysis phase {N} ({K} tasks)" --plan {topic}
 ```
 
 → Return to caller.
