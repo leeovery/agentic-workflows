@@ -89,6 +89,21 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — #528 round 2 (behaviour inventory, crash/resume seams,
+  fix-round cold review): the inventory answered Lee's deleted-prose
+  concern by count — 233 behavioural units in the old files, 0 lost,
+  0 weakened, 30 promoted to enforced engine guards, 1 justified drop
+  (write-only decision field). Two new majors, both fixed: topic
+  restart's rm -rf silently inverted from complete cleanse to partial
+  (state lives above the deleted dir) — new `agent purge` verb, called
+  from both restart flows; and `--set` bypassed the legacy-collision
+  guard — a dead session's stale synthesis file could surface as a
+  fresh council's report. Hardened with them: synthesis requires a
+  complete landed set at the engine; one-per-set applies to live rows
+  (dead-synthesis recovery); ack refuses synthesis inputs; the watch
+  path bounces instead of falsely satisfying the gate (the round-1
+  fix had turned base's stall into a false pass — caught cold).
+
 - 2026-07-23 — #528 review round (three slices: protocol walkthrough
   vs engine, dispatch-site audit, conventions pass): five verified
   majors, all fixed on the branch. The big one: set identity for the
