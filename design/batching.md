@@ -92,6 +92,22 @@ Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
 
+- 2026-07-23 — Round-3 ambiguities resolved with Lee (#515–#520, six
+  single-change PRs stacked on #514). Promotion predates discovery
+  (03-28 vs 05-31) and never picked up its routing — promote now
+  mirrors first-phase-routing (research-vs-discussion for features)
+  and hands off through the bridge's supplied-destination arm. Bugfix
+  spec source-name pinned to {topic}. Gate-skip sentence made true in
+  gate-less phases (uniform clause, 22 files). Review-entry names its
+  real upstream (spec + plan). Triage's superseded-research arm
+  stripped after a Chesterton dig: added deliberately in #451 but
+  modelled on spec-style single-absorber supersession — the only real
+  producer (legacy split) renames items out of map reach and never
+  writes superseded_by. Engine now refuses work-unit-level fields that
+  shadow the phases tree (verified live before fixing). Won't-fix by
+  decision: bg-agent cache durability, legacy sentinel render window,
+  absorb re-entrancy; brief_incorporated kept as forensic breadcrumb.
+
 - 2026-07-23 — System-wide round 3 (#514): six slices, wide — epic
   journey, adversarial CLI hammering, engine state-machine audit,
   quickfix/bugfix journeys, crash/resume seams, corpus-wide reference
