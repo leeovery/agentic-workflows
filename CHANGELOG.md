@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.8] - 2026-07-23
+
+✨ Added
+- Findings, reviews, and task results are now retold in plain product terms first — what you'd see happen, why, and what it touches — with a `t`/`technical` option to hear the same report from the code's perspective, and `v`/`view` to see the raw record.
+- Review and investigation-findings gates gain `t`/`technical` and `v`/`view` options; task approval and fix-review gates gain a `t`/`technical` option.
+
+🔧 Changed
+- Discovery topic summaries, research/discussion-gap topic summaries, and inbox item summaries are now worded product-first — the capability at stake, not the mechanism.
+- Investigation check-in and pivot gates, and the convergence diagnostic, open with a plain-language sentence explaining what was found before showing the details.
+- Validation risk/gap summaries for investigation now lead with what could go wrong in behaviour terms, with code references as supporting anchors rather than the headline.
+
 ## [0.6.7] - 2026-07-23
 
 🔧 Changed
