@@ -21,8 +21,7 @@ Lead with your read and one reason, then render the choice:
 
 ```
 · · · · · · · · · · · ·
-{One-line read + reason, e.g. "The shape's clear and the open
-questions are trade-offs — I'd start with discussion."}
+{One-line read + reason, e.g. "The shape's clear and the open questions are trade-offs — I'd start with discussion."}
 
 - **`r`/`research`** — Explore feasibility and options first, no decisions yet
 - **`d`/`discussion`** — Ready to discuss and make decisions

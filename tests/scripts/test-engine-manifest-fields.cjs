@@ -489,8 +489,9 @@ describe('work-unit-level fields never shadow the phases tree', () => {
     assert.strictEqual(m.description, 'Fixture', 'refused batch persisted nothing');
   });
 
-  it('push refuses a phase-name-headed field; apply routes set ops through the same guard', () => {
+  it('push and pull refuse a phase-name-headed field; apply routes set ops through the same guard', () => {
     assert.match(runFails(dir, ['push', 'pay', 'review.list', 'x']).error, /"review" is a phase/);
+    assert.match(runFails(dir, ['pull', 'pay', 'research.foo', 'x']).error, /"research" is a phase/);
     const f = path.join(dir, 'ops.json');
     fs.writeFileSync(f, JSON.stringify([{ op: 'set', path: 'pay', fields: { 'research.foo': 1 } }]));
     assert.match(runFails(dir, ['apply', 'pay', '--file', f]).error, /"research" is a phase/);
