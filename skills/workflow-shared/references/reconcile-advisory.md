@@ -22,13 +22,13 @@ The common case. No output.
 
 #### If output is non-empty (reconcile flagged)
 
-The discovery brief was regenerated after this work started. Surface a non-blocking advisory (never a STOP gate), re-read the regenerated brief into context, and clear the flag.
+A discovery brief was written or regenerated after this work started. Surface a non-blocking advisory (never a STOP gate), re-read the regenerated brief into context, and clear the flag.
 
 > *Output the next fenced block as a code block:*
 
 ```
   ⚑ Discovery context changed since this work started.
-    Reconciling against the regenerated discovery brief —
+    Reconciling against the latest discovery brief —
     review and update as needed. Nothing has been overwritten.
 ```
 
