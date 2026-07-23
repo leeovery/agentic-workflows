@@ -145,7 +145,8 @@ Any questions before proceeding?
 @if(has_recommendations)
 - **`s`/`surface`** — Surface recommendations to inbox
 @endif
-- **`t`/`technical`** — Show the full review report
+- **`t`/`technical`** — Retell the review from the code's perspective
+- **`v`/`view`** — Show the full review report
 - **`c`/`continue`** — Proceed to review actions
 - **Ask a question** — Ask about the review findings
 · · · · · · · · · · · ·
@@ -161,7 +162,15 @@ Answer the question using the review file, QA task files, specification, and pla
 
 #### If `technical`
 
-Output the full content of `.workflows/{work_unit}/review/{topic}/report.md` verbatim as a code block.
+→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
+
+Retell the review through the technical lens — the verdict, required changes, and recommendations from `report.md`, mechanism-first, as a markdown narrative (not a code block).
+
+→ Return to **B. Q&A Loop**.
+
+#### If `view`
+
+Render the full content of `.workflows/{work_unit}/review/{topic}/report.md` as markdown (not a code block).
 
 → Return to **B. Q&A Loop**.
 

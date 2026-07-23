@@ -27,7 +27,7 @@ Retell the investigation file's findings as a markdown narrative (not a code blo
 3. **What else it touches** — the Blast Radius: which parts of the product share the broken path.
 4. **Why nobody caught it** — the testing gap, edge case, or recent change, plainly.
 
-Every substantive point in those sections appears in the retelling — nothing softened, nothing dropped. The full technical record is one `t` away.
+Every substantive point in those sections appears in the retelling — nothing softened, nothing dropped. The code-perspective retelling is one `t` away; the record file itself one `v` away.
 
 → On return, proceed to **B. Sign-off Gate**.
 
@@ -42,7 +42,8 @@ Every substantive point in those sections appears in the retelling — nothing s
 Do these findings match your understanding?
 
 - **`y`/`yes`** — Findings are correct, move to fix exploration
-- **`t`/`technical`** — Show the full technical record
+- **`t`/`technical`** — Retell the findings from the code's perspective
+- **`v`/`view`** — Show the full investigation file
 - **Provide feedback** — Tell me what's off or unclear
 · · · · · · · · · · · ·
 ```
@@ -55,41 +56,37 @@ Do these findings match your understanding?
 
 #### If `technical`
 
-→ Proceed to **C. Technical Record**.
+→ Proceed to **C. Technical Perspective**.
+
+#### If `view`
+
+→ Proceed to **D. View the Record**.
 
 #### If the user provides feedback
 
-→ Proceed to **D. Address Feedback**.
+→ Proceed to **E. Address Feedback**.
 
 ---
 
-## C. Technical Record
+## C. Technical Perspective
 
-> *Output the next fenced block as a code block:*
+→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
 
-```
-Investigation Findings: {work_unit}
-
-Root Cause:
-  {clear, precise root cause statement}
-
-Contributing Factors:
-  {factor 1}
-  {factor 2}
-
-Blast Radius:
-  Directly affected:  {components}
-  Potentially affected: {components sharing code/patterns}
-
-Why It Wasn't Caught:
-  {testing gap, edge case, recent change}
-```
+Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first, as a markdown narrative (not a code block).
 
 → Return to **B. Sign-off Gate**.
 
 ---
 
-## D. Address Feedback
+## D. View the Record
+
+Render the full content of `.workflows/{work_unit}/investigation/{topic}.md` as markdown (not a code block).
+
+→ Return to **B. Sign-off Gate**.
+
+---
+
+## E. Address Feedback
 
 Address the user's concerns directly. Re-trace code paths if needed. Provide supporting evidence from the code trace. Update the investigation file with corrections or new information, and commit.
 

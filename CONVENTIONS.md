@@ -46,7 +46,7 @@ Code blocks are used for informational displays (overviews, status, keys, phase 
 
 ### Presentation Register
 
-Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, full fidelity to the underlying record. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim in its fence — see Content Dividers & Frames.
+Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, full fidelity to the underlying record. A `t`/`technical` option retells the same report from the code's perspective per `skills/workflow-shared/references/technical-lens.md` — a lens shift driven by Claude, never a file dump; where a raw view earns a place, it is a separate `v`/`view` option rendering the record file as markdown. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim in its fence — see Content Dividers & Frames.
 
 ### Engine Output Sections
 
