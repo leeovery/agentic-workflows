@@ -47,7 +47,7 @@ Append the new phase and task table to the planning file (path provided in input
 
 ## Update task_map
 
-After creating task files, record all ID mappings in the manifest via the CLI:
+After creating task files, record all ID mappings in the manifest via the CLI. Cover **every** approved task in this cycle's phase — including tasks an interrupted run already created (their files exist but their `task_map` rows may be missing):
 
 For the phase:
 ```bash
