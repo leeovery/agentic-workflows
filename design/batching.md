@@ -92,6 +92,17 @@ Each PR: verb + tests + prose swaps + census row ticked here.
 
 ## Log
 
+- 2026-07-23 — #511 landed and cleaned; the stack restacked onto main
+  with it (safe-stack, clean audit) and #515's promotion handoff
+  restyled to the merged slash-invocation grammar — no convergence debt
+  left. Review feedback on #513 rebuilt brief-synthesis C's skip as an
+  H4 conditional, and pulling that thread exposed a pre-stack lifecycle
+  hole (#521): a brief first-written for an existing committed topic
+  had a file but no brief_path — unread by read-brief-context (silent
+  description fallback) and exempt from reconcile flagging. B now
+  backfills pointers in the cleanup ops file; C flags every in-flight
+  downstream item a fresh brief post-dates, not just regenerations.
+
 - 2026-07-23 — Round-3 ambiguities resolved with Lee (#515–#520, six
   single-change PRs stacked on #514). Promotion predates discovery
   (03-28 vs 05-31) and never picked up its routing — promote now
