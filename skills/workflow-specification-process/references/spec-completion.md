@@ -209,16 +209,7 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
 > for a cross-cutting concern — the pipeline completes here.
 ```
 
-Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: specification
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} specification`.
 
 #### Otherwise
 
@@ -229,13 +220,4 @@ Invoke the workflow-bridge skill to enter plan mode with continuation instructio
 > implementable tasks with dependencies and acceptance criteria.
 ```
 
-Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: specification
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} specification`.

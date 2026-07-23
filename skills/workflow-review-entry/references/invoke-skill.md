@@ -13,6 +13,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 ```
 
 **Handoff:**
+Invoke the **workflow-review-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Review session
 Work unit: {work_unit}
@@ -24,8 +26,3 @@ Plans to review:
     topic: {topic}
     format: {format}
     specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
-
-Invoke the workflow-review-process skill.
-```
-
-Invoke the [workflow-review-process](../../workflow-review-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

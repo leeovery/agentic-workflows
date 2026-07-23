@@ -12,6 +12,8 @@ This skill's purpose is now fulfilled. Construct the handoff and invoke the proc
 
 #### If `work_type` is `feature`
 
+Invoke the **workflow-specification-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Specification session for: {work_unit}
 
@@ -20,11 +22,6 @@ Source material:
 
 Work unit: {work_unit}
 Action: {verb} specification
-
-Invoke the workflow-specification-process skill.
-```
-
-Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
 
 #### If `work_type` is `bugfix`
 
@@ -37,14 +34,11 @@ Source material:
 Work unit: {work_unit}
 Action: {verb} specification
 
-Invoke the workflow-specification-process skill.
-```
-
-Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
-
 #### If `work_type` is `epic`
 
 Read the spec's source discussions from the manifest: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources`. List each source discussion file.
+
+Invoke the **workflow-specification-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Specification session for: {topic}
@@ -57,11 +51,6 @@ Source material:
 Work unit: {work_unit}
 Topic: {topic}
 Action: {verb} specification
-
-Invoke the workflow-specification-process skill.
-```
-
-Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
 
 #### If `work_type` is `cross-cutting`
 
@@ -76,8 +65,3 @@ Source material:
 
 Work unit: {work_unit}
 Action: {verb} specification
-
-Invoke the workflow-specification-process skill.
-```
-
-Invoke the [workflow-specification-process](../../workflow-specification-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

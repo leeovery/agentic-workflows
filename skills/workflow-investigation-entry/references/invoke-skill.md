@@ -20,6 +20,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 Fill the Bug context from that carrier (discovery path) or the `gather-context` answers (logless path) — it primes the process, not a full report; `workflow-investigation-process` does the deep symptom gathering (Step 3) and a knowledge-base query (Step 4):
 
+Invoke the **workflow-investigation-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Investigation session for: {work_unit}
 
@@ -30,11 +32,6 @@ Bug context:
 - Actual behavior: {from the carrier / gather-context}
 - Initial context: {error messages, reproduction steps — from the carrier / gather-context, or "(none captured yet)"}
 
-Invoke the workflow-investigation-process skill.
-```
-
-Invoke the [workflow-investigation-process](../../workflow-investigation-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.
-
 #### If source is `continue`
 
 ```
@@ -42,8 +39,3 @@ Investigation session for: {work_unit}
 
 Source: existing investigation
 Output: .workflows/{work_unit}/investigation/{topic}.md
-
-Invoke the workflow-investigation-process skill.
-```
-
-Invoke the [workflow-investigation-process](../../workflow-investigation-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

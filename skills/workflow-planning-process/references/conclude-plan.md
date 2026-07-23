@@ -58,13 +58,4 @@ Status has been marked as `completed`. The plan is ready for implementation.
 > these tasks using TDD — tests first, then code.
 ```
 
-Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: planning
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} planning`.

@@ -42,13 +42,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 > your work against the specification and plan.
 ```
 
-Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: implementation
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} implementation`.

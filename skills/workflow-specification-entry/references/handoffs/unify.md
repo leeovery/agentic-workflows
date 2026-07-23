@@ -4,7 +4,9 @@
 
 ---
 
-This skill's purpose is now fulfilled. Invoke the [workflow-specification-process](../../../workflow-specification-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled.
+
+Invoke the **workflow-specification-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Specification session for: Unified
@@ -15,7 +17,4 @@ Sources:
 ...
 
 Output: .workflows/{work_unit}/specification/unified/specification.md
-
----
-Invoke the workflow-specification-process skill.
 ```

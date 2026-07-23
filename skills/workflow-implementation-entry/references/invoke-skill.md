@@ -23,6 +23,8 @@ Check if implementation already exists:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.implementation.{topic}
 ```
 
+Invoke the **workflow-implementation-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
+
 ```
 Implementation session for: {topic}
 Work unit: {work_unit}
@@ -34,8 +36,3 @@ Implementation: {exists:[true|false]}
 
 Dependencies: {All satisfied | List any notes}
 Environment: {Setup required | No special setup required}
-
-Invoke the workflow-implementation-process skill.
-```
-
-Invoke the [workflow-implementation-process](../../workflow-implementation-process/SKILL.md) skill. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed. Terminal.

@@ -42,11 +42,4 @@ Emit the response's `DISPLAY: kb warning` section when present, then its `DISPLA
 
 Invoke the bridge for the EPIC (not the cc work unit — the epic continues its pipeline):
 
-```
-Pipeline bridge for: {work_unit}
-Completed phase: specification
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
-
-**STOP.** Do not proceed — terminal condition.
+Invoke `/workflow-bridge {work_unit} specification`.

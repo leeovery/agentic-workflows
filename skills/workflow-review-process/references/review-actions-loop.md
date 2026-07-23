@@ -44,14 +44,7 @@ Commit the completion:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
-**Pipeline continuation** — Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: review
-
-Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
-```
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -97,14 +90,7 @@ Commit the completion:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
-**Pipeline continuation** — Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: review
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -150,14 +136,7 @@ Commit the completion:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review phase"
 ```
 
-**Pipeline continuation** — Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: review
-
-Invoke the workflow-bridge skill to enter plan mode with completion confirmation.
-```
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -189,14 +168,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 No actionable tasks synthesized. Review complete.
 ```
 
-**Pipeline continuation** — Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: review
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -290,14 +262,7 @@ Commit the staging file updates:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — tasks skipped"
 ```
 
-**Pipeline continuation** — Invoke the bridge:
-
-```
-Pipeline bridge for: {work_unit}
-Completed phase: review
-
-Invoke the workflow-bridge skill to enter plan mode with continuation instructions.
-```
+**Pipeline continuation** — Invoke `/workflow-bridge {work_unit} review`.
 
 **STOP.** Do not proceed — terminal condition.
 

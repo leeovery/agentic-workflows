@@ -4,7 +4,9 @@
 
 ---
 
-This skill's purpose is now fulfilled. Invoke the [workflow-specification-process](../../../workflow-specification-process/SKILL.md) skill for your next instructions. Do not act on the gathered information until the skill is loaded — it contains the instructions for how to proceed.
+This skill's purpose is now fulfilled.
+
+Invoke the **workflow-specification-process** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
 
 ```
 Specification session for: Unified
@@ -25,9 +27,6 @@ Context: This consolidates all discussions into a single unified specification. 
 After the unified specification is complete, mark the incorporated specs as superseded via the engine — only specs whose status is not `proposed`:
 
     node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {source-topic} --by unified
-
----
-Invoke the workflow-specification-process skill.
 ```
 
 A proposed grouping is never an "existing specification to incorporate" — it has no file; reconcile already removed the other proposed items as deletes when the unified item was created.
