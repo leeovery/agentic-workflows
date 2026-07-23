@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2026-07-23
+
+✨ Added
+- `manifest apply --file` batches set/delete ops across a work unit in one atomic write, and `discovery-map add-batch` persists a whole topic set in one call — replaces error-prone shell loops with single, all-or-nothing writes.
+- `engine commit --plan` stages a plan's declared external storage (e.g. tick's `.tick/`) alongside the work unit in one scoped commit, so planning/scoping/review no longer need raw multi-path `git add`.
+- A permanent pipeline simulation suite drives every work type end-to-end through its call sequences (reopen, supersession, cancel/reactivate, pivot, absorb, promotion, restarts), auditing manifest state after every mutation.
+- Quick-fix promotion to feature/bugfix now routes through first-phase selection (research vs. discussion) and hands off via the pipeline bridge instead of a hardcoded jump.
+
+🔧 Changed
+- Phase-to-phase handoffs (bridge invocations, skill-to-skill handoffs) now use explicit positional-argument commands and Skill-tool invocations instead of free-text "invoke the X skill" instructions.
+- Discovery briefs are reconciled and their pointers backfilled at every harvest, and downstream research/discussion flagged whenever a brief is first-written or regenerated — not just on regeneration.
+- `manifest set` now enforces one consistent grammar per call — a single field or a uniform batch of `field=value` pairs, never mixed.
+- Cancelling a topic preserves its execution order for restoration on reactivate, instead of losing it.
+- A promoted specification's status is now excluded from phase-status aggregation so it no longer skews sibling topics' displayed state, and topics/phases can no longer be started, completed, or superseded once promoted.
+- Review's "reviewed tasks" count now de-duplicates, so a crash-resume re-run doesn't inflate the unreviewed-task count.
+- Removed the special-cased "superseded research" reroute path in triage in favor of the standard supersession flow.
+
+🐛 Fixed
+- Several crash-resume gaps closed: interrupted analysis cycles, task-loop bookkeeping drift, review-verifier double-recording, review-synthesis re-dispatch, and author-tasks re-authoring duplicate external tasks.
+- `manifest`/`engine` no longer silently writes to the wrong manifest or wipes the whole `.workflows` tree on an empty or malformed path/work-unit argument.
+- Creating a work unit that already exists under a different work type now fails loudly instead of silently corrupting its type.
+- A topic whose only attempted phase item is cancelled now correctly renders as cancelled instead of falling through to "fresh."
+- Writing a phase-shadowing field directly at the work-unit level (bypassing the phases tree) is now refused instead of silently creating an unreachable shadow field.
+
 ## [0.6.5] - 2026-07-22
 
 🔧 Changed
