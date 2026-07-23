@@ -405,20 +405,26 @@ describe('pipeline simulation', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Rename a flag', '--session-log-file', log]);
 
-    // Scoping writes spec + plan + task map in one batched pass (write-tasks).
+    // Scoping (write-tasks): the spec commits BEFORE the baseline is captured,
+    // so spec_commit always names a commit containing the specification.
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, '# Plan\n');
+    const baseline = sim.run(['commit', wu, '-m', `scoping(${wu}): specification baseline`]);
+    assert.ok(baseline.committed, 'the baseline commit lands the spec');
     sim.run(['topic', 'start', wu, 'planning', wu]);
+    sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
-      'format=local-markdown', 'task_list_gate_mode=auto', 'author_gate_mode=auto',
+      'format=local-markdown', `spec_commit=${baseline.committed}`,
+      'task_list_gate_mode=auto', 'author_gate_mode=auto',
       'finding_gate_mode=auto', 'review_cycle=0', 'phase=1', 'task=~',
+      `external_id=${wu}`, `task_map.${wu}-1=${wu}-1`,
       `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
     sim.run(['topic', 'complete', wu, 'planning', wu]);
     sim.run(['topic', 'start', wu, 'scoping', wu]);
     sim.run(['topic', 'complete', wu, 'scoping', wu]);
-    sim.run(['commit', wu, '-m', `scoping(${wu}): spec and tasks`]);
+    sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
     sim.render(['phase-completed', wu, '--phase', 'scoping', '--paths'], { expect: 'content' });
 
     // Implementation (verification workflow) + review.
