@@ -194,7 +194,7 @@ If you are uncertain whether the user approved, **ASK**: "Ready to log it, or do
 ## E. Log and Commit
 
 1. Write to the specification — **verbatim** as presented and approved. No silent modifications. Before extracting a `pending` source, re-read the specification for content already logged from it (a crash can leave content written with the status still `pending`) — never double-log.
-2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`). See **[specification-format.md](specification-format.md)** for source status details.
+2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`). `{source-name}` is the registered key — read the existing `sources` map and flip that row, never invent a new name (for a bugfix it is `{topic}`). See **[specification-format.md](specification-format.md)** for source status details.
 3. Commit at natural breaks — after significant exchanges, after each major topic, and before any context refresh:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what changed}"
