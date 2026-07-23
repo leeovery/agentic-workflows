@@ -14,18 +14,22 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 ## Register Consult References
 
-For each consult reference named in the handoff's `Consult references` block, register it as `pending` if it is not already tracked. Check first:
+Read the tracked set once:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references.{ref}.status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references
 ```
 
-If the result is empty (not yet registered), set it to `pending`:
+Compare against the handoff's `Consult references` block. If any named reference is untracked, write one `set` op per missing reference to `.workflows/.cache/{work_unit}/specification/{topic}/consult-refs-ops.json` with the Write tool, then register them in one call (skip the call when nothing is missing):
+
+```json
+[{"op": "set", "path": "{work_unit}.specification.{topic}", "fields": {"consult_references.{ref}.status": "pending"}}]
+```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} consult_references.{ref}.status pending
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/{topic}/consult-refs-ops.json
 ```
 
-**Never overwrite an existing status** — an already-`addressed` reference must stay `addressed`. This runs every session, so references newly declared on a continue are picked up while prior progress is preserved.
+**Never overwrite an existing status** — only untracked references enter the payload, so an already-`addressed` reference stays `addressed`. This runs every session: references newly declared on a continue are picked up while prior progress is preserved.
 
 → Return to caller.

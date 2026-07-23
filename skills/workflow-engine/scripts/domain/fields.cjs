@@ -869,15 +869,100 @@ function cmdDelete(cwd, args) {
   return { path: args[0], field: args[1], deleted: true };
 }
 
+/**
+ * `apply <work-unit> --file <ops.json>` — the batch form of set/delete across
+ * one work unit (D7: one task, one call). Ops:
+ *   {"op": "set",    "path": "<wu>[.<phase>[.<topic>]]", "fields": {"<field.path>": <value>, …}}
+ *   {"op": "delete", "path": "<wu>[.<phase>[.<topic>]]", "field": "<field.path>"}
+ * Every op is validated before anything is written — the same per-field
+ * guards as `set`, every path inside <work-unit> (one lock, one manifest,
+ * one atomic write; the project manifest is outside a work-unit batch) —
+ * and a delete whose target is missing fails the whole batch before the
+ * save, so a failing entry means nothing persisted. Values are native JSON
+ * (no shell parsing — `null` is `null`, not `'~'`). No git commit — the
+ * calling flow's commit covers the batch.
+ * @param {string} cwd @param {string[]} args
+ * @returns {object}
+ */
+function cmdApply(cwd, args) {
+  const positional = args.filter((a) => !a.startsWith('--'));
+  const fileIdx = args.indexOf('--file');
+  const file = fileIdx !== -1 ? args[fileIdx + 1] : undefined;
+  const workUnit = positional[0];
+  if (!workUnit || !file) fail('Usage: engine manifest apply <work-unit> --file <ops.json>');
+  requireWorkUnit(cwd, workUnit);
+
+  let ops;
+  try {
+    ops = JSON.parse(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+  } catch (err) {
+    fail(`apply: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!Array.isArray(ops) || ops.length === 0) {
+    fail('apply: payload must be a non-empty array of {op, path, …} operations');
+  }
+
+  const planned = ops.map((op, i) => {
+    const at = `op ${i + 1}`;
+    if (!op || typeof op !== 'object' || Array.isArray(op)) fail(`apply: ${at} must be an object`);
+    if (op.op !== 'set' && op.op !== 'delete') {
+      fail(`apply: ${at} — "op" must be "set" or "delete", got ${JSON.stringify(op.op ?? null)}`);
+    }
+    if (typeof op.path !== 'string' || parseProjectPath(op.path).isProject) {
+      fail(`apply: ${at} — "path" must be a <work-unit>[.<phase>[.<topic>]] dot-path (the project manifest is outside a work-unit batch)`);
+    }
+    const { workUnit: wu, phase, topic } = parsePath(op.path);
+    if (wu !== workUnit) {
+      fail(`apply: ${at} — path "${op.path}" is outside work unit "${workUnit}" — one batch, one manifest`);
+    }
+    if (op.op === 'set') {
+      const fields = op.fields && typeof op.fields === 'object' && !Array.isArray(op.fields) ? op.fields : null;
+      const entries = fields ? Object.entries(fields) : [];
+      if (entries.length === 0) {
+        fail(`apply: ${at} — "fields" must be a non-empty object of {"<field.path>": value}`);
+      }
+      const writes = entries.map(([field, value]) => {
+        const segments = resolveSegments(phase, topic, field.split('.'));
+        validateSet(segments, value);
+        return { segments, value };
+      });
+      return { kind: /** @type {const} */ ('set'), path: op.path, fields, writes };
+    }
+    if (typeof op.field !== 'string' || op.field === '') {
+      fail(`apply: ${at} — "field" must be a non-empty field path`);
+    }
+    return { kind: /** @type {const} */ ('delete'), path: op.path, field: op.field, segments: resolveSegments(phase, topic, op.field.split('.')) };
+  });
+
+  manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
+    for (const op of planned) {
+      if (op.kind === 'set') {
+        for (const write of /** @type {{segments: string[], value: unknown}[]} */ (op.writes)) {
+          setByPath(manifest, write.segments, write.value);
+        }
+      } else if (!deleteByPath(manifest, /** @type {string[]} */ (op.segments))) {
+        fail(`apply: delete "${op.path}" ${op.field} — path not found in "${workUnit}" — nothing was applied`);
+      }
+    }
+    save();
+  });
+
+  return {
+    work_unit: workUnit,
+    applied: planned.length,
+    ops: planned.map((op) => (op.kind === 'set' ? { path: op.path, set: op.fields } : { path: op.path, deleted: op.field })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Dispatch
 // ---------------------------------------------------------------------------
 
 const READS = { get: cmdGet, exists: cmdExists, list: cmdList, 'key-of': cmdKeyOf, resolve: cmdResolve };
-const MUTATIONS = { set: cmdSet, push: cmdPush, pull: cmdPull, delete: cmdDelete };
+const MUTATIONS = { set: cmdSet, push: cmdPush, pull: cmdPull, delete: cmdDelete, apply: cmdApply };
 
 const USAGE =
-  'Usage: engine manifest <get|set|push|pull|delete|exists|list|key-of|resolve> …\n' +
+  'Usage: engine manifest <get|set|push|pull|delete|apply|exists|list|key-of|resolve> …\n' +
   'Dot-path addressing: <work-unit>[.<phase>[.<topic>]]; the `project` prefix routes to the project manifest.';
 
 /** @param {string} command */
