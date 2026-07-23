@@ -61,7 +61,7 @@ Research-analysis runs first so that a theme both analyses surface is already on
 ·· Research Analysis ····························
 ```
 
-**Stage or reuse.** Check `.workflows/{work_unit}/.state/research-analysis-candidates.md`. If it exists with at least one `status: pending` candidate, the analysis was deferred on a prior boot — reuse it and skip staging. Otherwise stage fresh:
+**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.research-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
 
 → Load **[research-analysis.md](research-analysis.md)** with work_unit = `{work_unit}`.
 
@@ -101,7 +101,7 @@ No dispatch.
 ·· Gap Analysis ·································
 ```
 
-**Stage or reuse.** Check `.workflows/{work_unit}/.state/discovery-gap-analysis-candidates.md`. If it exists with at least one `status: pending` candidate, the analysis was deferred on a prior boot — reuse it and skip staging. Otherwise stage fresh:
+**Stage or reuse.** Check the manifest: `manifest get {work_unit}.discovery analysis_staging.discovery-gap-analysis`. If any candidate there is `pending`, the analysis was deferred on a prior boot — reuse the staged file and skip staging. Otherwise stage fresh:
 
 → Load **[discovery-gap-analysis.md](discovery-gap-analysis.md)** with work_unit = `{work_unit}`.
 

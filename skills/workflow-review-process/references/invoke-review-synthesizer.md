@@ -43,6 +43,12 @@ If the agent fails (error, timeout), record the failure and report "synthesis fa
 
 ## Commit Findings
 
+**If `STATUS` is `tasks_proposed`**, initialise the cycle's gate state — one batched write, one `pending` per task from `TASKS_PROPOSED`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.gate_mode=gated staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending
+```
+
 Commit the report and staging file (if created):
 
 ```bash

@@ -173,7 +173,7 @@ impl({work_unit}): analysis cycle {N} — synthesis
 
 ## E. Approval Overview
 
-Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md`.
+Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` (task content) and the cycle's statuses from `manifest get {work_unit}.implementation.{topic} staging.c{cycle-number}`.
 
 Write the overview payload to `.workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json` with the Write tool (`{"label": "Analysis cycle {N}", "tasks": [{"title": "…", "severity": "…"}]}`), render, and emit the section verbatim:
 
@@ -201,7 +201,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {wor
 
 #### If the response carried `DISPLAY: task auto-approved`
 
-Update `status: approved` in the staging file, then emit the section per its marker.
+Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`), then emit the section per its marker.
 
 → Return to **F. Process Task**.
 
@@ -211,13 +211,13 @@ Update `status: approved` in the staging file, then emit the section per its mar
 
 **If `yes`:**
 
-Update `status: approved` in the staging file.
+Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
 
 → Return to **F. Process Task**.
 
 **If `auto`:**
 
-Update `status: approved` in the staging file.
+Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} analysis_gate_mode auto
@@ -227,7 +227,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 **If `skip`:**
 
-Update `status: skipped` in the staging file.
+Record the skip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`.
 
 → Return to **F. Process Task**.
 
@@ -241,13 +241,13 @@ Revise the task content in the staging file based on the user's feedback.
 
 ## G. Route on Results
 
-#### If any tasks have `status: approved`
+#### If the manifest's `staging.c{N}.tasks` marks any task `approved`
 
 → Proceed to **H. Create Tasks in Plan**.
 
 #### If all tasks were skipped
 
-Commit the staging file updates:
+Commit the cycle's decisions:
 
 ```
 impl({work_unit}): analysis cycle {N} — tasks skipped

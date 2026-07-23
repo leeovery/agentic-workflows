@@ -75,16 +75,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed from the map by the user.
 
-Initialise the staging file fresh (overwrite any prior pass) at `.workflows/{work_unit}/.state/research-analysis-candidates.md` with frontmatter — this reference is only invoked for staging when no pending candidates remain from a deferred run, so overwriting is safe:
-
-```markdown
----
-work_unit: {work_unit}
-analysis: research-analysis
-generated: {ISO timestamp}
-gate_mode: gated
----
-```
+Initialise the staging file fresh (overwrite any prior pass) at `.workflows/{work_unit}/.state/research-analysis-candidates.md` — pure markdown, content only; the gate state lives in the manifest and is initialised after staging (below). This reference is only invoked for staging when no pending candidates remain from a deferred run, so overwriting is safe.
 
 For each candidate topic from **B** (kebab-case name + summary + description + routing + parent), evaluate the conditions below in order. The first two cases are resolved here at stage time without a gate; only genuinely-new candidates are staged for the approval gate. Each branch is self-contained and concludes by moving on to the next candidate.
 
@@ -126,21 +117,23 @@ Stage it for the approval gate by appending a block to the staging file:
 
 ```markdown
 ## {name}
-status: pending
 summary: {one-line summary}
 description: |
   {paragraphs}
 routing: {routing-from-B}
 source: research-analysis:{parent}
 parent: {parent}
-fanout_offer: pending
 ```
 
 `routing` is the value decided per-candidate in **B** (`discussion` or `research`). `source` carries the `parent` so provenance renders as `from {parent}`. `description` is a paragraph or two extracted from the analysis output for this topic — richer context than the one-line summary, loaded by entry skills as opening context when the user later picks the topic up. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
 
 ---
 
-Once all candidates have been evaluated:
+Once all candidates have been evaluated, register the gate state — one batched write, one row per staged candidate (skip the call when nothing was staged):
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.research-analysis.gate_mode=gated analysis_staging.research-analysis.candidates.{name}.status=pending analysis_staging.research-analysis.candidates.{name}.fanout_offer=pending …
+```
 
 → Return to caller.
 

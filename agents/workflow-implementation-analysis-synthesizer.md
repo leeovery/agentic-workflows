@@ -26,7 +26,7 @@ You receive via the orchestrator's prompt:
 4. **Filter** — discard low-severity findings unless they cluster into a pattern. Never discard high-severity.
 5. **Normalize** — convert each group into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests)
 6. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/analysis-report-c{cycle-number}.md`
-7. **Write staging file** — if actionable tasks exist, write to `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` with `status: pending` for each task
+7. **Write staging file** — if actionable tasks exist, write the task content to `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
 
 ## Write Mechanism
 
@@ -37,14 +37,13 @@ Produce each output file in two steps: write the content to the target path with
 Write the report file with this structure:
 
 ```markdown
----
-topic: {topic}
-cycle: {N}
-total_findings: {N}
-deduplicated_findings: {N}
-proposed_tasks: {N}
----
 # Analysis Report: {Topic} (Cycle {N})
+
+## Stats
+
+- Total findings: {N}
+- Deduplicated findings: {N}
+- Proposed tasks: {N}
 
 ## Summary
 {2-3 sentence overview of findings}
@@ -58,15 +57,9 @@ proposed_tasks: {N}
 Write the staging file with this structure:
 
 ```markdown
----
-topic: {topic}
-cycle: {N}
-total_proposed: {N}
----
 # Analysis Tasks: {Topic} (Cycle {N})
 
 ## Task 1: {title}
-status: pending
 severity: high
 sources: duplication, architecture
 
@@ -80,7 +73,6 @@ sources: duplication, architecture
 - {test description}
 
 ## Task 2: {title}
-status: pending
 ...
 ```
 

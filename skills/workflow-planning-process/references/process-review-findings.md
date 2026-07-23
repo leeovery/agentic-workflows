@@ -162,7 +162,7 @@ Incorporate feedback and update the tracking file with the revised content. Rewr
 
 ## C. After All Findings Processed
 
-1. **Mark the tracking file as complete** — Set `status: complete`.
+1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any plan changes.
 3. > *Output the next fenced block as a code block:*
 
