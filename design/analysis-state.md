@@ -91,6 +91,21 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Review round 2 (#534), six fresh lenses over cleared
+  ground per Lee's no-single-pass rule. The re-review of "clean"
+  surfaces paid: the round-1 fix for the task-writer HIGH had placed
+  the handoff after the fence (three slices converged on it); the
+  engine review reproduced eight defects black-box rounds missed
+  (stale-synthesis resurrection, path traversal via unguarded topic
+  args, NNN overflow, corrupt-row crashes, matcher over/under-match);
+  the journey walks caught the fresh-session re-author over approved
+  text and the analysis loop's missing resume arms; the inventory
+  closed stages 3-6 at 537 units, 0 lost (770 programme-wide), and
+  found migration family six (in-flight authoring decisions). Real
+  data re-rehearsed clean. Accepted: pre-programme crashed skeletons
+  count as legacy cycles (final review backstops; documented in the
+  gateway).
+
 - 2026-07-23 — End-of-stack review (#533): three slices + a real-data
   rehearsal (sandbox copies of fumi and portal — 16 + 64 assertions,
   0 failures, byte-stable re-runs; originals untouched). One HIGH:
