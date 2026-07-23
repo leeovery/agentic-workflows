@@ -98,6 +98,7 @@ Return a brief status to the orchestrator:
 ```
 STATUS: complete
 THREAD: {thread name}
+FINDINGS: {F1,F2,… — every id in the report, comma-separated; omit when none}
 FINDINGS_COUNT: {N}
 SUMMARY: {1-2 sentences — the most important thing discovered}
 ```
