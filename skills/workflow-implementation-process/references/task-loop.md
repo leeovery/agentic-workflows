@@ -329,7 +329,7 @@ The response also carries the `MENU: blocked tasks` section that **A. Retrieve N
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
 
-**Commit all changes** with raw git — stage the task's code and tests, the plan format's tracking state, and the work unit's manifest, then commit:
+**Commit all changes** with raw git — stage the task's code and tests, the plan's `storage_paths` (recorded on the planning item), and the work unit's manifest, then commit:
 
 ```
 impl({work_unit}): T{internal_id} — {brief description}

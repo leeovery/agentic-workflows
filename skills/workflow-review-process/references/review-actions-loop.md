@@ -276,11 +276,10 @@ Filter staging file to tasks with `status: approved`.
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-Commit all changes (staging file, plan tasks, task_map updates) with raw git — the format's task storage may live outside the work unit, so the scoped helper cannot cover it. Stage the format's storage and the work unit, then commit:
+Commit all changes (staging file, plan tasks, task_map updates) — `--plan` stages the work unit and the plan's declared storage in one scoped call:
 
 ```bash
-git add -- .workflows/{work_unit} {format task storage paths}
-git commit -m "review({work_unit}): add review remediation ({K} tasks)"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation ({K} tasks)" --plan {topic}
 ```
 
 → On return, proceed to **G. Re-open Implementation**.

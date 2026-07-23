@@ -172,20 +172,18 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
    ```
-3. Commit with raw git — the format's task storage may live outside the work unit, so the scoped helper cannot cover it:
+3. Commit — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call (the knowledge store rides along automatically):
    ```bash
-   git add -- .workflows/{work_unit} .workflows/.knowledge {format task storage paths touched}
-   git commit -m "scoping({work_unit}): adjust specification and plan"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust specification and plan" --plan {topic}
    ```
 
 → Proceed to **Step 8**.
 
 #### If `restart`
 
-1. Read the `format` and the plan's `external_id` from the manifest:
+1. Read the planning item once — `format`, `external_id`, and `storage_paths` all ride the subtree:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
    ```
 2. Load the format's **[authoring.md](../workflow-planning-process/references/output-formats/{format}/authoring.md)**
 3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
@@ -199,9 +197,9 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-7. Commit with raw git — the format's cleanup may remove task storage outside the work unit, so the scoped helper cannot cover it. Stage the work unit, the knowledge store, and every path the cleanup touched, then commit:
+7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store, and the `storage_paths` read in step 1, then commit:
    ```bash
-   git add -- .workflows/{work_unit} .workflows/.knowledge {paths the format cleanup touched}
+   git add -- .workflows/{work_unit} .workflows/.knowledge {storage_paths}
    git commit -m "scoping({work_unit}): restart scoping"
    ```
 

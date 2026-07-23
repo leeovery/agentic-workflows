@@ -153,7 +153,7 @@ Commands:
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
   cache stamp <work-unit> (research-analysis|gap-analysis)
-  commit <work-unit> -m <message>
+  commit <work-unit> -m <message> [--plan <topic>]
   commit --inbox -m <message>
   commit --workflows -m <message>
   render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
@@ -657,22 +657,24 @@ function runCommit(argv) {
   try {
     /** @type {string|null} */ let workUnit = null;
     /** @type {string|null} */ let message = null;
+    /** @type {string|null} */ let plan = null;
     let inbox = false;
     let workflows = false;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '-m' || a === '--message') message = argv[++i];
+      else if (a === '--plan') plan = argv[++i];
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
     }
     const scopeCount = [inbox, workflows, workUnit !== null].filter(Boolean).length;
-    if (!message || scopeCount !== 1) {
-      throw new Error('Usage: engine commit <work-unit> -m <message> | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
+    if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '') {
+      throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic>] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
     }
     const cwd = process.cwd();
-    let scope;
+    /** @type {string|string[]} */ let scope;
     if (workflows) {
       scope = '.workflows';
     } else if (inbox) {
@@ -684,6 +686,41 @@ function runCommit(argv) {
         throw new Error(`no work unit directory: .workflows/${wu}`);
       }
       scope = `.workflows/${wu}`;
+      if (plan !== null) {
+        // --plan: the plan's declared storage pathspecs (recorded at plan
+        // init from the format's authoring doc) plus the project manifest
+        // (plan init writes project defaults). A pathspec that neither exists
+        // on disk nor has index entries is skipped — `git add` would refuse
+        // it — while a deleted-but-tracked path still stages its deletions
+        // (the restart-cleanup commits depend on that).
+        const manifestFile = path.join(cwd, '.workflows', wu, 'manifest.json');
+        /** @type {any} */ let planItem;
+        try {
+          planItem = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).phases?.planning?.items?.[plan];
+        } catch {
+          throw new Error(`commit --plan: cannot read .workflows/${wu}/manifest.json`);
+        }
+        if (!planItem) throw new Error(`commit --plan: no planning item "${plan}" in "${wu}"`);
+        const declared = planItem.storage_paths;
+        if (!Array.isArray(declared) || declared.some((p) => typeof p !== 'string')) {
+          throw new Error(`commit --plan: planning item "${plan}" has no storage_paths — a pre-upgrade plan; record the format's declared pathspecs once: engine manifest set ${wu}.planning.${plan} storage_paths '[…]' (the format's authoring.md names them; '[]' when it stores inside the work unit)`);
+        }
+        for (const p of declared) {
+          if (p === '' || p === '.' || p.startsWith('/') || p.split('/').includes('..')) {
+            throw new Error(`commit --plan: illegal storage_paths entry ${JSON.stringify(p)} — pathspecs are relative, never ".", "..", or absolute`);
+          }
+        }
+        const { execFileSync } = require('child_process');
+        const stageable = ['.workflows/manifest.json', ...declared].filter((p) => {
+          if (fs.existsSync(path.join(cwd, p))) return true;
+          try {
+            return execFileSync('git', ['ls-files', '--', p], { cwd, encoding: 'utf8' }).trim() !== '';
+          } catch {
+            return false;
+          }
+        });
+        scope = [scope, ...stageable];
+      }
     }
     const committed = commitScopedWithKb(cwd, scope, message);
     if (committed === null) respond({ committed: null, note: 'nothing to commit' });

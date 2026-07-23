@@ -1010,6 +1010,55 @@ describe('engine commit', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): capture y');
   });
 
+  it('--plan stages the recorded storage paths and the project manifest alongside the work unit', () => {
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: ['.tick/'] } } } };
+    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.tick/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
+    writeFile(dir, '.workflows/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } }, defaults: { plan_format: 'x' } }) + '\n');
+    writeFile(dir, 'unrelated.txt', 'outside the scope\n');
+
+    const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): author task auth-1-1', '--plan', 'auth']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    const staged = git(dir, ['show', '--name-only', 'HEAD']);
+    assert.match(staged, /\.tick\/tasks-auth\.jsonl/);
+    assert.match(staged, /\.workflows\/manifest\.json/);
+    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/, 'code never rides a --plan commit');
+  });
+
+  it('--plan with empty storage_paths is the plain scoped commit plus project manifest', () => {
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: [] } } } };
+    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): initialize plan', '--plan', 'auth']);
+    assert.strictEqual(res.committed, shortHead(dir));
+  });
+
+  it('--plan stages tracked deletions of a storage path removed from disk (restart cleanup)', () => {
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: ['.tick/'] } } } };
+    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.tick/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
+    commitAll(dir, 'seed tick storage');
+    fs.rmSync(path.join(dir, '.tick'), { recursive: true, force: true });
+
+    const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): restart plan', '--plan', 'auth']);
+    assert.strictEqual(res.committed, shortHead(dir));
+    assert.match(git(dir, ['show', '--name-only', 'HEAD']), /\.tick\/tasks-auth\.jsonl/, 'deletion staged');
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
+  });
+
+  it('--plan is loud on a missing planning item, missing storage_paths, and illegal entries', () => {
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'ghost']).error, /no planning item "ghost"/);
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress' } } } };
+    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /has no storage_paths — a pre-upgrade plan/);
+    m.phases.planning.items.auth.storage_paths = ['../evil'];
+    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /illegal storage_paths entry/);
+  });
+
   it('rejects a missing message, missing scope, and bad work unit names', () => {
     assert.match(engineFails(dir, ['commit', 'payments']).error, /Usage: engine commit/);
     assert.match(engineFails(dir, ['commit', '-m', 'msg']).error, /Usage: engine commit/);

@@ -18,6 +18,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
+## Storage Pathspecs
+
+`[]` — tasks live in Linear; nothing lands on disk.
+
 ## Plan Structure
 
 Create a Linear project — this is the plan-level entity:

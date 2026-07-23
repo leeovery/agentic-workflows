@@ -72,7 +72,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 Then register everything — settings, position, and the whole task map — in ONE batched set (one lock, one write): the fixed fields, the phase mapping (`task_map.{topic}-1` = the phase's external ID), and one `task_map.{internal_id}={external_id}` pair per task:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id} storage_paths='{format storage pathspecs}'
 ```
 
 ```bash
@@ -88,11 +88,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} s
 node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
 ```
 
-Commit all scoping artifacts with raw git — the project default lands in `.workflows/manifest.json` and the format's task storage may live outside the work unit, so the scoped helper cannot cover them:
+Commit all scoping artifacts — `--plan` stages the work unit, the project manifest, and the plan's declared storage in one scoped call:
 
 ```bash
-git add -- .workflows/manifest.json .workflows/{work_unit} {format task storage paths}
-git commit -m "scoping({work_unit}): specification and plan"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification and plan" --plan {topic}
 ```
 
 → Return to caller.

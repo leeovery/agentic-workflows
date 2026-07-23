@@ -18,6 +18,10 @@ You should never do the following:
 
 If a description contains double quotes, escape them with `\"`. That's it.
 
+## Storage Pathspecs
+
+`[".tick/"]` — the task store lives at the project root, outside the work unit. Recorded as `storage_paths` at plan init; `engine commit --plan` stages it.
+
 ## Plan Structure
 
 Create the topic task — this is the plan-level entity in tick. Always set `--refs` to store the workflow's internal ID.
