@@ -22,7 +22,7 @@ Pass via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (scopes tasks to correct plan)
-3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle-number}.md`
+3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
 5. **Plan format reading adapter path** — `../../workflow-planning-process/references/output-formats/{format}/reading.md`
 6. **Plan format authoring adapter path** — `../../workflow-planning-process/references/output-formats/{format}/authoring.md`

@@ -22,14 +22,38 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Crash-resume, checked in order: if the latest `staging.c{N}` (read `manifest get {work_unit}.implementation.{topic} staging`) still holds a `pending` task, do not record a new cycle — resume that cycle at **E. Approval Overview**. If a staging file exists on disk with no matching manifest cycle (a crash between the synthesizer's write and the init), initialise the cycle from the file's task count and resume at **E**. If the previous cycle's findings are committed but its synthesis never ran, resume at **D. Dispatch Synthesis Agent** over the existing findings.
+Crash-resume guards — read `manifest get {work_unit}.implementation.{topic} staging` and check in order. On a resume, `{N}` is the resumed cycle's number and `{analysis_gate_mode}` comes from the manifest's topic-level `analysis_gate_mode` (no cycle response exists to carry either).
+
+#### If the latest `staging.c{N}` still holds a `pending` task
+
+The cycle is mid-approval — do not record a new one.
+
+→ Proceed to **E. Approval Overview**.
+
+#### If the latest `staging.c{N}` holds no `pending` task and at least one `approved` and the planning file carries no `Analysis (Cycle {N})` phase
+
+The session died between the last gate decision and the plan write — the approvals are recorded but unrealised.
+
+→ Proceed to **H. Create Tasks in Plan**.
+
+#### If a staging file exists on disk with no matching manifest cycle
+
+A crash between the synthesizer's write and the init — initialise the cycle from the file's task count.
+
+→ Proceed to **E. Approval Overview**.
+
+#### If the previous cycle's findings are committed and its synthesis never ran
+
+→ Proceed to **D. Dispatch Synthesis Agent** over the existing findings.
+
+#### Otherwise
 
 Record the cycle via the engine (increments both the lifetime and session counters):
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
 ```
 
-`{N}` throughout this loop refers to the response's `cycle_total`; **F. Process Task** branches on its `analysis_gate_mode`.
+`{N}` throughout this loop refers to the response's `cycle_total`; **F. Process Task**'s `{analysis_gate_mode}` is the response's `analysis_gate_mode`.
 
 #### If the response's `over_session_limit` is `false`
 
@@ -193,7 +217,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {wo
 
 #### Otherwise
 
-Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file — then render with the gate mode carried by this cycle's response (or `auto` if the user opted in at a previous task this cycle), and emit each section verbatim at its marked instruction:
+Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…", "outcome": "…", "steps": […], "criteria": […], "tests": […]}` from the staging file — then render with `{analysis_gate_mode}` (`auto` from the moment the user opts in mid-cycle), and emit each section verbatim at its marked instruction:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {analysis_gate_mode} --comment-hint "Provide feedback to adjust"

@@ -12,15 +12,27 @@ This step uses the `workflow-planning-task-author` agent (`../../../agents/workf
 
 Task detail file path: `.workflows/{work_unit}/planning/{topic}/phase-{N}-tasks.md`
 
+#### If the file exists and any `staging.author-p{N}` row is `rejected`
+
+A prior session ended mid-revision — the amendment is still owed.
+
+→ Proceed to **F. Revision Check**.
+
+#### If the file exists and `staging.author-p{N}` rows exist and none are `rejected`
+
+Mid-authoring resume — the text and its decisions already stand; re-invoking would rewrite text the user already approved.
+
+→ Proceed to **D. Check Gate Mode**.
+
+#### Otherwise
+
 → Proceed to **B. Invoke the Agent**.
 
 ---
 
 ## B. Invoke the Agent
 
-**Resume guard** — if the task detail file already exists AND the manifest carries `staging.author-p{N}` rows, this phase is mid-authoring: do not re-invoke the agent (a fresh run would rewrite text the user already approved). → Proceed to **D. Check Gate Mode**.
-
-
+**Amendment runs** — when `staging.author-p{N}` carries `rejected` rows (arrival from **F. Revision Check**), the invocation is an amendment: name those ids via input item 8. All other arrivals are full runs — omit item 8.
 
 > *Output the next fenced block as a code block:*
 
@@ -40,6 +52,8 @@ Invoke `workflow-planning-task-author` with these file paths:
 8. **Amendment context** (amendment runs only): the rejected internal ids being rewritten — their feedback blockquotes sit under their headings in the detail file
 
 The agent writes all tasks to the task detail file and returns.
+
+**On an amendment run**, reset each rewritten row to `pending` now that the rewrite is on disk (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per id) — the rows return to the loop, and in auto mode they approve automatically like any pending row. Rows stay `rejected` until this point so an interrupted amendment resumes as an amendment, never as a silent skip.
 
 → Proceed to **C. Validate Task Detail File**.
 
@@ -213,18 +227,16 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 > *Output the next fenced block as a code block:*
 
 ```
-{N} tasks need revision. Re-invoking author agent...
+{count} tasks need revision. Re-invoking author agent...
 ```
 
-Reset each rejected row to `pending` now — the rewrite returns them to the loop (in auto mode they approve automatically, like any pending row): `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per rejected id. Then re-invoke as an **amendment**, naming those ids in the prompt.
-
-→ Return to **B. Invoke the Agent**.
+→ Return to **B. Invoke the Agent** for an amendment run.
 
 ---
 
 ## G. Write to Plan
 
-> **CHECKPOINT**: Verify the manifest marks every `staging.author-p{N}` row `approved` before writing — both gate modes approve every task before reaching this section.
+> **CHECKPOINT**: Verify the manifest marks every `staging.author-p{N}` row `approved` before writing — both gate modes approve every task before reaching this section. A `pending` row means the loop was interrupted — return to **E. Approval Loop**; a `rejected` row still owes its amendment — return to **F. Revision Check**. Never write a partial phase.
 
 For each approved task in the task detail file, in order (crash-resume guard: a task whose internal id is already in `task_map` was written before an interruption — skip its format write and continue with the next; re-creating it would duplicate the task in external backends):
 
