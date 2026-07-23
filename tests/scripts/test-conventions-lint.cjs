@@ -616,7 +616,7 @@ const RATCHET_PINS = {
   'skills/workflow-shared/references/drain-triage.md': 1,
   'skills/workflow-shared/references/final-review-menu.md': 1,
   'skills/workflow-shared/references/topic-name-validation.md': 1,
-  'skills/workflow-shared/references/triage-landing.md': 2,
+  'skills/workflow-shared/references/triage-landing.md': 1,
   'skills/workflow-specification-entry/references/confirm-continue.md': 4,
   'skills/workflow-specification-entry/references/confirm-create.md': 3,
   'skills/workflow-specification-entry/references/confirm-refine.md': 2,
