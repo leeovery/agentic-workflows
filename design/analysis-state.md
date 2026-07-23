@@ -89,6 +89,20 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — #528 review round (three slices: protocol walkthrough
+  vs engine, dispatch-site audit, conventions pass): five verified
+  majors, all fixed on the branch. The big one: set identity for the
+  perspective council died with the skeletons' shared `set:` field —
+  restored as engine state (multi-label dispatch shares one number,
+  synthesis joins by `--set`, one per set). Also restored: the drain
+  gate's in-flight block (concurrent-review guarantee) and the last
+  finding's engagement bounce (final-review routes on the raise, not
+  row status — surface's auto-incorporate had swallowed it). `created`
+  now rides every scan row for freshness checks; the heading contract
+  standardised on `### {ID}: {label}`. Confirmed accepted: legacy
+  pending reviews are invisible to the store until the stage-7
+  migration translates them.
+
 - 2026-07-23 — Stage 1 up (#527): the `engine agent` noun over
   `.workflows/.cache/{wu}/state.json`. Skeleton files abolished —
   dispatch records the row, the content file's non-empty existence is
