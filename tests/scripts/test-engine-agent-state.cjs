@@ -149,6 +149,19 @@ describe('engine agent — lifecycle store', () => {
       /is incorporated — only an acknowledged row/);
   });
 
+  it('incorporate closes from any live state: pending set-members and abandoned in-flight rows', () => {
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'tail-risk']);
+    writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const consumed = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', a.id]);
+    assert.strictEqual(consumed.status, 'incorporated', 'pending row consumed without surfacing');
+
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    const abandoned = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]);
+    assert.strictEqual(abandoned.status, 'incorporated', 'stale in-flight row abandoned');
+    assert.match(runFails(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]).error, /already incorporated/);
+  });
+
   it('incorporate is the skip-all exit and keeps the unsurfaced record honest', () => {
     const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'perf']);
     writeContent(dir, d.file);

@@ -15,7 +15,7 @@ You receive via the orchestrator's prompt:
 
 1. **Perspective file paths** — paths to all perspective files to synthesize
 2. **Decision topic** — the decision being explored
-3. **Output file path** — where to write your synthesis. A skeleton file with `status: in-flight` frontmatter is already on disk there; your rewrite replaces it
+3. **Output file path** — where to write your synthesis. nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
 
 ## Your Process
 
@@ -38,7 +38,7 @@ You receive via the orchestrator's prompt:
 3. **Be fair** — if a perspective made a weak argument, note it, but don't dismiss the underlying position because of it.
 4. **Stay grounded** — only synthesize what the perspectives raised. Do not introduce new arguments.
 5. **Concise over comprehensive** — a decision-maker should understand the tradeoff landscape in 2-3 minutes.
-6. **Assign stable IDs** — every key tension gets a stable ID (`T1`, `T2`, `T3`, …) that appears in BOTH the frontmatter `tensions:` list and the body section heading. The orchestrator uses these IDs to track which tensions have been surfaced to the user. Never renumber, never reuse IDs.
+6. **Assign stable IDs** — every key tension gets a stable ID (`T1`, `T2`, `T3`, …) that appears as the body section heading (`## {ID} — {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to track which tensions have been surfaced to the user. Never renumber, never reuse IDs.
 7. **Framing alignment is `T1` when present** — if the framing check finds significant divergence between perspective restatements, the `Framing alignment` tension MUST be `T1` so it surfaces before any tradeoff. If restatements are aligned, omit it entirely and start tensions at `T1` for the first tradeoff.
 8. **Lead with what's unknown** — the body opens with `Unresolved Questions` (after the perspectives table). Readers see what the council can't answer before what it can.
 9. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
@@ -47,24 +47,9 @@ You receive via the orchestrator's prompt:
 
 Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Bash is for this rename only.
 
-The orchestrator wrote skeleton frontmatter at the output path when it dispatched you (`type`, `status: in-flight`, `created`, `set`, `decision`, empty `tensions:`, `surfaced: []`, `announced: false`). Your rewrite replaces the whole file — the `.txt`-then-rename lands atomically over the skeleton. Keep the skeleton's fields, set `status: pending` (results ready for the orchestrator), and populate `tensions:` with one entry per key tension — stable ID and a short label. The body mirrors the same IDs as section headings under "Key Tensions" so the orchestrator can look up full content for any ID.
+The output file is pure markdown — no frontmatter, ever; the orchestrator's own store tracks lifecycle. The `.txt`-then-rename lands the whole report atomically, so the orchestrator can never observe a half-written file. The body's `## {ID}` section headings are how the orchestrator reads your finding ids — they are the contract.
 
 ```markdown
----
-type: synthesis
-status: pending
-created: {date}
-set: {NNN}
-decision: {decision topic}
-tensions:
-  - id: T1
-    label: {one-line label — 8-12 words, no period}
-  - id: T2
-    label: {one-line label}
-surfaced: []
-announced: false
----
-
 # Synthesis: {Decision Topic}
 
 ## Perspectives Reviewed

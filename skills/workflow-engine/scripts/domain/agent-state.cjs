@@ -330,9 +330,11 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
 }
 
 /**
- * Incorporate an acknowledged row wholesale — the user declined the
- * remaining findings (skip-all). Remaining ids stay unsurfaced on the row,
- * a true record of what was offered but never raised.
+ * Incorporate a row wholesale — the terminal close from any live state.
+ * From acknowledged it is the skip-all exit (declined ids stay unsurfaced,
+ * a true record of what was offered); from pending it marks a report
+ * consumed without surfacing (a perspective feeding synthesis); from
+ * in-flight it abandons a row whose session died before the agent returned.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id
  */
@@ -342,8 +344,8 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit);
     const row = requireRow(state, phase, topic, id);
-    if (row.status !== 'acknowledged') {
-      throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row incorporates`);
+    if (row.status === 'incorporated') {
+      throw new Error(`Agent "${id}" is already incorporated`);
     }
     row.status = 'incorporated';
     saveState(cwd, workUnit, state);

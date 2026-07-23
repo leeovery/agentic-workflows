@@ -12,25 +12,25 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 
 ## A. Check Review State
 
-**Deep-dive findings drain first.** Scan `.workflows/.cache/{work_unit}/research/{topic}/` for `deep-dive-*.md` files with `status: pending` or `status: acknowledged` — thread findings that never finished surfacing during the session would otherwise be dropped at conclusion.
+Read the store:
 
-#### If any such file exists
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
+```
 
-Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage.
+**Deep-dive findings drain first.** If any `deep-dive` row is pending or acknowledged — thread findings that never finished surfacing during the session would otherwise be dropped at conclusion — surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage:
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-#### Otherwise
+Otherwise take the highest-numbered `review` row and branch on its status.
 
-Find the most recent review file in `.workflows/.cache/{work_unit}/research/{topic}/` by set number, then branch on its `status:` below.
-
-#### If no review files exist
+#### If no review row exists
 
 → Proceed to **B. Dispatch Final Review**.
 
-#### If the most recent review has `status: incorporated`
+#### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (its frontmatter `created` date, and — same session — your memory of when it drained):
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch:
 
 ```bash
 git log --oneline -- .workflows/{work_unit}/research/{topic}.md
@@ -46,35 +46,39 @@ Nothing new for a fresh review to see — the final-review gate is satisfied.
 
 → Return to caller.
 
-#### If the most recent review has `status: in-flight`
+#### If it is `in-flight`
 
-A dispatch-time skeleton whose agent hasn't returned.
+The dispatched agent hasn't returned.
 
 **If it was dispatched this session and the user chose `p`/`proceed` at the session's in-flight gate:**
 
-The wait was already declined for this file — do not watch it. Its results persist in cache for a later session; the final-review gate proceeds without it.
+The wait was already declined for this row — do not watch it. Its results persist for a later session; the final-review gate proceeds without it.
 
 → Return to caller.
 
 **If it was dispatched this session and the wait was not declined** (the agent may still be running):
 
-Watch for the file to flip to `status: pending`.
+Watch for `agent scan` to promote the row to `pending`.
 
 → Proceed to **C. Surface via Final Review Menu**.
 
 **Otherwise** (an interrupted earlier session — no agent can still be running):
 
-Delete the skeleton file.
+Close the abandoned row, then dispatch fresh:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} research {topic} {id}
+```
 
 → Proceed to **B. Dispatch Final Review**.
 
-#### If the most recent review has `status: pending`
+#### If it is `pending`
 
 A review returned but hasn't been read.
 
 → Proceed to **C. Surface via Final Review Menu**.
 
-#### If the most recent review has `status: acknowledged`
+#### If it is `acknowledged`
 
 Findings from the current review are still being drained.
 
@@ -97,32 +101,10 @@ Findings from the current review are still being drained.
 > This ensures the research is thorough for discussion.
 ```
 
-Ensure the cache directory exists:
+Record the dispatch — the engine allocates the id and answers with the content-file path:
 
 ```bash
-mkdir -p .workflows/.cache/{work_unit}/research/{topic}
-```
-
-Determine the next set number by checking existing files:
-
-```bash
-ls .workflows/.cache/{work_unit}/research/{topic}/ 2>/dev/null
-```
-
-Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
-
-Write the skeleton cache file at `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record; the agent's rewrite flips it to `pending`:
-
-```yaml
----
-type: review
-status: in-flight
-created: {date}
-set: {NNN}
-findings: []
-surfaced: []
-announced: false
----
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind review
 ```
 
 **Agent path**: `../../../agents/workflow-research-review.md`
@@ -132,7 +114,7 @@ Dispatch **one agent** as a foreground task (omit `run_in_background` — result
 The review agent receives:
 
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
-2. **Output file path** — `.workflows/.cache/{work_unit}/research/{topic}/review-{NNN}.md` (the skeleton above is already on disk there)
+2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `## {ID}` section per finding (`F1`, `F2`, …), never frontmatter.
 
 When the agent returns:
 
@@ -142,7 +124,7 @@ When the agent returns:
 
 ## C. Surface via Final Review Menu
 
-→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with cache_dir = `.workflows/.cache/{work_unit}/research/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
+→ Load **[final-review-menu.md](../../workflow-shared/references/final-review-menu.md)** with work_unit = `{work_unit}`, phase = `research`, topic = `{topic}`.
 
 → On return, proceed to **D. Route Next**.
 
@@ -150,16 +132,16 @@ When the agent returns:
 
 ## D. Route Next
 
-Re-read the most recent review file's `status:` and `surfaced:` fields.
+Re-run `agent scan` and take the highest-numbered `review` row's status.
 
-#### If `status: incorporated`
+#### If `incorporated`
 
 All findings have been raised (or the review came back with zero gaps). The final-review gate is satisfied.
 
 → Return to caller.
 
-#### If `status: acknowledged`
+#### If `acknowledged`
 
-A finding was just raised. Control belongs to the conversation — return the user to the research session so they can engage naturally. When the user signals done again, this flow re-runs and either raises the next finding or transitions the cache to `incorporated`.
+A finding was just raised. Control belongs to the conversation — return the user to the research session so they can engage naturally. When the user signals done again, this flow re-runs and either raises the next finding or the engine incorporates the row.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
