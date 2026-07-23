@@ -82,12 +82,6 @@ Set `landing_phase = research` and `landing_status` to that status.
 
 → Proceed to **D. Existing Target**.
 
-**If the research status is `superseded`:**
-
-The research lineage is closed — an entry written there would never drain.
-
-→ Proceed to **F. Superseded Research**.
-
 **If neither item is live:**
 
 No live artefact. Set `landing_phase` to the row's `routing=` value — unless that phase's item exists as `cancelled` (`topic start` refuses it), in which case set `landing_phase` to the other phase.
@@ -158,13 +152,13 @@ Surface the engine's error verbatim. Nothing has been written; set `result = can
 
 **Otherwise:**
 
-→ Proceed to **G. Append the Entry**.
+→ Proceed to **F. Append the Entry**.
 
 #### If `landing_status` is `in-progress`
 
 The item is already live — no reopen needed.
 
-→ Proceed to **G. Append the Entry**.
+→ Proceed to **F. Append the Entry**.
 
 ## E. Closed Target
 
@@ -214,47 +208,7 @@ Nothing written. Set `result = cancelled`.
 
 → Return to caller.
 
-## F. Superseded Research
-
-Read where the research lineage went:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{target} superseded_by
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-· · · · · · · · · · · ·
-"{target}"'s research was superseded by "{superseded_by}" — an entry there would never drain.
-
-- **`s`/`superseding`** — Land the concern in "{superseded_by}" instead
-- **`d`/`discussion`** — Start "{target}"'s discussion and land it there
-- **`e`/`elsewhere`** — Pick a different target
-· · · · · · · · · · · ·
-```
-
-**STOP.** Wait for user response.
-
-**If `superseding`:**
-
-Set `target = {superseded_by}` and re-classify:
-
-→ Return to **A. Classify the Target**.
-
-**If `discussion`:**
-
-Set `landing_phase = discussion`.
-
-→ Proceed to **C. Fresh Target**.
-
-**If `elsewhere`:**
-
-Ask the user which topic the concern should land in, set `target` to their answer, and re-classify:
-
-→ Return to **A. Classify the Target**.
-
-## G. Append the Entry
+## F. Append the Entry
 
 Append the concern as a `### {short title}` subsection under `.workflows/{work_unit}/{landing_phase}/{target}.md`'s `## Triage` heading, using the entry shape above. If the section holds the `(none)` placeholder, replace it; otherwise add the entry below the existing ones. If the file has no `## Triage` heading at all — an artefact created outside the template — add the heading at end of file with the entry beneath it.
 
