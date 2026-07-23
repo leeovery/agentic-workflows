@@ -39,8 +39,8 @@ function runFails(dir, args) {
   return parsed;
 }
 
-function readStore(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, 'state.json'), 'utf8'));
+function readStore(dir, wu, phase, topic) {
+  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, phase, topic, 'state.json'), 'utf8'));
 }
 
 function writeContent(dir, relFile, body = '# Findings\n\n## F1\n') {
@@ -70,8 +70,8 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(b.id, 'review-002');
     const c = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(c.id, 'deep-dive-001-auth', 'kinds number independently, label suffixes');
-    const store = readStore(dir, 'pay');
-    assert.strictEqual(store.agents['research/alpha/review-001'].status, 'in-flight');
+    const store = readStore(dir, 'pay', 'research', 'alpha');
+    assert.strictEqual(store.agents['review-001'].status, 'in-flight');
   });
 
   it('dispatch numbers past legacy files already in the cache dir', () => {
@@ -131,7 +131,10 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('surface walks the findings; the last one incorporates the row; refusals are loud', () => {
-    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis']);
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    for (const a of pair.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
     writeContent(dir, d.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     runJson(dir, ['ack', 'pay', 'discussion', 'alpha', 'synthesis-001', '--findings', 'T1,T2']);
@@ -147,6 +150,116 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(s2.status, 'incorporated', 'last finding auto-incorporates');
     assert.match(runFails(dir, ['surface', 'pay', 'discussion', 'alpha', 'synthesis-001', 'T2']).error,
       /is incorporated — only an acknowledged row/);
+  });
+
+  it('a multi-label dispatch is one set: shared number, per-label rows and files', () => {
+    const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'formal-systems', '--label', 'incentive-realist']);
+    assert.strictEqual(d.set, '001');
+    assert.deepStrictEqual(d.agents.map((a) => a.id),
+      ['perspective-001-formal-systems', 'perspective-001-incentive-realist']);
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.ok(scan.next === null, 'perspective rows are never scan.next');
+    const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'ship-now', '--label', 'strategic-timing']);
+    assert.strictEqual(again.set, '002', 'the next council is the next set');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'dup', '--label', 'dup']).error, /duplicates/);
+  });
+
+  it('synthesis joins its landed set — required, complete, one live per set, name unoccupied', () => {
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'a', '--label', 'b']);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]).error,
+      /not complete/, 'a half-landed council never synthesises');
+    for (const a of pair.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const syn = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
+    assert.strictEqual(syn.id, 'synthesis-001');
+    assert.strictEqual(syn.set, '001');
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']).error,
+      /already has a live synthesis/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009']).error,
+      /No perspective set/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review', '--set', '001']).error,
+      /legal only with --kind synthesis/);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis']).error,
+      /always joins a perspective set/);
+    // A dead synthesis closes and re-dispatches; a legacy file blocks the name.
+    runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', 'synthesis-001']);
+    const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
+    assert.strictEqual(again.id, 'synthesis-001', 'recovery re-dispatch after closing the dead row');
+    writeContent(dir, '.workflows/.cache/pay/discussion/beta/synthesis-001.md', 'stale legacy report');
+    const p2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'perspective', '--label', 'x', '--label', 'y']);
+    for (const a of p2.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'beta']);
+    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'synthesis', '--set', p2.set]).error,
+      /legacy file/, 'a dead session file never becomes this council synthesis');
+  });
+
+  it('perspectives are never acknowledged; a mid-drain review outranks them in next', () => {
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    for (const a of pair.agents) writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.match(runFails(dir, ['ack', 'pay', 'discussion', 'alpha', pair.agents[0].id, '--clean']).error,
+      /synthesis input, never acknowledged/);
+    const r = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    writeContent(dir, r.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    runJson(dir, ['ack', 'pay', 'discussion', 'alpha', r.id, '--findings', 'F1,F2']);
+    runJson(dir, ['surface', 'pay', 'discussion', 'alpha', r.id, 'F1']);
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'surface', id: r.id, finding: 'F2' },
+      'pending perspectives never null out a mid-drain review');
+  });
+
+  it('deleting the topic cache dir is a complete cleanse — state is colocated', () => {
+    runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
+    fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true });
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, [],
+      'the restart rm -rf removes rows with the content');
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight, ['review-001'],
+      'the sibling topic is untouched');
+    const fresh = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    assert.strictEqual(fresh.id, 'review-001', 'a cleansed topic restarts its numbering');
+  });
+
+  it('scan.next never points at a perspective row even when one is oldest-pending', () => {
+    const p = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'lens']);
+    writeContent(dir, p.file);
+    const r = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    writeContent(dir, r.file);
+    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: 'review-001' },
+      'the older pending perspective is skipped');
+    assert.strictEqual(scan.pending.length, 2, 'both rows still listed for set checks');
+  });
+
+  it('rows expose set and created; incorporated rows come back whole', () => {
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    writeContent(dir, d.file);
+    runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    runJson(dir, ['ack', 'pay', 'research', 'alpha', d.id, '--clean']);
+    const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    const row = scan.incorporated[0];
+    assert.strictEqual(row.id, 'review-001');
+    assert.strictEqual(row.set, '001');
+    assert.ok(typeof row.created === 'string' && row.created.length > 0,
+      'created rides every row for freshness checks');
+  });
+
+  it('incorporate closes from any live state: pending set-members and abandoned in-flight rows', () => {
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'tail-risk']);
+    writeContent(dir, a.file);
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const consumed = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', a.id]);
+    assert.strictEqual(consumed.status, 'incorporated', 'pending row consumed without surfacing');
+
+    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    const abandoned = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]);
+    assert.strictEqual(abandoned.status, 'incorporated', 'stale in-flight row abandoned');
+    assert.match(runFails(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]).error, /already incorporated/);
   });
 
   it('incorporate is the skip-all exit and keeps the unsurfaced record honest', () => {
@@ -185,7 +298,7 @@ describe('engine agent — lifecycle store', () => {
 
   it('corrupt store refuses loudly instead of resetting', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'state.json'), '{nope');
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), '{nope');
     assert.match(runFails(dir, ['scan', 'pay', 'research', 'alpha']).error, /Corrupt agent state/);
   });
 });

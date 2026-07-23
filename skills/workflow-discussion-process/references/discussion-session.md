@@ -370,7 +370,7 @@ Note them in the Summary → Open Threads section of the discussion file. Commit
 
 ## I. In-Flight Agent Check
 
-The last gate before conclusion, whichever path led here. Scan `.workflows/.cache/{work_unit}/discussion/{topic}/` for files with `status: in-flight` in their frontmatter — dispatch-time skeletons whose agents haven't returned yet.
+The last gate before conclusion, whichever path led here. Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — close each such row first (`agent incorporate`), re-scan, and count only this session's.
 
 #### If no agents are in flight
 
@@ -393,7 +393,7 @@ There are still {N} background agents working.
 
 **If `wait`:**
 
-Watch for each in-flight file to flip to `status: pending`. When none remain in-flight, delegate surfacing to the shared protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the shared protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
 
 → Return to **B. Session Loop**.
 

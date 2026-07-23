@@ -154,7 +154,7 @@ Commands:
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
   cache stamp <work-unit> (research-analysis|gap-analysis)
-  agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug>]
+  agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
   agent announce <work-unit> <phase> <topic> <id>
@@ -647,14 +647,14 @@ function runCache(argv) {
 function runAgent(argv) {
   const [command, ...rest] = argv;
   try {
-    const { opts, flags, positional } = parseArgs(rest, ['clean']);
+    const { opts, flags, lists, positional } = parseArgs(rest, ['clean'], ['label']);
     const [workUnit, phase, topic, id, finding] = positional;
     const cwd = process.cwd();
     if (command === 'dispatch') {
       if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.kind) {
-        throw new Error('Usage: engine agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug>]');
+        throw new Error('Usage: engine agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>]');
       }
-      respond(agentState.dispatchAgent(cwd, workUnit, phase, topic, { kind: opts.kind, label: opts.label }));
+      respond(agentState.dispatchAgent(cwd, workUnit, phase, topic, { kind: opts.kind, labels: lists.label || [], set: opts.set }));
       return;
     }
     if (command === 'scan') {

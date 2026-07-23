@@ -140,15 +140,22 @@ function auditState(dir, label) {
     derivations.computeNextPhase(manifest);
     derivations.computeUnitPhaseState(manifest, pipelineOf(manifest.work_type));
 
-    // The agent-state store, when present, is always schema-valid.
-    const storePath = path.join(dir, '.workflows', '.cache', wu, 'state.json');
-    if (fs.existsSync(storePath)) {
-      const store = JSON.parse(fs.readFileSync(storePath, 'utf8'));
-      for (const [key, row] of Object.entries(store.agents || {})) {
-        assert.ok(['in-flight', 'pending', 'acknowledged', 'incorporated'].includes(row.status),
-          ctx(`agent ${key}: status "${row.status}" not in vocabulary`));
-        assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
-          ctx(`agent ${key}: surfaced ids must be recorded findings`));
+    // Every agent-state store (one per topic, colocated) is schema-valid.
+    const cacheRoot = path.join(dir, '.workflows', '.cache', wu);
+    if (fs.existsSync(cacheRoot)) {
+      for (const ph of fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const phDir = path.join(cacheRoot, ph.name);
+        for (const tp of fs.readdirSync(phDir, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+          const storePath = path.join(phDir, tp.name, 'state.json');
+          if (!fs.existsSync(storePath)) continue;
+          const store = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+          for (const [key, row] of Object.entries(store.agents || {})) {
+            assert.ok(['in-flight', 'pending', 'acknowledged', 'incorporated'].includes(row.status),
+              ctx(`agent ${ph.name}/${tp.name}/${key}: status "${row.status}" not in vocabulary`));
+            assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
+              ctx(`agent ${ph.name}/${tp.name}/${key}: surfaced ids must be recorded findings`));
+          }
+        }
       }
     }
 
@@ -672,6 +679,31 @@ describe('pipeline simulation', () => {
     assert.strictEqual(clean.status, 'incorporated');
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+
+    // A perspective council in discussion: the pair is one set, synthesis
+    // joins it by number, and a half-landed council is never synthesisable.
+    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+    const pair = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'perspective',
+      '--label', 'user-centric', '--label', 'capability-first']);
+    assert.strictEqual(pair.agents.length, 2);
+    assert.ok(pair.agents.every((a) => a.id.includes(`-${pair.set}-`)), 'one shared set number');
+    sim.write(pair.agents[0].file, '# The user-centric case\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(scan.next, null, 'a half-landed council is not actionable');
+    assert.strictEqual(scan.pending.length + scan.in_flight.length, 2);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /not complete/);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', '009'], /No perspective set/);
+
+    sim.write(pair.agents[1].file, '# The capability-first case\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    const syn = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
+    assert.strictEqual(syn.id, `synthesis-${pair.set}`);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set], /already has a live synthesis/);
+    for (const a of pair.agents) sim.run(['agent', 'incorporate', wu, 'discussion', 'alpha', a.id]);
+    sim.write(syn.file, '# Landscape\n\n### T1: the tradeoff\n');
+    scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: syn.id },
+      'consumed perspectives never mask the synthesis');
   });
 
   it('guards hold mid-pipeline: shadow fields, empty segments, cross-type reuse, bad statuses', () => {

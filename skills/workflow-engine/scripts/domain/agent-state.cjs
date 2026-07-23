@@ -5,9 +5,11 @@
 //
 // The one owner of the surfacing state machine that used to live as
 // hand-edited cache-file frontmatter (design/analysis-state.md, S1/S2).
-// State lives in an engine-owned store at `.workflows/.cache/{wu}/state.json`
-// — validated vocabularies, locked atomic writes, gitignored, purged with
-// the rest of the cache when the work unit closes. Content stays markdown:
+// State lives in an engine-owned store colocated with the topic's content
+// files — `.workflows/.cache/{wu}/{phase}/{topic}/state.json` — validated
+// vocabularies, locked atomic writes, gitignored. Deleting a topic's cache
+// directory (restart) or the work unit's cache (close) removes state and
+// content together: a cleanse is structural, never a second call. Content stays markdown:
 // an agent writes its findings file and nothing else; the file's existence
 // IS its completion signal (no skeleton files, no frontmatter).
 //
@@ -40,9 +42,9 @@ function workflowsDir(cwd) {
   return path.join(cwd, '.workflows');
 }
 
-/** @param {string} cwd @param {string} workUnit */
-function statePath(cwd, workUnit) {
-  return path.join(cwd, '.workflows', '.cache', workUnit, 'state.json');
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
+function statePath(cwd, workUnit, phase, topic) {
+  return path.join(cwd, '.workflows', '.cache', workUnit, phase, topic, 'state.json');
 }
 
 /** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
@@ -71,9 +73,9 @@ function validateKind(kind) {
   }
 }
 
-/** @param {string} cwd @param {string} workUnit @returns {{agents: Record<string, any>}} */
-function loadState(cwd, workUnit) {
-  const file = statePath(cwd, workUnit);
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @returns {{agents: Record<string, any>}} */
+function loadState(cwd, workUnit, phase, topic) {
+  const file = statePath(cwd, workUnit, phase, topic);
   if (!fs.existsSync(file)) return { agents: {} };
   let parsed;
   try {
@@ -88,29 +90,22 @@ function loadState(cwd, workUnit) {
   return parsed;
 }
 
-/** @param {string} cwd @param {string} workUnit @param {object} state */
-function saveState(cwd, workUnit, state) {
-  const file = statePath(cwd, workUnit);
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {object} state */
+function saveState(cwd, workUnit, phase, topic, state) {
+  const file = statePath(cwd, workUnit, phase, topic);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   io.writeJsonAtomic(file, state);
 }
 
-/** @param {string} phase @param {string} topic @param {string} id */
-function rowKey(phase, topic, id) {
-  return `${phase}/${topic}/${id}`;
-}
-
 /**
- * The row addressed by phase/topic/id, or a loud miss naming what exists.
+ * The row addressed by id, or a loud miss naming what exists.
  * @param {{agents: Record<string, any>}} state
  * @param {string} phase @param {string} topic @param {string} id
  */
 function requireRow(state, phase, topic, id) {
-  const row = state.agents[rowKey(phase, topic, id)];
+  const row = state.agents[id];
   if (!row) {
-    const siblings = Object.keys(state.agents)
-      .filter((k) => k.startsWith(`${phase}/${topic}/`))
-      .map((k) => k.split('/')[2]);
+    const siblings = Object.keys(state.agents);
     const hint = siblings.length ? ` Known agents there: ${siblings.join(', ')}.` : ' No agents dispatched there.';
     throw new Error(`No agent "${id}" for ${phase}/${topic}.${hint}`);
   }
@@ -124,53 +119,98 @@ function requireRow(state, phase, topic, id) {
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
  * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {{kind: string, label?: string}} opts
+ * @param {string} topic @param {{kind: string, labels?: string[], set?: string}} opts
  */
-function dispatchAgent(cwd, workUnit, phase, topic, { kind, label }) {
+function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateKind(kind);
-  if (label !== undefined && (typeof label !== 'string' || label === '' || /[\/.]/.test(label))) {
-    throw new Error(`Invalid label ${JSON.stringify(label)}: a short slash- and dot-free slug`);
+  for (const label of labels) {
+    if (typeof label !== 'string' || label === '' || /[\/.]/.test(label)) {
+      throw new Error(`Invalid label ${JSON.stringify(label)}: a short slash- and dot-free slug`);
+    }
+  }
+  if (new Set(labels).size !== labels.length) {
+    throw new Error('Invalid labels: duplicates in one dispatch');
+  }
+  if (set !== undefined && kind !== 'synthesis') {
+    throw new Error('--set names the perspective set a synthesis consumes — legal only with --kind synthesis');
+  }
+  if (kind === 'synthesis' && set === undefined) {
+    throw new Error('a synthesis always joins a perspective set — dispatch with --set <NNN>');
+  }
+  if (kind === 'synthesis' && labels.length) {
+    throw new Error('a synthesis takes no --label — its identity is synthesis-{set}');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const dir = agentDir(cwd, workUnit, phase, topic);
+    const inTopic = Object.values(state.agents);
 
-    let max = 0;
-    for (const key of Object.keys(state.agents)) {
-      const row = state.agents[key];
-      if (key.startsWith(`${phase}/${topic}/`) && row.kind === kind) {
-        const m = /-(\d{3})(?:-|$)/.exec(row.id);
-        if (m) max = Math.max(max, Number(m[1]));
+    let nnn;
+    if (set !== undefined) {
+      // A synthesis joins an existing perspective set: same number, one per set.
+      if (!/^\d{3}$/.test(set)) {
+        throw new Error(`Invalid set ${JSON.stringify(set)}: the three-digit set number from the perspective dispatch`);
       }
-    }
-    if (fs.existsSync(dir)) {
-      for (const name of fs.readdirSync(dir)) {
-        const m = new RegExp(`^${kind}-(\\d{3})(?:-|\\.)`).exec(name);
-        if (m) max = Math.max(max, Number(m[1]));
+      const members = inTopic.filter((r) => r.kind === 'perspective' && r.set === set);
+      if (!members.length) {
+        throw new Error(`No perspective set "${set}" for ${phase}/${topic} — dispatch the perspectives first`);
       }
+      if (members.some((r) => r.status === 'in-flight')) {
+        throw new Error(`Set "${set}" is not complete — a perspective is still in flight; synthesis reads the whole council`);
+      }
+      if (inTopic.some((r) => r.kind === 'synthesis' && r.set === set && r.status !== 'incorporated')) {
+        throw new Error(`Set "${set}" already has a live synthesis — one per set (incorporate a dead one to re-dispatch)`);
+      }
+      if (fs.existsSync(path.join(dir, `synthesis-${set}.md`)) && !inTopic.some((r) => r.id === `synthesis-${set}`)) {
+        throw new Error(`A legacy file synthesis-${set}.md already occupies that name — ids never collide with files`);
+      }
+      nnn = set;
+    } else {
+      let max = 0;
+      for (const row of inTopic) {
+        if (row.kind === kind) {
+          const m = /-(\d{3})(?:-|$)/.exec(row.id);
+          if (m) max = Math.max(max, Number(m[1]));
+        }
+      }
+      if (fs.existsSync(dir)) {
+        for (const name of fs.readdirSync(dir)) {
+          const m = new RegExp(`^${kind}-(\\d{3})(?:-|\\.)`).exec(name);
+          if (m) max = Math.max(max, Number(m[1]));
+        }
+      }
+      nnn = String(max + 1).padStart(3, '0');
     }
 
-    const nnn = String(max + 1).padStart(3, '0');
-    const id = label ? `${kind}-${nnn}-${label}` : `${kind}-${nnn}`;
-    const file = path.join(dir, `${id}.md`);
-
-    state.agents[rowKey(phase, topic, id)] = {
-      id,
-      kind,
-      phase,
-      topic,
-      ...(label ? { label } : {}),
-      status: 'in-flight',
-      announced: false,
-      findings: [],
-      surfaced: [],
-      created: new Date().toISOString(),
-    };
-    fs.mkdirSync(dir, { recursive: true });
-    saveState(cwd, workUnit, state);
-    return { work_unit: workUnit, phase, topic, id, kind, file: path.relative(cwd, file) };
+    // Every row in one dispatch shares the number — that shared number IS the
+    // set identity a perspective pair and its synthesis are joined by.
+    const ids = labels.length
+      ? labels.map((label) => `${kind}-${nnn}-${label}`)
+      : [`${kind}-${nnn}`];
+    const created = new Date().toISOString();
+    const agents = ids.map((id, i) => {
+      state.agents[id] = {
+        id,
+        kind,
+        phase,
+        topic,
+        set: nnn,
+        ...(labels.length ? { label: labels[i] } : {}),
+        status: 'in-flight',
+        announced: false,
+        findings: [],
+        surfaced: [],
+        created,
+      };
+      return { id, file: path.relative(cwd, path.join(dir, `${id}.md`)) };
+    });
+    saveState(cwd, workUnit, phase, topic, state);
+    if (agents.length === 1) {
+      return { work_unit: workUnit, phase, topic, kind, set: nnn, ...agents[0] };
+    }
+    return { work_unit: workUnit, phase, topic, kind, set: nnn, agents };
   });
 }
 
@@ -195,6 +235,8 @@ function publicRow(row) {
     id: row.id,
     kind: row.kind,
     status: row.status,
+    set: row.set,
+    created: row.created,
     announced: row.announced,
     findings: row.findings,
     surfaced: row.surfaced,
@@ -202,6 +244,10 @@ function publicRow(row) {
     ...(row.label ? { label: row.label } : {}),
   };
 }
+
+// Kinds that are consumed by another agent, never surfaced to the user —
+// scan's `next` must not point at them.
+const NEVER_SURFACED = ['perspective'];
 
 /**
  * Scan: promote every in-flight row whose content file now exists, then
@@ -215,10 +261,8 @@ function scanAgents(cwd, workUnit, phase, topic) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
-    const rows = Object.entries(state.agents)
-      .filter(([k]) => k.startsWith(`${phase}/${topic}/`))
-      .map(([, r]) => r)
+    const state = loadState(cwd, workUnit, phase, topic);
+    const rows = Object.values(state.agents)
       .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
 
     let promoted = false;
@@ -228,17 +272,22 @@ function scanAgents(cwd, workUnit, phase, topic) {
         promoted = true;
       }
     }
-    if (promoted) saveState(cwd, workUnit, state);
+    if (promoted) saveState(cwd, workUnit, phase, topic, state);
 
     const byStatus = (/** @type {string} */ s) => rows.filter((r) => r.status === s);
     const acked = byStatus('acknowledged');
-    const surfacing = acked.find((r) => unsurfaced(r).length > 0);
+    const surfaceable = (/** @type {any} */ r) => !NEVER_SURFACED.includes(r.kind);
+    const surfacing = acked.find((r) => surfaceable(r) && unsurfaced(r).length > 0);
     const pending = byStatus('pending');
 
     /** @type {null | {action: string, id: string, finding?: string}} */
     let next = null;
-    if (surfacing) next = { action: 'surface', id: surfacing.id, finding: unsurfaced(surfacing)[0] };
-    else if (pending.length) next = { action: 'acknowledge', id: pending[0].id };
+    if (surfacing) {
+      next = { action: 'surface', id: surfacing.id, finding: unsurfaced(surfacing)[0] };
+    } else {
+      const first = pending.find(surfaceable);
+      if (first) next = { action: 'acknowledge', id: first.id };
+    }
 
     return {
       work_unit: workUnit,
@@ -247,7 +296,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
       in_flight: byStatus('in-flight').map((r) => r.id),
       pending: pending.map(publicRow),
       acknowledged: acked.map(publicRow),
-      incorporated: byStatus('incorporated').map((r) => r.id),
+      incorporated: byStatus('incorporated').map(publicRow),
       next,
     };
   });
@@ -269,14 +318,17 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
     throw new Error('Invalid findings: duplicate ids');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
+    if (NEVER_SURFACED.includes(row.kind)) {
+      throw new Error(`Agent "${id}" is a ${row.kind} — a synthesis input, never acknowledged; incorporate it when its synthesis is dispatched`);
+    }
     if (row.status !== 'pending') {
       throw new Error(`Agent "${id}" is ${row.status} — only a pending row acknowledges (run \`agent scan\` to promote a finished agent)`);
     }
     row.findings = findings;
     row.status = findings.length === 0 ? 'incorporated' : 'acknowledged';
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
@@ -290,13 +342,13 @@ function announceAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
       throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row announces`);
     }
     row.announced = true;
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
@@ -311,7 +363,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
       throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row surfaces findings`);
@@ -324,15 +376,17 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
     }
     row.surfaced.push(finding);
     if (unsurfaced(row).length === 0) row.status = 'incorporated';
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
 
 /**
- * Incorporate an acknowledged row wholesale — the user declined the
- * remaining findings (skip-all). Remaining ids stay unsurfaced on the row,
- * a true record of what was offered but never raised.
+ * Incorporate a row wholesale — the terminal close from any live state.
+ * From acknowledged it is the skip-all exit (declined ids stay unsurfaced,
+ * a true record of what was offered); from pending it marks a report
+ * consumed without surfacing (a perspective feeding synthesis); from
+ * in-flight it abandons a row whose session died before the agent returned.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id
  */
@@ -340,13 +394,13 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
-    if (row.status !== 'acknowledged') {
-      throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row incorporates`);
+    if (row.status === 'incorporated') {
+      throw new Error(`Agent "${id}" is already incorporated`);
     }
     row.status = 'incorporated';
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
