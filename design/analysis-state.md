@@ -91,6 +91,22 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — End-of-stack review (#533): three slices + a real-data
+  rehearsal (sandbox copies of fumi and portal — 16 + 64 assertions,
+  0 failures, byte-stable re-runs; originals untouched). One HIGH:
+  the task-writer agents were missed as staging consumers — approved
+  work would silently never reach the plan; orchestrators now pass
+  the approved numbers. Two more majors: the spec side's oldest
+  tracking carriers still prescribed frontmatter, and the authoring
+  amendment contract had no producer. Migration hardened against the
+  real historical shapes (CRLF, dead skeletons, dotted names, the
+  container leak its new pin caught). Census closure: 233-unit
+  inventory in round 2, corpus-wide census here — the no-frontmatter
+  claim now holds everywhere outside local-markdown and legacy.
+  Accepted residuals: pre-programme in-flight skeletons count as
+  legacy review cycles (rare, self-healing); per-finding resolution
+  lines stay content records.
+
 - 2026-07-23 — Stage 6 up (#532): migration 051 carries in-progress
   installs across the whole programme in one idempotent pass — agent
   rows, candidate subtrees (spent gates translate to nothing), staging
