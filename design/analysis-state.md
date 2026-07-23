@@ -91,6 +91,17 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Stage 4 up (#530): the durable half. Staging cycles
+  record per cycle in the manifest (decisions double as convergence
+  history); candidate gate state under analysis_staging, cleared when
+  a gate completes; tracking flips under tracking.{stem}, read by both
+  completion checkpoints; report stats become a Stats body section.
+  All vocabulary-guarded at the engine. CONVENTIONS' sanctioned
+  staging-frontmatter exception dissolves. Deliberate line: tracking
+  files' per-finding resolution lines stay body content — a record
+  with notes (fix-tracking's class), not a mutated lifecycle — raise
+  at end-of-stack review if the line sits wrong.
+
 - 2026-07-23 — Stage 3 up (#529): the investigation family. Validations
   walk dispatch → land → scan → incorporate (consumed inline, never
   surfaced — the store's existing verbs fit with nothing new). The
