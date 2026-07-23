@@ -32,7 +32,7 @@ On **amendment**, the task detail file already contains previously authored task
 5. Read the approved phases and task list — understand context and scope
 6. Author all tasks in the phase, writing each to the task detail file incrementally — each task written to disk before starting the next
 
-If this is an **amendment**: the prompt names the rejected ids, and each carries a feedback blockquote below its heading in the file. Rewrite the entire task detail file — copy the other tasks verbatim, rewrite the rejected ones addressing the feedback and dropping the spent blockquote. A named id with **no** feedback blockquote was already rewritten by an interrupted run — copy it verbatim like the others. The file carries no status markers — the orchestrator tracks decisions in its own store.
+If this is an **amendment**: the prompt names the rejected ids, and each carries a feedback blockquote below its heading in the file. Rewrite the entire task detail file — copy the other tasks verbatim, rewrite the rejected ones addressing the feedback and dropping the spent blockquote. A named id with **no** feedback blockquote was already rewritten by an interrupted run — copy it verbatim like the others. A task in the phase's table but absent from the file entirely: author it fresh from the table. The file carries no status markers — the orchestrator tracks decisions in its own store.
 
 ## Task Detail File Format
 

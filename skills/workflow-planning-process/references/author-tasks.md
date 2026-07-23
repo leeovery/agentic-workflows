@@ -63,7 +63,7 @@ Read the task detail file and count tasks. Verify task count matches the task ta
 
 #### If `valid`
 
-**On an amendment run** (the manifest still carries `rejected` rows): the rewrite is validated — reset each rejected row to `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per id); in auto mode they approve automatically, like any pending row. Rows stay `rejected` until validation passes so a mismatch retry re-enters **B** as an amendment — never as a full run over approved text — and an interrupted amendment resumes as one.
+**On an amendment run** (the manifest still carries `rejected` rows): the rewrite is validated — reset each rejected row to `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id} pending` per id); in auto mode they approve automatically, like any pending row.
 
 → Proceed to **D. Check Gate Mode**.
 
@@ -238,7 +238,7 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 
 > **CHECKPOINT**: Verify the manifest marks every `staging.author-p{N}` row `approved` before writing — both gate modes approve every task before reaching this section. A `pending` row means the loop was interrupted — return to **E. Approval Loop**; a `rejected` row still owes its amendment — return to **F. Revision Check**. Never write a partial phase.
 
-For each approved task in the task detail file, in order (crash-resume guard: a task whose internal id is already in `task_map` was written before an interruption — skip its format write and continue with the next; re-creating it would duplicate the task in external backends):
+For each approved task in the task detail file, in order (crash-resume guard: a task whose internal id is already in `task_map` was written before an interruption — skip its format write and continue with the next; a task missing from `task_map` may still exist in the backend from a crash between its format write and the manifest record — check per the format's **[reading.md](output-formats/{format}/reading.md)** first and, when present, record its external id instead of re-creating):
 
 1. Read the task content from the task detail file
 2. Write to the output format (format-specific — see the format's **[authoring.md](output-formats/{format}/authoring.md)**)

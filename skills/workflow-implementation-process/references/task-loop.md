@@ -344,6 +344,8 @@ The response also carries the `MENU: blocked tasks` section that **A. Retrieve N
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
 
+**If the planning item carries no `storage_paths`** (a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
+
 **Commit all changes** with raw git — stage the task's code and tests, the plan's `storage_paths` (recorded on the planning item), the work unit's manifest, and the task's fix-tracking file when one exists (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`), then commit:
 
 ```

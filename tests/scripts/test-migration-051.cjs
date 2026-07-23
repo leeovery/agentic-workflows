@@ -188,6 +188,45 @@ describe('migration 051 — frontmatter state to stores', () => {
       /\*\*Feedback\*\*: tighter scope/, 'feedback blockquotes stay as content');
   });
 
+  it('closes the landed lenses of a council with a dead in-flight member', () => {
+    writeManifest('pay', {});
+    // Case 1: synthesis skeleton in flight — the promoted council can never re-join.
+    write('.workflows/.cache/pay/discussion/alpha/perspective-001-a.md',
+      '---\ntype: perspective\nstatus: pending\nset: 001\nlens: a\n---\nargument\n');
+    write('.workflows/.cache/pay/discussion/alpha/perspective-001-b.md',
+      '---\ntype: perspective\nstatus: pending\nset: 001\nlens: b\n---\nargument\n');
+    write('.workflows/.cache/pay/discussion/alpha/synthesis-001.md',
+      '---\ntype: synthesis\nstatus: in-flight\nset: 001\n---\n');
+    // Case 2: one lens landed, its sibling died in flight — half a council.
+    write('.workflows/.cache/pay/discussion/alpha/perspective-002-c.md',
+      '---\ntype: perspective\nstatus: pending\nset: 002\nlens: c\n---\nargument\n');
+    write('.workflows/.cache/pay/discussion/alpha/perspective-002-d.md',
+      '---\ntype: perspective\nstatus: in-flight\nset: 002\nlens: d\n---\n');
+    // Control: a live landed pair with no dead member stays pending.
+    write('.workflows/.cache/pay/discussion/alpha/perspective-003-e.md',
+      '---\ntype: perspective\nstatus: pending\nset: 003\nlens: e\n---\nargument\n');
+    migration.run(hooks());
+    const store = readStore('pay', 'discussion', 'alpha');
+    assert.strictEqual(store.agents['perspective-001-a'].status, 'incorporated');
+    assert.strictEqual(store.agents['perspective-001-b'].status, 'incorporated');
+    assert.strictEqual(store.agents['perspective-002-c'].status, 'incorporated');
+    assert.strictEqual(store.agents['synthesis-001'], undefined, 'skeletons still get no row');
+    assert.strictEqual(store.agents['perspective-002-d'], undefined);
+    assert.strictEqual(store.agents['perspective-003-e'].status, 'pending', 'a live council is untouched');
+  });
+
+  it('family 5 skips closed work units — historical manifests stay as-is', () => {
+    writeManifest('pay', { status: 'completed', phases: {
+      planning: { items: { alpha: { status: 'completed' } } },
+    } });
+    write('.workflows/pay/planning/alpha/phase-1-tasks.md',
+      '## alpha-1-1 | approved\n### Task 1: done\n');
+    migration.run(hooks());
+    const m = readManifest('pay');
+    assert.ok(!('staging' in m.phases.planning.items.alpha),
+      'no spent subtree is planted on a closed unit');
+  });
+
   it('is idempotent — a second run changes nothing and skips', () => {
     writeManifest('pay', { phases: { review: { items: { alpha: { status: 'in-progress' } } } } });
     write('.workflows/.cache/pay/research/alpha/review-001.md',
