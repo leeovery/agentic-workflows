@@ -1,13 +1,13 @@
 ---
 name: workflow-implementation-analysis-task-writer
-description: Creates plan tasks from approved analysis findings. Reads the staging file, extracts approved tasks, and creates them in the plan using the format's authoring adapter. Invoked by workflow-implementation-process skill after user approves analysis tasks.
+description: Creates plan tasks from approved analysis findings. Reads the staging file's task content, takes the prompt's approved task numbers, and creates exactly those in the plan using the format's authoring adapter. Invoked by workflow-implementation-process skill after user approves analysis tasks.
 tools: Read, Write, Edit, Glob, Grep, Bash, mcp__linear__list_issues, mcp__linear__get_issue, mcp__linear__create_issue, mcp__linear__create_issue_label
 model: opus
 ---
 
 # Implementation Analysis: Task Writer
 
-You receive the path to a staging file containing approved analysis tasks. Your job is to create those tasks in the implementation plan using the format's authoring adapter.
+You receive the path to a staging file of proposed tasks and the list of task numbers the user approved. Your job is to create exactly the approved tasks in the implementation plan using the format's authoring adapter.
 
 ## Your Input
 
@@ -15,7 +15,8 @@ You receive via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for path construction)
 2. **Topic name** — the implementation topic (used to scope tasks to the correct plan)
-3. **Staging file path** — path to the staging file with approved tasks
+3. **Staging file path** — path to the staging file (task content only — decisions live in the orchestrator's store)
+4. **Approved task numbers** — the `## Task {n}` numbers to create; every other task was skipped
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
 5. **Plan format reading adapter path** — how to read tasks from the plan (for determining next phase number)
 6. **Plan format authoring adapter path** — how to create tasks in the plan
@@ -23,7 +24,7 @@ You receive via the orchestrator's prompt:
 
 ## Your Process
 
-1. **Read the staging file** — extract all tasks with `status: approved`
+1. **Read the staging file** — extract the tasks whose numbers the prompt approved
 2. **Read the plan via the reading adapter** — determine the max existing phase number
 3. **Calculate next phase number** — max existing phase + 1
 4. **Read the authoring adapter** — understand how to create tasks in this format
@@ -39,9 +40,9 @@ When creating any new `.md` file with the Write tool, write it to the same path 
 
 Append the new phase and task table to the planning file (path provided in inputs):
 
-- Phase heading: `### Phase {N}: {phase_label}`, followed by `status: approved` and `approved_at: YYYY-MM-DD` (today's date) — the staging-file gate already approved these tasks
+- Phase heading: `### Phase {N}: {phase_label}` — the gate already approved these tasks; the plan carries no approval markers
 - Phase goal: `Address findings from {phase_label}.`
-- Task table under a `#### Tasks` heading with `status: approved`, columns Internal ID, Name, and Edge Cases
+- Task table under a `#### Tasks` heading, columns Internal ID, Name, and Edge Cases
 - Internal IDs must match the IDs used in the created task files
 
 ## Update task_map
@@ -71,7 +72,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 **MANDATORY. No exceptions.**
 
-1. **Approved only** — only create tasks with `status: approved`. Never create tasks that are `pending` or `skipped`.
+1. **Approved only** — create exactly the prompt's approved task numbers. Never create any other task from the file.
 2. **No content modifications** — create tasks exactly as they appear in the staging file. Do not rewrite, reorder, or embellish.
 3. **No git writes** — do not commit or stage. Writing plan task files, updating the planning file, and updating task_map are your only writes.
 4. **Authoring adapter is authoritative** — follow its instructions for task file structure, naming, and format.

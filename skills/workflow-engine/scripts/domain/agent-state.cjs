@@ -32,7 +32,6 @@ const AGENT_KINDS = [
   'synthesis',
   'root-cause-validation',
   'fix-validation',
-  'fix-exploration',
 ];
 
 const AGENT_STATUSES = ['in-flight', 'pending', 'acknowledged', 'incorporated'];
