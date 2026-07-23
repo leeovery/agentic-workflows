@@ -167,6 +167,27 @@ describe('migration 051 — frontmatter state to stores', () => {
       'dotted candidate names skip the file — fresh staging self-heals');
   });
 
+  it('translates in-flight task-authoring decisions and never leaks empty containers', () => {
+    writeManifest('pay', { phases: {
+      planning: { items: { alpha: { status: 'in-progress' } } },
+      review: { items: { alpha: { status: 'in-progress' } } },
+    } });
+    write('.workflows/pay/planning/alpha/phase-2-tasks.md', [
+      '## alpha-2-1 | approved', '### Task 1: done thing', '',
+      '## alpha-2-2 | rejected', '', '> **Feedback**: tighter scope', '', '### Task 2: redo', '',
+      '## alpha-2-3 | pending', '### Task 3: waiting', '',
+    ].join('\n'));
+    // A truncated staging file (headings, no statuses) must not leak {}.
+    write('.workflows/pay/implementation/alpha/review-tasks-c1.md', '# Review Tasks\n## Task 1: t\n');
+    migration.run(hooks());
+    const m = readManifest('pay');
+    assert.deepStrictEqual(m.phases.planning.items.alpha.staging['author-p2'],
+      { tasks: { 'alpha-2-1': 'approved', 'alpha-2-2': 'rejected', 'alpha-2-3': 'pending' } });
+    assert.ok(!('staging' in m.phases.review.items.alpha), 'statusless staging file leaks no empty container');
+    assert.match(fs.readFileSync(path.join(dir, '.workflows', 'pay', 'planning', 'alpha', 'phase-2-tasks.md'), 'utf8'),
+      /\*\*Feedback\*\*: tighter scope/, 'feedback blockquotes stay as content');
+  });
+
   it('is idempotent — a second run changes nothing and skips', () => {
     writeManifest('pay', { phases: { review: { items: { alpha: { status: 'in-progress' } } } } });
     write('.workflows/.cache/pay/research/alpha/review-001.md',

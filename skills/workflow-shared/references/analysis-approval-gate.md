@@ -17,7 +17,7 @@ The caller provides these via context before loading:
 - `tracker` — a list (initially empty) the caller surfaces as the new-topics callout. The reference appends a name only when a candidate is **approved and written**.
 - `staging_file` — path to the analysis's staging file (`.workflows/{work_unit}/.state/{analysis}-candidates.md`).
 
-On return, the reference sets `gate_outcome` to `processed` (gate ran to completion — host stamps the cache) or `deferred` (host skips the stamp). A processed gate's state is spent: before returning `processed`, clear it (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.{analysis}`) — approved candidates live on the map, skipped names on the dismissed list; the subtree is the gate's scratch, not the record.
+On return, the reference sets `gate_outcome` to `processed` (gate ran to completion — host stamps the cache) or `deferred` (host skips the stamp).
 
 `{analysis_label}`: `Research analysis` for `research-analysis`, `Gap analysis` for `discovery-gap-analysis`. Used in the lead-in.
 
@@ -29,7 +29,11 @@ Read `staging_file` (candidate content) and the gate state: `manifest get {work_
 
 Nothing to review (every candidate was pre-resolved at stage time, or already approved/skipped on a prior pass).
 
-Set `gate_outcome` to `processed`.
+A processed gate's state is spent — approved candidates live on the map, skipped names on the dismissed list. Clear it, set `gate_outcome` to `processed`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.{analysis}
+```
 
 → Return to caller.
 
@@ -72,7 +76,11 @@ Walk the candidate blocks in staging-file order. For the next candidate the mani
 
 #### If no `pending` block remains
 
-Set `gate_outcome` to `processed`.
+A processed gate's state is spent — approved candidates live on the map, skipped names on the dismissed list. Clear it, set `gate_outcome` to `processed`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.{analysis}
+```
 
 → Return to caller.
 

@@ -18,6 +18,8 @@ const engine = require('../../workflow-engine/scripts/lib.cjs');
 // rows past `in-flight` are cycles that happened. Legacy review-*.md files
 // with no store row (pre-programme caches) count as completed cycles by
 // existence alone — their frontmatter is legacy state and is never read.
+// Accepted edge: a pre-programme crashed dispatch's skeleton is rowless too
+// and counts here; the phase's final review backstops before conclusion.
 function reviewCycles(cwd, workUnit, topic) {
   const dir = path.join(cwd, '.workflows', '.cache', workUnit, 'discussion', topic);
   /** @type {Record<string, any>} */
@@ -31,7 +33,7 @@ function reviewCycles(cwd, workUnit, topic) {
   const rowIds = new Set();
   let fromRows = 0;
   for (const row of Object.values(rows)) {
-    if (row.kind !== 'review') continue;
+    if (!row || typeof row !== 'object' || row.kind !== 'review') continue; // malformed rows never brick the display
     rowIds.add(`${row.id}.md`);
     if (row.status !== 'in-flight') {
       // A zero-finding row only counts if its report actually exists — an

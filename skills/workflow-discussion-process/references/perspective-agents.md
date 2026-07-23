@@ -104,7 +104,7 @@ The discussion continues — do not wait for agents to return.
 
 This section is reached when all perspective agents in a set have completed. The synthesis agent reconciles their findings into a tradeoff landscape.
 
-Record the dispatch against the completed set — the engine joins the synthesis to its perspectives by the set number and refuses a second synthesis for the same set:
+Record the dispatch against the completed set — the engine joins the synthesis to its perspectives by the set number and refuses a second live synthesis for the same set (re-dispatch over a closed one replaces it — the engine discards the stale report):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind synthesis --set {set}

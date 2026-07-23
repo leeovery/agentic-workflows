@@ -1,6 +1,6 @@
 # Skill Authoring Conventions
 
-This file defines the mandatory display, structural, prose, and file-layout conventions for all skill files in this project (entry-point and processing). Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
+This file defines the mandatory display, structural, prose, state-ownership, and file-layout conventions for all skill files in this project (entry-point and processing). Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
 
 ## Prose Economy (MANDATORY)
 
