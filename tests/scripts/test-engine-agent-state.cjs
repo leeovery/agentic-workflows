@@ -39,8 +39,8 @@ function runFails(dir, args) {
   return parsed;
 }
 
-function readStore(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, 'state.json'), 'utf8'));
+function readStore(dir, wu, phase, topic) {
+  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, phase, topic, 'state.json'), 'utf8'));
 }
 
 function writeContent(dir, relFile, body = '# Findings\n\n## F1\n') {
@@ -70,8 +70,8 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(b.id, 'review-002');
     const c = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(c.id, 'deep-dive-001-auth', 'kinds number independently, label suffixes');
-    const store = readStore(dir, 'pay');
-    assert.strictEqual(store.agents['research/alpha/review-001'].status, 'in-flight');
+    const store = readStore(dir, 'pay', 'research', 'alpha');
+    assert.strictEqual(store.agents['review-001'].status, 'in-flight');
   });
 
   it('dispatch numbers past legacy files already in the cache dir', () => {
@@ -213,16 +213,16 @@ describe('engine agent — lifecycle store', () => {
       'pending perspectives never null out a mid-drain review');
   });
 
-  it('purge removes one topic rows and nothing else', () => {
+  it('deleting the topic cache dir is a complete cleanse — state is colocated', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
-    const purged = runJson(dir, ['purge', 'pay', 'research', 'alpha']);
-    assert.strictEqual(purged.purged, 1);
-    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, []);
+    fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true });
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, [],
+      'the restart rm -rf removes rows with the content');
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight, ['review-001'],
       'the sibling topic is untouched');
     const fresh = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    assert.strictEqual(fresh.id, 'review-001', 'a purged topic restarts its numbering');
+    assert.strictEqual(fresh.id, 'review-001', 'a cleansed topic restarts its numbering');
   });
 
   it('scan.next never points at a perspective row even when one is oldest-pending', () => {
@@ -298,7 +298,7 @@ describe('engine agent — lifecycle store', () => {
 
   it('corrupt store refuses loudly instead of resetting', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'state.json'), '{nope');
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), '{nope');
     assert.match(runFails(dir, ['scan', 'pay', 'research', 'alpha']).error, /Corrupt agent state/);
   });
 });

@@ -5,9 +5,11 @@
 //
 // The one owner of the surfacing state machine that used to live as
 // hand-edited cache-file frontmatter (design/analysis-state.md, S1/S2).
-// State lives in an engine-owned store at `.workflows/.cache/{wu}/state.json`
-// — validated vocabularies, locked atomic writes, gitignored, purged with
-// the rest of the cache when the work unit closes. Content stays markdown:
+// State lives in an engine-owned store colocated with the topic's content
+// files — `.workflows/.cache/{wu}/{phase}/{topic}/state.json` — validated
+// vocabularies, locked atomic writes, gitignored. Deleting a topic's cache
+// directory (restart) or the work unit's cache (close) removes state and
+// content together: a cleanse is structural, never a second call. Content stays markdown:
 // an agent writes its findings file and nothing else; the file's existence
 // IS its completion signal (no skeleton files, no frontmatter).
 //
@@ -40,9 +42,9 @@ function workflowsDir(cwd) {
   return path.join(cwd, '.workflows');
 }
 
-/** @param {string} cwd @param {string} workUnit */
-function statePath(cwd, workUnit) {
-  return path.join(cwd, '.workflows', '.cache', workUnit, 'state.json');
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
+function statePath(cwd, workUnit, phase, topic) {
+  return path.join(cwd, '.workflows', '.cache', workUnit, phase, topic, 'state.json');
 }
 
 /** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
@@ -71,9 +73,9 @@ function validateKind(kind) {
   }
 }
 
-/** @param {string} cwd @param {string} workUnit @returns {{agents: Record<string, any>}} */
-function loadState(cwd, workUnit) {
-  const file = statePath(cwd, workUnit);
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @returns {{agents: Record<string, any>}} */
+function loadState(cwd, workUnit, phase, topic) {
+  const file = statePath(cwd, workUnit, phase, topic);
   if (!fs.existsSync(file)) return { agents: {} };
   let parsed;
   try {
@@ -88,29 +90,22 @@ function loadState(cwd, workUnit) {
   return parsed;
 }
 
-/** @param {string} cwd @param {string} workUnit @param {object} state */
-function saveState(cwd, workUnit, state) {
-  const file = statePath(cwd, workUnit);
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {object} state */
+function saveState(cwd, workUnit, phase, topic, state) {
+  const file = statePath(cwd, workUnit, phase, topic);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   io.writeJsonAtomic(file, state);
 }
 
-/** @param {string} phase @param {string} topic @param {string} id */
-function rowKey(phase, topic, id) {
-  return `${phase}/${topic}/${id}`;
-}
-
 /**
- * The row addressed by phase/topic/id, or a loud miss naming what exists.
+ * The row addressed by id, or a loud miss naming what exists.
  * @param {{agents: Record<string, any>}} state
  * @param {string} phase @param {string} topic @param {string} id
  */
 function requireRow(state, phase, topic, id) {
-  const row = state.agents[rowKey(phase, topic, id)];
+  const row = state.agents[id];
   if (!row) {
-    const siblings = Object.keys(state.agents)
-      .filter((k) => k.startsWith(`${phase}/${topic}/`))
-      .map((k) => k.split('/')[2]);
+    const siblings = Object.keys(state.agents);
     const hint = siblings.length ? ` Known agents there: ${siblings.join(', ')}.` : ' No agents dispatched there.';
     throw new Error(`No agent "${id}" for ${phase}/${topic}.${hint}`);
   }
@@ -148,11 +143,9 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
     throw new Error('a synthesis takes no --label — its identity is synthesis-{set}');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const dir = agentDir(cwd, workUnit, phase, topic);
-    const inTopic = Object.entries(state.agents)
-      .filter(([k]) => k.startsWith(`${phase}/${topic}/`))
-      .map(([, r]) => r);
+    const inTopic = Object.values(state.agents);
 
     let nnn;
     if (set !== undefined) {
@@ -198,7 +191,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
       : [`${kind}-${nnn}`];
     const created = new Date().toISOString();
     const agents = ids.map((id, i) => {
-      state.agents[rowKey(phase, topic, id)] = {
+      state.agents[id] = {
         id,
         kind,
         phase,
@@ -213,8 +206,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
       };
       return { id, file: path.relative(cwd, path.join(dir, `${id}.md`)) };
     });
-    fs.mkdirSync(dir, { recursive: true });
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     if (agents.length === 1) {
       return { work_unit: workUnit, phase, topic, kind, set: nnn, ...agents[0] };
     }
@@ -269,10 +261,8 @@ function scanAgents(cwd, workUnit, phase, topic) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
-    const rows = Object.entries(state.agents)
-      .filter(([k]) => k.startsWith(`${phase}/${topic}/`))
-      .map(([, r]) => r)
+    const state = loadState(cwd, workUnit, phase, topic);
+    const rows = Object.values(state.agents)
       .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
 
     let promoted = false;
@@ -282,7 +272,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
         promoted = true;
       }
     }
-    if (promoted) saveState(cwd, workUnit, state);
+    if (promoted) saveState(cwd, workUnit, phase, topic, state);
 
     const byStatus = (/** @type {string} */ s) => rows.filter((r) => r.status === s);
     const acked = byStatus('acknowledged');
@@ -328,7 +318,7 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
     throw new Error('Invalid findings: duplicate ids');
   }
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (NEVER_SURFACED.includes(row.kind)) {
       throw new Error(`Agent "${id}" is a ${row.kind} — a synthesis input, never acknowledged; incorporate it when its synthesis is dispatched`);
@@ -338,7 +328,7 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
     }
     row.findings = findings;
     row.status = findings.length === 0 ? 'incorporated' : 'acknowledged';
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
@@ -352,13 +342,13 @@ function announceAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
       throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row announces`);
     }
     row.announced = true;
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
@@ -373,7 +363,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
       throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row surfaces findings`);
@@ -386,7 +376,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
     }
     row.surfaced.push(finding);
     if (unsurfaced(row).length === 0) row.status = 'incorporated';
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
 }
@@ -404,34 +394,14 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
+    const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status === 'incorporated') {
       throw new Error(`Agent "${id}" is already incorporated`);
     }
     row.status = 'incorporated';
-    saveState(cwd, workUnit, state);
+    saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
-  });
-}
-
-/**
- * Purge every row for one phase/topic — the restart cleanse. The caller's
- * restart already deletes the topic's cache directory; this removes the rows
- * that live above it in state.json, so a restarted session never sees the
- * dead topic's reviews, sets, or drains.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
- */
-function purgeAgents(cwd, workUnit, phase, topic) {
-  requireWorkUnit(cwd, workUnit);
-  validatePhase(phase);
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit);
-    const prefix = `${phase}/${topic}/`;
-    const victims = Object.keys(state.agents).filter((k) => k.startsWith(prefix));
-    for (const k of victims) delete state.agents[k];
-    if (victims.length) saveState(cwd, workUnit, state);
-    return { work_unit: workUnit, phase, topic, purged: victims.length };
   });
 }
 
@@ -444,5 +414,4 @@ module.exports = {
   announceAgent,
   surfaceFinding,
   incorporateAgent,
-  purgeAgents,
 };

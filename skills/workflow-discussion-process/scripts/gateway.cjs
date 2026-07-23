@@ -23,16 +23,15 @@ function reviewCycles(cwd, workUnit, topic) {
   /** @type {Record<string, any>} */
   let rows = {};
   try {
-    const store = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', '.cache', workUnit, 'state.json'), 'utf8'));
+    const store = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
     rows = store.agents || {};
   } catch {
     rows = {};
   }
-  const prefix = `discussion/${topic}/`;
   const rowIds = new Set();
   let fromRows = 0;
-  for (const [key, row] of Object.entries(rows)) {
-    if (!key.startsWith(prefix) || row.kind !== 'review') continue;
+  for (const row of Object.values(rows)) {
+    if (row.kind !== 'review') continue;
     rowIds.add(`${row.id}.md`);
     if (row.status !== 'in-flight') {
       // A zero-finding row only counts if its report actually exists — an
