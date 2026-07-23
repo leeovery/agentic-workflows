@@ -328,4 +328,18 @@ describe('discussion adapter: map verb', () => {
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
     assert.match(out, /review_cycles: 2/);
   });
+
+  it('review_cycles counts a finished-but-unscanned review (report landed, no scan yet)', () => {
+    createManifest(dir, 'auth', manifestWith());
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'auth', 'state.json'), JSON.stringify({
+      agents: {
+        'discussion/auth-flow/review-001': { id: 'review-001', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
+      },
+    }));
+    fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'the report landed');
+    const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(out, /review_cycles: 1/, 'mirror of scan promotion — the cycle happened');
+  });
 });

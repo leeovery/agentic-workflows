@@ -26,7 +26,7 @@ Take the highest-numbered row of kind `review`.
 
 #### If it is `pending`
 
-Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `## {ID}` section headings. Cross-check the count either way.
+Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
 **If the report has no findings:**
 
@@ -48,27 +48,15 @@ Background review returned — nothing new beyond what we've already covered.
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --findings {F1,F2,…}
 ```
 
-→ Proceed to **B. Decide Action** with the response's row.
+→ Proceed to **B. Render Menu** with the response's row.
 
 #### If it is `acknowledged`
 
-→ Proceed to **B. Decide Action** with the row.
+→ Proceed to **B. Render Menu** with the row.
 
-## B. Decide Action
-
-#### If the row's `remaining` is empty
-
-The engine has already incorporated it.
-
-→ Return to caller.
-
-#### If the row's `remaining` is non-empty
+## B. Render Menu
 
 Conclusion is a decision point every time — whether the drain started mid-session or at a prior conclusion attempt, the user chooses between continuing the walk-through and concluding with the rest on record.
-
-→ Proceed to **C. Render Menu**.
-
-## C. Render Menu
 
 > *Output the next fenced block as markdown (not a code block):*
 

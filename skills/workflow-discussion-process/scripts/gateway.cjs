@@ -34,7 +34,15 @@ function reviewCycles(cwd, workUnit, topic) {
   for (const [key, row] of Object.entries(rows)) {
     if (!key.startsWith(prefix) || row.kind !== 'review') continue;
     rowIds.add(`${row.id}.md`);
-    if (row.status !== 'in-flight') fromRows += 1;
+    if (row.status !== 'in-flight') {
+      fromRows += 1;
+    } else {
+      // Finished but not yet scanned: the agent's report landed, no scan has
+      // promoted the row. Mirror scan's promotion read — the cycle happened.
+      try {
+        if (fs.statSync(path.join(dir, `${row.id}.md`)).size > 0) fromRows += 1;
+      } catch { /* still running */ }
+    }
   }
   try {
     const legacy = fs.readdirSync(dir)

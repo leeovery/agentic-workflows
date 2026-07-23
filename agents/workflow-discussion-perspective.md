@@ -18,7 +18,7 @@ You receive via the orchestrator's prompt:
 1. **Lens** — the analytical lens you are operating through (e.g., `Formal Systems`, `Ship Now`, `Tail-Risk`)
 2. **Decision topic** — the specific decision being explored
 3. **Discussion file path** — the discussion document for context on what's been discussed
-4. **Output file path** — where to write your analysis. nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
+4. **Output file path** — where to write your analysis. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
 
 ## Your Process
 

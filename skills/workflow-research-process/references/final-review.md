@@ -6,7 +6,7 @@
 
 A final review ensures the research is thorough before moving to discussion. Even if review agents ran during the session, the research may have progressed significantly since the last one.
 
-This flow runs once per "user signals done" entry during Step 6 (Research Session). It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the research session so the user can engage naturally. The next time the user signals done, this flow re-runs — eventually all findings are drained and the file transitions to `incorporated`, at which point control returns to topic-completion so the phase can proceed through document review, compliance, and the conclude menu.
+This flow runs once per "user signals done" entry during Step 6 (Research Session). It dispatches a fresh review if needed, raises one finding via the shared protocol, then bounces back to the research session so the user can engage naturally. The next time the user signals done, this flow re-runs — eventually all findings are drained and the engine incorporates the review, at which point control returns to topic-completion so the phase can proceed through document review, compliance, and the conclude menu.
 
 The **never-dump rules apply in full**. Findings are raised one at a time via the shared surfacing protocol.
 
@@ -36,7 +36,7 @@ Take the highest-numbered `review` row and branch on its status below.
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch:
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row):
 
 ```bash
 git log --oneline -- .workflows/{work_unit}/research/{topic}.md
@@ -120,7 +120,7 @@ Dispatch **one agent** as a foreground task (omit `run_in_background` — result
 The review agent receives:
 
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
-2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `## {ID}` section per finding (`F1`, `F2`, …), never frontmatter.
+2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 
 When the agent returns:
 
@@ -138,16 +138,14 @@ When the agent returns:
 
 ## D. Route Next
 
-Re-run `agent scan` and take the highest-numbered `review` row's status.
+#### If the menu raised a finding (the `review` choice)
 
-#### If `incorporated`
-
-All findings have been raised (or the review came back with zero gaps). The final-review gate is satisfied.
-
-→ Return to caller.
-
-#### If `acknowledged`
-
-A finding was just raised. Control belongs to the conversation — return the user to the research session so they can engage naturally. When the user signals done again, this flow re-runs and either raises the next finding or the engine incorporates the row.
+Control belongs to the conversation — return the user to the research session so they can engage naturally, whether or not that was the last finding. When the user signals done again, this flow re-runs and either raises the next one or finds the row incorporated.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+#### Otherwise
+
+No finding is awaiting engagement (the review was clean, fully drained, or skipped). The final-review gate is satisfied.
+
+→ Return to caller.

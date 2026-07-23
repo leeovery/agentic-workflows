@@ -9,7 +9,7 @@ These instructions are loaded into context at the start of the research session.
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
 - □ Meaningful content committed? (new findings documented, threads explored, open questions captured — not a typo fix or reformatting)
-- □ All prior reviews drained? (`agent scan` shows no `review` row pending or acknowledged — or no review row exists yet)
+- □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet)
 - □ Not the first commit? (the research needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
 
@@ -44,7 +44,7 @@ Dispatch **one agent** via the Task tool with `run_in_background: true`.
 The review agent receives:
 
 1. **Research file path(s)** — `.workflows/{work_unit}/research/{topic}.md` (for epic, include all research files in `.workflows/{work_unit}/research/` relevant to the current topic)
-2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `## {ID}` section per finding (`F1`, `F2`, …), never frontmatter.
+2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `### {ID}: {label}` section per finding (`F1`, `F2`, …), never frontmatter.
 
 > *Output the next fenced block as a code block:*
 
@@ -56,6 +56,7 @@ The review agent returns:
 
 ```
 STATUS: gaps_found | clean
+FINDINGS: {F1,F2,… — every id in the report; omit when clean}
 GAPS_COUNT: {N}
 ASSUMPTIONS_COUNT: {N}
 SUMMARY: {1 sentence}
