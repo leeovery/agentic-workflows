@@ -89,6 +89,6 @@ Write the Fix Direction section in the investigation file:
 4. **Testing Recommendations**: Informed by the discussion
 5. **Risk Assessment**: Informed by the discussion
 
-Commit the updated investigation file. The cache draft needs no bookkeeping — the investigation file now carries the chosen option; the draft is scratch.
+Commit the updated investigation file — it now carries the chosen option.
 
 → Return to caller.

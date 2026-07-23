@@ -40,7 +40,7 @@ Take the highest-numbered `review` row from the **A** scan and branch on its sta
 
 #### If it is `incorporated`
 
-The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row):
+The prior review was fully drained. A fresh one is warranted only when the research moved since — otherwise each conclusion attempt mints a new gap set and the topic can never close. Check what landed after that review's dispatch (the row's `created` timestamp, on every scan row) — and discount commits the drain itself produced (same session, your memory of raising its findings; the engagement writes are not new work):
 
 ```bash
 git log --format='%h %cI %s' -- .workflows/{work_unit}/research/{topic}.md

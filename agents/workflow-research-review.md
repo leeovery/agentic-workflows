@@ -74,7 +74,7 @@ The output file is pure markdown — no frontmatter, ever; the orchestrator's ow
 {Optional. Connections between threads, patterns across findings, angles that could complement each other. Keep brief.}
 ```
 
-**Kind values**: `unexplored`, `shallow`, `assumption`. Numbering is continuous across all three sections — if you have 2 unexplored, 1 shallow, 1 assumption, the IDs are F1, F2, F3, F4.
+Numbering is continuous across all three sections — if you have 2 unexplored areas, 1 shallow item, and 1 assumption, the IDs are F1, F2, F3, F4.
 
 If no significant gaps found:
 

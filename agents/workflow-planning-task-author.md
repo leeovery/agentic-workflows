@@ -23,7 +23,7 @@ You receive file paths via the orchestrator's prompt:
 
 On **amendment**, you also receive:
 - **Task detail file path** — Contains previously authored tasks (an amendment run's prompt names the rejected ids)
-- The task detail file contains `rejected` tasks with feedback blockquotes — rewrite only those
+- An amendment run's prompt names the rejected ids; their feedback blockquotes sit under their headings in the detail file
 
 ## Your Process
 

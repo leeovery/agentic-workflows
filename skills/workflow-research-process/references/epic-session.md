@@ -105,7 +105,7 @@ The current file is drifting — multiple exchanges have been adding material th
 
 ## E. In-Flight Agent Handling
 
-Before concluding, check for in-flight agents — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — close each such row first (`agent incorporate`), re-scan, and count only this session's.
+Before concluding, check for in-flight agents — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — each row's `created` timestamp tells you which those are; close each (`agent incorporate`), re-scan, and count only this session's.
 
 #### If no agents are in flight
 
