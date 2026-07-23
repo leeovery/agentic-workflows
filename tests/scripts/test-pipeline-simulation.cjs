@@ -364,6 +364,15 @@ describe('pipeline simulation', () => {
 
     sim.run(['topic', 'start', wu, 'investigation', wu]);
     sim.write(`.workflows/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
+
+    // A synchronous validation: dispatch, the foreground agent lands its
+    // verdict, scan promotes, the row closes consumed — never surfaced.
+    const val = sim.run(['agent', 'dispatch', wu, 'investigation', wu, '--kind', 'root-cause-validation']);
+    sim.write(val.file, '# Verdict\n\nSTATUS: validated\n');
+    sim.run(['agent', 'scan', wu, 'investigation', wu]);
+    const closed = sim.run(['agent', 'incorporate', wu, 'investigation', wu, val.id]);
+    assert.strictEqual(closed.status, 'incorporated');
+
     sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`]);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
 
@@ -627,6 +636,8 @@ describe('pipeline simulation', () => {
     const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
       { findings: [{ title: 'Loose end', severity: 'minor' }] });
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
+    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', wu, 'implementation', wu, `fix-tracking-${wu}-1-1.md`)),
+      'fix history is committed history, not purgeable cache');
     sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--next-task', `${wu}-1-2`]);
     sim.run(['task', 'analysis-cycle', wu, wu]);
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);

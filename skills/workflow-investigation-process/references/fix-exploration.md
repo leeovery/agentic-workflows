@@ -16,23 +16,7 @@ Ensure the cache directory exists:
 mkdir -p .workflows/.cache/{work_unit}/investigation/{topic}
 ```
 
-Determine the next set number by checking existing files:
-
-```bash
-ls .workflows/.cache/{work_unit}/investigation/{topic}/ 2>/dev/null
-```
-
-Use the next available `{NNN}` for `fix-options-*` files (zero-padded, e.g., `001`, `002`).
-
-Write the draft to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-options-{NNN}.md` — this frontmatter, then the options, trade-offs, and any recommendation as the body:
-
-```yaml
----
-type: fix-options
-status: pending
-created: {date}
----
-```
+Write the draft to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-options.md` (overwrite any prior draft — it is working scratch, not a record): the options, trade-offs, and any recommendation as the body — pure markdown, no frontmatter.
 
 → Proceed to **B. Present & Discuss**.
 
@@ -105,6 +89,6 @@ Write the Fix Direction section in the investigation file:
 4. **Testing Recommendations**: Informed by the discussion
 5. **Risk Assessment**: Informed by the discussion
 
-Commit the updated investigation file. Flip the cache draft's frontmatter to `status: read`.
+Commit the updated investigation file. The cache draft needs no bookkeeping — the investigation file now carries the chosen option; the draft is scratch.
 
 → Return to caller.

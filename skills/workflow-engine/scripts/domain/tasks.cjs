@@ -91,7 +91,7 @@ function safeName(value, label) {
 
 /** @param {string} cwd @param {string} workUnit @param {string} topic @param {string} internalId */
 function fixTrackingPath(cwd, workUnit, topic, internalId) {
-  return path.join(cwd, '.workflows', '.cache', workUnit, 'implementation', topic, `fix-tracking-${internalId}.md`);
+  return path.join(cwd, '.workflows', workUnit, 'implementation', topic, `fix-tracking-${internalId}.md`);
 }
 
 /**
@@ -189,7 +189,7 @@ function initTasks(cwd, workUnit, topic) {
 
 /**
  * Start a task: record it as the manifest's `current_task`, reset
- * `fix_attempts` and drop the task's fix-tracking cache file (clean slate per
+ * `fix_attempts` and drop the task's fix-tracking file (clean slate per
  * task), report the gate modes the task loop branches on. When the internal
  * id IS already `current_task` AND its tracking file exists — a true resume:
  * a crash-resumed session restarting the task in flight, or a post-compaction
@@ -227,7 +227,7 @@ function startTask(cwd, workUnit, topic, internalId) {
 
 /**
  * Record a fix attempt: increment `fix_attempts` and append the findings
- * file's content verbatim to the task's fix-tracking cache file under a
+ * file's content verbatim to the task's fix-tracking file under a
  * `## Attempt {N}` section (file and parent dirs created as needed).
  * @param {string} cwd project root
  * @param {string} workUnit
