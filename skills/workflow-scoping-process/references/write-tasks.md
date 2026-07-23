@@ -61,7 +61,13 @@ Load the chosen format's **[authoring.md](../../workflow-planning-process/refere
 
 ## C. Register Plan in Manifest
 
-Capture the current git commit hash: `git rev-parse HEAD`
+Commit the specification first — the baseline hash must name a commit that contains it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification"
+```
+
+Capture the resulting commit hash: `git rev-parse HEAD`
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
