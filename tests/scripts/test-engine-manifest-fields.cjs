@@ -470,6 +470,51 @@ describe('engine manifest set — two grammars, never mixed', () => {
   });
 });
 
+describe('work-unit-level fields never shadow the phases tree', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shadow-guard-'));
+    writeWorkUnit(dir, 'pay', 'feature');
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it('set refuses a phase-name-headed field in both grammars', () => {
+    const err = runFails(dir, ['set', 'pay', 'specification.foo', 'bar']);
+    assert.match(err.error, /"specification" is a phase/);
+    const batch = runFails(dir, ['set', 'pay', 'description=ok', 'discussion.x=1']);
+    assert.match(batch.error, /"discussion" is a phase/);
+    const m = readWorkUnit(dir, 'pay');
+    assert.strictEqual(m.specification, undefined);
+    assert.strictEqual(m.discussion, undefined);
+    assert.strictEqual(m.description, 'Fixture', 'refused batch persisted nothing');
+  });
+
+  it('push refuses a phase-name-headed field; apply routes set ops through the same guard', () => {
+    assert.match(runFails(dir, ['push', 'pay', 'review.list', 'x']).error, /"review" is a phase/);
+    const f = path.join(dir, 'ops.json');
+    fs.writeFileSync(f, JSON.stringify([{ op: 'set', path: 'pay', fields: { 'research.foo': 1 } }]));
+    assert.match(runFails(dir, ['apply', 'pay', '--file', f]).error, /"research" is a phase/);
+    assert.strictEqual(readWorkUnit(dir, 'pay').research, undefined, 'nothing persisted');
+  });
+
+  it('reads and delete stay free so a stray tree can be inspected and repaired', () => {
+    const m = readWorkUnit(dir, 'pay');
+    m.specification = { foo: 'bar' };
+    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    assert.strictEqual(runOk(dir, ['get', 'pay', 'specification.foo']).trim(), 'bar');
+    runJson(dir, ['delete', 'pay', 'specification']);
+    assert.strictEqual(readWorkUnit(dir, 'pay').specification, undefined);
+  });
+
+  it('phase- and topic-level writes are untouched, as are legitimate root fields', () => {
+    runJson(dir, ['set', 'pay.specification.pay', 'status', 'in-progress']);
+    runJson(dir, ['set', 'pay', 'description', 'updated']);
+    const m = readWorkUnit(dir, 'pay');
+    assert.strictEqual(m.phases.specification.items.pay.status, 'in-progress');
+    assert.strictEqual(m.description, 'updated');
+  });
+});
+
 describe('storage_paths is guarded at write time — set and apply', () => {
   let dir;
   beforeEach(() => {
