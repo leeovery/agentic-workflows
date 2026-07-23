@@ -719,7 +719,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1'], /incorporated/);
     sim.refuses(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean'], /in-flight/);
     scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
-    assert.deepStrictEqual(scan.in_flight, ['deep-dive-001-auth']);
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth']);
 
     // The straggler lands clean; the phase can conclude.
     sim.write(`.workflows/.cache/${wu}/research/alpha/deep-dive-001-auth.md`, '# Nothing novel\n');

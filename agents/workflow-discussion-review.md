@@ -72,7 +72,7 @@ The output file is pure markdown — no frontmatter, ever; the orchestrator's ow
 {Optional. Anything else notable — strong areas, potential risks, patterns. Keep brief.}
 ```
 
-**Kind values**: use `gap` for items under "Gaps Identified", `question` for items under "Open Questions". The numbering is continuous across both sections — if you have 2 gaps and 1 question, the IDs are F1, F2, F3 (not F1, F2, F1).
+Numbering is continuous across all sections.
 
 If no gaps or questions found:
 

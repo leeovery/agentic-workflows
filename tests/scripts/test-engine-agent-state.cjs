@@ -90,13 +90,14 @@ describe('engine agent — lifecycle store', () => {
   it('scan promotes in-flight to pending only once the content file exists with content', () => {
     const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     let scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.deepStrictEqual(scan.in_flight, ['review-001']);
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001']);
+    assert.ok(scan.in_flight[0].created, 'in-flight rows carry created for the earlier-session judgment');
     assert.strictEqual(scan.next, null, 'nothing actionable while the agent runs');
 
     fs.mkdirSync(path.dirname(path.join(dir, d.file)), { recursive: true });
     fs.writeFileSync(path.join(dir, d.file), '');
     scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
-    assert.deepStrictEqual(scan.in_flight, ['review-001'], 'an empty file is not completion');
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001'], 'an empty file is not completion');
 
     writeContent(dir, d.file);
     scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
@@ -219,7 +220,7 @@ describe('engine agent — lifecycle store', () => {
     fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true });
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, [],
       'the restart rm -rf removes rows with the content');
-    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight, ['review-001'],
+    assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight.map((r) => r.id), ['review-001'],
       'the sibling topic is untouched');
     const fresh = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     assert.strictEqual(fresh.id, 'review-001', 'a cleansed topic restarts its numbering');
@@ -292,7 +293,7 @@ describe('engine agent — lifecycle store', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'review']);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'beta']);
-    assert.deepStrictEqual(scan.in_flight, ['review-001'], 'beta sees only its own agent');
+    assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['review-001'], 'beta sees only its own agent');
     assert.match(runFails(dir, ['ack', 'pay', 'research', 'beta', 'review-002', '--clean']).error, /No agent/);
   });
 

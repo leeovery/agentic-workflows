@@ -31,7 +31,7 @@ const fs = require('fs');
 const path = require('path');
 
 const AGENT_KINDS = ['review', 'deep-dive', 'perspective', 'synthesis',
-  'root-cause-validation', 'fix-validation', 'fix-exploration'];
+  'root-cause-validation', 'fix-validation'];
 const STATUS_MAP = { 'in-flight': 'in-flight', pending: 'pending', acknowledged: 'acknowledged', incorporated: 'incorporated', read: 'incorporated' };
 
 /** @param {string} file @returns {{fm: Record<string, string>, lists: Record<string, string[]>} | null} */
@@ -176,7 +176,7 @@ module.exports = {
               if (!parsed) continue;
               const kind = parsed.fm.type;
               const status = STATUS_MAP[parsed.fm.status];
-              if (!kind || !AGENT_KINDS.includes(kind) || kind === 'fix-exploration' || !status) continue;
+              if (!kind || !AGENT_KINDS.includes(kind) || !status) continue;
               // A pre-programme in-flight skeleton is a dead dispatch — a row
               // would let scan promote the frontmatter-only file as a clean
               // report. No row: the file stays inert legacy.
@@ -229,7 +229,7 @@ module.exports = {
       }
 
       // 3 + 4. Staging cycles and tracking flips from committed topic dirs.
-      for (const [phase, dirName] of [['implementation', 'implementation'], ['planning', 'planning'], ['specification', 'specification'], ['review', 'review']]) {
+      for (const [phase, dirName] of [['implementation', 'implementation'], ['planning', 'planning'], ['specification', 'specification']]) {
         const phaseRoot = path.join(wfRoot, wu, dirName);
         if (!fs.existsSync(phaseRoot)) continue;
         for (const topicEnt of fs.readdirSync(phaseRoot, { withFileTypes: true })) {
@@ -247,8 +247,7 @@ module.exports = {
               const items = ((manifest.phases[itemPhase] || {}).items) || {};
               const item = items[topicEnt.name];
               if (!item) continue;
-              item.staging = item.staging || {};
-              if (item.staging[`c${cycle}`]) continue; // idempotent
+              if ((item.staging || {})[`c${cycle}`]) continue; // idempotent
               const tasks = readStagingTasks(path.join(topicDir, f)).filter((t) => t.status);
               if (!tasks.length) continue;
               /** @type {Record<string, string>} */
@@ -258,6 +257,7 @@ module.exports = {
               }
               if (!Object.keys(rows).length) continue;
               const fmParsed = readFrontmatter(path.join(topicDir, f));
+              item.staging = item.staging || {};
               item.staging[`c${cycle}`] = {
                 ...(itemPhase === 'review' ? { gate_mode: (fmParsed && fmParsed.fm.gate_mode) || 'gated' } : {}),
                 tasks: rows,
@@ -271,11 +271,11 @@ module.exports = {
               const item = items[topicEnt.name];
               if (!item) continue;
               const stem = f.slice(0, -3);
-              item.tracking = item.tracking || {};
-              if (item.tracking[stem]) continue; // idempotent
+              if ((item.tracking || {})[stem]) continue; // idempotent
               const fmParsed = readFrontmatter(path.join(topicDir, f));
               const status = fmParsed && fmParsed.fm.status;
               if (status !== 'in-progress' && status !== 'complete') continue;
+              item.tracking = item.tracking || {};
               item.tracking[stem] = status;
               touched = true;
             }
@@ -283,7 +283,42 @@ module.exports = {
         }
       }
 
-      // 5. Fix-tracking files relocate to the committed implementation dir.
+      // 5. In-flight task-authoring decisions: `## {id} | status` heading
+      // markers in phase-{N}-tasks.md become staging.author-p{N} rows —
+      // the one per-task state 051 would otherwise drop (feedback
+      // blockquotes are content and stay).
+      const planRoot = path.join(wfRoot, wu, 'planning');
+      if (fs.existsSync(planRoot)) {
+        for (const topicEnt of fs.readdirSync(planRoot, { withFileTypes: true })) {
+          if (!topicEnt.isDirectory()) continue;
+          const items = ((manifest.phases.planning || {}).items) || {};
+          const item = items[topicEnt.name];
+          if (!item) continue;
+          for (const f of fs.readdirSync(path.join(planRoot, topicEnt.name))) {
+            const pm = /^phase-(\d+)-tasks\.md$/.exec(f);
+            if (!pm) continue;
+            const key = `author-p${pm[1]}`;
+            if ((item.staging || {})[key]) continue; // idempotent
+            let raw;
+            try {
+              raw = fs.readFileSync(path.join(planRoot, topicEnt.name, f), 'utf8').replace(/\r\n/g, '\n');
+            } catch {
+              continue;
+            }
+            /** @type {Record<string, string>} */
+            const rows = {};
+            for (const hm of raw.matchAll(/^## (\S+) \| (pending|approved|rejected)$/gm)) {
+              rows[hm[1]] = hm[2];
+            }
+            if (!Object.keys(rows).length) continue; // marker-less files carry no state
+            item.staging = item.staging || {};
+            item.staging[key] = { tasks: rows };
+            touched = true;
+          }
+        }
+      }
+
+      // 6. Fix-tracking files relocate to the committed implementation dir.
       const implCache = path.join(wfRoot, '.cache', wu, 'implementation');
       if (fs.existsSync(implCache)) {
         for (const topicEnt of fs.readdirSync(implCache, { withFileTypes: true })) {
