@@ -890,6 +890,11 @@ function cmdPush(cwd, args) {
     fail(`"${fieldSegments[0]}" is a guarded state container — its fields take vocabulary values via set, never array pushes`);
   }
   const segments = resolveSegments(phase, topic, fieldSegments);
+  // storage_paths is guarded at write time on every route — set validates the
+  // whole array; push validates the one entry it appends.
+  if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'storage_paths') {
+    validateStoragePaths([value]);
+  }
 
   const length = manifestTarget(cwd, false, workUnit).transact((manifest, save) => {
     const current = getByPath(manifest, segments);
