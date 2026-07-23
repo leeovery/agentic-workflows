@@ -145,7 +145,9 @@ For each dependency in the other topic's `external_dependencies`, route on state
 
   - `{work_unit}.planning.{other_topic}` → `external_dependencies.{topic}.state: resolved`, `external_dependencies.{topic}.internal_id: {internal_id}`
 
-- **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference), re-resolve by finding the correct task and updating the `internal_id`.
+- **`state: resolved` pointing at current plan's tasks** — validate that the `internal_id` still refers to a task that semantically matches the dependency description. If the task name no longer matches (stale reference), find the correct task and add the corrected pair to the working list:
+
+  - `{work_unit}.planning.{other_topic}` → `external_dependencies.{topic}.internal_id: {corrected_internal_id}`
 - **`state: satisfied_externally`** — skip.
 
 → Return to **E. Reverse Check** for the next topic.

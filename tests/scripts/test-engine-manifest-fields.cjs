@@ -469,3 +469,41 @@ describe('engine manifest set — two grammars, never mixed', () => {
     assert.match(err.error, /Usage: engine manifest set project/);
   });
 });
+
+describe('storage_paths is guarded at write time — set and apply', () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storage-paths-'));
+    writeWorkUnit(dir, 'pay', 'feature', { phases: { planning: { items: { pay: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it('set refuses traversal, absolute, dot, and non-array values; a legal array lands', () => {
+    for (const bad of ['\'["../evil"]\'', '\'["/abs"]\'', '\'["."]\'', '\'[""]\'', '"nope"']) {
+      const err = runFails(dir, ['set', 'pay.planning.pay', 'storage_paths', bad.replace(/^'|'$/g, '')]);
+      assert.match(err.error, /Invalid storage_paths/);
+    }
+    runJson(dir, ['set', 'pay.planning.pay', 'storage_paths', '[".tick/"]']);
+    assert.deepStrictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, ['.tick/']);
+  });
+
+  it('apply routes storage_paths writes through the same guard', () => {
+    const p = path.join(dir, 'ops.json');
+    fs.writeFileSync(p, JSON.stringify([{ op: 'set', path: 'pay.planning.pay', fields: { storage_paths: ['../evil'] } }]));
+    const err = runFails(dir, ['apply', 'pay', '--file', p]);
+    assert.match(err.error, /Invalid storage_paths entry/);
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.planning.items.pay.storage_paths, undefined, 'nothing persisted');
+  });
+
+  it('apply handles set-then-delete on the same item in array order (reconcile shape)', () => {
+    const p = path.join(dir, 'ops.json');
+    fs.writeFileSync(p, JSON.stringify([
+      { op: 'set', path: 'pay.planning.pay', fields: { 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending' } },
+      { op: 'delete', path: 'pay.planning.pay', field: 'sources.alpha' },
+    ]));
+    runJson(dir, ['apply', 'pay', '--file', p]);
+    const item = readWorkUnit(dir, 'pay').phases.planning.items.pay;
+    assert.strictEqual(item.sources.alpha, undefined, 'later delete wins over earlier set');
+    assert.strictEqual(item.sources.beta.status, 'pending');
+  });
+});

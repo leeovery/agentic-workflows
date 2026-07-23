@@ -38,7 +38,7 @@ Drawn from discovery session(s) {coarse session range}.
 
 This section applies only to restructures **within the session's working list** — the set the harvest shaped and the user confirmed. Committed map items outside the working list are never restructured by a harvest (map edits go through map-operations, which owns its own log entries); their briefs are untouched here. When the confirmed working list restructured a topic that already carried a brief, keep brief files and `brief_path` pointers in step with the confirmed set. Apply whichever operations occurred — split, merge, and drop are independent, and more than one may apply in a single harvest. This section removes only what the restructuring orphaned.
 
-Collect the orphaned topics across every operation that occurred — **split** orphans the parent (children's briefs are written in **A**), **merge** orphans each absorbed topic (the merged topic's brief is written in **A**), **drop** orphans the removed topic — then clean them all up in two calls: one `rm -f` naming every orphaned brief file, and one `apply` deleting every `brief_path` pointer:
+Collect the orphaned topics across every operation that occurred — **split** orphans the parent (children's briefs are written in **A**), **merge** orphans each absorbed topic (the merged topic's brief is written in **A**), **drop** orphans the removed topic — then clean them all up in two calls: one `rm -f` naming every orphaned brief file, and one `apply` deleting every `brief_path` pointer (write the ops file with the Write tool first):
 
 ```bash
 rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md .workflows/{work_unit}/discovery/briefs/{absorbed}.md
@@ -52,7 +52,7 @@ rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md .workflows/{work_unit}
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/brief-cleanup-ops.json
 ```
 
-New topics with no prior brief need no cleanup. A `delete` op fails the whole batch when the field is absent — include only topics that actually carried a `brief_path` (committed map topics with a prior brief); the `rm -f` paths are safe to include unconditionally. Write the ops file with the Write tool.
+New topics with no prior brief need no cleanup. A `delete` op fails the whole batch when the field is absent — include only topics that actually carried a `brief_path` (committed map topics with a prior brief), and skip the `apply` entirely when no orphan carried one; the `rm -f` paths are safe to include unconditionally.
 
 → Proceed to **C. Propagation**.
 

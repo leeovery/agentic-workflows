@@ -147,7 +147,7 @@ Write the batch to `.workflows/.cache/{work_unit}/discovery/backfill-ops.json` w
 [{"op": "set", "path": "{work_unit}.discovery.{item.name}", "fields": {"summary": "{summary}", "description": "{description}"}}]
 ```
 
-Persist every item in one atomic call — a failing entry means nothing was written:
+Persist every item in one atomic call — a failing entry means nothing was written. Skip the call when no item produced a write (every candidate null and left, or dismissed to `leave`):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/backfill-ops.json

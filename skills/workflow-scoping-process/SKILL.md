@@ -1,7 +1,7 @@
 ---
 name: workflow-scoping-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(tick), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git status), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-knowledge/scripts/knowledge.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git status), Bash(git log), Bash(git rev-parse), Bash(git add), Bash(git commit)
 ---
 
 # Scoping Process
@@ -197,7 +197,7 @@ Apply the requested edits — the spec and `planning.md` directly, task file con
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store, and the `storage_paths` read in step 1, then commit:
+7. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit, the knowledge store, and the `storage_paths` read in step 1, then commit: Each entry passes as a bare pathspec; when the array is `[]`, stage nothing extra.
    ```bash
    git add -- .workflows/{work_unit} .workflows/.knowledge {storage_paths}
    git commit -m "scoping({work_unit}): restart scoping"

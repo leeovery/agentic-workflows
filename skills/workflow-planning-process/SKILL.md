@@ -1,7 +1,7 @@
 ---
 name: workflow-planning-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(tick), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git status), Bash(git log), Bash(git diff), Bash(git rev-parse), Bash(git add), Bash(git commit)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(ls .workflows/), Bash(rm -rf .workflows/), Bash(git status), Bash(git log), Bash(git diff), Bash(git rev-parse), Bash(git add), Bash(git commit)
 ---
 
 # Planning Process
@@ -138,7 +138,7 @@ If spec-change-detection reported changes, carry them into the walkthrough: reco
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-6. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit and the plan's `storage_paths` (from the manifest subtree read during resume detection), then commit:
+6. Commit with raw git — the planning item was just deleted, so `--plan` has nothing to read; stage the work unit and the plan's `storage_paths` (from the manifest subtree read during resume detection), then commit: Each entry passes as a bare pathspec; when the array is `[]`, stage nothing extra.
    ```bash
    git add -- .workflows/{work_unit} {storage_paths}
    git commit -m "planning({work_unit}): restart planning"

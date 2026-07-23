@@ -40,7 +40,7 @@ Must include:
 
 - **Plan Structure** — how to create the plan-level entity in the format (project, directory, top-level task, etc.) and what external identifier it produces. Every format must declare this, even when the identifier equals the internal topic name.
 - **Phase Structure** — how to create phase-level entities (parent tasks, parent issues, directories, etc.) and what external identifier each produces. Every format must declare this, even when the identifier equals the internal phase ID.
-- **Storage Pathspecs** — the git pathspecs the format writes outside the work unit, as a JSON array (`[]` when everything lives inside the work unit or off-disk). Recorded as `storage_paths` at plan init; `engine commit --plan` stages them.
+- **Storage Pathspecs** — a section with a fixed structure: the shared definition sentence, a fenced ```json array literal (the exact value flows verbatim into the manifest — relative pathspecs only, never `.`, `..`, or absolute; `[]` when the format writes nothing outside the work unit), and one format-specific sentence saying where the format stores. Plan init records the array as `storage_paths` on the planning item; `engine commit --plan` stages every entry; restart cleanups stage the same entries.
 - **Task Storage** — how to create a task (file path, API call, etc.) with a complete example showing the full task template
 - **Task Properties** — properties set during authoring:
   - **Status** — available values and their meanings

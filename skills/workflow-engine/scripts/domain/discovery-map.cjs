@@ -264,7 +264,7 @@ function addItemsBatch(cwd, workUnit, entries) {
   entries.forEach((e, i) => {
     const at = `entry ${i + 1}`;
     if (!e || typeof e !== 'object') throw new Error(`add-batch: ${at} must be an object`);
-    if (!e.name || /[./]/.test(e.name)) {
+    if (typeof e.name !== 'string' || e.name === '' || /[./]/.test(e.name)) {
       throw new Error(`add-batch: ${at} — "${e.name}" is not a legal topic name (dots and slashes break manifest addressing)`);
     }
     if (!e.routing || !VALID_ROUTINGS.includes(e.routing)) {

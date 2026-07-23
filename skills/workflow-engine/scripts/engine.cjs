@@ -670,7 +670,7 @@ function runCommit(argv) {
       else throw new Error(`unexpected argument "${a}"`);
     }
     const scopeCount = [inbox, workflows, workUnit !== null].filter(Boolean).length;
-    if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '') {
+    if (!message || scopeCount !== 1 || (plan !== null && workUnit === null) || plan === '' || plan === undefined) {
       throw new Error('Usage: engine commit <work-unit> -m <message> [--plan <topic>] | engine commit --inbox -m <message> | engine commit --workflows -m <message>');
     }
     const cwd = process.cwd();
@@ -702,8 +702,11 @@ function runCommit(argv) {
         }
         if (!planItem) throw new Error(`commit --plan: no planning item "${plan}" in "${wu}"`);
         const declared = planItem.storage_paths;
-        if (!Array.isArray(declared) || declared.some((p) => typeof p !== 'string')) {
+        if (declared === undefined) {
           throw new Error(`commit --plan: planning item "${plan}" has no storage_paths — a pre-upgrade plan; record the format's declared pathspecs once: engine manifest set ${wu}.planning.${plan} storage_paths '[…]' (the format's authoring.md names them; '[]' when it stores inside the work unit)`);
+        }
+        if (!Array.isArray(declared) || declared.some((p) => typeof p !== 'string')) {
+          throw new Error(`commit --plan: planning item "${plan}" has a malformed storage_paths (${JSON.stringify(declared)}) — must be an array of relative pathspec strings`);
         }
         for (const p of declared) {
           if (p === '' || p === '.' || p.startsWith('/') || p.split('/').includes('..')) {
