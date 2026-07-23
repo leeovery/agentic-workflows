@@ -9,7 +9,7 @@ These instructions are loaded into context at the start of the discussion sessio
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
 - □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting)
-- □ All prior reviews drained? (any `review-*.md` file in the cache directory must be in `status: incorporated`, or no review files exist yet)
+- □ All prior reviews drained? (`agent scan` shows no `review` row pending or acknowledged — or no review row exists yet)
 - □ Not the first commit? (the discussion needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
 
@@ -31,32 +31,10 @@ At natural conversational breaks, check for completed results.
 
 ## A. Dispatch
 
-Ensure the cache directory exists:
+Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
 
 ```bash
-mkdir -p .workflows/.cache/{work_unit}/discussion/{topic}
-```
-
-Determine the next set number by checking existing files:
-
-```bash
-ls .workflows/.cache/{work_unit}/discussion/{topic}/ 2>/dev/null
-```
-
-Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`).
-
-Write the skeleton cache file at `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record: it makes the running agent visible to the in-flight scans until the agent's rewrite flips it to `pending`:
-
-```yaml
----
-type: review
-status: in-flight
-created: {date}
-set: {NNN}
-findings: []
-surfaced: []
-announced: false
----
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review
 ```
 
 **Agent path**: `../../../agents/workflow-discussion-review.md`
@@ -66,9 +44,7 @@ Dispatch **one agent** via the Task tool with `run_in_background: true`.
 The review agent receives:
 
 1. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-2. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/review-{NNN}.md` (the skeleton above is already on disk there)
-
-The sub-agent rewrites the file at completion — populating `findings:` with stable IDs (`F1`, `F2`, …) and flipping `status` to `pending`. See `agents/workflow-discussion-review.md` for the schema.
+2. **Output file path** — the `file` from the dispatch response. The agent writes its completed report there — pure markdown with one `## {ID}` section per finding (`F1`, `F2`, …), never frontmatter.
 
 > *Output the next fenced block as a code block:*
 
@@ -93,7 +69,7 @@ The discussion continues — do not wait for the agent to return.
 
 Delegate all check-for-results and presentation behaviour to the shared surfacing protocol. This enforces the never-dump rules: two-phase surfacing, one finding at a time, mid-thread protection.
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `review-*.md`, findings_key = `findings`.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `review`, work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
 
 **Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 

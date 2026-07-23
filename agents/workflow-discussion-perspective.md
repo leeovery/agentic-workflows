@@ -18,7 +18,7 @@ You receive via the orchestrator's prompt:
 1. **Lens** — the analytical lens you are operating through (e.g., `Formal Systems`, `Ship Now`, `Tail-Risk`)
 2. **Decision topic** — the specific decision being explored
 3. **Discussion file path** — the discussion document for context on what's been discussed
-4. **Output file path** — where to write your analysis. A skeleton file with `status: in-flight` frontmatter is already on disk there; your rewrite replaces it
+4. **Output file path** — where to write your analysis. nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
 
 ## Your Process
 
@@ -52,11 +52,9 @@ You receive via the orchestrator's prompt:
 
 ## Output File Format
 
-Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context, and the rename lands atomically over the dispatch-time skeleton. Bash is for this rename only. Reproduce the skeleton's frontmatter with `status` flipped to `pending` (results ready for the orchestrator). Use this structure:
+Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context, and the rename lands the whole report atomically, so the orchestrator can never observe a half-written file. Bash is for this rename only. The file is pure markdown — no frontmatter, ever; the orchestrator's own store tracks lifecycle. Use this structure:
 
 ```markdown
-{skeleton frontmatter, with status: pending}
-
 # Perspective: {Lens}
 
 ## Restatement

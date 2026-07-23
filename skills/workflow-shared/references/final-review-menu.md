@@ -4,29 +4,35 @@
 
 ---
 
-This reference is loaded at phase conclusion when a final-review agent has produced a cache file. It renders a two-option menu (review / skip) and delegates the raise-one-finding loop to the shared surfacing protocol.
+This reference is loaded at phase conclusion when a final-review agent has produced a report. It renders a two-option menu (review / skip) and delegates the raise-one-finding loop to the shared surfacing protocol. Lifecycle state lives in the engine's agent store.
 
 **Parameters** (provided by caller via Load directive):
 
-- `cache_dir` — agent's cache directory (work-unit scoped)
-- `cache_glob` — glob pattern for cache files (e.g. `review-*.md`)
-- `findings_key` — frontmatter key containing the finding ID list (typically `findings`)
+- `work_unit`, `phase`, `topic` — the agent store address
 
 The **never-dump rules apply in full**. Findings are raised one at a time.
 
 ## A. Check Review State
 
-Find the most recent file in `{cache_dir}` matching `{cache_glob}` by set number.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
+```
 
-#### If status is `incorporated`
+Take the highest-numbered row of kind `review`.
+
+#### If it is `incorporated` (or no review row exists)
 
 → Return to caller.
 
-#### If status is `pending`
+#### If it is `pending`
 
-Read the file completely. Count findings in the frontmatter `{findings_key}` list. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were written with the dispatch-time skeleton.
+Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md` — and collect its finding ids (the `## {ID}` section headings).
 
-**If the finding count is 0:**
+**If the report has no findings:**
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
+```
 
 > *Output the next fenced block as a code block:*
 
@@ -34,29 +40,29 @@ Read the file completely. Count findings in the frontmatter `{findings_key}` lis
 Background review returned — nothing new beyond what we've already covered.
 ```
 
-Transition the file directly to `status: incorporated`.
-
 → Return to caller.
 
 **Otherwise:**
 
-→ Proceed to **B. Decide Action**.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --findings {F1,F2,…}
+```
 
-#### If status is `acknowledged`
+→ Proceed to **B. Decide Action** with the response's row.
 
-→ Proceed to **B. Decide Action**.
+#### If it is `acknowledged`
+
+→ Proceed to **B. Decide Action** with the row.
 
 ## B. Decide Action
 
-Read `surfaced:` from the cache file frontmatter. Compute the unsurfaced set: IDs in `{findings_key}` not in `surfaced:`.
+#### If the row's `remaining` is empty
 
-#### If the unsurfaced set is empty
-
-Transition `status: acknowledged` → `status: incorporated`.
+The engine has already incorporated it.
 
 → Return to caller.
 
-#### If the unsurfaced set is non-empty
+#### If the row's `remaining` is non-empty
 
 Conclusion is a decision point every time — whether the drain started mid-session or at a prior conclusion attempt, the user chooses between continuing the walk-through and concluding with the rest on record.
 
@@ -75,7 +81,11 @@ Final review: {N} area(s) still unreviewed.
 · · · · · · · · · · · ·
 ```
 
-Set `announced: true` in the cache file frontmatter.
+Record the announce:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
+```
 
 **STOP.** Wait for user response.
 
@@ -83,18 +93,23 @@ Set `announced: true` in the cache file frontmatter.
 
 Apply the raise-one-finding step inline this turn (do not re-prompt):
 
-1. Read `{findings_key}` and `surfaced:` from the cache file.
-2. Compute the unsurfaced set.
-3. Pick the single most contextually relevant unsurfaced finding. Contextual relevance outranks sub-agent order. If nothing is particularly relevant, pick the one with the broadest implications.
-4. Append its ID to `surfaced:` in the cache file frontmatter.
-5. Reframe the finding as one concrete concern tied to the current context, phrased as a single question. Do not read it out verbatim.
-6. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
+1. Pick the single most contextually relevant finding from the row's `remaining`. Contextual relevance outranks the list order. If nothing is particularly relevant, pick the one with the broadest implications.
+2. Record it — raising the last finding incorporates the row automatically:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
+   ```
+3. Reframe the finding as one concrete concern tied to the current context, phrased as a single question. Do not read it out verbatim.
+4. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
 
 → Return to caller.
 
 #### If `skip`
 
-Transition `status: acknowledged` → `status: incorporated`. The cache file is preserved on disk for the record.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
+```
+
+The declined ids stay recorded unsurfaced, and the content file is preserved on disk for the record.
 
 → Return to caller.
 
@@ -105,6 +120,6 @@ Before producing any surfacing output, verify:
 - □ Raising AT MOST one finding this turn
 - □ Asking AT MOST one question this turn
 - □ No bulleted list of gaps
-- □ Not reading the cache file contents verbatim
+- □ Not reading the content file verbatim
 
 If any box is unchecked, stop and reframe.

@@ -63,31 +63,10 @@ Continue the discussion without perspectives.
 
 ## B. Dispatch Perspective Agents
 
-Ensure the cache directory exists:
+Record one dispatch per lens — the engine allocates the ids and answers with each content-file path; no files are created (a file's later existence is that agent's completion signal). Both dispatches in a pair share the perspective numbering:
 
 ```bash
-mkdir -p .workflows/.cache/{work_unit}/discussion/{topic}
-```
-
-Determine the next set number by checking existing files:
-
-```bash
-ls .workflows/.cache/{work_unit}/discussion/{topic}/ 2>/dev/null
-```
-
-Use the next available `{NNN}` (zero-padded, e.g., `001`, `002`). All agents in this set share the same `{NNN}`.
-
-For each perspective, write a skeleton cache file at `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{lens:(kebabcase)}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record: it makes each running agent (and the set's expected size) visible until the agent's rewrite flips it to `pending`:
-
-```yaml
----
-type: perspective
-status: in-flight
-created: {date}
-set: {NNN}
-lens: {lens}
-decision: {decision topic}
----
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind perspective --label {lens:(kebabcase)}
 ```
 
 **Agent path**: `../../../agents/workflow-discussion-perspective.md`
@@ -99,7 +78,7 @@ Each perspective agent receives:
 1. **Lens** — the assigned lens from the polarity pair (e.g., `Formal Systems`, `Tail-Risk`)
 2. **Decision topic** — the decision being explored
 3. **Discussion file path** — `.workflows/{work_unit}/discussion/{topic}.md`
-4. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-{NNN}-{lens:(kebabcase)}.md` (its skeleton is already on disk there; the agent's rewrite flips `status` to `pending`)
+4. **Output file path** — the `file` from that lens's dispatch response. The agent writes its completed argument there — pure markdown, never frontmatter.
 
 Each perspective agent restates the decision through its lens before arguing (Problem Restate Gate) and returns:
 
@@ -125,19 +104,11 @@ The discussion continues — do not wait for agents to return.
 
 This section is reached when all perspective agents in a set have completed. The synthesis agent reconciles their findings into a tradeoff landscape.
 
-Write the skeleton cache file at `.workflows/.cache/{work_unit}/discussion/{topic}/synthesis-{NNN}.md` — frontmatter only, no body. `status: in-flight` is the dispatch record: it makes the running agent visible to the in-flight scans (and stops **D** re-dispatching synthesis for this set) until the agent's rewrite flips it to `pending`:
+Record the dispatch (its in-flight row also stops **D** re-dispatching synthesis for this set), then close out the consumed perspective rows — synthesis has read them; they are never surfaced:
 
-```yaml
----
-type: synthesis
-status: in-flight
-created: {date}
-set: {NNN}
-decision: {decision topic}
-tensions: []
-surfaced: []
-announced: false
----
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind synthesis
+node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {each perspective id in the set}
 ```
 
 **Agent path**: `../../../agents/workflow-discussion-synthesis.md`
@@ -148,9 +119,7 @@ The synthesis agent receives:
 
 1. **Perspective file paths** — paths to all perspective files in this set
 2. **Decision topic** — the decision being explored
-3. **Output file path** — `.workflows/.cache/{work_unit}/discussion/{topic}/synthesis-{NNN}.md` (the skeleton above is already on disk there)
-
-The sub-agent rewrites the file at completion — populating `tensions:` with stable IDs (`T1`, `T2`, …) and flipping `status` to `pending`. See `agents/workflow-discussion-synthesis.md` for the schema.
+3. **Output file path** — the `file` from the dispatch response. The agent writes its completed landscape there — pure markdown with one `## {ID}` section per tension (`T1`, `T2`, …), never frontmatter.
 
 The synthesis agent also compares the Restatement sections from each perspective. If lenses diverge meaningfully on what the decision IS — different scope, different question, or one lens answering an unasked question — synthesis records a **Framing alignment** tension as `T1` so it surfaces first. This is the Problem Restate Gate's payoff: wrong-question failures get caught before the user acts on a tradeoff landscape.
 
@@ -171,11 +140,11 @@ The discussion continues — do not wait for the agent to return.
 
 This section handles two responsibilities: promoting completed perspective sets to synthesis, and surfacing synthesis findings via the never-dump protocol.
 
-**Perspective completion check** — scan the cache directory for perspective files. For each set `{NNN}`, if every perspective file in the set has `status: pending` (a file still `in-flight` is an agent still running) AND no synthesis file exists for that set, proceed to **C. Dispatch Synthesis Agent** for that set.
+**Perspective completion check** — run `agent scan` and group the `perspective` rows by their `{NNN}` number. For each set, if every perspective row in the set is `pending` (one still `in-flight` is an agent still running) AND no `synthesis` row exists for that set, proceed to **C. Dispatch Synthesis Agent** for that set.
 
 **Synthesis surfacing** — synthesis files carry findings (`tensions:`) that must NOT be dumped. Delegate presentation to the shared surfacing protocol.
 
-→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `synthesis`, cache_dir = `.workflows/.cache/{work_unit}/discussion/{topic}`, cache_glob = `synthesis-*.md`, findings_key = `tensions`.
+→ Load **[background-agent-surfacing.md](../../workflow-shared/references/background-agent-surfacing.md)** with agent_type = `synthesis`, work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
 
 **Deriving subtopics during presentation**: When the user engages with a raised tension, reframe it as a practical subtopic tied to project constraints and record it on the Discussion Map as `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 

@@ -32,7 +32,7 @@ When the topic feels well-explored or the user indicates they're done:
 
 ## D. In-Flight Agent Handling
 
-Before concluding, check for in-flight agents. Scan `.workflows/.cache/{work_unit}/research/{topic}/` for review or deep-dive files with `status: in-flight` in their frontmatter — dispatch-time skeletons whose agents haven't returned yet.
+Before concluding, check for in-flight agents — run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned).
 
 #### If no agents are in flight
 
@@ -57,7 +57,7 @@ There are still {N} background agents working.
 
 **If `wait`:**
 
-Watch for each in-flight file to flip to `status: pending`. When none remain in-flight, delegate surfacing to the shared protocol loaded by review-agent.md and deep-dive-agent.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
+Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the shared protocol loaded by review-agent.md and deep-dive-agent.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass.
 
 → Return to **B. Session Loop**.
 
