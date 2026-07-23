@@ -91,6 +91,24 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Round 4 (#536): the enumeration pass, after Lee rejected
+  sampling as the done-criterion ("we can't stop until it's working").
+  Five slices produced coverage artifacts instead of findings lists:
+  a 22-family state-contract table, full inbound-edge maps for every
+  section the fix rounds touched, four engine guard matrices proven
+  cell-by-cell, and per-claim re-enumeration of every "all Y" in three
+  rounds of commit messages. The tables found what sampling missed:
+  round 3 had broken the shipped shell gate (and my sweep piped away
+  the exit code); the amendment reset was still wrong on the mismatch-
+  retry edge; review restart left a hijackable staging cycle; the
+  discussion conclusion could drop a landed council. Every fix landed
+  under the new discipline — edges enumerated before the edit, an
+  adversarial verify per fix before commit — and the discipline drew
+  blood the same day: the two-branch drain arm was proven non-
+  exhaustive pre-commit and rebuilt as three branches with an exit-
+  state map. Fix protocol and the prose-testing framework design are
+  in memory; the framework itself is banked on the ledger.
+
 - 2026-07-23 — Review round 3 (#535), the same six lenses re-aimed at
   round 2's tip after Lee called the find volume. The clustering
   vindicated the repeat: nearly every find sat in code round 2 wrote.
