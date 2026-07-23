@@ -73,14 +73,11 @@ No assessment needed — feature, bugfix, and cross-cutting work types always pr
 
 ## B. Verify Tracking Files Complete
 
-Before proceeding to sign-off, confirm that all review tracking files across all cycles have `status: complete`:
+Before proceeding to sign-off, read `manifest get {work_unit}.specification.{topic} tracking` — every entry across all cycles must be `complete` (`review-input-tracking-c{N}` after each Phase 1, `review-gap-analysis-tracking-c{N}` after each Phase 2).
 
-- `review-input-tracking-c{N}.md` — should be marked complete after each Phase 1
-- `review-gap-analysis-tracking-c{N}.md` — should be marked complete after each Phase 2
+If any entry is `in-progress`, that file's findings were not fully processed — work them per **[process-review-findings.md](process-review-findings.md)**, then re-verify.
 
-If any tracking file still shows `status: in-progress`, mark it complete now.
-
-> **CHECKPOINT**: Do not proceed to sign-off if any tracking files still show `status: in-progress`. They indicate incomplete review work.
+> **CHECKPOINT**: Do not proceed to sign-off while the manifest's `tracking` subtree holds an `in-progress` entry. It indicates incomplete review work.
 
 Also confirm every source is incorporated:
 
@@ -147,7 +144,7 @@ Specification is complete when:
 - All sources are marked as `incorporated`
 - All consult references are marked as `addressed`
 - At least one review cycle completed with no findings, OR user explicitly chose to proceed past the re-loop prompt
-- All review tracking files marked `status: complete`
+- Every manifest `tracking` entry `complete`
 - User confirms the specification is complete
 - No blocking gaps remain
 

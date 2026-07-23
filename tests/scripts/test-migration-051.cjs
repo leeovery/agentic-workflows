@@ -119,6 +119,54 @@ describe('migration 051 — frontmatter state to stores', () => {
     assert.ok(!fs.existsSync(path.join(dir, '.workflows', '.cache', 'pay', 'implementation', 'alpha', 'fix-tracking-alpha-1-1.md')));
   });
 
+  it('pins the real historical shapes: nested findings lists, lens labels, tensions, set fallbacks', () => {
+    writeManifest('pay', {});
+    write('.workflows/.cache/pay/research/alpha/review-001.md', [
+      '---', 'type: review', 'status: pending', 'created: 2026-07-01', 'set: 001',
+      'findings:', '  - id: F1', '    kind: unexplored', '    label: competitor pricing untouched',
+      '  - id: F2', '    kind: assumption', '    label: latency budget unverified',
+      'surfaced: []', 'announced: false', '---', 'body',
+    ].join('\n'));
+    write('.workflows/.cache/pay/discussion/beta/perspective-001-tail-risk.md',
+      '---\ntype: perspective\nstatus: pending\ncreated: 2026-07-02\nset: 001\nlens: Tail-Risk\ndecision: store locality\n---\nargument');
+    write('.workflows/.cache/pay/discussion/beta/synthesis-001.md', [
+      '---', 'type: synthesis', 'status: acknowledged', 'created: 2026-07-03', 'set: 001',
+      'decision: store locality', 'tensions: [T1, T2]', 'surfaced: [T1]', 'announced: true', '---', 'landscape',
+    ].join('\n'));
+    write('.workflows/.cache/pay/research/alpha/deep-dive-003-http-429-handling.md',
+      '---\ntype: deep-dive\nstatus: pending\ncreated: 2026-07-04\nthread: OAuth token refresh - edge cases\nfindings: [F1]\nsurfaced: []\nannounced: false\n---\nreport');
+    migration.run(hooks());
+    const research = readStore('pay', 'research', 'alpha');
+    assert.deepStrictEqual(research.agents['review-001'].findings, ['F1', 'F2'],
+      'continuation lines never pollute the id list');
+    assert.strictEqual(research.agents['deep-dive-003-http-429-handling'].set, '003',
+      'set from the leftmost filename triple, not 429');
+    const disc = readStore('pay', 'discussion', 'beta');
+    assert.strictEqual(disc.agents['perspective-001-tail-risk'].label, 'Tail-Risk');
+    assert.ok(!('decision' in disc.agents['perspective-001-tail-risk']), 'decision was write-only metadata');
+    assert.deepStrictEqual(disc.agents['synthesis-001'].findings, ['T1', 'T2'], 'tensions become findings');
+    assert.deepStrictEqual(disc.agents['synthesis-001'].surfaced, ['T1']);
+  });
+
+  it('edges: CRLF files parse; in-flight skeletons and dotted candidate names translate to nothing', () => {
+    writeManifest('pay', { phases: { specification: { items: { alpha: { status: 'completed' } } } } });
+    write('.workflows/pay/specification/alpha/review-input-tracking-c1.md',
+      '---\r\nstatus: in-progress\r\n---\r\nfindings\r\n');
+    write('.workflows/.cache/pay/research/alpha/review-001.md',
+      '---\ntype: review\nstatus: in-flight\ncreated: 2026-07-01\nfindings: []\nsurfaced: []\nannounced: false\n---\n');
+    write('.workflows/pay/.state/research-analysis-candidates.md', [
+      '---', 'gate_mode: gated', '---', '', '## oauth2.0-scopes', 'status: pending', 'summary: s', '',
+    ].join('\n'));
+    migration.run(hooks());
+    const m = readManifest('pay');
+    assert.strictEqual(m.phases.specification.items.alpha.tracking['review-input-tracking-c1'], 'in-progress',
+      'CRLF tracking file still translates');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json')),
+      'a dead in-flight skeleton gets no row');
+    assert.ok(!(m.phases.discovery && m.phases.discovery.analysis_staging),
+      'dotted candidate names skip the file — fresh staging self-heals');
+  });
+
   it('is idempotent — a second run changes nothing and skips', () => {
     writeManifest('pay', { phases: { review: { items: { alpha: { status: 'in-progress' } } } } });
     write('.workflows/.cache/pay/research/alpha/review-001.md',

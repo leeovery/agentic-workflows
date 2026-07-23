@@ -668,6 +668,11 @@ describe('pipeline simulation', () => {
     sim.run(['task', 'start', wu, wu, `${wu}-1-2`]);
     sim.run(['task', 'complete', wu, wu, `${wu}-1-2`, '--next-task', '~', '--phase-complete']);
 
+    // An analysis cycle's staging walks the manifest; all-skipped is a legal exit.
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.1', 'skipped']);
+    sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.c1.tasks.2', 'skipped']);
+
     // A resumed session resets gate modes to gated (session-scoped auto).
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'task_gate_mode', 'auto']);
     const resumed = sim.run(['task', 'init', wu, wu]);
@@ -701,6 +706,14 @@ describe('pipeline simulation', () => {
     sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1']);
     const last = sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F2']);
     assert.strictEqual(last.status, 'incorporated', 'last finding auto-incorporates');
+
+    // Skip-all from acknowledged: declined ids stay recorded unsurfaced.
+    const skipAll = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    sim.write(skipAll.file, '# More findings\n\n### F9: x\n');
+    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    sim.run(['agent', 'ack', wu, 'research', 'alpha', skipAll.id, '--findings', 'F9']);
+    const closedEarly = sim.run(['agent', 'incorporate', wu, 'research', 'alpha', skipAll.id]);
+    assert.deepStrictEqual(closedEarly.remaining, ['F9'], 'skip-all keeps the declined record');
 
     // Guards hold mid-lifecycle, and the conclusion gate still sees the straggler.
     sim.refuses(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1'], /incorporated/);

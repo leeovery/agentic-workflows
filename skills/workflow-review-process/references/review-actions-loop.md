@@ -146,6 +146,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 **If an in-flight staging cycle exists** (read `manifest get {work_unit}.review.{topic} staging` — a cycle whose `tasks` still hold a `pending` — a crash-resume): do not re-dispatch. Resume that cycle at **C. Approval Overview** with its file `review-tasks-c{N}.md` — the manifest's `staging.c{N}` subtree carries `gate_mode` and the per-task decisions.
 
+**If a staging file exists on disk with no matching manifest cycle** (a crash between the synthesizer's write and the init): initialise the cycle now from the file's task count (the batched `pending` set from **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)**) and resume at **C**.
+
 → Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the synthesizer has returned.
@@ -246,7 +248,7 @@ Revise the task content in the staging file based on the user's feedback.
 
 ## E. Route on Results
 
-#### If any tasks have `status: approved`
+#### If the manifest's `staging.c{N}.tasks` marks any task `approved`
 
 → Proceed to **F. Create Tasks in Plan**.
 

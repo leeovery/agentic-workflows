@@ -32,7 +32,7 @@ Pass via the orchestrator's prompt:
 
 ## Expected Result
 
-The agent creates tasks in the plan for all approved entries in the staging file.
+Pass the approved task numbers from the manifest's `staging.c{N}.tasks` (the rows marked `approved`) — the agent creates exactly those.
 
 Returns a brief status:
 
