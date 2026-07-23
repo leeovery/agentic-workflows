@@ -207,7 +207,7 @@ Check for rejected tasks in the task detail file.
 
 > **CHECKPOINT**: Verify all tasks in the task detail file are marked `approved` before writing — both gate modes approve every task before reaching this section.
 
-For each approved task in the task detail file, in order:
+For each approved task in the task detail file, in order (crash-resume guard: a task whose internal id is already in `task_map` was written before an interruption — skip its format write and continue with the next; re-creating it would duplicate the task in external backends):
 
 1. Read the task content from the task detail file
 2. Write to the output format (format-specific — see the format's **[authoring.md](output-formats/{format}/authoring.md)**)

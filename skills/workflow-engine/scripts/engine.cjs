@@ -681,7 +681,7 @@ function runCommit(argv) {
       scope = '.workflows/.inbox';
     } else {
       const wu = /** @type {string} */ (workUnit);
-      if (wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);
+      if (wu === '' || wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);
       if (!fs.existsSync(path.join(cwd, '.workflows', wu))) {
         throw new Error(`no work unit directory: .workflows/${wu}`);
       }

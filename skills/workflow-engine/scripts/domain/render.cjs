@@ -100,7 +100,7 @@ function resumeGate(cwd, args) {
   if (variant === 'review') {
     const reviewItem = itemOf(manifest, 'review', topic) || {};
     const implItem = itemOf(manifest, 'implementation', topic) || {};
-    const reviewed = Array.isArray(reviewItem.reviewed_tasks) ? reviewItem.reviewed_tasks.length : null;
+    const reviewed = Array.isArray(reviewItem.reviewed_tasks) ? new Set(reviewItem.reviewed_tasks).size : null;
     const completed = Array.isArray(implItem.completed_tasks) ? implItem.completed_tasks.length : 0;
     if (reviewed !== null && completed - reviewed > 0) {
       const unreviewed = completed - reviewed;

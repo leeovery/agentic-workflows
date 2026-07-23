@@ -6,6 +6,8 @@
 
 Follow stages A through H sequentially for each task. Do not abbreviate, skip, or compress stages based on previous iterations.
 
+At loop entry (crash-resume healing): if the plan marks tasks done that the manifest's `completed_tasks` lacks, run `engine task complete` for each missing internal id before retrieving the next task — the push is an idempotent no-op for ids already recorded, and this reseals the seam a crash between the plan mark and the bookkeeping can leave.
+
 ```
 A. Retrieve next task + mark in-progress
 B. Execute task → invoke-executor.md

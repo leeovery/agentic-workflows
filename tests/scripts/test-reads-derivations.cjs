@@ -1013,16 +1013,22 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled' });
     });
 
-    it('falls through to fresh when only research is cancelled (discussion path still open)', () => {
+    it('a single-attempt topic whose only item is cancelled renders cancelled — research-only', () => {
       const m = loadWithPhases('auth', { research: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: 'cancelled' });
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled' });
     });
 
-    it('falls through to fresh when only discussion is cancelled (research path still open)', () => {
+    it('a single-attempt topic whose only item is cancelled renders cancelled — discussion-only', () => {
       const m = loadWithPhases('auth', { discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null });
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: null });
+    });
+
+    it('one cancelled beside a live sibling renders by the live path — the alternate stays open', () => {
+      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'in-progress' });
+      const r = computeTopicLifecycle(m, 'auth');
+      assert.strictEqual(r.lifecycle, 'discussing');
     });
 
     it('renders ready_for_discussion when research is superseded and no discussion exists', () => {

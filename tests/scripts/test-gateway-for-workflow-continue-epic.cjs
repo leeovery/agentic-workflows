@@ -936,7 +936,7 @@ describe('workflow-continue-epic discovery', () => {
       assert.strictEqual(t.next_action, null);
     });
 
-    it('lifecycle: research cancelled, no discussion → fresh (single-cancelled)', () => {
+    it('lifecycle: research cancelled, no discussion → cancelled (all attempted phases cancelled)', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -945,8 +945,8 @@ describe('workflow-continue-epic discovery', () => {
         },
       });
       const t = discover(dir).epics[0].detail.discovery_map[0];
-      assert.strictEqual(t.lifecycle, 'fresh');
-      assert.strictEqual(t.tier, '○');
+      assert.strictEqual(t.lifecycle, 'cancelled');
+      assert.strictEqual(t.tier, '⊘');
     });
 
     it('lifecycle: research cancelled AND discussion cancelled → cancelled, ⊘', () => {

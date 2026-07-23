@@ -144,6 +144,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 ## B. Dispatch Review Synthesizer
 
+**If an in-flight staging file exists** (`review-tasks-c{N}.md` with any task still `pending` — a crash-resume): do not re-dispatch. Resume that cycle at **C. Approval Overview** with the existing file — its frontmatter `gate_mode` and per-task decisions are the durable carrier.
+
 → Load **[invoke-review-synthesizer.md](invoke-review-synthesizer.md)** and follow its instructions as written.
 
 > **CHECKPOINT**: Do not proceed until the synthesizer has returned.

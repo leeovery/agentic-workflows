@@ -92,6 +92,12 @@ function parseProjectPath(pathArg) {
  */
 function parsePath(pathArg) {
   const parts = pathArg.split('.');
+  // An empty segment collapses path.join onto the project manifest through
+  // the work-unit code path (wrong file, wrong lock) — refuse it loudly.
+  // Reachable via unset shell variables (`set "$wu" …`).
+  if (parts.some((p) => p === '')) {
+    fail(`Invalid path "${pathArg}". Expected: <work-unit>[.<phase>[.<topic>]] — empty segments are refused`);
+  }
   if (parts.length === 1) return { workUnit: parts[0], phase: null, topic: null };
   if (parts.length === 2) {
     validatePhase(parts[1]);

@@ -22,6 +22,8 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
+Crash-resume: if the previous cycle's findings are already committed but its synthesis never ran, do not record a new cycle — resume at **D. Dispatch Synthesis Agent** over the existing findings.
+
 Record the cycle via the engine (increments both the lifetime and session counters):
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
