@@ -18,11 +18,17 @@ Read the store:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
 ```
 
-**Synthesis findings drain first.** If any `synthesis` row is pending or acknowledged — perspective-council tensions that never finished surfacing during the session would otherwise be dropped at conclusion — surface one tension via **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session so the user can engage:
+Synthesis findings drain first — perspective-council tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
+
+#### If any `synthesis` row is `pending` or `acknowledged`
+
+Surface one tension via **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session so the user can engage.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
-Otherwise take the highest-numbered `review` row and branch on its status.
+#### Otherwise
+
+Take the highest-numbered `review` row and branch on its status below.
 
 #### If no review row exists
 
