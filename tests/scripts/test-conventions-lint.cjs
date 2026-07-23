@@ -576,7 +576,6 @@ const RATCHET_PINS = {
   'skills/workflow-investigation-entry/references/gather-context.md': 1,
   'skills/workflow-investigation-process/references/analysis-checkpoints.md': 3,
   'skills/workflow-investigation-process/references/conclude-investigation.md': 1,
-  'skills/workflow-investigation-process/references/findings-signoff.md': 1,
   'skills/workflow-investigation-process/references/fix-exploration.md': 1,
   'skills/workflow-investigation-process/references/fix-validation.md': 2,
   'skills/workflow-investigation-process/references/investigation-plan.md': 2,

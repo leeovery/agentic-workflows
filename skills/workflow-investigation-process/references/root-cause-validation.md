@@ -112,7 +112,7 @@ Validation: Root cause validated ({CONFIDENCE} confidence). No gaps found.
 
 Update the output file frontmatter to `status: read`.
 
-Extract the key gaps from the validation file. Present a brief summary — do not dump the full output.
+Extract the key gaps from the validation file. Present a brief summary — do not dump the full output. Each gap line states what could be wrong in behaviour terms — code refs as anchors, not the lead.
 
 > *Output the next fenced block as a code block:*
 

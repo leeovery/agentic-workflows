@@ -118,6 +118,8 @@ Compute:
 
 ## C. Display Diagnostic
 
+Open with one markdown sentence above the block — what the cycles show, in plain terms: what is resolving and what keeps coming back.
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -137,7 +139,7 @@ Compute:
   Recurring:
   @foreach(finding in recurring)
     • {finding.title} (cycles {finding.cycle_list})
-      {1-line root cause hypothesis based on the finding's history and affected area}
+      {1-line root cause hypothesis in plain behaviour terms, from the finding's history and affected area}
   @endforeach
   @endif
 

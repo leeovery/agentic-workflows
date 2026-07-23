@@ -61,6 +61,7 @@ function startSections(result) {
     menu(`Approve task ${result.task}?`, [
       cmdOption('y', 'yes', 'Commit and continue to next task'),
       cmdOption('a', 'auto', 'Approve this and all future tasks automatically'),
+      cmdOption('t', 'technical', "Retell the result from the code's perspective"),
       promptOption('Ask', "Ask questions about the implementation (doesn't approve or reject)"),
       promptOption('Comment', 'Request changes (triggers a fix round)'),
     ]),
@@ -82,6 +83,7 @@ function fixAttemptSections(result, internalId) {
       cmdOption('y', 'yes', 'Pass to executor'),
       cmdOption('a', 'auto', 'Accept and auto-approve future fix analyses'),
       cmdOption('s', 'skip', 'Override the reviewer and proceed as-is'),
+      cmdOption('t', 'technical', "Retell the review from the code's perspective"),
       promptOption('Ask', "Ask questions about the review (doesn't accept or reject)"),
       promptOption('Comment', 'Accept with adjustments — pass your own direction alongside the review'),
     ];

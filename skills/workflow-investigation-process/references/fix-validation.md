@@ -113,7 +113,7 @@ Fix validation: Direction confirmed ({CONFIDENCE} confidence). No unaddressed ri
 
 Update the output file frontmatter to `status: read`.
 
-Extract the key risks from the validation file. Present a brief summary — do not dump the full output.
+Extract the key risks from the validation file. Present a brief summary — do not dump the full output. Each risk line states what could break in behaviour terms — code refs as anchors, not the lead.
 
 > *Output the next fenced block as a code block:*
 

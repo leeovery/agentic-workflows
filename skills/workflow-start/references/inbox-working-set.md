@@ -20,7 +20,7 @@ The response carries demarcated sections:
 - **MENU** — the set menu. Emit verbatim as markdown (not a code block) at this section's gate below. The `w`/`work` option renders only for a type-uniform set.
 - **Labelled sections** (`DISPLAY: add candidates`, `MENU: add gate`, `DISPLAY: drop candidates`, `MENU: drop gate`) — deferred: each is emitted only at the gate its marker names (**B** / **C**), never here.
 
-For each item in the set, read its file and synthesise a short summary of what it describes (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug).
+For each item in the set, read its file and synthesise a short summary — what the item is and why it matters, in product terms (do not quote it verbatim). Hold each item's title (the file's `#` heading, falling back to its slug).
 
 > *Output the next fenced block as a code block:*
 

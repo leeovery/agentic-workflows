@@ -35,6 +35,8 @@ Choose the checkpoint depth to propose:
 
 The depth is a suggestion — the user decides.
 
+Open with one markdown sentence above the block — what we think is happening and where the analysis will look, in product terms.
+
 > *Output the next fenced block as a code block:*
 
 ```
@@ -88,6 +90,8 @@ Write the agreed plan into the Hypotheses section of the investigation file: the
 ## D. Resume Position
 
 The plan was agreed in an earlier session — re-render the position from the ledger; never re-run recon over settled state.
+
+Open with one markdown sentence above the block — what we think is happening and where the remaining analysis will look, in product terms.
 
 > *Output the next fenced block as a code block:*
 

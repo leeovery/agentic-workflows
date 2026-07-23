@@ -42,7 +42,7 @@ Group the themes from A into candidate topics.
 
 → Load **[topic-granularity.md](topic-granularity.md)**.
 
-For each candidate topic, write a one-line summary that covers the constituent themes — used as the discovery item's `summary` field.
+For each candidate topic, write a one-line summary that covers the constituent themes — used as the discovery item's `summary` field. Word it product-first: the capability or behaviour at stake, not the mechanism.
 
 Record each candidate's `parent` — the completed research file (filename without `.md`) that primarily contributed it. When several files contribute, pick the primary one. The parent drives `source: research-analysis:{parent}` provenance and the fan-out offer in the approval gate.
 

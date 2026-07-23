@@ -58,7 +58,7 @@ For each topic in the synthesised set, propose `research` or `discussion` based 
 
 ## E. Render Proposal
 
-Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration; routing is the value inferred in **D**:
+Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); routing is the value inferred in **D**:
 
 ```json
 [
