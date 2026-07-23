@@ -168,6 +168,8 @@ module.exports = {
             const store = readJson(storePath) || { agents: {} };
             if (!store.agents || typeof store.agents !== 'object') store.agents = {};
             let storeTouched = false;
+            /** @type {Set<string>} */
+            const deadCouncilSets = new Set();
             for (const f of fs.readdirSync(topicDir)) {
               if (!f.endsWith('.md')) continue;
               const id = f.slice(0, -3);
@@ -179,9 +181,16 @@ module.exports = {
               if (!kind || !AGENT_KINDS.includes(kind) || !status) continue;
               // A pre-programme in-flight skeleton is a dead dispatch — a row
               // would let scan promote the frontmatter-only file as a clean
-              // report. No row: the file stays inert legacy.
-              if (status === 'in-flight') continue;
-              const setMatch = /-(\d{3})(?:-|$)/.exec(id);
+              // report. No row: the file stays inert legacy. A skeleton lens
+              // or synthesis also marks its whole council dead (see below).
+              if (status === 'in-flight') {
+                if (kind === 'perspective' || kind === 'synthesis') {
+                  const m = /-(\d{3,})(?:-|$)/.exec(id);
+                  deadCouncilSets.add(parsed.fm.set || (m ? m[1] : '000'));
+                }
+                continue;
+              }
+              const setMatch = /-(\d{3,})(?:-|$)/.exec(id);
               store.agents[id] = {
                 id,
                 kind,
@@ -196,6 +205,17 @@ module.exports = {
                 created: parsed.fm.created || '1970-01-01T00:00:00.000Z',
               };
               storeTouched = true;
+            }
+            // A council with a dead in-flight member (lens or synthesis) can
+            // never synthesise correctly — a synthesis skeleton blocks the
+            // set-join (legacy file occupies the name) and a half-dead pair
+            // would silently synthesise over one lens. Closing the landed
+            // lenses here is the only guard for both shapes.
+            for (const row of Object.values(store.agents)) {
+              if (row.kind === 'perspective' && row.status === 'pending' && deadCouncilSets.has(row.set)) {
+                row.status = 'incorporated';
+                storeTouched = true;
+              }
             }
             if (storeTouched) {
               writeJson(storePath, store);
@@ -287,8 +307,10 @@ module.exports = {
       // markers in phase-{N}-tasks.md become staging.author-p{N} rows —
       // the one per-task state 051 would otherwise drop (feedback
       // blockquotes are content and stay).
+      // Closed work units keep their historical manifests as-is — the
+      // authoring loop that would consume (and clean) these rows never runs.
       const planRoot = path.join(wfRoot, wu, 'planning');
-      if (fs.existsSync(planRoot)) {
+      if (!['completed', 'cancelled'].includes(manifest.status) && fs.existsSync(planRoot)) {
         for (const topicEnt of fs.readdirSync(planRoot, { withFileTypes: true })) {
           if (!topicEnt.isDirectory()) continue;
           const items = ((manifest.phases.planning || {}).items) || {};

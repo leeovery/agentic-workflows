@@ -18,11 +18,11 @@ Read the store:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
 ```
 
-Synthesis findings drain first — perspective-council tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
+Councils resolve first — a landed set promotes to synthesis, then synthesis findings drain; tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
 
-#### If a complete `perspective` set has no `synthesis` row
+#### If a complete `perspective` set has no live `synthesis` row
 
-Every member of the set is `pending` — a landed council awaiting synthesis (the scan just promoted lenses that finished after the session's last check). Promote it via the **Perspective completion check** in **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session — the in-flight gate owns the new synthesis on the next conclusion attempt. An incomplete set (a lens still in flight) is not caught here — the session's in-flight gate already owns that wait-or-proceed decision.
+Every member of the set is `pending` and any prior synthesis is `incorporated` — a landed council awaiting synthesis. Promote it via the **Perspective completion check** in **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)**, then bounce back to the session — the in-flight gate owns the new synthesis on the next conclusion attempt. An incomplete set (a lens still in flight) is not caught here — the session's in-flight gate already owns that wait-or-proceed decision.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
