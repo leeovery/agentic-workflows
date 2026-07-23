@@ -104,7 +104,8 @@ const USAGE = `Usage: engine <command> [args]
 Commands:
   boot
   manifest get    <dotpath> [<field.path>]
-  manifest set    <dotpath> <field> <value> [<field>=<value> …]
+  manifest set    <dotpath> <field> <value>
+  manifest set    <dotpath> <field>=<value> [<field>=<value> …]
   manifest push   <dotpath> <field> <value>
   manifest pull   <dotpath> <field> <value>
   manifest delete <dotpath> <field.path>

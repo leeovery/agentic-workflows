@@ -121,7 +121,7 @@ Do not advance the manifest position — the phase is unauthored and remains the
 
 Advance the manifest planning position to the next phase — one batched write:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase {N+1} task='~'
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase={N+1} task='~'
 ```
 
 Commit:

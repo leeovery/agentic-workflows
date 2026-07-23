@@ -45,7 +45,8 @@ Topic-level access routes through items (`phases.{phase}.items.{topic}.{field}`)
 
 ```bash
 engine manifest get    <dotpath> [<field.path>]          # scalar raw / subtree JSON; missing → empty, exit 0
-engine manifest set    <dotpath> <field> <value> [<field>=<value> …]
+engine manifest set    <dotpath> <field> <value>                 # single field (positional shorthand)
+engine manifest set    <dotpath> <field>=<value> [<field>=<value> …]  # uniform batch — never mixed with positional
 engine manifest push   <dotpath> <field> <value>         # append, creating the array
 engine manifest pull   <dotpath> <field> <value>         # remove first deep-equal match; no-op safe
 engine manifest delete <dotpath> <field.path>            # errors when the path is absent

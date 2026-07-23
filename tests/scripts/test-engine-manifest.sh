@@ -409,7 +409,7 @@ echo ""
 echo -e "${YELLOW}Test: batch pair parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-batch feature "Tilde batch"
-run_cli set tilde-batch.planning.tilde-batch task '~' plan_format=local-markdown current='~' >/dev/null 2>&1
+run_cli set tilde-batch.planning.tilde-batch task='~' plan_format=local-markdown current='~' >/dev/null 2>&1
 stored=$(node -e "const i=require(process.argv[1]).phases.planning.items['tilde-batch']; console.log(JSON.stringify([i.task, i.plan_format, i.current]))" "$TEST_DIR/.workflows/tilde-batch/manifest.json")
 
 assert_equals "$stored" '[null,"local-markdown",null]' "Positional and batch tildes both land as null"
@@ -622,7 +622,7 @@ echo ""
 echo -e "${YELLOW}Test: mutation responses are one-line JSON; set batches field=value pairs${NC}"
 setup_fixture
 create_wu json-resp feature "JSON contract"
-output=$(run_cli_stdout set json-resp description "updated" note=hello)
+output=$(run_cli_stdout set json-resp description="updated" note=hello)
 assert_contains "$output" '"ok":true' "set responds with an ok:true JSON line"
 landed=$(run_cli_stdout get json-resp note)
 assert_equals "$landed" "hello" "batched field=value pair landed in the same write"

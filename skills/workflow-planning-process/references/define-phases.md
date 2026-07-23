@@ -50,7 +50,7 @@ The agent returns phases only — goals, ordering rationale, and acceptance crit
 
 Update the manifest planning position — one batched write:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase 1 task='~'
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase=1 task='~'
 ```
 
 Commit:

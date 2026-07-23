@@ -201,7 +201,7 @@ function apply(cwd, workUnit, currentSource) {
       runCli(cwd, ['set', `${workUnit}.research.${theme.kebab_name}`, 'status', 'in-progress']);
       runCli(cwd, [
         'set', `${workUnit}.discovery.${theme.kebab_name}`,
-        'routing', 'research',
+        'routing=research',
         `summary=${theme.summary}`,
         `description=${theme.description}`,
         `source=legacy-split:${currentSource}`,
