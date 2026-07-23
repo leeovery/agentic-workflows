@@ -9,7 +9,7 @@ These instructions are loaded into context at the start of the discussion sessio
 **Trigger checklist** — evaluate after every commit as part of the session loop's dispatch check:
 
 - □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting)
-- □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet)
+- □ All prior reviews drained? (`agent scan` shows no `review` row in flight, pending, or acknowledged — or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
 - □ Not the first commit? (the discussion needs enough content to review)
 - □ At least 2-3 conversational exchanges since the last review dispatch?
 

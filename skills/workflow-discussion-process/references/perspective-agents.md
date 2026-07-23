@@ -110,7 +110,7 @@ Record the dispatch against the completed set — the engine joins the synthesis
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind synthesis --set {set}
 ```
 
-Then close out the consumed perspective rows — synthesis has read them; they are never surfaced. One call per perspective id in the set:
+Then close out the consumed perspective rows — synthesis has read them; they are never surfaced. One call per perspective id in the set still `pending` (a re-dispatch for a dead synthesis arrives with the lenses already closed — skip them):
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {perspective_id}
@@ -146,7 +146,7 @@ The discussion continues — do not wait for the agent to return.
 
 This section handles two responsibilities: promoting completed perspective sets to synthesis, and surfacing synthesis findings via the never-dump protocol.
 
-**Perspective completion check** — run `agent scan` and group the `perspective` rows by their `set` field. For each set, if every perspective row in the set is `pending` (one still `in-flight` is an agent still running) AND no `synthesis` row carries that `set`, proceed to **C. Dispatch Synthesis Agent** for that set. Rows an earlier session dispatched are dead, not running: incorporate a dead lens (its half-read council can no longer synthesise — re-offer the pair if the decision still matters) or a dead synthesis (the engine then permits a fresh `--kind synthesis --set {set}` for the council).
+**Perspective completion check** — run `agent scan` and group the `perspective` rows by their `set` field. For each set, if every perspective row in the set is `pending` (one still `in-flight` is an agent still running) AND no live `synthesis` row carries that `set` (an `incorporated` one is closed — the engine permits a fresh dispatch over it), proceed to **C. Dispatch Synthesis Agent** for that set. Rows an earlier session dispatched are dead, not running: incorporate a dead lens together with its set's landed siblings (a half-dead council can no longer synthesise — re-offer the pair if the decision still matters). A dead synthesis: incorporate it, then re-dispatch via **C. Dispatch Synthesis Agent** for its set — the engine permits the fresh `--kind synthesis --set {set}`, and the lens files persist for the new agent to read.
 
 **Synthesis surfacing** — a synthesis report carries tensions that must NOT be dumped. Delegate presentation to the shared surfacing protocol.
 
