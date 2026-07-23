@@ -407,6 +407,10 @@ Within a numbered item, `·` marks quiet sub-detail: a wrapped summary paragraph
 - Section headings and their content
 - Key categories
 
+## State Ownership (MANDATORY)
+
+Workflow state is engine-owned, always. Durable state (gate decisions, approvals, tracking, lifecycle) lives in the work-unit manifest; ephemeral session machinery lives in the engine's per-topic `state.json` under the cache. Skills and agents never write or read file frontmatter, and never encode state in prose or headings — markdown files carry content only (findings, drafts, reports, feedback notes). The sole exception is the local-markdown output format's task files, whose frontmatter is that format's declared backend. When a new feature needs state, give it a manifest field or an engine verb — never a file marker.
+
 ## Structural Conventions (MANDATORY)
 
 These are hard rules, not suggestions. All skill files (entry-point and processing) MUST follow these conventions exactly.
