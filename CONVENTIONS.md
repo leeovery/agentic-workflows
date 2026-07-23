@@ -602,7 +602,7 @@ Entry-point skills that invoke processing skills use this exact blockquote to pr
 
 Per-item approval gates can offer `a`/`auto` to let the user bypass repeated STOP gates. This pattern is used in implementation (task + fix gates), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
 
-**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated` or `auto`). This ensures they survive context refresh. One sanctioned exception: review's actions loop stores `gate_mode` in its staging-file frontmatter — the staging file is that cycle's durable carrier and survives refresh the same way.
+**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated` or `auto`) — every gate, no exceptions. This ensures they survive context refresh.
 
 **Behavior when `auto`**: Content is always rendered above the gate check (so both modes see identical output). Auto mode proceeds without a STOP gate. Use a rendering instruction + code block for the one-line announcement:
 

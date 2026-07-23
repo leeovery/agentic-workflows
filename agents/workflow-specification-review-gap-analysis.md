@@ -100,14 +100,6 @@ No source material — this phase looks inward only.
 Write to `.workflows/{work_unit}/specification/{topic}/review-gap-analysis-tracking-c{cycle-number}.md` — in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context. Bash is for this rename only. Use this format:
 
 ```markdown
----
-status: in-progress
-created: YYYY-MM-DD
-cycle: {N}
-phase: Gap Analysis
-topic: {Topic Name}
----
-
 # Review Tracking: {Topic Name} - Gap Analysis
 
 ## Findings

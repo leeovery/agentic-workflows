@@ -155,7 +155,7 @@ Finding {N} of {total}: {brief_title:(titlecase)} — skipped.
 
 ## C. After All Findings Processed
 
-1. **Mark the tracking file as complete** — Set `status: complete`.
+1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.
 
 > *Output the next fenced block as a code block:*

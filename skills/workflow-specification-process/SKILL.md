@@ -99,7 +99,7 @@ Check if `.workflows/{work_unit}/specification/{topic}/specification.md` exists.
 > whether to pick it up or start fresh.
 ```
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 3`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, restart_resets = `every sources.{name}.status and consult_references.{name}.status row under {work_unit}.specification.{topic} to pending via engine manifest set — initialization never overwrites an existing row, so without this reset the fresh file would never get its content re-extracted`, commit = `spec({work_unit}): restart specification`.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 3`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, restart_resets = `every sources.{name}.status and consult_references.{name}.status row under {work_unit}.specification.{topic} to pending via engine manifest set — initialization never overwrites an existing row, so without this reset the fresh file would never get its content re-extracted — and the tracking subtree deleted (engine manifest delete {work_unit}.specification.{topic} tracking) to match the deleted tracking files`, commit = `spec({work_unit}): restart specification`.
 
 ---
 

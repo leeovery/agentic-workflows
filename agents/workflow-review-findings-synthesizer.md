@@ -27,7 +27,7 @@ You receive via the orchestrator's prompt:
 5. **Filter** — discard low-severity non-blocking findings unless they cluster into a pattern. Never discard high-severity or blocking findings. NON-BLOCKING NOTES may carry category tags (`[do-now]`, `[quickfix]`, `[idea]`, `[bug]`). These tags classify the *type* of improvement, not severity. A `[bug]` tagged non-blocking note is a latent, non-blocking issue — do not escalate it to blocking severity based on the tag alone. Apply the same severity/clustering filter regardless of category tags.
 6. **Normalize** — convert each group into a task using the canonical task template (Problem / Solution / Outcome / Do / Acceptance Criteria / Tests)
 7. **Write report** — output to `.workflows/{work_unit}/implementation/{topic}/review-report-c{cycle}.md`
-8. **Write staging file** — if actionable tasks exist, write to `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle}.md` with `status: pending` for each task
+8. **Write staging file** — if actionable tasks exist, write the task content to `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{cycle}.md` — pure markdown, no frontmatter and no status lines; the orchestrator tracks approvals in its own store
 
 ## Write Mechanism
 
@@ -38,15 +38,13 @@ Produce each output file in two steps: write the content to the target path with
 Write the report file with this structure:
 
 ```markdown
----
-scope: {scope description}
-cycle: {N}
-source: review
-total_findings: {N}
-deduplicated_findings: {N}
-proposed_tasks: {N}
----
 # Review Report: {Scope} (Cycle {N})
+
+## Stats
+
+- Total findings: {N}
+- Deduplicated findings: {N}
+- Proposed tasks: {N}
 
 ## Summary
 {2-3 sentence overview of findings}
@@ -60,17 +58,9 @@ proposed_tasks: {N}
 Write the staging file with this structure:
 
 ```markdown
----
-scope: {scope description}
-cycle: {N}
-source: review
-total_proposed: {N}
-gate_mode: gated
----
 # Review Tasks: {Scope} (Cycle {N})
 
 ## Task 1: {title}
-status: pending
 severity: high
 sources: report-1-3, report-2-1
 
@@ -84,7 +74,6 @@ sources: report-1-3, report-2-1
 - {test description}
 
 ## Task 2: {title}
-status: pending
 ...
 ```
 
