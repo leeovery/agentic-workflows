@@ -22,7 +22,23 @@ Deep-dive findings drain first — thread findings that never finished surfacing
 
 #### If any `deep-dive` row is `pending` or `acknowledged`
 
-Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**, then bounce back to the session so the user can engage.
+Surface one finding via **C. Check and Surface** in **[deep-dive-agent.md](deep-dive-agent.md)**.
+
+**If a finding was raised:**
+
+Bounce back to the session so the user can engage.
+
+→ Return to **[the skill](../SKILL.md)** for **Step 6**.
+
+**If the row incorporated without findings** (a clean report):
+
+Nothing awaited engagement — drain any further rows before proceeding.
+
+→ Return to **A. Check Review State**.
+
+**If the row still holds unraised findings** (the user deferred at the announce menu):
+
+The session owns the deferral — the next done-signal re-enters this gate.
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
