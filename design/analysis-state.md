@@ -91,6 +91,15 @@ stragglers).
 
 ## Log
 
+- 2026-07-23 — Stage 6 up (#532): migration 051 carries in-progress
+  installs across the whole programme in one idempotent pass — agent
+  rows, candidate subtrees (spent gates translate to nothing), staging
+  cycles, tracking flips, fix-tracking relocation. planning.md
+  approvals deliberately unparsed (one re-presented gate self-heals).
+  CONVENTIONS gains the standing State Ownership rule; CLAUDE.md
+  records the principle. The stack stands complete at #527–#532 for
+  the end-of-stack review.
+
 - 2026-07-23 — Stage 5 up (#531): the natural-language state. Plan
   approvals become manifest dates (approvals.structure /
   approvals.tasks.p{N}); the authoring loop's per-task heading
