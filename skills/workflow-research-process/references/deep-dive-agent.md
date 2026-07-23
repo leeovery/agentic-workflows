@@ -72,10 +72,10 @@ Compose a research brief for the agent. The brief must be self-contained — the
 - Specific questions to answer if applicable
 - Boundaries — what's in scope and what isn't
 
-Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
+Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). Labels are slash- and dot-free: drop any dots the thread name carries.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {thread:(kebabcase, dots dropped)}
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {thread:(kebabcase)}
 ```
 
 **Agent path**: `../../../agents/workflow-research-deep-dive.md`

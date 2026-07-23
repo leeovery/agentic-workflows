@@ -80,6 +80,17 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(a.id, 'review-004', 'never collides with pre-programme files');
   });
 
+  it('numbering survives past 999 — ids and sets stay distinct at four digits', () => {
+    writeContent(dir, '.workflows/.cache/pay/research/alpha/review-999.md', 'legacy');
+    const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    assert.strictEqual(a.id, 'review-1000');
+    writeContent(dir, `.workflows/.cache/pay/research/alpha/${a.id}.md`);
+    const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
+    assert.ok(scan.pending.some((r) => r.id === 'review-1000'), 'the four-digit row promotes like any other');
+    const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    assert.strictEqual(b.id, 'review-1001', 'allocation reads the four-digit id, not a truncation');
+  });
+
   it('dispatch refuses unknown kind, phase, work unit, and bad labels', () => {
     assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'oracle']).error, /Invalid agent kind/);
     assert.match(runFails(dir, ['dispatch', 'pay', 'cooking', 'alpha', '--kind', 'review']).error, /Invalid phase/);
@@ -301,5 +312,44 @@ describe('engine agent — lifecycle store', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
     fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), '{nope');
     assert.match(runFails(dir, ['scan', 'pay', 'research', 'alpha']).error, /Corrupt agent state/);
+  });
+
+  it('a row whose findings or surfaced is not an array refuses loudly, never a TypeError', () => {
+    const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'review']);
+    const storeFile = path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json');
+    const state = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
+    state.agents[d.id].status = 'acknowledged';
+    state.agents[d.id].findings = 'F1';
+    fs.writeFileSync(storeFile, JSON.stringify(state));
+    assert.match(runFails(dir, ['scan', 'pay', 'research', 'alpha']).error, /not a valid agent row/);
+    state.agents[d.id].findings = ['F1'];
+    state.agents[d.id].surfaced = 'F1';
+    fs.writeFileSync(storeFile, JSON.stringify(state));
+    assert.match(runFails(dir, ['surface', 'pay', 'research', 'alpha', d.id, 'F1']).error, /not a valid agent row/);
+  });
+
+  it('every verb refuses a traversal topic — dispatch and ack included', () => {
+    for (const topic of ['../../../escape', 'a/b', '..', '.', '']) {
+      // '' is refused one layer up, at the CLI's usage check — still a refusal.
+      assert.match(runFails(dir, ['dispatch', 'pay', 'research', topic, '--kind', 'review']).error, /Invalid topic|Usage:/);
+      assert.match(runFails(dir, ['ack', 'pay', 'research', topic, 'review-001', '--clean']).error, /Invalid topic|Usage:/);
+    }
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', 'escape')), false);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'a')), false);
+  });
+
+  it('synthesis recovery re-dispatch discards the dead row\'s stale report', () => {
+    runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    writeContent(dir, '.workflows/.cache/pay/discussion/alpha/perspective-001-a.md');
+    writeContent(dir, '.workflows/.cache/pay/discussion/alpha/perspective-001-b.md');
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    const s1 = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
+    writeContent(dir, s1.file, '# Stale synthesis report\n');
+    runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
+    runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', s1.id]);
+    const s2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
+    assert.strictEqual(s2.id, s1.id);
+    assert.strictEqual(fs.existsSync(path.join(dir, s1.file)), false,
+      'the prior report must be discarded so the fresh agent\'s write is the completion signal');
   });
 });

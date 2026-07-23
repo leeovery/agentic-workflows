@@ -97,7 +97,8 @@ function loadState(cwd, workUnit, phase, topic) {
   }
   if (!parsed.agents || typeof parsed.agents !== 'object') parsed.agents = {};
   for (const [id, row] of Object.entries(parsed.agents)) {
-    if (!row || typeof row !== 'object' || Array.isArray(row) || !AGENT_STATUSES.includes(row.status)) {
+    if (!row || typeof row !== 'object' || Array.isArray(row) || !AGENT_STATUSES.includes(row.status)
+      || ('findings' in row && !Array.isArray(row.findings)) || ('surfaced' in row && !Array.isArray(row.surfaced))) {
       throw new Error(`Corrupt agent state at ${file}: row "${id}" is not a valid agent row`);
     }
   }
@@ -138,6 +139,7 @@ function requireRow(state, phase, topic, id) {
 function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
+  validateSegment(topic, 'topic');
   validateKind(kind);
   for (const label of labels) {
     if (typeof label !== 'string' || label === '' || /[\/.]/.test(label)) {
@@ -333,6 +335,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
 function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
+  validateSegment(topic, 'topic');
   if (!Array.isArray(findings) || findings.some((f) => typeof f !== 'string' || f === '')) {
     throw new Error('Invalid findings: a list of non-empty finding ids (may be empty for a clean report)');
   }

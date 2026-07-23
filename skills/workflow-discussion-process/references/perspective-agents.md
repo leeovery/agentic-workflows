@@ -63,7 +63,7 @@ Continue the discussion without perspectives.
 
 ## B. Dispatch Perspective Agents
 
-Record the pair in one dispatch — the engine allocates a shared set number and answers with the `set` and each lens's content-file path; no files are created (a file's later existence is that agent's completion signal):
+Record the pair in one dispatch — the engine allocates a shared set number and answers with the `set` and each lens's content-file path; no files are created (a file's later existence is that agent's completion signal). Labels are slash- and dot-free: drop any dots a lens name carries.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind perspective --label {lens-a:(kebabcase)} --label {lens-b:(kebabcase)}
