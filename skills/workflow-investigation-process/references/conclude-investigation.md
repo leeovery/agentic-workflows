@@ -43,7 +43,7 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 ```
 Investigation completed: {work_unit}
 
-Root cause: {brief summary}
+Root cause: {brief summary — the behaviour and its cause in product terms}
 Fix direction: {chosen approach}
 
 The investigation is completed. Root cause and fix direction are documented.

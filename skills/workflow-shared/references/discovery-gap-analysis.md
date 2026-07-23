@@ -70,7 +70,7 @@ Group the identified gaps into topic-sized chunks.
 
 **Anchor to existing discussions:** List existing discussion files under `.workflows/{work_unit}/discussion/`. If a gap topic clearly maps to an existing discussion, use that discussion's filename (without the `.md` extension) as the kebab-case topic name. Only create new names for topics with no matching existing discussion.
 
-For each topic, write a one-line summary covering the constituent gaps — used as the discovery item's `summary` field.
+For each topic, write a one-line summary covering the constituent gaps — used as the discovery item's `summary` field. Word it product-first: the capability or behaviour at stake, not the mechanism.
 
 Assign each candidate a `routing` value.
 

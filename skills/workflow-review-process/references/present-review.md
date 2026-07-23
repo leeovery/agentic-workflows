@@ -6,9 +6,9 @@
 
 ## A. Present Verdict
 
-Read the review file at `.workflows/{work_unit}/review/{topic}/report.md`.
+→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written.
 
-Present a structured summary to the user:
+Read the review file at `.workflows/{work_unit}/review/{topic}/report.md`.
 
 > *Output the next fenced block as a code block:*
 
@@ -16,13 +16,13 @@ Present a structured summary to the user:
 Review: {topic}
 
 Verdict: {Approve | Request Changes | Comments Only}
-
-{One paragraph summary from the review}
 ```
+
+Then render the review summary as a markdown paragraph (not a code block) — a product-lens narrative: what was reviewed, where it stands, and what the findings mean for the product.
 
 Check whether the review contains a `## Recommendations` section with categorized subsections (`### Do now`, `### Quick-fixes`, `### Ideas`, `### Bugs`). Set `has_recommendations`, and set `has_donow`, `has_quickfixes`, `has_ideas`, `has_bugs` per subsection present.
 
-Render each recommendation as it appears in the report — a one-line item shows its `file:line`; a clustered item shows its sub-bullets. This detail is what lets the user choose do-now versus surface versus ignore, so never collapse it to a bare title.
+Render each recommendation as it appears in the report — a one-line item shows its `file:line`; a clustered item shows its sub-bullets. This detail is what lets the user choose do-now versus surface versus ignore, so never collapse it to a bare title. Each `{description}` leads with the behaviour or impact it concerns, mechanism after — reword the report entry where its lead is mechanism.
 
 #### If verdict is `Approve`
 
@@ -145,6 +145,7 @@ Any questions before proceeding?
 @if(has_recommendations)
 - **`s`/`surface`** — Surface recommendations to inbox
 @endif
+- **`t`/`technical`** — Show the full review report
 - **`c`/`continue`** — Proceed to review actions
 - **Ask a question** — Ask about the review findings
 · · · · · · · · · · · ·
@@ -155,6 +156,12 @@ Any questions before proceeding?
 #### If ask a question
 
 Answer the question using the review file, QA task files, specification, and plan as context.
+
+→ Return to **B. Q&A Loop**.
+
+#### If `technical`
+
+Output the full content of `.workflows/{work_unit}/review/{topic}/report.md` verbatim as a code block.
 
 → Return to **B. Q&A Loop**.
 

@@ -20,7 +20,7 @@ When a hypothesis flips or a significant finding lands, note it in a line or two
 
 ## Check-in Gate
 
-Only at `check-ins` depth. When a hypothesis resolves — `confirmed` or `ruled-out` — pause and let the user steer:
+Only at `check-ins` depth. When a hypothesis resolves — `confirmed` or `ruled-out` — pause and let the user steer. Open with one markdown sentence above the board — what just got established and what it means, in product terms:
 
 > *Output the next fenced block as a code block:*
 
@@ -54,7 +54,7 @@ Continue as planned?
 
 ## Pivot Gate
 
-Any depth. When a finding invalidates the agreed plan — the root cause is clearly elsewhere, a new dominant suspect emerges, the remaining trace lines are moot — never silently re-plan. Update the ledger, then:
+Any depth. When a finding invalidates the agreed plan — the root cause is clearly elsewhere, a new dominant suspect emerges, the remaining trace lines are moot — never silently re-plan. Update the ledger, then open with one markdown sentence above the block — what changed, in product terms:
 
 > *Output the next fenced block as a code block:*
 
