@@ -22,7 +22,7 @@ You receive file paths via the orchestrator's prompt:
 7. **Task detail file path** — Where to write authored tasks
 
 On **amendment**, you also receive:
-- **Task detail file path** — Contains previously authored tasks with status markers
+- **Task detail file path** — Contains previously authored tasks (an amendment run's prompt names the rejected ids)
 - The task detail file contains `rejected` tasks with feedback blockquotes — rewrite only those
 
 ## Your Process
@@ -34,7 +34,7 @@ On **amendment**, you also receive:
 5. Read the approved phases and task list — understand context and scope
 6. Author all tasks in the phase, writing each to the task detail file incrementally — each task written to disk before starting the next
 
-If this is an **amendment**: read the task detail file, find tasks marked `rejected` (they have a feedback blockquote below the status line). Rewrite the entire task detail file — copy `approved` tasks verbatim, rewrite `rejected` tasks addressing the feedback. Reset rewritten tasks to `pending` status.
+If this is an **amendment**: the prompt names the rejected ids, and each carries a feedback blockquote below its heading in the file. Rewrite the entire task detail file — copy the other tasks verbatim, rewrite the rejected ones addressing the feedback and dropping the spent blockquote. The file carries no status markers — the orchestrator tracks decisions in its own store.
 
 ## Task Detail File Format
 
@@ -47,7 +47,7 @@ phase_name: {Phase Name}
 total: {count}
 ---
 
-## {internal_id} | pending
+## {internal_id}
 
 ### Task {task_id}: {Task Name}
 
@@ -61,7 +61,7 @@ total: {count}
 **Context**: ...
 **Spec Reference**: ...
 
-## {internal_id} | pending
+## {internal_id}
 
 ### Task {task_id}: {Task Name}
 ...

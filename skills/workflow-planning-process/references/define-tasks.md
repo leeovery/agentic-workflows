@@ -113,7 +113,7 @@ Resolve the destination per the caller's **Navigation** section — the user's p
 
 **If the task list is new or was amended:**
 
-1. Update the task table in the planning file: set `status: approved` and `approved_at: YYYY-MM-DD` (use today's actual date)
+1. Record the approval — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} approvals.tasks.p{N} $(date +%Y-%m-%d)`
 2. Advance the planning position in the manifest to the first task in this phase:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task {first_task_id}
@@ -123,6 +123,6 @@ Resolve the destination per the caller's **Navigation** section — the user's p
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve Phase {N} task list"
    ```
 
-If the task list was already approved and unchanged, no updates are needed.
+If the manifest already carries `approvals.tasks.p{N}` and the list is unchanged, no updates are needed.
 
 → Return to caller.

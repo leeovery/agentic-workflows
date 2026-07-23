@@ -104,12 +104,12 @@ Resolve the destination per the caller's **Navigation** section — the user's p
 
 **If the phase structure is new or was amended:**
 
-1. Update each phase in the planning file: set `status: approved` and `approved_at: YYYY-MM-DD` (use today's actual date)
+1. Record the approval — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} approvals.structure $(date +%Y-%m-%d)`
 2. Commit:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve phase structure"
    ```
 
-If the phase structure was already approved and unchanged, no updates are needed.
+If the manifest already carries `approvals.structure` and the structure is unchanged, no updates are needed.
 
 → Return to caller.
