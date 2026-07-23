@@ -123,18 +123,21 @@ Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
 
 #### If `restart`
 
-1. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
-2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run; a surviving one would resume the old cycle's approvals over the fresh review's findings. The synthesis reports (`review-report-c*.md`) stay — history, and the cycle counter reads them
-3. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks` and `… staging` first):
+Order matters — the review file is deleted last, so a crash mid-restart re-offers restart on the next entry instead of impersonating a fresh run.
+
+1. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks` and `… staging` first):
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
    ```
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} staging
    ```
-4. Commit:
+2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run. The synthesis reports (`review-report-c*.md`) stay — the cycle counter reads them
+3. **If the abandoned run's `Review Remediation (Cycle {N})` phase already landed in the plan and none of its task ids appear in `{work_unit}.implementation.{topic}` `completed_tasks`**: mark each of that phase's tasks skipped per the format's **updating.md** (format from `manifest get {work_unit}.planning.{topic} format`) — abandoned remediation must never execute. If the planning item carries no `storage_paths` (a plan initialised before the field existed), record it now per the format's authoring.md → Storage Pathspecs
+4. Delete the review file and all report files (`report-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`)
+5. Commit — `--plan` stages the work unit and the plan's declared storage (the skip-markings from step 3 live there) in one scoped call:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review"
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review" --plan {topic}
    ```
 
 → Proceed to **Step 1**.

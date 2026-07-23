@@ -22,11 +22,11 @@ G. Re-open implementation + plan mode handoff
 
 ## A. Verdict Gate
 
-Check the verdict(s) from the review(s) being analyzed.
+Check the verdict(s) from the review(s) being analyzed — arms in order, the resume guard first (on a resume a verdict arm also matches; the guard wins).
 
 #### If a prior session's staging cycle is still mid-flight
 
-Read `manifest get {work_unit}.review.{topic} staging`. Mid-flight means any of: a cycle's `tasks` still hold a `pending` row; the latest cycle has approvals but the planning file carries no `Review Remediation (Cycle {N})` phase; or that phase exists and none of its task ids appear in `{work_unit}.implementation.{topic}` `completed_tasks` (the re-open never ran). The synthesis decision for that cycle was already made — do not re-ask; **B**'s guards resume it precisely.
+Read `manifest get {work_unit}.review.{topic} staging` — `{N}` is the latest cycle present there; with no cycle in `staging`, only the file-with-no-cycle clause can hold. Mid-flight means any of: a cycle's `tasks` still hold a `pending` row; the latest cycle has approvals but the planning file carries no `Review Remediation (Cycle {N})` phase; that phase exists and none of its task ids appear in `{work_unit}.implementation.{topic}` `completed_tasks` (the re-open never ran); or a `review-tasks-c*.md` file exists in `.workflows/{work_unit}/implementation/{topic}/` with no matching manifest cycle. The synthesis decision was already made — do not re-ask; **B**'s guards resume it precisely.
 
 → Proceed to **B. Dispatch Review Synthesizer**.
 
@@ -150,7 +150,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 
 ## B. Dispatch Review Synthesizer
 
-Crash-resume guards — read `manifest get {work_unit}.review.{topic} staging` and check in order. On a resume, `{N}` is the resumed cycle's number and its file is `review-tasks-c{N}.md`.
+Crash-resume guards — read `manifest get {work_unit}.review.{topic} staging` and check in order. On a resume, `{N}` is the resumed cycle's number and its file is `review-tasks-c{N}.md`. "The latest cycle" always means the latest cycle present in `staging` — with none there, only the file-with-no-cycle guard can hold.
 
 #### If a staging cycle's `tasks` still hold a `pending` row
 
@@ -172,9 +172,9 @@ A crash between the synthesizer's write and the init — initialise the cycle no
 
 #### If the latest cycle's remediation phase is in the plan and none of its tasks are in `completed_tasks`
 
-The session died between **F**'s plan write and **G**'s re-open — the remediation exists but implementation never resumed. (A fully-landed cycle's task ids appear in `{work_unit}.implementation.{topic}` `completed_tasks` once the re-opened implementation runs them, so this arm never fires on history.)
+The session died between **F**'s plan write and **G**'s re-open (task ids land in `completed_tasks` when the re-opened implementation runs them, skips included). Re-enter **F** — the task writer is idempotent and completes any partial `task_map`, and its commit picks up whatever the crash left unstaged.
 
-→ Proceed to **G. Re-open Implementation**.
+→ Proceed to **F. Create Tasks in Plan**.
 
 #### Otherwise
 
