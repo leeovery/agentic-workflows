@@ -23,7 +23,7 @@ const { commitScopedWithKb } = require('./domain/commit.cjs');
 const { recordSubtopicAdd, recordSubtopicState, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { VALID_ROUTINGS } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
-const { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
+const { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic } = require('./domain/transitions.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const taskSections = require('./domain/projections/tasks.cjs');
 const txSections = require('./domain/projections/transactions.cjs');
@@ -139,6 +139,7 @@ Commands:
   discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
+  topic triage <work-unit> <phase> <topic>
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -486,7 +487,7 @@ function runDiscoverySession(argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/complete/reopen/supersede are
+// topic — phase-item transitions. start/triage/complete/reopen/supersede are
 // manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
 // index on complete, remove on supersede; reopen syncs nothing —
 // warn-don't-block) with no git commit — the calling session's commit
@@ -496,7 +497,7 @@ function runDiscoverySession(argv) {
 // happened — no follow-up read needed.
 // ---------------------------------------------------------------------------
 
-const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
+const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 /** @param {string[]} argv */
 function runTopic(argv) {
@@ -512,7 +513,7 @@ function runTopic(argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|complete|reopen|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;

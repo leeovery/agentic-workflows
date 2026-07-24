@@ -83,7 +83,7 @@ function workunitLifecycleSections(verb, result, { pipeline = false, skippedRevi
  * line — the calling flow owns its own conclusion display; only the
  * non-blocking indexing warning folds here.
  * @param {'complete'|'cancel'|'reactivate'} verb
- * @param {{topic: string, phase: string, status?: string, warnings?: string[]}} result
+ * @param {{topic: string, phase: string, status?: string|null, warnings?: string[]}} result
  * @returns {string}
  */
 function topicLifecycleSections(verb, result) {

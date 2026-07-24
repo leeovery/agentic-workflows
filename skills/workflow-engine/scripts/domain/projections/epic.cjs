@@ -48,7 +48,7 @@ const STAGES = [
   { name: 'DELIVERY', phases: ['implementation', 'review'] },
 ];
 
-const STATUS_ORDER = ['proposed', 'in-progress', 'completed', 'cancelled', 'promoted'];
+const STATUS_ORDER = ['proposed', 'triaged', 'in-progress', 'completed', 'cancelled', 'promoted'];
 
 const PHASE_ENTRY_SKILL = {
   research: 'workflow-research-entry',
@@ -88,7 +88,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -328,6 +328,7 @@ const KEY_TIER =
 const KEY_STATUS =
   '    Status:\n'
   + '      proposed    — analyzed grouping, not yet started\n'
+  + '      triaged     — rerouted concerns parked, topic not started\n'
   + '      in-progress — work is ongoing\n'
   + '      completed   — phase or implementation done\n'
   + '      cancelled   — topic removed from active work\n'
@@ -371,12 +372,12 @@ function topicRoute(action, workUnit, topic) {
   return `/${PHASE_ENTRY_SKILL[/** @type {keyof typeof ACTION_PHASE} */ (ACTION_PHASE[action])]} epic ${workUnit} ${topic}`;
 }
 
-/** @param {string} action @param {string} name @param {string|null} [researchState] */
-function discoveryEntryLabel(action, name, researchState) {
+/** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [triageParked] */
+function discoveryEntryLabel(action, name, researchState, triageParked) {
   const t = titlecase(name);
   switch (action) {
-    case 'start_research': return `Start research for "${t}"`;
-    case 'start_discussion': return `Start discussion for "${t}"`;
+    case 'start_research': return triageParked ? `Start research for "${t}" — triage waiting` : `Start research for "${t}"`;
+    case 'start_discussion': return triageParked ? `Start discussion for "${t}" — triage waiting` : `Start discussion for "${t}"`;
     case 'continue_research': return `Continue "${t}" — research`;
     case 'continue_discussion': return `Continue "${t}" — discussion`;
     // start_discussion_after_research — superseded research is named as such,
@@ -600,7 +601,7 @@ function epicMenu(workUnit, detail) {
         action: row.next_action,
         topic: row.name,
         route: topicRoute(row.next_action, workUnit, row.name),
-        label: discoveryEntryLabel(row.next_action, row.name, row.research_state ?? null),
+        label: discoveryEntryLabel(row.next_action, row.name, row.research_state ?? null, row.triage_parked ?? false),
       });
     }
     // Build-phase entries by pipeline position — continues, then gated starts.

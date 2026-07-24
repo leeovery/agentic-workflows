@@ -109,24 +109,31 @@ function discoveryGlyph(tier) {
 // when none exists — see computeTopicLifecycle's research_state): a handled
 // topic claims a research fan-out only when research completed or was
 // superseded (in-flight or cancelled research fanned nothing out), and
-// superseded research is named as such, never as complete.
-/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] */
-function discoveryLifecycleLabel(lifecycle, routing, researchState) {
+// superseded research is named as such, never as complete. `triageParked`
+// (computeTopicLifecycle's triage_parked) appends a `triage waiting` cue on
+// any lifecycle — a `triaged` stub holds rerouted concerns that drain when
+// the phase's session starts.
+/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] */
+function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked) {
+  let label;
   switch (lifecycle) {
     case 'ready_for_discussion':
-      return researchState === 'superseded'
+      label = researchState === 'superseded'
         ? 'research superseded · ready for discussion'
         : 'research complete · ready for discussion';
-    case 'researching': return 'researching';
-    case 'discussing': return 'discussing';
-    case 'decided': return 'decided';
+      break;
+    case 'researching': label = 'researching'; break;
+    case 'discussing': label = 'discussing'; break;
+    case 'decided': label = 'decided'; break;
     case 'handled':
-      return researchState === 'completed' || researchState === 'superseded'
+      label = researchState === 'completed' || researchState === 'superseded'
         ? 'handled · research fanned out'
         : 'handled';
-    case 'cancelled': return 'cancelled';
-    default: return routing ? `fresh · routed to ${routing}` : 'fresh';
+      break;
+    case 'cancelled': label = 'cancelled'; break;
+    default: label = routing ? `fresh · routed to ${routing}` : 'fresh';
   }
+  return triageParked ? `${label} · triage waiting` : label;
 }
 
 // Discussion-map glyph vocabulary — subtopic states. Distinct from the
