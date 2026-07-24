@@ -264,7 +264,108 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|complete\|reopen\|supersede\|cancel\|reactivate>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate>/);
+  });
+
+  it('flips a triaged stub to in-progress — the one exit from triaged', () => {
+    engine(dir, ['topic', 'triage', 'payments', 'research', 'parked-topic']);
+    const res = engine(dir, ['topic', 'start', 'payments', 'research', 'parked-topic']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'parked-topic', phase: 'research', status: 'in-progress', created: false });
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'in-progress');
+  });
+});
+
+describe('engine topic triage', () => {
+  let dir;
+  beforeEach(() => { dir = setupEpicFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('creates an absent phase item with status triaged — no commit', () => {
+    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'discussion', status: 'triaged', created: true, status_before: null });
+    assert.strictEqual(engine.lastSections, '', 'triage appends no sections');
+
+    const m = readManifest(dir, 'payments');
+    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'triaged' });
+    // No commit inside — the calling flow commits the artefact append alongside.
+    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+  });
+
+  it('is idempotent — a second call on a triaged stub is a no-op', () => {
+    engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
+    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'research', status: 'triaged', created: false, status_before: 'triaged' });
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'], { status: 'triaged' });
+  });
+
+  it('leaves an in-progress item untouched — never backwards', () => {
+    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'auth-flow']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'auth-flow', phase: 'research', status: 'in-progress', created: false, status_before: 'in-progress' });
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
+  });
+
+  it('reopens a completed item to in-progress — never land an entry in a concluded artefact', () => {
+    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'session-model', phase: 'discussion', status: 'in-progress', created: false, status_before: 'completed', reopened: true });
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].status, 'in-progress');
+  });
+
+  it('refuses cancelled and superseded items with the start messages', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'research', 'auth-flow']);
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'auth-flow']).error, /is cancelled — reactivate it instead/);
+
+    engine(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']);
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'fee-model']).error, /is superseded \(by "auth-flow"\) — supersession is terminal/);
+  });
+
+  it('refuses phases whose vocabulary lacks triaged — schema-driven', () => {
+    const err = engineFails(dir, ['topic', 'triage', 'payments', 'investigation', 'auth-flow']);
+    assert.match(err.error, /Invalid status "triaged" for phase "investigation"/);
+    // Nothing created on the refused path.
+    assert.strictEqual(readManifest(dir, 'payments').phases.investigation, undefined);
+  });
+});
+
+describe('triaged guards across the other verbs', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupEpicFixture();
+    engine(dir, ['topic', 'triage', 'payments', 'research', 'parked-topic']);
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('complete refuses a triaged stub — parked concerns must never bury as completed', () => {
+    const err = engineFails(dir, ['topic', 'complete', 'payments', 'research', 'parked-topic']);
+    assert.match(err.error, /is triaged — parked concerns have never been worked; start the topic first/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'triaged');
+  });
+
+  it('supersede refuses a triaged stub', () => {
+    const err = engineFails(dir, ['topic', 'supersede', 'payments', 'research', 'parked-topic', '--by', 'fee-model']);
+    assert.match(err.error, /is triaged — parked concerns have never been worked; start the topic to drain them first/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'triaged');
+  });
+
+  it('reopen refuses a triaged stub with the existing not-completed message', () => {
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'parked-topic']);
+    assert.match(err.error, /is not completed \(status: triaged\) — only a completed item can be reopened/);
+  });
+
+  it('cancel stashes triaged as previous_status; reactivate restores it', () => {
+    engine(dir, ['topic', 'cancel', 'payments', 'research', 'parked-topic']);
+    const cancelled = readManifest(dir, 'payments').phases.research.items['parked-topic'];
+    assert.strictEqual(cancelled.status, 'cancelled');
+    assert.strictEqual(cancelled.previous_status, 'triaged');
+
+    const res = engine(dir, ['topic', 'reactivate', 'payments', 'research', 'parked-topic']);
+    assert.strictEqual(res.status, 'triaged');
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'], { status: 'triaged' });
   });
 });
 
@@ -1128,7 +1229,7 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2));
-    for (const verb of ['start', 'complete', 'reopen', 'cancel']) {
+    for (const verb of ['start', 'triage', 'complete', 'reopen', 'cancel']) {
       assert.match(
         engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
         /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
@@ -1156,6 +1257,7 @@ describe('engine usage banner', () => {
     assert.strictEqual(res.status, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
+      'topic triage <work-unit> <phase> <topic>',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',

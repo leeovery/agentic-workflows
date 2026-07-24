@@ -308,4 +308,16 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('handled', null, 'cancelled'), 'handled');
     assert.strictEqual(discoveryLifecycleLabel('handled', null, null), 'handled');
   });
+
+  it('discoveryLifecycleLabel appends the triage waiting cue when parked', () => {
+    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', 'triaged', true), 'fresh · routed to research · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', null, null, true), 'fresh · triage waiting');
+    // The cue survives on non-fresh rows — a parked cross-phase stub stays visible.
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'triaged', true), 'discussing · triage waiting');
+  });
+
+  it('discoveryLifecycleLabel renders no cue when triageParked is false or omitted', () => {
+    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null, false), 'fresh · routed to research');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null), 'fresh · routed to research');
+  });
 });

@@ -143,6 +143,19 @@ describe('epic projections: dashboard (map branch)', () => {
       ].join('\n')
     );
   });
+
+  it('a triaged stub renders fresh with the triage waiting cue and counts as fresh', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { parked: { routing: 'research', source: 'reroute:origin-topic', order: 1 } } },
+        research: { items: { parked: { status: 'triaged' } } },
+      },
+    });
+    const out = epicDashboard('v1', d);
+    assert.ok(out.includes('  RESEARCH & DISCUSSION (1 topics · 1 fresh)'), out);
+    assert.ok(out.includes('  └─ ○ Parked [fresh · routed to research · triage waiting]'), out);
+  });
 });
 
 describe('epic projections: dashboard (no-map and brand-new branches)', () => {
@@ -234,6 +247,7 @@ describe('epic projections: key', () => {
   const STATUS = [
     '    Status:',
     '      proposed    — analyzed grouping, not yet started',
+    '      triaged     — rerouted concerns parked, topic not started',
     '      in-progress — work is ongoing',
     '      completed   — phase or implementation done',
     '      cancelled   — topic removed from active work',
@@ -464,6 +478,22 @@ describe('epic projections: menu', () => {
     assert.ok(rendered.includes('— Continue "Roles" — implementation (Phase 2, 3 task(s) completed)'), rendered);
   });
 
+  it('a triaged stub is offered as Start with the triage waiting suffix — never Continue', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { parked: { routing: 'research', source: 'reroute:origin-topic', order: 1 } } },
+        research: { items: { parked: { status: 'triaged' } } },
+      },
+    });
+    const { keys, rendered } = epicMenu('v1', d);
+    const entry = keys.find((k) => k.topic === 'parked');
+    assert.strictEqual(entry.action, 'start_research');
+    assert.strictEqual(entry.label, 'Start research for "Parked" — triage waiting');
+    assert.strictEqual(entry.route, '/workflow-research-entry epic v1 parked');
+    assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
+  });
+
   it('an open discovery session leads the menu as resume, regardless of map state', () => {
     const d = detailFor(dir, 'resumable', { work_type: 'epic' });
     d.active_session = '001';
@@ -599,6 +629,18 @@ describe('epic projections: selection sub-views', () => {
         ['b', 'back', null, null, null],
       ]
     );
+  });
+
+  it('cancel-menu: a triaged stub stays cancellable with the informative [triaged] tag', () => {
+    const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
+      work_type: 'epic',
+      phases: {
+        research: { items: { 'parked-topic': { status: 'triaged' }, 'menu-admin': { status: 'in-progress' } } },
+      },
+    }));
+    assert.ok(view.display.includes('    1. Parked Topic [triaged]'), view.display);
+    assert.ok(view.display.includes('    2. Menu Admin [in-progress]'), view.display);
+    assert.ok(view.rendered.includes('- **`1`** — Cancel "Parked Topic" — research [triaged]'), view.rendered);
   });
 
   it('reactivate-menu: numbered rows with (was: previous_status)', () => {
