@@ -32,7 +32,11 @@ A concern was rerouted into this topic after drain ran this session. It must be 
 
 Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
-3. Closure signpost:
+3. Closing recap:
+
+   → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
+
+4. Closure signpost:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -41,4 +45,4 @@ Emit the `complete` response's `DISPLAY: kb warning` section when present, verba
 > to make decisions about architecture and approach.
 ```
 
-4. Invoke `/workflow-bridge {work_unit} research`.
+5. Invoke `/workflow-bridge {work_unit} research`.

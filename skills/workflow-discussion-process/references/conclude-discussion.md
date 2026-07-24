@@ -48,7 +48,11 @@ Conclude this discussion and mark as completed?
 
 Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
-4. Hand off to the pipeline bridge:
+4. Closing recap:
+
+   → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
+
+5. Hand off to the pipeline bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

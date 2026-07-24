@@ -36,18 +36,9 @@ Investigation complete. Ready to conclude?
 
 Emit the `complete` response's `DISPLAY: kb warning` section when present, verbatim per its marker — the warning never blocks.
 
-3. Display conclusion:
+3. Closing recap:
 
-> *Output the next fenced block as a code block:*
-
-```
-Investigation completed: {work_unit}
-
-Root cause: {brief summary — the behaviour and its cause in product terms}
-Fix direction: {chosen approach}
-
-The investigation is completed. Root cause and fix direction are documented.
-```
+   → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `investigation`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 4. Closure signpost:
 
