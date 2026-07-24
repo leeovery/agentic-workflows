@@ -519,9 +519,11 @@ describe('pipeline simulation', () => {
     const reparked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
     assert.strictEqual(reparked.created, false);
     assert.strictEqual(reparked.status, 'triaged');
-    // A stub refuses the verbs that would bury or absorb never-worked concerns.
+    // A stub refuses the verbs that would bury or absorb never-worked concerns
+    // — as the source and as the absorbing --by target alike.
     sim.refuses(['topic', 'complete', wu, 'research', 'delta'], /triaged/);
     sim.refuses(['topic', 'supersede', wu, 'research', 'delta', '--by', 'alpha'], /triaged/);
+    sim.refuses(['topic', 'supersede', wu, 'research', 'alpha', '--by', 'delta'], /cannot absorb/);
     // Landing on a completed discussion reopens it to receive the entry.
     const reopened = sim.run(['topic', 'triage', wu, 'discussion', 'beta']);
     assert.strictEqual(reopened.reopened, true);
