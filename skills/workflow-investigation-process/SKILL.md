@@ -102,7 +102,7 @@ Check if the investigation file exists at `.workflows/{work_unit}/investigation/
 > choose whether to pick it up or start fresh.
 ```
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file`, commit = `investigation({work_unit}): restart investigation`.
+Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
 
 ---
 

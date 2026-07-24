@@ -42,6 +42,7 @@ function readFrontmatter(file) {
   } catch {
     return null;
   }
+  raw = raw.replace(/\r\n/g, '\n');
   if (!raw.startsWith('---\n')) return null;
   const end = raw.indexOf('\n---', 4);
   if (end === -1) return null;
@@ -176,6 +177,10 @@ module.exports = {
               const kind = parsed.fm.type;
               const status = STATUS_MAP[parsed.fm.status];
               if (!kind || !AGENT_KINDS.includes(kind) || kind === 'fix-exploration' || !status) continue;
+              // A pre-programme in-flight skeleton is a dead dispatch — a row
+              // would let scan promote the frontmatter-only file as a clean
+              // report. No row: the file stays inert legacy.
+              if (status === 'in-flight') continue;
               const setMatch = /-(\d{3})(?:-|$)/.exec(id);
               store.agents[id] = {
                 id,
@@ -204,11 +209,12 @@ module.exports = {
       for (const analysis of ['research-analysis', 'discovery-gap-analysis']) {
         const file = path.join(wfRoot, wu, '.state', `${analysis}-candidates.md`);
         if (!fs.existsSync(file)) continue;
-        const discovery = manifest.phases.discovery = manifest.phases.discovery || {};
-        const stagingRoot = discovery.analysis_staging = discovery.analysis_staging || {};
-        if (stagingRoot[analysis]) continue; // idempotent
+        if (((manifest.phases.discovery || {}).analysis_staging || {})[analysis]) continue; // idempotent
         const blocks = readCandidateBlocks(file).filter((b) => b.status);
         if (!blocks.some((b) => b.status === 'pending')) continue; // spent gates need no state
+        if (blocks.some((b) => /[./]/.test(b.name))) continue; // dot/slash names shatter dot-paths — re-staging fresh self-heals
+        const discovery = manifest.phases.discovery = manifest.phases.discovery || {};
+        const stagingRoot = discovery.analysis_staging = discovery.analysis_staging || {};
         const fmParsed = readFrontmatter(file);
         /** @type {Record<string, any>} */
         const candidates = {};

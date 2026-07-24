@@ -231,7 +231,7 @@ Run another review cycle?
 
 > **CHECKPOINT**: Do not confirm completion if the manifest's `tracking` subtree still holds an `in-progress` entry. It indicates incomplete review work.
 
-If any entry is `in-progress`, that file's findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify.
+If any entry is `in-progress`, that file's findings were not fully processed — work them now per **[process-review-findings.md](process-review-findings.md)** for that tracking file, then re-verify. A tracking file on disk with no manifest entry is a crash orphan (the session died before recording it) — record it `in-progress` and process it the same way.
 
 2. **Commit** all review tracking files:
 

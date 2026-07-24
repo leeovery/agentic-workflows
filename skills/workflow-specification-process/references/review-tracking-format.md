@@ -12,19 +12,11 @@ Store tracking files in the specification directory (`.workflows/{work_unit}/spe
 - `review-input-tracking-c{N}.md` — Phase 1 findings for cycle N
 - `review-gap-analysis-tracking-c{N}.md` — Phase 2 findings for cycle N
 
-Tracking files are **never deleted**. After all findings are processed, mark `status: complete`. Previous cycles' files persist as analysis history.
+Tracking files are **never deleted** — pure markdown, no frontmatter; previous cycles' files persist as analysis history. The orchestrator records each file's gate state in the manifest (`tracking.{file stem}`: `in-progress` at dispatch, `complete` when all findings are processed).
 
 ## Format
 
 ```markdown
----
-status: in-progress | complete
-created: YYYY-MM-DD
-cycle: {N}
-phase: Input Review | Gap Analysis
-topic: [Topic Name]
----
-
 # Review Tracking: [Topic Name] - [Phase]
 
 ## Findings
@@ -65,7 +57,7 @@ topic: [Topic Name]
    - Get approval
    - Log to specification
    - Update the tracking file: mark resolution, add notes
-5. After all items resolved, mark tracking file `status: complete`
+5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
 
 **Why tracking files**: If context refreshes mid-review, you can read the tracking file and continue where you left off. The tracking file shows which items are resolved and which remain. This is especially important when reviews surface 10-20 items that need individual discussion.
 

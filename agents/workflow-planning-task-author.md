@@ -41,11 +41,7 @@ If this is an **amendment**: the prompt names the rejected ids, and each carries
 Write the task detail file with this structure:
 
 ```markdown
----
-phase: {N}
-phase_name: {Phase Name}
-total: {count}
----
+# Phase {N}: {Phase Name} — {count} tasks
 
 ## {internal_id}
 
