@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.10] - 2026-07-24
+
+✨ Added
+- Rerouted concerns can now park on a topic that hasn't started yet, shown with a "triage waiting" cue on the epic map instead of falsely appearing in progress.
+
+🔧 Changed
+- Background agent bookkeeping (which critics ran, what they found) now lives in tracked engine state instead of annotations on report files, so a crashed agent leaves a clean, retirable record rather than a phantom.
+- Restarting a review now explicitly discards any queued remediation, marking it skipped and disclosing it in the report rather than letting it execute unseen.
+- Session resumption now tracks answered questions and interrupted work precisely, so nothing already answered is re-asked and nothing half-done is silently rerun or dropped.
+
+🐛 Fixed
+- Topics that only held parked triage concerns could be mistaken for genuinely started work — resumed into, removed, renamed, or rerouted as if real research or discussion had happened; a migration repairs existing projects.
+
 ## [0.6.9] - 2026-07-24
 
 ✨ Added
