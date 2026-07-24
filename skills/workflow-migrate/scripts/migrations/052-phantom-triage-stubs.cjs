@@ -68,8 +68,8 @@ function isTemplateBare(head) {
 }
 
 /**
- * Split an artefact at its terminal `## Triage` heading. Returns null when
- * the heading is absent.
+ * Split an artefact at its first `## Triage` heading (the template places it
+ * terminally). Returns null when the heading is absent.
  * @param {string} text @returns {{head: string, triage: string}|null}
  */
 function splitAtTriage(text) {

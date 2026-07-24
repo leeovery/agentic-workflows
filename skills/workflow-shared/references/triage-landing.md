@@ -82,6 +82,12 @@ Set `landing_phase = research`.
 
 → Proceed to **C. Land the Concern**.
 
+**If both phase items exist in terminal states `topic triage` refuses (`cancelled`, `superseded`, or `promoted`):**
+
+The topic is closed on every side — no phase can accept the concern. Set `lifecycle = cancelled`.
+
+→ Proceed to **D. Closed Target**.
+
 **Otherwise:**
 
 Set `landing_phase` to the row's `routing=` value — unless that phase's item exists in a terminal state `topic triage` refuses (`cancelled`, `superseded`, or `promoted`), in which case set `landing_phase` to the other phase.
