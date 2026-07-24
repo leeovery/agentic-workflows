@@ -808,6 +808,35 @@ describe('pipeline simulation', () => {
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: syn.id },
       'consumed perspectives never mask the synthesis');
+
+    // The discussion closing sequence: the synthesis drains, the closing
+    // probe classifies off the scan lists, the final review dispatches and
+    // drains, and a satisfied probe precedes completion.
+    sim.run(['agent', 'ack', wu, 'discussion', 'alpha', syn.id, '--findings', 'T1']);
+    sim.run(['agent', 'announce', wu, 'discussion', 'alpha', syn.id]);
+    const synDone = sim.run(['agent', 'surface', wu, 'discussion', 'alpha', syn.id, 'T1']);
+    assert.strictEqual(synDone.status, 'incorporated');
+
+    const reviewRows = (s) => [...s.in_flight, ...s.pending, ...s.acknowledged, ...s.incorporated]
+      .filter((r) => r.kind === 'review');
+    let probe = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(reviewRows(probe).length, 0, 'probe: no review row — the due classification');
+    assert.strictEqual(probe.next, null, 'nothing else awaits surfacing');
+
+    const fin = sim.run(['agent', 'dispatch', wu, 'discussion', 'alpha', '--kind', 'review']);
+    sim.write(fin.file, '# Final review\n\n## G1\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'alpha', fin.id, '--findings', 'G1']);
+    sim.run(['agent', 'announce', wu, 'discussion', 'alpha', fin.id]);
+    const finDone = sim.run(['agent', 'surface', wu, 'discussion', 'alpha', fin.id, 'G1']);
+    assert.strictEqual(finDone.status, 'incorporated');
+
+    probe = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
+    assert.strictEqual(probe.in_flight.length + probe.pending.length + probe.acknowledged.length, 0,
+      'probe: nothing owed — the satisfied classification');
+    assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
+    sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
   });
 
   it('guards hold mid-pipeline: shadow fields, empty segments, cross-type reuse, bad statuses', () => {
