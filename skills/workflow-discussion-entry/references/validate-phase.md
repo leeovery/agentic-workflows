@@ -12,6 +12,12 @@ Nothing to validate — `source` keeps the value set in Step 1.
 
 → Return to caller.
 
+#### If `phase_status` is `triaged`
+
+Rerouted concerns are parked on this topic, but no session has ever run — this is a first start, not a resume. No reopen, no phase note, no reconcile advisory. Set `source = "topic-provided"` unless already set.
+
+→ Return to caller.
+
 #### If discussion exists and status is `in-progress`
 
 Render and emit the section verbatim:

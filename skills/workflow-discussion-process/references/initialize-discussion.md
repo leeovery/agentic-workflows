@@ -13,7 +13,7 @@
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} discussion {topic}
    ```
-3. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`. Include the terminal `## Triage` section seeded as `(none)`.
+3. Load **[template.md](template.md)** — use it to create the discussion file at `.workflows/{work_unit}/discussion/{topic}.md`. Include the terminal `## Triage` section seeded as `(none)`. When the file already exists as a `triaged` stub (rerouted concerns parked before any session), write the template's working sections around it and preserve the existing `## Triage` entries verbatim — never reset them to `(none)`; they drain during the session.
 4. Populate the Context section and derive the initial subtopics:
 
    **If the handoff includes a `Research files:` section:**

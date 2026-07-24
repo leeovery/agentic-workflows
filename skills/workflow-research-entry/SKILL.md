@@ -100,7 +100,15 @@ Store the result as `phase_status`.
 
 Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
-→ On return, proceed to **Step 5**.
+#### If `phase_status` is `triaged`
+
+A first start — the parked concerns drain during the session; seed context as for a fresh topic.
+
+→ Proceed to **Step 4**.
+
+#### Otherwise
+
+→ Proceed to **Step 5**.
 
 ---
 
