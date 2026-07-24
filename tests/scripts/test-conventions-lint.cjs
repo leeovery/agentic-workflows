@@ -565,7 +565,7 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-entry/references/gather-context-fresh.md': 1,
   'skills/workflow-discussion-entry/references/gather-context.md': 1,
   'skills/workflow-discussion-process/references/conclude-discussion.md': 1,
-  'skills/workflow-discussion-process/references/discussion-session.md': 5,
+  'skills/workflow-discussion-process/references/discussion-session.md': 6,
   'skills/workflow-discussion-process/references/perspective-agents.md': 2,
   'skills/workflow-implementation-entry/references/check-dependencies.md': 4,
   'skills/workflow-implementation-process/SKILL.md': 1,

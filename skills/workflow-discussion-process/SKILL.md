@@ -158,19 +158,6 @@ Load **[discussion-session.md](references/discussion-session.md)** and follow it
 
 ## Step 6: Final Gap Review
 
-> *Output the next fenced block as a code block:*
-
-```
-── Final Gap Review ─────────────────────────────
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Before concluding, checking whether a fresh review is needed
-> to catch any gaps that may have emerged since the last review.
-```
-
 Load **[final-review.md](references/final-review.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 7**.
