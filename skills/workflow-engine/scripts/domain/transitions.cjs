@@ -192,6 +192,13 @@ function triageTopic(cwd, workUnit, phase, topic) {
       saveWorkUnitManifest(cwd, workUnit, manifest);
       return { topic, phase, status: 'in-progress', created: false, status_before: before, reopened: true };
     }
+    if (before === null) {
+      // A status-less item (partial field writes) has never been started —
+      // heal it to triaged, the same way start heals it to in-progress.
+      existing.status = 'triaged';
+      saveWorkUnitManifest(cwd, workUnit, manifest);
+      return { topic, phase, status: 'triaged', created: false, status_before: null };
+    }
     return { topic, phase, status: before, created: false, status_before: before };
   });
 }
@@ -331,6 +338,9 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
+    }
+    if (items[by].status === 'triaged') {
+      throw new Error(`${phase} item "${by}" is triaged — a stub of parked concerns cannot absorb other topics; start it first`);
     }
     item.status = 'superseded';
     item.superseded_by = by;

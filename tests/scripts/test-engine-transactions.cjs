@@ -324,6 +324,18 @@ describe('engine topic triage', () => {
     assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'fee-model']).error, /is superseded \(by "auth-flow"\) — supersession is terminal/);
   });
 
+  it('heals a status-less item to triaged — fields preserved, manifest saved', () => {
+    const m0 = epicManifest();
+    m0.phases.research.items['half-written'] = { reconcile_needed: true };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+
+    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'half-written']);
+
+    assert.deepStrictEqual(res, { ok: true, topic: 'half-written', phase: 'research', status: 'triaged', created: false, status_before: null });
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['half-written'],
+      { reconcile_needed: true, status: 'triaged' });
+  });
+
   it('refuses phases whose vocabulary lacks triaged — schema-driven', () => {
     const err = engineFails(dir, ['topic', 'triage', 'payments', 'investigation', 'auth-flow']);
     assert.match(err.error, /Invalid status "triaged" for phase "investigation"/);
@@ -350,6 +362,15 @@ describe('triaged guards across the other verbs', () => {
     const err = engineFails(dir, ['topic', 'supersede', 'payments', 'research', 'parked-topic', '--by', 'fee-model']);
     assert.match(err.error, /is triaged — parked concerns have never been worked; start the topic to drain them first/);
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'triaged');
+  });
+
+  it('supersede refuses a triaged stub as the absorbing --by target — lineage must point at worked topics', () => {
+    const err = engineFails(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'parked-topic']);
+    assert.match(err.error, /"parked-topic" is triaged — a stub of parked concerns cannot absorb other topics; start it first/);
+    // Nothing mutated, no KB removal path taken.
+    const m = readManifest(dir, 'payments');
+    assert.strictEqual(m.phases.research.items['fee-model'].status, 'completed');
+    assert.strictEqual(m.phases.research.items['parked-topic'].status, 'triaged');
   });
 
   it('reopen refuses a triaged stub with the existing not-completed message', () => {
