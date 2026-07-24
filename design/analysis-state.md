@@ -91,6 +91,22 @@ stragglers).
 
 ## Log
 
+- 2026-07-24 — Round 6, the closing round. The full ratchet re-proved
+  all 91 findings (74 prior + round 5's 17) on the tip — zero
+  regressed, four gates exit 0. The composition lens over round 5's
+  own layer found four (the pattern's final confirmation: three sat
+  in the layer's newest addition, including a --plan hard-throw on
+  legacy plans that the layer itself introduced); all fixed under the
+  strict process, and the review chain gained a first-class discard
+  vocabulary (extraction excludes, coverage records, checklist
+  accepts, report discloses). The closing ten-line verify returned
+  functionally empty: zero behavioral defects, one owed test pin
+  (added), one accepted residual (the double-crash council variant
+  with a landed report — detectable via announced/findings if ever
+  needed, no false positives today). Stopping rule satisfied: the
+  stack merges on coverage tables, a five-layer zero-regression
+  ratchet, and an empty round.
+
 - 2026-07-23 — Round 5 (#537), the confirmation round under the strict
   fix process end to end. The ratchet slice is the round's spine: all
   79 prior findings inventoried from the fix layers' commit messages
