@@ -3,10 +3,12 @@
 //
 // Tests for migration 052: phantom-triage-stubs (.cjs)
 //
-// Conservative flip of in-progress research/discussion items that are really
-// triage stubs (template-bare artefact + parked `## Triage` entries) to the
-// `triaged` status. Covers both phase happy paths, every defensive skip,
-// idempotency, and artefact byte-preservation.
+// Flip of in-progress research/discussion items that are really triage stubs
+// (parked `## Triage` entries, no session work) to the `triaged` status.
+// Discussion keys on the manifest signal — no non-empty subtopics — so
+// improvised stub bodies flip too; research keeps the strict template-bare
+// artefact test. Covers both phase happy paths, the improvised-body split,
+// every defensive skip, idempotency, and artefact byte-preservation.
 //
 
 const { describe, it } = require('node:test');
@@ -123,6 +125,61 @@ describe('migration 052: phantom triage stubs', () => {
 
     assert.strictEqual(readManifest(dir, 'epic-a').phases.discussion.items['topic-y'].status, 'triaged');
     assert.strictEqual(updates, 1);
+    teardown(dir);
+  });
+
+  it('discussion with an improvised stub body flips — the manifest signal decides, not the artefact shape', () => {
+    const dir = setup();
+    // Real-world stub shape: substituted Context prose, a stub marker, brief
+    // links, trimmed sections — nothing template-bare about it.
+    const improvised = [
+      '# Discussion: Management Window',
+      '',
+      '## Context',
+      '',
+      'The main app window as an organiser: browse / search / filter / sort, Recently Deleted.',
+      '',
+      '*(Stub — this topic has not had its own discussion session yet. The concerns under `## Triage` were rerouted from other topics.)*',
+      '',
+      '### References',
+      '',
+      '- [Discovery brief — management-window](../discovery/briefs/management-window.md)',
+      '',
+      '---',
+      '',
+      '## Summary',
+      '',
+      '### Current State',
+      '',
+      '- Not yet started — carries rerouted concerns in Triage.',
+      '',
+      TRIAGE_ENTRY,
+    ].join('\n');
+    writeManifest(dir, 'epic-a', epicManifest('discussion', 'management-window', { status: 'in-progress' }));
+    writeArtefact(dir, 'epic-a', 'discussion', 'management-window', improvised);
+
+    const { updates } = runMigration(dir);
+
+    assert.strictEqual(readManifest(dir, 'epic-a').phases.discussion.items['management-window'].status, 'triaged');
+    assert.strictEqual(updates, 1);
+    const after = fs.readFileSync(path.join(dir, '.workflows', 'epic-a', 'discussion', 'management-window.md'), 'utf8');
+    assert.strictEqual(after, improvised, 'artefact untouched');
+    teardown(dir);
+  });
+
+  it('research with an improvised stub body skips — no manifest signal, strict test holds', () => {
+    const dir = setup();
+    const improvised = RESEARCH_STUB.replace(
+      'Brief description of what this research covers and what prompted it.',
+      '*(Stub — rerouted concerns parked; research has not started.)*',
+    );
+    writeManifest(dir, 'epic-a', epicManifest('research', 'topic-x', { status: 'in-progress' }));
+    writeArtefact(dir, 'epic-a', 'research', 'topic-x', improvised);
+
+    const { updates } = runMigration(dir);
+
+    assert.strictEqual(readManifest(dir, 'epic-a').phases.research.items['topic-x'].status, 'in-progress');
+    assert.strictEqual(updates, 0);
     teardown(dir);
   });
 

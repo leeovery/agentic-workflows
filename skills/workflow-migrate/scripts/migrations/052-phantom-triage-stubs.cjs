@@ -11,20 +11,26 @@
 // restart that deletes the parked concerns. The `triaged` status now marks
 // these stubs; this repairs existing installs' phantoms.
 //
-// Conservative flip — an item moves to `triaged` only when ALL hold:
+// An item moves to `triaged` only when ALL hold:
 //   - epic work unit
 //   - research/discussion item with status `in-progress`
 //   - the artefact file exists
 //   - its `## Triage` section holds at least one `### ` entry
-//   - (discussion) the manifest item has no non-empty `subtopics`
-//   - the body above `## Triage` is template-bare: every non-blank line
-//     matches the phase template's fixed headings/placeholder lines — any
-//     unknown line disqualifies
+//   - (discussion) the manifest item has no non-empty `subtopics` — the
+//     decisive signal: initialization seeds the Discussion Map before any
+//     session work (047 ports legacy maps, ordered before this migration),
+//     so a subtopic-less in-progress discussion has never run a session.
+//     Real stub bodies are improvised prose, so no artefact-shape test —
+//     a wrong flip is benign (start reinitializes without loss), a miss
+//     leaves the resume-gate bug in place.
+//   - (research) the body above `## Triage` is template-bare: every
+//     non-blank line matches the research template's fixed headings and
+//     placeholder lines — any unknown line disqualifies. Research has no
+//     manifest-side signal, so it keeps the strict skip-not-flip test.
 //
-// Skip-not-flip failure mode: a missed phantom just keeps today's resume-gate
-// behaviour. Manifest-only writes; artefacts untouched. Idempotent: a flipped
-// item is no longer `in-progress`. Defensive: unparseable manifests are
-// skipped untouched.
+// Manifest-only writes; artefacts untouched. Idempotent: a flipped item is
+// no longer `in-progress`. Defensive: unparseable manifests are skipped
+// untouched.
 //
 // Point-in-time snapshot: reads/writes manifest.json directly. Never uses the
 // engine field surface.
@@ -44,58 +50,19 @@ const RESEARCH_LINES = new Set([
   '{Content follows - freeform, managed by the skill}',
 ]);
 
-// Fixed lines of the discussion template body (above `## Triage`).
-const DISCUSSION_LINES = new Set([
-  '## Context',
-  "What this is about, why we're discussing it, the problem or opportunity, current state.",
-  '### References',
-  '- [Related spec or doc](link)',
-  '- [Prior discussion](link)',
-  '*Subtopics are documented below as they reach `decided` or accumulate enough exploration to capture. Not every subtopic needs its own section — minor items resolved in passing can be folded into their parent. The Discussion Map (which subtopics exist and their states) lives in the manifest, not this file.*',
-  '## {Subtopic A}',
-  '## {Subtopic B}',
-  '### Context',
-  "Why this subtopic matters, what's at stake, how it fits the larger topic.",
-  '### Options Considered',
-  'The approaches explored. If pros/cons naturally emerged:',
-  '**Option A**',
-  '**Option B**',
-  '- Pros: ...',
-  '- Cons: ...',
-  '### Journey',
-  'The back-and-forth exploration. What we initially thought. What changed our thinking. False paths - "We considered A but realised B because C." The "aha" moments. Small details that mattered.',
-  'If there was notable debate:',
-  '- **Positions**: What each side argued',
-  '- **Resolution**: What made us choose, what detail tipped it',
-  '### Decision',
-  'What we chose, why, the deciding factor, trade-offs accepted, confidence level.',
-  '*(Same structure: Context → Options → Journey → Decision)*',
-  '## Summary',
-  '### Key Insights',
-  '1. Cross-cutting learning from the discussion',
-  '2. Something that applies broadly',
-  '### Open Threads',
-  '- Anything deliberately deferred or left for future discussion',
-  '- Concerns rerouted to other topics (with links)',
-  '### Current State',
-  "- What's resolved",
-  "- What's still uncertain",
-]);
-
 /**
- * True when every non-blank line above `## Triage` is a known template line.
- * The title heading tolerates a substituted title; everything else must match
- * the template exactly (missing lines are fine — only present lines count).
- * @param {string} head @param {'research'|'discussion'} phase
+ * True when every non-blank line above `## Triage` is a known research
+ * template line. The title heading tolerates a substituted title; everything
+ * else must match the template exactly (missing lines are fine — only
+ * present lines count).
+ * @param {string} head
  */
-function isTemplateBare(head, phase) {
-  const known = phase === 'research' ? RESEARCH_LINES : DISCUSSION_LINES;
-  const titleRe = phase === 'research' ? /^# Research: \S/ : /^# Discussion: \S/;
+function isTemplateBare(head) {
   for (const raw of head.split('\n')) {
     const line = raw.trimEnd();
     if (line === '' || line === '---') continue;
-    if (titleRe.test(line)) continue;
-    if (!known.has(line)) return false;
+    if (/^# Research: \S/.test(line)) continue;
+    if (!RESEARCH_LINES.has(line)) return false;
   }
   return true;
 }
@@ -165,7 +132,7 @@ module.exports = {
           const parts = splitAtTriage(text);
           if (!parts) continue;
           if (!hasTriageEntry(parts.triage)) continue;
-          if (!isTemplateBare(parts.head, /** @type {'research'|'discussion'} */ (phase))) continue;
+          if (phase === 'research' && !isTemplateBare(parts.head)) continue;
 
           item.status = 'triaged';
           changed = true;
