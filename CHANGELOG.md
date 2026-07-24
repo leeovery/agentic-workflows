@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.9] - 2026-07-24
+
+✨ Added
+- Background-agent lifecycle now lives in a new `engine agent` store instead of hand-edited cache-file frontmatter — dispatch, scan, acknowledge, announce, surface, and incorporate are all engine verbs, and agent report files are pure markdown with no frontmatter to hand-edit or corrupt.
+- Manifest `set`/`push`/`apply` now validate staging, tracking, and analysis-candidate gate state, refuse writes to spent shadow-tree paths, and support a batched `apply` op — plan/review/analysis approvals move out of file frontmatter and into the manifest, closing off a whole class of silent state drift.
+- Migration 051 automatically carries in-progress work units' live frontmatter state (agent lifecycle, staging decisions, candidate gates, tracking flips) forward into the new engine-owned stores.
+
+🔧 Changed
+- Fix-tracking history for implementation tasks now lives in the committed `implementation/{topic}/` directory alongside analysis reports instead of the gitignored cache, so it survives as a real project record.
+- Completing a task only resets its fix-attempt counter when that task was the one actually in flight, preventing an out-of-band task completion from silently wiping another task's live fix-retry count.
+- Review, research, discussion, and investigation background-agent workflows (review, deep-dive, perspective/synthesis councils, root-cause and fix validation) all read and write lifecycle state through the new engine store rather than cache-file frontmatter, including safer crash-resume handling for dead or half-completed agent dispatches.
+- Analysis and review synthesis loops (implementation analysis, review remediation) now track per-task approve/skip/reject decisions in the manifest instead of staging-file frontmatter, with hardened crash-resume so approved tasks are never lost or duplicated when a session dies mid-cycle.
+- Plan task authoring now supports precise amendment runs — only the specifically rejected tasks are rewritten, with resume-safe tracking so an interrupted amendment never re-authors already-approved text.
+- Review's restart flow now clears synthesis staging, task-map state, and any partially-executed remediation phase in the correct order so a restart can't leave orphaned or partially-run work behind.
+- Plan-completion review now explicitly excludes deliberately skipped or cancelled tasks from coverage checks, and discloses them rather than silently treating them as unreviewed.
+
 ## [0.6.8] - 2026-07-23
 
 ✨ Added
