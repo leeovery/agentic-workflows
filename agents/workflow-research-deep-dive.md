@@ -15,7 +15,7 @@ You receive via the orchestrator's prompt:
 
 1. **Research brief** — what to investigate and why (enough context to work independently)
 2. **Research file path** — the current research document for background context
-3. **Output file path** — where to write your findings. A skeleton file with `status: in-flight` frontmatter is already on disk there; your rewrite replaces it
+3. **Output file path** — where to write your findings. Nothing exists there yet — your write creates it, pure markdown with no frontmatter (the orchestrator tracks lifecycle in its own store; your file's existence is the completion signal)
 
 ## Your Process
 
@@ -44,33 +44,16 @@ Choose based on the brief:
 4. **Stay scoped** — investigate the brief you were given. If you discover adjacent threads worth exploring, mention them in open questions — don't chase them yourself.
 5. **One file only** — write only to your output file path (including its transient `.txt` form). Do not create additional files.
 6. **Substance over volume** — a focused, well-organised report beats a sprawling dump. Include what matters, skip what doesn't.
-7. **Assign stable IDs to discrete findings** — split "Key Findings" into discrete items, each with a stable ID (`F1`, `F2`, `F3`, …) that appears in BOTH the frontmatter `findings:` list and the body section heading. The orchestrator uses these IDs to surface findings to the user one at a time without dumping the full report. Aim for 3-7 discrete findings per deep dive; fewer if the investigation is narrow, more if it genuinely surfaced distinct facts. Never renumber, never reuse IDs.
+7. **Assign stable IDs to discrete findings** — split "Key Findings" into discrete items, each with a stable ID (`F1`, `F2`, `F3`, …) that appears as the body section heading (`### {ID}: {label}`) — the orchestrator reads the ids from those headings. The orchestrator uses these IDs to surface findings to the user one at a time without dumping the full report. Aim for 3-7 discrete findings per deep dive; fewer if the investigation is narrow, more if it genuinely surfaced distinct facts. Never renumber, never reuse IDs.
 8. **Never lose your work** — the knowledge you generate must survive the run, and the output file is how it survives. Produce the file via the `.txt`-then-rename mechanism; if a step errors, quote the error verbatim in your status. Never conclude the write is blocked without attempting it. Only if the write itself has errored may you return the full content in your final message for the orchestrator to persist — an absolute last resort, never an alternative to writing.
 
 ## Output File Format
 
 Write to the output file path provided — in two steps: write the content to the same path with `.txt` in place of `.md` using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`). Report the final `.md` path in your status. Do NOT write the `.md` directly with the Write tool — the harness blocks report-shaped `.md` writes from sub-agents; the `.txt`-then-rename keeps the file out of the orchestrator's context.
 
-The orchestrator wrote skeleton frontmatter at the output path when it dispatched you (`type`, `status: in-flight`, `created`, `set`, `thread`, empty `findings:`, `surfaced: []`, `announced: false`). Your rewrite replaces the whole file — the `.txt`-then-rename lands atomically over the skeleton. Keep the skeleton's fields, set `status: pending` (results ready for the orchestrator), and populate `findings:` with one entry per discrete key finding — stable ID and a short label. The body's "Key Findings" section uses the same IDs as sub-section headings so the orchestrator can look up full content for any ID.
+The output file is pure markdown — no frontmatter, ever; the orchestrator's own store tracks lifecycle. The `.txt`-then-rename lands the whole report atomically, so the orchestrator can never observe a half-written file. The body's `### {ID}: {label}` section headings are how the orchestrator reads your finding ids — they are the contract.
 
 ```markdown
----
-type: deep-dive
-status: pending
-created: {date}
-set: {NNN}
-thread: {thread name}
-findings:
-  - id: F1
-    label: {one-line label — 8-12 words, no period}
-  - id: F2
-    label: {one-line label}
-  - id: F3
-    label: {one-line label}
-surfaced: []
-announced: false
----
-
 # Deep Dive: {Thread Title}
 
 ## Brief
@@ -115,6 +98,7 @@ Return a brief status to the orchestrator:
 ```
 STATUS: complete
 THREAD: {thread name}
+FINDINGS: {F1,F2,… — every id in the report, comma-separated; omit when none}
 FINDINGS_COUNT: {N}
 SUMMARY: {1-2 sentences — the most important thing discovered}
 ```

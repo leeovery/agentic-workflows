@@ -14,24 +14,49 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 
-// Completed review cycles = review-*.md files in the topic's discussion cache,
-// excluding `status: in-flight` skeletons — those are dispatch records for
-// agents still running, not cycles that happened.
+// Completed review cycles. The engine's agent store is authoritative: review
+// rows past `in-flight` are cycles that happened. Legacy review-*.md files
+// with no store row (pre-programme caches) count as completed cycles by
+// existence alone — their frontmatter is legacy state and is never read.
 function reviewCycles(cwd, workUnit, topic) {
   const dir = path.join(cwd, '.workflows', '.cache', workUnit, 'discussion', topic);
+  /** @type {Record<string, any>} */
+  let rows = {};
   try {
-    return fs.readdirSync(dir)
-      .filter((f) => /^review-.*\.md$/.test(f))
-      .filter((f) => {
-        try {
-          return !/^status:[ \t]*in-flight[ \t]*$/m.test(fs.readFileSync(path.join(dir, f), 'utf8'));
-        } catch {
-          return true;
-        }
-      })
-      .length;
+    const store = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+    rows = store.agents || {};
   } catch {
-    return 0;
+    rows = {};
+  }
+  const rowIds = new Set();
+  let fromRows = 0;
+  for (const row of Object.values(rows)) {
+    if (row.kind !== 'review') continue;
+    rowIds.add(`${row.id}.md`);
+    if (row.status !== 'in-flight') {
+      // A zero-finding row only counts if its report actually exists — an
+      // abandoned row closed by the dead-session arm never produced one.
+      let real = (row.findings || []).length > 0;
+      if (!real) {
+        try { real = fs.statSync(path.join(dir, `${row.id}.md`)).size > 0; } catch { real = false; }
+      }
+      if (real) fromRows += 1;
+    } else {
+      // Finished but not yet scanned: the agent's report landed, no scan has
+      // promoted the row. Mirror scan's promotion read — the cycle happened.
+      try {
+        if (fs.statSync(path.join(dir, `${row.id}.md`)).size > 0) fromRows += 1;
+      } catch { /* still running */ }
+    }
+  }
+  try {
+    const legacy = fs.readdirSync(dir)
+      .filter((f) => /^review-.*\.md$/.test(f))
+      .filter((f) => !rowIds.has(f))
+      .length;
+    return fromRows + legacy;
+  } catch {
+    return fromRows;
   }
 }
 

@@ -310,14 +310,36 @@ describe('discussion adapter: map verb', () => {
     assert.match(out, /review_cycles: 0/);
   });
 
-  it('review_cycles excludes status: in-flight dispatch skeletons', () => {
+  it('review_cycles reads the agent store — in-flight rows excluded, legacy files counted by existence', () => {
     createManifest(dir, 'auth', manifestWith());
     const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
-    fs.writeFileSync(path.join(cacheDir, 'review-001.md'), '---\nstatus: incorporated\n---\n\nfindings\n');
-    fs.writeFileSync(path.join(cacheDir, 'review-002.md'), '---\nstatus: pending\n---\n\nfindings\n');
-    fs.writeFileSync(path.join(cacheDir, 'review-003.md'), '---\nstatus: in-flight\ndispatched: 2026-07-19\n---\n');
+    // Store rows: one completed cycle, one still running.
+    fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
+      agents: {
+        'review-001': { id: 'review-001', kind: 'review', status: 'incorporated', findings: ['F1'], surfaced: ['F1'] },
+        'review-002': { id: 'review-002', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
+        'synthesis-001': { id: 'synthesis-001', kind: 'synthesis', status: 'incorporated', findings: [], surfaced: [] },
+      },
+    }));
+    fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'report');
+    // A pre-programme legacy file with no row: counted by existence, frontmatter never read.
+    fs.writeFileSync(path.join(cacheDir, 'review-007.md'), '---\nstatus: in-flight\n---\nlegacy');
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
     assert.match(out, /review_cycles: 2/);
+  });
+
+  it('review_cycles counts a finished-but-unscanned review (report landed, no scan yet)', () => {
+    createManifest(dir, 'auth', manifestWith());
+    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
+      agents: {
+        'review-001': { id: 'review-001', kind: 'review', status: 'in-flight', findings: [], surfaced: [] },
+      },
+    }));
+    fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'the report landed');
+    const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
+    assert.match(out, /review_cycles: 1/, 'mirror of scan promotion — the cycle happened');
   });
 });

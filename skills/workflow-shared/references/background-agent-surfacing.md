@@ -4,20 +4,18 @@
 
 ---
 
-This reference defines how to surface findings from background agents without dumping walls of text. It is loaded by agent reference files with parameters for the specific agent type.
+This reference defines how to surface findings from background agents without dumping walls of text. It is loaded by agent reference files with parameters for the specific agent type. All lifecycle state lives in the engine's agent store — never in the content files, whose markdown is the report and nothing else.
 
 **Parameters** (provided by caller via Load directive):
 
-- `agent_type` — `review` | `synthesis` | `deep-dive` — human-readable name used in user-facing messages
-- `cache_dir` — the agent's cache directory (work-unit scoped)
-- `cache_glob` — glob pattern for this agent's cache files (e.g., `review-*.md`)
-- `findings_key` — frontmatter key containing the finding ID list (`findings` for review/deep-dive, `tensions` for synthesis)
+- `agent_type` — `review` | `synthesis` | `deep-dive` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
+- `work_unit`, `phase`, `topic` — the agent store address
 
 ## The Core Rules
 
 **Never dump findings.** Three hard rules govern every surfacing interaction:
 
-1. **Two-phase surfacing.** First acknowledge the file exists (micro-menu, no content). Only after the user opts in, start raising findings one at a time.
+1. **Two-phase surfacing.** First acknowledge the report exists (micro-menu, no content). Only after the user opts in, start raising findings one at a time.
 2. **One finding per turn, then exit.** Each invocation of this protocol does at most one thing and hands control back. Never expect the protocol to "resume" after the user has engaged with a finding — the next session-loop check will pick up the next one at the next natural break.
 3. **Mid-thread protection.** If you are mid-Q/A with the user, defer the announce menu until the next natural break. A one-line parenthetical is acceptable, but only the first time.
 
@@ -27,63 +25,45 @@ Natural-break detection is guidance, not hard-enforced.
 
 ## LLM Turn Semantics (IMPORTANT)
 
-This protocol runs as a turn-level check, not a long-running state machine. Each invocation:
-- Reads the cache file
-- Updates frontmatter flags (`status`, `surfaced`, `announced`)
-- Optionally produces a small output (parenthetical, menu, or one raised finding)
-- **Exits back to the session loop**
+This protocol runs as a turn-level check, not a long-running state machine. Each invocation runs one `agent scan`, does at most one thing with its answer (a parenthetical, a menu, or one raised finding), and exits back to the session loop. Once you raise a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Do NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check will re-enter here and scan again; the row lists say exactly where things stand (the response's `next` is a default that ignores your `agent_type` — the kind filter below decides).
 
-Once you raise a finding, control belongs to the conversation. The user engages naturally — it may take five turns or fifty. Do NOT wait "inside the protocol" for that engagement to finish. The next iteration of the session loop's check-for-results will naturally re-enter this protocol at the next natural break, pick the next unsurfaced finding, and raise it.
-
-**The cache file is the only state.** If it's not in frontmatter, it doesn't survive. Never expect cross-turn continuity within this protocol.
-
-## State Machine
-
-Cache files move through these states:
-
-**`in-flight`** → Skeleton written by the orchestrator at dispatch. The sub-agent is still running — there is nothing to surface, and the scans below ignore it. The agent's completed rewrite flips it to `pending`.
-
-**`pending`** → Sub-agent wrote the file. You haven't read it yet.
-
-**`acknowledged`** → You have read the file. Two frontmatter flags track sub-state:
-- `announced: false/true` — has the user been told the file exists? Prevents repeated parenthetical interruptions on silent re-checks.
-- `surfaced: [F1, F3, …]` — which finding IDs have been raised. Empty means nothing raised yet; partial means mid-presentation.
-
-**`incorporated`** → All findings have been raised. Terminal state.
-
----
+**The engine store is the only state.** Never track surfacing progress in conversation memory, and never write it anywhere else.
 
 ## A. Check for Results
 
-Scan `{cache_dir}` for files matching `{cache_glob}` with `status: pending` OR `status: acknowledged` in their frontmatter.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
+```
 
-#### If no matching files
+Consider only rows whose `kind` matches `{agent_type}` (other kinds belong to their own loaded reference; perspective rows are synthesis inputs and are never surfaced here).
+
+#### If no matching row is `pending` or `acknowledged`
 
 Nothing to surface.
 
 → Return to caller.
 
-#### If a `pending` file exists
+#### If a matching row is `pending`
 
-→ Proceed to **B. First Read**.
+→ Proceed to **B. First Read** with that row.
 
-#### If an `acknowledged` file exists
+#### If a matching row is `acknowledged`
 
-The file was first-read on an earlier iteration. C. Decide Action will read its flags and decide what to do next.
+The report was first-read on an earlier iteration; the row carries `announced`, `surfaced`, and `remaining`.
 
-→ Proceed to **C. Decide Action**.
-
----
+→ Proceed to **C. Decide Action** with that row.
 
 ## B. First Read
 
-1. Read the cache file completely.
-2. Count findings in the frontmatter `{findings_key}` list.
-3. Transition the frontmatter: `status: pending` → `status: acknowledged`. The `surfaced: []` and `announced: false` fields were written with the dispatch-time skeleton and are already present.
+Read the row's content file completely — `.workflows/.cache/{work_unit}/{phase}/{topic}/{id}.md`. The finding ids come from the agent's returned status block (its `FINDINGS:`/`TENSIONS:` line — the author's own declaration); when that message is no longer in context, fall back to the file's `### {ID}:` section headings. Cross-check the count either way.
 
-#### If the finding count is 0 (zero-gap case)
+#### If the report has no findings (zero-gap case)
 
-No menu needed. Append this single line at the end of your current turn:
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
+```
+
+The engine incorporates the row. No menu needed — append this single line at the end of your current turn:
 
 > *Output the next fenced block as a code block:*
 
@@ -91,33 +71,29 @@ No menu needed. Append this single line at the end of your current turn:
 Background {agent_type} returned — nothing new beyond what we've already covered.
 ```
 
-Then transition the file directly to `status: incorporated`.
-
 → Return to caller.
 
 #### Otherwise
 
-→ Proceed to **C. Decide Action**.
+Record the findings on the row:
 
----
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --findings {F1,F2,…}
+```
+
+→ Proceed to **C. Decide Action** with the response's row.
 
 ## C. Decide Action
 
-Read current `surfaced:` and `announced:` from the cache file frontmatter. Compute the unsurfaced set: IDs in `{findings_key}` not in `surfaced:`.
+The row's `remaining` list is the unsurfaced set; `announced` and `surfaced` route what happens now.
 
-#### If the unsurfaced set is empty
+#### If NOT a natural break
 
-All findings have been raised. Transition `status: acknowledged` → `status: incorporated`.
+Consult the natural-breaks checklist. Route on the row's `announced` flag.
 
-→ Return to caller.
+**If `announced` is `false`:**
 
-#### If the unsurfaced set is non-empty and NOT a natural break
-
-Consult the natural-breaks checklist. Route on the `announced:` flag.
-
-**If `announced: false`:**
-
-Append this one-line parenthetical at the end of your current turn, then set `announced: true` in the cache file frontmatter.
+Append this one-line parenthetical at the end of your current turn, then record it:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -125,19 +101,23 @@ Append this one-line parenthetical at the end of your current turn, then set `an
 *(Background {agent_type} just returned — I'll raise it when we pause.)*
 ```
 
-→ Return to caller.
-
-**If `announced: true`:**
-
-The user already knows the file is waiting. Silent return — no output. The next natural break will pick it up.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
+```
 
 → Return to caller.
 
-#### If the unsurfaced set is non-empty and IS a natural break
+**If `announced` is `true`:**
 
-Route on whether the user has already opted in. `surfaced:` is the signal: empty means we still need to announce; non-empty means the user picked `now` on a prior iteration and more findings remain.
+The user already knows the report is waiting. Silent return — no output. The next natural break will pick it up.
 
-**If `surfaced:` is empty (first time at a break):**
+→ Return to caller.
+
+#### If a natural break
+
+Route on the row's `surfaced` list: empty means the user has not yet opted in; non-empty means they picked `now` on a prior iteration and more findings remain.
+
+**If `surfaced` is empty (first time at a break):**
 
 Render the announce menu. Do not describe findings, do not summarise, do not preview — just the count and the menu.
 
@@ -152,7 +132,11 @@ Background {agent_type} returned — flagged {N} area(s).
 · · · · · · · · · · · ·
 ```
 
-After rendering the menu, set `announced: true` in the cache file frontmatter.
+After rendering the menu, record the announce:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
+```
 
 **STOP.** Wait for user response.
 
@@ -162,36 +146,33 @@ After rendering the menu, set `announced: true` in the cache file frontmatter.
 
 **If `later`:**
 
-Leave `surfaced:` empty. The next natural break will re-raise this menu.
+Nothing surfaced yet, so the next natural break re-renders this menu.
 
 → Return to caller.
 
-**If `surfaced:` is non-empty (user already opted in, more findings remain):**
+**If `surfaced` is non-empty (user already opted in, more findings remain):**
 
 Do not re-ask. The user has already committed to walking through the set.
 
 → Proceed to **D. Raise One Finding**.
 
----
-
 ## D. Raise One Finding
 
 This section runs once per invocation and then exits. It never waits in-protocol for the user to finish engaging — that's the conversation's job.
 
-1. Read `{findings_key}` and `surfaced:` from the cache file.
-2. Compute the unsurfaced set.
-3. Pick the single most contextually relevant unsurfaced finding. **Contextual relevance outranks sub-agent order.** If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
-4. Append its ID to `surfaced:` in the cache file frontmatter.
-5. Digest the finding. Do NOT read it out verbatim. Reframe it as one concrete concern tied to the current context, phrased as a single question.
-6. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
+1. Pick the single most contextually relevant finding from the row's `remaining` — never from `scan.next`, which may belong to another row. **Contextual relevance outranks the list order.** If the current conversation has just touched on a related area, prefer that finding. If nothing is particularly relevant, pick the one with the broadest implications.
+2. Record it — the response confirms what remains, and raising the last finding incorporates the row automatically:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {finding}
+   ```
+3. Digest the finding from the content file. Do NOT read it out verbatim. Reframe it as one concrete concern tied to the current context, phrased as a single question.
+4. Raise it in the current turn. One question, no lists, no bundled follow-ups, no menu.
 
 After this, control belongs to the conversation. The user will engage (or deflect, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing.
 
-**Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The `surfaced:` list ensures nothing is forgotten across turns — every session-loop iteration re-enters this protocol, and at each natural break the next unsurfaced finding is raised. When all findings have been raised (regardless of whether the user engaged or deflected), the next check transitions the file to `incorporated`.
+**Coverage guarantee**: the goal is natural flow during engagement AND eventual coverage of every finding. The store ensures nothing is forgotten across turns — every session-loop iteration re-enters this protocol, and at each natural break the next unsurfaced finding is raised. When all findings have been raised, the engine incorporates the row.
 
 → Return to caller.
-
----
 
 ## Never-Dump Checklist
 
@@ -200,6 +181,6 @@ Before producing any surfacing output, verify:
 - □ Raising AT MOST one finding this turn
 - □ Asking AT MOST one question this turn
 - □ No bulleted list of gaps
-- □ Not reading the cache file contents verbatim
+- □ Not reading the content file verbatim
 
 If any box is unchecked, stop and reframe.
