@@ -494,6 +494,20 @@ describe('epic projections: menu', () => {
     assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
   });
 
+  it('a discussion-routed stub gets the same Start suffix — the symmetric branch', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { parked: { routing: 'discussion', source: 'reroute:origin-topic', order: 1 } } },
+        discussion: { items: { parked: { status: 'triaged' } } },
+      },
+    });
+    const { keys } = epicMenu('v1', d);
+    const entry = keys.find((k) => k.topic === 'parked');
+    assert.strictEqual(entry.action, 'start_discussion');
+    assert.strictEqual(entry.label, 'Start discussion for "Parked" — triage waiting');
+  });
+
   it('an open discovery session leads the menu as resume, regardless of map state', () => {
     const d = detailFor(dir, 'resumable', { work_type: 'epic' });
     d.active_session = '001';

@@ -314,6 +314,9 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('fresh', null, null, true), 'fresh · triage waiting');
     // The cue survives on non-fresh rows — a parked cross-phase stub stays visible.
     assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'triaged', true), 'discussing · triage waiting');
+    // Composite labels keep their own tail before the cue.
+    assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'completed', true), 'research complete · ready for discussion · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('researching', 'research', 'in-progress', true), 'researching · triage waiting');
   });
 
   it('discoveryLifecycleLabel renders no cue when triageParked is false or omitted', () => {
