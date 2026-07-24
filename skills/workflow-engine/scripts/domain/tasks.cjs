@@ -91,6 +91,8 @@ function safeName(value, label) {
 
 /** @param {string} cwd @param {string} workUnit @param {string} topic @param {string} internalId */
 function fixTrackingPath(cwd, workUnit, topic, internalId) {
+  safeName(topic, 'topic');
+  safeName(workUnit, 'work unit');
   return path.join(cwd, '.workflows', workUnit, 'implementation', topic, `fix-tracking-${internalId}.md`);
 }
 
@@ -213,11 +215,10 @@ function startTask(cwd, workUnit, topic, internalId) {
     const resumed = found.current_task === internalId && fs.existsSync(file);
     if (!resumed) found.fix_attempts = 0;
     found.current_task = internalId;
+    if (!resumed && fs.existsSync(file)) fs.unlinkSync(file);
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { item: found, restarting: resumed };
   });
-
-  if (!restarting && fs.existsSync(file)) fs.unlinkSync(file);
 
   return {
     task: internalId,
@@ -358,7 +359,11 @@ function completeTask(cwd, workUnit, topic, { internalId = null, externalId = nu
     const recorded = { completed_task: id };
     if (skipped) recorded.skipped = true;
     pushTo(item, 'completed_tasks', id);
-    item.fix_attempts = 0;
+    // Only the in-flight task's completion clears its counter — completing a
+    // different id (an out-of-band skip) must not reset a live fix loop.
+    if (item.current_task === undefined || item.current_task === null || item.current_task === id) {
+      item.fix_attempts = 0;
+    }
     if (phase !== undefined) {
       item.current_phase = phase;
       recorded.current_phase = phase;

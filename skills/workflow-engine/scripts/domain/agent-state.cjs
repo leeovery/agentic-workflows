@@ -53,8 +53,18 @@ function agentDir(cwd, workUnit, phase, topic) {
 
 /** @param {string} cwd @param {string} workUnit */
 function requireWorkUnit(cwd, workUnit) {
+  validateSegment(workUnit, 'work unit');
   if (!fs.existsSync(io.workUnitManifestPath(workflowsDir(cwd), workUnit))) {
     throw new Error(`Work unit "${workUnit}" not found`);
+  }
+}
+
+// Work-unit and topic names become path segments and store keys — refuse
+// anything that could traverse or alias (the colocation promise depends on it).
+/** @param {string} name @param {string} what */
+function validateSegment(name, what) {
+  if (typeof name !== 'string' || name === '' || name === '.' || name === '..' || /[\/\\]/.test(name)) {
+    throw new Error(`Invalid ${what} ${JSON.stringify(name)}: a slash-free name`);
   }
 }
 
@@ -86,6 +96,11 @@ function loadState(cwd, workUnit, phase, topic) {
     throw new Error(`Corrupt agent state at ${file}: root must be an object`);
   }
   if (!parsed.agents || typeof parsed.agents !== 'object') parsed.agents = {};
+  for (const [id, row] of Object.entries(parsed.agents)) {
+    if (!row || typeof row !== 'object' || Array.isArray(row) || !AGENT_STATUSES.includes(row.status)) {
+      throw new Error(`Corrupt agent state at ${file}: row "${id}" is not a valid agent row`);
+    }
+  }
   return parsed;
 }
 
@@ -149,8 +164,8 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
     let nnn;
     if (set !== undefined) {
       // A synthesis joins an existing perspective set: same number, one per set.
-      if (!/^\d{3}$/.test(set)) {
-        throw new Error(`Invalid set ${JSON.stringify(set)}: the three-digit set number from the perspective dispatch`);
+      if (!/^\d{3,}$/.test(set)) {
+        throw new Error(`Invalid set ${JSON.stringify(set)}: the set number from the perspective dispatch`);
       }
       const members = inTopic.filter((r) => r.kind === 'perspective' && r.set === set);
       if (!members.length) {
@@ -162,21 +177,28 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
       if (inTopic.some((r) => r.kind === 'synthesis' && r.set === set && r.status !== 'incorporated')) {
         throw new Error(`Set "${set}" already has a live synthesis — one per set (incorporate a dead one to re-dispatch)`);
       }
-      if (fs.existsSync(path.join(dir, `synthesis-${set}.md`)) && !inTopic.some((r) => r.id === `synthesis-${set}`)) {
+      const priorRow = inTopic.find((r) => r.id === `synthesis-${set}`);
+      const priorFile = path.join(dir, `synthesis-${set}.md`);
+      if (fs.existsSync(priorFile) && !priorRow) {
         throw new Error(`A legacy file synthesis-${set}.md already occupies that name — ids never collide with files`);
+      }
+      if (priorRow) {
+        // Re-dispatch over a closed row: the old report must not become the
+        // new agent's completion signal or content.
+        fs.rmSync(priorFile, { force: true });
       }
       nnn = set;
     } else {
       let max = 0;
       for (const row of inTopic) {
         if (row.kind === kind) {
-          const m = /-(\d{3})(?:-|$)/.exec(row.id);
+          const m = /-(\d{3,})(?:-|$)/.exec(row.id);
           if (m) max = Math.max(max, Number(m[1]));
         }
       }
       if (fs.existsSync(dir)) {
         for (const name of fs.readdirSync(dir)) {
-          const m = new RegExp(`^${kind}-(\\d{3})(?:-|\\.)`).exec(name);
+          const m = new RegExp(`^${kind}-(\\d{3,})(?:-|\\.)`).exec(name);
           if (m) max = Math.max(max, Number(m[1]));
         }
       }
@@ -213,7 +235,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set }) 
   });
 }
 
-/** @param {any} row @param {string} cwd */
+/** @param {any} row @param {string} cwd @param {string} workUnit */
 function contentFileExists(row, cwd, workUnit) {
   const file = path.join(agentDir(cwd, workUnit, row.phase, row.topic), `${row.id}.md`);
   try {
@@ -259,6 +281,7 @@ const NEVER_SURFACED = ['perspective'];
 function scanAgents(cwd, workUnit, phase, topic) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
+  validateSegment(topic, 'topic');
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const rows = Object.values(state.agents)
@@ -292,7 +315,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
       work_unit: workUnit,
       phase,
       topic,
-      in_flight: byStatus('in-flight').map((r) => r.id),
+      in_flight: byStatus('in-flight').map(publicRow),
       pending: pending.map(publicRow),
       acknowledged: acked.map(publicRow),
       incorporated: byStatus('incorporated').map(publicRow),
@@ -340,6 +363,7 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
 function announceAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
+  validateSegment(topic, 'topic');
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
@@ -361,6 +385,7 @@ function announceAgent(cwd, workUnit, phase, topic, id) {
 function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
+  validateSegment(topic, 'topic');
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
@@ -392,6 +417,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
 function incorporateAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
+  validateSegment(topic, 'topic');
   return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);

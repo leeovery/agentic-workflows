@@ -22,14 +22,14 @@ H. Create tasks in plan → invoke-task-writer.md
 
 ## A. Cycle Gate
 
-Crash-resume: if the previous cycle's findings are already committed but its synthesis never ran, do not record a new cycle — resume at **D. Dispatch Synthesis Agent** over the existing findings.
+Crash-resume, checked in order: if the latest `staging.c{N}` (read `manifest get {work_unit}.implementation.{topic} staging`) still holds a `pending` task, do not record a new cycle — resume that cycle at **E. Approval Overview**. If a staging file exists on disk with no matching manifest cycle (a crash between the synthesizer's write and the init), initialise the cycle from the file's task count and resume at **E**. If the previous cycle's findings are committed but its synthesis never ran, resume at **D. Dispatch Synthesis Agent** over the existing findings.
 
 Record the cycle via the engine (increments both the lifetime and session counters):
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
 ```
 
-`{N}` and `{cycle-number}` throughout this loop refer to the response's `cycle_total`; **F. Process Task** branches on its `analysis_gate_mode`.
+`{N}` throughout this loop refers to the response's `cycle_total`; **F. Process Task** branches on its `analysis_gate_mode`.
 
 #### If the response's `over_session_limit` is `false`
 
@@ -173,7 +173,7 @@ impl({work_unit}): analysis cycle {N} — synthesis
 
 ## E. Approval Overview
 
-Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{cycle-number}.md` (task content) and the cycle's statuses from `manifest get {work_unit}.implementation.{topic} staging.c{cycle-number}`.
+Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` (task content) and the cycle's statuses from `manifest get {work_unit}.implementation.{topic} staging.c{N}`.
 
 Write the overview payload to `.workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json` with the Write tool (`{"label": "Analysis cycle {N}", "tasks": [{"title": "…", "severity": "…"}]}`), render, and emit the section verbatim:
 

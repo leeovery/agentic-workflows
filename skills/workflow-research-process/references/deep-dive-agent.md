@@ -75,7 +75,7 @@ Compose a research brief for the agent. The brief must be self-contained — the
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {thread:(kebabcase)}
+node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {thread:(kebabcase, dots dropped)}
 ```
 
 **Agent path**: `../../../agents/workflow-research-deep-dive.md`
