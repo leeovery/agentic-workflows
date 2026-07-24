@@ -76,7 +76,7 @@ function implItem(dir) {
 }
 
 function trackingPath(dir, internalId) {
-  return path.join(dir, '.workflows', '.cache', 'auth', 'implementation', 'auth-flow', `fix-tracking-${internalId}.md`);
+  return path.join(dir, '.workflows', 'auth', 'implementation', 'auth-flow', `fix-tracking-${internalId}.md`);
 }
 
 function writeFindings(dir, content) {
@@ -197,7 +197,7 @@ describe('engine task start', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('fresh start on a different task resets fix_attempts, deletes its fix-tracking cache file, and records current_task', () => {
+  it('fresh start on a different task resets fix_attempts, deletes its fix-tracking file, and records current_task', () => {
     // current_task is auth-flow-2-1 — starting auth-flow-1-2 is a genuine
     // fresh start: clean slate for the new task.
     fs.mkdirSync(path.dirname(trackingPath(dir, 'auth-flow-1-2')), { recursive: true });
