@@ -140,6 +140,18 @@ function auditState(dir, label) {
     derivations.computeNextPhase(manifest);
     derivations.computeUnitPhaseState(manifest, pipelineOf(manifest.work_type));
 
+    // The agent-state store, when present, is always schema-valid.
+    const storePath = path.join(dir, '.workflows', '.cache', wu, 'state.json');
+    if (fs.existsSync(storePath)) {
+      const store = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+      for (const [key, row] of Object.entries(store.agents || {})) {
+        assert.ok(['in-flight', 'pending', 'acknowledged', 'incorporated'].includes(row.status),
+          ctx(`agent ${key}: status "${row.status}" not in vocabulary`));
+        assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
+          ctx(`agent ${key}: surfaced ids must be recorded findings`));
+      }
+    }
+
     // The bridge can always read the unit.
     const bridged = BRIDGE.discover(dir, wu);
     assert.ok(!bridged.error, ctx(`${wu}: bridge gateway errored: ${bridged.error}`));
@@ -620,6 +632,46 @@ describe('pipeline simulation', () => {
     const completed = sim.manifest(wu).phases.implementation.items[wu].completed_tasks;
     assert.deepStrictEqual([...new Set(completed)].sort(), [`${wu}-1-1`, `${wu}-1-2`],
       'completed_tasks carries each id once');
+  });
+
+  it('background agents: dispatch → completion scan → ack → surface → incorporate', () => {
+    const wu = 'agents';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Agent lifecycle', '--session-log-file', sessionLog(sim, wu)]);
+    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+      [{ name: 'alpha', routing: 'research', summary: 'Alpha' }]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): one topic`]);
+    sim.run(['topic', 'start', wu, 'research', 'alpha']);
+
+    // Dispatch two agents; no files exist until the sub-agents write them.
+    const review = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'review']);
+    sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    assert.strictEqual(scan.next, null, 'nothing actionable while agents run');
+
+    // The review agent finishes (writes content); the deep-dive is still out.
+    sim.write(review.file, '# Review findings\n\n## F1\n\n## F2\n');
+    scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(scan.next, { action: 'acknowledge', id: 'review-001' });
+    sim.run(['agent', 'ack', wu, 'research', 'alpha', 'review-001', '--findings', 'F1,F2']);
+    sim.run(['agent', 'announce', wu, 'research', 'alpha', 'review-001']);
+    sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1']);
+    const last = sim.run(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F2']);
+    assert.strictEqual(last.status, 'incorporated', 'last finding auto-incorporates');
+
+    // Guards hold mid-lifecycle, and the conclusion gate still sees the straggler.
+    sim.refuses(['agent', 'surface', wu, 'research', 'alpha', 'review-001', 'F1'], /incorporated/);
+    sim.refuses(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean'], /in-flight/);
+    scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(scan.in_flight, ['deep-dive-001-auth']);
+
+    // The straggler lands clean; the phase can conclude.
+    sim.write(`.workflows/.cache/${wu}/research/alpha/deep-dive-001-auth.md`, '# Nothing novel\n');
+    sim.run(['agent', 'scan', wu, 'research', 'alpha']);
+    const clean = sim.run(['agent', 'ack', wu, 'research', 'alpha', 'deep-dive-001-auth', '--clean']);
+    assert.strictEqual(clean.status, 'incorporated');
+    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
+    sim.run(['topic', 'complete', wu, 'research', 'alpha']);
   });
 
   it('guards hold mid-pipeline: shadow fields, empty segments, cross-type reuse, bad statuses', () => {

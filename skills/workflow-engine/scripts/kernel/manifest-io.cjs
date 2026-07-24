@@ -371,6 +371,7 @@ module.exports = {
   acquireLockFile,
   ensureContainer,
   readWorkUnitManifest,
+  writeJsonAtomic,
   writeWorkUnitManifestAtomic,
   readProjectManifest,
   writeProjectManifestAtomic,
