@@ -2,7 +2,7 @@
 
 Review is the last phase, and it closes the loop the whole system was built around: it holds the delivered work up against what was agreed and confirms they match. The reviewer is framed as a senior architect who has never seen this code before — fresh eyes, questioning everything, there to find problems rather than fix them. That independence is the point. The people and agents who build something are the worst placed to notice what they assumed; a reviewer with no stake in the implementation and no memory of writing it catches what they cannot.
 
-Review refuses to start unless both the plan and the implementation are complete. If a review already exists, you can continue it — the system tracks which tasks each review covered, so it re-reviews only what has not been checked yet — or restart and review everything again.
+Review refuses to start unless both the plan and the implementation are complete. If a review already exists, you can continue it — the system tracks which tasks each review covered, so it re-reviews only what has not been checked yet — or restart and review everything again. A restart is a genuine discard: any remediation the abandoned review had queued is retired — marked skipped in the plan and disclosed in the next report — so abandoned corrections never execute behind your back, and a discarded task is always something the report *says* was discarded, never a silent gap.
 
 ## What a cycle checks
 
