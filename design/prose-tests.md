@@ -109,6 +109,23 @@ testing.
 
 ## Log
 
+- 2026-07-24 — Stage 2, the framework. `tests/prose/`: case parser and
+  corpus validation (`lib/cases.cjs`), fixture recipes under a frozen
+  clock with golden snapshots (`lib/fixtures.cjs`, `lib/fake-clock.cjs`
+  — snapshots exclude `.git` and the binary knowledge store, escape
+  product-written `.gitignore` files), the world builder
+  (`lib/world.cjs` — installed-layout skills, hermetic git, keyword-only
+  store re-derived at materialise), and the runner (`run.cjs`: list ·
+  select · world · prompt · grade · snap · verify · destroy). The
+  `prompt` command is the P4 boundary — walker prompts are
+  machine-assembled and never contain expects. CI gains two token-free
+  suites (corpus validation, snapshot rebuild-compare); the `/prose-test`
+  dev skill owns the model layer (Sonnet walks, Opus confirms, quoted
+  evidence or it didn't happen). First fixture: `base` — a post-boot
+  keyword-only empty project, proven byte-deterministic across rebuilds.
+  Two smoke cases exercise every moving part end-to-end; the full pipe
+  (world → boot-in-world → deterministic grade) executed clean.
+
 - 2026-07-24 — Design agreed with Lee. Key decisions: static fixtures
   over sim-replay (decoupling; the sim stays the engine's test bed,
   prose tests own their worlds) with the engine kept at authoring

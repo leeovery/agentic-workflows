@@ -208,6 +208,10 @@ Add or update a test alongside any change to engine scripts, adapters, migration
 
 **Any change to the workflows must update the simulation** — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field: extend an existing scenario, add a new permutation, or re-pin changed expectations. A red simulation is the design speaking — decide deliberately whether the flow or the scenario is wrong, never paper over it. New permutations are cheap: a scenario is an ordered list of engine calls with assertions.
 
+## Prose Tests
+
+`tests/prose/` — end-to-end tests for the prose logic (design: `design/prose-tests.md`). Natural-language cases a walker agent executes through the real skills against a materialised fixture world; run on command via the `/prose-test` dev skill — walks cost tokens, so they are never part of a routine gate. The deterministic perimeter runs under `npm test`: corpus validation (parse, scoped paths, anchors, state-assertion grammar) and fixture golden checks — every `tests/prose/fixtures/{name}/snapshot/` must rebuild byte-identical from its `recipe.cjs` under the frozen clock. When an engine change moves a world, regenerate with `node tests/prose/run.cjs snap {name}` and land the snapshot diff in the same PR; never hand-edit a snapshot. Every review finding lands twice: the fix, and the case that would have caught it. At the end of a PR that touches skill prose, run `node tests/prose/run.cjs select --diff main` and suggest running the intersecting cases.
+
 ## Knowledge Base Subsystem
 
 Retrieval-augmented store of completed workflow artifacts (research, discussion, investigation, specification — never planning/implementation/review), plus epic discovery **session logs** (indexed under a `discovery` phase — the running exploration record) and seed material for early-phase context: user-shared `imports` and the inbox-promoted `seeds` (the work unit's origin). Every entry-point skill gates on knowledge base initialisation before any phase runs.
