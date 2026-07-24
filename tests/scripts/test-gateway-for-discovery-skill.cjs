@@ -683,6 +683,18 @@ describe('workflow-discovery format', () => {
     assert.match(out, /- ○ auth-flow \[fresh\] routing=research — oauth/);
   });
 
+  it('a parked stub row carries the triage=waiting cue', () => {
+    createManifest(dir, 'payments', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { parked: { routing: 'research', source: 'reroute:origin', summary: 'target' } } },
+        research: { items: { parked: { status: 'triaged' } } },
+      },
+    });
+    const out = format(discover(dir, 'payments'));
+    assert.match(out, /- ○ parked \[fresh\] routing=research source=reroute:origin triage=waiting — target/);
+  });
+
   it('omits source from map row when source=discovery', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',

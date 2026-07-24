@@ -18,8 +18,10 @@ function phaseStatus(manifest, phase) {
     // Non-live statuses drop out of aggregation: cancelled/superseded/proposed
     // and promoted alike — a promoted spec continues in its cross-cutting unit
     // and must not mask the siblings' state (unfiltered, the label went
-    // insertion-order-dependent).
-    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'promoted'];
+    // insertion-order-dependent). `triaged` is pre-live: a stub holding parked
+    // concerns on a topic no session has started — it must not flip the
+    // phase's aggregate label.
+    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'promoted', 'triaged'];
     if (keys.length === 1) {
       const status = (p.items[keys[0]] || {}).status || null;
       return NON_LIVE.includes(status) ? null : status;
@@ -292,7 +294,12 @@ function computeNeedsSequencing(mapItems) {
 // `research_state` rides along on every result — the research item's raw
 // status (null when no research item exists), so labels can be derived from
 // the actual per-phase state (a handled topic without research, superseded
-// research) rather than assumed from the lifecycle alone.
+// research) rather than assumed from the lifecycle alone. `triage_parked`
+// rides along the same way: true when either phase item is a `triaged` stub
+// (parked rerouted concerns, no session yet). It is a rider, not a lifecycle
+// — a triaged stub renders as `fresh` by fall-through, and the rider survives
+// on every branch (a `discussing` topic can still hold a parked research
+// stub, which never drains from the discussion side).
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
@@ -300,25 +307,26 @@ function computeTopicLifecycle(manifest, topicName) {
 
   const rs = research ? research.status ?? null : null;
   const ds = discussion ? discussion.status : null;
+  const triage_parked = rs === 'triaged' || ds === 'triaged';
 
   // Stored marker wins over name-matching: a research topic that fanned out
   // into differently-named discussions is terminal, with no next action. Read
   // only the item's own field — never inspect siblings or provenance.
   if (discovery && discovery.handled === true) {
-    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs };
+    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, triage_parked };
   }
 
   if (ds === 'completed') {
-    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs };
+    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, triage_parked };
   }
   if (ds === 'in-progress') {
-    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs };
+    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, triage_parked };
   }
   if (rs === 'completed') {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked };
   }
   if (rs === 'in-progress') {
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, triage_parked };
   }
   // Every attempted phase item is cancelled (and at least one was attempted):
   // the topic is cancelled-tier. A dual-attempt topic with one live item never
@@ -326,18 +334,20 @@ function computeTopicLifecycle(manifest, topicName) {
   // cancelling one of two still leaves the alternate open. A single-routed
   // topic whose only item is cancelled must NOT fall through to fresh: its
   // phase item blocks `topic start` (the "fresh" next action would dead-end),
-  // and the recovery route is reactivate.
+  // and the recovery route is reactivate. A `triaged` sibling is not an
+  // attempt — it keeps the topic out of cancelled-tier via the every() check,
+  // falling through to fresh (the stub is startable).
   const attempted = [rs, ds].filter((s) => s != null);
   if (attempted.length > 0 && attempted.every((s) => s === 'cancelled')) {
-    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs };
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, triage_parked };
   }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
   // — the next available action is to discuss.
   if (rs === 'superseded' && !ds) {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, triage_parked };
   }
-  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs };
+  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, triage_parked };
 }
 
 function computeNextAction(routing, lifecycle) {
@@ -399,6 +409,7 @@ function computeSourceProvenance(source) {
  * @property {string} tier
  * @property {string|null} current_phase
  * @property {string|null} research_state
+ * @property {boolean} triage_parked       a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {string|null} next_action
  */
 
@@ -420,7 +431,7 @@ function computeSourceProvenance(source) {
 function buildDiscoveryMap(manifest) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
-    const { lifecycle, tier, current_phase, research_state } = computeTopicLifecycle(manifest, item.name);
+    const { lifecycle, tier, current_phase, research_state, triage_parked } = computeTopicLifecycle(manifest, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     return {
@@ -437,6 +448,7 @@ function buildDiscoveryMap(manifest) {
       tier,
       current_phase,
       research_state,
+      triage_parked,
       next_action: computeNextAction(item.routing, lifecycle),
     };
   });

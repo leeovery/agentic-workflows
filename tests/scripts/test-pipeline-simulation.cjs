@@ -507,6 +507,40 @@ describe('pipeline simulation', () => {
       'reactivate restores the map order');
     sim.run(['topic', 'cancel', wu, 'research', 'gamma-prime']);
 
+    // Delta: an off-topic concern rerouted from alpha parks on an unstarted
+    // topic — the stub is triaged, never in-progress.
+    sim.run(['discovery-map', 'add', wu, 'delta', 'research', '--summary', 'Delta summary', '--source', 'reroute:alpha']);
+    const parked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
+    assert.strictEqual(parked.status, 'triaged');
+    assert.strictEqual(parked.created, true);
+    sim.write(`.workflows/${wu}/research/delta.md`,
+      '# Research: Delta\n\n## Triage\n\n### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): reroute concern to delta`]);
+    const reparked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
+    assert.strictEqual(reparked.created, false);
+    assert.strictEqual(reparked.status, 'triaged');
+    // A stub refuses the verbs that would bury or absorb never-worked concerns
+    // — as the source and as the absorbing --by target alike.
+    sim.refuses(['topic', 'complete', wu, 'research', 'delta'], /triaged/);
+    sim.refuses(['topic', 'supersede', wu, 'research', 'delta', '--by', 'alpha'], /triaged/);
+    sim.refuses(['topic', 'supersede', wu, 'research', 'alpha', '--by', 'delta'], /cannot absorb/);
+    // Landing on a completed discussion reopens it to receive the entry.
+    const reopened = sim.run(['topic', 'triage', wu, 'discussion', 'beta']);
+    assert.strictEqual(reopened.reopened, true);
+    assert.strictEqual(reopened.status, 'in-progress');
+    sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
+    // Cancel/reactivate round-trips the stub; start is the one exit from triaged.
+    sim.run(['topic', 'cancel', wu, 'research', 'delta']);
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.previous_status, 'triaged');
+    sim.run(['topic', 'reactivate', wu, 'research', 'delta']);
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'triaged');
+    const drained = sim.run(['topic', 'start', wu, 'research', 'delta']);
+    assert.strictEqual(drained.status, 'in-progress');
+    assert.strictEqual(drained.created, false);
+    sim.write(`.workflows/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked concern.\n');
+    sim.run(['commit', wu, '-m', `research(${wu}): delta`]);
+    sim.run(['topic', 'complete', wu, 'research', 'delta']);
+
     // Grouping: alpha and beta unify into one spec; sources gate, then the
     // per-topic spec items are superseded by the unified one.
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);

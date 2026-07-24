@@ -1519,6 +1519,18 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.ok(!out.includes(' — '));
   });
 
+  it('a parked stub carries the triage=waiting cue — parity with the discovery gateway dump', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { parked: { routing: 'discussion', source: 'reroute:origin' } } },
+        discussion: { items: { parked: { status: 'triaged' } } },
+      },
+    });
+    const out = formatScoped('v1', discover(dir, 'v1'));
+    assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent triage=waiting\n'), out);
+  });
+
   it('rows show routing=none for a legacy item with no routing', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',

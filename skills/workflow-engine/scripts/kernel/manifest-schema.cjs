@@ -25,8 +25,8 @@ const VALID_PHASE_STATUSES = {
   // would turn validators' `VALID_PHASE_STATUSES[phase]` lookups into
   // undefined — the silent permissive path this table exists to prevent.
   discovery:      /** @type {string[]} */ ([]),
-  research:       ['in-progress', 'completed', 'superseded', 'cancelled'],
-  discussion:     ['in-progress', 'completed', 'cancelled'],
+  research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled'],
+  discussion:     ['triaged', 'in-progress', 'completed', 'cancelled'],
   investigation:  ['in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
   specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],

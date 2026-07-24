@@ -142,6 +142,7 @@ describe('engine CLI: discovery-map operations', () => {
             'decided-topic': { routing: 'discussion', source: 'discovery' },
             'handled-topic': { routing: 'research', source: 'discovery', handled: true },
             'cancelled-topic': { routing: 'research', source: 'discovery' },
+            'triaged-topic': { routing: 'research', source: 'reroute:discussing-topic' },
           },
           dismissed: ['dismissed-name'],
         },
@@ -150,6 +151,7 @@ describe('engine CLI: discovery-map operations', () => {
             'researching-topic': { status: 'in-progress' },
             'ready-topic': { status: 'completed' },
             'cancelled-topic': { status: 'cancelled' },
+            'triaged-topic': { status: 'triaged' },
           },
         },
         discussion: {
@@ -178,7 +180,7 @@ describe('engine CLI: discovery-map operations', () => {
       assert.deepStrictEqual(res, {
         ok: true, work_unit: 'payments', name: 'menu-management', op: 'add',
         routing: 'research', source: 'discovery', summary: 'owner-managed menus',
-        lifecycle: 'fresh', map_total: 9,
+        lifecycle: 'fresh', map_total: 10,
       });
       // Exact shape: never a `status` field — lifecycle is computed at render
       // time, not stored (the create-discovery-topic defect this op corrects).
@@ -297,7 +299,7 @@ describe('engine CLI: discovery-map operations', () => {
           { name: 'menu-management', routing: 'research', lifecycle: 'fresh' },
           { name: 'pricing', routing: 'discussion', lifecycle: 'fresh' },
         ],
-        undismissed: [], map_total: 10,
+        undismissed: [], map_total: 11,
       });
       const m = readManifest(dir);
       assert.deepStrictEqual(m.phases.discovery.items['menu-management'], {
@@ -344,7 +346,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('edit', () => {
     it('sets summary, echoes it with the lifecycle and map_total', () => {
       const res = runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'new blurb']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'edit', lifecycle: 'fresh', summary: 'new blurb', map_total: 8 });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'edit', lifecycle: 'fresh', summary: 'new blurb', map_total: 9 });
       assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].summary, 'new blurb');
     });
 
@@ -380,7 +382,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('remove', () => {
     it('hard-deletes a fresh item and pushes its name onto the dismissed list', () => {
       const res = runOk(dir, ['remove', 'payments', 'fresh-topic']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: 7 });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'remove', dismissed: true, lifecycle: 'fresh', map_total: 8 });
       const discovery = readManifest(dir).phases.discovery;
       assert.strictEqual(discovery.items['fresh-topic'], undefined);
       assert.deepStrictEqual(discovery.dismissed, ['dismissed-name', 'fresh-topic']);
@@ -428,7 +430,7 @@ describe('engine CLI: discovery-map operations', () => {
       assert.strictEqual(res.renamed_from, 'rich-fresh');
       assert.strictEqual(res.lifecycle, 'fresh');
       assert.strictEqual(res.matches_dismissed, false);
-      assert.strictEqual(res.map_total, 8);
+      assert.strictEqual(res.map_total, 9);
       // No brief file on disk — nothing moved, no marker.
       assert.ok(!('brief_moved' in res));
       assert.deepStrictEqual(res.preserved_fields.sort(), Object.keys(RICH_FRESH).sort());
@@ -527,7 +529,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('reroute', () => {
     it('records the new routing', () => {
       const res = runOk(dir, ['reroute', 'payments', 'fresh-topic', 'research']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'reroute', routing: 'research', lifecycle: 'fresh', map_total: 8 });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'fresh-topic', op: 'reroute', routing: 'research', lifecycle: 'fresh', map_total: 9 });
       assert.strictEqual(readManifest(dir).phases.discovery.items['fresh-topic'].routing, 'research');
     });
 
@@ -548,6 +550,9 @@ describe('engine CLI: discovery-map operations', () => {
       // handled-topic has no research item — no fan-out to claim.
       'handled-topic': /it is marked handled and stays on the map as historical anchor.*unhandle it to make it actionable again/,
       'cancelled-topic': /phase work in cancelled state.*cancel from the epic menu instead/,
+      // triaged-topic derives fresh, but its parked stub is real content —
+      // the refusal names the triage, not the historical anchor.
+      'triaged-topic': /rerouted concerns are parked in its triage; start the topic to drain them, or cancel from the epic menu/,
     };
 
     it('remove refuses every non-fresh lifecycle, leaving the manifest untouched', () => {
@@ -617,7 +622,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('marks an item handled from any actionable lifecycle', () => {
       for (const topic of ['fresh-topic', 'researching-topic', 'ready-topic', 'discussing-topic', 'decided-topic']) {
         const res = runOk(dir, ['handle', 'payments', topic]);
-        assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: topic, op: 'handle', handled: true, lifecycle: 'handled', map_total: 8 }, topic);
+        assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: topic, op: 'handle', handled: true, lifecycle: 'handled', map_total: 9 }, topic);
         assert.strictEqual(readManifest(dir).phases.discovery.items[topic].handled, true, topic);
       }
     });
@@ -636,7 +641,7 @@ describe('engine CLI: discovery-map operations', () => {
   describe('unhandle', () => {
     it('clears the marker and reports the name-matched lifecycle', () => {
       const res = runOk(dir, ['unhandle', 'payments', 'handled-topic']);
-      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'unhandle', handled: false, lifecycle: 'fresh', map_total: 8 });
+      assert.deepStrictEqual(res, { ok: true, work_unit: 'payments', name: 'handled-topic', op: 'unhandle', handled: false, lifecycle: 'fresh', map_total: 9 });
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['handled-topic'], false);
     });
 

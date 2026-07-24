@@ -540,6 +540,23 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: triaged is legal on research and discussion only${NC}"
+setup_fixture
+create_wu triage-check feature "Triage"
+run_cli set triage-check.research.triage-check status triaged >/dev/null 2>&1
+run_cli set triage-check.discussion.triage-check status triaged >/dev/null 2>&1
+
+research_status=$(run_cli_stdout get triage-check.research.triage-check status)
+disc_status=$(run_cli_stdout get triage-check.discussion.triage-check status)
+
+assert_equals "$research_status" "triaged" "Research accepts triaged"
+assert_equals "$disc_status" "triaged" "Discussion accepts triaged"
+assert_exit_code 1 "Implementation rejects triaged" set triage-check.implementation.triage-check status triaged
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: set rejects invalid gate modes${NC}"
 setup_fixture
 create_wu gate-check feature "Gate"

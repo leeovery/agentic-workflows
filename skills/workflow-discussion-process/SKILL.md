@@ -53,13 +53,25 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Resume Detection
 
-Check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
+Read the phase status — file existence alone cannot distinguish a resumable session from a `triaged` stub of parked concerns:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} status
+```
+
+Then check if the discussion file exists at `.workflows/{work_unit}/discussion/{topic}.md`.
+
+#### If status is `triaged`
+
+A first start, not a resume — no session has ever run and no subtopics exist, so there is no map to render. Initialization preserves the stub's parked `## Triage` entries.
+
+→ Proceed to **Step 1**.
 
 #### If no file exists
 
 → Proceed to **Step 1**.
 
-#### If file exists
+#### Otherwise
 
 > *Output the next fenced block as a code block:*
 

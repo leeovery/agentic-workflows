@@ -184,6 +184,18 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.current_state.in_progress_count, 1);
   });
 
+  it('a triaged stub is not a discussion — excluded from counts, list, and has_discussions', () => {
+    createManifest(dir, 'overhaul', {
+      work_type: 'epic',
+      phases: { discussion: { items: { parked: { status: 'triaged' } } } },
+    });
+    createFile(dir, '.workflows/overhaul/discussion/parked.md', '# Discussion: Parked\n\n## Triage\n\n### Concern\nBody.\n');
+    const r = discover(dir);
+    assert.strictEqual(r.current_state.discussion_count, 0);
+    assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');
+    assert.deepStrictEqual(r.discussions, []);
+  });
+
   it('detects valid cache from manifest checksum', () => {
     const crypto = require('crypto');
     const checksum = crypto.createHash('md5').update('# Auth').digest('hex');

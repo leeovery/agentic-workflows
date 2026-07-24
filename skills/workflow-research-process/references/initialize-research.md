@@ -8,7 +8,7 @@
 
 → Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-1. Load **[template.md](template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`). Include the terminal `## Triage` section seeded as `(none)`.
+1. Load **[template.md](template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`). Include the terminal `## Triage` section seeded as `(none)`. When the file already exists as a `triaged` stub (rerouted concerns parked before any session), write the template's working sections around it and preserve the existing `## Triage` entries verbatim — never reset them to `(none)`; they drain during the session.
 2. Populate the Starting Point section with context from the handoff's `Context:` section and the seed. If restarting (no `Context:` in handoff), leave the Starting Point section empty — the session will gather context naturally.
 3. Register in manifest:
    ```bash

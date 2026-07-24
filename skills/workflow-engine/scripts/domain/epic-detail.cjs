@@ -83,6 +83,7 @@ const EPIC_DETAIL_PHASES = ['discovery', 'research', 'discussion', 'specificatio
  * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘`
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
+ * @property {boolean} triage_parked  a `triaged` stub (parked rerouted concerns) exists in either phase
  * @property {string|null} next_action
  */
 

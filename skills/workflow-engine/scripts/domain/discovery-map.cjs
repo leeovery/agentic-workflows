@@ -118,11 +118,18 @@ function mapItem(manifest, name) {
  */
 function assertFresh(manifest, name, verbPhrase) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
-  const hasPhaseWork = ['research', 'discussion'].some(
-    (phase) => phaseItems(manifest, phase).some((it) => it.name === name),
+  const phaseWork = ['research', 'discussion'].flatMap(
+    (phase) => phaseItems(manifest, phase).filter((it) => it.name === name),
   );
-  if (lifecycle === 'fresh' && !hasPhaseWork) return;
+  if (lifecycle === 'fresh' && phaseWork.length === 0) return;
   if (lifecycle === 'fresh') {
+    // All-triaged phase work is not history — it is parked rerouted concerns
+    // waiting to drain. Name that instead of the historical-anchor message.
+    if (phaseWork.every((it) => it.status === 'triaged')) {
+      throw new Error(
+        `"${name}" can't be ${verbPhrase} — rerouted concerns are parked in its triage; start the topic to drain them, or cancel from the epic menu`,
+      );
+    }
     throw new Error(
       `"${name}" can't be ${verbPhrase} — per-phase work exists on record and it stays on the map as historical anchor`,
     );

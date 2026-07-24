@@ -153,6 +153,7 @@ function formatScoped(workUnit, result) {
     line += ` routing=${t.routing || 'none'}`;
     line += ` summary=${t.summary_present ? 'present' : 'absent'}`;
     line += ` description=${t.description_present ? 'present' : 'absent'}`;
+    if (t.triage_parked) line += ` triage=waiting`;
     if (t.summary) line += ` — ${t.summary}`;
     lines.push(line);
   }

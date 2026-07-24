@@ -90,6 +90,7 @@ function format(result) {
       if (t.routing) line += ` routing=${t.routing}`;
       if (t.source && t.source !== 'discovery') line += ` source=${t.source}`;
       if (t.current_phase) line += ` phase=${t.current_phase}`;
+      if (t.triage_parked) line += ` triage=waiting`;
       if (t.summary) line += ` — ${t.summary}`;
       lines.push(line);
     }

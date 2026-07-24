@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: topic transitions — start, complete, reopen, supersede,
-// cancel, and reactivate, each a single transaction from the caller's
-// perspective.
+// Domain ring: topic transitions — start, triage, complete, reopen,
+// supersede, cancel, and reactivate, each a single transaction from the
+// caller's perspective.
 //
 // start/complete/reopen/supersede are phase-item lifecycle bookkeeping:
 // manifest write plus a knowledge-base sync where the phase is indexed
@@ -137,6 +137,73 @@ function startTopic(cwd, workUnit, phase, topic) {
 }
 
 /**
+ * @typedef {object} TopicTriageResult
+ * @property {string} topic
+ * @property {string} phase
+ * @property {string|null} status  the item's status after the call
+ * @property {boolean} created     true when the phase item was created as `triaged`
+ * @property {string|null} status_before  the item's status before the call (null when created)
+ * @property {boolean} [reopened]  set when a completed item was reopened to receive the concern
+ */
+
+/**
+ * Park a rerouted concern on a topic: create the phase item as `triaged` when
+ * absent — a parked concern must never read as started work — leave a
+ * `triaged` or `in-progress` item untouched, and set a `completed` item back
+ * to `in-progress` (a landed concern reopens the conversation; no
+ * knowledge-base action — re-completion re-indexes over the same identity).
+ * Terminal states refuse with the same messages start uses. Legal only in
+ * phases whose schema vocabulary contains `triaged`. No git commit — the
+ * calling flow commits the artefact append alongside.
+ * @param {string} cwd project root
+ * @param {string} workUnit
+ * @param {string} phase
+ * @param {string} topic
+ * @returns {TopicTriageResult}
+ */
+function triageTopic(cwd, workUnit, phase, topic) {
+  assertLegalWrite(phase, 'triaged');
+  return withWorkUnitLock(cwd, workUnit, () => {
+    const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const phases = ensureContainer(manifest, 'phases', 'phases');
+    const ph = ensureContainer(phases, phase, `phases.${phase}`);
+    const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
+
+    const existing = items[topic];
+    if (!existing || typeof existing !== 'object') {
+      items[topic] = { status: 'triaged' };
+      saveWorkUnitManifest(cwd, workUnit, manifest);
+      return { topic, phase, status: 'triaged', created: true, status_before: null };
+    }
+    const before = existing.status ?? null;
+    if (before === 'cancelled') {
+      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
+    }
+    if (before === 'superseded') {
+      const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
+      throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
+    }
+    if (before === 'promoted') {
+      const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
+      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+    }
+    if (before === 'completed') {
+      existing.status = 'in-progress';
+      saveWorkUnitManifest(cwd, workUnit, manifest);
+      return { topic, phase, status: 'in-progress', created: false, status_before: before, reopened: true };
+    }
+    if (before === null) {
+      // A status-less item (partial field writes) has never been started —
+      // heal it to triaged, the same way start heals it to in-progress.
+      existing.status = 'triaged';
+      saveWorkUnitManifest(cwd, workUnit, manifest);
+      return { topic, phase, status: 'triaged', created: false, status_before: null };
+    }
+    return { topic, phase, status: before, created: false, status_before: before };
+  });
+}
+
+/**
  * Complete a phase item: set `status: completed` and, when the phase's
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first. No git
@@ -152,6 +219,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
+    if (item.status === 'triaged') {
+      throw new Error(`${phase} item "${topic}" is triaged — parked concerns have never been worked; start the topic first`);
+    }
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     }
@@ -255,6 +325,9 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'proposed') {
       throw new Error(`${phase} item "${topic}" is proposed — a proposed item has no artifact to supersede; reconcile removes it instead`);
     }
+    if (item.status === 'triaged') {
+      throw new Error(`${phase} item "${topic}" is triaged — parked concerns have never been worked; start the topic to drain them first`);
+    }
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     }
@@ -265,6 +338,9 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
+    }
+    if (items[by].status === 'triaged') {
+      throw new Error(`${phase} item "${by}" is triaged — a stub of parked concerns cannot absorb other topics; start it first`);
     }
     item.status = 'superseded';
     item.superseded_by = by;
@@ -373,4 +449,4 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   return result;
 }
 
-module.exports = { startTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
+module.exports = { startTopic, triageTopic, completeTopic, reopenTopic, supersedeTopic, cancelTopic, reactivateTopic };
