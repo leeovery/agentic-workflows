@@ -59,7 +59,7 @@ Subtopics move through states as the conversation progresses. The judgment call 
 
 **decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. This is the terminal state.
 
-**deferred** → Deliberately set aside. Applied at conclude-anyway time (see **H**) to subtopics still unresolved — each is also noted in Summary → Open Threads.
+**deferred** → Deliberately set aside. Applied when concluding with unresolved subtopics (see **H**) — each is also noted in Summary → Open Threads.
 
 **State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit.
 
@@ -240,7 +240,6 @@ Convergence is the natural end state — not a forced conclusion. The discussion
 
 - All subtopics on the Discussion Map are `decided` (or `deferred`)
 - Neither you nor the user can identify new subtopics without breaking scope
-- At least one review cycle has completed (see safety net below)
 
 **Before rendering the convergence menu**, run the map call:
 
@@ -248,23 +247,9 @@ Convergence is the natural end state — not a forced conclusion. The discussion
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries the convergence facts: `all_decided` and `review_cycles`. The DISPLAY section isn't emitted here — this flow reads DATA only.
+Its DATA section carries `all_decided`. The DISPLAY section isn't emitted here — this flow reads DATA only.
 
-#### If `review_cycles` is 0
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ No review agent has been dispatched during this discussion.
-  At least one review cycle is required before concluding.
-  Dispatching now.
-```
-
-Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, delegate to **B. Check and Surface** in review-agent.md — the shared surfacing protocol applies the never-dump rules and presents findings one at a time.
-
-→ Return to **B. Session Loop**.
-
-#### If `review_cycles` is at least 1
+Classify the pending closing work by following **J. Closing Probe**, then announce:
 
 > *Output the next fenced block as a code block:*
 
@@ -272,13 +257,16 @@ Dispatch a review agent as a foreground task (not background — results are nee
 All subtopics on the Discussion Map are decided.
 ```
 
+#### If the probe classified `due`
+
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 · · · · · · · · · · · ·
-Discussion complete. Ready to conclude?
+Next: a final gap review before concluding — {reason}.
+Proceed?
 
-- **`y`/`yes`** — Conclude discussion
+- **`y`/`yes`** — Run the final review
 - **Keep going** — Tell me what else to explore
 · · · · · · · · · · · ·
 ```
@@ -295,6 +283,33 @@ Continue the discussion. The user may want to revisit a decision, explore an edg
 
 → Return to **B. Session Loop**.
 
+#### If the probe classified `satisfied`
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+· · · · · · · · · · · ·
+The final review is up to date. Begin wrap-up? I'll reconcile the
+document against our conversation, then confirm before marking
+complete.
+
+- **`y`/`yes`** — Begin wrap-up
+- **Keep going** — Tell me what else to explore
+· · · · · · · · · · · ·
+```
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+→ Proceed to **I. In-Flight Agent Check**.
+
+**If keep going:**
+
+Continue the discussion — revisit decisions, explore edge cases, probe for gaps. If new subtopics emerge, add them to the map and continue.
+
+→ Return to **B. Session Loop**.
+
 ---
 
 ## H. When the User Signals Conclusion
@@ -307,25 +322,11 @@ When the user indicates they want to conclude the discussion (e.g., "that covers
 node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
-Its DATA section carries everything this flow needs: `all_decided`, `unresolved`, `review_cycles`.
-
-#### If `review_cycles` is 0
-
-> *Output the next fenced block as a code block:*
-
-```
-⚑ No review agent has been dispatched during this discussion.
-  At least one review cycle is required before concluding.
-  Dispatching now.
-```
-
-Dispatch a review agent as a foreground task (not background — results are needed before concluding). Follow **A. Dispatch** in review-agent.md but omit `run_in_background`. When results return, delegate to **B. Check and Surface** in review-agent.md — the shared surfacing protocol applies the never-dump rules and presents findings one at a time. Then continue with the conclusion flow below.
-
-#### If `review_cycles` is at least 1
-
-Continue with the conclusion flow below.
+Its DATA section carries everything this flow needs: `all_decided` and `unresolved`.
 
 #### If `all_decided` is false
+
+Classify the pending closing work by following **J. Closing Probe**.
 
 Emit the map call's DISPLAY section verbatim as a code block, then ({N} = the length of `unresolved`):
 
@@ -339,7 +340,11 @@ There are still {N} subtopics not yet decided:
 - {name:(titlecase)}
 @endforeach
 
-- **`y`/`yes`** — Conclude anyway (unresolved items deferred and noted in Summary)
+@if(review_due)
+Next: a final gap review before concluding — {reason}.
+@endif
+
+- **`y`/`yes`** — Defer them and @if(review_due) run the final review @else begin wrap-up @endif
 - **`n`/`no`** — Continue discussing
 · · · · · · · · · · · ·
 ```
@@ -400,3 +405,23 @@ Watch for `agent scan` to promote each in-flight row to `pending`. When none rem
 **If `proceed`:**
 
 → Return to caller.
+
+---
+
+## J. Closing Probe
+
+A read-only classification for the conclusion gates — is final-review work still owed (`due`, with a reason) or is the gate `satisfied`? Step 6 (Final Gap Review) is the executor and re-derives state itself — a probe mismatch is cosmetic, never state-corrupting. In-flight rows keep their wait-or-proceed decision at **I. In-Flight Agent Check**.
+
+Read the store:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
+```
+
+Classify — first match wins:
+
+1. Any `review`, `synthesis`, or `perspective` row is `pending` or `acknowledged` → `due`: "background findings are still to be walked through"
+2. Any `review` row is `in-flight` → `due`: "a dispatched review is still running"
+3. No `review` row exists → `due`: "no review has run yet"
+4. The highest-numbered `review` row is `incorporated` and a meaningful discussion commit landed after its dispatch (`git log --oneline -- .workflows/{work_unit}/discussion/{topic}.md` — a decision documented, a subtopic explored, not typo fixes) → `due`: "the discussion has moved since the last review"
+5. Otherwise → `satisfied`
